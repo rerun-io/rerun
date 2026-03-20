@@ -237,42 +237,11 @@ impl StoreHub {
                 break 'ctx None;
             };
 
-            // Defensive coding: Check that default and active blueprints exists,
-            // in case some of our book-keeping is broken.
-            if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(app_id)
-                && !self.store_bundle.contains(blueprint_id)
-            {
-                self.default_blueprint_by_app_id.remove(app_id);
-            }
-            if let Some(blueprint_id) = self.active_blueprint_by_app_id.get(app_id)
-                && !self.store_bundle.contains(blueprint_id)
-            {
-                self.active_blueprint_by_app_id.remove(app_id);
-            }
-
-            // If there's no active blueprint for this app, we must use the default blueprint, UNLESS
-            // we're about to enable heuristics for this app.
-            if !self.active_blueprint_by_app_id.contains_key(app_id)
-                && !self.should_enable_heuristics_by_app_id.contains(app_id)
-                && let Some(blueprint_id) = self.default_blueprint_by_app_id.get(app_id).cloned()
-            {
-                self.set_cloned_blueprint_active_for_app(&blueprint_id)
-                    .unwrap_or_else(|err| {
-                        re_log::warn!("Failed to make blueprint active: {err}");
-                    });
-            }
+            self.ensure_active_blueprint_for_app(app_id);
+            let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(app_id);
 
             let active_blueprint = {
-                // Get the id is of whatever blueprint is now active, falling back on the "app blueprint" if needed.
-                let active_blueprint_id = self
-                    .active_blueprint_by_app_id
-                    .get(app_id)
-                    .cloned()
-                    .unwrap_or_else(|| StoreId::default_blueprint(app_id.clone()));
-
-                // Get or create the blueprint:
-                self.store_bundle.blueprint_entry(&active_blueprint_id);
-                let Some(active_blueprint) = self.store_bundle.get(&active_blueprint_id) else {
+                let Some(active_blueprint) = self.active_blueprint_for_app(app_id) else {
                     break 'ctx None;
                 };
                 active_blueprint
@@ -286,8 +255,6 @@ impl StoreHub {
             let recording = route
                 .recording_id()
                 .and_then(|store_id| self.store_bundle.get(store_id));
-
-            let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(app_id);
             let caches = route
                 .recording_id()
                 .and_then(|store_id| self.store_caches.get(store_id));
@@ -676,6 +643,48 @@ impl StoreHub {
 
     // ---------------------
     // Active blueprint
+
+    /// Ensure there is an active blueprint for the given app.
+    ///
+    /// First cleans up stale references, then:
+    /// - If there is already an active blueprint, does nothing.
+    /// - If the heuristic blueprint are about to be enabled for this app, does nothing.
+    /// - If there is a default blueprint, clones it and makes it active.
+    /// - Otherwise, creates an empty blueprint and registers it as active.
+    pub fn ensure_active_blueprint_for_app(&mut self, app_id: &ApplicationId) {
+        // Clean up stale references in case our book-keeping is broken.
+        if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(app_id)
+            && !self.store_bundle.contains(blueprint_id)
+        {
+            self.default_blueprint_by_app_id.remove(app_id);
+        }
+        if let Some(blueprint_id) = self.active_blueprint_by_app_id.get(app_id)
+            && !self.store_bundle.contains(blueprint_id)
+        {
+            self.active_blueprint_by_app_id.remove(app_id);
+        }
+
+        if self.active_blueprint_by_app_id.contains_key(app_id)
+            || self.should_enable_heuristics_by_app_id.contains(app_id)
+        {
+            return;
+        }
+
+        // Try to clone the default blueprint.
+        if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(app_id).cloned() {
+            self.set_cloned_blueprint_active_for_app(&blueprint_id)
+                .unwrap_or_else(|err| {
+                    re_log::warn!("Failed to make blueprint active: {err}");
+                });
+            return;
+        }
+
+        // No default blueprint exists, create an empty one.
+        let blueprint_id = StoreId::default_blueprint(app_id.clone());
+        self.store_bundle.blueprint_entry(&blueprint_id);
+        self.active_blueprint_by_app_id
+            .insert(app_id.clone(), blueprint_id);
+    }
 
     pub fn active_blueprint_id_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
         self.active_blueprint_by_app_id.get(app_id)
