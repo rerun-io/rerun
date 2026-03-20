@@ -19,6 +19,7 @@
 
 pub mod arrow_msg;
 mod entry_id;
+mod entry_name;
 pub mod example_components;
 pub mod hash;
 mod index;
@@ -40,6 +41,7 @@ pub use re_types_core::TimelineName;
 
 pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
 pub use self::entry_id::{EntryId, EntryIdOrName};
+pub use self::entry_name::{EntryName, InvalidEntryNameError};
 pub use self::index::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
     TimeReal, TimeType, Timeline, TimelinePoint, Timestamp, TimestampFormat, TimestampFormatKind,

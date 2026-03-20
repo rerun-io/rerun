@@ -465,7 +465,11 @@ impl PyDatasetEntryInternal {
 
             let mut chunks_stream = fetch_chunks_response_to_chunk_and_segment_id(response_stream);
 
-            let store_id = StoreId::new(StoreKind::Recording, dataset_name, segment_id.clone());
+            let store_id = StoreId::new(
+                StoreKind::Recording,
+                dataset_name.to_string(),
+                segment_id.clone(),
+            );
             let mut store = ChunkStore::new(store_id, Default::default());
 
             while let Some(chunks) = chunks_stream.next().await {

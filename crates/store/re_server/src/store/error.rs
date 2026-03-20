@@ -1,4 +1,5 @@
-use re_log_types::EntryId;
+use re_log_types::{ComponentPath, EntryId};
+use re_protos::EntryName;
 use re_protos::common::v1alpha1::ext::SegmentId;
 
 #[derive(thiserror::Error, Debug)]
@@ -11,16 +12,16 @@ pub enum Error {
     StoreLoadError(#[from] re_entity_db::StoreLoadError),
 
     #[error("Invalid entry name: {0}")]
-    InvalidEntryName(String),
+    InvalidEntryName(#[from] re_protos::InvalidEntryNameError),
 
     #[error("Entry name '{0}' already exists")]
-    DuplicateEntryNameError(String),
+    DuplicateEntryNameError(EntryName),
 
     #[error("Entry id '{0}' already exists")]
     DuplicateEntryIdError(EntryId),
 
     #[error("Entry name '{0}' not found")]
-    EntryNameNotFound(String),
+    EntryNameNotFound(EntryName),
 
     #[error("Entry id '{0}' not found")]
     EntryIdNotFound(EntryId),
@@ -41,8 +42,8 @@ pub enum Error {
     #[error("Layer '{0}' already exists")]
     LayerAlreadyExists(String),
 
-    #[error("Index '{0}' not found")]
-    IndexNotFound(String),
+    #[error("Component path '{0}' not found")]
+    ComponentPathNotFound(ComponentPath),
 
     #[error("Index '{0}' already exists")]
     IndexAlreadyExists(String),
@@ -99,7 +100,7 @@ impl From<Error> for tonic::Status {
             | Error::EntryNameNotFound(_)
             | Error::SegmentIdNotFound { .. }
             | Error::LayerNameNotFound { .. }
-            | Error::IndexNotFound(_)
+            | Error::ComponentPathNotFound(_)
             | Error::InvalidChunkKey(_) => Self::not_found(format!("{err:#}")),
 
             Error::DataFusionError(err) => Self::internal(format!("DataFusion error: {err:#}")),

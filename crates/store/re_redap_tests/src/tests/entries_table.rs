@@ -1,11 +1,11 @@
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::ext::EntryDetails;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     DeleteEntryRequest, FindEntriesRequest, GetTableSchemaRequest, ScanTableRequest,
 };
+use re_protos::{EntryName, cloud::v1alpha1::ext::EntryDetails};
 
 use crate::tests::common::RerunCloudServiceExt as _;
 use crate::{RecordBatchTestExt as _, SchemaTestExt as _};
@@ -101,7 +101,7 @@ async fn entries_table_id(service: &impl RerunCloudService) -> EntryId {
         .try_into()
         .expect("Failed to convert to EntryDetails");
 
-    assert_eq!(entries.name, "__entries");
+    assert_eq!(entries.name, EntryName::entries_table());
 
     entries.id
 }

@@ -682,46 +682,14 @@ impl crate::cloud::v1alpha1::EntryFilter {
     }
 }
 
+pub use crate::EntryName;
+
 // --- EntryDetails ---
-
-/// Maximum length of an entry name.
-const MAX_ENTRY_NAME_LENGTH: usize = 180;
-
-/// Validate an entry name.
-///
-/// Entry names must:
-/// - Be at most 180 characters long
-/// - Only contain ASCII alphanumeric characters, underscores, hyphens, dots, and spaces
-///
-// TODO(RR-3718): Entry names should support a broader set of characters.
-pub fn validate_entry_name(name: &str) -> Result<(), String> {
-    if name.len() > MAX_ENTRY_NAME_LENGTH {
-        return Err(format!(
-            "name '{name}' exceeds maximum length of {MAX_ENTRY_NAME_LENGTH} characters (got {})",
-            name.len()
-        ));
-    }
-
-    if let Some(ch) = name.chars().find(|c| {
-        !c.is_ascii_alphanumeric()
-            && *c != '_'
-            && *c != '-'
-            && *c != '.'
-            && *c != ' '
-            && *c != '['
-            && *c != ']'
-            && *c != ':'
-    }) {
-        return Err(format!("name '{name}' contains invalid character '{ch}'"));
-    }
-
-    Ok(())
-}
 
 #[derive(Debug, Clone)]
 pub struct EntryDetails {
     pub id: re_log_types::EntryId,
-    pub name: String,
+    pub name: EntryName,
     pub kind: crate::cloud::v1alpha1::EntryKind,
     pub created_at: jiff::Timestamp,
     pub updated_at: jiff::Timestamp,
@@ -736,9 +704,11 @@ impl TryFrom<crate::cloud::v1alpha1::EntryDetails> for EntryDetails {
                 .id
                 .ok_or(missing_field!(crate::cloud::v1alpha1::EntryDetails, "id"))?
                 .try_into()?,
-            name: value
-                .name
-                .ok_or(missing_field!(crate::cloud::v1alpha1::EntryDetails, "name"))?,
+            name: EntryName::new(
+                value
+                    .name
+                    .ok_or(missing_field!(crate::cloud::v1alpha1::EntryDetails, "name"))?,
+            )?,
             kind: value.entry_kind.try_into()?,
             created_at: {
                 let ts = value.created_at.ok_or(missing_field!(
@@ -762,7 +732,7 @@ impl From<EntryDetails> for crate::cloud::v1alpha1::EntryDetails {
     fn from(value: EntryDetails) -> Self {
         Self {
             id: Some(value.id.into()),
-            name: Some(value.name),
+            name: Some(value.name.to_string()),
             entry_kind: value.kind as _,
             created_at: {
                 let ts = value.created_at;
@@ -881,7 +851,7 @@ impl From<DatasetEntry> for crate::cloud::v1alpha1::DatasetEntry {
 #[derive(Debug, Clone)]
 pub struct CreateDatasetEntryRequest {
     /// Entry name (must be unique in catalog).
-    pub name: String,
+    pub name: EntryName,
 
     /// Override, use at your own risk.
     pub id: Option<EntryId>,
@@ -890,7 +860,7 @@ pub struct CreateDatasetEntryRequest {
 impl From<CreateDatasetEntryRequest> for crate::cloud::v1alpha1::CreateDatasetEntryRequest {
     fn from(value: CreateDatasetEntryRequest) -> Self {
         Self {
-            name: Some(value.name),
+            name: Some(value.name.to_string()),
             id: value.id.map(Into::into),
         }
     }
@@ -902,12 +872,12 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryRequest> for CreateDatase
     fn try_from(
         value: crate::cloud::v1alpha1::CreateDatasetEntryRequest,
     ) -> Result<Self, Self::Error> {
+        let name_str = value.name.ok_or(missing_field!(
+            crate::cloud::v1alpha1::CreateDatasetEntryRequest,
+            "name"
+        ))?;
         Ok(Self {
-            name: value.name.ok_or(missing_field!(
-                crate::cloud::v1alpha1::CreateDatasetEntryRequest,
-                "name"
-            ))?,
-
+            name: EntryName::new(name_str).map_err(TypeConversionError::InvalidEntryName)?,
             id: value.id.map(TryInto::try_into).transpose()?,
         })
     }
@@ -950,7 +920,7 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryResponse> for CreateDatas
 
 #[derive(Debug, Clone)]
 pub struct CreateTableEntryRequest {
-    pub name: String,
+    pub name: EntryName,
     pub schema: Schema,
     pub provider_details: Option<ProviderDetails>,
 }
@@ -959,7 +929,7 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
     type Error = TypeConversionError;
     fn try_from(value: CreateTableEntryRequest) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name,
+            name: value.name.to_string(),
             schema: Some((&value.schema).try_into()?),
             provider_details: value
                 .provider_details
@@ -975,7 +945,8 @@ impl TryFrom<&crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEn
         value: &crate::cloud::v1alpha1::CreateTableEntryRequest,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name.clone(),
+            name: EntryName::new(value.name.clone())
+                .map_err(TypeConversionError::InvalidEntryName)?,
             schema: value
                 .schema
                 .as_ref()
@@ -1164,20 +1135,28 @@ impl TryFrom<crate::cloud::v1alpha1::DeleteEntryRequest> for re_log_types::Entry
 
 #[derive(Debug, Clone, Default)]
 pub struct EntryDetailsUpdate {
-    pub name: Option<String>,
+    pub name: Option<EntryName>,
 }
 
 impl TryFrom<crate::cloud::v1alpha1::EntryDetailsUpdate> for EntryDetailsUpdate {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::cloud::v1alpha1::EntryDetailsUpdate) -> Result<Self, Self::Error> {
-        Ok(Self { name: value.name })
+        Ok(Self {
+            name: value
+                .name
+                .map(EntryName::new)
+                .transpose()
+                .map_err(TypeConversionError::InvalidEntryName)?,
+        })
     }
 }
 
 impl From<EntryDetailsUpdate> for crate::cloud::v1alpha1::EntryDetailsUpdate {
     fn from(value: EntryDetailsUpdate) -> Self {
-        Self { name: value.name }
+        Self {
+            name: value.name.map(|name| name.to_string()),
+        }
     }
 }
 
@@ -1306,7 +1285,7 @@ impl TryFrom<crate::cloud::v1alpha1::ReadTableEntryResponse> for ReadTableEntryR
 
 #[derive(Debug, Clone)]
 pub struct RegisterTableRequest {
-    pub name: String,
+    pub name: EntryName,
     pub provider_details: ProviderDetails,
 }
 
@@ -1314,7 +1293,7 @@ impl TryFrom<RegisterTableRequest> for crate::cloud::v1alpha1::RegisterTableRequ
     type Error = TypeConversionError;
     fn try_from(value: RegisterTableRequest) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name,
+            name: value.name.to_string(),
             provider_details: Some((&value.provider_details).try_into()?),
         })
     }
@@ -1325,7 +1304,7 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterTableRequest> for RegisterTableRequ
 
     fn try_from(value: crate::cloud::v1alpha1::RegisterTableRequest) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name,
+            name: EntryName::new(value.name).map_err(TypeConversionError::InvalidEntryName)?,
             provider_details: ProviderDetails::try_from(&value.provider_details.ok_or(
                 missing_field!(
                     crate::cloud::v1alpha1::RegisterTableRequest,

@@ -10,7 +10,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::QueryExpression;
 use re_datafusion::query_from_query_expression;
 use re_log::external::log::warn;
-use re_log_types::EntryId;
+use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, DatasetDetails, DatasetEntry, EntryDetails, QueryDatasetRequest,
     RegisterWithDatasetTaskDescriptor, TableEntry,
@@ -187,7 +187,7 @@ impl ConnectionHandle {
     pub fn register_table(
         &self,
         py: Python<'_>,
-        name: String,
+        name: EntryName,
         url: url::Url,
     ) -> PyResult<TableEntry> {
         wait_for_future(
@@ -207,7 +207,7 @@ impl ConnectionHandle {
     pub fn create_table_entry(
         &self,
         py: Python<'_>,
-        name: String,
+        name: &EntryName,
         schema: SchemaRef,
         url: Option<url::Url>,
     ) -> PyResult<TableEntry> {
@@ -216,7 +216,7 @@ impl ConnectionHandle {
             async {
                 self.client()
                     .await?
-                    .create_table_entry(&name, url, schema)
+                    .create_table_entry(name.clone(), url, schema)
                     .await
                     .map_err(to_py_err)
             }

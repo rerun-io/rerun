@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::Context as _;
+use re_protos::EntryName;
 #[cfg(unix)]
 use tokio::signal::unix::{SignalKind, signal};
 #[cfg(windows)]
@@ -82,7 +83,7 @@ pub struct NamedPath {
 /// A named collection of paths.
 #[derive(Debug, Clone)]
 pub struct NamedPathCollection {
-    pub name: String,
+    pub name: EntryName,
     pub paths: Vec<PathBuf>,
 }
 

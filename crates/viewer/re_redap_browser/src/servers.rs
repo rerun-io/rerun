@@ -200,9 +200,9 @@ impl Server {
 
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.clone(),
-            dataset.name(),
+            dataset.name().to_string(),
         )
-        .title(dataset.name())
+        .title(dataset.name().to_string())
         .url(re_uri::EntryUri::new(dataset.origin.clone(), dataset.id()).to_string())
         .column_blueprint(|desc| {
             let mut name = default_display_name_for_column(desc);
@@ -253,10 +253,13 @@ impl Server {
     }
 
     fn table_entry_ui(&self, viewer_ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, table: &Table) {
-        re_dataframe_ui::DataFusionTableWidget::new(self.tables_session_ctx.clone(), table.name())
-            .title(table.name())
-            .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
-            .show(viewer_ctx, &self.runtime, ui);
+        re_dataframe_ui::DataFusionTableWidget::new(
+            self.tables_session_ctx.clone(),
+            table.name().to_string(),
+        )
+        .title(table.name().to_string())
+        .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
+        .show(viewer_ctx, &self.runtime, ui);
     }
 }
 

@@ -130,7 +130,7 @@ impl PyEntryDetails {
 
     #[getter]
     fn name(&self) -> &str {
-        &self.0.name
+        self.0.name.as_str()
     }
 
     /// The entry's kind.
@@ -171,8 +171,11 @@ pub fn set_entry_name(
     let entry_id = entry_details.id;
     let connection = client.borrow_mut(py).connection().clone();
 
-    let entry_details_update =
-        re_protos::cloud::v1alpha1::ext::EntryDetailsUpdate { name: Some(name) };
+    let entry_name = re_protos::EntryName::new(name)
+        .map_err(|err| pyo3::exceptions::PyValueError::new_err(err.to_string()))?;
+    let entry_details_update = re_protos::cloud::v1alpha1::ext::EntryDetailsUpdate {
+        name: Some(entry_name),
+    };
 
     let updated_entry_details = connection.update_entry(py, entry_id, entry_details_update)?;
     *entry_details = updated_entry_details;

@@ -6,6 +6,8 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 
+use super::common::entry_name;
+
 pub async fn update_entry_tests(service: impl RerunCloudService) {
     //
     // Create a dataset
@@ -15,7 +17,7 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
 
     let dataset_entry = create_dataset_entry(&service, dataset_name).await.unwrap();
 
-    assert_eq!(dataset_entry.details.name, dataset_name);
+    assert_eq!(dataset_entry.details.name, entry_name(dataset_name));
 
     let dataset_id = dataset_entry.details.id;
 
@@ -33,7 +35,7 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
     .await
     .unwrap();
 
-    assert_eq!(response.entry_details.name, dataset_name);
+    assert_eq!(response.entry_details.name, entry_name(dataset_name));
 
     //
     // Dataset rename should succeed
@@ -45,14 +47,14 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
         UpdateEntryRequest {
             id: dataset_id,
             entry_details_update: EntryDetailsUpdate {
-                name: Some(new_dataset_name.to_owned()),
+                name: Some(entry_name(new_dataset_name)),
             },
         },
     )
     .await
     .unwrap();
 
-    assert_eq!(response.entry_details.name, new_dataset_name);
+    assert_eq!(response.entry_details.name, entry_name(new_dataset_name));
 
     //
     // Create another dataset
@@ -73,7 +75,7 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
         UpdateEntryRequest {
             id: dataset2_id,
             entry_details_update: EntryDetailsUpdate {
-                name: Some(new_dataset_name.to_owned()),
+                name: Some(entry_name(new_dataset_name)),
             },
         },
     )
@@ -97,7 +99,7 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
         .await
         .unwrap();
 
-    assert_eq!(table_entry.details.name, table_name);
+    assert_eq!(table_entry.details.name, entry_name(table_name));
     let table_id = table_entry.details.id;
 
     //
@@ -110,14 +112,14 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
         UpdateEntryRequest {
             id: table_id,
             entry_details_update: EntryDetailsUpdate {
-                name: Some(new_table_name.to_owned()),
+                name: Some(entry_name(new_table_name)),
             },
         },
     )
     .await
     .unwrap();
 
-    assert_eq!(response.entry_details.name, new_table_name);
+    assert_eq!(response.entry_details.name, entry_name(new_table_name));
 
     //
     // Updating table name to an existing dataset name should fail.
@@ -128,7 +130,7 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
         UpdateEntryRequest {
             id: table_id,
             entry_details_update: EntryDetailsUpdate {
-                name: Some(dataset2_name.to_owned()),
+                name: Some(entry_name(dataset2_name)),
             },
         },
     )
@@ -162,7 +164,7 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
         UpdateEntryRequest {
             id: table2_id,
             entry_details_update: EntryDetailsUpdate {
-                name: Some(new_table_name.to_owned()),
+                name: Some(entry_name(new_table_name)),
             },
         },
     )
@@ -200,7 +202,7 @@ pub async fn update_entry_bumps_timestamp(service: impl RerunCloudService) {
         UpdateEntryRequest {
             id: dataset_id,
             entry_details_update: EntryDetailsUpdate {
-                name: Some(new_name.to_owned()),
+                name: Some(entry_name(new_name)),
             },
         },
     )
@@ -226,7 +228,7 @@ pub async fn update_entry_bumps_timestamp(service: impl RerunCloudService) {
         UpdateEntryRequest {
             id: dataset_id,
             entry_details_update: EntryDetailsUpdate {
-                name: Some(new_name.to_owned()),
+                name: Some(entry_name(new_name)),
             },
         },
     )
@@ -250,7 +252,7 @@ async fn create_dataset_entry(
     service
         .create_dataset_entry(tonic::Request::new(
             CreateDatasetEntryRequest {
-                name: name.to_owned(),
+                name: entry_name(name),
                 id: None,
             }
             .into(),
@@ -273,7 +275,7 @@ async fn create_table_entry(
     service
         .create_table_entry(tonic::Request::new(
             CreateTableEntryRequest {
-                name: table_name.to_owned(),
+                name: entry_name(table_name),
                 schema: schema.clone(),
                 provider_details: Some(provider_details),
             }

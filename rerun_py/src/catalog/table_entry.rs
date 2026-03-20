@@ -85,7 +85,7 @@ impl PyTableEntryInternal {
         // Any tables for which we have a TableEntry are already
         // registered with the CatalogProvider.
 
-        let df = ctx.call_method1("table", (table_name,))?;
+        let df = ctx.call_method1("table", (table_name.as_str(),))?;
 
         Ok(df)
     }

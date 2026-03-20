@@ -337,7 +337,7 @@ impl<'a> ServerEntriesData<'a> {
                     let entry_data = EntryData {
                         origin: origin.clone(),
                         entry_id: entry.id(),
-                        name: entry.name().to_owned(),
+                        name: entry.name().clone(),
                         icon: entry.icon(),
                         is_selected: ctx.is_selected_or_loading(&Item::RedapEntry(
                             re_uri::EntryUri {
@@ -482,7 +482,7 @@ pub struct EntryData {
     pub origin: re_uri::Origin,
     pub entry_id: re_log_types::EntryId,
 
-    pub name: String,
+    pub name: re_log_types::EntryName,
 
     #[cfg_attr(feature = "testing", serde(serialize_with = "serialize_icon"))]
     pub icon: re_ui::icons::Icon,

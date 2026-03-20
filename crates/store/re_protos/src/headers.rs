@@ -30,12 +30,14 @@ pub const HTTP_HEADER_AUTHORIZATION: &str = "authorization";
 /// Example:
 /// ```
 /// # use re_protos::headers::RerunHeadersInjectorExt as _;
-/// let mut req = tonic::Request::new(()).with_entry_name("droid:sample2k").unwrap();
+/// # use re_log_types::EntryName;
+/// let entry_name = EntryName::new("my_entry").unwrap();
+/// let mut req = tonic::Request::new(()).with_entry_name(entry_name).unwrap();
 /// ```
 pub trait RerunHeadersInjectorExt: Sized {
     fn with_entry_id(self, entry_id: re_log_types::EntryId) -> tonic::Result<Self>;
 
-    fn with_entry_name(self, entry_name: impl AsRef<str>) -> tonic::Result<Self>;
+    fn with_entry_name(self, entry_name: EntryName) -> tonic::Result<Self>;
 
     fn with_metadata(self, md: &tonic::metadata::MetadataMap) -> Self;
 }
@@ -56,11 +58,11 @@ impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
         Ok(self)
     }
 
-    fn with_entry_name(mut self, entry_name: impl AsRef<str>) -> tonic::Result<Self> {
+    fn with_entry_name(mut self, entry_name: EntryName) -> tonic::Result<Self> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_NAME;
 
-        let entry_name = entry_name.as_ref();
-        let entry_name = tonic::metadata::BinaryMetadataValue::from_bytes(entry_name.as_bytes());
+        let entry_name =
+            tonic::metadata::BinaryMetadataValue::from_bytes(entry_name.as_str().as_bytes());
 
         self.metadata_mut().insert_bin(HEADER, entry_name);
 
@@ -97,7 +99,7 @@ impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
 pub trait RerunHeadersExtractorExt {
     fn entry_id(&self) -> tonic::Result<Option<re_log_types::EntryId>>;
 
-    fn entry_name(&self) -> tonic::Result<Option<String>>;
+    fn entry_name(&self) -> tonic::Result<Option<EntryName>>;
 }
 
 impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
@@ -122,7 +124,7 @@ impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
         Ok(Some(entry_id))
     }
 
-    fn entry_name(&self) -> tonic::Result<Option<String>> {
+    fn entry_name(&self) -> tonic::Result<Option<EntryName>> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_NAME;
 
         let Some(entry_name) = self.metadata().get_bin(HEADER) else {
@@ -139,6 +141,8 @@ impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
                 "'{entry_name:?}' is not a valid value for '{HEADER}': {err:#}"
             ))
         })?;
+        let entry_name = EntryName::new(&entry_name)
+            .map_err(|err| tonic::Status::invalid_argument(err.to_string()))?;
 
         Ok(Some(entry_name))
     }
@@ -311,6 +315,8 @@ use http::{HeaderValue, Request, Response};
 use pin_project_lite::pin_project;
 use tower::Service;
 use tower::layer::Layer;
+
+use crate::EntryName;
 
 /// Layer that applies [`PropagateHeaders`] which propagates multiple headers at once from requests to responses.
 ///

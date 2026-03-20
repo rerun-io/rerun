@@ -10,6 +10,7 @@ use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
+use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::EntryKind;
 use re_protos::cloud::v1alpha1::ext::{DatasetDetails, EntryDetails, ProviderDetails, TableEntry};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
@@ -23,12 +24,10 @@ use crate::store::table::TableType;
 use crate::store::task_registry::TaskRegistry;
 use crate::store::{ChunkKey, Dataset, Error, StoreSlotId, Table};
 
-const ENTRIES_TABLE_NAME: &str = "__entries";
-
 pub struct InMemoryStore {
     datasets: HashMap<EntryId, Dataset>,
     tables: HashMap<EntryId, Table>,
-    id_by_name: HashMap<String, EntryId>,
+    id_by_name: HashMap<EntryName, EntryId>,
     task_registry: TaskRegistry,
     store_pool: StorePool,
 }
@@ -151,15 +150,17 @@ impl InMemoryStore {
         }
 
         let entry_name = match &named_path.name {
-            Some(name) => name.into(),
+            Some(name) => name.clone(),
             None => directory
                 .file_name()
                 .expect("the directory should have a name and the path was canonicalized")
-                .to_string_lossy(),
+                .to_string_lossy()
+                .into_owned(),
         };
+        let entry_name = EntryName::new(entry_name).map_err(Error::InvalidEntryName)?;
 
         let dataset_id = self
-            .create_dataset(entry_name.into(), None)
+            .create_dataset(entry_name, None)
             .expect("Name cannot yet exist");
 
         for entry in std::fs::read_dir(&directory)? {
@@ -225,12 +226,14 @@ impl InMemoryStore {
         }
 
         let entry_name = match &named_path.name {
-            Some(name) => name.into(),
+            Some(name) => name.clone(),
             None => directory
                 .file_name()
                 .expect("the directory should have a name and the path was canonicalized")
-                .to_string_lossy(),
+                .to_string_lossy()
+                .into_owned(),
         };
+        let entry_name = EntryName::new(entry_name).map_err(Error::InvalidEntryName)?;
 
         // Verify it is a valid lance table
         let path = directory.to_str().ok_or_else(|| {
@@ -255,20 +258,20 @@ impl InMemoryStore {
         let entry_id = EntryId::new();
         let provider_details = LanceTable { table_url };
 
-        match self.table_by_name(entry_name.as_ref()) {
+        match self.table_by_name(&entry_name) {
             None => {
-                self.add_table_entry(entry_name.as_ref(), entry_id, table, provider_details)?;
+                self.add_table_entry(entry_name, entry_id, table, provider_details)?;
             }
             Some(_) => match on_duplicate {
                 IfDuplicateBehavior::Overwrite => {
                     re_log::info!("Overwriting {entry_name}");
-                    self.add_table_entry(entry_name.as_ref(), entry_id, table, provider_details)?;
+                    self.add_table_entry(entry_name, entry_id, table, provider_details)?;
                 }
                 IfDuplicateBehavior::Skip => {
                     re_log::info!("Ignoring {entry_name}: it already exists");
                 }
                 IfDuplicateBehavior::Error => {
-                    return Err(Error::DuplicateEntryNameError(entry_name.to_string()));
+                    return Err(Error::DuplicateEntryNameError(entry_name));
                 }
             },
         }
@@ -276,10 +279,7 @@ impl InMemoryStore {
         Ok(entry_id)
     }
 
-    pub fn rename_entry(&mut self, entry_id: EntryId, entry_name: String) -> Result<(), Error> {
-        re_protos::cloud::v1alpha1::ext::validate_entry_name(&entry_name)
-            .map_err(Error::InvalidEntryName)?;
-
+    pub fn rename_entry(&mut self, entry_id: EntryId, entry_name: EntryName) -> Result<(), Error> {
         if let Some(existing_entry_id) = self.id_by_name.get(&entry_name) {
             return if existing_entry_id == &entry_id {
                 // nothing to do, the rename is a no-op
@@ -315,17 +315,17 @@ impl InMemoryStore {
     #[cfg(feature = "lance")] // only used by the `lance` feature
     fn add_table_entry(
         &mut self,
-        entry_name: &str,
+        entry_name: EntryName,
         entry_id: EntryId,
         table: TableType,
         provider_details: re_protos::cloud::v1alpha1::ext::LanceTable,
     ) -> Result<(), Error> {
-        self.id_by_name.insert(entry_name.to_owned(), entry_id);
+        self.id_by_name.insert(entry_name.clone(), entry_id);
         self.tables.insert(
             entry_id,
             Table::new(
                 entry_id,
-                entry_name.to_owned(),
+                entry_name,
                 table,
                 None,
                 ProviderDetails::LanceTable(provider_details),
@@ -341,15 +341,12 @@ impl InMemoryStore {
     /// risk for `dataset_id`.
     pub fn create_dataset(
         &mut self,
-        dataset_name: String,
+        dataset_name: EntryName,
         dataset_id: Option<EntryId>,
     ) -> Result<EntryId, Error> {
-        re_protos::cloud::v1alpha1::ext::validate_entry_name(&dataset_name)
-            .map_err(Error::InvalidEntryName)?;
-
         let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
         let blueprint_dataset_id = EntryId::new();
-        let blueprint_dataset_name = format!("__bp_{dataset_id}");
+        let blueprint_dataset_name = EntryName::blueprint_for(dataset_id);
 
         self.create_dataset_impl(
             blueprint_dataset_name,
@@ -374,12 +371,12 @@ impl InMemoryStore {
     /// Create a dataset of the given kind with the given details.
     fn create_dataset_impl(
         &mut self,
-        name: String,
+        name: EntryName,
         entry_id: EntryId,
         store_kind: StoreKind,
         details: Option<DatasetDetails>,
     ) -> Result<EntryId, Error> {
-        re_log::debug!(name, "create_dataset");
+        re_log::debug!(%name, "create_dataset");
         if self.id_by_name.contains_key(&name) {
             return Err(Error::DuplicateEntryNameError(name));
         }
@@ -441,7 +438,7 @@ impl InMemoryStore {
 
         let entries_table_id = *self
             .id_by_name
-            .entry(ENTRIES_TABLE_NAME.to_owned())
+            .entry(EntryName::entries_table())
             .or_insert_with(EntryId::new);
         let prior_entries_table = self.tables.remove(&entries_table_id);
 
@@ -450,7 +447,7 @@ impl InMemoryStore {
             entries_table_id,
             Table::new(
                 entries_table_id,
-                ENTRIES_TABLE_NAME.to_owned(),
+                EntryName::entries_table(),
                 TableType::DataFusionTable(entries_table),
                 prior_entries_table.map(|t| t.created_at()),
                 ProviderDetails::SystemTable(SystemTable {
@@ -474,12 +471,12 @@ impl InMemoryStore {
             .ok_or(Error::EntryIdNotFound(entry_id))
     }
 
-    pub fn dataset_by_name(&self, name: &str) -> Result<&Dataset, Error> {
+    pub fn dataset_by_name(&self, name: &EntryName) -> Result<&Dataset, Error> {
         let entry_id = self
             .id_by_name
             .get(name)
             .copied()
-            .ok_or(Error::EntryNameNotFound(name.to_owned()))?;
+            .ok_or_else(|| Error::EntryNameNotFound(name.clone()))?;
         self.dataset(entry_id)
     }
 
@@ -495,7 +492,7 @@ impl InMemoryStore {
         self.tables.get_mut(&entry_id)
     }
 
-    pub fn table_by_name(&self, name: &str) -> Option<&Table> {
+    pub fn table_by_name(&self, name: &EntryName) -> Option<&Table> {
         let entry_id = self.id_by_name.get(name).copied()?;
         self.table(entry_id)
     }
@@ -504,7 +501,7 @@ impl InMemoryStore {
         self.tables.values()
     }
 
-    pub fn id_by_name(&self, name: &str) -> Option<&EntryId> {
+    pub fn id_by_name(&self, name: &EntryName) -> Option<&EntryId> {
         self.id_by_name.get(name)
     }
 
@@ -518,24 +515,21 @@ impl InMemoryStore {
 
     pub async fn create_table_entry(
         &mut self,
-        name: &str,
+        name: EntryName,
         url: &url::Url,
         schema: SchemaRef,
     ) -> Result<TableEntry, Error> {
-        re_protos::cloud::v1alpha1::ext::validate_entry_name(name)
-            .map_err(Error::InvalidEntryName)?;
-
-        re_log::debug!(name, "create_table");
-        if self.id_by_name.contains_key(name) {
-            return Err(Error::DuplicateEntryNameError(name.to_owned()));
+        re_log::debug!(%name, "create_table");
+        if self.id_by_name.contains_key(&name) {
+            return Err(Error::DuplicateEntryNameError(name));
         }
 
         let entry_id = EntryId::new();
 
-        let table = Table::create_table_entry(entry_id, name, url, schema).await?;
+        let table = Table::create_table_entry(entry_id, name.clone(), url, schema).await?;
         let table_entry = table.as_table_entry();
 
-        self.id_by_name.insert(name.to_owned(), entry_id);
+        self.id_by_name.insert(name, entry_id);
         self.tables.insert(entry_id, table);
         self.update_entries_table()?;
 
@@ -547,7 +541,7 @@ fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error
     #[expect(clippy::type_complexity)]
     let (id, name, entry_kind, created_at, updated_at): (
         Vec<Tuid>,
-        Vec<String>,
+        Vec<EntryName>,
         Vec<i32>,
         Vec<i64>,
         Vec<i64>,
@@ -567,7 +561,9 @@ fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error
     let id_arr = id
         .to_arrow()
         .map_err(|err| DataFusionError::External(Box::new(err)))?;
-    let name_arr = Arc::new(StringArray::from(name)) as ArrayRef;
+    let name_arr = Arc::new(StringArray::from(
+        name.iter().map(|n| n.as_str()).collect::<Vec<_>>(),
+    )) as ArrayRef;
     let kind_arr = Arc::new(Int32Array::from(entry_kind)) as ArrayRef;
     let created_at_arr = Arc::new(TimestampNanosecondArray::from(created_at)) as ArrayRef;
     let updated_at_arr = Arc::new(TimestampNanosecondArray::from(updated_at)) as ArrayRef;
@@ -631,7 +627,7 @@ impl InMemoryStore {
         // store upon initialization.
         let entry_table_rb = generate_entries_table(&[EntryDetails {
             id: EntryId::from(Tuid::from_bytes([0; 16])),
-            name: ENTRIES_TABLE_NAME.to_owned(),
+            name: EntryName::entries_table(),
             kind: EntryKind::Table,
             created_at: Default::default(),
             updated_at: Default::default(),

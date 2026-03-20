@@ -4,6 +4,7 @@ use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::{RawRrdManifest, ToApplication as _};
 use re_log_types::EntryId;
+use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
     DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
@@ -858,7 +859,11 @@ where
 
     /// Register a foreign Lance table to a new table entry in the catalog.
     //TODO(ab): in the future, we will probably support my types of tables (parquet on S3, etc.)
-    pub async fn register_table(&mut self, name: String, url: url::Url) -> ApiResult<TableEntry> {
+    pub async fn register_table(
+        &mut self,
+        name: EntryName,
+        url: url::Url,
+    ) -> ApiResult<TableEntry> {
         let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
             name,
             provider_details: ProviderDetails::LanceTable(LanceTable { table_url: url }),
@@ -922,7 +927,7 @@ where
         Ok(())
     }
 
-    pub async fn get_table_names(&mut self) -> ApiResult<Vec<String>> {
+    pub async fn get_table_names(&mut self) -> ApiResult<Vec<EntryName>> {
         Ok(self
             .find_entries(re_protos::cloud::v1alpha1::EntryFilter {
                 entry_kind: Some(EntryKind::Table.into()),
@@ -970,14 +975,14 @@ where
 
     pub async fn get_entry_id(
         &mut self,
-        entry_name: &str,
+        entry_name: &EntryName,
         entry_kind: Option<EntryKind>,
     ) -> ApiResult<Option<EntryId>> {
         self.inner()
             .find_entries(FindEntriesRequest {
                 filter: Some(EntryFilter {
                     id: None,
-                    name: Some(entry_name.to_owned()),
+                    name: Some(entry_name.to_string()),
                     entry_kind: entry_kind.map(|kind| kind.into()),
                 }),
             })
@@ -1022,14 +1027,14 @@ where
     /// NOTE: if `url` is provided, the caller must ensure that it is writable and yet unused.
     pub async fn create_table_entry(
         &mut self,
-        name: &str,
+        name: EntryName,
         url: Option<Url>,
         schema: SchemaRef,
     ) -> ApiResult<TableEntry> {
         let provider_details =
             url.map(|url| ProviderDetails::LanceTable(LanceTable { table_url: url }));
         let request = CreateTableEntryRequest {
-            name: name.to_owned(),
+            name,
             schema: schema.as_ref().clone(),
             provider_details,
         };

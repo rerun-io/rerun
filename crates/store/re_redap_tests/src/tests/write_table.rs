@@ -10,7 +10,7 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use crate::RecordBatchTestExt as _;
-use crate::tests::common::{RerunCloudServiceExt as _, concat_record_batches};
+use crate::tests::common::{RerunCloudServiceExt as _, concat_record_batches, entry_name};
 use crate::utils::streaming::make_streaming_request;
 use crate::utils::tables::create_simple_lance_dataset;
 
@@ -73,7 +73,7 @@ pub async fn write_table(service: impl RerunCloudService) {
         .try_into()
         .expect("Failed to convert to EntryDetails");
 
-    assert_eq!(entry.name, table_name);
+    assert_eq!(entry.name, entry_name(table_name));
 
     let original_batches = get_table_batches(&service, &entry).await;
     assert_ne!(original_batches.len(), 0);

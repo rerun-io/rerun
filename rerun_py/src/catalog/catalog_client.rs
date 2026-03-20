@@ -7,6 +7,7 @@ use pyo3::exceptions::{PyLookupError, PyRuntimeError, PyValueError};
 use pyo3::types::{PyAnyMethods as _, PyDict};
 use pyo3::{Py, PyAny, PyErr, PyResult, Python, pyclass, pymethods};
 use re_datafusion::{DEFAULT_CATALOG_NAME, get_all_catalog_names};
+use re_log_types::EntryName;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
@@ -155,7 +156,7 @@ impl PyCatalogClientInternal {
 
         entry_details
             .into_iter()
-            .filter(|details| !details.name.starts_with("__") || include_hidden)
+            .filter(|details| include_hidden || !details.name.is_hidden())
             .map(|details| {
                 let table_entry = connection.read_table(py, details.id)?;
                 let table = PyTableEntryInternal::new(self_.clone_ref(py), table_entry);
@@ -228,6 +229,7 @@ impl PyCatalogClientInternal {
             .parse::<url::Url>()
             .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
 
+        let name = EntryName::new(name).map_err(|err| PyValueError::new_err(err.to_string()))?;
         let table_entry = connection.register_table(py, name, url)?;
 
         self_.borrow(py).update_catalog_providers(py, false)?;
@@ -279,7 +281,8 @@ impl PyCatalogClientInternal {
             .transpose()?;
 
         let schema = Arc::new(schema.0);
-        let table_entry = connection.create_table_entry(py, name, schema, url)?;
+        let name = EntryName::new(name).map_err(|err| PyValueError::new_err(err.to_string()))?;
+        let table_entry = connection.create_table_entry(py, &name, schema, url)?;
 
         self_.borrow(py).update_catalog_providers(py, false)?;
 

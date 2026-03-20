@@ -13,7 +13,9 @@ use re_sdk::AsComponents;
 use re_sdk::external::re_log_encoding::{RawRrdManifest, ToApplication as _};
 use re_sdk_types::AnyValues;
 
-use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
+use super::common::{
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name,
+};
 
 pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
@@ -121,7 +123,7 @@ pub async fn layered_segment(service: impl RerunCloudService) {
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_name.into()),
             })
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await;
@@ -178,7 +180,7 @@ pub async fn layered_segment_stress(service: impl RerunCloudService) {
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_name.into()),
             })
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await
@@ -198,7 +200,7 @@ pub async fn layered_segment_stress(service: impl RerunCloudService) {
                 let responses: Vec<_> = service
                     .scan_segment_table(
                         tonic::Request::new(ScanSegmentTableRequest { columns: vec![] })
-                            .with_entry_name(dataset_name)
+                            .with_entry_name(entry_name(dataset_name))
                             .unwrap(),
                     )
                     .await
@@ -230,7 +232,7 @@ pub async fn layered_segment_stress(service: impl RerunCloudService) {
                     tonic::Request::new(GetRrdManifestRequest {
                         segment_id: Some(segment_name.into()),
                     })
-                    .with_entry_name(dataset_name)
+                    .with_entry_name(entry_name(dataset_name))
                     .unwrap(),
                 )
                 .await;
@@ -268,7 +270,7 @@ pub async fn unregistered_segment(service: impl RerunCloudService) {
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some("my_segment_id".into()),
             })
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await;
@@ -285,7 +287,7 @@ pub async fn segment_id_not_found(service: impl RerunCloudService) {
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_id.into()),
             })
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await;
@@ -306,7 +308,7 @@ async fn dataset_rrd_manifest_snapshot(
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_id.into()),
             })
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await?

@@ -17,13 +17,6 @@ use re_chunk_store::{
 };
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::LanceTable;
-use re_protos::cloud::v1alpha1::ext::{
-    self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-    CreateTableEntryResponse, DataSource, EntryDetailsUpdate, ProviderDetails, QueryDatasetRequest,
-    ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode, UpdateDatasetEntryRequest,
-    UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
-};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
@@ -38,6 +31,16 @@ use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_protos::headers::RerunHeadersExtractorExt as _;
 use re_protos::missing_field;
+use re_protos::{
+    EntryName,
+    cloud::v1alpha1::ext::{
+        self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
+        CreateTableEntryResponse, DataSource, EntryDetailsUpdate, LanceTable, ProviderDetails,
+        QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
+        UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
+        UpdateEntryResponse,
+    },
+};
 use re_tuid::Tuid;
 
 use crate::OnError;
@@ -89,7 +92,7 @@ impl RerunCloudHandlerBuilder {
 
     pub async fn with_rrds_as_dataset(
         mut self,
-        dataset_name: String,
+        dataset_name: EntryName,
         rrd_paths: Vec<PathBuf>,
         on_duplicate: IfDuplicateBehavior,
         on_error: crate::OnError,
@@ -313,7 +316,7 @@ impl RerunCloudHandler {
     async fn find_datasets(
         &self,
         entry_id: Option<EntryId>,
-        name: Option<String>,
+        name: Option<EntryName>,
         store_kind: Option<StoreKind>,
     ) -> Result<Vec<EntryDetails>, Status> {
         let store = self.store.read().await;
@@ -354,7 +357,7 @@ impl RerunCloudHandler {
     async fn find_tables(
         &self,
         entry_id: Option<EntryId>,
-        name: Option<String>,
+        name: Option<EntryName>,
     ) -> Result<Vec<EntryDetails>, Status> {
         let store = self.store.read().await;
 
@@ -438,7 +441,12 @@ impl RerunCloudService for RerunCloudHandler {
             .and_then(|filter| filter.id)
             .map(TryInto::try_into)
             .transpose()?;
-        let name = filter.as_ref().and_then(|filter| filter.name.clone());
+        let name = filter
+            .as_ref()
+            .and_then(|filter| filter.name.clone())
+            .map(EntryName::new)
+            .transpose()
+            .map_err(|err| Status::invalid_argument(err.to_string()))?;
         let kind = filter
             .and_then(|filter| filter.entry_kind)
             .map(EntryKind::try_from)
@@ -1830,7 +1838,7 @@ impl RerunCloudService for RerunCloudHandler {
         let mut store = self.store.write().await;
 
         let request: CreateTableEntryRequest = request.into_inner().try_into()?;
-        let table_name = &request.name;
+        let table_name = request.name;
 
         let schema = Arc::new(request.schema);
 

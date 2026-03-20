@@ -16,7 +16,8 @@ use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService as
 use re_protos::cloud::v1alpha1::{DeleteEntryRequest, ScanDatasetManifestResponse};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_tests::{
-    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, register_and_wait,
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name,
+    register_and_wait,
 };
 use re_server::{RerunCloudHandler, RerunCloudHandlerBuilder};
 
@@ -75,7 +76,7 @@ async fn register_memory_url_cross_dataset() {
         data_sources: vec![memory_data_source.clone()],
         on_duplicate: Default::default(),
     })
-    .with_entry_name("dataset_b")
+    .with_entry_name(entry_name("dataset_b"))
     .unwrap();
 
     let task_results = register_and_wait(&service, request).await;
@@ -121,7 +122,7 @@ async fn register_memory_url_cross_dataset() {
         data_sources: vec![memory_data_source],
         on_duplicate: Default::default(),
     })
-    .with_entry_name("dataset_c")
+    .with_entry_name(entry_name("dataset_c"))
     .unwrap();
 
     let result = service.register_with_dataset(request).await;
@@ -159,7 +160,7 @@ async fn register_memory_url_not_found() {
         data_sources: vec![memory_data_source],
         on_duplicate: Default::default(),
     })
-    .with_entry_name("dataset_nf")
+    .with_entry_name(entry_name("dataset_nf"))
     .unwrap();
 
     let result = service.register_with_dataset(request).await;
@@ -183,7 +184,7 @@ async fn scan_manifest(
     let responses: Vec<_> = service
         .scan_dataset_manifest(
             tonic::Request::new(ScanDatasetManifestRequest { columns: vec![] })
-                .with_entry_name(dataset_name)
+                .with_entry_name(entry_name(dataset_name))
                 .unwrap(),
         )
         .await

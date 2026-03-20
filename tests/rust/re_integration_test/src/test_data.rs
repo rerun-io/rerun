@@ -36,7 +36,7 @@ pub async fn load_test_data(mut client: ConnectionClient) -> Result<SegmentId, B
 
     let entries_table = client.find_entries(EntryFilter::default()).await?;
     assert_eq!(entries_table.len(), 1);
-    assert_eq!(entries_table[0].name, "__entries");
+    assert_eq!(entries_table[0].name, re_protos::EntryName::entries_table());
     assert_eq!(entries_table[0].kind, EntryKind::Table);
 
     let dataset_name = "my_dataset";

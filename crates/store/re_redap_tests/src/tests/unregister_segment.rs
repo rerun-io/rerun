@@ -1,6 +1,8 @@
 #![expect(clippy::unwrap_used)]
 
-use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
+use super::common::{
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name,
+};
 use crate::tests::common::concat_record_batches;
 use crate::{FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _};
 use arrow::array::{RecordBatch, StringArray};
@@ -313,7 +315,7 @@ async fn scan_segment_table_and_snapshot(
             tonic::Request::new(ScanSegmentTableRequest {
                 columns: vec![], // all of them
             })
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await
@@ -341,7 +343,7 @@ async fn scan_segment_table_and_snapshot(
     let alleged_schema: Schema = service
         .get_segment_table_schema(
             tonic::Request::new(GetSegmentTableSchemaRequest {})
-                .with_entry_name(dataset_name)
+                .with_entry_name(entry_name(dataset_name))
                 .unwrap(),
         )
         .await
@@ -403,7 +405,7 @@ async fn scan_dataset_manifest_and_snapshot(
             tonic::Request::new(ScanDatasetManifestRequest {
                 columns: vec![], // all of them
             })
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await
@@ -431,7 +433,7 @@ async fn scan_dataset_manifest_and_snapshot(
     let alleged_schema: Schema = service
         .get_dataset_manifest_schema(
             tonic::Request::new(GetDatasetManifestSchemaRequest {})
-                .with_entry_name(dataset_name)
+                .with_entry_name(entry_name(dataset_name))
                 .unwrap(),
         )
         .await
@@ -511,7 +513,7 @@ async fn snapshot_response(
     let alleged_schema: Schema = service
         .get_dataset_manifest_schema(
             tonic::Request::new(GetDatasetManifestSchemaRequest {})
-                .with_entry_name(dataset_name)
+                .with_entry_name(entry_name(dataset_name))
                 .unwrap(),
         )
         .await
@@ -590,7 +592,7 @@ async fn query_dataset_snapshot(
     let chunk_info = service
         .query_dataset(
             tonic::Request::new(query_dataset_request.into())
-                .with_entry_name(dataset_name)
+                .with_entry_name(entry_name(dataset_name))
                 .unwrap(),
         )
         .await
@@ -669,7 +671,7 @@ async fn get_dataset_updated_at_nanos(service: &impl RerunCloudService, dataset_
     service
         .read_dataset_entry(
             tonic::Request::new(ReadDatasetEntryRequest {})
-                .with_entry_name(dataset_name)
+                .with_entry_name(entry_name(dataset_name))
                 .unwrap(),
         )
         .await

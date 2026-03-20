@@ -9,7 +9,7 @@ use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
 use re_dataframe_ui::{RequestedObject, StreamingCacheTableProvider};
 use re_datafusion::{SegmentTableProvider, TableEntryTableProvider};
-use re_log_types::EntryId;
+use re_log_types::{EntryId, EntryName};
 use re_protos::TypeConversionError;
 use re_protos::cloud::v1alpha1::ext::{DatasetEntry, EntryDetails, ProviderDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
@@ -36,8 +36,8 @@ impl Dataset {
         self.dataset_entry.details.id
     }
 
-    pub fn name(&self) -> &str {
-        self.dataset_entry.details.name.as_ref()
+    pub fn name(&self) -> &EntryName {
+        &self.dataset_entry.details.name
     }
 }
 
@@ -58,8 +58,8 @@ impl Table {
         self.table_entry.details.id
     }
 
-    pub fn name(&self) -> &str {
-        self.table_entry.details.name.as_ref()
+    pub fn name(&self) -> &EntryName {
+        &self.table_entry.details.name
     }
 }
 
@@ -89,7 +89,7 @@ impl Entry {
         self.details().id
     }
 
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &EntryName {
         &self.details().name
     }
 
@@ -186,7 +186,7 @@ async fn fetch_entries_and_register_tables(
 
             // Register cached provider with original name (in default schema)
             session_ctx
-                .register_table(&details.name, Arc::new(cached_provider))
+                .register_table(details.name.as_str(), Arc::new(cached_provider))
                 .ok();
 
             inner

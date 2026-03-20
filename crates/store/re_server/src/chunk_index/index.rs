@@ -11,7 +11,7 @@ use arrow::error::ArrowError;
 use lance::deps::arrow_array::UInt8Array;
 use lance_index::DatasetIndexExt as _;
 use re_chunk_store::Chunk;
-use re_log_types::{EntityPath, TimelineName};
+use re_log_types::{ComponentPath, EntityPath, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{IndexConfig, IndexProperties};
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_types_core::ComponentIdentifier;
@@ -333,9 +333,9 @@ pub async fn create_index(
         &config.time_index,
     )
     .ok_or_else(|| {
-        StoreError::EntryNameNotFound(format!(
-            "{}#{}",
-            config.column.entity_path, config.column.descriptor.component
+        StoreError::ComponentPathNotFound(ComponentPath::new(
+            config.column.entity_path.clone(),
+            config.column.descriptor.component,
         ))
     })?;
 

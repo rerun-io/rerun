@@ -10,6 +10,7 @@ use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_encoding::RawRrdManifest;
 use re_log_types::{EntryId, StoreId, StoreKind, TimeType};
+use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails};
 use re_protos::cloud::v1alpha1::{
     EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
@@ -22,7 +23,7 @@ use crate::store::{
 
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
 pub struct DatasetInner {
-    name: String,
+    name: EntryName,
     details: DatasetDetails,
     segments: HashMap<SegmentId, Segment>,
     #[cfg(feature = "lance")]
@@ -41,7 +42,12 @@ pub struct Dataset {
 }
 
 impl Dataset {
-    pub fn new(id: EntryId, name: String, store_kind: StoreKind, details: DatasetDetails) -> Self {
+    pub fn new(
+        id: EntryId,
+        name: EntryName,
+        store_kind: StoreKind,
+        details: DatasetDetails,
+    ) -> Self {
         Self {
             id,
             store_kind,
@@ -63,11 +69,11 @@ impl Dataset {
     }
 
     #[inline]
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &EntryName {
         &self.inner.name
     }
 
-    pub fn set_name(&mut self, name: String) {
+    pub fn set_name(&mut self, name: EntryName) {
         if name != self.inner.name {
             self.inner.modify().name = name;
         }

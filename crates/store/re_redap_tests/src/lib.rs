@@ -23,7 +23,7 @@ mod utils;
 pub use ::re_arrow_util::{FieldsTestExt, RecordBatchTestExt, SchemaTestExt};
 
 pub use self::tests::common::{
-    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt, register_and_wait,
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt, entry_name, register_and_wait,
 };
 pub use self::tests::*;
 pub use self::utils::path::TempPath;

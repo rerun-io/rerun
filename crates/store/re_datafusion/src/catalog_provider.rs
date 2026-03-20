@@ -47,7 +47,7 @@ fn get_table_refs(
                 .await
                 .map_err(|err| DataFusionError::External(Box::new(err)))?
                 .into_iter()
-                .map(TableReference::from)
+                .map(|name| TableReference::from(name.to_string()))
                 .collect(),
         )
     })

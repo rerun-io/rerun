@@ -11,6 +11,7 @@ use re_types_core::ChunkId;
 
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
+    entry_name,
 };
 use crate::{FieldsTestExt as _, RecordBatchTestExt as _, TempPath};
 
@@ -326,7 +327,7 @@ async fn query_dataset_snapshot(
     let chunk_info = service
         .query_dataset(
             tonic::Request::new(query_dataset_request.into())
-                .with_entry_name(dataset_name)
+                .with_entry_name(entry_name(dataset_name))
                 .unwrap(),
         )
         .await

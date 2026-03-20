@@ -415,7 +415,7 @@ fn dataset_entry_ui(
     let item = dataset_entry_data.entry_data.item();
     let list_item = ui.list_item().selected(*is_selected).active(*is_active);
 
-    let mut list_item_content = re_ui::list_item::LabelContent::new(name).with_icon(icon);
+    let mut list_item_content = re_ui::list_item::LabelContent::new(name.as_str()).with_icon(icon);
 
     let id = ui.make_persistent_id(dataset_entry_data.entry_data.id());
 
@@ -489,7 +489,7 @@ fn dataset_entry_ui(
 
         if ui.button("Copy dataset name").clicked() {
             re_log::info!("Copied {name:?} to clipboard");
-            ui.copy_text(name.clone());
+            ui.copy_text(name.to_string());
         }
 
         if ui.button("Copy dataset id").clicked() {
@@ -528,7 +528,7 @@ fn remote_table_entry_ui(
     } = remote_table_data;
 
     let item = remote_table_data.entry_data.item();
-    let text = RichText::new(name);
+    let text = RichText::new(name.as_str());
 
     let list_item = ui.list_item().selected(*is_selected).active(*is_active);
     let list_item_content = LabelContent::new(text).with_icon(icon);
@@ -566,7 +566,7 @@ fn failed_entry_ui(
     } = failed_entry_data;
 
     let item = failed_entry_data.entry_data.item();
-    let text = RichText::new(name).color(ui.visuals().error_fg_color);
+    let text = RichText::new(name.as_str()).color(ui.visuals().error_fg_color);
 
     let list_item = ui.list_item().selected(*is_selected).active(*is_active);
     let list_item_content = LabelContent::new(text).with_icon(icon);

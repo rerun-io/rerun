@@ -118,8 +118,11 @@ fn extract_named_collections(dict: &Bound<'_, PyDict>) -> Vec<NamedPathCollectio
             let name = k.downcast::<PyString>().ok()?;
             let paths: Vec<String> = v.extract().ok()?;
 
+            let entry_name =
+                re_log_types::EntryName::new(name.to_string_lossy().to_string()).ok()?;
+
             Some(NamedPathCollection {
-                name: name.to_string_lossy().to_string(),
+                name: entry_name,
                 paths: paths.into_iter().map(std::path::PathBuf::from).collect(),
             })
         })

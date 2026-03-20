@@ -8,7 +8,7 @@ use std::sync::{Arc, OnceLock};
 use ahash::{HashMap, HashMapExt as _};
 use futures::StreamExt as _;
 use re_chunk_store::ChunkStoreHandle;
-use re_log_types::{EntityPath, EntryId};
+use re_log_types::{ComponentPath, EntityPath, EntryId};
 use re_protos::cloud::v1alpha1::ext::{
     CreateIndexRequest, IndexColumn, IndexConfig, SearchDatasetRequest,
 };
@@ -181,9 +181,9 @@ impl DatasetChunkIndexes {
             )
             .await
         else {
-            return Err(StoreError::IndexNotFound(format!(
-                "{}#{}",
-                &request.column.entity_path, &request.column.descriptor.component
+            return Err(StoreError::ComponentPathNotFound(ComponentPath::new(
+                request.column.entity_path,
+                request.column.descriptor.component,
             )))?;
         };
 
@@ -363,7 +363,7 @@ mod tests {
 
         let mut dataset = Dataset::new(
             EntryId::new(),
-            "test-data".to_owned(),
+            re_protos::EntryName::new("test-data").unwrap(),
             StoreKind::Recording,
             Default::default(),
         );

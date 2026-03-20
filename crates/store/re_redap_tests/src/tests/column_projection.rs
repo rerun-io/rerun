@@ -8,7 +8,7 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use crate::tests::common::{
-    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop,
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name, prop,
 };
 
 pub async fn test_segment_table_column_projections(service: impl RerunCloudService) {
@@ -124,7 +124,7 @@ async fn test_column_projections<T>(
             tonic::Request::new(ScanSegmentTableRequest {
                 columns: vec!["unknown_column".to_owned()],
             })
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await;
@@ -150,7 +150,7 @@ async fn test_column_projections<T>(
                     ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned(),
                 ],
             })
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await;
@@ -179,7 +179,7 @@ async fn projected_segment_table_batch(
             tonic::Request::new(ScanSegmentTableRequest {
                 columns: column_projection,
             })
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await
@@ -221,7 +221,7 @@ async fn projected_dataset_manifest_batch(
             tonic::Request::new(ScanDatasetManifestRequest {
                 columns: column_projection,
             })
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await
