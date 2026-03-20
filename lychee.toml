@@ -156,6 +156,9 @@ exclude = [
   'https://pixabay.com/photos/brother-sister-girl-family-boy-977170/', # Gives 403 forbidden on CI.
   'https://stackoverflow.com/*', # Stackoverflow links are no longer accessible from CI.
   'https://vimeo.com/*', # Gives 403 forbidden on CI.
+  'https://vimeo/', # Malformed URL extracted from code doing startsWith checks.
+  'https://player.vimeo.com/*', # Gives 403 forbidden on CI.
+  'https://www.youtube-nocookie.com/*', # Gives 403 forbidden on CI.
   'https://www.npmjs.com/*', # Gives 403 forbidden on CI.
   'https://www.reddit.com/*', # Gives 403 forbidden on CI.
   'https://www.shadertoy.com/*', # 403 on CI
@@ -175,6 +178,8 @@ exclude = [
   'https://github.com/rerun-io/internal-test-assets/\.*',
   'https://github.com/google/mediapipe/issues/5188', # For some reason that link has always failed.
   'https://www.figma.com/.*',
+
+  'https://stilearning.com/*', # License header URL, site unreachable from CI.
 
   # Temporarily down or not accessible.
   'https://dl.acm.org/doi/10.1145/3638550.3643617', # We might be getting rate-limited here.
