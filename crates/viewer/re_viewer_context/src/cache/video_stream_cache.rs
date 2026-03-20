@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use ahash::HashMap;
+use arrow::array::Array as _;
 use arrow::datatypes::DataType;
 use egui::NumExt as _;
 use parking_lot::RwLock;
@@ -291,6 +292,13 @@ impl VideoStreamCache {
             re_log::error_once!(
                 "The video stream codec details of {name:?} changed (from {before:?} to {after:?}). This is not supported."
             );
+        }
+
+        // After any addition or deletion, recompute frame_nr (presentation order)
+        // and SamplesStatistics (B-frame detection bitvec) to stay consistent.
+        if result.is_ok() {
+            assign_frame_numbers_by_presentation_order(&mut video_data.samples);
+            video_data.samples_statistics = re_video::SamplesStatistics::new(&video_data.samples);
         }
 
         let _ = video_data;
@@ -732,6 +740,7 @@ fn load_video_data_from_chunks(
 
     let sample_component = VideoStream::descriptor_sample().component;
     let codec_component = VideoStream::descriptor_codec().component;
+    let offset_component = VideoStream::descriptor_presentation_time_offset().component;
 
     // Query for all video chunks on the **entire** timeline.
     // Tempting to bypass the query cache for this, but we don't expect to get new video chunks every frame
@@ -744,7 +753,7 @@ fn load_video_data_from_chunks(
     let query_results = store.storage_engine().cache().range(
         &entire_timeline_query,
         entity_path,
-        [sample_component, codec_component],
+        [sample_component, codec_component, offset_component],
     );
     let sample_chunks = query_results.get_required(sample_component).unwrap_or(&[]);
     let codec_chunks = query_results
@@ -778,7 +787,7 @@ fn load_video_data_from_chunks(
         delivery_method: re_video::VideoDeliveryMethod::new_stream(),
         keyframe_indices: Vec::new(),
         samples: StableIndexDeque::with_capacity(sample_chunks.len()), // Number of video chunks is minimum number of samples.
-        samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(#10090): No b-frames for now.
+        samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // Recomputed after loading all samples.
         mp4_tracks: Default::default(),
     };
 
@@ -835,7 +844,36 @@ fn load_video_data_from_chunks(
         }
     }
 
+    // Recompute samples statistics now that all samples are loaded.
+    // This correctly detects whether B-frames are present (DTS != PTS).
+    video_descr.samples_statistics = re_video::SamplesStatistics::new(&video_descr.samples);
+
+    // Assign frame_nr in presentation order (sorted by PTS).
+    assign_frame_numbers_by_presentation_order(&mut video_descr.samples);
+
     Ok((video_descr, known_chunk_ranges))
+}
+
+/// Assign `frame_nr` to all present samples based on presentation timestamp order.
+///
+/// With B-frames, decode order (sample index) differs from presentation order.
+/// `frame_nr` must reflect presentation order for correct display.
+fn assign_frame_numbers_by_presentation_order(samples: &mut StableIndexDeque<SampleMetadataState>) {
+    // Collect (sample_idx, presentation_timestamp) for all present samples.
+    let mut pts_order: Vec<(usize, re_video::Time)> = samples
+        .iter_indexed()
+        .filter_map(|(idx, s)| s.sample().map(|m| (idx, m.presentation_timestamp)))
+        .collect();
+
+    // Sort by presentation timestamp, breaking ties by sample index.
+    pts_order.sort_by(|a, b| a.1.cmp(&b.1).then(a.0.cmp(&b.0)));
+
+    // Assign frame numbers in presentation order.
+    for (frame_nr, (sample_idx, _)) in pts_order.into_iter().enumerate() {
+        if let Some(sample) = samples[sample_idx].sample_mut() {
+            sample.frame_nr = frame_nr as u32;
+        }
+    }
 }
 
 fn timescale_for_timeline(
@@ -940,6 +978,7 @@ fn read_samples_from_known_chunk(
     } = video_descr;
 
     let sample_component = VideoStream::descriptor_sample().component;
+    let offset_component = VideoStream::descriptor_presentation_time_offset().component;
     let Some(raw_array) = chunk.raw_component_array(sample_component) else {
         // This chunk doesn't have any video chunks.
         return Ok(());
@@ -951,6 +990,9 @@ fn read_samples_from_known_chunk(
 
     let lengths = offsets.lengths().collect::<Vec<_>>();
 
+    // Read the optional presentation time offset component.
+    let pts_offsets = read_pts_offsets_from_chunk(chunk, offset_component);
+
     let split_idx = keyframe_indices
         .binary_search(&load_range.first_sample)
         .unwrap_or_else(|e| e);
@@ -961,6 +1003,7 @@ fn read_samples_from_known_chunk(
         .iter_index_range_clamped_mut(&load_range.idx_range())
         .filter(|(_, c)| c.source_id() == chunk.id().as_tuid());
 
+    let mut row_idx = 0usize;
     for (component_offset, (time, _row_id)) in chunk
         .iter_component_offsets(sample_component)
         .zip(chunk.iter_component_indices(timeline, sample_component))
@@ -973,56 +1016,67 @@ fn read_samples_from_known_chunk(
         )
         .take(load_range.sample_count)
     {
-        if component_offset.len != 1 {
-            re_log::warn_once!(
-                "Expected only a single VideoSample per row (it is a mono-component)"
-            );
-            continue;
+        let base_time = time.as_i64();
+
+        // Process each sample instance within this row.
+        for instance_idx in 0..component_offset.len {
+            let Some((sample_idx, sample)) = samples_iter.next() else {
+                re_log::error!("Failed to add all video stream samples from chunk");
+                break;
+            };
+
+            let arr_idx = component_offset.start + instance_idx;
+
+            // Do **not** use the `component_offset.start` for determining the sample index
+            // as it is only for the offset in the underlying arrow arrays which means that
+            // it may in theory step arbitrarily through the data.
+            let byte_span = Span {
+                start: offsets[arr_idx] as usize,
+                len: lengths[arr_idx],
+            };
+            let sample_bytes = &values[byte_span.range()];
+
+            let Some(byte_span) = byte_span.try_cast::<u32>() else {
+                re_log::warn_once!("Video byte range does not fit in u32: {byte_span:?}");
+                continue;
+            };
+
+            // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
+            // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
+            // Within a row, subsequent samples get sequentially increasing DTS values.
+            #[expect(clippy::cast_possible_wrap)] // instance_idx won't exceed i64::MAX
+            let decode_timestamp = re_video::Time(base_time + instance_idx as i64);
+
+            // Compute PTS: if offset component is present, PTS = DTS + offset.
+            // Otherwise, PTS = DTS (no B-frames).
+            let presentation_timestamp = if let Some(offset) = pts_offsets
+                .as_ref()
+                .and_then(|o| o.get(row_idx, instance_idx))
+            {
+                re_video::Time(decode_timestamp.0 + offset)
+            } else {
+                decode_timestamp
+            };
+
+            let is_sync = is_sample_sync(codec, encoding_details, sample_bytes);
+
+            if is_sync {
+                keyframe_indices.push(sample_idx);
+            }
+
+            // frame_nr is assigned later by assign_frame_numbers_by_presentation_order.
+            *sample = SampleMetadataState::Present(re_video::SampleMetadata {
+                is_sync,
+                frame_nr: 0,
+                decode_timestamp,
+                presentation_timestamp,
+                duration: None,
+                source_id: chunk.id().as_tuid(),
+                byte_span,
+            });
         }
 
-        let Some((sample_idx, sample)) = samples_iter.next() else {
-            re_log::error!("Failed to add all video stream samples from chunk");
-            break;
-        };
-
-        // Do **not** use the `component_offset.start` for determining the sample index
-        // as it is only for the offset in the underlying arrow arrays which means that
-        // it may in theory step arbitrarily through the data.
-        let byte_span = Span {
-            start: offsets[component_offset.start] as usize,
-            len: lengths[component_offset.start],
-        };
-        let sample_bytes = &values[byte_span.range()];
-
-        let Some(byte_span) = byte_span.try_cast::<u32>() else {
-            re_log::warn_once!("Video byte range does not fit in u32: {byte_span:?}");
-            continue;
-        };
-
-        // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
-        // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
-        let decode_timestamp = re_video::Time(time.as_i64());
-
-        let is_sync = is_sample_sync(codec, encoding_details, sample_bytes);
-
-        if is_sync {
-            keyframe_indices.push(sample_idx);
-        }
-
-        *sample = SampleMetadataState::Present(re_video::SampleMetadata {
-            is_sync,
-
-            // TODO(#10090): No b-frames for now. Therefore sample_idx == frame_nr.
-            frame_nr: sample_idx as u32,
-            decode_timestamp,
-            presentation_timestamp: decode_timestamp,
-
-            // Filled out later for everything but the last frame.
-            duration: None,
-
-            source_id: chunk.id().as_tuid(),
-            byte_span,
-        });
+        row_idx += 1;
     }
 
     {
@@ -1049,6 +1103,64 @@ fn read_samples_from_known_chunk(
     update_sample_durations(known_range.idx_range(), samples)?;
 
     Ok(())
+}
+
+/// Represents presentation time offsets read from a chunk's offset component.
+///
+/// The offsets are stored as a flat array of `i64` values, with per-row grouping
+/// described by the list array offsets.
+struct PtsOffsets {
+    /// Flat array of all offset values across all rows.
+    values: Vec<i64>,
+
+    /// Per-row start indices into `values`. Length = number of rows + 1.
+    row_offsets: Vec<usize>,
+}
+
+impl PtsOffsets {
+    /// Get the offset for a given row and instance index within that row.
+    fn get(&self, row_idx: usize, instance_idx: usize) -> Option<i64> {
+        if row_idx + 1 >= self.row_offsets.len() {
+            return None;
+        }
+        let start = self.row_offsets[row_idx];
+        let end = self.row_offsets[row_idx + 1];
+        let flat_idx = start + instance_idx;
+        if flat_idx < end {
+            self.values.get(flat_idx).copied()
+        } else {
+            None
+        }
+    }
+}
+
+/// Read presentation time offsets from the chunk's offset component, if present.
+///
+/// Returns `None` if the offset component is not present in the chunk.
+fn read_pts_offsets_from_chunk(
+    chunk: &re_chunk::Chunk,
+    offset_component: re_chunk::ComponentIdentifier,
+) -> Option<PtsOffsets> {
+    use arrow::array::AsArray as _;
+
+    let list_array = chunk.components().get_array(offset_component)?;
+    let values_array = list_array.values();
+
+    // The offset component is a transparent struct wrapping int64,
+    // so the values array should be castable to Int64.
+    let int64_values = values_array.as_primitive_opt::<arrow::datatypes::Int64Type>()?;
+    let values: Vec<i64> = int64_values.values().iter().copied().collect();
+
+    let mut row_offsets = Vec::with_capacity(list_array.len() + 1);
+    for i in 0..=list_array.len() {
+        #[expect(clippy::cast_sign_loss)] // Arrow offsets are guaranteed non-negative
+        row_offsets.push(list_array.offsets()[i] as usize);
+    }
+
+    Some(PtsOffsets {
+        values,
+        row_offsets,
+    })
 }
 
 /// Checks if the sample is a sync frame, and updates encoding details if necessary.
@@ -1087,6 +1199,9 @@ fn is_sample_sync(
 
 /// Fill out durations for all new samples plus the first existing sample for which we didn't know the duration yet.
 /// (We set the duration for the last sample to `None` since we don't know how long it will last.)
+///
+/// When B-frames are present, decode order and presentation order differ.
+/// We compute duration using presentation-order neighbors.
 fn update_sample_durations(
     known_range: std::ops::Range<re_video::SampleIndex>,
     samples: &mut StableIndexDeque<SampleMetadataState>,
@@ -1112,47 +1227,40 @@ fn update_sample_durations(
         }
     }
 
-    struct PresentSampleMeta {
-        idx: re_video::SampleIndex,
-        range_fully_loaded: bool,
-        pts: re_video::Time,
-    }
+    // Collect present samples sorted by PTS to compute durations in presentation order.
+    // This correctly handles B-frames where PTS is not monotonically rising in decode order.
+    let mut pts_sorted: Vec<(re_video::SampleIndex, re_video::Time)> = (start..end)
+        .filter_map(|idx| {
+            samples[idx]
+                .sample()
+                .map(|s| (idx, s.presentation_timestamp))
+        })
+        .collect();
+    pts_sorted.sort_by(|a, b| a.1.cmp(&b.1).then(a.0.cmp(&b.0)));
 
-    let mut last_present_sample = None::<PresentSampleMeta>;
+    // Assign duration to each sample based on its PTS-order successor.
+    for window in pts_sorted.windows(2) {
+        let (idx, pts) = window[0];
+        let (_, next_pts) = window[1];
 
-    // (Note that we can't use tuple_windows here because it can't handle mutable references)
-    for sample_idx in start..end {
-        let sample = match &samples[sample_idx] {
-            SampleMetadataState::Present(sample) => sample,
-            SampleMetadataState::Unloaded { .. } => {
-                if let Some(last_sample) = &mut last_present_sample {
-                    last_sample.range_fully_loaded = false;
-                }
-                continue;
-            }
-        };
-
-        let current = sample.presentation_timestamp;
-
-        if let Some(last_sample_meta) = last_present_sample
-            && let Some(last_sample) = samples[last_sample_meta.idx].sample_mut()
-        {
-            // TODO(#10090): This doesn't work if we have b-frames since they
-            // won't be monotonically rising by PTS.
-            let duration = current - last_sample_meta.pts;
-            if duration.0 < 0 {
-                return Err(VideoStreamProcessingError::OutOfOrderSamples);
-            }
-            if last_sample_meta.range_fully_loaded {
-                last_sample.duration = Some(duration);
-            }
+        let duration = next_pts - pts;
+        if duration.0 < 0 {
+            return Err(VideoStreamProcessingError::OutOfOrderSamples);
         }
 
-        last_present_sample = Some(PresentSampleMeta {
-            idx: sample_idx,
-            pts: current,
-            range_fully_loaded: true,
-        });
+        if let Some(sample) = samples[idx].sample_mut() {
+            sample.duration = Some(duration);
+        }
+    }
+
+    // Last sample in PTS order gets no duration when the range extends
+    // to the actual end of the deque. Otherwise a sub-range update would
+    // incorrectly clear a duration already computed by a wider pass.
+    if end >= samples.next_index()
+        && let Some(&(last_idx, _)) = pts_sorted.last()
+        && let Some(sample) = samples[last_idx].sample_mut()
+    {
+        sample.duration = None;
     }
 
     Ok(())
@@ -1186,16 +1294,17 @@ fn read_samples_from_new_chunk(
     } = video_descr;
 
     let sample_component = VideoStream::descriptor_sample().component;
+    let offset_component = VideoStream::descriptor_presentation_time_offset().component;
     let Some(raw_array) = chunk.raw_component_array(sample_component) else {
         // This chunk doesn't have any video chunks.
         return Ok(());
     };
 
-    let mut previous_max_presentation_timestamp = samples
+    let mut previous_max_decode_timestamp = samples
         .iter()
         .rev()
         .find_map(|s| s.sample())
-        .map_or(re_video::Time::MIN, |s| s.presentation_timestamp);
+        .map_or(re_video::Time::MIN, |s| s.decode_timestamp);
 
     // Validate whether this chunk is an insertion into existing data.
     // If so, discard it and warn the user.
@@ -1205,7 +1314,7 @@ fn read_samples_from_new_chunk(
         .and_then(|time_range| time_range.get(&sample_component))
     {
         Some(time_range) => {
-            if time_range.min().as_i64() < previous_max_presentation_timestamp.0 {
+            if time_range.min().as_i64() < previous_max_decode_timestamp.0 {
                 return Err(VideoStreamProcessingError::OutOfOrderSamples);
             }
         }
@@ -1221,85 +1330,91 @@ fn read_samples_from_new_chunk(
 
     let lengths = offsets.lengths().collect::<Vec<_>>();
 
+    // Read the optional presentation time offset component.
+    let pts_offsets = read_pts_offsets_from_chunk(chunk, offset_component);
+
     let sample_base_idx = samples.next_index();
 
     let chunk_id = chunk.id();
-    // Extract sample metadata.
-    samples.extend(
-        chunk
-            .iter_component_offsets(sample_component)
-            .zip(chunk.iter_component_indices(timeline, sample_component))
-            .enumerate()
-            .filter_map(move |(idx, (component_offset, (time, _row_id)))| {
-                if component_offset.len == 0 {
-                    // Ignore empty samples.
-                    return None;
-                }
-                if component_offset.len != 1 {
-                    re_log::warn_once!(
-                        "Expected only a single VideoSample per row (it is a mono-component)"
-                    );
-                    return None;
-                }
+    let mut sample_count = 0usize;
 
-                // Do **not** use the `component_offset.start` for determining the sample index
-                // as it is only for the offset in the underlying arrow arrays which means that
-                // it may in theory step arbitrarily through the data.
-                let sample_idx = sample_base_idx + idx;
+    // Extract sample metadata from all rows, supporting multiple samples per row.
+    for (row_idx, (component_offset, (time, _row_id))) in chunk
+        .iter_component_offsets(sample_component)
+        .zip(chunk.iter_component_indices(timeline, sample_component))
+        .enumerate()
+    {
+        if component_offset.len == 0 {
+            // Ignore empty samples.
+            continue;
+        }
 
-                let byte_span = Span {
-                    start: offsets[component_offset.start] as usize,
-                    len: lengths[component_offset.start],
-                };
-                let sample_bytes = &values[byte_span.range()];
+        let base_time = time.as_i64();
 
-                let Some(byte_span) = byte_span.try_cast::<u32>() else {
-                    re_log::warn_once!("Video byte range does not fit in u32: {byte_span:?}");
-                    return None;
-                };
+        for instance_idx in 0..component_offset.len {
+            let arr_idx = component_offset.start + instance_idx;
 
-                // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
-                // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
-                let decode_timestamp = re_video::Time(time.as_i64());
+            let byte_span = Span {
+                start: offsets[arr_idx] as usize,
+                len: lengths[arr_idx],
+            };
+            let sample_bytes = &values[byte_span.range()];
 
-                // Samples within a chunk are expected to be always in order since we called `chunk.sorted_by_timeline_if_unsorted` earlier.
-                //
-                // Equality means that we have two samples falling onto the same time.
-                // This is strange, but we allow it since decoders are fine with it (they care little about exact times)
-                // and this may well happen in practice, in fact it can be spuriously observed in the video streaming example.
-                debug_assert!(decode_timestamp >= previous_max_presentation_timestamp);
-                previous_max_presentation_timestamp = decode_timestamp;
+            let Some(byte_span) = byte_span.try_cast::<u32>() else {
+                re_log::warn_once!("Video byte range does not fit in u32: {byte_span:?}");
+                continue;
+            };
 
-                let is_sync = is_sample_sync(codec, encoding_details, sample_bytes);
+            // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
+            // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
+            // Within a row, subsequent samples get sequentially increasing DTS values.
+            #[expect(clippy::cast_possible_wrap)] // instance_idx won't exceed i64::MAX
+            let decode_timestamp = re_video::Time(base_time + instance_idx as i64);
 
-                if is_sync {
-                    keyframe_indices.push(sample_idx);
-                }
+            // Compute PTS: if offset component is present, PTS = DTS + offset.
+            // Otherwise, PTS = DTS (no B-frames).
+            let presentation_timestamp = if let Some(offset) = pts_offsets
+                .as_ref()
+                .and_then(|o| o.get(row_idx, instance_idx))
+            {
+                re_video::Time(decode_timestamp.0 + offset)
+            } else {
+                decode_timestamp
+            };
 
-                Some(SampleMetadataState::Present(re_video::SampleMetadata {
-                    is_sync,
+            // Samples within a chunk are expected to be always in order since we called
+            // `chunk.sorted_by_timeline_if_unsorted` earlier.
+            debug_assert!(decode_timestamp >= previous_max_decode_timestamp);
+            previous_max_decode_timestamp = decode_timestamp;
 
-                    // TODO(#10090): No b-frames for now. Therefore sample_idx == frame_nr.
-                    frame_nr: sample_idx as u32,
-                    decode_timestamp,
-                    presentation_timestamp: decode_timestamp,
+            let is_sync = is_sample_sync(codec, encoding_details, sample_bytes);
 
-                    // Filled out later for everything but the last frame.
-                    duration: None,
+            let sample_idx = sample_base_idx + sample_count;
+            if is_sync {
+                keyframe_indices.push(sample_idx);
+            }
 
-                    source_id: chunk_id.as_tuid(),
-                    byte_span,
-                }))
-            }),
-    );
+            // frame_nr is assigned later by assign_frame_numbers_by_presentation_order.
+            samples.push_back(SampleMetadataState::Present(re_video::SampleMetadata {
+                is_sync,
+                frame_nr: 0,
+                decode_timestamp,
+                presentation_timestamp,
+                duration: None,
+                source_id: chunk_id.as_tuid(),
+                byte_span,
+            }));
+
+            sample_count += 1;
+        }
+    }
 
     // Any new samples actually added? Early out if not.
-    if sample_base_idx == samples.next_index() {
+    if sample_count == 0 {
         return Ok(());
     }
 
     let last_sample = samples.next_index().saturating_sub(1);
-    let sample_count = samples.next_index() - sample_base_idx;
 
     let chunk_range = ChunkSampleRange::new(sample_base_idx, last_sample, sample_count);
 
@@ -1901,18 +2016,8 @@ fn handle_out_of_order_chunk(
         video_descr.keyframe_indices.extend(shifted);
     }
 
-    // Correct frame_nr for all samples after `start_sample`:
-    let min_index = video_descr.samples.min_index();
-
-    for (idx, sample) in video_descr
-        .samples
-        .iter_indexed_mut()
-        .skip(sample_range.start().saturating_sub(min_index))
-    {
-        if let SampleMetadataState::Present(meta) = sample {
-            meta.frame_nr = idx as u32;
-        }
-    }
+    // frame_nr and SamplesStatistics are updated centrally in handle_store_event
+    // after all processing is complete — no need to assign here.
 
     update_sample_durations(
         *sample_range.start()..sample_range.start() + new_count,
@@ -2270,5 +2375,526 @@ mod tests {
             NUM_FRAMES - 1
         );
         assert_eq!(data_descr.keyframe_indices.first(), Some(&10));
+    }
+
+    // ---- B-frame / presentation_time_offset tests ----
+
+    #[test]
+    fn pts_offsets_get() {
+        // Simulate 3 rows: row 0 has 2 values, row 1 has 1 value, row 2 has 3 values.
+        let offsets = PtsOffsets {
+            values: vec![10, 20, 30, 40, 50, 60],
+            row_offsets: vec![0, 2, 3, 6],
+        };
+
+        // Row 0: indices 0..2
+        assert_eq!(offsets.get(0, 0), Some(10));
+        assert_eq!(offsets.get(0, 1), Some(20));
+        assert_eq!(offsets.get(0, 2), None); // out of row bounds
+
+        // Row 1: index 2..3
+        assert_eq!(offsets.get(1, 0), Some(30));
+        assert_eq!(offsets.get(1, 1), None);
+
+        // Row 2: indices 3..6
+        assert_eq!(offsets.get(2, 0), Some(40));
+        assert_eq!(offsets.get(2, 1), Some(50));
+        assert_eq!(offsets.get(2, 2), Some(60));
+        assert_eq!(offsets.get(2, 3), None);
+
+        // Out-of-bounds row
+        assert_eq!(offsets.get(3, 0), None);
+        assert_eq!(offsets.get(100, 0), None);
+    }
+
+    #[test]
+    fn pts_offsets_empty() {
+        let offsets = PtsOffsets {
+            values: vec![],
+            row_offsets: vec![0],
+        };
+        assert_eq!(offsets.get(0, 0), None);
+    }
+
+    #[test]
+    fn assign_frame_numbers_with_bframes() {
+        use re_log_types::external::re_tuid::Tuid;
+
+        // Simulate a typical IBBBP decode order where PTS differs from DTS.
+        // Decode order (sample index): 0  1  2  3  4
+        // DTS:                          0  1  2  3  4
+        // PTS:                          0  3  1  2  4  (B-frame reorder)
+        // Expected frame_nr (PTS order): 0  3  1  2  4
+        let make_sample = |dts: i64, pts: i64| -> SampleMetadataState {
+            SampleMetadataState::Present(re_video::SampleMetadata {
+                is_sync: dts == 0,
+                frame_nr: 0, // will be assigned
+                decode_timestamp: re_video::Time(dts),
+                presentation_timestamp: re_video::Time(pts),
+                duration: None,
+                source_id: Tuid::new(),
+                byte_span: re_video::Span { start: 0, len: 0 },
+            })
+        };
+
+        let mut samples: StableIndexDeque<SampleMetadataState> = [
+            make_sample(0, 0),
+            make_sample(1, 3),
+            make_sample(2, 1),
+            make_sample(3, 2),
+            make_sample(4, 4),
+        ]
+        .into_iter()
+        .collect();
+
+        assign_frame_numbers_by_presentation_order(&mut samples);
+
+        // frame_nr should reflect presentation order:
+        // PTS 0 → frame_nr 0 (sample 0)
+        // PTS 1 → frame_nr 1 (sample 2)
+        // PTS 2 → frame_nr 2 (sample 3)
+        // PTS 3 → frame_nr 3 (sample 1)
+        // PTS 4 → frame_nr 4 (sample 4)
+        assert_eq!(samples[0].sample().unwrap().frame_nr, 0);
+        assert_eq!(samples[1].sample().unwrap().frame_nr, 3);
+        assert_eq!(samples[2].sample().unwrap().frame_nr, 1);
+        assert_eq!(samples[3].sample().unwrap().frame_nr, 2);
+        assert_eq!(samples[4].sample().unwrap().frame_nr, 4);
+    }
+
+    #[test]
+    fn assign_frame_numbers_without_bframes() {
+        use re_log_types::external::re_tuid::Tuid;
+
+        // Without B-frames, PTS == DTS, and frame_nr == sample index.
+        let make_sample = |t: i64| -> SampleMetadataState {
+            SampleMetadataState::Present(re_video::SampleMetadata {
+                is_sync: t == 0,
+                frame_nr: 0,
+                decode_timestamp: re_video::Time(t),
+                presentation_timestamp: re_video::Time(t),
+                duration: None,
+                source_id: Tuid::new(),
+                byte_span: re_video::Span { start: 0, len: 0 },
+            })
+        };
+
+        let mut samples: StableIndexDeque<SampleMetadataState> = (0..5).map(make_sample).collect();
+
+        assign_frame_numbers_by_presentation_order(&mut samples);
+
+        for (idx, sample) in samples.iter_indexed() {
+            assert_eq!(sample.sample().unwrap().frame_nr, idx as u32);
+        }
+    }
+
+    #[test]
+    fn update_durations_with_bframes() {
+        use re_log_types::external::re_tuid::Tuid;
+
+        // Same B-frame pattern as above.
+        // Decode order: 0  1  2  3  4
+        // PTS:          0  3  1  2  4
+        // PTS-sorted:   0(s0)  1(s2)  2(s3)  3(s1)  4(s4)
+        // Duration should be computed from PTS-order neighbors:
+        //   s0: PTS 0, next PTS 1 → duration 1
+        //   s2: PTS 1, next PTS 2 → duration 1
+        //   s3: PTS 2, next PTS 3 → duration 1
+        //   s1: PTS 3, next PTS 4 → duration 1
+        //   s4: PTS 4, no next    → duration None
+        let make_sample = |dts: i64, pts: i64| -> SampleMetadataState {
+            SampleMetadataState::Present(re_video::SampleMetadata {
+                is_sync: dts == 0,
+                frame_nr: 0,
+                decode_timestamp: re_video::Time(dts),
+                presentation_timestamp: re_video::Time(pts),
+                duration: None,
+                source_id: Tuid::new(),
+                byte_span: re_video::Span { start: 0, len: 0 },
+            })
+        };
+
+        let mut samples: StableIndexDeque<SampleMetadataState> = [
+            make_sample(0, 0),
+            make_sample(1, 3),
+            make_sample(2, 1),
+            make_sample(3, 2),
+            make_sample(4, 4),
+        ]
+        .into_iter()
+        .collect();
+
+        update_sample_durations(0..5, &mut samples).unwrap();
+
+        assert_eq!(
+            samples[0].sample().unwrap().duration,
+            Some(re_video::Time(1))
+        );
+        assert_eq!(
+            samples[1].sample().unwrap().duration,
+            Some(re_video::Time(1))
+        );
+        assert_eq!(
+            samples[2].sample().unwrap().duration,
+            Some(re_video::Time(1))
+        );
+        assert_eq!(
+            samples[3].sample().unwrap().duration,
+            Some(re_video::Time(1))
+        );
+        assert_eq!(samples[4].sample().unwrap().duration, None); // last in PTS order
+    }
+
+    #[test]
+    fn update_durations_with_bframes_nonuniform() {
+        use re_log_types::external::re_tuid::Tuid;
+
+        // Non-uniform PTS spacing typical of real-world B-frame patterns.
+        // Decode order: 0   1     2     3     4
+        // PTS:          0   1024  512   256   768
+        // PTS-sorted:   0(s0)  256(s3)  512(s2)  768(s4)  1024(s1)
+        let make_sample = |dts: i64, pts: i64| -> SampleMetadataState {
+            SampleMetadataState::Present(re_video::SampleMetadata {
+                is_sync: dts == 0,
+                frame_nr: 0,
+                decode_timestamp: re_video::Time(dts),
+                presentation_timestamp: re_video::Time(pts),
+                duration: None,
+                source_id: Tuid::new(),
+                byte_span: re_video::Span { start: 0, len: 0 },
+            })
+        };
+
+        let mut samples: StableIndexDeque<SampleMetadataState> = [
+            make_sample(0, 0),
+            make_sample(1, 1024),
+            make_sample(2, 512),
+            make_sample(3, 256),
+            make_sample(4, 768),
+        ]
+        .into_iter()
+        .collect();
+
+        update_sample_durations(0..5, &mut samples).unwrap();
+
+        // Duration from PTS-order neighbors:
+        // s0: PTS 0 → 256 = 256
+        // s3: PTS 256 → 512 = 256
+        // s2: PTS 512 → 768 = 256
+        // s4: PTS 768 → 1024 = 256
+        // s1: PTS 1024 → None
+        assert_eq!(
+            samples[0].sample().unwrap().duration,
+            Some(re_video::Time(256))
+        );
+        assert_eq!(samples[1].sample().unwrap().duration, None); // last in PTS order
+        assert_eq!(
+            samples[2].sample().unwrap().duration,
+            Some(re_video::Time(256))
+        );
+        assert_eq!(
+            samples[3].sample().unwrap().duration,
+            Some(re_video::Time(256))
+        );
+        assert_eq!(
+            samples[4].sample().unwrap().duration,
+            Some(re_video::Time(256))
+        );
+    }
+
+    /// End-to-end test: log H.264 data through the VideoStream cache with B-frame
+    /// presentation time offsets and verify the reconstructed video description.
+    #[test]
+    fn video_stream_cache_with_bframe_offsets() {
+        let mut cache = VideoStreamCache::default();
+        let mut store = re_entity_db::EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
+        let timeline = Timeline::new_sequence("frame");
+
+        // Use the same no-B-frame H.264 data, but log with synthetic PTS offsets
+        // that simulate a typical IBBBP pattern with GOP size 4:
+        //   DTS (timeline):  0  1  2  3  4  5  6  7  …
+        //   PTS offset:      3  0  1  2  3  0  1  2  …
+        //   PTS = DTS+offset: 3  1  3  5  7  5  7  9  …
+        //
+        // Wait, that doesn't work — PTS must be unique and make sense.
+        // Let's use the simpler scheme: in a typical GOP of 4 (IBBB pattern):
+        //   Frame 0 (I): DTS=0,  offset=0 → PTS=0
+        //   Frame 1 (B): DTS=1,  offset=2 → PTS=3
+        //   Frame 2 (B): DTS=2,  offset=-1 → PTS=1
+        //   Frame 3 (B): DTS=3,  offset=-1 → PTS=2
+        //   Frame 4 (I): DTS=4,  offset=0 → PTS=4
+        //   …
+        // This gives PTS order: 0, 1, 2, 3, 4, … which is correct.
+
+        let frames: Vec<&[u8]> = iter_h264_frames(RAW_H264_DATA).collect();
+
+        for (i, frame_bytes) in frames.iter().enumerate() {
+            // Synthetic B-frame-like offset pattern cycling every 4 frames.
+            let offset: i64 = match i % 4 {
+                0 => 0,  // keyframe: PTS == DTS
+                1 => 2,  // first B-frame: presented later
+                2 => -1, // reordered B-frame
+                3 => -1, // reordered B-frame
+                _ => unreachable!(),
+            };
+
+            let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
+                RowId::new(),
+                TimePoint::from_iter([(timeline, i as i64)]),
+                &VideoStream::new(VideoCodec::H264)
+                    .with_sample([*frame_bytes])
+                    .with_presentation_time_offset([offset]),
+            );
+            store
+                .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
+                .unwrap();
+        }
+
+        let video_stream_lock = cache
+            .entry(
+                &store,
+                &"vid".into(),
+                *timeline.name(),
+                DecodeSettings::default(),
+            )
+            .unwrap();
+        let video_stream = video_stream_lock.read();
+
+        let data_descr = video_stream.video_renderer.data_descr();
+        data_descr.sanity_check().unwrap();
+
+        // Basic validation
+        assert_eq!(data_descr.codec, re_video::VideoCodec::H264);
+        assert_eq!(data_descr.samples.num_elements(), frames.len());
+
+        // Verify B-frames are detected (DTS != PTS for most samples).
+        assert!(
+            !data_descr.samples_statistics.dts_always_equal_pts,
+            "Expected B-frames to be detected (DTS != PTS)"
+        );
+
+        // Verify PTS differs from DTS where offsets are non-zero.
+        for (idx, sample) in data_descr.samples.iter_indexed() {
+            let s = sample.sample().unwrap();
+            let expected_offset: i64 = match idx % 4 {
+                0 => 0,
+                1 => 2,
+                2 => -1,
+                3 => -1,
+                _ => unreachable!(),
+            };
+            let actual_offset = s.presentation_timestamp.0 - s.decode_timestamp.0;
+            assert_eq!(
+                actual_offset, expected_offset,
+                "Sample {idx}: expected PTS-DTS offset {expected_offset}, got {actual_offset}"
+            );
+        }
+
+        // Verify frame_nr is assigned by presentation order, not decode order.
+        // Collect (sample_idx, frame_nr, pts) for inspection.
+        let mut pts_with_frame_nr: Vec<(re_video::Time, u32)> = data_descr
+            .samples
+            .iter()
+            .filter_map(|s| s.sample().map(|m| (m.presentation_timestamp, m.frame_nr)))
+            .collect();
+        // Sort by frame_nr and verify PTS is monotonically increasing.
+        pts_with_frame_nr.sort_by_key(|(_, frame_nr)| *frame_nr);
+        for pair in pts_with_frame_nr.windows(2) {
+            assert!(
+                pair[0].0 <= pair[1].0,
+                "frame_nr order should match PTS order: PTS {:?} (frame_nr {}) > PTS {:?} (frame_nr {})",
+                pair[0].0,
+                pair[0].1,
+                pair[1].0,
+                pair[1].1,
+            );
+        }
+    }
+
+    /// Test that video streams without offsets still work (backward compatibility).
+    #[test]
+    fn video_stream_cache_no_offsets_backward_compat() {
+        let mut cache = VideoStreamCache::default();
+        let mut store = re_entity_db::EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
+        let timeline = Timeline::new_sequence("frame");
+
+        // Log without presentation_time_offset — PTS should equal DTS.
+        for (i, frame_bytes) in iter_h264_frames(RAW_H264_DATA).enumerate() {
+            let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
+                RowId::new(),
+                TimePoint::from_iter([(timeline, i as i64)]),
+                &VideoStream::new(VideoCodec::H264).with_sample([frame_bytes]),
+            );
+            store
+                .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
+                .unwrap();
+        }
+
+        let video_stream_lock = cache
+            .entry(
+                &store,
+                &"vid".into(),
+                *timeline.name(),
+                DecodeSettings::default(),
+            )
+            .unwrap();
+        let video_stream = video_stream_lock.read();
+
+        let data_descr = video_stream.video_renderer.data_descr();
+        data_descr.sanity_check().unwrap();
+
+        // Without offsets, PTS == DTS for all samples.
+        assert!(
+            data_descr.samples_statistics.dts_always_equal_pts,
+            "Without offsets, DTS should equal PTS"
+        );
+
+        for sample in data_descr.samples.iter() {
+            if let Some(s) = sample.sample() {
+                assert_eq!(
+                    s.decode_timestamp, s.presentation_timestamp,
+                    "Without offsets, DTS should equal PTS"
+                );
+            }
+        }
+    }
+
+    /// Incremental test: add B-frame chunks one at a time through `on_store_events`
+    /// and verify that frame_nr, durations, and statistics stay consistent.
+    #[test]
+    fn video_stream_cache_bframe_incremental_buildup() {
+        let timeline = Timeline::new_sequence("frame");
+
+        for compaction_enabled in [true, false] {
+            let mut cache = VideoStreamCache::default();
+            let enable_viewer_indexes = true;
+            let mut store = re_entity_db::EntityDb::with_store_config(
+                StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+                enable_viewer_indexes,
+                if compaction_enabled {
+                    re_chunk_store::ChunkStoreConfig::DEFAULT
+                } else {
+                    re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED
+                },
+            );
+
+            let frames: Vec<&[u8]> = iter_h264_frames(RAW_H264_DATA).collect();
+
+            /// Synthetic B-frame offset for a given frame index.
+            fn bframe_offset(i: usize) -> i64 {
+                match i % 4 {
+                    0 => 0,
+                    1 => 2,
+                    2 => -1,
+                    3 => -1,
+                    _ => unreachable!(),
+                }
+            }
+
+            // Log the first frame to seed the cache.
+            let chunk = ChunkBuilder::new(ChunkId::new(), "vid".into())
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::from_iter([(timeline, 0i64)]),
+                    &VideoStream::new(VideoCodec::H264)
+                        .with_sample([frames[0]])
+                        .with_presentation_time_offset([bframe_offset(0)]),
+                )
+                .build()
+                .unwrap();
+            store.add_chunk(&Arc::new(chunk)).unwrap();
+
+            let video_stream = cache
+                .entry(
+                    &store,
+                    &"vid".into(),
+                    *timeline.name(),
+                    DecodeSettings::default(),
+                )
+                .unwrap();
+            assert_eq!(
+                video_stream
+                    .read()
+                    .video_renderer
+                    .data_descr()
+                    .samples
+                    .num_elements(),
+                1
+            );
+
+            // Incrementally add frames one at a time.
+            for (i, frame_bytes) in frames.iter().enumerate().skip(1) {
+                let offset = bframe_offset(i);
+                let chunk = ChunkBuilder::new(ChunkId::new(), "vid".into())
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::from_iter([(timeline, i as i64)]),
+                        &VideoStream::new(VideoCodec::H264)
+                            .with_sample([*frame_bytes])
+                            .with_presentation_time_offset([offset]),
+                    )
+                    .build()
+                    .unwrap();
+                let store_events = store.add_chunk(&Arc::new(chunk)).unwrap();
+                let store_events_refs = store_events.iter().collect::<Vec<_>>();
+                cache.on_store_events(&store_events_refs, &store);
+
+                let video_stream = cache
+                    .entry(
+                        &store,
+                        &"vid".into(),
+                        *timeline.name(),
+                        DecodeSettings::default(),
+                    )
+                    .unwrap();
+                let data_descr = video_stream.read().video_renderer.data_descr().clone();
+                data_descr.sanity_check().unwrap();
+
+                let n = i + 1;
+                assert_eq!(
+                    data_descr.samples.num_elements(),
+                    n,
+                    "compaction={compaction_enabled}, frame {i}: expected {n} samples"
+                );
+
+                // Verify PTS offset for every sample loaded so far.
+                for (idx, sample) in data_descr.samples.iter_indexed() {
+                    let s = sample.sample().unwrap();
+                    let expected_offset = bframe_offset(idx);
+                    assert_eq!(
+                        s.presentation_timestamp.0 - s.decode_timestamp.0,
+                        expected_offset,
+                        "compaction={compaction_enabled}, after frame {i}: sample {idx} PTS-DTS mismatch"
+                    );
+                }
+
+                // Verify frame_nr is consistent with PTS ordering.
+                let mut pts_frame_pairs: Vec<(re_video::Time, u32)> = data_descr
+                    .samples
+                    .iter()
+                    .filter_map(|s| s.sample().map(|m| (m.presentation_timestamp, m.frame_nr)))
+                    .collect();
+                pts_frame_pairs.sort_by_key(|(_, nr)| *nr);
+                for pair in pts_frame_pairs.windows(2) {
+                    assert!(
+                        pair[0].0 <= pair[1].0,
+                        "compaction={compaction_enabled}, after frame {i}: frame_nr order violates PTS order"
+                    );
+                }
+
+                // B-frame detection flag should be correct.
+                let has_nonzero_offset = (0..n).any(|j| bframe_offset(j) != 0);
+                assert_eq!(
+                    !data_descr.samples_statistics.dts_always_equal_pts, has_nonzero_offset,
+                    "compaction={compaction_enabled}, after frame {i}: B-frame detection mismatch"
+                );
+            }
+        }
     }
 }

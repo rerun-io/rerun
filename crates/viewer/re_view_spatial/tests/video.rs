@@ -139,7 +139,7 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         re_log::info!("Pixi ffmpeg not found at {pixi_ffmpeg_path:?}");
     }
 
-    let need_dts_equal_pts = video_type == VideoType::VideoStream; // TODO(#10090): Video stream doesn't support bframes
+    let need_dts_equal_pts = false; // B-frames are supported for video streams now.
     let video_path = video_test_file_mp4(codec, need_dts_equal_pts);
 
     let video_asset = AssetVideo::from_file_path(&video_path).unwrap();
@@ -180,12 +180,9 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
             )
             .unwrap();
 
-            assert!(
-                video_data_description
-                    .samples_statistics
-                    .dts_always_equal_pts,
-                "TODO(#10090): Video stream doesn't support bframes"
-            );
+            let has_bframes = !video_data_description
+                .samples_statistics
+                .dts_always_equal_pts;
 
             let mut annexb_stream_state = re_video::AnnexBStreamState::default();
 
@@ -258,18 +255,23 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
                     VideoCodec::VP8 => panic!("VP8 is not supported for video streams"),
                 };
 
-                let time_ns = sample
-                    .sample()
-                    .unwrap()
-                    .presentation_timestamp
-                    .into_nanos(video_data_description.timescale.unwrap());
+                let timescale = video_data_description.timescale.unwrap();
+                let sample_meta = sample.sample().unwrap();
+
+                // For VideoStream, the timeline timestamp serves as the decode
+                // timestamp (DTS). When B-frames are present, DTS != PTS and
+                // we must provide the offset so the viewer can recover PTS.
+                let dts_ns = sample_meta.decode_timestamp.into_nanos(timescale);
+                let pts_ns = sample_meta.presentation_timestamp.into_nanos(timescale);
+
+                let mut archetype = VideoStream::new(codec).with_sample([sample_bytes]);
+                if has_bframes {
+                    let offset = pts_ns - dts_ns;
+                    archetype = archetype.with_presentation_time_offset([offset]);
+                }
 
                 test_context.log_entity("video", |builder| {
-                    builder.with_archetype(
-                        RowId::new(),
-                        [(timeline, time_ns)],
-                        &VideoStream::new(codec).with_sample(sample_bytes),
-                    )
+                    builder.with_archetype(RowId::new(), [(timeline, dts_ns)], &archetype)
                 });
             }
         }

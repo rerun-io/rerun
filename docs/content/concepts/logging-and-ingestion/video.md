@@ -45,19 +45,34 @@ Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/lat
 
 For more details on how to query and decode video streams from Rerun, see our [query video streams how-to](../../howto/query-and-transform/query_videos.md).
 
+### B-frame support (H.264/H.265)
+
+H.264 and H.265 encoders may produce B-frames (bidirectionally predicted frames), which cause
+decode order and presentation order to differ. `VideoStream` supports this via the optional
+`presentation_time_offset` component.
+
+When B-frames are present, the timeline timestamp serves as the **decode timestamp (DTS)** and the
+`presentation_time_offset` specifies the offset from DTS to presentation timestamp (PTS) for each
+sample: `PTS = DTS + offset`. When no offset is provided, PTS equals DTS (no B-frames).
+
+Multiple samples can be batched into a single row (the `sample` field is array-typed). Samples
+within a row must be in **decode order**; the first sample inherits the row's timeline timestamp as
+its DTS, and subsequent samples get sequentially increasing DTS values.
+
+> **Tip:** For low-latency streaming, B-frames are generally not recommended. Most real-time
+> encoders disable them by default (e.g. `max_b_frames = 0` in libx264/libx265).
+
 
 Current limitations of `VideoStream`:
 * [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
   This can cause increased latency and in some cases may even stop video playback.
 * [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../../reference/types/archetypes/video_stream.md) only supports H.264, H.265, AV1 at this point.
-* [#10090](https://github.com/rerun-io/rerun/issues/10090): B-frames are not yet supported for [`VideoStream`](../../reference/types/archetypes/video_stream.md).
 * [#10422](https://github.com/rerun-io/rerun/issues/10422): [`VideoFrameReference`](../../reference/types/archetypes/video_frame_reference.md) does not yet work with [`VideoStream`](../../reference/types/archetypes/video_stream.md).
 
 <!--
 Discoverable for scripts/zombie_todos.py:
 TODO(#9815): fix above if ticket is outdated.
 TODO(#10186): fix above if ticket is outdated.
-TODO(#10090): fix above if ticket is outdated.
 TODO(#10422): fix above if ticket is outdated.
 -->
 

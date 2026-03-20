@@ -1438,6 +1438,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <VideoPresentationTimestampOffset as Component>::name(),
+            ComponentReflection {
+                docstring_md: "An offset from decode timestamp (DTS) to presentation timestamp (PTS) for a video sample.\n\nUsed with [`archetypes.VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream) to support B-frames in H.264/H.265 streams.\nWhen present, the presentation timestamp is computed as `DTS + offset`.\nWhen absent, the presentation timestamp equals the decode timestamp (no B-frames).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(VideoPresentationTimestampOffset::default().to_arrow()?),
+                datatype: VideoPresentationTimestampOffset::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: VideoPresentationTimestampOffset::verify_arrow_array,
+            },
+        ),
+        (
             <VideoSample as Component>::name(),
             ComponentReflection {
                 docstring_md: "Video sample data (also known as \"video chunk\").\n\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nKeyframes may require additional data, for details see [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec).",
@@ -3556,7 +3567,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "sample",
                         display_name: "Sample",
                         component_type: "rerun.components.VideoSample".into(),
-                        docstring_md: "Video sample data (also known as \"video chunk\").\n\nThe current timestamp is used as presentation timestamp (PTS) for all data in this sample.\nThere is currently no way to log differing decoding timestamps, meaning\nthat there is no support for B-frames.\nSee <https://github.com/rerun-io/rerun/issues/10090> for more details.\n\nRerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,\nbut may cause the video playback in the Viewer to reset.\nIt is recommended to have all chunks for a video stream to be ordered temporally order.\n\nLogging separate videos on the same entity is allowed iff they share the exact same\ncodec parameters & resolution.\n\nThe samples are expected to be encoded using the `codec` field.\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nUnless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image))\nnever log this component as static data as this means that you loose all information of\nprevious samples which may be required to decode an image.\n\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec) for codec specific requirements.",
+                        docstring_md: "Video sample data (also known as \"video chunk\").\n\nEach element in this array must contain the encoded data for exactly one video frame.\nWhen logging a single frame per row, this is simply a single-element array (or a scalar).\n\nFor B-frame support (H.264/H.265), multiple samples can be batched into a single row.\nSamples within a row must be in **decode order**.\nThe current timestamp on the timeline is used as the decode timestamp (DTS) for the first sample;\nsubsequent samples in the same row are assigned sequentially increasing DTS values.\nSee `presentation_time_offset` for specifying presentation timestamps that differ from decode timestamps.\n\nWhen no `presentation_time_offset` is provided, the presentation timestamp (PTS)\nequals the decode timestamp for each sample (i.e. no B-frames).\n\nRerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,\nbut may cause the video playback in the Viewer to reset.\nIt is recommended to have all chunks for a video stream to be ordered temporally order.\n\nLogging separate videos on the same entity is allowed iff they share the exact same\ncodec parameters & resolution.\n\nThe samples are expected to be encoded using the `codec` field.\n\nUnless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image))\nnever log this component as static data as this means that you loose all information of\nprevious samples which may be required to decode an image.\n\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec) for codec specific requirements.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "presentation_time_offset",
+                        display_name: "Presentation time offset",
+                        component_type: "rerun.components.VideoPresentationTimestampOffset".into(),
+                        docstring_md: "Per-sample offset from decode timestamp (DTS) to presentation timestamp (PTS).\n\nWhen present, the presentation timestamp for sample `i` is computed as\n`DTS_i + presentation_time_offset[i]`, where `DTS_i` is the decode timestamp of that sample.\n\nThis is needed for H.264/H.265 streams that use B-frames (bidirectionally predicted frames),\nas B-frames cause decode order and presentation order to differ.\n\nWhen absent, the presentation timestamp equals the decode timestamp for all samples\nin this row (i.e. no B-frames, which is the common case for low-latency streaming).\n\nThe number of offsets should match the number of samples in this row.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {

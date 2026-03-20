@@ -91,6 +91,7 @@ vector2d.hpp linguist-generated=true
 vector3d.hpp linguist-generated=true
 video_codec.cpp linguist-generated=true
 video_codec.hpp linguist-generated=true
+video_presentation_timestamp_offset.hpp linguist-generated=true
 video_sample.hpp linguist-generated=true
 video_timestamp.hpp linguist-generated=true
 view_coordinates.hpp linguist-generated=true

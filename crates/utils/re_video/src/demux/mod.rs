@@ -630,23 +630,44 @@ impl VideoDataDescription {
                         .unwrap_or(std::time::Duration::ZERO)
                 }
                 _ => {
-                    // TODO(#10090): This is only correct because there's no b-frames on streams right now.
-                    // If there are b-frames determining the last timestamp is a bit more complicated.
-                    let first = self.samples.iter().find_map(|s| s.sample())?;
-                    let last = self.samples.iter().rev().find_map(|s| s.sample())?;
+                    // With B-frames, the last sample in decode order may not have the highest PTS.
+                    // Find the actual min and max PTS across all present samples.
+                    let mut min_pts = Time::MAX;
+                    let mut max_pts = Time::MIN;
+                    let mut max_pts_sample_duration = None;
+                    let mut first_frame_nr = u32::MAX;
+                    let mut last_frame_nr = u32::MIN;
 
-                    let last_sample_duration = last.duration.map_or_else(
+                    for sample in self.samples.iter().filter_map(|s| s.sample()) {
+                        if sample.presentation_timestamp < min_pts {
+                            min_pts = sample.presentation_timestamp;
+                        }
+                        if sample.presentation_timestamp > max_pts {
+                            max_pts = sample.presentation_timestamp;
+                            max_pts_sample_duration = sample.duration;
+                        }
+                        first_frame_nr = first_frame_nr.min(sample.frame_nr);
+                        last_frame_nr = last_frame_nr.max(sample.frame_nr);
+                    }
+
+                    if min_pts > max_pts {
+                        return Some(std::time::Duration::ZERO);
+                    }
+
+                    let last_sample_duration = max_pts_sample_duration.map_or_else(
                         || {
                             // Use average duration of all samples so far.
-                            (last.presentation_timestamp - first.presentation_timestamp)
-                                .duration(timescale)
-                                / (last.frame_nr - first.frame_nr)
+                            let num_frames = last_frame_nr.saturating_sub(first_frame_nr);
+                            if num_frames > 0 {
+                                (max_pts - min_pts).duration(timescale) / num_frames
+                            } else {
+                                std::time::Duration::ZERO
+                            }
                         },
                         |d| d.duration(timescale),
                     );
 
-                    (last.presentation_timestamp - first.presentation_timestamp).duration(timescale)
-                        + last_sample_duration
+                    (max_pts - min_pts).duration(timescale) + last_sample_duration
                 }
             },
         })
