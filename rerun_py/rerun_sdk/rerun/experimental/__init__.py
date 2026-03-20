@@ -7,4 +7,5 @@ going through the normal deprecation cycle.
 
 from __future__ import annotations
 
+from ._chunk import Chunk as Chunk
 from ._viewer_client import ViewerClient as ViewerClient

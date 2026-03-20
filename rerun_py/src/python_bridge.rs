@@ -265,6 +265,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // recording
     crate::recording::register(m)?;
 
+    // chunk
+    crate::chunk::register(m)?;
+
     // catalog
     crate::catalog::register(py, m)?;
 
