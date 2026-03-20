@@ -1,3 +1,4 @@
+use re_chunk::ChunkId;
 use re_log_types::{ApplicationId, StoreId, TableId};
 
 use crate::{Item, open_url::EXAMPLES_ORIGIN};
@@ -36,6 +37,7 @@ pub enum Route {
     /// A debug-view into the raw chunks of a recording.
     ChunkStoreBrowser {
         recording_id: StoreId,
+        selected_chunk: Option<ChunkId>,
 
         /// What to return to when exiting this mode.
         previous: Box<Self>,
@@ -51,8 +53,12 @@ impl std::fmt::Debug for Route {
             Self::LocalTable(table_id) => write!(f, "LocalTable({table_id})"),
             Self::RedapEntry(uri) => write!(f, "RedapEntry({uri})"),
             Self::RedapServer(origin) => write!(f, "RedapServer({origin})"),
-            Self::ChunkStoreBrowser { recording_id, .. } => {
-                write!(f, "ChunkStoreBrowser({recording_id:?})")
+            Self::ChunkStoreBrowser {
+                recording_id,
+                selected_chunk,
+                ..
+            } => {
+                write!(f, "ChunkStoreBrowser({recording_id:?}, {selected_chunk:?})")
             }
         }
     }

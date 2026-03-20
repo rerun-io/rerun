@@ -87,7 +87,7 @@ impl ViewerOpenUrlDescription {
                 target_short: None,
             },
 
-            ViewerOpenUrl::ChunkStoreBrowser => Self {
+            ViewerOpenUrl::ChunkStoreBrowser { .. } => Self {
                 category: "Chunk store browser",
                 target_short: None,
             },

@@ -1051,20 +1051,40 @@ impl App {
                 re_analytics::record(|| re_analytics::event::SettingsOpened {});
             }
 
-            SystemCommand::OpenChunkStoreBrowser => {
-                if let Some(recording_id) = self.state.navigation.current().recording_id().cloned()
-                {
+            SystemCommand::OpenChunkStoreBrowser {
+                recording_id,
+                selected_chunk,
+            } => match self.state.navigation.current() {
+                Route::ChunkStoreBrowser {
+                    recording_id: current_recording_id,
+                    previous,
+                    ..
+                } => {
                     self.state.navigation.replace(Route::ChunkStoreBrowser {
-                        recording_id,
-                        previous: Box::new(self.state.navigation.current().clone()),
+                        // History/share URLs may carry an explicit recording; otherwise keep
+                        // using the current chunk browser recording context.
+                        recording_id: recording_id.unwrap_or_else(|| current_recording_id.clone()),
+                        selected_chunk,
+                        previous: previous.clone(),
                     });
-                } else {
-                    re_log::debug!(
-                        "Cannot activate chunk store browser from current route: {:?}",
-                        self.state.navigation.current()
-                    );
                 }
-            }
+                current => {
+                    if let Some(recording_id) =
+                        recording_id.or_else(|| current.recording_id().cloned())
+                    {
+                        self.state.navigation.replace(Route::ChunkStoreBrowser {
+                            recording_id,
+                            selected_chunk,
+                            previous: Box::new(current.clone()),
+                        });
+                    } else {
+                        re_log::warn!(
+                            "Cannot activate chunk store browser from current route: {:?}",
+                            self.state.navigation.current()
+                        );
+                    }
+                }
+            },
 
             SystemCommand::ResetRoute => {
                 self.state.navigation.reset();
@@ -1891,6 +1911,7 @@ impl App {
                     if let Some(recording_id) = current.recording_id().cloned() {
                         self.state.navigation.replace(Route::ChunkStoreBrowser {
                             recording_id,
+                            selected_chunk: None,
                             previous: Box::new(current.clone()),
                         });
                     } else {

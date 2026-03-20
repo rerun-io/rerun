@@ -1,5 +1,6 @@
 use std::panic::Location;
 
+use re_chunk::ChunkId;
 use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::LogDataSource;
@@ -40,7 +41,10 @@ pub enum SystemCommand {
     OpenSettings,
 
     /// Activates the chunk store route.
-    OpenChunkStoreBrowser,
+    OpenChunkStoreBrowser {
+        recording_id: Option<StoreId>,
+        selected_chunk: Option<ChunkId>,
+    },
 
     SetRoute(Route),
 

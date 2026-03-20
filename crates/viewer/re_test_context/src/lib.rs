@@ -920,7 +920,7 @@ impl TestContext {
                 | SystemCommand::ResetViewer
                 | SystemCommand::SetRoute(_)
                 | SystemCommand::OpenSettings
-                | SystemCommand::OpenChunkStoreBrowser
+                | SystemCommand::OpenChunkStoreBrowser { .. }
                 | SystemCommand::ResetRoute
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics

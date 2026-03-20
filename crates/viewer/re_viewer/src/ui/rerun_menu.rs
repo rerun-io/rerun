@@ -47,12 +47,13 @@ impl App {
             });
     }
 
-    pub fn navigation_buttons(&mut self, ui: &mut egui::Ui) {
-        let history = &mut self.state.history;
+    pub fn navigation_buttons(&self, ui: &mut egui::Ui) {
+        let has_back = self.state.history.has_back();
+        let has_forward = self.state.history.has_forward();
 
         if ui
             .add_enabled(
-                history.has_back(),
+                has_back,
                 ui.small_icon_button_widget(&re_ui::icons::ARROW_LEFT, "go back"),
             )
             .on_hover_ui(|ui| UICommand::NavigateBack.tooltip_ui(ui))
@@ -63,7 +64,7 @@ impl App {
 
         if ui
             .add_enabled(
-                history.has_forward(),
+                has_forward,
                 ui.small_icon_button_widget(&re_ui::icons::ARROW_RIGHT, "go forward"),
             )
             .on_hover_ui(|ui| UICommand::NavigateForward.tooltip_ui(ui))

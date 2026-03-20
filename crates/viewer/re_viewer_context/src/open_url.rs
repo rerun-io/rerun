@@ -1,7 +1,9 @@
 use std::sync::LazyLock;
 
+use re_chunk::ChunkId;
 use re_data_source::LogDataSource;
 use re_log_channel::LogSource;
+use re_log_types::StoreId;
 use re_uri::Scheme;
 use re_uri::external::url::{self, Url};
 use vec1::{Vec1, vec1};
@@ -90,8 +92,11 @@ pub enum ViewerOpenUrl {
     /// The url to the settings screen.
     Settings,
 
-    /// A url to the chunk store browser.
-    ChunkStoreBrowser,
+    /// A url to the chunk store browser, optionally focused on a specific chunk.
+    ChunkStoreBrowser {
+        recording_id: Option<StoreId>,
+        selected_chunk: Option<ChunkId>,
+    },
 }
 
 impl std::fmt::Debug for ViewerOpenUrl {
@@ -115,7 +120,12 @@ impl std::fmt::Debug for ViewerOpenUrl {
                 .field("url_parameters", url_parameters)
                 .finish(),
             Self::Settings => write!(f, "Settings"),
-            Self::ChunkStoreBrowser => write!(f, "ChunkStoreBrowser"),
+            Self::ChunkStoreBrowser {
+                recording_id,
+                selected_chunk,
+            } => {
+                write!(f, "ChunkStoreBrowser({recording_id:?}, {selected_chunk:?})")
+            }
         }
     }
 }
@@ -156,8 +166,8 @@ impl ViewerOpenUrl {
     ) -> anyhow::Result<Self> {
         if url == SETTINGS_URL {
             Ok(Self::Settings)
-        } else if url == CHUNK_STORE_BROWSER_URL {
-            Ok(Self::ChunkStoreBrowser)
+        } else if let Some(url) = parse_chunk_store_browser_url(url)? {
+            Ok(url)
         } else if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
             Ok(Self::RedapCatalog(uri))
         } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
@@ -377,7 +387,14 @@ impl ViewerOpenUrl {
                 Ok(Self::RedapCatalog(re_uri::CatalogUri::new(origin.clone())))
             }
 
-            Route::ChunkStoreBrowser { .. } => Ok(Self::ChunkStoreBrowser),
+            Route::ChunkStoreBrowser {
+                recording_id,
+                selected_chunk,
+                ..
+            } => Ok(Self::ChunkStoreBrowser {
+                recording_id: Some(recording_id.clone()),
+                selected_chunk: *selected_chunk,
+            }),
         }
     }
 
@@ -453,8 +470,29 @@ impl ViewerOpenUrl {
             Self::Settings => {
                 vec1![SETTINGS_URL.to_owned()]
             }
-            Self::ChunkStoreBrowser => {
-                vec1![CHUNK_STORE_BROWSER_URL.to_owned()]
+            Self::ChunkStoreBrowser {
+                recording_id,
+                selected_chunk,
+            } => {
+                let mut url = CHUNK_STORE_BROWSER_URL.to_owned();
+                let mut serializer = url::form_urlencoded::Serializer::new(String::new());
+
+                if let Some(recording_id) = recording_id {
+                    serializer.append_pair("app_id", recording_id.application_id().as_str());
+                    serializer.append_pair("recording_id", recording_id.recording_id().as_str());
+                }
+
+                if let Some(selected_chunk) = selected_chunk {
+                    serializer.append_pair("chunk", &selected_chunk.to_string());
+                }
+
+                let query = serializer.finish();
+                if !query.is_empty() {
+                    url.push('?');
+                    url.push_str(&query);
+                }
+
+                vec1![url]
             }
         };
 
@@ -477,7 +515,7 @@ impl ViewerOpenUrl {
             | Self::RedapEntry(_)
             | Self::IntraRecordingSelection(_)
             | Self::Settings
-            | Self::ChunkStoreBrowser => None,
+            | Self::ChunkStoreBrowser { .. } => None,
 
             Self::HttpUrl(url) => Some(LogSource::HttpStream {
                 url: url.to_string(),
@@ -618,8 +656,14 @@ impl ViewerOpenUrl {
             Self::Settings => {
                 command_sender.send_system(SystemCommand::OpenSettings);
             }
-            Self::ChunkStoreBrowser => {
-                command_sender.send_system(SystemCommand::OpenChunkStoreBrowser);
+            Self::ChunkStoreBrowser {
+                recording_id,
+                selected_chunk,
+            } => {
+                command_sender.send_system(SystemCommand::OpenChunkStoreBrowser {
+                    recording_id,
+                    selected_chunk,
+                });
             }
         }
     }
@@ -627,7 +671,6 @@ impl ViewerOpenUrl {
     pub fn without_fragment(self) -> Self {
         match self {
             Self::Settings
-            | Self::ChunkStoreBrowser
             | Self::IntraRecordingSelection(..)
             | Self::HttpUrl(..)
             | Self::RedapProxy(..)
@@ -637,6 +680,8 @@ impl ViewerOpenUrl {
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(..) => self,
+
+            Self::ChunkStoreBrowser { .. } => self,
 
             Self::RedapDatasetSegment(uri) => Self::RedapDatasetSegment(uri.without_fragment()),
             Self::WebViewerUrl {
@@ -678,9 +723,52 @@ impl ViewerOpenUrl {
                 }
             }
             Self::Settings => None,
-            Self::ChunkStoreBrowser => None,
+            Self::ChunkStoreBrowser { .. } => None,
         }
     }
+}
+
+fn parse_chunk_store_browser_url(url: &str) -> anyhow::Result<Option<ViewerOpenUrl>> {
+    let Some(rest) = url.strip_prefix(CHUNK_STORE_BROWSER_URL) else {
+        return Ok(None);
+    };
+
+    if rest.is_empty() {
+        return Ok(Some(ViewerOpenUrl::ChunkStoreBrowser {
+            recording_id: None,
+            selected_chunk: None,
+        }));
+    }
+
+    let Some(query) = rest.strip_prefix('?') else {
+        anyhow::bail!("Invalid chunk store browser URL: {url}");
+    };
+
+    let mut selected_chunk = None;
+    let mut application_id = None;
+    let mut recording_name = None;
+
+    for (key, value) in url::form_urlencoded::parse(query.as_bytes()) {
+        match key.as_ref() {
+            "app_id" => application_id = Some(value.into_owned()),
+            "recording_id" => recording_name = Some(value.into_owned()),
+            "chunk" => selected_chunk = Some(value.parse::<ChunkId>()?),
+            _ => {}
+        }
+    }
+
+    let recording_id = match (application_id, recording_name) {
+        (Some(application_id), Some(recording_id)) => {
+            Some(StoreId::recording(application_id, recording_id))
+        }
+        (None, None) => None,
+        _ => anyhow::bail!("Chunk store browser URL must include both app_id and recording_id"),
+    };
+
+    Ok(Some(ViewerOpenUrl::ChunkStoreBrowser {
+        recording_id,
+        selected_chunk,
+    }))
 }
 
 /// Combines a base url, for example a web viewer url
@@ -768,6 +856,7 @@ mod tests {
         str::FromStr as _,
     };
 
+    use re_chunk::ChunkId;
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
     use re_log_channel::LogSource;
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
@@ -777,7 +866,7 @@ mod tests {
         external::url::{self, Url},
     };
 
-    use super::ViewerOpenUrl;
+    use super::{CHUNK_STORE_BROWSER_URL, ViewerOpenUrl};
     use crate::{Item, Route, StoreHub};
 
     #[test]
@@ -863,6 +952,36 @@ mod tests {
             };
             assert_eq!(ViewerOpenUrl::from_str(url).unwrap(), expected);
 
+            let chunk_id = ChunkId::new();
+            let recording_id = StoreId::recording("test_app", "test_recording");
+            assert_eq!(
+                ViewerOpenUrl::from_str(CHUNK_STORE_BROWSER_URL).unwrap(),
+                ViewerOpenUrl::ChunkStoreBrowser {
+                    recording_id: None,
+                    selected_chunk: None,
+                }
+            );
+            assert_eq!(
+                ViewerOpenUrl::from_str(&format!("{CHUNK_STORE_BROWSER_URL}?chunk={chunk_id}"))
+                    .unwrap(),
+                ViewerOpenUrl::ChunkStoreBrowser {
+                    recording_id: None,
+                    selected_chunk: Some(chunk_id),
+                }
+            );
+            assert_eq!(
+                ViewerOpenUrl::from_str(&format!(
+                    "{CHUNK_STORE_BROWSER_URL}?app_id={}&recording_id={}&chunk={chunk_id}",
+                    recording_id.application_id(),
+                    recording_id.recording_id(),
+                ))
+                .unwrap(),
+                ViewerOpenUrl::ChunkStoreBrowser {
+                    recording_id: Some(recording_id),
+                    selected_chunk: Some(chunk_id),
+                }
+            );
+
             // Complex - multiple URL parameters of different typesl
             let url = "https://foo.com/?url=rerun://localhost:51234/catalog&url=recording://camera&url=https://example.com/data.rrd";
             let expected = ViewerOpenUrl::WebViewerUrl {
@@ -946,11 +1065,15 @@ mod tests {
                 &store_hub,
                 &Route::ChunkStoreBrowser {
                     recording_id: StoreId::empty_recording(),
+                    selected_chunk: None,
                     previous: Box::new(dummy_mode),
                 }
             )
             .unwrap(),
-            ViewerOpenUrl::ChunkStoreBrowser
+            ViewerOpenUrl::ChunkStoreBrowser {
+                recording_id: Some(StoreId::empty_recording()),
+                selected_chunk: None,
+            }
         );
 
         // Local recordings is handled in `test_viewer_open_url_from_local_recordings_route`
@@ -1157,6 +1280,20 @@ mod tests {
         assert_eq!(
             ViewerOpenUrl::WebEventListener.sharable_url(None).unwrap(),
             "web_event:"
+        );
+
+        let recording_id = StoreId::recording("test_app", "test_recording");
+        let chunk_id = ChunkId::new();
+        assert_eq!(
+            ViewerOpenUrl::ChunkStoreBrowser {
+                recording_id: Some(recording_id),
+                selected_chunk: Some(chunk_id),
+            }
+            .sharable_url(None)
+            .unwrap(),
+            format!(
+                "{CHUNK_STORE_BROWSER_URL}?app_id=test_app&recording_id=test_recording&chunk={chunk_id}"
+            )
         );
 
         assert_eq!(

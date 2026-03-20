@@ -238,15 +238,36 @@ impl AppState {
                     .ui(None, ui, startup_options.web_viewer_base_url().as_ref());
             }
 
-            Route::ChunkStoreBrowser { previous, .. } => {
-                let should_datastore_ui_remain_active = self.datastore_ui.ui(
+            Route::ChunkStoreBrowser {
+                recording_id,
+                selected_chunk,
+                previous,
+            } => {
+                let previous = previous.clone();
+                let recording_id = recording_id.clone();
+                let selected_chunk_before = *selected_chunk;
+
+                let result = self.datastore_ui.ui(
                     store_context,
                     storage_context,
                     ui,
                     self.app_options.timestamp_format,
+                    selected_chunk_before,
                 );
-                if !should_datastore_ui_remain_active {
-                    self.navigation.replace((**previous).clone());
+                if !result.keep_open {
+                    self.navigation.replace((*previous).clone());
+                } else if result.recording_id != recording_id
+                    || result.selected_chunk != selected_chunk_before
+                {
+                    self.navigation.replace(Route::ChunkStoreBrowser {
+                        recording_id: result.recording_id.clone(),
+                        selected_chunk: if result.recording_id != recording_id {
+                            None
+                        } else {
+                            result.selected_chunk
+                        },
+                        previous,
+                    });
                 }
 
                 self.share_modal

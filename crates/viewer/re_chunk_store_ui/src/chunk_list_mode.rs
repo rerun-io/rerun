@@ -27,12 +27,10 @@ pub(crate) enum ChunkListMode {
 }
 
 impl ChunkListMode {
-    pub(crate) fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
+    fn defaults(
+        &self,
         chunk_store: &ChunkStore,
-        format: TimestampFormat,
-    ) -> Option<()> {
+    ) -> Option<(Timeline, EntityPath, ComponentIdentifier)> {
         let all_timelines = chunk_store.schema().timelines();
         let all_entities = chunk_store.all_entities_sorted();
         let all_components = chunk_store.all_components_sorted();
@@ -50,74 +48,97 @@ impl ChunkListMode {
             Self::Query { component, .. } => *component,
         };
 
+        Some((current_timeline, current_entity, current_component))
+    }
+
+    pub(crate) fn selector_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        chunk_store: &ChunkStore,
+    ) -> Option<()> {
+        let (current_timeline, current_entity, current_component) = self.defaults(chunk_store)?;
+
+        ui.selectable_toggle(|ui| {
+            if ui
+                .selectable_label(matches!(self, Self::All), "All")
+                .on_hover_text("Display all chunks")
+                .clicked()
+            {
+                *self = Self::All;
+            }
+
+            if ui
+                .selectable_label(
+                    matches!(
+                        self,
+                        Self::Query {
+                            query: ChunkListQueryMode::LatestAt(..),
+                            ..
+                        }
+                    ),
+                    "Latest-at",
+                )
+                .on_hover_text("Display chunks relevant to the provided latest-at query")
+                .clicked()
+            {
+                *self = Self::Query {
+                    timeline: current_timeline,
+                    entity_path: current_entity.clone(),
+                    component: current_component,
+                    query: ChunkListQueryMode::LatestAt(TimeInt::MAX),
+                };
+            }
+
+            if ui
+                .selectable_label(
+                    matches!(
+                        self,
+                        Self::Query {
+                            query: ChunkListQueryMode::Range(..),
+                            ..
+                        }
+                    ),
+                    "Range",
+                )
+                .on_hover_text("Display chunks relevant to the provided range query")
+                .clicked()
+            {
+                *self = Self::Query {
+                    timeline: current_timeline,
+                    query: ChunkListQueryMode::Range(AbsoluteTimeRange::EVERYTHING),
+                    entity_path: current_entity,
+                    component: current_component,
+                };
+            }
+        });
+
+        Some(())
+    }
+
+    pub(crate) fn query_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        chunk_store: &ChunkStore,
+        format: TimestampFormat,
+    ) -> Option<()> {
+        let all_timelines = chunk_store.schema().timelines();
+        let all_entities = chunk_store.all_entities_sorted();
+        let all_components = chunk_store.all_components_sorted();
+        let (current_timeline, current_entity, current_component) = self.defaults(chunk_store)?;
+
+        let Self::Query {
+            timeline: query_timeline,
+            component: query_component,
+            entity_path: query_entity,
+            query,
+        } = self
+        else {
+            return Some(());
+        };
+
         ui.horizontal(|ui| {
-            ui.selectable_toggle(|ui| {
-                if ui
-                    .selectable_label(matches!(self, Self::All), "All")
-                    .on_hover_text("Display all chunks")
-                    .clicked()
-                {
-                    *self = Self::All;
-                }
-
-                if ui
-                    .selectable_label(
-                        matches!(
-                            self,
-                            Self::Query {
-                                query: ChunkListQueryMode::LatestAt(..),
-                                ..
-                            }
-                        ),
-                        "Latest-at",
-                    )
-                    .on_hover_text("Display chunks relevant to the provided latest-at query")
-                    .clicked()
-                {
-                    *self = Self::Query {
-                        timeline: current_timeline,
-                        entity_path: current_entity.clone(),
-                        component: current_component,
-                        query: ChunkListQueryMode::LatestAt(TimeInt::MAX),
-                    };
-                }
-
-                if ui
-                    .selectable_label(
-                        matches!(
-                            self,
-                            Self::Query {
-                                query: ChunkListQueryMode::Range(..),
-                                ..
-                            }
-                        ),
-                        "Range",
-                    )
-                    .on_hover_text("Display chunks relevant to the provided range query")
-                    .clicked()
-                {
-                    *self = Self::Query {
-                        timeline: current_timeline,
-                        query: ChunkListQueryMode::Range(AbsoluteTimeRange::EVERYTHING),
-                        entity_path: current_entity.clone(),
-                        component: current_component,
-                    };
-                }
-            });
-
-            let Self::Query {
-                timeline: query_timeline,
-                component: query_component,
-                entity_path: query_entity,
-                query,
-            } = self
-            else {
-                // No query, we're done here
-                return;
-            };
-
             ui.horizontal(|ui| {
-                ui.label("timeline:");
+                ui.label("Timeline:");
                 egui::ComboBox::new("timeline", "")
                     .selected_text(current_timeline.name().as_str())
                     .show_ui(ui, |ui| {
@@ -128,7 +149,7 @@ impl ChunkListMode {
                         }
                     });
 
-                ui.label("entity:");
+                ui.label("Entity:");
                 egui::ComboBox::new("entity_path", "")
                     .selected_text(current_entity.to_string())
                     .show_ui(ui, |ui| {
@@ -139,7 +160,7 @@ impl ChunkListMode {
                         }
                     });
 
-                ui.label("component:");
+                ui.label("Component:");
                 //TODO(ab): this should be a text edit with auto-complete (like view origin)
                 egui::ComboBox::new("component", "")
                     .selected_text(current_component.as_str())
@@ -166,16 +187,16 @@ impl ChunkListMode {
 
             match query {
                 ChunkListQueryMode::LatestAt(time) => {
-                    ui.label("at:");
+                    ui.label("At:");
                     time_drag_value.drag_value_ui(ui, time_typ, time, true, None, format);
                 }
                 ChunkListQueryMode::Range(range) => {
                     let (mut min, mut max) = (range.min(), range.max());
 
-                    ui.label("from:");
+                    ui.label("From:");
                     time_drag_value.drag_value_ui(ui, time_typ, &mut min, true, None, format);
 
-                    ui.label("to:");
+                    ui.label("To:");
                     time_drag_value.drag_value_ui(ui, time_typ, &mut max, true, Some(min), format);
 
                     range.set_min(min);
