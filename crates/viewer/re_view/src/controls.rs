@@ -1,7 +1,7 @@
 //! For zooming and panning we use the modifiers in the default [`egui::InputOptions`].
 
 use egui::os::OperatingSystem;
-use egui::{Key, KeyboardShortcut, Modifiers, PointerButton};
+use egui::{Key, Modifiers, PointerButton};
 
 /// Which mouse button to drag for panning a 2D view.
 pub const DRAG_PAN2D_BUTTON: PointerButton = PointerButton::Primary;
@@ -32,10 +32,6 @@ pub const SPEED_UP_3D_MODIFIER: Modifiers = Modifiers::SHIFT;
 
 /// Key to restore the camera.
 pub const TRACKED_OBJECT_RESTORE_KEY: Key = Key::Escape;
-
-/// Toggle the currently selected view to be maximized or not.
-// NOTE: we use CTRL and not COMMAND, because ⌘+M minimizes the whole window on macOS.
-pub const TOGGLE_MAXIMIZE_VIEW: KeyboardShortcut = KeyboardShortcut::new(Modifiers::CTRL, Key::M);
 
 pub struct RuntimeModifiers {}
 

@@ -5,7 +5,7 @@ order: 800
 
 There are many different ways of sending data to the Rerun Viewer depending on what you're trying to achieve and whether the Viewer is running in the same process as your code, in another process, or even as a separate web application.
 
-In the [official examples](/examples), these different modes of operation are exposed via a standardized set of flags that we'll cover below.
+In the [official examples](https://rerun.io/examples), these different modes of operation are exposed via a standardized set of flags that we'll cover below.
 We will also demonstrate how you can achieve the same behavior in your own code.
 
 Before reading this document, you might want to familiarize yourself with the [Rerun application model](../../concepts/how-does-rerun-work.md).
@@ -141,4 +141,4 @@ We provide helpers for both Python & Rust to effortlessly add and properly handl
 - For Python, checkout the [`script_helpers`](https://ref.rerun.io/docs/python/stable/common/script_helpers/) module.
 - For Rust, checkout our [`clap`]() [integration](https://docs.rs/rerun/latest/rerun/clap/index.html).
 
-Have a look at the [official examples](/examples) to see these helpers in action.
+Have a look at the [official examples](https://rerun.io/examples) to see these helpers in action.

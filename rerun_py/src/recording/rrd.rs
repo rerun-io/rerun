@@ -9,6 +9,7 @@ use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreSource};
 
 use crate::catalog::PySchemaInternal;
+use crate::chunk::PyChunkIterator;
 
 /// An archive loaded from an RRD.
 ///
@@ -80,6 +81,14 @@ impl PyRecordingInternal {
     /// The application ID of the recording.
     fn application_id(&self) -> String {
         self.store.read().id().application_id().to_string()
+    }
+
+    /// Iterate over all physical chunks in this recording.
+    fn chunks(&self) -> PyChunkIterator {
+        // TODO(RR-4126): this should eventually become a streaming iterator which loads the chunk
+        // as it is iterated.
+        let chunks: Vec<_> = self.store.read().iter_physical_chunks().cloned().collect();
+        PyChunkIterator::new(chunks)
     }
 
     /// Save this recording to an RRD file.

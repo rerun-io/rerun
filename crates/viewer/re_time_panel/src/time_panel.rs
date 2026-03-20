@@ -358,7 +358,20 @@ impl TimePanel {
             } else {
                 ui.horizontal(|ui| {
                     ui.centered_and_justified(|ui| {
-                        ui.label("The recording has no timelines");
+                        ui.label(format!(
+                            "The recording has no timeline {}",
+                            time_ctrl.timeline_name()
+                        ));
+
+                        if ui
+                            .button(
+                                egui::RichText::new("Go to default timeline")
+                                    .color(ui.style().visuals.weak_text_color()),
+                            )
+                            .clicked()
+                        {
+                            time_commands.push(TimeControlCommand::ResetActiveTimeline);
+                        }
                     });
                 });
                 return;
@@ -477,7 +490,20 @@ impl TimePanel {
             } else {
                 ui.horizontal(|ui| {
                     ui.centered_and_justified(|ui| {
-                        ui.label("The recording has no timelines");
+                        ui.label(format!(
+                            "The recording has no timeline {}",
+                            store_ctx.time_ctrl.timeline_name()
+                        ));
+
+                        if ui
+                            .button(
+                                egui::RichText::new("Go to default timeline")
+                                    .color(ui.style().visuals.weak_text_color()),
+                            )
+                            .clicked()
+                        {
+                            time_commands.push(TimeControlCommand::ResetActiveTimeline);
+                        }
                     });
                 });
             }

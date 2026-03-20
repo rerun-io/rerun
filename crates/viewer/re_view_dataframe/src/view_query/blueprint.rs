@@ -209,7 +209,8 @@ impl Query {
     /// according to the blueprint.
     ///
     /// This operates by filtering the view columns based on the blueprint specified columns.
-    /// If no column selection is provided in the blueprint, all columns are returned.
+    /// If no column selection is provided in the blueprint, only the active timeline and all
+    /// component columns are returned.
     pub fn visible_column_selectors(
         &self,
         ctx: &ViewerContext<'_>,
@@ -221,16 +222,22 @@ impl Query {
                 DataframeQuery::descriptor_select().component,
             )?;
 
-        // no selected columns means all columns are visible
+        let query_timeline_name = self.timeline_name(ctx)?;
+
+        // no selected columns means only the active timeline and all component columns
         let Some(datatypes::SelectedColumns {
             // row_id, // TODO(#9921)
             time_columns,
             component_columns,
         }) = selected_columns.as_deref()
         else {
-            // select all columns
             return Ok(view_columns
                 .iter()
+                .filter(|column| match column {
+                    ColumnDescriptor::RowId(_) => false,
+                    ColumnDescriptor::Time(desc) => desc.timeline_name() == query_timeline_name,
+                    ColumnDescriptor::Component(_) => true,
+                })
                 .cloned()
                 .map(ColumnSelector::from)
                 .collect());
@@ -245,7 +252,6 @@ impl Query {
             .map(|selector| selector.column_selector().column_name())
             .collect::<HashSet<_>>();
 
-        let query_timeline_name = self.timeline_name(ctx)?;
         let result = view_columns
             .iter()
             .filter(|column| match column {

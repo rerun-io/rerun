@@ -283,6 +283,39 @@ def test_load_recording_path_types(tmp_path: pathlib.Path) -> None:
     assert recording is not None
 
 
+def test_chunk_record_batch(tmp_path: pathlib.Path, snapshot: syrupy.SnapshotAssertion) -> None:
+    """Test that Chunk.format() returns a human-readable table with expected data."""
+
+    rrd = tmp_path / "tmp.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(rrd)
+        # Use send_columns to avoid auto-injected log_time/log_tick timelines
+        rec.send_columns(
+            "points",
+            indexes=[rr.TimeColumn("my_index", sequence=[1, 2])],
+            columns=rr.Points3D.columns(positions=[[1, 2, 3], [4, 5, 6]], colors=[[0, 0, 0], [255, 0, 0]]),
+        )
+        rec.send_columns(
+            "static_text",
+            indexes=[],
+            columns=rr.TextLog.columns(text=["Hello"]),
+        )
+
+    recording = rr.recording.load_recording(rrd)
+    chunks = sorted(recording.chunks(), key=lambda c: c.entity_path)
+
+    parts = []
+    for chunk in chunks:
+        if chunk.entity_path.startswith("/__"):
+            continue
+        parts.append(chunk.format(width=200, redact=True))
+
+    parts.sort()
+    result = "\n".join(parts)
+    assert result == snapshot()
+
+
 def test_save_roundtrip(tmp_path: pathlib.Path) -> None:
     """Test that save() produces an RRD that preserves metadata and schema."""
 
@@ -338,6 +371,51 @@ def test_save_roundtrip_compare(tmp_path: pathlib.Path) -> None:
 
     # Roundtrip via load + save
     rr.recording.load_recording(compacted_rrd).save(roundtrip_rrd)
+
+    # Compare compacted vs roundtripped
+    process = subprocess.run(
+        ["rerun", "rrd", "compare", "--unordered", str(compacted_rrd), str(roundtrip_rrd)],
+        check=False,
+        capture_output=True,
+    )
+    if process.returncode != 0:
+        print(process.stdout.decode("utf-8"))
+        print(process.stderr.decode("utf-8"))
+    assert process.returncode == 0, f"RRD compare failed: {process.stderr.decode('utf-8')}"
+
+
+def test_chunk_roundtrip_compare(tmp_path: pathlib.Path) -> None:
+    """Test that roundtripping through chunks produces an identical RRD."""
+
+    original_rrd = tmp_path / "original.rrd"
+    compacted_rrd = tmp_path / "compacted.rrd"
+    roundtrip_rrd = tmp_path / "roundtrip.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(original_rrd)
+        rec.set_time("my_index", sequence=1)
+        rec.log("points", rr.Points3D([[1, 2, 3]]))
+        rec.set_time("my_index", sequence=2)
+        rec.set_time("other_timeline", sequence=10)
+        rec.log("points", rr.Points3D([[4, 5, 6]]))
+        rec.log("static_text", rr.TextLog("Hello"), static=True)
+
+    # Compact the original so chunk boundaries match what ChunkStore produces
+    process = subprocess.run(
+        ["rerun", "rrd", "compact", str(original_rrd), "-o", str(compacted_rrd)],
+        check=False,
+        capture_output=True,
+    )
+    assert process.returncode == 0, f"RRD compact failed: {process.stderr.decode('utf-8')}"
+
+    # Load, roundtrip through chunks, and save
+    recording = rr.recording.load_recording(compacted_rrd)
+    reconstructed = rr.recording.Recording.from_chunks(
+        recording.chunks(),
+        application_id=recording.application_id(),
+        recording_id=recording.recording_id(),
+    )
+    reconstructed.save(roundtrip_rrd)
 
     # Compare compacted vs roundtripped
     process = subprocess.run(

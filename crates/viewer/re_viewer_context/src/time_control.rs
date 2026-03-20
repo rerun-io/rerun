@@ -850,12 +850,8 @@ impl TimeControl {
                     blueprint_ctx.set_timeline(*timeline_name);
                 }
 
-                if let Some(timeline) = entity_db
-                    .timelines()
-                    .into_values()
-                    .find(|t| t.name() == timeline_name)
-                {
-                    self.timeline = ActiveTimeline::UserEdited(timeline);
+                if let Some(timeline) = entity_db.timelines().get(timeline_name) {
+                    self.timeline = ActiveTimeline::UserEdited(*timeline);
                 } else {
                     self.timeline = ActiveTimeline::Pending(*timeline_name);
                 }
@@ -1363,17 +1359,17 @@ impl TimeControl {
 
     /// Make sure the selected timeline is a valid one
     fn select_valid_timeline(&mut self, entity_db: &EntityDb) {
-        let timelines: Vec<_> = entity_db.timelines().into_values().collect();
+        let timelines = entity_db.timelines();
 
         let reset_timeline = match &self.timeline {
             // If the timeline is auto refresh it every frame.
             ActiveTimeline::Auto(_) => true,
             // If it's user edited, refresh it if it's invalid.
-            ActiveTimeline::UserEdited(selected) => !timelines.contains(selected),
+            ActiveTimeline::UserEdited(selected) => !timelines.contains_key(selected.name()),
             // If it's pending never automatically refresh it.
             ActiveTimeline::Pending(timeline_name) => {
                 // If the pending timeline is valid, it shouldn't be pending anymore.
-                if let Some(timeline) = timelines.iter().find(|t| t.name() == timeline_name) {
+                if let Some(timeline) = timelines.get(timeline_name) {
                     self.timeline = ActiveTimeline::UserEdited(*timeline);
                 }
 
@@ -1382,7 +1378,7 @@ impl TimeControl {
         };
 
         if reset_timeline || matches!(self.timeline, ActiveTimeline::Auto(_)) {
-            self.timeline = ActiveTimeline::Auto(default_timeline(timelines.iter(), |t| {
+            self.timeline = ActiveTimeline::Auto(default_timeline(timelines.values(), |t| {
                 entity_db.num_temporal_rows_on_timeline(t.name())
             }));
         }

@@ -224,5 +224,5 @@ Again, if you ran into any issues following this guide, please don't hesitate to
 ### Up next
 
 -   [Get started](data-in) by writing a program to log data with the Rerun SDK.
--   Explore other [examples of using Rerun](/examples).
+-   Explore other [examples of using Rerun](https://rerun.io/examples).
 -   Consult the [concept overview](../concepts.md) for more context on the ideas covered here.
