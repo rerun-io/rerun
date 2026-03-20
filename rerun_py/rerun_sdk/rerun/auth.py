@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from rerun_bindings import Credentials as Credentials, get_credentials as get_credentials, init_login_flow
+from rerun_bindings import (
+    Credentials as Credentials,
+    get_credentials as get_credentials,
+    init_login_flow,
+    logout as _logout_bindings,
+)
 
 """
 WorkOS Authentication Module for Jupyter Notebooks.
@@ -32,3 +37,16 @@ def login() -> None:
     credentials = flow.finish_login_flow()
     print()
     print(f"Success! You're logged in as '{credentials.user_email}'.")
+
+
+def logout() -> None:
+    """Log out from OAuth session."""
+
+    import webbrowser
+
+    logout_url = _logout_bindings()
+    if logout_url is not None:
+        webbrowser.open(logout_url)
+        print("You have been logged out.")
+    else:
+        print("No credentials found. You are already logged out.")

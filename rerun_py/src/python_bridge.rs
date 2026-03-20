@@ -185,6 +185,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(get_credentials, m)?)?;
     m.add_function(wrap_pyfunction!(init_login_flow, m)?)?;
+    m.add_function(wrap_pyfunction!(logout, m)?)?;
 
     // init
     m.add_function(wrap_pyfunction!(new_recording, m)?)?;
@@ -2438,6 +2439,21 @@ fn get_credentials(py: Python<'_>) -> PyResult<Option<PyCredentials>> {
     })
     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
     Ok(Some(PyCredentials(credentials)))
+}
+
+#[pyfunction]
+/// Log out by clearing stored credentials.
+///
+/// Returns
+/// -------
+/// str | None
+///     The logout URL to end the session, or `None` if already logged out.
+fn logout() -> PyResult<Option<String>> {
+    match re_auth::oauth::clear_credentials() {
+        Ok(Some(outcome)) => Ok(Some(outcome.logout_url)),
+        Ok(None) => Ok(None),
+        Err(err) => Err(PyRuntimeError::new_err(err.to_string())),
+    }
 }
 
 #[pyfunction]

@@ -1375,5 +1375,16 @@ class Credentials:
 def get_credentials() -> Credentials | None:
     """Returns the credentials for the current user."""
 
+def logout() -> str | None:
+    """
+    Log out by clearing stored credentials.
+
+    Returns
+    -------
+    str | None
+        The logout URL to end the session, or `None` if already logged out.
+
+    """
+
 def rerun_trace_context() -> Any:
     """Get the trace context ContextVar for distributed tracing propagation."""

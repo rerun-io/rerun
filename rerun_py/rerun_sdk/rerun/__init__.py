@@ -145,6 +145,7 @@ from .archetypes.boxes2d_ext import (
 )
 from .auth import (
     login as login,
+    logout as logout,
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,
