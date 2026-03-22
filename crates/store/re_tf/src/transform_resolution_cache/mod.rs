@@ -55,8 +55,8 @@ fn iter_child_frames_in_chunk(
             let lengths = list_array.offsets().lengths();
 
             Either::Right(izip!(offsets, lengths).map(move |(offset, length)| {
-                // No need to check for nulls since we treat nulls and empty arrays both as the implicit frame.
-                if length == 0 {
+                // No need to check for nulls since we treat nulls, empty arrays, and empty strings all as the implicit frame.
+                if length == 0 || values.value(offset).is_empty() {
                     implicit_frame
                 } else {
                     // There can only be a single frame id per row today, so only look at the first element.

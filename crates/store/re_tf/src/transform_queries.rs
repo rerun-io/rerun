@@ -155,7 +155,7 @@ fn atomic_latest_at_query(
                     return false;
                 };
                 // Right now everything is singular on a single row, so check only the first element of this string array.
-                let frame_id = if frame_id_row.is_empty() || frame_id_row.is_null(0) {
+                let frame_id = if frame_id_row.is_empty() || frame_id_row.is_null(0) || frame_id_row.value(0).is_empty() {
                     // *Something* on this row has to be non-empty & non-null!
                     // Example where this is not the case:
                     //
