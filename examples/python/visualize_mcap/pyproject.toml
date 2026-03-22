@@ -1,0 +1,12 @@
+[project]
+name = "visualize_mcap"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["rerun-sdk"]
+
+[project.scripts]
+visualize_mcap = "visualize_mcap:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
