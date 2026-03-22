@@ -7,23 +7,20 @@ from typing import TYPE_CHECKING, Any
 import rerun_bindings as bindings
 
 from ._baseclasses import AsComponents  # noqa: TC001
-from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
+from .error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    import pyarrow as pa
-
-    from ._baseclasses import ComponentDescriptor, DescribedComponentBatch
+    from ._baseclasses import DescribedComponentBatch
     from .recording_stream import RecordingStream
 
 
-@catch_and_log_exceptions()
 def log(
     entity_path: str | list[object],
     entity: AsComponents | Iterable[DescribedComponentBatch],
     *extra: AsComponents | Iterable[DescribedComponentBatch],
     static: bool = False,
     recording: RecordingStream | None = None,
-    strict: bool | None = None,  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
+    strict: bool | None = None,
 ) -> None:
     r"""
     Log data to Rerun.
@@ -99,14 +96,71 @@ def log(
         if None, use the global default from `rerun.strict_mode()`
 
     """
+    try:
+        if strict is not None:
+            from .error_utils import strict_mode as _strict_mode_fn
 
-    # TODO(jleibs): Profile is_instance with runtime_checkable vs has_attr
-    # Note from: https://docs.python.org/3/library/typing.html#typing.runtime_checkable
-    #
-    # An isinstance() check against a runtime-checkable protocol can be
-    # surprisingly slow compared to an isinstance() check against a non-protocol
-    # class. Consider using alternative idioms such as hasattr() calls for
-    # structural checks in performance-sensitive code. hasattr is
+            if strict != _strict_mode_fn():
+                # Rare path: caller overrode strict mode — fall back to full decorator
+                return _log_with_catch(
+                    entity_path,
+                    entity,
+                    *extra,
+                    static=static,
+                    recording=recording,  # NOLINT this is a pass through
+                    strict=strict,
+                )
+
+        # Hot path: no strict override, skip catch_and_log_exceptions entirely
+        if hasattr(entity, "as_component_batches"):
+            components = list(entity.as_component_batches())
+        elif isinstance(entity, Iterable):
+            components = list(entity)
+        else:
+            raise TypeError(
+                f"Expected an object implementing rerun.AsComponents or an iterable of rerun.DescribedComponentBatch, "
+                f"but got {type(entity)} instead.",
+            )
+
+        for ext in extra:
+            if hasattr(ext, "as_component_batches"):
+                components.extend(ext.as_component_batches())
+            elif isinstance(ext, Iterable):
+                components.extend(ext)
+            else:
+                raise TypeError(
+                    f"Expected an object implementing rerun.AsComponents or an iterable of rerun.DescribedComponentBatch, "
+                    f"but got {type(entity)} instead.",
+                )
+
+        _log_components(
+            entity_path=entity_path,
+            components=components,
+            static=static,
+            recording=recording,  # NOLINT
+        )
+    except Exception:
+        # On error, re-run through the full catch_and_log_exceptions path
+        _log_with_catch(
+            entity_path,
+            entity,
+            *extra,
+            static=static,
+            recording=recording,  # NOLINT this is a pass through
+            strict=strict,
+        )
+
+
+@catch_and_log_exceptions()
+def _log_with_catch(
+    entity_path: str | list[object],
+    entity: AsComponents | Iterable[DescribedComponentBatch],
+    *extra: AsComponents | Iterable[DescribedComponentBatch],
+    static: bool = False,
+    recording: RecordingStream | None = None,
+    strict: bool | None = None,  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
+) -> None:
+    """Slow path: log with full catch_and_log_exceptions handling."""
     if hasattr(entity, "as_component_batches"):
         components = list(entity.as_component_batches())
     elif isinstance(entity, Iterable):
@@ -132,7 +186,7 @@ def log(
         entity_path=entity_path,
         components=components,
         static=static,
-        recording=recording,  # NOLINT
+        recording=recording,  # NOLINT pass through
     )
 
 
@@ -180,34 +234,16 @@ def _log_components(
 
     """
 
-    instanced: dict[ComponentDescriptor, pa.Array] = {}
-
-    descriptors = [comp.component_descriptor() for comp in components]
-    arrow_arrays = [comp.as_arrow_array() for comp in components]
-
     if isinstance(entity_path, list):
         entity_path = bindings.new_entity_path([str(part) for part in entity_path])
 
-    added = set()
-
-    for descr, array in zip(descriptors, arrow_arrays, strict=False):
-        # Array could be None if there was an error producing the empty array
-        # Nothing we can do at this point other than ignore it. Some form of error
-        # should have been logged.
-        if array is None:
-            continue
-
-        # Skip components which were logged multiple times.
-        if descr in added:
-            _send_warning_or_raise(
-                f"Component {descr} was included multiple times. Only the first instance will be used.",
-                depth_to_user_code=1,
-            )
-            continue
-        else:
-            added.add(descr)
-
-        instanced[descr] = array
+    # Hot path: prefer _native_array (NativeArrowArray, opaque Rust handle) when available.
+    # array_to_rust() has a fast path that clones the Arc instead of FFI round-tripping.
+    instanced = {}
+    for comp in components:
+        batch = comp._batch
+        native = getattr(batch, "_native_array", None)
+        instanced[comp.component_descriptor()] = native if native is not None else batch.as_arrow_array()
 
     bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
         entity_path,
