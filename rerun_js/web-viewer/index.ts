@@ -334,6 +334,7 @@ export class WebViewer {
   //       On failure, call `this.stop` to prevent a memory leak, then re-throw the error.
   #handle: WebHandle | null = null;
   #canvas: HTMLCanvasElement | null = null;
+  #loader: HTMLDivElement | null = null;
   #state: "ready" | "starting" | "stopped" = "stopped";
   #fullscreen = false;
   #allow_fullscreen = false;
@@ -341,6 +342,11 @@ export class WebViewer {
   constructor() {
     injectStyle();
     setupGlobalEventListeners();
+  }
+
+  #clearLoader() {
+    this.#loader?.remove();
+    this.#loader = null;
   }
 
   /**
@@ -363,6 +369,7 @@ export class WebViewer {
 
     if (this.#state !== "stopped") return;
     this.#state = "starting";
+    this.#clearLoader();
 
     this.#canvas = document.createElement("canvas");
     this.#canvas.style.width = options.width ?? "640px";
@@ -370,9 +377,9 @@ export class WebViewer {
     parent.append(this.#canvas);
 
     // Show loading spinner
-    const loader = document.createElement("div");
-    loader.id = "rerun-loader";
-    loader.innerHTML = `
+    this.#loader = document.createElement("div");
+    this.#loader.id = "rerun-loader";
+    this.#loader.innerHTML = `
       <style>
         @keyframes rerun-spin { to { transform: rotate(360deg); } }
       </style>
@@ -381,10 +388,10 @@ export class WebViewer {
         <div style="margin-top: 16px;">Loading Rerun…</div>
       </div>
     `;
-    loader.style.position = "absolute";
-    loader.style.inset = "0";
+    this.#loader.style.position = "absolute";
+    this.#loader.style.inset = "0";
     parent.style.position = "relative";
-    parent.append(loader);
+    parent.append(this.#loader);
 
     // This yield appears to be necessary to ensure that the canvas is attached to the DOM
     // and visible. Without it we get occasionally get a panic about a failure to find a canvas
@@ -400,11 +407,14 @@ export class WebViewer {
     try {
       WebHandle_class = await load(base_url);
     } catch (e) {
-      loader.remove();
+      this.#clearLoader();
       this.#fail("Failed to load rerun", String(e));
       throw e;
     }
-    if (this.#state !== "starting") return;
+    if (this.#state !== "starting") {
+      this.#clearLoader();
+      return;
+    }
 
     const fullscreen = this.#allow_fullscreen
       ? {
@@ -435,13 +445,16 @@ export class WebViewer {
     try {
       await this.#handle.start(this.#canvas);
     } catch (e) {
-      loader.remove();
+      this.#clearLoader();
       this.#fail("Failed to start", String(e));
       throw e;
     }
-    if (this.#state !== "starting") return;
+    if (this.#state !== "starting") {
+      this.#clearLoader();
+      return;
+    }
 
-    loader.remove();
+    this.#clearLoader();
     this.#state = "ready";
     this.#dispatch_event("ready");
 
@@ -655,6 +668,7 @@ export class WebViewer {
     this.#state = "stopped";
 
     this.#canvas?.remove();
+    this.#clearLoader();
 
     try {
       this.#handle?.destroy();
@@ -666,6 +680,7 @@ export class WebViewer {
 
     this.#canvas = null;
     this.#handle = null;
+    this.#loader = null;
     this.#fullscreen = false;
     this.#allow_fullscreen = false;
   }
