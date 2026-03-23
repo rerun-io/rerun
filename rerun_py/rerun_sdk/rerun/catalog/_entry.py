@@ -658,6 +658,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             using_index_values=using_index_values,
         )
 
+    @deprecated(
+        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def create_fts_search_index(
         self,
         *,
@@ -666,15 +669,29 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         store_position: bool = False,
         base_tokenizer: str = "simple",
     ) -> None:
-        """Create a full-text search index on the given column."""
+        """
+        Create a full-text search index on the given column.
 
-        return self._internal.create_fts_search_index(
-            column=column,
-            time_index=time_index,
-            store_position=store_position,
-            base_tokenizer=base_tokenizer,
-        )
+        .. deprecated::
+            Index creation is currently not supported.
+            Contact Rerun if this is a feature you would like us to support.
+        """
 
+        try:
+            return self._internal.create_fts_search_index(
+                column=column,
+                time_index=time_index,
+                store_position=store_position,
+                base_tokenizer=base_tokenizer,
+            )
+        except Exception as err:
+            raise NotImplementedError(
+                "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
+            ) from err
+
+    @deprecated(
+        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def create_vector_search_index(
         self,
         *,
@@ -686,6 +703,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
     ) -> IndexingResult:
         """
         Create a vector index on the given column.
+
+        .. deprecated::
+            Index creation is currently not supported.
+            Contact Rerun if this is a feature you would like us to support.
 
         This will enable indexing and build the vector index over all existing values
         in the specified component column.
@@ -715,13 +736,18 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         """
 
-        return self._internal.create_vector_search_index(
-            column=column,
-            time_index=time_index,
-            target_partition_num_rows=target_partition_num_rows,
-            num_sub_vectors=num_sub_vectors,
-            distance_metric=distance_metric,
-        )
+        try:
+            return self._internal.create_vector_search_index(
+                column=column,
+                time_index=time_index,
+                target_partition_num_rows=target_partition_num_rows,
+                num_sub_vectors=num_sub_vectors,
+                distance_metric=distance_metric,
+            )
+        except Exception as err:
+            raise NotImplementedError(
+                "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
+            ) from err
 
     def list_search_indexes(self) -> list[IndexingResult]:
         """List all user-defined indexes in this dataset."""
@@ -736,24 +762,52 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.delete_search_indexes(column)
 
+    @deprecated(
+        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def search_fts(
         self,
         query: str,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
     ) -> datafusion.DataFrame:
-        """Search the dataset using a full-text search query."""
+        """
+        Search the dataset using a full-text search query.
 
-        return self._internal.search_fts(query, column)
+        .. deprecated::
+            Index search is currently not supported.
+            Contact Rerun if this is a feature you would like us to support.
+        """
 
+        try:
+            return self._internal.search_fts(query, column)
+        except Exception as err:
+            raise NotImplementedError(
+                "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
+            ) from err
+
+    @deprecated(
+        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def search_vector(
         self,
         query: Any,  # VectorLike
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         top_k: int,
     ) -> datafusion.DataFrame:
-        """Search the dataset using a vector search query."""
+        """
+        Search the dataset using a vector search query.
 
-        return self._internal.search_vector(query, column, top_k)
+        .. deprecated::
+            Index search is currently not supported.
+            Contact Rerun if this is a feature you would like us to support.
+        """
+
+        try:
+            return self._internal.search_vector(query, column, top_k)
+        except Exception as err:
+            raise NotImplementedError(
+                "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
+            ) from err
 
     def do_maintenance(  # noqa: PLR0917
         self,
