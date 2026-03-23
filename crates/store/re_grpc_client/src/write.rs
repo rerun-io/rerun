@@ -256,15 +256,15 @@ impl Client {
                         });
                     }
 
-                    if !has_emitted_slow_warning && very_slow <= start.elapsed() {
+                    if !has_emitted_slow_warning && very_slow <= elapsed {
                         if timeout < Duration::from_secs(10_000) {
-                            re_log::info!(
+                            re_log::warn!(
                                 "Flushing the gRPC stream has taken over {:.1}s seconds (timeout: {:.0}s); will keep waiting…",
                                 elapsed.as_secs_f32(),
                                 timeout.as_secs_f32(),
                             );
                         } else {
-                            re_log::info!(
+                            re_log::warn!(
                                 "Flushing the gRPC stream has taken over {:.1}s seconds; will keep waiting…",
                                 elapsed.as_secs_f32()
                             );
