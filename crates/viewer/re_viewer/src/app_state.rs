@@ -239,12 +239,12 @@ impl AppState {
             }
 
             Route::ChunkStoreBrowser {
-                recording_id,
+                store_id,
                 selected_chunk,
                 previous,
             } => {
                 let previous = previous.clone();
-                let recording_id = recording_id.clone();
+                let store_id = store_id.clone();
                 let selected_chunk_before = *selected_chunk;
 
                 let result = self.datastore_ui.ui(
@@ -254,14 +254,19 @@ impl AppState {
                     self.app_options.timestamp_format,
                     selected_chunk_before,
                 );
+                // Only reflect store/chunk changes back into the route when
+                // the route started with an explicit store_id. Otherwise the
+                // empty fallback recording would be written into the route,
+                // polluting the navigation history.
+                let result_store_id = store_id.as_ref().map(|_| result.recording_id.clone());
                 if !result.keep_open {
                     self.navigation.replace((*previous).clone());
-                } else if result.recording_id != recording_id
+                } else if result_store_id != store_id
                     || result.selected_chunk != selected_chunk_before
                 {
                     self.navigation.replace(Route::ChunkStoreBrowser {
-                        recording_id: result.recording_id.clone(),
-                        selected_chunk: if result.recording_id != recording_id {
+                        store_id: result_store_id.clone(),
+                        selected_chunk: if result_store_id != store_id {
                             None
                         } else {
                             result.selected_chunk

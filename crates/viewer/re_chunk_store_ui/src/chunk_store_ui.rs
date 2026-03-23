@@ -113,6 +113,7 @@ pub struct DatastoreUi {
     store_kind: StoreKind,
     selected_recording_id: Option<StoreId>,
     last_route_recording_id: Option<StoreId>,
+    selected_blueprint_id: Option<StoreId>,
     focused_chunk: Option<ChunkUi>,
     show_details_panels: bool,
 
@@ -133,6 +134,7 @@ impl Default for DatastoreUi {
             store_kind: StoreKind::Recording,
             selected_recording_id: None,
             last_route_recording_id: None,
+            selected_blueprint_id: None,
             focused_chunk: None,
             show_details_panels: false,
             chunk_list_mode: ChunkListMode::default(),
@@ -225,9 +227,17 @@ impl DatastoreUi {
             .and_then(|id| storage_context.bundle.get(id))
             .unwrap_or(ctx.recording);
 
+        // Resolve the blueprint to display: use the selected one if valid, otherwise
+        // fall back to the active blueprint.
+        let blueprint = self
+            .selected_blueprint_id
+            .as_ref()
+            .and_then(|id| storage_context.bundle.get(id))
+            .unwrap_or(ctx.blueprint);
+
         let storage_engine = match self.store_kind {
             StoreKind::Recording => recording.storage_engine(),
-            StoreKind::Blueprint => ctx.blueprint.storage_engine(),
+            StoreKind::Blueprint => blueprint.storage_engine(),
         };
         let chunk_store = storage_engine.store();
 
@@ -651,7 +661,14 @@ impl DatastoreUi {
                 });
 
                 ui.separator();
-                self.switch_recording_ui(ui, chunk_store, storage_context);
+                match self.store_kind {
+                    StoreKind::Recording => {
+                        self.switch_recording_ui(ui, chunk_store, storage_context);
+                    }
+                    StoreKind::Blueprint => {
+                        self.switch_blueprint_ui(ui, chunk_store, storage_context);
+                    }
+                }
 
                 if reset_clicked {
                     self.reset_ui_state();
@@ -666,9 +683,10 @@ impl DatastoreUi {
 
                 if close_clicked {
                     *datastore_ui_active = false;
-                    // Reset the selected recording when closing the chunk store UI,
+                    // Reset selections when closing the chunk store UI,
                     // to avoid confusion when reopening it again from a different recording.
                     self.selected_recording_id = None;
+                    self.selected_blueprint_id = None;
                     *selected_chunk = None;
                 }
 
@@ -772,13 +790,6 @@ impl DatastoreUi {
             return;
         }
 
-        let selected_text = format!(
-            "{} ({})",
-            chunk_store.id().application_id(),
-            chunk_store.id().recording_id(),
-        );
-        let current_store_id = chunk_store.id();
-
         let icon_rect = ui.small_icon(&re_ui::icons::DATASET, None);
         ui.interact(
             icon_rect,
@@ -786,26 +797,79 @@ impl DatastoreUi {
             egui::Sense::hover(),
         )
         .on_hover_text("Selected recording");
-        egui::ComboBox::new("recording_selector", "")
-            .selected_text(selected_text)
-            .show_ui(ui, |ui| {
-                for recording in &recordings {
-                    let store_id = recording.store_id();
-                    let label = format!(
-                        "{} ({})",
-                        store_id.application_id(),
-                        store_id.recording_id(),
-                    );
-                    let is_selected = *store_id == current_store_id;
-                    if ui
-                        .add(re_ui::ComboItem::new(label).selected(is_selected))
-                        .clicked()
-                    {
-                        self.selected_recording_id = Some(store_id.clone());
-                    }
-                }
-            });
+
+        store_selector_combo_ui(
+            ui,
+            chunk_store,
+            "recording_selector",
+            recordings.into_iter(),
+            &mut self.selected_recording_id,
+        );
     }
+
+    fn switch_blueprint_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        chunk_store: &ChunkStore,
+        storage_context: &StorageContext<'_>,
+    ) {
+        // Collect all blueprint stores (active blueprint + table blueprints).
+        let blueprints: Vec<&EntityDb> = storage_context
+            .bundle
+            .entity_dbs()
+            .filter(|db| db.store_kind() == StoreKind::Blueprint)
+            .collect();
+
+        if blueprints.len() <= 1 {
+            // Only the active blueprint, no need for a switcher.
+            return;
+        }
+
+        ui.label("Selected blueprint:");
+
+        store_selector_combo_ui(
+            ui,
+            chunk_store,
+            "blueprint_selector",
+            blueprints.into_iter(),
+            &mut self.selected_blueprint_id,
+        );
+    }
+}
+
+fn store_selector_combo_ui<'a>(
+    ui: &mut egui::Ui,
+    chunk_store: &ChunkStore,
+    combo_id: &str,
+    stores: impl Iterator<Item = &'a EntityDb>,
+    selected_id: &mut Option<StoreId>,
+) {
+    let current_store_id = chunk_store.id();
+    let selected_text = format!(
+        "{} ({})",
+        current_store_id.application_id(),
+        current_store_id.recording_id(),
+    );
+
+    egui::ComboBox::new(combo_id, "")
+        .selected_text(selected_text)
+        .show_ui(ui, |ui| {
+            for store in stores {
+                let store_id = store.store_id();
+                let label = format!(
+                    "{} ({})",
+                    store_id.application_id(),
+                    store_id.recording_id(),
+                );
+                let is_selected = *store_id == current_store_id;
+                if ui
+                    .add(re_ui::ComboItem::new(label).selected(is_selected))
+                    .clicked()
+                {
+                    *selected_id = Some(store_id.clone());
+                }
+            }
+        });
 }
 
 fn format_time_range(

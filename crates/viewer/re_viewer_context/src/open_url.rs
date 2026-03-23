@@ -388,11 +388,11 @@ impl ViewerOpenUrl {
             }
 
             Route::ChunkStoreBrowser {
-                recording_id,
+                store_id,
                 selected_chunk,
                 ..
             } => Ok(Self::ChunkStoreBrowser {
-                recording_id: Some(recording_id.clone()),
+                recording_id: store_id.clone(),
                 selected_chunk: *selected_chunk,
             }),
         }
@@ -661,7 +661,7 @@ impl ViewerOpenUrl {
                 selected_chunk,
             } => {
                 command_sender.send_system(SystemCommand::OpenChunkStoreBrowser {
-                    recording_id,
+                    store_id: recording_id,
                     selected_chunk,
                 });
             }
@@ -1064,7 +1064,7 @@ mod tests {
             ViewerOpenUrl::from_route(
                 &store_hub,
                 &Route::ChunkStoreBrowser {
-                    recording_id: StoreId::empty_recording(),
+                    store_id: Some(StoreId::empty_recording()),
                     selected_chunk: None,
                     previous: Box::new(dummy_mode),
                 }

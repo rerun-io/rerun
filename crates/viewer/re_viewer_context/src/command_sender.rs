@@ -42,7 +42,7 @@ pub enum SystemCommand {
 
     /// Activates the chunk store route.
     OpenChunkStoreBrowser {
-        recording_id: Option<StoreId>,
+        store_id: Option<StoreId>,
         selected_chunk: Option<ChunkId>,
     },
 
