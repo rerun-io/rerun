@@ -9507,7 +9507,6 @@ dependencies = [
 name = "re_ros_msg"
 version = "0.31.0-alpha.1+dev"
 dependencies = [
- "anyhow",
  "serde",
  "thiserror 2.0.18",
 ]
