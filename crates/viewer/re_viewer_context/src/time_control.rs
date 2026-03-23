@@ -1046,6 +1046,14 @@ impl TimeControl {
                     .entry(*self.timeline_name())
                     .or_insert_with(|| TimeState::new(*time));
                 state.time = *time;
+
+                // If we were following, pause so we stay at the scrubbed time
+                // instead of advancing. This also persists to the blueprint so
+                // `update_from_blueprint` doesn't re-enable following on the next frame.
+                if self.play_state() == PlayState::Following {
+                    self.pause(blueprint_ctx);
+                }
+
                 self.following = false;
                 self.wait_for_data = true;
 
