@@ -269,7 +269,7 @@ class DatasetEntry(Entry):
         base_tokenizer: str = "simple",
     ) -> None:
         try:
-            return self._inner.create_fts_search_index(
+            return self._inner.create_fts_search_index(  # ty: ignore[deprecated]
                 column=column,
                 time_index=time_index,
                 store_position=store_position,
@@ -293,7 +293,7 @@ class DatasetEntry(Entry):
         distance_metric: Any = ...,
     ) -> Any:
         try:
-            return self._inner.create_vector_search_index(
+            return self._inner.create_vector_search_index(  # ty: ignore[deprecated]
                 column=column,
                 time_index=time_index,
                 target_partition_num_rows=target_partition_num_rows,
@@ -316,7 +316,7 @@ class DatasetEntry(Entry):
     )
     def search_fts(self, query: str, column: Any) -> datafusion.DataFrame:
         try:
-            return self._inner.search_fts(query, column)
+            return self._inner.search_fts(query, column)  # ty: ignore[deprecated]
         except Exception as err:
             raise NotImplementedError(
                 "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
@@ -327,7 +327,7 @@ class DatasetEntry(Entry):
     )
     def search_vector(self, query: Any, column: Any, top_k: int) -> datafusion.DataFrame:
         try:
-            return self._inner.search_vector(query, column, top_k)
+            return self._inner.search_vector(query, column, top_k)  # ty: ignore[deprecated]
         except Exception as err:
             raise NotImplementedError(
                 "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."

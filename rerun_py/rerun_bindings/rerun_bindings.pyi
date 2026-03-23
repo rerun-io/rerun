@@ -10,6 +10,7 @@ import datafusion as dfn
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from typing_extensions import deprecated
 
 from .types import (
     IndexValuesLike as IndexValuesLike,
@@ -996,6 +997,9 @@ class DatasetEntryInternal:
 
     # ---
 
+    @deprecated(
+        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def create_fts_search_index(
         self,
         *,
@@ -1004,6 +1008,9 @@ class DatasetEntryInternal:
         store_position: bool = False,
         base_tokenizer: str = "simple",
     ) -> None: ...
+    @deprecated(
+        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def create_vector_search_index(
         self,
         *,
@@ -1018,11 +1025,17 @@ class DatasetEntryInternal:
         self,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
     ) -> list[IndexConfig]: ...
+    @deprecated(
+        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def search_fts(
         self,
         query: str,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
     ) -> dfn.DataFrame: ...
+    @deprecated(
+        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def search_vector(
         self,
         query: Any,  # VectorLike
