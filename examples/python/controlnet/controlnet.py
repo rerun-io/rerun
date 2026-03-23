@@ -15,14 +15,15 @@ import cv2
 import numpy as np
 import PIL.Image
 import requests
-import rerun as rr
-import rerun.blueprint as rrb
 import torch
 from diffusers import (
     AutoencoderKL,
     ControlNetModel,
     StableDiffusionXLControlNetPipeline,
 )
+
+import rerun as rr
+import rerun.blueprint as rrb
 
 RERUN_LOGO_URL = "https://storage.googleapis.com/rerun-example-datasets/controlnet/rerun-icon-1000.png"
 

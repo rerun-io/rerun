@@ -218,7 +218,7 @@ import rerun as rr
 
 client = rr.catalog.CatalogClient("rerun://example.cloud.rerun.io")
 dataset = client.get_dataset("my_data")
-df = dataset.filter_contents("/obs").reader(index="log_time")    # `df` is a DataFusion dataframe
+df = dataset.filter_contents("/obs").reader(index="log_time")  # `df` is a DataFusion dataframe
 df.filter(dfn.col("obs:Scalars:scalars").is_not_null()).count()  # count observations in recording
 ```
 

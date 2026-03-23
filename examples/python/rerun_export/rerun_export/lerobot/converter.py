@@ -21,7 +21,7 @@ from rerun_export.lerobot.video_processing import (
     load_video_samples,
     remux_video_stream,
 )
-from rerun_export.utils import normalize_times, to_float32_vector, unwrap_singleton, suppress_ffmpeg_output
+from rerun_export.utils import normalize_times, suppress_ffmpeg_output, to_float32_vector, unwrap_singleton
 
 if TYPE_CHECKING:
     from lerobot.datasets.lerobot_dataset import LeRobotDataset  # type: ignore[import-untyped,import-not-found]

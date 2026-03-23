@@ -1,6 +1,7 @@
 """Log a couple 2D line segments using 2D line strips."""
 
 import numpy as np
+
 import rerun as rr
 import rerun.blueprint as rrb
 

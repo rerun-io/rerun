@@ -137,7 +137,7 @@ Previously, `RecordingStream` instances could be created with the `rr.new_record
 
 ```python
 # before
-rec = rr. new_recording("rerun_example")
+rec = rr.new_recording("rerun_example")
 
 # after
 rec = rr.RecordingStream("my_app_id")
@@ -147,7 +147,7 @@ If you used the `spawn=True` argument, you will now have to call the `spawn()` m
 
 ```python
 # before
-rec = rr. new_recording("my_app_id", spawn=True)
+rec = rr.new_recording("my_app_id", spawn=True)
 
 # after
 rec = rr.RecordingStream("my_app_id")
@@ -216,43 +216,55 @@ Setting up styles for a plot.
 Before:
 ```python
 # …
-rrb.TimeSeriesView(
-    name="Trig",
-    origin="/trig",
-    overrides={
-        "/trig/sin": [rr.components.Color([255, 0, 0]), rr.components.Name("sin(0.01t)")],
-        "/trig/cos": [rr.components.Color([0, 255, 0]), rr.components.Name("cos(0.01t)")],
-    },
-),
-rrb.TimeSeriesView(
-    name="Classification",
-    origin="/classification",
-    overrides={
-        "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
-        "classification/samples": [rrb.VisualizerOverrides("SeriesPoints")], # This ensures that the `SeriesPoints` visualizers is used for this entity.
-    },
-),
+(
+    rrb.TimeSeriesView(
+        name="Trig",
+        origin="/trig",
+        overrides={
+            "/trig/sin": [rr.components.Color([255, 0, 0]), rr.components.Name("sin(0.01t)")],
+            "/trig/cos": [rr.components.Color([0, 255, 0]), rr.components.Name("cos(0.01t)")],
+        },
+    ),
+)
+(
+    rrb.TimeSeriesView(
+        name="Classification",
+        origin="/classification",
+        overrides={
+            "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
+            "classification/samples": [
+                rrb.VisualizerOverrides("SeriesPoints")
+            ],  # This ensures that the `SeriesPoints` visualizers is used for this entity.
+        },
+    ),
+)
 # …
 ```
 After:
 ```python
 # …
-rrb.TimeSeriesView(
-    name="Trig",
-    origin="/trig",
-    overrides={
-        "/trig/sin": rr.SeriesLines.from_fields(colors=[255, 0, 0], names="sin(0.01t)"),
-        "/trig/cos": rr.SeriesLines.from_fields(colors=[0, 255, 0], names="cos(0.01t)"),
-    },
-),
-rrb.TimeSeriesView(
-    name="Classification",
-    origin="/classification",
-    overrides={
-        "classification/line": rr.SeriesLines.from_fields(colors=[255, 255, 0], widths=3.0),
-        "classification/samples": rrb.VisualizerOverrides("SeriesPoints"), # This ensures that the `SeriesPoints` visualizers is used for this entity.
-    },
-),
+(
+    rrb.TimeSeriesView(
+        name="Trig",
+        origin="/trig",
+        overrides={
+            "/trig/sin": rr.SeriesLines.from_fields(colors=[255, 0, 0], names="sin(0.01t)"),
+            "/trig/cos": rr.SeriesLines.from_fields(colors=[0, 255, 0], names="cos(0.01t)"),
+        },
+    ),
+)
+(
+    rrb.TimeSeriesView(
+        name="Classification",
+        origin="/classification",
+        overrides={
+            "classification/line": rr.SeriesLines.from_fields(colors=[255, 255, 0], widths=3.0),
+            "classification/samples": rrb.VisualizerOverrides(
+                "SeriesPoints"
+            ),  # This ensures that the `SeriesPoints` visualizers is used for this entity.
+        },
+    ),
+)
 # …
 ```
 
@@ -309,44 +321,44 @@ rr.send_blueprint(
 Before:
 ```python
 # …
-overrides={
-    "helix/structure/scaffolding/beads": [
-        rrb.VisibleTimeRange(
-            "stable_time",
-            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
-            end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
-        ),
-    ],
-},
+overrides = (
+    {
+        "helix/structure/scaffolding/beads": [
+            rrb.VisibleTimeRange(
+                "stable_time",
+                start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
+                end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
+            ),
+        ],
+    },
+)
 # …
 ```
 
 After:
 ```python
 # …
-overrides={
+overrides = {
     "helix/structure/scaffolding/beads": rrb.VisibleTimeRanges(
-            timeline="stable_time",
-            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
-            end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3)
-        ),
+        timeline="stable_time",
+        start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
+        end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
+    ),
 }
 # …
 ```
 … or respectively for multiple timelines:
 ```python
 # …
-overrides={
+overrides = {
     "helix/structure/scaffolding/beads": rrb.VisibleTimeRanges([
         rrb.VisibleTimeRange(
             timeline="stable_time",
             start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
-            end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3)
+            end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
         ),
         rrb.VisibleTimeRange(
-            timeline="index",
-            start=rrb.TimeRangeBoundary.absolute(seq=10),
-            end=rrb.TimeRangeBoundary.absolute(seq=100)
+            timeline="index", start=rrb.TimeRangeBoundary.absolute(seq=10), end=rrb.TimeRangeBoundary.absolute(seq=100)
         ),
     ])
 }

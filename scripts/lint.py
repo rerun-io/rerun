@@ -91,10 +91,7 @@ def is_valid_todo_part(part: str) -> bool:
     if re.match(r"^[a-z][a-z0-9_]+$", part):
         return True  # user-name
 
-    if re.match(r"^RR-\d+$", part):
-        return True  # linear issue
-
-    return False
+    return bool(re.match(r"^RR-\d+$", part))  # linear issue
 
 
 def check_string(s: str) -> str | None:
@@ -317,7 +314,7 @@ def lint_line(
             line,
         ):
             app_id = m.group(2)
-            if not app_id.startswith("rerun_example_") and not app_id == "<your_app_name>":
+            if not app_id.startswith("rerun_example_") and app_id != "<your_app_name>":
                 return f"All examples should have an app_id starting with 'rerun_example_'. Found '{app_id}'"
 
     # Deref impls should be marked #[inline] or #[inline(always)].
@@ -587,10 +584,7 @@ def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
         if prev_line.endswith("*"):
             return False  # maybe in a macro
 
-        if prev_line.endswith('r##"'):
-            return False  # part of a multi-line string
-
-        return True
+        return not prev_line.endswith('r##"')  # part of a multi-line string
 
     return False
 
@@ -750,7 +744,7 @@ def lint_pyclass_requirements(lines_in: list[str]) -> tuple[list[str], list[int]
                 struct_line_idx = j
                 while struct_line_idx < len(lines_in):
                     sl = lines_in[struct_line_idx].strip()
-                    if sl.startswith("pub struct ") or sl.startswith("struct "):
+                    if sl.startswith(("pub struct ", "struct ")):
                         struct_match = re.search(r"struct\s+(\w+)", sl)
                         if struct_match:
                             cls_name = struct_match.group(1)
@@ -1667,7 +1661,7 @@ def main() -> None:
 
     # Path prefix from git root to the rerun directory.
     # Monorepo: "./rerun/", Standalone: "./"
-    global rerun_prefix  # noqa: PLW0603
+    global rerun_prefix
     rerun_relative = Path(rerun_root).relative_to(repo_root)
     rerun_prefix = str(rerun_relative).replace("\\", "/")
     if rerun_prefix == ".":

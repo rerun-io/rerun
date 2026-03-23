@@ -16,8 +16,8 @@ from rerun_export.utils import normalize_times, unwrap_singleton
 
 if TYPE_CHECKING:
     import numpy.typing as npt
-    import rerun as rr
 
+    import rerun as rr
     from rerun_export.lerobot.types import VideoSampleData, VideoSpec
 
 
@@ -146,8 +146,7 @@ def decode_video_frame(
 
     """
     idx = int(np.searchsorted(times_ns, target_time_ns, side="right") - 1)
-    if idx < 0:
-        idx = 0
+    idx = max(idx, 0)
 
     # Without keyframe info, decode from the beginning
     sample_bytes = b"".join(samples[: idx + 1])
@@ -267,8 +266,7 @@ def remux_video_stream(
     output_stream.time_base = time_base
 
     # Remux packets with proper timestamps
-    packet_idx = 0
-    for packet in input_container.demux(input_stream):
+    for packet_idx, packet in enumerate(input_container.demux(input_stream)):
         if packet_idx >= len(times_ns):
             break
 
@@ -279,7 +277,6 @@ def remux_video_stream(
         packet.stream = output_stream
 
         output_container.mux(packet)
-        packet_idx += 1
 
     input_container.close()
     output_container.close()

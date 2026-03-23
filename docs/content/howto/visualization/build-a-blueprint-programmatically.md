@@ -61,11 +61,13 @@ brand_colors = {
     "MSFT": 0xF14F21FF,
 }
 
+
 def style_plot(symbol: str) -> rr.SeriesLine:
     return rr.SeriesLine(
         color=brand_colors[symbol],
         name=symbol,
     )
+
 
 def style_peak(symbol: str) -> rr.SeriesPoint:
     return rr.SeriesPoint(
@@ -73,6 +75,7 @@ def style_peak(symbol: str) -> rr.SeriesPoint:
         name=f"{symbol} (peak)",
         marker="Up",
     )
+
 
 def info_card(
     shortName: str,
@@ -106,7 +109,7 @@ def main() -> None:
 
     # This is where we will edit the blueprint
     blueprint = None
-    #rr.send_blueprint(blueprint)
+    # rr.send_blueprint(blueprint)
 
     # Log the stock data for each symbol and date
     for symbol in symbols:
@@ -136,6 +139,7 @@ def main() -> None:
                 rr.log(f"stocks/{symbol}/{day}", rr.Scalars(row.High))
                 if row.Index == peak:
                     rr.log(f"stocks/{symbol}/peaks/{day}", rr.Scalars(row.High))
+
 
 if __name__ == "__main__":
     main()
@@ -417,9 +421,7 @@ rr.set_time("time", sequence=5)
 rr.log("log/other", rr.TextLog("A warning.", level=rr.TextLogLevel.WARN))
 for i in range(10):
     rr.set_time("time", sequence=i)
-    rr.log(
-        "log/status", rr.TextLog(f"Processing item {i}.", level=rr.TextLogLevel.INFO)
-    )
+    rr.log("log/status", rr.TextLog(f"Processing item {i}.", level=rr.TextLogLevel.INFO))
 
 # Create a text view that displays all logs.
 blueprint = rrb.Blueprint(
@@ -437,12 +439,8 @@ input("Press Enter to continue…")
 n = 150
 angle = np.linspace(0, 10 * np.pi, n)
 spiral_radius = np.linspace(0.0, 3.0, n) ** 2
-positions = np.column_stack(
-    (np.cos(angle) * spiral_radius, np.sin(angle) * spiral_radius)
-)
-colors = np.dstack(
-    (np.linspace(255, 255, n), np.linspace(255, 0, n), np.linspace(0, 255, n))
-)[0].astype(int)
+positions = np.column_stack((np.cos(angle) * spiral_radius, np.sin(angle) * spiral_radius))
+colors = np.dstack((np.linspace(255, 255, n), np.linspace(255, 0, n), np.linspace(0, 255, n)))[0].astype(int)
 radii = np.linspace(0.01, 0.7, n)
 
 rr.log("points", rr.Points2D(positions, colors=colors, radii=radii))
@@ -597,9 +595,7 @@ blueprint = rrb.Blueprint(
                 slider=[2],
             ),
             # Set a scalar mapping with a custom colormap, gamma and magnification filter.
-            scalar_mapping=rrb.TensorScalarMapping(
-                colormap="turbo", gamma=1.5, mag_filter="linear"
-            ),
+            scalar_mapping=rrb.TensorScalarMapping(colormap="turbo", gamma=1.5, mag_filter="linear"),
             # Fill the view, ignoring aspect ratio.
             view_fit="fill",
         ),

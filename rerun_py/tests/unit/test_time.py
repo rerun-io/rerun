@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Self
 
 import numpy as np
 import pyarrow as pa
@@ -51,7 +51,7 @@ def test_to_nanos_invalid(duration: Any) -> None:
 class MockPandasTimestamp(datetime):
     nanoseconds: int = 0
 
-    def __new__(cls, *args: Any, nanoseconds: int = 0, **kwargs: dict[str, Any]) -> MockPandasTimestamp:
+    def __new__(cls, *args: Any, nanoseconds: int = 0, **kwargs: dict[str, Any]) -> Self:
         instance = super().__new__(cls, *args, **kwargs)  # type: ignore[arg-type]
         object.__setattr__(instance, "nanoseconds", nanoseconds)
         return instance

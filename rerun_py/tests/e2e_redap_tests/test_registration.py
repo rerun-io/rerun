@@ -642,6 +642,5 @@ def _get_points_data(ds: DatasetEntry) -> list[list[float]]:
     for chunk in positions_column.chunks:
         for row in chunk:
             if row is not None:
-                for point in row.as_py():
-                    points.append(point)
+                points.extend(row.as_py())
     return points

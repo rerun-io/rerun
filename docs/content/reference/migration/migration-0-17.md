@@ -42,11 +42,9 @@ rr.log("data", rr.SeriesPoints(colors=[255, 255, 0]), static=True)
 
 for t in range(1000):
     rr.set_time_sequence("frame_nr", t)
-    rr.log("data",rr.Scalar(get_data(t))),
+    (rr.log("data", rr.Scalar(get_data(t))),)
 
-rr.send_blueprint(
-    rr.blueprint.TimeSeriesView(origin="data")
-)
+rr.send_blueprint(rr.blueprint.TimeSeriesView(origin="data"))
 ```
 
 Now the override can be specified from the blueprint, removing the need to include styling information in the data store:
@@ -54,17 +52,12 @@ Now the override can be specified from the blueprint, removing the need to inclu
 ```python
 for t in range(1000):
     rr.set_time_sequence("frame_nr", t)
-    rr.log("data",rr.Scalar(get_data(t))),
+    (rr.log("data", rr.Scalar(get_data(t))),)
 
 rr.send_blueprint(
     rr.blueprint.TimeSeriesView(
         origin="data",
-        overrides={
-            "data": [
-                rr.blueprint.VisualizerOverrides("SeriesPoints"),
-                rr.components.Color([255, 255, 0])
-            ]
-        },
+        overrides={"data": [rr.blueprint.VisualizerOverrides("SeriesPoints"), rr.components.Color([255, 255, 0])]},
     )
 )
 ```

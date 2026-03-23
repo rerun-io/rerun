@@ -6,7 +6,7 @@ import inspect
 import math
 import uuid
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Self, TypeVar, overload
 
 import rerun as rr
 from rerun import bindings
@@ -346,7 +346,7 @@ class RecordingStream:
         self._disconnect_orphaned_recordings = bindings.disconnect_orphaned_recordings
         return self
 
-    def __enter__(self) -> RecordingStream:
+    def __enter__(self) -> Self:
         self.context_token = active_recording_stream.set(self)
         self._prev = set_thread_local_data_recording(self)
         return self

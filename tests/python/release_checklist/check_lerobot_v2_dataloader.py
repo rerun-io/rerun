@@ -3,8 +3,9 @@ from __future__ import annotations
 from argparse import Namespace
 from pathlib import Path
 
-import rerun as rr
 from huggingface_hub import snapshot_download
+
+import rerun as rr
 
 README = """\
 # LeRobot dataloader check

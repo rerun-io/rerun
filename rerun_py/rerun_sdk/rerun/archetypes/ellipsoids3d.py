@@ -43,6 +43,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype, VisualizableArchetype):
     ### Covariance ellipsoid:
     ```python
     import numpy as np
+
     import rerun as rr
 
     rr.init("rerun_example_ellipsoid_simple", spawn=True)

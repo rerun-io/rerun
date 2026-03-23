@@ -1,6 +1,5 @@
 """Demonstrate converting Rerun recording to LeRobot dataset."""
 
-# ruff: noqa: E402
 from __future__ import annotations
 
 import atexit
@@ -15,11 +14,12 @@ atexit.register(lambda: shutil.rmtree(TMP_DIR) if TMP_DIR.exists() else None)
 
 from pathlib import Path
 
-import rerun as rr
 from lerobot.datasets.lerobot_dataset import LeRobotDataset  # type: ignore[import-untyped,import-not-found]
 from rerun_export.lerobot.converter import convert_dataframe_to_episode
 from rerun_export.lerobot.feature_inference import infer_features
 from rerun_export.lerobot.types import LeRobotConversionConfig, VideoSpec
+
+import rerun as rr
 
 # Start a server with RRD recordings
 # In practice, you would point this to your directory of RRD files
@@ -40,7 +40,8 @@ single_recording = dataset.segment_ids()[0]
 # - Camera feeds from multiple viewpoints
 # - Task descriptions (e.g., language instructions)
 training_data = (
-    dataset.filter_segments(single_recording)
+    dataset
+    .filter_segments(single_recording)
     .filter_contents([
         "/action/joint_positions",
         "/observation/joint_positions",
@@ -132,7 +133,8 @@ for segment_id in dataset.segment_ids():
     print(f"Exporting segment: {segment_id}")
 
     segment_data = (
-        dataset.filter_segments(segment_id)
+        dataset
+        .filter_segments(segment_id)
         .filter_contents([
             "/action/joint_positions",
             "/observation/joint_positions",

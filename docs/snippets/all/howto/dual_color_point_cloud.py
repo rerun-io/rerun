@@ -8,6 +8,7 @@ then a blueprint maps each color set to a separate 3D view.
 from __future__ import annotations
 
 import numpy as np
+
 import rerun as rr
 import rerun.blueprint as rrb
 from rerun.blueprint.datatypes import ComponentSourceKind, VisualizerComponentMapping

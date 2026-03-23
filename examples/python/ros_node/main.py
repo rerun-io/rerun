@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
+
 import rerun as rr  # pip install rerun-sdk
 
 try:

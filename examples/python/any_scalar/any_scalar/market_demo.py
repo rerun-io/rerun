@@ -8,10 +8,11 @@ Shows features for "Any Scalar" visualization:
 
 from __future__ import annotations
 
+import yfinance as yf
+
 import rerun as rr
 import rerun.blueprint as rrb
 from rerun.blueprint.datatypes import ComponentSourceKind, VisualizerComponentMapping
-import yfinance as yf
 
 
 def log_market_data(tickers: list[str]) -> None:

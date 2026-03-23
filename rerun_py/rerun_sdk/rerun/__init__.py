@@ -242,7 +242,7 @@ def init(
     application_id: str,
     *,
     recording_id: str | UUID | None = None,
-    spawn: bool = False,  # noqa: F811
+    spawn: bool = False,
     init_logging: bool = True,
     default_enabled: bool = True,
     strict: bool | None = None,
@@ -467,8 +467,8 @@ def notebook_show(
     *,
     width: int | None = None,
     height: int | None = None,
-    blueprint: BlueprintLike | None = None,  # noqa: F811
-    recording: RecordingStream | None = None,  # noqa: F811
+    blueprint: BlueprintLike | None = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].

@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 
-def get_unit(size: int | float) -> str:
+def get_unit(size: float) -> str:
     UNITS = ["B", "kiB", "MiB", "GiB", "TiB"]
 
     unit_index = 0

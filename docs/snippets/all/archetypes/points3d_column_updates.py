@@ -7,6 +7,7 @@ This is semantically equivalent to the `points3d_row_updates` example, albeit mu
 from __future__ import annotations
 
 import numpy as np
+
 import rerun as rr
 
 rr.init("rerun_example_points3d_column_updates", spawn=True)

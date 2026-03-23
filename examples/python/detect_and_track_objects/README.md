@@ -50,20 +50,14 @@ rr.log("video", video_asset, static=True)
 Each frame is processed and the timestamp is logged to the `frame` timeline using a [`VideoFrameReference`](https://www.rerun.io/docs/reference/types/archetypes/video_frame_reference).
 
 ```python
-rr.log(
-    "video",
-    rr.VideoFrameReference(nanoseconds=frame_timestamps_ns[frame_idx])
-)
+rr.log("video", rr.VideoFrameReference(nanoseconds=frame_timestamps_ns[frame_idx]))
 ```
 
 Since the detection and segmentation model operates on smaller images the resized images are logged to the separate `segmentation/rgb_scaled` entity.
 This allows us to subsequently visualize the segmentation mask on top of the video.
 
 ```python
-rr.log(
-    "segmentation/rgb_scaled",
-    rr.Image(rgb_scaled).compress(jpeg_quality=85)
-)
+rr.log("segmentation/rgb_scaled", rr.Image(rgb_scaled).compress(jpeg_quality=85))
 ```
 
 ### Segmentations
@@ -74,10 +68,7 @@ contains the id for each pixel. It is logged to the `segmentation` entity.
 
 
 ```python
-rr.log(
-    "segmentation",
-    rr.SegmentationImage(mask)
-)
+rr.log("segmentation", rr.SegmentationImage(mask))
 ```
 
 The color and label for each class is determined by the
@@ -86,12 +77,8 @@ logged to the root entity using `rr.log("/", …, static=True)` as it should app
 entities that have a class id.
 
 ```python
-class_descriptions = [ rr.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories ]
-rr.log(
-     "/",
-     rr.AnnotationContext(class_descriptions),
-     static=True
-)
+class_descriptions = [rr.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories]
+rr.log("/", rr.AnnotationContext(class_descriptions), static=True)
 ```
 
 ### Detections
@@ -152,10 +139,11 @@ def setup_logging() -> None:
     rerun_handler.setLevel(-1)
     logger.addHandler(rerun_handler)
 
+
 def main() -> None:
     # … existing code …
-    setup_logging() # setup logging
-    track_objects(video_path, max_frame_count=args.max_frame) # start tracking
+    setup_logging()  # setup logging
+    track_objects(video_path, max_frame_count=args.max_frame)  # start tracking
 ```
 In the Viewer you can adjust the filter level and look at the messages time-synchronized with respect to other logged data.
 

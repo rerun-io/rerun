@@ -17,6 +17,7 @@ import mediapipe.python.solutions.pose as mp_pose
 import numpy as np
 import numpy.typing as npt
 import requests
+
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 

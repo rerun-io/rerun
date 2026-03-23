@@ -10,9 +10,10 @@ import laspy
 import numpy as np
 import numpy.typing as npt
 import requests
+from tqdm import tqdm
+
 import rerun as rr
 import rerun.blueprint as rrb
-from tqdm import tqdm
 
 DATASET_DIR = Path(__file__).parent / "dataset"
 if not DATASET_DIR.exists():
@@ -52,17 +53,20 @@ def unzip_file_from_archive_with_progress(zip_data: typing.BinaryIO, file_name: 
         file_info = zip_ref.getinfo(file_name)
         total_size = file_info.file_size
 
-        with tqdm(
-            total=total_size,
-            desc=f"Extracting file {file_name}",
-            unit="iB",
-            unit_scale=True,
-            unit_divisor=1024,
-        ) as progress:
-            with zip_ref.open(file_name) as source, open(dest_dir / file_name, "wb") as target:
-                for chunk in iter(lambda: source.read(1024 * 1024), b""):
-                    target.write(chunk)
-                    progress.update(len(chunk))
+        with (
+            tqdm(
+                total=total_size,
+                desc=f"Extracting file {file_name}",
+                unit="iB",
+                unit_scale=True,
+                unit_divisor=1024,
+            ) as progress,
+            zip_ref.open(file_name) as source,
+            open(dest_dir / file_name, "wb") as target,
+        ):
+            for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                target.write(chunk)
+                progress.update(len(chunk))
 
 
 def download_dataset() -> None:

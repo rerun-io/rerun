@@ -10,9 +10,9 @@ You can run either the robotics demo or the market demo:
 from __future__ import annotations
 
 import argparse
-import rerun as rr
 
-from any_scalar import robotics_demo, market_demo
+import rerun as rr
+from any_scalar import market_demo, robotics_demo
 
 
 def main() -> None:

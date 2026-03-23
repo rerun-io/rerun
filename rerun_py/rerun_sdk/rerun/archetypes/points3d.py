@@ -56,6 +56,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     ### Update a point cloud over time:
     ```python
     import numpy as np
+
     import rerun as rr
 
     rr.init("rerun_example_points3d_row_updates", spawn=True)
@@ -95,6 +96,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     from __future__ import annotations
 
     import numpy as np
+
     import rerun as rr
 
     rr.init("rerun_example_points3d_column_updates", spawn=True)

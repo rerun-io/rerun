@@ -1,7 +1,5 @@
 """Query video streams efficiently using keyframe information."""
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import atexit
@@ -9,20 +7,20 @@ import pathlib
 import shutil
 import tempfile
 
-
 TMP_DIR = pathlib.Path(tempfile.mkdtemp())
 atexit.register(lambda: shutil.rmtree(TMP_DIR) if TMP_DIR.exists() else None)
 
 
 # region: setup
+from fractions import Fraction
 from io import BytesIO
 from pathlib import Path
-from fractions import Fraction
 
 import av
 import numpy as np
 import pyarrow as pa
-from datafusion import col, functions as F
+from datafusion import col
+from datafusion import functions as F
 
 import rerun as rr
 

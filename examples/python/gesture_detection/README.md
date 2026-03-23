@@ -43,10 +43,7 @@ rr.set_time("frame_time", duration=1e-9 * frame_time_nano)
 ### Video
 The input video is logged as a sequence of [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) objects to the `Media/Video` entity.
 ```python
-rr.log(
-    "Media/Video",
-    rr.Image(frame).compress(jpeg_quality=75)
-)
+rr.log("Media/Video", rr.Image(frame).compress(jpeg_quality=75))
 ```
 
 ### Hand landmark points
@@ -82,17 +79,11 @@ rr.log("Hand3D", rr.ViewCoordinates.LEFT_HAND_Y_DOWN, static=True)
 ```python
 # Log points to the image and Hand entity
 for log_key in ["Media/Points", "Hand/Points"]:
-    rr.log(
-      log_key,
-      rr.Points2D(points, radii=10, colors=[255, 0, 0])
-    )
+    rr.log(log_key, rr.Points2D(points, radii=10, colors=[255, 0, 0]))
 
 # Log connections to the image and Hand entity [128, 128, 128]
 for log_key in ["Media/Connections", "Hand/Connections"]:
-    rr.log(
-      log_key,
-      rr.LineStrips2D(np.stack((points1, points2), axis=1), colors=[255, 165, 0])
-    )
+    rr.log(log_key, rr.LineStrips2D(np.stack((points1, points2), axis=1), colors=[255, 165, 0]))
 ```
 
 #### 3D points

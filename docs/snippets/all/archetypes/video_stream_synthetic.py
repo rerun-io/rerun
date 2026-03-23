@@ -3,6 +3,7 @@
 import av
 import numpy as np
 import numpy.typing as npt
+
 import rerun as rr
 
 fps = 30

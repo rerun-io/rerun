@@ -1,6 +1,7 @@
 """Create and log an image."""
 
 import numpy as np
+
 import rerun as rr
 
 # Create an image with numpy

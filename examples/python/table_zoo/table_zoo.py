@@ -18,8 +18,9 @@ from pathlib import Path
 
 import lancedb
 import pyarrow as pa
-import rerun as rr
 from platformdirs import user_cache_dir
+
+import rerun as rr
 from rerun.catalog import CatalogClient
 
 

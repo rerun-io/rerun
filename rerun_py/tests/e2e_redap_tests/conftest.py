@@ -308,10 +308,10 @@ def readonly_test_dataset(catalog_client: CatalogClient, resource_prefix: str) -
 
     try:
         handle.wait(timeout_secs=50)
-    except Exception as exc:
+    except Exception:
         # Attempt a cleanup just in case
         ds.delete()
-        raise exc
+        raise
 
     yield ds
 

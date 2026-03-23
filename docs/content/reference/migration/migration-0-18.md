@@ -219,12 +219,13 @@ Furthermore, it can be used for instancing 3D meshes and is used to represent th
 Asset3D previously had a `transform` argument, now you have to send either a `InstancePoses3D` or a `Transform3D` on the same entity:
 Before:
 ```python
-rr.log("world/asset", rr.Asset3D(
+rr.log(
+    "world/asset",
+    rr.Asset3D(
         path=path,
-        transform=rr.OutOfTreeTransform3DBatch(
-            rr.TranslationRotationScale3D(translation=center, scale=scale)
-        )
-    ))
+        transform=rr.OutOfTreeTransform3DBatch(rr.TranslationRotationScale3D(translation=center, scale=scale)),
+    ),
+)
 ```
 After:
 ```python

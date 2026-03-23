@@ -83,7 +83,7 @@ NUM_POINTS = 100
 
 # Points and colors are both np.array((NUM_POINTS, 3))
 points1, colors1 = build_color_spiral(NUM_POINTS)
-points2, colors2 = build_color_spiral(NUM_POINTS, angular_offset=tau*0.5)
+points2, colors2 = build_color_spiral(NUM_POINTS, angular_offset=tau * 0.5)
 
 rr.log("dna/structure/left", rr.Points3D(points1, colors=colors1, radii=0.08))
 rr.log("dna/structure/right", rr.Points3D(points2, colors=colors2, radii=0.08))
@@ -147,10 +147,7 @@ Good news is: once you've digested all of the above, logging any other entity wi
 We can represent the scaffolding using a batch of 3D line strips:
 
 ```python
-rr.log(
-    "dna/structure/scaffolding",
-    rr.LineStrips3D(np.stack((points1, points2), axis=1), colors=[128, 128, 128])
-)
+rr.log("dna/structure/scaffolding", rr.LineStrips3D(np.stack((points1, points2), axis=1), colors=[128, 128, 128]))
 ```
 
 Which only leaves the beads:

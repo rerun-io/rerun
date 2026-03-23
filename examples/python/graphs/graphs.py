@@ -8,6 +8,7 @@ import itertools
 import random
 
 import numpy as np
+
 import rerun as rr
 import rerun.blueprint as rrb
 from rerun.blueprint.archetypes.force_collision_radius import ForceCollisionRadius

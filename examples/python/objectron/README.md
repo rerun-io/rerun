@@ -45,8 +45,8 @@ Pinhole camera is utilized for achieving a 3D view and camera perspective throug
 
 ```python
 rr.log(
-        "world/camera",
-        rr.Transform3D(translation=translation, rotation=rr.Quaternion(xyzw=rot.as_quat())),
+    "world/camera",
+    rr.Transform3D(translation=translation, rotation=rr.Quaternion(xyzw=rot.as_quat())),
 )
 ```
 

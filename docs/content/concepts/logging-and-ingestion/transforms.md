@@ -82,26 +82,17 @@ rr.log("robot/arm/gripper", rr.Points3D([0, 0, 0]))
 Rerun will interpret this _as-if_ it was logged with the named transform frames like so:
 
 ```python
-rr.log("robot",
+rr.log(
+    "robot",
     rr.CoordinateFrame("tf#/robot"),
-    rr.Transform3D(
-        translation=[1, 0, 0],
-        child_frame="tf#/robot",
-        parent_frame="tf#/"
-    )
+    rr.Transform3D(translation=[1, 0, 0], child_frame="tf#/robot", parent_frame="tf#/"),
 )
-rr.log("robot/arm",
+rr.log(
+    "robot/arm",
     rr.CoordinateFrame("tf#/robot/arm"),
-    rr.Transform3D(
-        translation=[0, 1, 0],
-        child_frame="tf#/robot/arm",
-        parent_frame="tf#/robot"
-    )
+    rr.Transform3D(translation=[0, 1, 0], child_frame="tf#/robot/arm", parent_frame="tf#/robot"),
 )
-rr.log("robot/arm/gripper",
-    rr.CoordinateFrame("tf#/robot/arm/gripper"),
-    rr.Points3D([0, 0, 0])
-)
+rr.log("robot/arm/gripper", rr.CoordinateFrame("tf#/robot/arm/gripper"), rr.Points3D([0, 0, 0]))
 ```
 
 <picture>
@@ -116,9 +107,10 @@ but doing so works seamlessly and can be useful if necessary.
 Example:
 ```python
 rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
-rr.log("arm",
+rr.log(
+    "arm",
     rr.Transform3D(translation=[0, 1, 0], parent_frame="tf#/robot", child_frame="arm_frame"),
-    rr.CoordinateFrame("arm_frame")
+    rr.CoordinateFrame("arm_frame"),
 )
 rr.log("gripper", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("arm_frame"))
 ```

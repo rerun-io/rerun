@@ -7,8 +7,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pyarrow as pa
-import rerun as rr
 from datafusion import lit
+
+import rerun as rr
 from rerun.utilities.datafusion.functions.url_generation import segment_url
 
 sample_5_path = Path(__file__).parents[5] / "tests" / "assets" / "rrd" / "sample_5"

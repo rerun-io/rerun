@@ -175,7 +175,8 @@ def test_dataframe_api_using_index_values(readonly_test_dataset: DatasetEntry, s
     ])
 
     df = (
-        dataset_view.reader(
+        dataset_view
+        .reader(
             index="time_1",
         )
         .select("rerun_segment_id", "time_1", "/obj1:Points3D:positions", "/obj2:Points3D:positions")
@@ -186,7 +187,8 @@ def test_dataframe_api_using_index_values(readonly_test_dataset: DatasetEntry, s
 
     # Create a view with all partitions
     df = (
-        dataset_view.reader(
+        dataset_view
+        .reader(
             index="time_1",
             using_index_values={
                 "3ee345b2e801448cace33a1097b9b49b": np.array(
@@ -224,7 +226,8 @@ def test_dataframe_api_using_index_values_same_indices_on_all_segments(
 
     # Create a view with all partitions
     df = (
-        dataset_view.reader(
+        dataset_view
+        .reader(
             index="time_1",
             using_index_values=np.array(
                 [
@@ -291,13 +294,15 @@ def test_dataframe_api_using_index_values_dataframe(
     # interpolating rows.
 
     rows_of_interest = (
-        readonly_test_dataset.filter_contents(["/obj1/**"])
+        readonly_test_dataset
+        .filter_contents(["/obj1/**"])
         .reader(index="time_1")
         .filter(dfn.col("/obj1:Points3D:positions").is_not_null())
     )
 
     df = (
-        readonly_test_dataset.filter_contents(["/obj2/**"])
+        readonly_test_dataset
+        .filter_contents(["/obj2/**"])
         .reader(index="time_1", using_index_values=rows_of_interest)
         .select("rerun_segment_id", "time_1", "/obj2:Points3D:positions")
         .sort("rerun_segment_id", "time_1")

@@ -10,8 +10,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import pyarrow as pa
+from datafusion import DataFrame, col
+from datafusion import functions as F
+
 import rerun as rr
-from datafusion import DataFrame, col, functions as F
 from rerun.server import Server
 from rerun.utilities.datafusion.collect import collect_to_string_list
 

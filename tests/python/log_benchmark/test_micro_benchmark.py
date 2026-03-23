@@ -9,6 +9,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+
 import rerun as rr
 import rerun_bindings as bindings
 from rerun._log import _log_components

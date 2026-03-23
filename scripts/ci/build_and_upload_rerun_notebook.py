@@ -12,7 +12,8 @@ import argparse
 import os
 import subprocess
 
-from google.cloud.storage import Bucket, Client as Gcs
+from google.cloud.storage import Bucket
+from google.cloud.storage import Client as Gcs
 
 
 def run(

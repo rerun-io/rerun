@@ -10,8 +10,8 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from colorama import Fore, Style
 import pandas as pd
+from colorama import Fore, Style
 from tabulate import tabulate
 from tqdm import tqdm
 

@@ -15,8 +15,9 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
-import rerun as rr  # pip install rerun-sdk
 from PIL import Image
+
+import rerun as rr  # pip install rerun-sdk
 
 DESCRIPTION = """
 # Detect and track objects
@@ -43,7 +44,7 @@ DOWNSCALE_FACTOR = 2
 DETECTION_SCORE_THRESHOLD = 0.8
 
 os.environ["HF_HOME"] = str(CACHE_DIR.absolute())
-from transformers import (  # noqa: E402 module level import not at top of file
+from transformers import (
     DetrForSegmentation,
     DetrImageProcessor,
 )

@@ -10,7 +10,8 @@ if TYPE_CHECKING:
 
 def test_index_ranges(readonly_test_dataset: DatasetEntry) -> None:
     df = (
-        readonly_test_dataset.get_index_ranges()
+        readonly_test_dataset
+        .get_index_ranges()
         .sort("rerun_segment_id")
         .select(
             "rerun_segment_id",

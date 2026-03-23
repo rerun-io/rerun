@@ -35,9 +35,10 @@ class Points2D(Points2DExt, Archetype, VisualizableArchetype):
     --------
     ### Randomly distributed 2D points with varying color and radius:
     ```python
+    from numpy.random import default_rng
+
     import rerun as rr
     import rerun.blueprint as rrb
-    from numpy.random import default_rng
 
     rr.init("rerun_example_points2d_random", spawn=True)
     rng = default_rng(12345)

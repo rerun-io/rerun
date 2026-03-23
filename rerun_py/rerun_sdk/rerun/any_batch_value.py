@@ -177,7 +177,7 @@ def _fallback_parse(
                 f"Cannot convert value {value} to arrow array of type {pa_type}."
                 " Inconsistent with previous type provided."
             ) from e
-        raise e
+        raise
     return pa_array, NumpyArrowType(np_value.dtype, pa_array.type)
 
 

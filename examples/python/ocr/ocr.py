@@ -16,11 +16,12 @@ import numpy.typing as npt
 import pandas as pd
 import pdf2image
 import requests
-import rerun as rr  # pip install rerun-sdk
-import rerun.blueprint as rrb
 import tqdm
 from paddleocr import PPStructure
 from paddleocr.ppstructure.recovery.recovery_to_doc import sorted_layout_boxes
+
+import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -139,7 +140,7 @@ class Layout:
         bounding_box: list[int],
         detections: Iterable[dict[str, Any]] | None = None,
         table: str | None = None,
-        img: dict[str, Any] | None = None,  # noqa: ARG002 - TODO(#6517): log img
+        img: dict[str, Any] | None = None,
     ) -> None:
         if layout_type in LayoutType:
             self.counts[layout_type] += 1

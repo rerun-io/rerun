@@ -30,7 +30,8 @@ def test_df_filters(catalog_client: CatalogClient, readonly_test_dataset: Datase
     def find_time_boundaries(time_index: str, segment: pa.Scalar) -> list[pa.Scalar]:
         """Find four times: start, middle third, upper third, stop."""
         rbs = (
-            readonly_test_dataset.reader(index=time_index)
+            readonly_test_dataset
+            .reader(index=time_index)
             .filter(col("rerun_segment_id") == segment)
             .select(time_index)
             .sort(col(time_index))

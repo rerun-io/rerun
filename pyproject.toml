@@ -26,7 +26,7 @@ dev = [
   "rerun-dev-fixup",
   "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
   "maturin>=1.0.0",
-  "ruff==0.12.10",
+  "ruff==0.15.7",
   "mypy==1.19.1",
   "nbqa==1.9.1",
   # Packages needed for running scripts + their type stubs for mypy
@@ -306,6 +306,29 @@ extend-exclude = [
 
   # Copied from https://github.com/colmap/colmap/blob/bf3e19140f491c3042bfd85b7192ef7d249808ec/scripts/python/read_write_model.py
   "examples/python/structure_from_motion/structure_from_motion/read_write_model.py",
+]
+
+[tool.ruff.lint]
+ignore = [
+  # Rules that became active with the ruff upgrade to 0.15:
+  # TODO(emilk): enable more of these
+  "B005", # Using `.strip()` with multi-character strings
+  "BLE001", # Do not catch blind exception: `Exception`
+  "DTZ001", # `datetime.datetime()` called without a `tzinfo` argument
+  "DTZ002", # `datetime.datetime.today()` used
+  "DTZ005", # `datetime.datetime.now()` called without a `tz` argument
+  "DTZ006", # `datetime.fromtimestamp()` called without a `tz` argument
+  "DTZ007", # `datetime.strptime()` without `%z`
+  "LOG015", # Root logger call
+  "PLR1704", # Redefining argument with the local name
+  "PLW0602", # Using global for variable that is not assigned
+  "PLW1510", # `subprocess.run` without explicit `check` argument
+  "RUF012", # Mutable class variables should be annotated with `typing.ClassVar`
+  "S110", # `try`-`except`-`pass` detected
+  "SIM102", # Use a single `if` statement instead of nested `if` statements
+  "SIM115", # Use context handler for opening files
+  "TRY002", # Create your own exception
+  "TRY004", # Prefer `TypeError` exception for invalid type
 ]
 
 [tool.ruff.lint.per-file-ignores]

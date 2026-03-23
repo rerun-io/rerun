@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -57,7 +58,7 @@ if __name__ == "__main__":
         footer = " Please run `pixi run nb-strip` to resolve."
     if failure_count == 0:
         print(success_message)
-        exit(0)
+        sys.exit(0)
     else:
         print(f"Notebooks {strip_or_check} with {failure_count} failures.{footer}")
-        exit(1)
+        sys.exit(1)

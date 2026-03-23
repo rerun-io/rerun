@@ -6,8 +6,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyarrow as pa
+from datafusion import col, lit
+from datafusion import functions as F
+
 import rerun as rr
-from datafusion import col, functions as F, lit
 
 sample_5_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
 
@@ -29,7 +31,8 @@ def create_sub_dataset(
 
     # Query the manifest for storage URLs of the selected segments
     manifest = pa.table(
-        source.manifest()
+        source
+        .manifest()
         .filter(F.in_list(col("rerun_segment_id"), [lit(s) for s in segment_ids]))
         .select("rerun_storage_url", "rerun_layer_name")
     )
@@ -66,7 +69,8 @@ print(sub_dataset.segment_table().select("rerun_segment_id", "rerun_layer_names"
 
 print("\nSub-dataset manifest:")
 print(
-    sub_dataset.manifest()
+    sub_dataset
+    .manifest()
     .select("rerun_segment_id", "rerun_layer_name", "rerun_storage_url")
     .sort("rerun_segment_id", "rerun_layer_name")
 )

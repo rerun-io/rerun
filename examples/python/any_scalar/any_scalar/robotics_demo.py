@@ -9,10 +9,11 @@ Shows features for "Any Scalar" visualization:
 
 from __future__ import annotations
 
+import numpy as np
+
 import rerun as rr
 import rerun.blueprint as rrb
 from rerun.blueprint.datatypes import ComponentSourceKind, VisualizerComponentMapping
-import numpy as np
 
 
 def simulate_robot_controller() -> None:

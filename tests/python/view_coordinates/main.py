@@ -7,6 +7,7 @@ import argparse
 
 import numpy as np
 import numpy.typing as npt
+
 import rerun as rr  # pip install rerun-sdk
 
 parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")

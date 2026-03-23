@@ -18,7 +18,8 @@ from pathlib import Path
 from typing import Any
 
 import parso
-from colorama import Fore, Style, init as colorama_init
+from colorama import Fore, Style
+from colorama import init as colorama_init
 
 colorama_init()
 
@@ -62,7 +63,7 @@ class APIDef:
         docstring = textwrap.indent(docstring, "    ")
         return f"{self.name}{self.signature}:\n{docstring}"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, APIDef):
             return NotImplemented
 
@@ -195,10 +196,7 @@ def load_runtime_signatures(module_name: str) -> TotalSignature:
 
     # Get top-level functions and classes
     for name, obj in inspect.getmembers(module):
-        if inspect.isfunction(obj):
-            api_def = APIDef(name, inspect.signature(obj), False, obj.__doc__)
-            signatures[name] = api_def
-        elif inspect.isbuiltin(obj):
+        if inspect.isfunction(obj) or inspect.isbuiltin(obj):
             api_def = APIDef(name, inspect.signature(obj), False, obj.__doc__)
             signatures[name] = api_def
         elif inspect.isclass(obj):

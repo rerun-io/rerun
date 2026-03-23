@@ -18,7 +18,6 @@ from typing import Any
 
 import semver
 import tomlkit
-import tomlkit.container
 
 
 def run(

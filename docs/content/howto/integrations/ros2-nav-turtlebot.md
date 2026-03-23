@@ -156,6 +156,7 @@ def __init__(self) -> None:
     # …
     self.laser_proj = laser_geometry.laser_geometry.LaserProjection()
 
+
 def scan_callback(self, scan: LaserScan) -> None:
     time = Time.from_msg(scan.header.stamp)
     rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
@@ -190,6 +191,7 @@ def __init__(self) -> None:
     # …
     self.cv_bridge = cv_bridge.CvBridge()
 
+
 def cam_info_callback(self, info: CameraInfo) -> None:
     """
     Logs CameraInfo as a Rerun Pinhole.
@@ -211,6 +213,7 @@ def cam_info_callback(self, info: CameraInfo) -> None:
             child_frame=info.header.frame_id + "_image_plane",
         ),
     )
+
 
 def image_callback(self, img: Image) -> None:
     time = Time.from_msg(img.header.stamp)

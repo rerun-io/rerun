@@ -19,9 +19,10 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
+from tqdm import tqdm
+
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
-from tqdm import tqdm
 
 DESCRIPTION = """
 # RGBD
@@ -122,9 +123,9 @@ def ensure_recording_downloaded(name: str) -> Path:
         except ValueError:
             print(f"Failed to download from {url}, trying backup URL {alternate_url} instead")
             download_progress(alternate_url, recording_path)
-    except BaseException as e:
+    except BaseException:
         recording_path.unlink(missing_ok=True)
-        raise e
+        raise
 
     return recording_path
 

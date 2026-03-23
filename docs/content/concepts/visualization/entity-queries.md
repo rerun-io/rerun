@@ -65,12 +65,14 @@ expression written as a separate string. The query expression from above would
 be written as:
 
 ```python
-rrb.Spatial3DView(
-    contents=[
-        "+ helix/**",
-        "- helix/structure/scaffolding",
-    ],
-),
+(
+    rrb.Spatial3DView(
+        contents=[
+            "+ helix/**",
+            "- helix/structure/scaffolding",
+        ],
+    ),
+)
 ```
 
 ## `origin` substitution
@@ -81,11 +83,13 @@ origin of the view that the query belongs to.
 For example, the above query could be rewritten as:
 
 ```python
-rrb.Spatial3DView(
-    origin="helix",
-    contents=[
-        "+ $origin/**",
-        "- $origin/structure/scaffolding",
-    ],
-),
+(
+    rrb.Spatial3DView(
+        origin="helix",
+        contents=[
+            "+ $origin/**",
+            "- $origin/structure/scaffolding",
+        ],
+    ),
+)
 ```

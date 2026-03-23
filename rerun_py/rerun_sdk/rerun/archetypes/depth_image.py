@@ -38,6 +38,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
     ### Depth to 3D example:
     ```python
     import numpy as np
+
     import rerun as rr
 
     depth_image = 65535 * np.ones((200, 300), dtype=np.uint16)

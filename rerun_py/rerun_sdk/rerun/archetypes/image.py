@@ -49,6 +49,7 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
     ### `image_simple`:
     ```python
     import numpy as np
+
     import rerun as rr
 
     # Create an image with numpy
@@ -73,6 +74,7 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
     ### Logging images with various formats:
     ```python
     import numpy as np
+
     import rerun as rr
 
     rr.init("rerun_example_image_formats", spawn=True)

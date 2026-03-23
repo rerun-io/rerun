@@ -5,6 +5,7 @@ See also the `arrows3d_column_updates` example, which achieves the same thing in
 """
 
 import numpy as np
+
 import rerun as rr
 
 rr.init("rerun_example_arrows3d_row_updates", spawn=True)

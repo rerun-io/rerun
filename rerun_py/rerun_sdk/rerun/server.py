@@ -3,7 +3,7 @@ from __future__ import annotations
 import socket
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from typing_extensions import deprecated
 
@@ -187,7 +187,7 @@ class Server:
         """
         self._internal.shutdown()
 
-    def __enter__(self) -> Server:
+    def __enter__(self) -> Self:
         """Enter the context manager, returning the server instance."""
         return self
 

@@ -55,6 +55,7 @@ class AffixFuzzer8Batch(BaseBatch[AffixFuzzer8ArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer8ArrayLike, data_type: pa.DataType) -> pa.Array:
+
         typed_data: Sequence[AffixFuzzer8]
 
         if isinstance(data, AffixFuzzer8):

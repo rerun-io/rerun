@@ -6,8 +6,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import rerun as rr
 from datafusion import col
+
+import rerun as rr
 
 sample_5_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
 
@@ -31,7 +32,8 @@ desired_timestamps = np.arange(min_time[0], max_time[0], np.timedelta64(100, "ms
 # specify desired timestamps
 # forward fill to specified time for alignment
 fixed_hz = (
-    dataset.filter_segments("ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s")
+    dataset
+    .filter_segments("ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s")
     .filter_contents(["/observation/joint_positions", "/camera/ext1/**"])
     .reader(index="real_time", using_index_values=desired_timestamps, fill_latest_at=True)
 )

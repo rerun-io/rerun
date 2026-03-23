@@ -7,6 +7,7 @@ This is semantically equivalent to the `any_values_row_updates` example, albeit 
 from __future__ import annotations
 
 import numpy as np
+
 import rerun as rr
 
 rr.init("rerun_example_any_values_column_updates", spawn=True)

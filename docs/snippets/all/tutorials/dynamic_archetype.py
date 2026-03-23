@@ -6,7 +6,8 @@ rr.init("rerun_example_dynamic_archetype", spawn=True)
 
 rr.log(
     "new_archetype",
-    rr.DynamicArchetype(
+    rr
+    .DynamicArchetype(
         archetype="MyArchetype",
         components={
             # Using arbitrary Arrow data.

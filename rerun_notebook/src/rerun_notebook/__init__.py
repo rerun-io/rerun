@@ -205,7 +205,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         if theme:
             self._theme = theme
 
-        def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:  # noqa: ARG001
+        def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
             if isinstance(content, str):
                 if content == "ready":
                     self._on_ready()

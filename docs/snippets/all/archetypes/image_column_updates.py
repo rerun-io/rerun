@@ -5,6 +5,7 @@ This is semantically equivalent to the `image_row_updates` example, albeit much 
 """
 
 import numpy as np
+
 import rerun as rr
 
 rr.init("rerun_example_image_column_updates", spawn=True)

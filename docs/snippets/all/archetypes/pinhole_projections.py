@@ -1,6 +1,7 @@
 """Demonstrates pinhole camera projections with Rerun blueprints."""
 
 import numpy as np
+
 import rerun as rr
 import rerun.blueprint as rrb
 

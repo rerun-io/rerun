@@ -1,9 +1,11 @@
 """Sample snippets highlighting common performance-related improvements"""
 
 import tempfile
-import rerun as rr
-from datafusion import col
 from pathlib import Path
+
+from datafusion import col
+
+import rerun as rr
 
 TMP_FILE = tempfile.NamedTemporaryFile(suffix=".rrd")
 RRD_PATH = TMP_FILE.name
@@ -20,7 +22,8 @@ dataset = client.get_dataset(name="dataset")
 
 # region: view_index_ranges
 (
-    dataset.get_index_ranges()
+    dataset
+    .get_index_ranges()
     .select(
         "rerun_segment_id", "time_1:start", "time_1:end", "time_2:start", "time_2:end", "time_3:start", "time_3:end"
     )
@@ -59,7 +62,8 @@ times_of_interest = (
 )
 
 (
-    dataset.reader(index=time_index, using_index_values=times_of_interest, fill_latest_at=True)
+    dataset
+    .reader(index=time_index, using_index_values=times_of_interest, fill_latest_at=True)
     .select(*columns_of_interest)
     .sort("rerun_segment_id", time_index)
     .show()

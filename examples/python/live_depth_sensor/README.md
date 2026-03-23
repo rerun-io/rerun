@@ -31,7 +31,7 @@ Additionally, to provide a 3D view, the visualization includes a pinhole camera 
 The visualization in this example were created with the following Rerun code.
 
 ```python
-rr.log("realsense", rr.ViewCoordinates.RDF, static=True) # Visualize the data as RDF
+rr.log("realsense", rr.ViewCoordinates.RDF, static=True)  # Visualize the data as RDF
 ```
 
 

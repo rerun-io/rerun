@@ -1,13 +1,12 @@
 """Query and display the first 10 rows of a recording."""
 
 import atexit
+import os
+import shutil
+import tempfile
+from pathlib import Path
 
 from datafusion import col
-
-import shutil
-from pathlib import Path
-import os
-import tempfile
 
 import rerun as rr
 

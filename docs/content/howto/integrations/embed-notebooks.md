@@ -83,14 +83,16 @@ from rerun.notebook import Viewer, ViewerEvent
 
 selected_entities = []
 
-def on_event(event: ViewerEvent):
-  global selected_entities
-  selected_entities = [] # clear the list
 
-  if event.type == "selection_change":
-    for item in event.items:
-      if item.type == "entity":
-        selected_entities.append(item.entity_path)
+def on_event(event: ViewerEvent):
+    global selected_entities
+    selected_entities = []  # clear the list
+
+    if event.type == "selection_change":
+        for item in event.items:
+            if item.type == "entity":
+                selected_entities.append(item.entity_path)
+
 
 viewer = Viewer()
 viewer.on_event(on_event)
@@ -112,10 +114,7 @@ For example
 
 ```python
 blueprint = rrb.Blueprint(
-    rrb.Horizontal(
-        rrb.Spatial3DView(origin="/world"),
-        rrb.Spatial2DView(origin="/world/camera"),
-        column_shares=[2,1]),
+    rrb.Horizontal(rrb.Spatial3DView(origin="/world"), rrb.Spatial2DView(origin="/world/camera"), column_shares=[2, 1]),
 )
 
 rr.notebook_show(blueprint=blueprint)
@@ -138,10 +137,7 @@ image2 = rng.uniform(0, 255, size=[24, 64, 1])
 rr.log("image1", rr.Image(image1))
 rr.log("image2", rr.Image(image2))
 
-rrb.Vertical(
-    rrb.Spatial2DView(origin='/image1'),
-    rrb.Spatial2DView(origin='/image2')
-)
+rrb.Vertical(rrb.Spatial2DView(origin="/image1"), rrb.Spatial2DView(origin="/image2"))
 ```
 
 <picture>

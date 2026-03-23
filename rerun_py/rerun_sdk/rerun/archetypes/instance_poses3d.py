@@ -50,6 +50,7 @@ class InstancePoses3D(Archetype):
     ### Regular & instance transforms in tandem:
     ```python
     import numpy as np
+
     import rerun as rr
 
     rr.init("rerun_example_instance_pose3d_combined", spawn=True)

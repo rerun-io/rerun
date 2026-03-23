@@ -47,10 +47,7 @@ The input video is logged as a sequence of
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) objects to the 'Video' entity.
 
 ```python
-rr.log(
-    "video/rgb",
-    rr.Image(rgb).compress(jpeg_quality=75)
-)
+rr.log("video/rgb", rr.Image(rgb).compress(jpeg_quality=75))
 ```
 
 ### Segmentation mask
@@ -67,12 +64,10 @@ logged with `static=True` as it should apply to the whole sequence.
 ```python
 rr.log(
     "video/mask",
-    rr.AnnotationContext(
-        [
-            rr.AnnotationInfo(id=0, label="Background"),
-            rr.AnnotationInfo(id=1, label="Person", color=(0, 0, 0)),
-        ]
-    ),
+    rr.AnnotationContext([
+        rr.AnnotationInfo(id=0, label="Background"),
+        rr.AnnotationInfo(id=1, label="Person", color=(0, 0, 0)),
+    ]),
     static=True,
 )
 ```
@@ -101,9 +96,7 @@ rr.log(
     rr.AnnotationContext(
         rr.ClassDescription(
             info=rr.AnnotationInfo(id=1, label="Person"),
-            keypoint_annotations=[
-                rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark
-            ],
+            keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
             keypoint_connections=mp_pose.POSE_CONNECTIONS,
         )
     ),
@@ -114,10 +107,7 @@ rr.log(
 #### 2D points
 
 ```python
-rr.log(
-    "video/pose/points",
-    rr.Points2D(landmark_positions_2d, class_ids=1, keypoint_ids=mp_pose.PoseLandmark)
-)
+rr.log("video/pose/points", rr.Points2D(landmark_positions_2d, class_ids=1, keypoint_ids=mp_pose.PoseLandmark))
 ```
 
 #### 3D points

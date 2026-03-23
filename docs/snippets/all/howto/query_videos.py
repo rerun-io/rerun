@@ -1,14 +1,11 @@
 """Query video streams."""
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import atexit
 import pathlib
 import shutil
 import tempfile
-
 
 TMP_DIR = pathlib.Path(tempfile.mkdtemp())
 atexit.register(lambda: shutil.rmtree(TMP_DIR) if TMP_DIR.exists() else None)
@@ -22,8 +19,9 @@ from pathlib import Path
 import av
 import numpy as np
 import pyarrow as pa
-import rerun as rr
 from datafusion import col
+
+import rerun as rr
 
 sample_video_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "video_sample"
 

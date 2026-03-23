@@ -35,7 +35,8 @@ from typing import TYPE_CHECKING, Any, cast
 import git
 import requests
 import tomlkit
-from colorama import Fore, init as colorama_init
+from colorama import Fore
+from colorama import init as colorama_init
 from dag import DAG, RateLimiter
 from semver import VersionInfo
 
@@ -142,18 +143,18 @@ class Dependency:
 def crate_deps(member: dict[str, dict[str, Any]]) -> Generator[Dependency, None, None]:
     def get_deps_in(d: dict[str, dict[str, Any]], base_key: list[str]) -> Generator[Dependency, None, None]:
         if "dependencies" in d:
-            for v in d["dependencies"].keys():
+            for v in d["dependencies"]:
                 yield Dependency(v, [*base_key, "dependencies", v], DependencyKind.DIRECT)
         if "dev-dependencies" in d:
-            for v in d["dev-dependencies"].keys():
+            for v in d["dev-dependencies"]:
                 yield Dependency(v, [*base_key, "dev-dependencies", v], DependencyKind.DEV)
         if "build-dependencies" in d:
-            for v in d["build-dependencies"].keys():
+            for v in d["build-dependencies"]:
                 yield Dependency(v, [*base_key, "build-dependencies", v], DependencyKind.BUILD)
 
     yield from get_deps_in(member, [])
     if "target" in member:
-        for target in member["target"].keys():
+        for target in member["target"]:
             yield from get_deps_in(member["target"][target], ["target", target])
 
 
@@ -196,7 +197,7 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
         if publish:
             output[name] = crate
 
-    for name in crates.keys():
+    for name in crates:
         helper(ctx, crates, name)
     return output
 
@@ -583,13 +584,13 @@ def check_dependency_tree() -> None:
     try:
         # This runs a dependency graph sanitization and raises an exception on fail
         _dag = DAG(dependency_graph)
-    except Exception as e:
+    except Exception:
         from pprint import pprint
 
         print("Full dependency graph:")
         pprint(dependency_graph)
 
-        raise e
+        raise
 
 
 def publish(dry_run: bool, token: str) -> None:
@@ -602,7 +603,7 @@ def publish(dry_run: bool, token: str) -> None:
     workspace_crates = get_workspace_crates(root)
     crates = get_sorted_publishable_crates(ctx, workspace_crates)
 
-    for name in crates.keys():
+    for name in crates:
         ctx.publish(name, version)
     ctx.finish()
 

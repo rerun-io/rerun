@@ -8,8 +8,10 @@ from pathlib import Path
 import datafusion as dfn
 import numpy as np
 import pyarrow as pa
+from datafusion import col, lit
+from datafusion import functions as F
+
 import rerun as rr
-from datafusion import col, functions as F, lit
 
 sample_5_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
 
@@ -39,7 +41,8 @@ joints = dataset.filter_contents(["/observation/joint_positions"])
 
 # Find the earliest joint position in each episode (cast to unix epoch nanoseconds for easier math later)
 joint_min_t = (
-    joints.reader(index="real_time")
+    joints
+    .reader(index="real_time")
     .with_column("joint_epoch_ns", col("real_time").cast(pa.int64()))
     .select("rerun_segment_id", "joint_epoch_ns")
     .aggregate(
@@ -52,7 +55,8 @@ cameras = dataset.filter_contents(["/camera/**"])
 
 # Find the earliest camera frame in each episode (cast to unix epoch nanoseconds for easier math later)
 camera_min_t = (
-    cameras.reader(index="real_time")
+    cameras
+    .reader(index="real_time")
     .with_column("camera_epoch_ns", col("real_time").cast(pa.int64()))
     .select(
         "rerun_segment_id",
@@ -88,7 +92,8 @@ print(f"{outliers.count()=}\n", f"{joint_min_t.count()=}\n", f"{camera_min_t.cou
 # region: sub_episodes
 # Grab a dataframe
 all_data = (
-    dataset.filter_contents(["/action/**", "/observation/**"])
+    dataset
+    .filter_contents(["/action/**", "/observation/**"])
     .reader(index="real_time", fill_latest_at=True)
     .filter(
         col(
@@ -137,7 +142,8 @@ min_ts = pa.scalar(np.iinfo(np.int64).min + 1_000_000_000, type=pa.timestamp("ns
 
 # This generates the column for the last observed start time
 slice_dense_times = (
-    slice_times.select("rerun_segment_id", "real_time", "start", "end")
+    slice_times
+    .select("rerun_segment_id", "real_time", "start", "end")
     .with_column(
         "dense_start",
         F.last_value(col("start")).over(

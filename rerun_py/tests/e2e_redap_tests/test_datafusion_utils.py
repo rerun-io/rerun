@@ -34,7 +34,8 @@ def test_segment_url_simple(readonly_test_dataset: DatasetEntry) -> None:
     view = readonly_test_dataset.filter_segments(segment_ids)
 
     result = (
-        view.segment_table()
+        view
+        .segment_table()
         .with_column("url", segment_url(readonly_test_dataset))
         .sort(col("rerun_segment_id"))
         .select("url")
@@ -76,7 +77,8 @@ def test_segment_url_with_timestamp(readonly_test_dataset: DatasetEntry) -> None
     segment_table = view.segment_table(join_meta=meta_df)
 
     result = (
-        segment_table.with_column(
+        segment_table
+        .with_column(
             "url",
             segment_url(
                 readonly_test_dataset,
@@ -118,7 +120,8 @@ def test_segment_url_with_literal_segment_id(readonly_test_dataset: DatasetEntry
     ts_df = ctx.from_arrow(ts_batch)
 
     result = (
-        ts_df.with_column(
+        ts_df
+        .with_column(
             "url",
             segment_url(
                 readonly_test_dataset,
@@ -154,7 +157,8 @@ def test_segment_url_with_sequence(readonly_test_dataset: DatasetEntry) -> None:
     segment_table = view.segment_table(join_meta=meta_df)
 
     result = (
-        segment_table.with_column(
+        segment_table
+        .with_column(
             "url",
             segment_url(
                 readonly_test_dataset,
@@ -210,7 +214,8 @@ def test_segment_url_with_time_range(readonly_test_dataset: DatasetEntry) -> Non
     segment_table = view.segment_table(join_meta=meta_df)
 
     result = (
-        segment_table.with_column(
+        segment_table
+        .with_column(
             "url",
             segment_url(
                 readonly_test_dataset,
@@ -271,7 +276,8 @@ def test_segment_url_with_timestamp_and_time_range(readonly_test_dataset: Datase
     segment_table = view.segment_table(join_meta=meta_df)
 
     result = (
-        segment_table.with_column(
+        segment_table
+        .with_column(
             "url",
             segment_url(
                 readonly_test_dataset,
@@ -310,7 +316,8 @@ def test_segment_url_with_sequence_time_range(readonly_test_dataset: DatasetEntr
     segment_table = view.segment_table(join_meta=meta_df)
 
     result = (
-        segment_table.with_column(
+        segment_table
+        .with_column(
             "url",
             segment_url(
                 readonly_test_dataset,
@@ -348,7 +355,8 @@ def test_segment_url_with_selection(readonly_test_dataset: DatasetEntry) -> None
     segment_table = view.segment_table(join_meta=meta_df)
 
     result = (
-        segment_table.with_column(
+        segment_table
+        .with_column(
             "url",
             segment_url(
                 readonly_test_dataset,
@@ -392,7 +400,8 @@ def test_segment_url_with_selection_and_timestamp(readonly_test_dataset: Dataset
     segment_table = view.segment_table(join_meta=meta_df)
 
     result = (
-        segment_table.with_column(
+        segment_table
+        .with_column(
             "url",
             segment_url(
                 readonly_test_dataset,

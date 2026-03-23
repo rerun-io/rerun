@@ -31,8 +31,8 @@ The visualization in this example was created with just the following lines.
 
 
 ```python
-rr.set_time("timestamp", timestamp=sample_data["timestamp"] * 1e-6) # Setting the time
-rr.log("world/lidar", rr.Points3D(points, colors=point_colors)) # Log the 3D data
+rr.set_time("timestamp", timestamp=sample_data["timestamp"] * 1e-6)  # Setting the time
+rr.log("world/lidar", rr.Points3D(points, colors=point_colors))  # Log the 3D data
 ```
 
 When logging data to Rerun, it's possible to associate it with specific time by using the Rerun's [`timelines`](https://www.rerun.io/docs/concepts/timelines).

@@ -96,10 +96,10 @@ viewer = rr.notebook.Viewer(width="auto", height="auto")
 viewer.display()
 
 # Send table directly to the inline viewer
-viewer.send_table("My Table", pa.RecordBatch.from_pydict({
-    "Column A": [1, 2, 3],
-    "Column B": ["https://www.rerun.io", "Hello", "World"]
-}))
+viewer.send_table(
+    "My Table",
+    pa.RecordBatch.from_pydict({"Column A": [1, 2, 3], "Column B": ["https://www.rerun.io", "Hello", "World"]}),
+)
 ```
 
 You can also use the native viewer instead of the inline viewer:
