@@ -91,7 +91,7 @@ pub struct ApiError {
 /// Convenience for `Result<T, ApiError>`
 pub type ApiResult<T = ()> = Result<T, ApiError>;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ApiErrorKind {
     NotFound,
     AlreadyExists,
@@ -122,6 +122,24 @@ impl From<tonic::Code> for ApiErrorKind {
             tonic::Code::InvalidArgument => Self::InvalidArguments,
             tonic::Code::DeadlineExceeded => Self::Timeout,
             _ => Self::Internal,
+        }
+    }
+}
+
+impl ApiErrorKind {
+    /// Transient errors that may succeed on retry (with backoff).
+    pub fn is_retryable(self) -> bool {
+        match self {
+            Self::Connection | Self::Timeout | Self::Internal | Self::ResourcesExhausted => true,
+
+            Self::NotFound
+            | Self::AlreadyExists
+            | Self::PermissionDenied
+            | Self::Unauthenticated
+            | Self::Unimplemented
+            | Self::InvalidArguments
+            | Self::Serialization
+            | Self::InvalidServer => false,
         }
     }
 }
@@ -310,15 +328,7 @@ where
         let res = f().await;
 
         match res {
-            Err(err)
-                if matches!(
-                    err.kind,
-                    ApiErrorKind::Connection
-                        | ApiErrorKind::Timeout
-                        | ApiErrorKind::Internal
-                        | ApiErrorKind::ResourcesExhausted
-                ) =>
-            {
+            Err(err) if err.kind.is_retryable() => {
                 last_retryable_err = Some(err);
                 let backoff = backoff_gen.gen_next();
 
