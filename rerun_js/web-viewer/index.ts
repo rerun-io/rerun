@@ -344,11 +344,6 @@ export class WebViewer {
     setupGlobalEventListeners();
   }
 
-  #clearLoader() {
-    this.#loader?.remove();
-    this.#loader = null;
-  }
-
   /**
    * Start the viewer.
    *
@@ -716,6 +711,11 @@ export class WebViewer {
     }
 
     this.stop();
+  }
+
+  #clearLoader() {
+    this.#loader?.remove();
+    this.#loader = null;
   }
 
   /**
