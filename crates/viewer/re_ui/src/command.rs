@@ -493,7 +493,7 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::ZoomReset => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_RESET],
 
-            Self::ToggleCommandPalette => smallvec![cmd(Key::P)],
+            Self::ToggleCommandPalette => smallvec![cmd(Key::P), cmd(Key::K)],
 
             Self::PlaybackTogglePlayPause => smallvec![key(Key::Space)],
             Self::PlaybackFollow => smallvec![alt(Key::ArrowRight)],
