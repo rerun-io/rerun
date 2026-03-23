@@ -91,6 +91,13 @@ mod tests {
 
 // ----------------------------------------------------------------
 
+/// Error returned when two Arrow arrays are not similar.
+#[derive(Debug, thiserror::Error)]
+#[error("{0}")]
+pub struct ArrayComparisonError(pub String);
+
+// ----------------------------------------------------------------
+
 /// Error used when a column is missing from a record batch
 #[derive(Debug, Clone, thiserror::Error)]
 pub struct MissingColumnError {

@@ -8269,7 +8269,6 @@ dependencies = [
 name = "re_arrow_util"
 version = "0.31.0-alpha.1+dev"
 dependencies = [
- "anyhow",
  "arrow",
  "comfy-table",
  "datafusion",
