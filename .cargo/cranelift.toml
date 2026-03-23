@@ -1,0 +1,39 @@
+# Cranelift codegen backend for the dev-fast profile (nightly only).
+# Crates with unsupported aarch64 intrinsics (CRC32, NEON) are overridden to compile with LLVM.
+# This file is included via config-include from the pixi task and run configuration
+
+[profile.dev-fast]
+codegen-backend = "cranelift"
+
+[profile.dev-fast.package.crc32fast]
+codegen-backend = "llvm"
+
+[profile.dev-fast.package.zune-jpeg]
+codegen-backend = "llvm"
+
+[profile.dev-fast.package.image]
+codegen-backend = "llvm"
+
+[profile.dev-fast.package.re_sdk_types]
+codegen-backend = "llvm"
+
+[profile.dev-fast.package.glam]
+codegen-backend = "llvm"
+
+[profile.dev-fast.package.fearless_simd]
+codegen-backend = "llvm"
+
+[profile.dev-fast.package.vello_common]
+codegen-backend = "llvm"
+
+[profile.dev-fast.package.vello_cpu]
+codegen-backend = "llvm"
+
+[profile.dev-fast.package.tiny-skia]
+codegen-backend = "llvm"
+
+[profile.dev-fast.package.simd-adler32]
+codegen-backend = "llvm"
+
+[profile.dev-fast.package.re_rav1d]
+codegen-backend = "llvm"

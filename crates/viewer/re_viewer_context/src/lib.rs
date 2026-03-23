@@ -2,6 +2,14 @@
 //!
 //! This crate contains data structures that are shared with most modules of the viewer.
 
+// Increased recursion is needed for VideoAssetCache.
+// We could also add Send bounds like this to help limit recursion:
+// impl Cache for VideoAssetCache
+// where
+//     Video: Send + Sync,
+//     VideoLoadError: Send + Sync,
+// but that slows compilation down by a ton
+#![recursion_limit = "256"]
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod active_store_context;

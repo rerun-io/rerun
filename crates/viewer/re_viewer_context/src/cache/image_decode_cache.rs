@@ -256,12 +256,7 @@ fn decode_rvl_depth(
     ))
 }
 
-impl Cache for ImageDecodeCache
-where
-    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
-    ImageInfo: Send + Sync,
-    ImageLoadError: Send + Sync,
-{
+impl Cache for ImageDecodeCache {
     fn name(&self) -> &'static str {
         "ImageDecodeCache"
     }
@@ -318,12 +313,7 @@ where
     }
 }
 
-impl re_byte_size::MemUsageTreeCapture for ImageDecodeCache
-where
-    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
-    ImageInfo: Send + Sync,
-    ImageLoadError: Send + Sync,
-{
+impl re_byte_size::MemUsageTreeCapture for ImageDecodeCache {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
         let mut node = re_byte_size::MemUsageNode::new();
 

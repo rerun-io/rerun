@@ -604,6 +604,27 @@ opt-level = 0 # we often debug egui via Rerun
 debug = true # enable debug symbols for build scripts
 
 
+## Dev-fast (Cranelift)
+
+# A fast-compiling dev profile optimized for ultimate compile speed using the Cranelift backend.
+# Fast compile profile using the Cranelift codegen backend.
+# The codegen-backend settings are in .cargo/config.toml (requires nightly).
+# Usage: pixi run rerun-build-fast
+# Requires: rustup component add rustc-codegen-cranelift-preview --toolchain nightly
+[profile.dev-fast]
+inherits = "dev"
+debug = false
+strip = "debuginfo"
+
+[profile.dev-fast.package."*"]
+opt-level = 1
+
+# AV1 decoder is unusable without optimization.
+[profile.dev-fast.package.re_rav1d]
+opt-level = 3
+debug-assertions = false
+
+
 # ---------------------------------------------------------------------------------
 
 

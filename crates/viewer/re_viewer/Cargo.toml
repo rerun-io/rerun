@@ -155,8 +155,9 @@ wgpu.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-re_perf_telemetry = { workspace = true, optional = true }
 poll-promise = { workspace = true, features = ["tokio"] }
+re_perf_telemetry = { workspace = true, optional = true }
+tokio.workspace = true
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

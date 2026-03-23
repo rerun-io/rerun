@@ -1,0 +1,22 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="viewer_fast" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+    <option name="buildProfileId" value="Custom:dev-fast" />
+    <option name="command" value="run --package re_viewer --bin viewer --profile dev-fast --config 'include=[&quot;.cargo/cranelift.toml&quot;]'" />
+    <option name="workingDirectory" value="file://$PROJECT_DIR$/rerun" />
+    <envs>
+      <env name="RUSTFLAGS" value="-Z threads=0" />
+    </envs>
+    <option name="emulateTerminal" value="true" />
+    <option name="channel" value="NIGHTLY" />
+    <option name="requiredFeatures" value="true" />
+    <option name="allFeatures" value="false" />
+    <option name="withSudo" value="false" />
+    <option name="buildTarget" value="REMOTE" />
+    <option name="backtrace" value="SHORT" />
+    <option name="isRedirectInput" value="false" />
+    <option name="redirectInputPath" value="" />
+    <method v="2">
+      <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+    </method>
+  </configuration>
+</component>
