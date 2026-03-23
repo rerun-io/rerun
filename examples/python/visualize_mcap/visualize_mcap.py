@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import rerun as rr
@@ -14,11 +15,30 @@ from rerun.blueprint.datatypes import ComponentSourceKind, VisualizerComponentMa
 EXAMPLE_DIR = Path(__file__).resolve().parent
 MCAP_PATH = EXAMPLE_DIR.parent.parent.parent / "tests" / "assets" / "mcap" / "trossen_transfer_cube.mcap"
 ASSETS_DIR = EXAMPLE_DIR / "assets"
-URDF_PATHS = [
-    ASSETS_DIR / "scene.urdf",
-    ASSETS_DIR / "wxai_follower_left.urdf",
-    ASSETS_DIR / "wxai_follower_right.urdf",
-]
+SCENE_URDF_PATH = ASSETS_DIR / "scene.urdf"
+FOLLOWER_URDF_PATH = ASSETS_DIR / "wxai_follower.urdf"
+
+
+def make_urdf_with_suffix(urdf_path: Path, suffix: str) -> bytes:
+    """Load a URDF file and append a suffix to all link, joint, and robot names."""
+    content = urdf_path.read_text()
+    tree = ET.parse(urdf_path)
+    root = tree.getroot()
+
+    # Collect all names that need suffixing
+    names: set[str] = set()
+    robot_name = root.attrib.get("name")
+    if robot_name:
+        names.add(robot_name)
+    for elem in root.iter():
+        if elem.tag in ("link", "joint") and "name" in elem.attrib:
+            names.add(elem.attrib["name"])
+
+    # Replace longest names first to avoid partial matches
+    for name in sorted(names, key=len, reverse=True):
+        content = content.replace(f'"{name}"', f'"{name}_{suffix}"')
+
+    return content.encode()
 
 
 def make_blueprint() -> rrb.Blueprint:
@@ -109,8 +129,10 @@ def main() -> None:
         raise SystemExit(1)
 
     rr.log_file_from_path(MCAP_PATH)
-    for urdf_path in URDF_PATHS:
-        rr.log_file_from_path(urdf_path, static=True)
+    rr.log_file_from_path(SCENE_URDF_PATH, static=True)
+    for suffix in ["left", "right"]:
+        urdf_contents = make_urdf_with_suffix(FOLLOWER_URDF_PATH, suffix)
+        rr.log_file_from_contents(FOLLOWER_URDF_PATH, urdf_contents, static=True)
     rr.send_blueprint(make_blueprint())
 
     rr.script_teardown(args)
