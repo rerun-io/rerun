@@ -135,18 +135,11 @@ impl Server {
         viewer_ctx: &StoreViewContext<'_>,
         ctx: &Context<'_>,
         ui: &mut egui::Ui,
-        has_active_login_flow: bool,
+        inline_login_flow: &mut Option<(re_uri::Origin, Box<LoginFlow>)>,
     ) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
             self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
-                error_ui(
-                    viewer_ctx,
-                    ctx,
-                    ui,
-                    &self.origin,
-                    err,
-                    has_active_login_flow,
-                );
+                error_ui(viewer_ctx, ctx, ui, &self.origin, err, inline_login_flow);
             });
             return;
         }
@@ -269,7 +262,7 @@ fn error_ui(
     ui: &mut egui::Ui,
     origin: &re_uri::Origin,
     err: &re_redap_client::ApiError,
-    has_active_login_flow: bool,
+    inline_login_flow: &mut Option<(re_uri::Origin, Box<LoginFlow>)>,
 ) {
     if let Some(conn_err) = err.as_client_credentials_error() {
         let message = match conn_err {
@@ -304,6 +297,8 @@ fn error_ui(
             ClientCredentialsError::HostMismatch(_) => false,
         };
 
+        let has_active_login_flow = inline_login_flow.as_ref().is_some_and(|(o, _)| o == origin);
+
         if show_login {
             Alert::info().show(ui, |ui| {
                 ui.vertical(|ui| {
@@ -336,7 +331,7 @@ fn error_ui(
                                 )
                                 .clicked()
                             {
-                                send_crossbeam(ctx.command_sender, Command::CancelLoginFlow).ok();
+                                *inline_login_flow = None;
                             }
                         });
                     } else {
@@ -359,15 +354,22 @@ fn error_ui(
                                 }
                             } else {
                                 // User is not logged in — start login flow
+                                // Opening the popup synchronously in the click handler is
+                                // required for Safari, which blocks popups not initiated
+                                // by a direct user gesture.
                                 if ui
                                     .add(re_ui::ReButton::new("Log in").primary().small())
                                     .clicked()
                                 {
-                                    send_crossbeam(
-                                        ctx.command_sender,
-                                        Command::StartLoginFlow(origin.clone()),
-                                    )
-                                    .ok();
+                                    match LoginFlow::open_and_start(ui.ctx()) {
+                                        Ok(flow) => {
+                                            *inline_login_flow =
+                                                Some((origin.clone(), Box::new(flow)));
+                                        }
+                                        Err(err) => {
+                                            re_log::error!("Failed to start login: {err}");
+                                        }
+                                    }
                                 }
                             }
                             if ui
@@ -546,14 +548,8 @@ pub enum Command {
 
     RefreshCollection(re_uri::Origin),
 
-    /// Start an inline login flow for a server.
-    StartLoginFlow(re_uri::Origin),
-
     /// Use the stored account credentials for a server and refresh.
     UseStoredCredentials(re_uri::Origin),
-
-    /// Cancel the active inline login flow.
-    CancelLoginFlow,
 }
 
 impl std::fmt::Debug for Command {
@@ -577,11 +573,9 @@ impl std::fmt::Debug for Command {
             Self::RefreshCollection(origin) => {
                 f.debug_tuple("RefreshCollection").field(origin).finish()
             }
-            Self::StartLoginFlow(origin) => f.debug_tuple("StartLoginFlow").field(origin).finish(),
             Self::UseStoredCredentials(origin) => {
                 f.debug_tuple("UseStoredCredentials").field(origin).finish()
             }
-            Self::CancelLoginFlow => write!(f, "CancelLoginFlow"),
         }
     }
 }
@@ -751,41 +745,24 @@ impl RedapServers {
                 });
             }
 
-            Command::StartLoginFlow(origin) => {
-                if self.inline_login_flow.is_none() {
-                    match LoginFlow::open_and_start(egui_ctx) {
-                        Ok(flow) => {
-                            self.inline_login_flow = Some((origin, Box::new(flow)));
-                        }
-                        Err(err) => {
-                            re_log::error!("Failed to start login: {err}");
-                        }
-                    }
-                }
-            }
-
             Command::UseStoredCredentials(origin) => {
                 connection_registry.set_credentials(&origin, re_redap_client::Credentials::Stored);
                 send_crossbeam(&self.command_sender, Command::RefreshCollection(origin)).ok();
-            }
-
-            Command::CancelLoginFlow => {
-                self.inline_login_flow = None;
             }
         }
     }
 
     pub fn server_central_panel_ui(
-        &self,
+        &mut self,
         viewer_ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         origin: &re_uri::Origin,
     ) {
         if let Some(server) = self.servers.get(origin) {
-            let has_login_flow = self.has_active_login_flow(origin);
-            self.with_ctx(|ctx| {
-                server.server_ui(viewer_ctx, ctx, ui, has_login_flow);
-            });
+            let ctx = Context {
+                command_sender: &self.command_sender,
+            };
+            server.server_ui(viewer_ctx, &ctx, ui, &mut self.inline_login_flow);
         } else {
             viewer_ctx.revert_to_default_route();
         }
@@ -851,20 +828,5 @@ impl RedapServers {
         if let Err(err) = result {
             re_log::warn_once!("Failed to send command: {err}");
         }
-    }
-
-    fn has_active_login_flow(&self, origin: &re_uri::Origin) -> bool {
-        self.inline_login_flow
-            .as_ref()
-            .is_some_and(|(o, _)| o == origin)
-    }
-
-    #[inline]
-    fn with_ctx<R>(&self, func: impl FnOnce(&Context<'_>) -> R) -> R {
-        let ctx = Context {
-            command_sender: &self.command_sender,
-        };
-
-        func(&ctx)
     }
 }
