@@ -8,7 +8,7 @@
     "@rerun-io/web-viewer": "file:../rerun_js/web-viewer"
   },
   "devDependencies": {
-    "@anywidget/types": "^0.1.9",
+    "@anywidget/types": "^0.2.0",
     "esbuild": "^0.25.0",
     "typescript": "^5.4.5"
   }
