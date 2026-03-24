@@ -66,6 +66,11 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
         let _guard = parent_ctx.attach();
 
         let endpoint = request.uri().path().to_owned();
+        // Split "/package.Service/Method" into rpc.service and rpc.method per OTel conventions.
+        let (rpc_service, rpc_method) = endpoint
+            .strip_prefix('/')
+            .and_then(|s| s.split_once('/'))
+            .unwrap_or(("", ""));
         let url = request
             .uri()
             .to_string()
@@ -119,6 +124,12 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             otel.name = %endpoint,
             url,
             method = %request.method(),
+
+            // OTel semantic conventions for gRPC (https://opentelemetry.io/docs/specs/semconv/rpc/grpc/):
+            rpc.system = "grpc",
+            rpc.service = %rpc_service,
+            rpc.method = %rpc_method,
+
             // Record benchmark_id as a top level span field.
             //
             // At this stage we may not know yet the actual value (depending on whether
@@ -131,6 +142,10 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             // This will only be filled if we have a benchmark_id in the tracestate.
             // That's OK, it won't be printed if empty.
             benchmark_id = tracing::field::Empty,
+
+            // The gRPC status code (e.g. "Ok", "AlreadyExists", "DeadlineExceeded").
+            // Filled in later by `GrpcOnResponse` or `GrpcOnEos`, depending on the endpoint type (unary vs streaming).
+            grpc_status = tracing::field::Empty,
         );
 
         let size = SpanMetadata::insert_opt(
@@ -430,8 +445,16 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
             grpc_eos_classifier: _,
         } = span_metadata.clone();
 
-        let record = |grpc_code: tonic::Code| {
-            let grpc_status = format!("{grpc_code:?}"); // NOTE: The debug repr is the enum variant name (e.g. DeadlineExceeded).
+        // Record response metrics and optionally set the final `grpc_status` span attribute.
+        // Pass `Some(code)` when the final gRPC status is known, `None` when it will be
+        // determined later by `GrpcOnEos` (streaming responses).
+        let record = |span: &tracing::Span, grpc_code: Option<tonic::Code>| {
+            let grpc_status = if let Some(grpc_code) = grpc_code {
+                format!("{grpc_code:?}")
+            } else {
+                "<pending>".to_owned()
+            };
+            span.record("grpc_status", grpc_status.as_str());
             let http_status = response.status().as_str().to_owned();
 
             let client_version = client_version.as_deref().unwrap_or("undefined");
@@ -473,7 +496,7 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
                         tonic::Status::from_error(err.into()).code()
                     }
                 };
-                record(grpc_code);
+                record(span, Some(grpc_code));
 
                 // For immediate errors, emit grpc_on_eos counter here since on_eos won't be called
                 let grpc_status = format!("{grpc_code:?}"); // NOTE: The debug repr is the enum variant name (e.g. DeadlineExceeded).
@@ -495,11 +518,12 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
             }
 
             tower_http::classify::ClassifiedResponse::Ready(Ok(_)) => {
-                record(tonic::Code::Ok);
+                record(span, Some(tonic::Code::Ok));
             }
 
             tower_http::classify::ClassifiedResponse::RequiresEos(eos) => {
-                record(tonic::Code::Ok);
+                // Final gRPC status is unknown until end-of-stream; `GrpcOnEos` will set it.
+                record(span, None);
                 SpanMetadata::insert_opt(
                     span.id(),
                     SpanMetadata {
@@ -652,6 +676,7 @@ impl tower_http::trace::OnEos for GrpcOnEos {
             tonic::Code::Unknown
         };
         let grpc_status = format!("{grpc_code:?}"); // NOTE: The debug repr is the enum variant name (e.g. DeadlineExceeded).
+        span.record("grpc_status", &grpc_status);
 
         let client_version = client_version.as_deref().unwrap_or("undefined");
         let server_version = server_version.as_deref().unwrap_or("undefined");
