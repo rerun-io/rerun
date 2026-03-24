@@ -88,9 +88,6 @@ _Expect breaking changes!_
 
 Some shortcomings:
 * [The viewer slows down when there are too many entities](https://github.com/rerun-io/rerun/issues/7115)
-* The data you want to visualize must fit in RAM
-  - See <https://www.rerun.io/docs/howto/visualization/limit-ram> for how to bound memory use.
-  - We plan on having a disk-based data store some time in the future.
 * [Multi-million point clouds can be slow](https://github.com/rerun-io/rerun/issues/1136)
 
 
