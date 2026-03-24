@@ -2384,9 +2384,9 @@ fn init_login_flow(py: Python<'_>) -> PyResult<Option<PyDeviceCodeFlow>> {
             // Already logged in, no need to start a login flow.
             Ok(None)
         }
-        DeviceCodeFlowState::LoginFlowStarted(login_flow) => {
-            Ok(Some(PyDeviceCodeFlow { login_flow }))
-        }
+        DeviceCodeFlowState::LoginFlowStarted(login_flow) => Ok(Some(PyDeviceCodeFlow {
+            login_flow: *login_flow,
+        })),
     }
 }
 

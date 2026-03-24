@@ -12,8 +12,8 @@ use super::api::{
 };
 
 pub enum OauthLoginFlowState {
-    AlreadyLoggedIn(Credentials),
-    LoginFlowStarted(OauthLoginFlow),
+    AlreadyLoggedIn(Box<Credentials>),
+    LoginFlowStarted(Box<OauthLoginFlow>),
 }
 
 pub struct OauthLoginFlow {
@@ -37,7 +37,7 @@ impl OauthLoginFlow {
                     login_hint = Some(credentials.user().email.clone());
                     match oauth::refresh_credentials(credentials).await {
                         Ok(credentials) => {
-                            return Ok(OauthLoginFlowState::AlreadyLoggedIn(credentials));
+                            return Ok(OauthLoginFlowState::AlreadyLoggedIn(Box::new(credentials)));
                         }
                         Err(err) => {
                             // Credentials are bad, login again.
@@ -62,11 +62,11 @@ impl OauthLoginFlow {
         let pkce = Pkce::new();
         let server = OauthCallbackServer::new(&pkce)?;
 
-        Ok(OauthLoginFlowState::LoginFlowStarted(Self {
+        Ok(OauthLoginFlowState::LoginFlowStarted(Box::new(Self {
             server,
             login_hint,
             pkce,
-        }))
+        })))
     }
 
     pub fn get_login_url(&self) -> &str {
@@ -96,10 +96,9 @@ impl OauthLoginFlow {
     }
 }
 
-#[expect(clippy::large_enum_variant)]
 pub enum DeviceCodeFlowState {
-    AlreadyLoggedIn(Credentials),
-    LoginFlowStarted(DeviceCodeFlow),
+    AlreadyLoggedIn(Box<Credentials>),
+    LoginFlowStarted(Box<DeviceCodeFlow>),
 }
 
 pub struct DeviceCodeFlow {
@@ -118,7 +117,7 @@ impl DeviceCodeFlow {
                 Ok(Some(credentials)) => {
                     match oauth::refresh_credentials(credentials).await {
                         Ok(credentials) => {
-                            return Ok(DeviceCodeFlowState::AlreadyLoggedIn(credentials));
+                            return Ok(DeviceCodeFlowState::AlreadyLoggedIn(Box::new(credentials)));
                         }
                         Err(err) => {
                             // Credentials are bad, login again.
@@ -147,12 +146,12 @@ impl DeviceCodeFlow {
 
         let interval = Duration::from_secs(res.interval_seconds as u64);
 
-        Ok(DeviceCodeFlowState::LoginFlowStarted(Self {
+        Ok(DeviceCodeFlowState::LoginFlowStarted(Box::new(Self {
             device_code: res.device_code,
             user_code: res.user_code,
             verification_uri: res.verification_uri_complete,
             interval,
-        }))
+        })))
     }
 
     pub fn get_login_url(&self) -> &str {

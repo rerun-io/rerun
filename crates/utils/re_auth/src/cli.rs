@@ -60,7 +60,7 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
                 println!("Note: Run `rerun auth login --force` to login again.");
                 return Ok(());
             }
-            credentials
+            *credentials
         }
         OauthLoginFlowState::LoginFlowStarted(login_flow) => {
             let progress_bar = ProgressBar::new_spinner();
