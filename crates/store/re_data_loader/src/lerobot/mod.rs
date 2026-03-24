@@ -296,6 +296,11 @@ pub struct EpisodeIndex(pub usize);
 #[serde(transparent)]
 pub struct TaskIndex(pub usize);
 
+/// Newtype wrapper for subtask indices.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[serde(transparent)]
+pub struct SubtaskIndex(pub usize);
+
 /// A task in a `LeRobot` dataset.
 ///
 /// Each task consists of its index and a task description.
@@ -304,6 +309,17 @@ pub struct LeRobotDatasetTask {
     #[serde(rename = "task_index")]
     pub index: TaskIndex,
     pub task: String,
+}
+
+/// A subtask in a `LeRobot` dataset.
+///
+/// Subtasks break down complex tasks into finer-grained, interpretable steps.
+/// Each subtask consists of its index and a subtask description.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LeRobotDatasetSubtask {
+    #[serde(rename = "subtask_index")]
+    pub index: SubtaskIndex,
+    pub subtask: String,
 }
 
 /// Errors that might happen when loading data through a [`crate::loader_lerobot::LeRobotDatasetLoader`].

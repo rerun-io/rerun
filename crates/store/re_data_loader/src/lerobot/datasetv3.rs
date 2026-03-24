@@ -2,7 +2,10 @@ use crate::lerobot::common::{
     LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDataset, load_and_stream_versioned,
     load_episode_depth_images, load_episode_images, load_scalar,
 };
-use crate::lerobot::{DType, EpisodeIndex, Feature, LeRobotDatasetTask, LeRobotError, TaskIndex};
+use crate::lerobot::{
+    DType, EpisodeIndex, Feature, LeRobotDatasetSubtask, LeRobotDatasetTask, LeRobotError,
+    SubtaskIndex, TaskIndex,
+};
 
 use std::fs::File;
 use std::io::BufReader;
@@ -372,6 +375,11 @@ impl LeRobotDatasetV3 {
         self.metadata.tasks.tasks.get(&task)
     }
 
+    /// Retrieve the subtask using the provided subtask index.
+    pub fn subtask_by_index(&self, subtask: SubtaskIndex) -> Option<&LeRobotDatasetSubtask> {
+        self.metadata.subtasks.as_ref()?.subtasks.get(&subtask)
+    }
+
     /// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
     ///
     /// This function processes an episode from the dataset by extracting the relevant data columns and
@@ -438,6 +446,11 @@ impl LeRobotDatasetV3 {
                     // this always refers to the task description in the dataset metadata.
                     chunks.extend(self.log_episode_task(&timeline, &data)?);
                 }
+                DType::Int64 if feature_key == "subtask_index" => {
+                    // special case int64 subtask_index columns
+                    // this always refers to the subtask description in the dataset metadata.
+                    chunks.extend(self.log_episode_subtask(&timeline, &data)?);
+                }
                 DType::Int16 | DType::Int64 | DType::Bool | DType::String => {
                     re_log::warn_once!(
                         "Loading LeRobot feature ({feature_key}) of dtype `{:?}` into Rerun is not yet implemented",
@@ -480,6 +493,41 @@ impl LeRobotDatasetV3 {
 
                 let timepoint = TimePoint::default().with(*timeline, frame_idx);
                 let text = TextDocument::new(task.task.clone());
+                chunk = chunk.with_archetype(row_id, timepoint, &text);
+                row_id = row_id.next();
+            }
+        }
+
+        Ok(std::iter::once(chunk.build()?))
+    }
+
+    fn log_episode_subtask(
+        &self,
+        timeline: &Timeline,
+        data: &RecordBatch,
+    ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
+        let subtask_indices = data
+            .column_by_name("subtask_index")
+            .and_then(|c| c.downcast_array_ref::<Int64Array>())
+            .with_context(|| "Failed to get subtask_index field from dataset!")?;
+
+        let mut chunk = Chunk::builder("subtask");
+        let mut row_id = RowId::new();
+
+        for (frame_idx, subtask_index_opt) in subtask_indices.iter().enumerate() {
+            let Some(subtask_idx) = subtask_index_opt
+                .and_then(|i| usize::try_from(i).ok())
+                .map(SubtaskIndex)
+            else {
+                continue;
+            };
+
+            if let Some(subtask) = self.subtask_by_index(subtask_idx) {
+                let frame_idx = i64::try_from(frame_idx)
+                    .map_err(|err| anyhow!("Frame index exceeds max value: {err}"))?;
+
+                let timepoint = TimePoint::default().with(*timeline, frame_idx);
+                let text = TextDocument::new(subtask.subtask.clone());
                 chunk = chunk.with_archetype(row_id, timepoint, &text);
                 row_id = row_id.next();
             }
@@ -673,6 +721,7 @@ impl LeRobotDataset for LeRobotDatasetV3 {
 pub struct LeRobotDatasetMetadataV3 {
     pub info: LeRobotDatasetInfoV3,
     pub tasks: LeRobotDatasetV3Tasks,
+    pub subtasks: Option<LeRobotDatasetV3Subtasks>,
     pub episodes: HashMap<EpisodeIndex, LeRobotEpisodeData>,
 }
 
@@ -703,6 +752,15 @@ impl LeRobotDatasetMetadataV3 {
         let info = LeRobotDatasetInfoV3::load_from_json_file(metadir.join("info.json"))?;
         let tasks = LeRobotDatasetV3Tasks::load_from_parquet_file(metadir.join("tasks.parquet"))?;
 
+        let subtasks_path = metadir.join("subtasks.parquet");
+        let subtasks = if subtasks_path.is_file() {
+            Some(LeRobotDatasetV3Subtasks::load_from_parquet_file(
+                subtasks_path,
+            )?)
+        } else {
+            None
+        };
+
         // Convert episode data Vec to HashMap for O(1) lookups
         let episodes = episode_data
             .into_iter()
@@ -712,6 +770,7 @@ impl LeRobotDatasetMetadataV3 {
         Ok(Self {
             info,
             tasks,
+            subtasks,
             episodes,
         })
     }
@@ -1103,6 +1162,48 @@ impl LeRobotDatasetV3Tasks {
             .collect::<HashMap<_, _>>();
 
         Ok(Self { tasks })
+    }
+}
+
+pub struct LeRobotDatasetV3Subtasks {
+    pub subtasks: HashMap<SubtaskIndex, LeRobotDatasetSubtask>,
+}
+
+impl LeRobotDatasetV3Subtasks {
+    pub fn load_from_parquet_file(filepath: impl AsRef<Path>) -> Result<Self, LeRobotError> {
+        let filepath = filepath.as_ref().to_owned();
+        let parquet_data =
+            File::open(&filepath).map_err(|err| LeRobotError::io(err, filepath.clone()))?;
+
+        let reader = ParquetRecordBatchReaderBuilder::try_new(parquet_data)?.build()?;
+
+        let subtasks = reader
+            .filter_map(|record_batch| {
+                let b = record_batch.ok()?;
+                let subtask_index_col = b.column_by_name("subtask_index")?;
+                let subtask_col = b.column_by_name("subtask")?;
+                let subtask_index = subtask_index_col.as_any().downcast_ref::<Int64Array>()?;
+                let subtask = subtask_col.as_any().downcast_ref::<StringArray>()?;
+
+                let num_rows = b.num_rows();
+                Some(
+                    (0..num_rows)
+                        .map(move |i| {
+                            (
+                                SubtaskIndex(subtask_index.value(i) as usize),
+                                LeRobotDatasetSubtask {
+                                    index: SubtaskIndex(subtask_index.value(i) as usize),
+                                    subtask: subtask.value(i).to_owned(),
+                                },
+                            )
+                        })
+                        .collect(),
+                )
+            })
+            .flat_map(|e: Vec<(SubtaskIndex, LeRobotDatasetSubtask)>| e)
+            .collect::<HashMap<_, _>>();
+
+        Ok(Self { subtasks })
     }
 }
 
