@@ -19,12 +19,12 @@ It's used in areas like robotics, spatial and embodied AI, generative media, ind
 Rerun is easy to use!
 Use the Rerun SDK (available for C++, Python and Rust) to log data like images, tensors, point clouds, and text.
 Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
-You can also query the logged data through [our dataframe API](https://rerun.io/docs/howto/dataframe-api).
+You can also query the logged data through [our dataframe API](https://rerun.io/docs/howto/query-and-transform/get-data-out).
 
 [Get started](#getting-started) in minutes – no account needed.
 
 * [Run the Rerun Viewer in your browser](https://www.rerun.io/viewer)
-* [Read about what Rerun is and who it is for](https://www.rerun.io/docs/getting-started/what-is-rerun)
+* [Read about what Rerun is and who it is for](https://www.rerun.io/docs/overview/what-is-rerun)
 
 ### A short taste
 ```py
@@ -71,14 +71,14 @@ You should now be able to run `rerun --help` in any terminal.
 
 
 ### Documentation
-- 📚 [High-level docs](http://rerun.io/docs)
+- 📚 [High-level docs](https://rerun.io/docs)
 - ⏃ [Loggable Types](https://www.rerun.io/docs/reference/types)
-- ⚙️ [Examples](http://rerun.io/examples)
+- ⚙️ [Examples](https://rerun.io/examples)
 - 📖 [Code snippets](./docs/snippets/INDEX.md)
 - 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp)
 - 🐍 [Python API docs](https://ref.rerun.io/docs/python)
 - 🦀 [Rust API docs](https://docs.rs/rerun/)
-- ⁉️ [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
+- ⁉️ [Troubleshooting](https://www.rerun.io/docs/overview/installing-rerun/troubleshooting)
 
 
 ## Status
@@ -89,7 +89,7 @@ _Expect breaking changes!_
 Some shortcomings:
 * [The viewer slows down when there are too many entities](https://github.com/rerun-io/rerun/issues/7115)
 * The data you want to visualize must fit in RAM
-  - See <https://www.rerun.io/docs/howto/limit-ram> for how to bound memory use.
+  - See <https://www.rerun.io/docs/howto/visualization/limit-ram> for how to bound memory use.
   - We plan on having a disk-based data store some time in the future.
 * [Multi-million point clouds can be slow](https://github.com/rerun-io/rerun/issues/1136)
 
@@ -129,13 +129,13 @@ Of course, Rerun is useful for much more than just robots. Any time you have any
 ### Rerun vs. Rviz
 
 When coming from pure visualization tools like [RViz](https://docs.ros.org/en/rolling/Tutorials/Intermediate/RViz/RViz-Main.html), you might be used to seeing the latest data only.
-Rerun is more than a pure visualization solution, it provides a platform for multimodal data with a powerful visualizer, storage model and query engine (see also: [*"What is Rerun?"*](https://rerun.io/docs/getting-started/what-is-rerun)).
+Rerun is more than a pure visualization solution, it provides a platform for multimodal data with a powerful visualizer, storage model and query engine (see also: [*"What is Rerun?"*](https://rerun.io/docs/overview/what-is-rerun)).
 In robotics, you can use Rerun e.g. to record test runs, manage and query training data, visually debug live streams or recordings (also from third-party formats like [MCAP](https://rerun.io/docs/howto/logging-and-ingestion/mcap)) and much more.
 
 So while Rerun makes your data streams visualizable in the viewer, integrating Rerun logging into your robotics applications also opens up the door for leveraging Rerun's broader capabilities.
 
 If you are only interested in visualization, the Rerun viewer has powerful features like the ability to go back in time thanks to its time-aware in-memory database.
-You can adjust the size of this buffer to your needs (see [here](https://rerun.io/docs/howto/limit-ram)), e.g. to a smaller size if you want to use Rerun as an RViz replacement in long-running or memory-constrained applications.
+You can adjust the size of this buffer to your needs (see [here](https://rerun.io/docs/howto/visualization/limit-ram)), e.g. to a smaller size if you want to use Rerun as an RViz replacement in long-running or memory-constrained applications.
 
 
 ## Business model

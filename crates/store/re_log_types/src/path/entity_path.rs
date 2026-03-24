@@ -79,7 +79,7 @@ impl std::fmt::Debug for EntityPathHash {
 /// When written as a string, some characters in the parts need to be escaped with a `\`
 /// (only character, numbers, `.`, `-`, `_` does not need escaping).
 ///
-/// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+/// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 ///
 /// This is basically implemented as a list of strings, but is reference-counted internally, so it is cheap to clone.
 /// It also has a precomputed hash and implemented [`nohash_hasher::IsEnabled`],

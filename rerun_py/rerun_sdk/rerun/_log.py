@@ -32,7 +32,7 @@ def log(
     that implements the [`rerun.AsComponents`][] interface, or a collection of `ComponentBatchLike`
     objects.
 
-    When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/entity-path)
+    When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path)
     for identifying the data. Note that paths prefixed with "__" are considered reserved for use by the Rerun SDK
     itself and should not be used for logging user data. This is where Rerun will log additional information
     such as properties and warnings.
@@ -69,7 +69,7 @@ def log(
         This means that logging to `"world/my\ image\!"` is the same as logging
         to ["world", "my image!"].
 
-        See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+        See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 
     entity:
         Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype,
@@ -159,7 +159,7 @@ def _log_components(
         This means that logging to `"world/my\ image\!"` is the same as logging
         to ["world", "my image!"].
 
-        See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+        See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 
     components:
         A collection of `ComponentBatchLike` objects.
@@ -329,7 +329,7 @@ def escape_entity_path_part(part: str) -> str:
 
     For instance, `escape_entity_path_path("my image!")` will return `"my\ image\!"`.
 
-    See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 
     Parameters
     ----------
@@ -353,7 +353,7 @@ def new_entity_path(entity_path: list[Any]) -> str:
 
     For instance, `new_entity_path(["world", 42, "my image!"])` will return `"world/42/my\ image\!"`.
 
-    See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 
     Parameters
     ----------

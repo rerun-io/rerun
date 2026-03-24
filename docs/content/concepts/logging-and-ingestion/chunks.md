@@ -57,7 +57,7 @@ The data in this specific chunk was logged with the following code:
 
 snippet: concepts/how_helix_was_logged
 
-You can learn more about chunks and how they came to be in [this blog post](http://rerun.io/blog/column-chunks#storage-is-based-around-chunks-of-component-columns).
+You can learn more about chunks and how they came to be in [this blog post](https://rerun.io/blog/column-chunks#storage-is-based-around-chunks-of-component-columns).
 
 
 ## Getting chunks into Rerun

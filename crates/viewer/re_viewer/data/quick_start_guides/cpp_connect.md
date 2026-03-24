@@ -3,7 +3,7 @@
 ## Installing the Rerun Viewer
 The Rerun C++ SDK works by connecting to an awaiting Rerun Viewer over gRPC.
 
-If you need to install the viewer, follow the [installation guide](https://www.rerun.io/docs/getting-started/installing-viewer). Two of the more common ways to install the Rerun are:
+If you need to install the viewer, follow the [installation guide](https://www.rerun.io/docs/overview/installing-rerun/viewer). Two of the more common ways to install the Rerun are:
 * Via cargo: `cargo install rerun-cli --locked --features nasm` (see note below)
 * Via pip: `pip install rerun-sdk`
 

@@ -3,7 +3,7 @@ title: Loading URDF models
 order: 900
 ---
 
-Rerun features a built-in [data-loader](https://rerun.io/docs/reference/data-loaders/overview) for [URDF](https://en.wikipedia.org/wiki/URDF) files.
+Rerun features a built-in [data-loader](https://rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview) for [URDF](https://en.wikipedia.org/wiki/URDF) files.
 
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/urdf-viewer/ebdefa158ab6f26f9dc1cb1924fce4b846fe8db2/full.png" alt="A robot model loaded from an URDF file visualized in Rerun.">

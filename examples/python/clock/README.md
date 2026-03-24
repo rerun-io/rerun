@@ -34,7 +34,7 @@ rr.log(
  ```
 
 Then, the positions and colors of points and arrows representing the hands of a clock for seconds, minutes, and hours are logged in each simulation time.
-It first sets the simulation time using [`timelines`](https://www.rerun.io/docs/concepts/timelines), calculates the data for each hand, and logs it using [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) and [`Arrows3D`](https://www.rerun.io/docs/reference/types/archetypes/arrows3d) archetypes.
+It first sets the simulation time using [`timelines`](https://www.rerun.io/docs/concepts/logging-and-ingestion/timelines), calculates the data for each hand, and logs it using [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) and [`Arrows3D`](https://www.rerun.io/docs/reference/types/archetypes/arrows3d) archetypes.
 This enables the visualization of the clock's movement over time.
 
  ```python

@@ -242,7 +242,7 @@ fn software_rasterizer_warning_ui(ui: &mut egui::Ui, info: &wgpu::AdapterInfo) {
         egui::RichText::new("⚠ Software rasterizer")
             .small()
             .color(ui.visuals().warn_fg_color),
-        "https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues",
+        "https://www.rerun.io/docs/overview/installing-rerun/troubleshooting#graphics-issues",
     )
     .on_hover_ui(|ui| {
         ui.label("Software rasterizer detected - expect poor performance.");

@@ -107,7 +107,7 @@ pub fn iter_external_loaders() -> impl ExactSizeIterator<Item = PathBuf> {
 ///
 /// Refer to our `external_data_loader` example for more information.
 ///
-/// Checkout our [guide](https://www.rerun.io/docs/reference/data-loaders/overview) on
+/// Checkout our [guide](https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview) on
 /// how to implement external loaders.
 pub struct ExternalLoader;
 

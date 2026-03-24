@@ -623,10 +623,10 @@ with mkdocs_gen_files.open(index_path, "w") as index_file:
     index_file.write(
         """
 ## Getting Started
-* [Quick start](https://www.rerun.io/docs/getting-started/quick-start/python)
+* [Quick start](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
-* [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
+* [Troubleshooting](https://www.rerun.io/docs/overview/installing-rerun/troubleshooting)
 
 There are many different ways of sending data to the Rerun Viewer depending on what you're trying
 to achieve and whether the viewer is running in the same process as your code, in another process,

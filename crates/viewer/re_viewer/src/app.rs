@@ -2778,7 +2778,7 @@ impl App {
                     re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
                     re_ui::Link {
                         text: "Install…".into(),
-                        url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
+                        url: "https://rerun.io/docs/overview/installing-rerun/viewer#installing-the-viewer".into(),
                     }
                 )
                     .no_toast()

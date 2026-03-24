@@ -15,7 +15,7 @@ pip3 install rerun-sdk
 ℹ️ Note:
 The Python module is called `rerun`, while the package published on PyPI is `rerun-sdk`.
 
-For other SDK languages see [Installing Rerun](https://www.rerun.io/docs/getting-started/installing-viewer).
+For other SDK languages see [Installing Rerun](https://www.rerun.io/docs/overview/installing-rerun/viewer).
 
 We also provide a [Jupyter widget](https://pypi.org/project/rerun-notebook/) for interactive data visualization in Jupyter notebooks:
 ```sh
@@ -40,7 +40,7 @@ rr.log("points3d", rr.Points3D(positions, colors=colors))
 * [Python API docs](https://ref.rerun.io/docs/python)
 * [Quick start](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/data-in/python)
-* [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
+* [Troubleshooting](https://www.rerun.io/docs/overview/installing-rerun/troubleshooting)
 * [Discord Server](https://discord.com/invite/Gcm8BbTaAj)
 
 ## Logging and viewing in different processes

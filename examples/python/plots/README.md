@@ -47,7 +47,7 @@ def log_bar_chart() -> None:
 ### Curves
 The `log_parabola` function logs a parabola curve (sine and cosine functions) as a time series.
 
-It first sets up a time sequence using [`timelines`](https://www.rerun.io/docs/concepts/timelines), then calculates the y-value of the parabola at each time step, and logs it using [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars) archetype.
+It first sets up a time sequence using [`timelines`](https://www.rerun.io/docs/concepts/logging-and-ingestion/timelines), then calculates the y-value of the parabola at each time step, and logs it using [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars) archetype.
 It also adjusts the width and color of the plotted line based on the calculated y value using [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines) archetype.
 
 ```python

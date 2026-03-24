@@ -23,7 +23,7 @@ REFERENCE_COORDINATES = {
 def get_coordinate(ref_lat: float, ref_lon: float, bearing: float, dist: float) -> tuple[float, float]:
     """
     Using a reference coordinate, extract the coordinates of another point in space given its distance and bearing
-    to the reference coordinate. For reference, please see: https://www.movable-type.co.uk/scripts/latlong.html.
+    to the reference coordinate. For reference, please see: https://web.archive.org/web/2025/https://www.movable-type.co.uk/scripts/latlong.html.
 
     Parameters
     ----------

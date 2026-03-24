@@ -111,7 +111,7 @@ rr.log(
 
 ### Setting up the blueprint
 
-[Blueprint](https://rerun.io/docs/concepts/blueprint) sets up the Rerun Viewer's layout. In this example, we set the layout for the layout classification, the Detections for the text detection and the Recovery for the restored detections, which includes both layout analysis and text detections.
+[Blueprint](https://rerun.io/docs/concepts/visualization/blueprints) sets up the Rerun Viewer's layout. In this example, we set the layout for the layout classification, the Detections for the text detection and the Recovery for the restored detections, which includes both layout analysis and text detections.
 We dynamically set the tabs, as there will be different tabs for figures, tables and text detection.
 
 The blueprint for this example is created by the following code:

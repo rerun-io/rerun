@@ -805,7 +805,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
             ui.markdown_ui(
                 "The coordinate frame this entity is associated with.
 
-To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/concepts/spaces-and-transforms) in the manual.",
+To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/concepts/logging-and-ingestion/transforms) in the manual.",
             );
         });
 

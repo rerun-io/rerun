@@ -257,7 +257,7 @@ pub type DataLoaderName = String;
 ///
 /// ## Registering custom loaders
 ///
-/// Checkout our [guide](https://www.rerun.io/docs/reference/data-loaders/overview).
+/// Checkout our [guide](https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview).
 ///
 /// ## Execution
 ///

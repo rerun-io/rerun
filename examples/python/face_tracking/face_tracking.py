@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 # If set, log everything as static.
 #
 # Generally, the Viewer accumulates data until its set memory budget at which point it will
-# remove the oldest data from the recording (see https://rerun.io/docs/howto/limit-ram)
+# remove the oldest data from the recording (see https://rerun.io/docs/howto/visualization/limit-ram)
 # By instead logging data as static, no data will be accumulated over time since previous
 # data is overwritten.
 # Naturally, the drawback of this is that there's no history of previous data sent to the viewer,

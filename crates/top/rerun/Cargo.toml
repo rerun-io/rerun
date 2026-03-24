@@ -51,7 +51,7 @@ clap = ["dep:clap"]
 
 ## Support for using Rerun's data-loaders directly from the SDK.
 ##
-## See our `log_file` example and <https://www.rerun.io/docs/reference/data-loaders/overview>
+## See our `log_file` example and <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview>
 ## for more information.
 data_loaders = ["dep:re_mcap", "re_sdk?/data_loaders"]
 

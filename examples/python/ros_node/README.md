@@ -27,7 +27,7 @@ In this example, Rerun visualizes simulation data, including robot pose, images,
 
 ## Logging and visualizing with Rerun
 
-Find the detailed code walkthrough and explanation for visualizing this example here: [Using Rerun with ROS 2](https://www.rerun.io/docs/howto/ros2-nav-turtlebot).
+Find the detailed code walkthrough and explanation for visualizing this example here: [Using Rerun with ROS 2](https://www.rerun.io/docs/howto/integrations/ros2-nav-turtlebot).
 
 For more information on future improved ROS support, see tracking issue: [#1527](https://github.com/rerun-io/rerun/issues/1537)
 

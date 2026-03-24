@@ -1077,7 +1077,7 @@ impl RecordingStream {
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
     ///
     /// See also: [`Self::log_static`] for logging static data.
     ///
@@ -1208,7 +1208,7 @@ impl RecordingStream {
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
@@ -1248,7 +1248,7 @@ impl RecordingStream {
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
@@ -1339,7 +1339,7 @@ impl RecordingStream {
     /// This method blocks until either at least one [`re_data_loader::DataLoader`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
     #[cfg(feature = "data_loaders")]
     pub fn log_file_from_path(
         &self,
@@ -1357,7 +1357,7 @@ impl RecordingStream {
     /// This method blocks until either at least one [`re_data_loader::DataLoader`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
     #[cfg(feature = "data_loaders")]
     pub fn log_file_from_contents(
         &self,

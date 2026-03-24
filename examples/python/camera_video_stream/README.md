@@ -20,7 +20,7 @@ python -m camera_video_stream
 
 ## Details
 
-To learn more about video support in general check [the docs page on the topic](https://rerun.io/docs/reference/video).
+To learn more about video support in general check [the docs page on the topic](https://rerun.io/docs/concepts/logging-and-ingestion/video).
 
 The example first sets up a video stream on an entity called `"video_stream"` with the H264 codec.
 ```py

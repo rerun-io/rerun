@@ -2,7 +2,7 @@
 """
 Demonstrates how to log any file from the SDK using the `DataLoader` machinery.
 
-See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
+See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
 """
 
 from __future__ import annotations

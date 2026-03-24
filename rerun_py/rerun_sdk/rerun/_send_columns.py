@@ -166,7 +166,7 @@ def send_columns(
     entity_path:
         Path to the entity in the space hierarchy.
 
-        See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+        See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
     indexes:
         The time values of this batch of data. Each `TimeColumnLike` object represents a single column
         of timestamps. You usually want to use [`rerun.TimeColumn`][] for this.

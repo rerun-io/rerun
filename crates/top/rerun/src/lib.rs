@@ -14,9 +14,9 @@
 //!
 //! ## Links
 //! - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
-//! - [High-level docs](http://rerun.io/docs)
+//! - [High-level docs](https://rerun.io/docs)
 //! - [Rust API docs](https://docs.rs/rerun/)
-//! - [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
+//! - [Troubleshooting](https://www.rerun.io/docs/overview/installing-rerun/troubleshooting)
 //!
 //! There are many different ways of sending data to the Rerun Viewer depending on what you're
 //! trying to achieve and whether the viewer is running in the same process as your code, in

@@ -441,7 +441,7 @@ namespace rerun {
         /// This is the main entry point for logging data to rerun. It can be used to log anything
         /// that implements the `AsComponents<T>` trait.
         ///
-        /// When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/entity-path)
+        /// When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path)
         /// for identifying the data. Note that paths prefixed with "__" are considered reserved for use by the Rerun SDK
         /// itself and should not be used for logging user data. This is where Rerun will log additional information
         /// such as properties and warnings.
@@ -663,7 +663,7 @@ namespace rerun {
         /// This method blocks until either at least one `DataLoader` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
+        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
@@ -688,7 +688,7 @@ namespace rerun {
         /// This method blocks until either at least one `DataLoader` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
+        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
@@ -711,7 +711,7 @@ namespace rerun {
         /// This method blocks until either at least one `DataLoader` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
+        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
         ///
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.
@@ -745,7 +745,7 @@ namespace rerun {
         /// This method blocks until either at least one `DataLoader` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
+        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
         ///
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.

@@ -171,7 +171,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         Forwards the robot description message to Rerun's built-in URDF loader.
 
         Documentation about URDF support in Rerun can be found here:
-        https://rerun.io/docs/howto/urdf
+        https://rerun.io/docs/howto/logging-and-ingestion/urdf
         """
         # NOTE: file_path is not known here, robot.urdf is just a placeholder to let
         # Rerun know the file type. Since we run this example in a ROS environment,
