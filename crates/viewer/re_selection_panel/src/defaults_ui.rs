@@ -366,7 +366,7 @@ fn add_new_default(
     // - Finally, fall back on the default value from the component registry.
     let initial_data = query_context
         .viewer_ctx()
-        .component_fallback_registry
+        .component_fallback_registry()
         .fallback_for(&component_descr, query_context);
 
     match Chunk::builder(defaults_path.clone())

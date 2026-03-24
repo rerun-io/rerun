@@ -68,7 +68,7 @@ pub fn collect_series_visibility(
             || {
                 query_ctx
                     .viewer_ctx()
-                    .component_fallback_registry
+                    .component_fallback_registry()
                     .fallback_for(visibility_descriptor, query_ctx)
                     .as_boolean_opt()
                     .map(|arr| arr.values().clone())
@@ -201,7 +201,7 @@ pub fn collect_colors(
 
         let fallback_array = query_ctx
             .viewer_ctx()
-            .component_fallback_registry
+            .component_fallback_registry()
             .fallback_for(color_descriptor, query_ctx);
 
         if let Some(color_array) = fallback_array.as_primitive_opt::<UInt32Type>() {
@@ -298,7 +298,7 @@ pub fn collect_series_name(
 
         let fallback_array = query_ctx
             .viewer_ctx()
-            .component_fallback_registry
+            .component_fallback_registry()
             .fallback_for(name_descriptor, query_ctx);
 
         if let Some(string_array) = fallback_array.as_string_opt::<i32>() {

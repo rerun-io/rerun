@@ -676,7 +676,7 @@ mod tests {
             let view_state = view_states.get_mut_or_create(
                 ctx.store_id(),
                 view.id,
-                ctx.view_class_registry
+                ctx.view_class_registry()
                     .class(view.class_identifier())
                     .expect("view class should be registered"),
             );
@@ -685,7 +685,7 @@ mod tests {
                 ctx.blueprint_db(),
                 ctx.blueprint_query(),
                 ctx.time_ctrl.timeline(),
-                ctx.view_class_registry,
+                ctx.view_class_registry(),
                 view_state,
             );
 

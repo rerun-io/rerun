@@ -27,16 +27,15 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
-    ActiveStoreContext, AppOptions, AsyncRuntimeHandle, AuthContext, CommandReceiver,
-    CommandSender, ComponentUiRegistry, EditRedapServerModalCommand, FallbackProviderRegistry,
-    Item, MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable, Route, StorageContext,
-    SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError, command_channel, sanitize_file_name,
+    ActiveStoreContext, AppBlueprintCtx, AppOptions, AsyncRuntimeHandle, AuthContext,
+    CommandReceiver, CommandSender, ComponentUiRegistry, EditRedapServerModalCommand,
+    FallbackProviderRegistry, Item, MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable,
+    Route, StorageContext, SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand,
+    ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel, sanitize_file_name,
 };
 
 use crate::AppState;
 use crate::app_blueprint::{AppBlueprint, PanelStateOverrides};
-use crate::app_blueprint_ctx::AppBlueprintCtx;
 use crate::app_state::WelcomeScreenState;
 use crate::background_tasks::BackgroundTasks;
 use crate::event::ViewerEventDispatcher;

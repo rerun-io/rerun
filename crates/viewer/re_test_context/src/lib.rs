@@ -672,6 +672,8 @@ impl TestContext {
                 active_store_context: Some(&store_context), // TODO(RR-3033): should sometimes be `None`
 
                 component_ui_registry: &self.component_ui_registry,
+                view_class_registry: &self.view_class_registry,
+                component_fallback_registry: &self.component_fallback_registry,
 
                 route: &Route::LocalRecording {
                     recording_id: self.recording_store_id.clone(),
@@ -684,8 +686,6 @@ impl TestContext {
                 connected_receivers: &Default::default(),
                 auth_context: None,
             },
-            component_fallback_registry: &self.component_fallback_registry,
-            view_class_registry: &self.view_class_registry,
             connected_receivers: &Default::default(),
             store_context: &store_context,
             visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,

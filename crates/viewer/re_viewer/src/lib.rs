@@ -29,7 +29,6 @@
 
 mod app;
 mod app_blueprint;
-mod app_blueprint_ctx;
 mod app_state;
 mod background_tasks;
 mod default_views;

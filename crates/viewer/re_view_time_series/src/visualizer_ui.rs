@@ -292,7 +292,7 @@ fn extract_series_colors(
         color_cells
     } else {
         ctx.viewer_ctx
-            .component_fallback_registry
+            .component_fallback_registry()
             .fallback_for(color_descr, query_result.query_context())
     };
 
@@ -323,7 +323,7 @@ fn extract_series_visibility(
         .get_raw_cell(visibility_descr.component)
         .unwrap_or_else(|| {
             ctx.viewer_ctx
-                .component_fallback_registry
+                .component_fallback_registry()
                 .fallback_for(visibility_descr, query_result.query_context())
         });
 

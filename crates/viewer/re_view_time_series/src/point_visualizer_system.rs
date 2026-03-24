@@ -250,7 +250,7 @@ impl SeriesPointsSystem {
 
                     let fallback_array = query_ctx
                         .viewer_ctx()
-                        .component_fallback_registry
+                        .component_fallback_registry()
                         .fallback_for(&SeriesPoints::descriptor_markers(), &query_ctx);
                     if let Ok(marker_array) = MarkerShape::from_arrow(&fallback_array) {
                         for (points, marker) in points_per_series

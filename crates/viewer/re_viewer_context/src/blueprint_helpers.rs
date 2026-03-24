@@ -364,3 +364,31 @@ impl BlueprintContext for ViewerContext<'_> {
         self.blueprint_query
     }
 }
+
+/// Lightweight [`BlueprintContext`] that can be constructed from individual references.
+///
+/// Useful when you need a [`BlueprintContext`] but don't have a full [`ViewerContext`].
+pub struct AppBlueprintCtx<'a> {
+    pub command_sender: &'a CommandSender,
+    pub current_blueprint: &'a EntityDb,
+    pub default_blueprint: Option<&'a EntityDb>,
+    pub blueprint_query: LatestAtQuery,
+}
+
+impl BlueprintContext for AppBlueprintCtx<'_> {
+    fn command_sender(&self) -> &CommandSender {
+        self.command_sender
+    }
+
+    fn current_blueprint(&self) -> &EntityDb {
+        self.current_blueprint
+    }
+
+    fn default_blueprint(&self) -> Option<&EntityDb> {
+        self.default_blueprint
+    }
+
+    fn blueprint_query(&self) -> &LatestAtQuery {
+        &self.blueprint_query
+    }
+}

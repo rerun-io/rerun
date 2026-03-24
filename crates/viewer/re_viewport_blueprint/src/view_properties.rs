@@ -183,7 +183,7 @@ impl ViewProperty {
         }
 
         ctx.viewer_ctx
-            .component_fallback_registry
+            .component_fallback_registry()
             .fallback_for(descr, &self.query_context(ctx))
     }
 

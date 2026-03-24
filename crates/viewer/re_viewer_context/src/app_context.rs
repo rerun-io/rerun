@@ -11,8 +11,8 @@ use crate::drag_and_drop::DragAndDropPayload;
 use crate::time_control::TimeControlCommand;
 use crate::{
     ActiveStoreContext, AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, Item, ItemCollection, Route, StorageContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TableStores, TimeControl,
+    DragAndDropManager, FallbackProviderRegistry, Item, ItemCollection, Route, StorageContext,
+    StoreHub, SystemCommand, SystemCommandSender as _, TableStores, TimeControl, ViewClassRegistry,
 };
 
 /// Application context that is shared across all parts of the viewer.
@@ -56,6 +56,12 @@ pub struct AppContext<'a> {
 
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,
+
+    /// Registry of all known classes of views.
+    pub view_class_registry: &'a ViewClassRegistry,
+
+    /// Defaults for components in various contexts.
+    pub component_fallback_registry: &'a FallbackProviderRegistry,
 
     /// The current route of the viewer.
     pub route: &'a Route,

@@ -15,18 +15,18 @@ use re_sdk_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
-    ActiveStoreContext, AppContext, AppOptions, ApplicationSelectionState, AsyncRuntimeHandle,
-    AuthContext, BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, FallbackProviderRegistry, Item, Route, SelectionChange, StorageContext,
-    StoreHub, StoreViewContext, SystemCommand, SystemCommandSender as _, TableStore, TimeControl,
-    TimeControlCommand, ViewClassRegistry, ViewStates, ViewerContext, blueprint_timeline,
+    ActiveStoreContext, AppBlueprintCtx, AppContext, AppOptions, ApplicationSelectionState,
+    AsyncRuntimeHandle, AuthContext, BlueprintContext, BlueprintUndoState, CommandSender,
+    ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, Item, Route,
+    SelectionChange, StorageContext, StoreHub, StoreViewContext, SystemCommand,
+    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
+    ViewStates, ViewerContext, blueprint_timeline,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::app_blueprint::AppBlueprint;
-use crate::app_blueprint_ctx::AppBlueprintCtx;
 use crate::navigation::Navigation;
 use crate::open_url_description::ViewerOpenUrlDescription;
 use crate::ui::settings_screen_ui;
@@ -441,6 +441,8 @@ impl AppState {
                         active_store_context: Some(store_context),
 
                         component_ui_registry,
+                        view_class_registry,
+                        component_fallback_registry,
                         route,
                         selection_state,
                         focused_item,
@@ -449,8 +451,6 @@ impl AppState {
                         connected_receivers: rx_log,
                         auth_context: auth_state.as_ref(),
                     },
-                    component_fallback_registry,
-                    view_class_registry,
                     connected_receivers: rx_log,
                     store_context,
                     visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,

@@ -8,14 +8,13 @@ use re_sdk_types::ViewClassIdentifier;
 use re_ui::list_item::ListItem;
 
 use crate::command_sender::{SelectionSource, SetSelection};
-use crate::component_fallbacks::FallbackProviderRegistry;
 use crate::query_context::DataQueryResult;
 use crate::time_control::TimeControlCommand;
 use crate::{
     ActiveStoreContext, AppContext, AppOptions, ApplicationSelectionState, CommandSender,
-    ComponentUiRegistry, DragAndDropManager, IndicatedEntities, Item, ItemCollection,
-    PerVisualizerType, StoreHub, StoreViewContext, SystemCommand, SystemCommandSender as _,
-    TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
+    ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, IndicatedEntities, Item,
+    ItemCollection, PerVisualizerType, StoreHub, StoreViewContext, SystemCommand,
+    SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
 };
 
 /// The most powerful context, when you need to know the active blueprint and views.
@@ -24,12 +23,6 @@ use crate::{
 pub struct ViewerContext<'a> {
     /// App context shared across all parts of the viewer.
     pub app_ctx: AppContext<'a>,
-
-    /// Registry of all known classes of views.
-    pub view_class_registry: &'a ViewClassRegistry,
-
-    /// Defaults for components in various contexts.
-    pub component_fallback_registry: &'a FallbackProviderRegistry,
 
     /// For each visualizer, the set of entities that are known to have all its required components.
     // TODO(andreas): This could have a generation id, allowing to update heuristics entities etc. more lazily.
@@ -84,7 +77,12 @@ impl ViewerContext<'_> {
 
     /// Registry of all known classes of views.
     pub fn view_class_registry(&self) -> &ViewClassRegistry {
-        self.view_class_registry
+        self.app_ctx.view_class_registry
+    }
+
+    /// Defaults for components in various contexts.
+    pub fn component_fallback_registry(&self) -> &FallbackProviderRegistry {
+        self.app_ctx.component_fallback_registry
     }
 
     /// The [`egui::Context`].

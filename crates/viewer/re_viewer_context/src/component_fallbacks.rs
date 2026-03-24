@@ -21,7 +21,7 @@ pub fn typed_fallback_for<C: Component>(
 ) -> C {
     let array = query_context
         .viewer_ctx()
-        .component_fallback_registry
+        .component_fallback_registry()
         .fallback_for(
             &re_types_core::ComponentDescriptor::partial(component).with_component_type(C::name()),
             query_context,

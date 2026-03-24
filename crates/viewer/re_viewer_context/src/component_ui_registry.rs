@@ -804,7 +804,7 @@ impl ComponentUiRegistry {
         } else {
             let fallback = query_ctx
                 .viewer_ctx()
-                .component_fallback_registry
+                .component_fallback_registry()
                 .fallback_for(component_descr, query_ctx);
             run_with(fallback.as_ref());
         }

@@ -286,7 +286,7 @@ impl BlueprintResolvedLatestAtResults<'_> {
     pub fn get_fallback_for(&self, descr: &re_types_core::ComponentDescriptor) -> ArrayRef {
         self.query_context
             .viewer_ctx()
-            .component_fallback_registry
+            .component_fallback_registry()
             .fallback_for(descr, self.query_context())
     }
 
