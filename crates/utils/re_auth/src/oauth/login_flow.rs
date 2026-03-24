@@ -37,6 +37,7 @@ impl OauthLoginFlow {
                     login_hint = Some(credentials.user().email.clone());
                     match oauth::refresh_credentials(credentials).await {
                         Ok(credentials) => {
+                            credentials.link_analytics_id_to_user();
                             return Ok(OauthLoginFlowState::AlreadyLoggedIn(Box::new(credentials)));
                         }
                         Err(err) => {
@@ -117,6 +118,7 @@ impl DeviceCodeFlow {
                 Ok(Some(credentials)) => {
                     match oauth::refresh_credentials(credentials).await {
                         Ok(credentials) => {
+                            credentials.link_analytics_id_to_user();
                             return Ok(DeviceCodeFlowState::AlreadyLoggedIn(Box::new(credentials)));
                         }
                         Err(err) => {

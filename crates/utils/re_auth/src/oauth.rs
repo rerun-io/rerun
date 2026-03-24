@@ -287,6 +287,9 @@ pub struct CredentialsStoreError(#[from] storage::StoreError);
 impl InMemoryCredentials {
     /// Ensure credentials are persisted to disk before using them.
     pub fn ensure_stored(self) -> Result<Credentials, CredentialsStoreError> {
+        // Link the analytics ID to the authenticated user.
+        self.0.link_analytics_id_to_user();
+
         storage::store(&self.0)?;
 
         // Normally if re_analytics discovers this is a brand-new configuration,
@@ -303,12 +306,6 @@ impl InMemoryCredentials {
         {
             config.save().ok();
         }
-
-        // Link the analytics ID to the authenticated user
-        re_analytics::record(|| re_analytics::event::SetPersonProperty {
-            email: self.0.user.email.clone(),
-            organization_id: self.0.claims.org_id.clone(),
-        });
 
         crate::credentials::oauth::auth_update(Some(&self.0.user));
 
@@ -375,6 +372,15 @@ impl Credentials {
     /// The currently authenticated user.
     pub fn user(&self) -> &User {
         &self.user
+    }
+
+    /// Link the current analytics ID to this user credentials.
+    pub fn link_analytics_id_to_user(&self) {
+        re_log::debug!("Linking analytics ID to user: '{}'", self.user.email);
+        re_analytics::record(|| re_analytics::event::SetPersonProperty {
+            email: self.user.email.clone(),
+            organization_id: self.claims.org_id.clone(),
+        });
     }
 }
 
