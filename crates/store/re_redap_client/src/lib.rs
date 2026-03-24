@@ -80,8 +80,11 @@ impl std::error::Error for TonicStatusError {
 
 #[derive(Debug)]
 pub struct ApiError {
+    /// A message that does NOT include the contents of [`Self::source`].
     pub message: String,
+
     pub kind: ApiErrorKind,
+
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
     // when the error comes from the server returning a trace id, we include it in the client
     // error for easier reporting.
@@ -174,6 +177,7 @@ impl ApiError {
         }
     }
 
+    /// Do NOT include `err` in the `message` - it will be added for you.
     #[inline]
     fn new_with_source(
         err: impl std::error::Error + Send + Sync + 'static,
@@ -188,6 +192,7 @@ impl ApiError {
         }
     }
 
+    /// Do NOT include `err` in the `message` - it will be added for you.
     #[inline]
     fn new_with_source_and_trace(
         err: impl std::error::Error + Send + Sync + 'static,
@@ -203,8 +208,9 @@ impl ApiError {
         }
     }
 
+    /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn tonic(err: tonic::Status, message: impl Into<String>) -> Self {
-        let message = format!("{}: {}", message.into(), err.message());
+        let message = message.into();
         let kind = ApiErrorKind::from(err.code());
         let trace_id = err
             .metadata()
@@ -222,6 +228,7 @@ impl ApiError {
         Self::new(ApiErrorKind::Serialization, message)
     }
 
+    /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn serialization_with_source(
         err: impl std::error::Error + Send + Sync + 'static,
         message: impl Into<String>,
@@ -229,6 +236,7 @@ impl ApiError {
         Self::new_with_source(err, ApiErrorKind::Serialization, message)
     }
 
+    /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn invalid_arguments_with_source(
         err: impl std::error::Error + Send + Sync + 'static,
         message: impl Into<String>,
@@ -236,6 +244,7 @@ impl ApiError {
         Self::new_with_source(err, ApiErrorKind::InvalidArguments, message)
     }
 
+    /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn internal_with_source(
         err: impl std::error::Error + Send + Sync + 'static,
         message: impl Into<String>,
@@ -243,6 +252,7 @@ impl ApiError {
         Self::new_with_source(err, ApiErrorKind::Internal, message)
     }
 
+    /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn connection_with_source(
         err: impl std::error::Error + Send + Sync + 'static,
         message: impl Into<String>,
@@ -254,6 +264,7 @@ impl ApiError {
         Self::new(ApiErrorKind::Connection, message)
     }
 
+    /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn credentials_with_source(
         err: ClientCredentialsError,
         message: impl Into<String>,
@@ -288,10 +299,23 @@ impl ApiError {
 
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)?;
-        if let Some(ref trace_id) = self.trace_id {
+        let Self {
+            message,
+            kind,
+            source,
+            trace_id,
+        } = self;
+
+        write!(f, "{message} ({kind})")?;
+
+        if let Some(trace_id) = trace_id {
             write!(f, " (trace-id: {trace_id})")?;
         }
+
+        if let Some(err) = source {
+            write!(f, ", {err}")?;
+        }
+
         Ok(())
     }
 }
