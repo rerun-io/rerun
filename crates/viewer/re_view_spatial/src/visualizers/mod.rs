@@ -254,6 +254,7 @@ pub fn load_keypoint_connections(
     // TODO(andreas): Make configurable. Should we pick up the point's radius and make this proportional?
     let line_radius = re_renderer::Size(*re_sdk_types::components::Radius::default().0);
 
+    #[expect(clippy::iter_over_hash_type)] // Each class draws independently; depth-buffered.
     for ((class_id, _time), keypoints_in_class) in keypoints {
         let resolved_class_description = annotations.resolved_class_description(Some(*class_id));
 

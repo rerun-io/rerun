@@ -75,6 +75,7 @@ where
     pub fn recreate_resources<F: FnMut(&Desc) -> Option<Res>>(&mut self, mut recreation_func: F) {
         re_tracing::profile_function!();
 
+        #[expect(clippy::iter_over_hash_type)] // Each resource is recreated independently.
         for (desc, handle) in self.lookup.get_mut() {
             if let Some(new_resource) = recreation_func(desc) {
                 let resource = self.resources.get_mut().get_mut(*handle).unwrap();

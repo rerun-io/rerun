@@ -1,5 +1,7 @@
 //! Flamegraph visualization for memory usage trees.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 use re_byte_size::NamedMemUsageTree;
 
 mod flamegraph;

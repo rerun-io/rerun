@@ -2,6 +2,8 @@
 //!
 //! Views that show entities in a 2D or 3D spatial relationship.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod caches;
 mod contexts;
 mod eye;

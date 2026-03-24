@@ -898,6 +898,7 @@ impl ViewportBlueprint {
         }
 
         // Now save any contents that are a container back to the blueprint
+        #[expect(clippy::iter_over_hash_type)] // Each container saves to its own unique path.
         for (tile_id, contents) in &contents_from_tile_id {
             if let Contents::Container(container_id) = contents
                 && let Some(egui_tiles::Tile::Container(container)) = self.tree.tiles.get(*tile_id)

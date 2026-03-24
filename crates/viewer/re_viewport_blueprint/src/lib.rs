@@ -2,6 +2,8 @@
 //!
 //! This crate provides blueprint (i.e. description) for how to render the viewport.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod auto_layout;
 mod container;
 mod entity_add_info;

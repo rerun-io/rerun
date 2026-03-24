@@ -15,6 +15,8 @@
 //!
 //! Otherwise the fallback should be registered in the view class it's used in, on that view classes' `on_register` method.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 use re_viewer_context::FallbackProviderRegistry;
 
 mod blueprint_component_fallbacks;

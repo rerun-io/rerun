@@ -217,6 +217,7 @@ impl ForceLayoutProvider {
             layout.entities.push((entity.clone(), current_rect));
 
             // Multiple edges can occupy the same space in the layout.
+            #[expect(clippy::iter_over_hash_type)] // Each slot writes to a distinct edge key.
             for Slot { kind, edges } in
                 slotted_edges(graph.edges.values().flat_map(|ts| ts.iter())).values()
             {
