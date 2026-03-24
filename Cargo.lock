@@ -1689,7 +1689,7 @@ checksum = "fe6d2e5af09e8c8ad56c969f2157a3d4238cebc7c55f0a517728c38f7b200f81"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.2.2",
+ "unicode-width 0.1.14",
 ]
 
 [[package]]
@@ -1872,6 +1872,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "affbf0190ed2caf063e3def54ff444b449371d55c58e513a95ab98eca50adb49"
 dependencies = [
  "unicode-segmentation",
+]
+
+[[package]]
+name = "cookie"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ddef33a339a91ea89fb53151bd0a4689cfce27055c291dfa69945475d22c747"
+dependencies = [
+ "percent-encoding",
+ "time",
+ "version_check",
+]
+
+[[package]]
+name = "cookie_store"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3fc4bff745c9b4c7fb1e97b25d13153da2bc7796260141df62378998d070207f"
+dependencies = [
+ "cookie",
+ "document-features",
+ "idna",
+ "indexmap 2.13.0",
+ "log",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "time",
+ "url",
 ]
 
 [[package]]
@@ -3096,7 +3125,7 @@ version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab8ecd87370524b461f8557c119c405552c396ed91fc0a8eec68679eab26f94a"
 dependencies = [
- "libloading 0.8.9",
+ "libloading 0.7.4",
 ]
 
 [[package]]
@@ -3144,7 +3173,7 @@ checksum = "d6add3b8cff394282be81f3fc1a0605db594ed69890078ca6e2cab1c408bcf04"
 [[package]]
 name = "ecolor"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#41b8f5f4e773543451a99e0c82af2426ecc19c76"
+source = "git+https://github.com/emilk/egui.git?branch=main#b077cf910297884a4f1b431e8da99806ae925168"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -3161,7 +3190,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#41b8f5f4e773543451a99e0c82af2426ecc19c76"
+source = "git+https://github.com/emilk/egui.git?branch=main#b077cf910297884a4f1b431e8da99806ae925168"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3199,7 +3228,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#41b8f5f4e773543451a99e0c82af2426ecc19c76"
+source = "git+https://github.com/emilk/egui.git?branch=main#b077cf910297884a4f1b431e8da99806ae925168"
 dependencies = [
  "accesskit",
  "ahash",
@@ -3219,7 +3248,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#41b8f5f4e773543451a99e0c82af2426ecc19c76"
+source = "git+https://github.com/emilk/egui.git?branch=main#b077cf910297884a4f1b431e8da99806ae925168"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3238,7 +3267,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#41b8f5f4e773543451a99e0c82af2426ecc19c76"
+source = "git+https://github.com/emilk/egui.git?branch=main#b077cf910297884a4f1b431e8da99806ae925168"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -3306,7 +3335,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#41b8f5f4e773543451a99e0c82af2426ecc19c76"
+source = "git+https://github.com/emilk/egui.git?branch=main#b077cf910297884a4f1b431e8da99806ae925168"
 dependencies = [
  "ahash",
  "egui",
@@ -3323,7 +3352,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#41b8f5f4e773543451a99e0c82af2426ecc19c76"
+source = "git+https://github.com/emilk/egui.git?branch=main#b077cf910297884a4f1b431e8da99806ae925168"
 dependencies = [
  "bytemuck",
  "egui",
@@ -3339,7 +3368,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#41b8f5f4e773543451a99e0c82af2426ecc19c76"
+source = "git+https://github.com/emilk/egui.git?branch=main#b077cf910297884a4f1b431e8da99806ae925168"
 dependencies = [
  "dify",
  "eframe",
@@ -3391,9 +3420,9 @@ dependencies = [
 
 [[package]]
 name = "ehttp"
-version = "0.6.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04499d3c719edecfad5c9b46031726c8540905d73be6d7e4f9788c4a298da908"
+checksum = "b2f1b93eb2e039aaff63ce07cca59bd1dca02f2ce30075a17b619d2c42f56efc"
 dependencies = [
  "async-channel",
  "document-features",
@@ -3401,7 +3430,7 @@ dependencies = [
  "js-sys",
  "serde",
  "serde_json",
- "ureq",
+ "ureq 3.3.0",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-streams",
@@ -3417,7 +3446,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 [[package]]
 name = "emath"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#41b8f5f4e773543451a99e0c82af2426ecc19c76"
+source = "git+https://github.com/emilk/egui.git?branch=main#b077cf910297884a4f1b431e8da99806ae925168"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3543,7 +3572,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#41b8f5f4e773543451a99e0c82af2426ecc19c76"
+source = "git+https://github.com/emilk/egui.git?branch=main#b077cf910297884a4f1b431e8da99806ae925168"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3566,7 +3595,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#41b8f5f4e773543451a99e0c82af2426ecc19c76"
+source = "git+https://github.com/emilk/egui.git?branch=main#b077cf910297884a4f1b431e8da99806ae925168"
 
 [[package]]
 name = "equivalent"
@@ -7858,7 +7887,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4d85d4641fe3b8c6e853dfd09fe35379bc6b6e66bd692ac29ed4f7087de69ed5"
 dependencies = [
- "ureq",
+ "ureq 2.12.1",
  "zip 0.6.6",
 ]
 
@@ -8796,7 +8825,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "toml 1.0.6+spec-1.1.0",
- "ureq",
+ "ureq 3.3.0",
  "url",
  "wasm-bindgen-cli-support",
 ]
@@ -11328,15 +11357,15 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.145"
+version = "1.0.149"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "402a6f66d8c709116cf22f558eab210f5a50187f702eb4d7e5ef38d9a7f1c79c"
+checksum = "83fc039473c5595ace860d8c4fafa220ff474b3fc6bfdb4293327f1a37e94d86"
 dependencies = [
  "itoa",
  "memchr",
- "ryu",
  "serde",
  "serde_core",
+ "zmij",
 ]
 
 [[package]]
@@ -12922,15 +12951,44 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02d1a66277ed75f640d608235660df48c8e3c19f3b4edb6a263315626cc3c01d"
 dependencies = [
  "base64 0.22.1",
- "flate2",
  "log",
  "once_cell",
  "rustls",
  "rustls-pki-types",
- "serde",
- "serde_json",
  "url",
  "webpki-roots 0.26.11",
+]
+
+[[package]]
+name = "ureq"
+version = "3.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dea7109cdcd5864d4eeb1b58a1648dc9bf520360d7af16ec26d0a9354bafcfc0"
+dependencies = [
+ "base64 0.22.1",
+ "cookie_store",
+ "flate2",
+ "log",
+ "percent-encoding",
+ "rustls",
+ "rustls-pki-types",
+ "serde",
+ "serde_json",
+ "ureq-proto",
+ "utf8-zero",
+ "webpki-roots 1.0.2",
+]
+
+[[package]]
+name = "ureq-proto"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e994ba84b0bd1b1b0cf92878b7ef898a5c1760108fe7b6010327e274917a808c"
+dependencies = [
+ "base64 0.22.1",
+ "http",
+ "httparse",
+ "log",
 ]
 
 [[package]]
@@ -12979,6 +13037,12 @@ name = "utf8-ranges"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcfc827f90e53a02eaef5e535ee14266c1d569214c6aa70133a624d8a3164ba"
+
+[[package]]
+name = "utf8-zero"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8c0a043c9540bae7c578c88f91dda8bd82e59ae27c21baca69c8b191aaf5a6e"
 
 [[package]]
 name = "utf8_iter"
@@ -14680,6 +14744,12 @@ name = "zlib-rs"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f06ae92f42f5e5c42443fd094f245eb656abf56dd7cce9b8b263236565e00f2"
+
+[[package]]
+name = "zmij"
+version = "1.0.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
 
 [[package]]
 name = "zopfli"

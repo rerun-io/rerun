@@ -155,6 +155,11 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
         o.fallback_theme = egui::Theme::Dark; // If we don't know the system theme, use this as fallback
     });
 
+    // TODO(emilk/egui#8010): `warn_if_rect_changes_id` is very trigger-happy right now e.g. when
+    // you change the selection, the selection panel flashes
+    #[cfg(debug_assertions)]
+    egui_ctx.all_styles_mut(|s| s.debug.warn_if_rect_changes_id = false);
+
     set_themes(egui_ctx);
 
     #[cfg(hot_reload_design_tokens)]

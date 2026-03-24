@@ -24,7 +24,7 @@ impl SearchClient {
         let this = Self {
             url: url.into(),
             master_key: master_key.into(),
-            agent: ureq::agent(),
+            agent: ureq::Agent::new_with_defaults(),
         };
 
         this.check_master_key()?;
@@ -60,10 +60,8 @@ impl SearchClient {
             [("q", q), ("limit", limit.as_str())],
         )?;
 
-        let result: QueryResult<Document> = self
-            .request_with_url(Method::Get, &url)
-            .call()?
-            .into_json()?;
+        let result: QueryResult<Document> =
+            self.get(url.as_str()).call()?.into_body().read_json()?;
 
         Ok(result.hits)
     }
@@ -71,14 +69,14 @@ impl SearchClient {
     fn index_exists(&self, index: &str) -> anyhow::Result<bool> {
         match self.get(&format!("/indexes/{index}")).call() {
             Ok(_) => Ok(true),
-            Err(ureq::Error::Status(404, _)) => Ok(false),
-            Err(err) => Err(anyhow::anyhow!(err)),
+            Err(ureq::Error::StatusCode(404)) => Ok(false),
+            Err(err) => Err(err.into()),
         }
     }
 
     fn create_index(&self, index: &str) -> anyhow::Result<()> {
         self.post("/indexes")
-            .send_json(ureq::json!({ "uid": index, "primaryKey": Document::PRIMARY_KEY }))?;
+            .send_json(serde_json::json!({ "uid": index, "primaryKey": Document::PRIMARY_KEY }))?;
         Ok(())
     }
 
@@ -89,7 +87,8 @@ impl SearchClient {
         let task: Task = self
             .post(&format!("/indexes/{index}/documents"))
             .send_json(documents)?
-            .into_json()?;
+            .into_body()
+            .read_json()?;
         self.wait_for_task(task)?;
 
         Ok(())
@@ -99,7 +98,8 @@ impl SearchClient {
         let task: Task = self
             .delete(&format!("/indexes/{index}"))
             .call()?
-            .into_json()?;
+            .into_body()
+            .read_json()?;
         self.wait_for_task(task).context("while waiting for task")?;
         Ok(())
     }
@@ -112,7 +112,7 @@ impl SearchClient {
             }
 
             std::thread::sleep(std::time::Duration::from_millis(1));
-            task = self.get(&task_url).call()?.into_json()?;
+            task = self.get(&task_url).call()?.into_body().read_json()?;
         }
 
         Ok(())
@@ -124,37 +124,25 @@ impl SearchClient {
         Ok(())
     }
 
-    /// GET `{self.url}{path}`
-    fn get(&self, path: &str) -> ureq::Request {
-        self.request(Method::Get, path)
-    }
-
-    /// POST `{self.url}{path}`
-    fn post(&self, path: &str) -> ureq::Request {
-        self.request(Method::Post, path)
-    }
-
-    /// DELETE `{self.url}{path}`
-    fn delete(&self, path: &str) -> ureq::Request {
-        self.request(Method::Delete, path)
-    }
-
-    fn request(&self, method: Method, path: &str) -> ureq::Request {
-        let Self {
-            url, master_key, ..
-        } = self;
-
+    fn get(&self, path: &str) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
+        let url = format!("{}{path}", self.url);
         self.agent
-            .request(method.as_str(), &format!("{url}{path}"))
-            .set("Authorization", &format!("Bearer {master_key}"))
+            .get(&url)
+            .header("Authorization", &format!("Bearer {}", self.master_key))
     }
 
-    fn request_with_url(&self, method: Method, url: &Url) -> ureq::Request {
-        let Self { master_key, .. } = self;
-
+    fn post(&self, path: &str) -> ureq::RequestBuilder<ureq::typestate::WithBody> {
+        let url = format!("{}{path}", self.url);
         self.agent
-            .request_url(method.as_str(), url)
-            .set("Authorization", &format!("Bearer {master_key}"))
+            .post(&url)
+            .header("Authorization", &format!("Bearer {}", self.master_key))
+    }
+
+    fn delete(&self, path: &str) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
+        let url = format!("{}{path}", self.url);
+        self.agent
+            .delete(&url)
+            .header("Authorization", &format!("Bearer {}", self.master_key))
     }
 }
 
@@ -199,23 +187,6 @@ impl Task {
                 anyhow::bail!("task failed: {msg}")
             }
             TaskStatus::Canceled => anyhow::bail!("task was canceled"),
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-enum Method {
-    Get,
-    Post,
-    Delete,
-}
-
-impl Method {
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::Get => "GET",
-            Self::Post => "POST",
-            Self::Delete => "DELETE",
         }
     }
 }

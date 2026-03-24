@@ -247,7 +247,7 @@ datafusion-ffi = "52.3.0"
 directories = "6.0"
 document-features = "0.2.12"
 econtext = "0.2.0" # Prints error contexts on crashes
-ehttp = "0.6.0"
+ehttp = "0.7.1"
 enumset = "1.1.10"
 env_filter = { version = "1.0.0", default-features = false }
 env_logger = { version = "0.11.9", default-features = false }
@@ -409,7 +409,7 @@ type-map = "0.5.1"
 typenum = "1.19"
 unindent = "0.2.4"
 urdf-rs = "0.9.0"
-ureq = "2.12.1"
+ureq = "3.3.0"
 url = "2.5.8"
 uuid = { version = "1.21", features = ["serde", "v4", "js"] }
 vec1 = { version = "1.12", features = ["serde", "smallvec-v1"] }

@@ -143,10 +143,7 @@ impl FilterState {
                         }
 
                         if let Some(inner_state) = self.inner_state.as_mut() {
-                            // we add additional spacing for aesthetic reasons (active text edits have a
-                            // fat border)
-                            ui.spacing_mut().text_edit_width =
-                                (ui.max_rect().width() - 10.0).at_least(0.0);
+                            ui.spacing_mut().text_edit_width = ui.max_rect().width().at_least(0.0);
 
                             // TODO(ab): ideally _all_ text edits would be styled this way, but we
                             // require egui support for that (https://github.com/emilk/egui/issues/3284)
@@ -245,7 +242,7 @@ impl FilterState {
                         ui.add(
                             egui::TextEdit::singleline(&mut inner_state.filter_query)
                                 .id(textedit_id)
-                                .frame(false)
+                                .frame(egui::Frame::new())
                                 .hint_text(hint_text)
                                 .desired_width(ui.available_width()),
                         )

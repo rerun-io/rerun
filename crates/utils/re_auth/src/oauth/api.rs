@@ -134,7 +134,7 @@ impl IntoRequest for AuthenticateWithRefresh<'_> {
     type Res = RefreshResponse;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
-        ehttp::Request::json(
+        ehttp::Request::post_json(
             format_args!("{base}/user_management/authenticate", base = *WORKOS_API),
             &self,
         )
@@ -294,7 +294,7 @@ impl IntoRequest for AuthenticateWithCode<'_> {
     type Res = AuthenticateWithCodeResponse;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
-        ehttp::Request::json(
+        ehttp::Request::post_json(
             format_args!("{base}/user_management/authenticate", base = *WORKOS_API),
             &self,
         )
@@ -366,7 +366,7 @@ impl IntoRequest for GetDeviceAuthUrl<'_> {
     type Res = GetDeviceAuthUrlResponse;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
-        ehttp::Request::json(
+        ehttp::Request::post_json(
             format_args!(
                 "{base}/user_management/authorize/device",
                 base = *WORKOS_API,
@@ -428,7 +428,7 @@ impl IntoRequest for AuthenticateWithDeviceCode<'_> {
     const ALLOW_4XX: bool = true;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
-        ehttp::Request::json(
+        ehttp::Request::post_json(
             format_args!("{base}/user_management/authenticate", base = *WORKOS_API,),
             &self,
         )
@@ -458,7 +458,7 @@ impl IntoRequest for GenerateToken<'_> {
             permission: Permission,
         }
 
-        let mut req = ehttp::Request::json(
+        let mut req = ehttp::Request::post_json(
             format_args!(
                 "{origin}/generate-token",
                 origin = self.server.ascii_serialization()

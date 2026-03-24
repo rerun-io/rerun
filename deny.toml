@@ -85,6 +85,7 @@ skip = [
   { name = "rustc-hash" }, # numpy with compatible pyo3 requires different version than wgpu
   { name = "rustix" }, # tantivy uses an old version.
   { name = "unicode-width" }, # walkers depends on 0.1 via http-cache-request / cacache
+  { name = "ureq" }, # duplicated by `protoc-prebuilt`, which uses an outdated version.
   { name = "zip" }, # duplicated by `protoc-prebuilt`, which uses an ancient version.
 ]
 skip-tree = [
