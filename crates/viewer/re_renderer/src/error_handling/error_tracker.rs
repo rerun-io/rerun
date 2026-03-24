@@ -1,9 +1,7 @@
 use ahash::HashMap;
 use re_mutex::Mutex;
 
-use super::handle_async_error;
 use super::wgpu_core_error::WgpuCoreWrappedContextError;
-use crate::device_caps::WgpuBackendType;
 
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub enum ContextError {
@@ -47,51 +45,6 @@ impl ErrorTracker {
             // If the error was not logged on the just concluded frame, remove it.
             device_timeline_frame_index == entry.last_occurred_frame_index
         });
-    }
-
-    /// Handles an async error, calling [`ErrorTracker::handle_error`] as needed.
-    ///
-    /// `on_last_scope_resolved` is called when the last scope has resolved.
-    ///
-    /// `frame_index` should be the currently active frame index which is associated with the scope.
-    /// (by the time the scope finishes, the active frame index may have changed)
-    pub fn handle_error_future(
-        self: &std::sync::Arc<Self>,
-        backend_type: WgpuBackendType,
-        error_scope_result: impl IntoIterator<
-            Item = impl std::future::Future<Output = Option<wgpu::Error>> + Send + 'static,
-        >,
-        frame_index: u64,
-        on_last_scope_resolved: impl Fn(&Self, u64) + Send + Sync + 'static,
-    ) {
-        let mut error_scope_result = error_scope_result.into_iter().peekable();
-        while let Some(error_future) = error_scope_result.next() {
-            if error_scope_result.peek().is_none() {
-                let err_tracker = self.clone();
-                handle_async_error(
-                    backend_type,
-                    move |error| {
-                        if let Some(error) = error {
-                            err_tracker.handle_error(error, frame_index);
-                        }
-                        on_last_scope_resolved(&err_tracker, frame_index);
-                    },
-                    error_future,
-                );
-                break;
-            }
-
-            let err_tracker = self.clone();
-            handle_async_error(
-                backend_type,
-                move |error| {
-                    if let Some(error) = error {
-                        err_tracker.handle_error(error, frame_index);
-                    }
-                },
-                error_future,
-            );
-        }
     }
 
     /// Logs a wgpu error to the tracker.

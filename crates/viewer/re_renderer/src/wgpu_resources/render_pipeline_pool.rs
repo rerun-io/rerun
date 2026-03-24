@@ -158,7 +158,7 @@ impl RenderPipelineDesc {
                 primitive: self.primitive,
                 depth_stencil: self.depth_stencil.clone(),
                 multisample: self.multisample,
-                multiview: None, // Multi-layered render target support isn't widespread
+                multiview_mask: None, // Multi-layered render target support isn't widespread
                 cache: None,
             }),
         )

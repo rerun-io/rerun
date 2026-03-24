@@ -7,7 +7,7 @@ use type_map::concurrent::TypeMap;
 
 use crate::allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt};
 use crate::device_caps::DeviceCaps;
-use crate::error_handling::{ErrorTracker, WgpuErrorScope};
+use crate::error_handling::ErrorTracker;
 use crate::global_bindings::GlobalBindings;
 use crate::renderer::{Renderer, RendererExt};
 use crate::resource_managers::TextureManager2D;
@@ -276,12 +276,6 @@ impl RenderContext {
         let frame_index_for_uncaptured_errors = Arc::new(AtomicU64::new(STARTUP_FRAME_IDX));
 
         // Make sure to catch all errors, never crash, and deduplicate reported errors.
-        // `on_uncaptured_error` is a last-resort handler which we should never hit,
-        // since there should always be an open error scope.
-        //
-        // Note that this handler may not be called for all errors!
-        // (as of writing, wgpu-core will always call it when there's no open error scope, but Dawn doesn't!)
-        // Therefore, it is important to always have a `WgpuErrorScope` open!
         // See https://www.w3.org/TR/webgpu/#telemetry
         let top_level_error_tracker = {
             let err_tracker = Arc::new(ErrorTracker::default());
@@ -297,7 +291,6 @@ impl RenderContext {
             });
             err_tracker
         };
-        let top_level_error_scope = Some(WgpuErrorScope::start(&device));
 
         log_adapter_info(&adapter.get_info());
 
@@ -310,7 +303,6 @@ impl RenderContext {
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
             frame_index: STARTUP_FRAME_IDX,
-            top_level_error_scope,
             num_view_builders_created: AtomicU64::new(0),
         };
 
@@ -420,36 +412,28 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         // Ideally we'd do this as closely as possible to the last submission containing any gpu->cpu operations as possible.
         self.gpu_readback_belt.get_mut().after_queue_submit();
 
-        // Close previous' frame error scope.
-        if let Some(top_level_error_scope) = self.active_frame.top_level_error_scope.take() {
-            let frame_index_for_uncaptured_errors = self.frame_index_for_uncaptured_errors.clone();
-            self.top_level_error_tracker.handle_error_future(
-                self.device_caps.backend_type,
-                top_level_error_scope.end(),
-                self.active_frame.frame_index,
-                move |err_tracker, frame_index| {
-                    // Update last completed frame index.
-                    //
-                    // Note that this means that the device timeline has now finished this frame as well!
-                    // Reminder: On WebGPU the device timeline may be arbitrarily behind the content timeline!
-                    // See <https://www.w3.org/TR/webgpu/#programming-model-timelines>.
-                    frame_index_for_uncaptured_errors.store(frame_index, Ordering::Release);
-                    err_tracker.on_device_timeline_frame_finished(frame_index);
-
-                    // TODO(#4507): Once we support creating more error handlers,
-                    // we need to tell all of them here that the frame has finished.
-                },
-            );
-        }
+        // Mark the previous frame as finished on the device timeline.
+        // This retains only errors that occurred during this frame; older ones are removed
+        // so they can be re-reported if they recur after a gap.
+        //
+        // On native (wgpu-core), the device timeline is always in sync with the content timeline,
+        // so we can update this directly. On WebGPU the device timeline may lag behind,
+        // but we don't currently have a good async mechanism for tracking it.
+        self.top_level_error_tracker
+            .on_device_timeline_frame_finished(self.active_frame.frame_index);
 
         // New active frame!
         self.active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index.wrapping_add(1),
-            top_level_error_scope: Some(WgpuErrorScope::start(&self.device)),
             num_view_builders_created: AtomicU64::new(0),
         };
         let frame_index = self.active_frame.frame_index;
+
+        // Update the frame index used by the on_uncaptured_error callback to tag new errors.
+        // Must happen after incrementing so errors during this frame are tagged with the correct index.
+        self.frame_index_for_uncaptured_errors
+            .store(frame_index, Ordering::Release);
 
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.
@@ -617,16 +601,6 @@ pub struct ActiveFrameContext {
     /// See <https://www.w3.org/TR/webgpu/#programming-model-timelines>
     pub frame_index: u64,
 
-    /// Top level device error scope, created at startup and closed & reopened on every frame.
-    ///
-    /// According to documentation, not all errors may be caught by [`wgpu::Device::on_uncaptured_error`].
-    /// <https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror>
-    /// Therefore, we should make sure that we _always_ have an error scope open!
-    /// Additionally, we use this to update [`RenderContext::frame_index_for_uncaptured_errors`].
-    ///
-    /// The only time this is allowed to be `None` is during shutdown and when closing an old and opening a new scope.
-    top_level_error_scope: Option<WgpuErrorScope>,
-
     /// Number of view builders created in this frame so far.
     pub num_view_builders_created: AtomicU64,
 }
@@ -688,9 +662,13 @@ pub fn adapter_info_summary(info: &wgpu::AdapterInfo) -> String {
         vendor: _, // skip integer id
         device: _, // skip integer id
         device_type,
+        device_pci_bus_id: _,
         driver,
         driver_info,
         backend,
+        subgroup_min_size: _,
+        subgroup_max_size: _,
+        transient_saves_memory: _,
     } = &info;
 
     // Example values:

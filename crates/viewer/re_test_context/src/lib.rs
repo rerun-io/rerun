@@ -397,7 +397,7 @@ static SHARED_WGPU_RENDERER_SETUP: std::sync::LazyLock<SharedWgpuResources> =
 
 fn init_shared_renderer_setup() -> SharedWgpuResources {
     let instance = wgpu::Instance::new(&re_renderer::device_caps::testing_instance_descriptor());
-    let adapter = re_renderer::device_caps::select_testing_adapter(&instance);
+    let adapter = pollster::block_on(re_renderer::device_caps::select_testing_adapter(&instance));
 
     let is_ci = std::env::var("CI").is_ok();
     if is_ci {

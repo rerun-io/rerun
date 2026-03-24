@@ -26,7 +26,7 @@ pub struct SamplerDesc {
     pub min_filter: wgpu::FilterMode,
 
     /// How to filter between mip map levels
-    pub mipmap_filter: wgpu::FilterMode,
+    pub mipmap_filter: wgpu::MipmapFilterMode,
 
     /// Minimum level of detail (i.e. mip level) to use
     pub lod_min_clamp: ordered_float::NotNan<f32>,

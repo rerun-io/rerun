@@ -132,22 +132,6 @@ impl DeviceCapabilityTier {
     }
 }
 
-/// Type of Wgpu backend.
-///
-/// Used in the rare cases where it's necessary to be aware of the api differences between
-/// wgpu-core and webgpu.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum WgpuBackendType {
-    /// Backend implemented via wgpu-core.
-    ///
-    /// This includes all native backends and WebGL.
-    WgpuCore,
-
-    /// Backend implemented by the browser's WebGPU javascript api.
-    #[cfg(web)]
-    WebGpu,
-}
-
 #[derive(thiserror::Error, Debug)]
 pub enum InsufficientDeviceCapabilities {
     #[error(
@@ -189,12 +173,6 @@ pub struct DeviceCaps {
     ///
     /// Since this has a direct effect on how much data a user can wrangle on the gpu, we always pick the highest possible.
     pub max_buffer_size: u64,
-
-    /// Wgpu backend type.
-    ///
-    /// Prefer using `tier` and other properties of this struct for distinguishing between abilities.
-    /// This is useful for making wgpu-core/webgpu api path decisions.
-    pub backend_type: WgpuBackendType,
 }
 
 impl DeviceCaps {
@@ -218,30 +196,12 @@ impl DeviceCaps {
             DeviceCapabilityTier::Limited
         };
 
-        let backend_type = match adapter.get_info().backend {
-            wgpu::Backend::Noop
-            | wgpu::Backend::Vulkan
-            | wgpu::Backend::Metal
-            | wgpu::Backend::Dx12
-            | wgpu::Backend::Gl => WgpuBackendType::WgpuCore,
-            wgpu::Backend::BrowserWebGpu => {
-                #[cfg(web)]
-                {
-                    WgpuBackendType::WebGpu
-                }
-                #[cfg(not(web))]
-                {
-                    unreachable!("WebGPU backend is not supported on native platforms.")
-                }
-            }
-        };
         let limits = adapter.limits();
 
         Self {
             tier,
             max_texture_dimension2d: limits.max_texture_dimension_2d,
             max_buffer_size: limits.max_buffer_size,
-            backend_type,
         }
     }
 
@@ -424,8 +384,8 @@ pub fn testing_instance_descriptor() -> wgpu::InstanceDescriptor {
 ///
 /// Panics if no adapter was found.
 #[cfg(native)]
-pub fn select_testing_adapter(instance: &wgpu::Instance) -> wgpu::Adapter {
-    let mut adapters = instance.enumerate_adapters(wgpu::Backends::all());
+pub async fn select_testing_adapter(instance: &wgpu::Instance) -> wgpu::Adapter {
+    let mut adapters = instance.enumerate_adapters(wgpu::Backends::all()).await;
     assert!(!adapters.is_empty(), "No graphics adapter found!");
 
     re_log::info!("Found the following graphics adapters:");

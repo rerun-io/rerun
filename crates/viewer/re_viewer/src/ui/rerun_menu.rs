@@ -297,9 +297,13 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
             vendor,
             device,
             device_type,
+            device_pci_bus_id: _,
             driver,
             driver_info,
             backend,
+            subgroup_min_size: _,
+            subgroup_max_size: _,
+            transient_saves_memory: _,
         } = &info;
 
         // Example values:

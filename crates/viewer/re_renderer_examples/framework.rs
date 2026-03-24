@@ -257,6 +257,7 @@ impl<E: Example + 'static> Application<E> {
                             depth_stencil_attachment: None,
                             timestamp_writes: None,
                             occlusion_query_set: None,
+                            multiview_mask: None,
                         });
 
                     for draw_result in &draw_results {

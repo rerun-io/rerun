@@ -37,7 +37,7 @@ impl GpuPipelineLayoutPool {
                         .iter()
                         .map(|handle| bind_groups.get(*handle).unwrap())
                         .collect::<Vec<_>>(),
-                    push_constant_ranges: &[], // Sadly not widely supported
+                    immediate_size: 0, // Not supported everywhere.
                 })
         })
     }

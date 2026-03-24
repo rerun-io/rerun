@@ -9,7 +9,7 @@ use crate::{RenderConfig, RenderContext, device_caps};
 /// Devices are not re-used since we want to isolate wgpu resources.
 static TEST_ADAPTER: LazyLock<wgpu::Adapter> = LazyLock::new(|| {
     let instance = wgpu::Instance::new(&device_caps::testing_instance_descriptor());
-    device_caps::select_testing_adapter(&instance)
+    pollster::block_on(device_caps::select_testing_adapter(&instance))
 });
 
 impl RenderContext {

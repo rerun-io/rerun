@@ -433,7 +433,7 @@ webbrowser = "1.1"
 winit = { version = "0.30.13", default-features = false }
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
-wgpu = { version = "27.0.1", default-features = false, features = [
+wgpu = { version = "28.0.0", default-features = false, features = [
   # Backends (see https://docs.rs/wgpu/latest/wgpu/#feature-flags)
   "gles",
   "metal",
@@ -893,6 +893,8 @@ egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
 egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
 egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
 emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
+
+kittest = { git = "https://github.com/rerun-io/kittest.git", rev = 'ce7a2f3b12c36021889b50bdff671cec8016b0fb' }
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

@@ -764,6 +764,7 @@ impl ViewBuilder {
                 }),
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             pass.set_bind_group(0, &setup.bind_group_0, &[]);

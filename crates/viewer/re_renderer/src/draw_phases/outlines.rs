@@ -355,6 +355,7 @@ impl OutlineMaskProcessor {
             }),
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         })
     }
 
@@ -381,6 +382,7 @@ impl OutlineMaskProcessor {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             let render_pipeline_init = pipelines.get(self.render_pipeline_jumpflooding_init)?;
@@ -404,6 +406,7 @@ impl OutlineMaskProcessor {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             jumpflooding_step.set_pipeline(render_pipeline_step);
