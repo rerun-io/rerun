@@ -229,16 +229,16 @@ impl RenderContext {
     /// 32MiB chunk size (as big as a for instance a 2048x1024 float4 texture)
     /// (it's tempting to use something smaller on Web, but this may just cause more
     /// buffers to be allocated the moment we want to upload a bigger chunk)
-    const CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
-        wgpu::BufferSize::new(1024 * 1024 * 32);
+    pub const CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE: wgpu::BufferSize =
+        wgpu::BufferSize::new(1024 * 1024 * 32).unwrap();
 
     /// Chunk size for our gpu->cpu buffer manager.
     ///
     /// We expect large screenshots to be rare occurrences, so we go with fairly small chunks of just 64 kiB.
     /// (this is as much memory as a 128x128 rgba8 texture, or a little bit less than a 64x64 picking target with depth)
     /// I.e. screenshots will end up in dedicated chunks.
-    const GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
-        wgpu::BufferSize::new(1024 * 64);
+    const GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE: wgpu::BufferSize =
+        wgpu::BufferSize::new(1024 * 64).unwrap();
 
     /// Limit maximum number of in flight submissions to this number.
     ///
@@ -330,10 +330,10 @@ impl RenderContext {
         }
 
         let cpu_write_gpu_read_belt = Mutex::new(CpuWriteGpuReadBelt::new(
-            Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
+            Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE,
         ));
         let gpu_readback_belt = Mutex::new(GpuReadbackBelt::new(
-            Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
+            Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE,
         ));
 
         Ok(Self {
