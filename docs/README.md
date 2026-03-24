@@ -1,96 +1,172 @@
-This is the high-level documentation for Rerun that is hosted at https://www.rerun.io/docs
+# Documentation system
 
-## Other documentation
-API-level documentation is built from source-code. Python lives at [rerun_py](https://github.com/rerun-io/rerun/tree/main/rerun_py) and Rust in the individual [crates](https://github.com/rerun-io/rerun/tree/main/crates).
+Source for https://www.rerun.io/docs and related API reference sites.
 
-## Contributions
+## Sites overview
 
-Contributions are welcome via pull-request. Note that even landed PRs will not deploy to the main site
-until the next time we roll out a site-update. We will generally to do this at least once per release.
+| Site       | URL                          | Content source (this repo)     | Build tool                                      |
+|------------|------------------------------|--------------------------------|-------------------------------------------------|
+| Main docs  | `rerun.io/docs`              | `docs/content/`                | [landing](https://github.com/rerun-io/landing) (Vercel) |
+| Python API | `ref.rerun.io/docs/python/`  | Docstrings in `rerun_py/`      | MkDocs + mkdocstrings                           |
+| C++ API    | `ref.rerun.io/docs/cpp/`     | `///` comments in `rerun_cpp/` | Doxygen                                         |
+| JS API     | `ref.rerun.io/docs/js/`      | Source in `rerun_js/`          | TypeDoc                                         |
+| Rust API   | `docs.rs/rerun`              | `///` comments in `crates/`    | docs.rs (automatic on publish)                  |
 
-## Organization
+The main docs site is rendered by a **separate repository** ([rerun-io/landing](https://github.com/rerun-io/landing)) deployed on Vercel. It reads `docs/content/` from this repo at the commit specified by the `RELEASE_COMMIT` env var (normally pointing at the `docs-latest` branch). To preview the main docs site locally you need to clone the `landing` repo and follow its setup instructions. PRs in this repo that touch `docs/content/` automatically get a Vercel preview deployment link posted as a PR comment.
 
-The site documentation lives in Markdown files inside [`/content`](./content).
+## Key commands
 
-The entry point to the documentation is [`/content/index.md`](./content/index.md).
+```
+pixi run py-docs-serve       # Serve Python API docs locally (hot-reload)
+pixi run py-docs-build       # Build Python API docs
+pixi run -e cpp cpp-docs     # Build C++ API docs (output: rerun_cpp/docs/html/)
+pixi run js-docs             # Build JS API docs
+pixi run js-docs-serve       # Serve JS docs locally
+pixi run codegen             # Regenerate type reference docs (+ all SDK code) from .fbs
+pixi run man                 # Regenerate CLI reference at docs/content/reference/cli.md
+pixi run search-index        # Build Meilisearch search index
+pixi run mdlint              # Lint markdown files
+pixi run link-check          # Check for broken links
+```
 
-## Updating the docs
+## Main docs site (`docs/content/`)
 
-The `rerun.io` docs are built from the contents of the `/docs` directory on the `docs-latest` branch. Any push to `docs-latest` will trigger an automatic redeploy of the website.
+Markdown files with YAML frontmatter, organized hierarchically:
 
-Do not push directly to the `docs-latest` branch! To update the docs, either [create a Release](../RELEASES.md), or cherry-pick commits to the `docs-latest` branch _after_ they've been committed to `main`.
-
-⚠ Any commits which are not on `main` and were instead submitted directly to the `docs-latest` branch will be lost the next time we create a release, because the `docs-latest` branch is force-pushed during the release process.
-
-## Special syntax
+```
+docs/content/
+  index.md                        # Entry point
+  overview/                       # Installation, what is Rerun
+  getting-started/                # Quick start, data-in/out, configure viewer
+  concepts/                       # Logging, visualization, querying
+  howto/                          # Integration guides, tutorials
+  reference/
+    cli.md                        # Auto-generated (pixi run man)
+    sdk/                          # SDK operating modes, micro-batching
+    types/                        # Auto-generated type docs (pixi run codegen)
+      archetypes/                 #   e.g. points3d.md
+      components/                 #   e.g. position3d.md
+      datatypes/                  #   e.g. vec3d.md
+      views/                      #   e.g. spatial3d_view.md
+    viewer/                       # Viewer reference
+  development/                    # Contributor docs
+  _redirects.yaml                 # URL redirect mappings (old path → new path)
+```
 
 ### Frontmatter
 
-YAML frontmatter at the top of the Markdown file is used for metadata:
+Every page needs YAML frontmatter:
 
-```
+```yaml
 ---
-title: Examples
-order: 6
+title: Examples    # Required: navigation title
+order: 6           # Required: sort order in navigation
+redirect: <url>    # Optional: redirect to this URL
+hidden: true       # Optional: hide from navigation
+expand: true       # Optional: expand sub-items in nav
+ogImageUrl: <url>  # Optional: open-graph thumbnail
 ---
 ```
 
-The available attributes are:
-| name       | type    | required | description                                         |
-| ---------- | ------- | -------- | --------------------------------------------------- |
-| title      | string  | yes      | navigation item title                               |
-| order      | number  | yes      | used to sort navigation items                       |
-| redirect   | string  | no       | redirect to the given url                           |
-| hidden     | boolean | no       | don't show the item in navigation                   |
-| expand     | boolean | no       | expand the sub-items in navigation by default       |
-| ogImageUrl | string  | no       | url to an image to show as the open-graph thumbnail |
+### Previewing and updating the live site
 
-### Snippets
+PRs that touch `docs/content/` automatically get a Vercel preview deployment (link posted as a PR comment). For a full local preview, clone the [landing](https://github.com/rerun-io/landing) repo.
 
-Snippets are small, self-contained code examples.
+Production deploys from the `docs-latest` branch. Do not push to it directly.
 
-To ensure all the code blocks in our documentation contain valid code, we give each one a name, and move it into `snippets/all`:
+- **Normal flow**: Merge to `main`. If the PR has the `deploy docs` label, the commit is automatically cherry-picked to `docs-latest` (via `.github/workflows/auto_docs.yml`), which triggers a Vercel redeploy.
+- **Releases**: The release process force-pushes `main` to `docs-latest`.
+- Any commits only on `docs-latest` (not on `main`) will be lost on the next release.
+
+### Redirects
+
+`docs/content/_redirects.yaml` maps old URLs to new locations. CI validates these via `scripts/ci/check_doc_redirects.py`. For redirects that should appear in navigation, use markdown files with `redirect` frontmatter instead.
+
+## Type reference docs (auto-generated)
+
+The files in `docs/content/reference/types/` are **generated by codegen** - do not edit them directly.
+
 ```
-/docs
-  /snippets
-    /all
-      /my-example
-        /example.py
-```
-
-Each snippet can and should be written in all our supported languages:
-```
-/docs
-  /snippets
-    /all
-      /my-example
-        /example.cpp
-        /example.py
-        /example.rs
+.fbs definitions                     →  pixi run codegen  →  docs/content/reference/types/
+(crates/store/re_sdk_types/                                   + Rust/Python/C++ SDK code
+ definitions/rerun/)
 ```
 
-Once the snippet is in `snippet/all`, it may be referenced in a documentation Markdown file using this syntax:
+Documentation comes from `.fbs` file comments and attributes:
+- `///` comments become the page description
+- `\example archetypes/points3d_simple title="…" image="…"` embeds snippet examples
+- `"attr.docs.category": "Spatial 3D"` groups types in index pages
+- `"attr.docs.view_types": "Spatial3DView, Spatial2DView"` lists compatible views
+
+The generator is at `crates/build/re_types_builder/src/codegen/docs/website.rs`.
+
+## Code snippets
+
+Multi-language code examples in `docs/snippets/all/`, organized by category:
+
 ```
-snippet: my-example
+docs/snippets/all/
+  archetypes/
+    points3d_simple.py       # Snippet files are flat per category,
+    points3d_simple.rs       # named {snippet_name}.{py,rs,cpp}
+    points3d_simple.cpp
+  howto/
+    load_urdf.py
+  tutorials/
+    data_out.py              # Can have [section] markers for partial includes
+  views/
+    ...
 ```
+
+Reference in any doc page with a line containing only:
+```
+snippet: archetypes/points3d_simple
+```
+
+This renders a tabbed code block with all available languages. Snippets can also be referenced from `.fbs` files via `\example archetypes/points3d_simple title="…" image="…"`. Use `[section]` syntax to include only part of a snippet: `snippet: tutorials/data_out[imports]`.
+
+Snippets are validated in CI via `docs/snippets/compare_snippet_output.py`, which builds and runs each snippet in all languages and compares their `.rrd` outputs.
 
 ### Screenshot links
 
-If a screenshot shows an example or snippet which is runnable and built on CI, then you can turn the screenshot
-to a link to `rerun.io/viewer` pointing at the example using the `data-inline-viewer` attribute.
-
-Add the attribute to any `<picture>` element like so:
+Turn screenshots into links to the web viewer using `data-inline-viewer`:
 
 ```html
-<picture data-inline-viewer="snippets/segmentation_image_simple">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png">
-  <img src="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png">
+<picture data-inline-viewer="snippets/my-example">
+  <img src="https://static.rerun.io/my_screenshot/abc123/full.png">
 </picture>
 ```
 
-The value should be:
-- `examples/{NAME}` for examples
-- `snippets/{NAME}` for snippets
+Values: `examples/{NAME}` for examples, `snippets/{NAME}` for snippets.
+
+## API reference docs
+
+### Python (`ref.rerun.io/docs/python/`)
+
+Built with MkDocs (config: `rerun_py/mkdocs.yml`). The `gen-files` plugin runs `rerun_py/docs/gen_common_index.py` at build time to generate index pages from the `rerun` package structure using griffe.
+
+Preview locally: `pixi run py-docs-serve`
+
+See `rerun_py/docs/writing_docs.md` for docstring conventions.
+
+### C++ (`ref.rerun.io/docs/cpp/`)
+
+Built with Doxygen (config: `rerun_cpp/docs/Doxyfile`). Requires the `cpp` pixi environment.
+
+Build locally: `pixi run -e cpp cpp-docs` (output at `rerun_cpp/docs/html/index.html`)
+
+See `rerun_cpp/docs/writing_docs.md` for comment conventions.
+
+### JS (`ref.rerun.io/docs/js/`)
+
+Built with TypeDoc via Yarn workspaces.
+
+Build locally: `pixi run js-docs` / `pixi run js-docs-serve`
+
+### Deployment
+
+API docs are built and uploaded to Google Cloud Storage (`gs://rerun-docs/docs/{python,cpp,js}/{version}/`) by `.github/workflows/reusable_deploy_docs.yml`. Each release creates a versioned copy and updates the `stable` alias.
+
+## Search index
+
+The search at `rerun.io/docs` is powered by Meilisearch. The index is built by `pixi run search-index build`, which ingests content from docs pages, Python/Rust API docs, and code examples. This runs in CI on pushes to `docs-latest` (see `.github/workflows/on_push_docs.yml`). It requires a nightly Rust toolchain for rustdoc JSON output.
