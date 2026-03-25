@@ -567,6 +567,17 @@ impl DesignTokens {
         egui_style.spacing.scroll.bar_width = 6.0;
         egui_style.spacing.scroll.bar_outer_margin = 2.0;
 
+        match self.theme {
+            Theme::Dark => {
+                egui_style.spacing.scroll.fade.strength = 0.60;
+                egui_style.spacing.scroll.fade.size = 15.0;
+            }
+            Theme::Light => {
+                egui_style.spacing.scroll.fade.strength = 0.15;
+                egui_style.spacing.scroll.fade.size = 40.0;
+            }
+        }
+
         egui_style.spacing.tooltip_width = 600.0;
 
         egui_style.visuals.image_loading_spinners = false;
