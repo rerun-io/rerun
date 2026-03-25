@@ -86,7 +86,7 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     // Since those can be very far away, this approach ends up being much more precise!
     // (also it has the added benefit that we're independent of the geometry in general!)
     let camera_ray = camera_ray_from_fragcoord(in.position.xy);
-    let plane_world_position = intersect_ray_plane(camera_ray, config.plane) * camera_ray.direction + frame.camera_position;
+    let plane_world_position = camera_ray.origin + intersect_ray_plane(camera_ray, config.plane) * camera_ray.direction;
     let plane_y_axis = normalize(cross(config.plane.normal, select(vec3f(1.0, 0.0, 0.0), vec3f(0.0, 1.0, 0.0), config.plane.normal.x != 0.0)));
     let plane_x_axis = cross(plane_y_axis, config.plane.normal);
     let plane_position = vec2f(dot(plane_x_axis, plane_world_position), dot(plane_y_axis, plane_world_position)) / in.line_spacing_factor;
