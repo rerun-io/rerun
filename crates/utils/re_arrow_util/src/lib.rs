@@ -91,10 +91,54 @@ mod tests {
 
 // ----------------------------------------------------------------
 
-/// Error returned when two Arrow arrays are not similar.
+/// Error returned when two Arrow arrays are not structurally similar.
 #[derive(Debug, thiserror::Error)]
-#[error("{0}")]
-pub struct ArrayComparisonError(pub String);
+pub enum ArrayComparisonError {
+    #[error("data type mismatch: {left} != {right}")]
+    DataTypeMismatch {
+        left: arrow::datatypes::DataType,
+        right: arrow::datatypes::DataType,
+    },
+
+    #[error("{property} mismatch: {left} != {right}")]
+    PropertyMismatch {
+        property: &'static str,
+        left: usize,
+        right: usize,
+    },
+
+    #[error("null bitmaps differ")]
+    NullBitmapsDiffer,
+
+    #[error("union arrays differ")]
+    UnionArraysDiffer,
+
+    #[error("buffer contents differ")]
+    BufferContentsDiffer,
+
+    #[error("significant {float_type} difference: {left} vs {right}")]
+    FloatDifference {
+        float_type: &'static str,
+        left: f64,
+        right: f64,
+    },
+
+    #[error("buffer {index} (datatype {data_type}): {source}")]
+    Buffer {
+        index: usize,
+        data_type: arrow::datatypes::DataType,
+        #[source]
+        source: Box<Self>,
+    },
+
+    #[error("child {index} (datatype {data_type}): {source}")]
+    Child {
+        index: usize,
+        data_type: arrow::datatypes::DataType,
+        #[source]
+        source: Box<Self>,
+    },
+}
 
 // ----------------------------------------------------------------
 
