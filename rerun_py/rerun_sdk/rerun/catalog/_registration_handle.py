@@ -16,8 +16,8 @@ class SegmentRegistrationResult:
     uri: str
     """The source URI that was registered."""
 
-    segment_id: str | None
-    """The resulting segment ID. May be `None` if registration failed."""
+    segment_id: str
+    """The resulting segment ID."""
 
     error: str | None
     """Error message if registration failed, or `None` if successful."""

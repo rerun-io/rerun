@@ -28,7 +28,7 @@ const DEFAULT_TIMEOUT_SECS: u64 = 60 * 60;
 ///
 /// Tuple of (uri, `segment_id` or None, error or None). This is exposed as a
 /// `SegmentRegistrationResult` dataclass on the Python side.
-type RegistrationResult = (String, Option<String>, Option<String>);
+type RegistrationResult = (String, String, Option<String>);
 
 /// Internal handle exposed to Python for tracking registration tasks.
 #[pyclass(
@@ -247,7 +247,7 @@ fn process_task_response(
             for &idx in indices {
                 let desc = &descriptors[idx];
 
-                let segment_id = Some(desc.segment_id.id.clone());
+                let segment_id = desc.segment_id.id.clone();
                 let error = (status != "success").then(|| msg.to_owned());
 
                 results.push((desc.storage_url.to_string(), segment_id, error));
