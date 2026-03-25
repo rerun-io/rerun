@@ -18,6 +18,7 @@ pub enum SchemaParseError {
         #[source]
         source: ParseError,
     },
+
     #[error("failed to parse dependent message spec `{name}`: {source}")]
     DependentSpec {
         name: String,
@@ -45,19 +46,19 @@ impl MessageSchema {
         let main_spec_content = extract_main_msg_spec(input);
         let specs = extract_msg_specs(input);
 
-        let main_spec = MessageSpecification::parse(name, &main_spec_content).map_err(|e| {
+        let main_spec = MessageSpecification::parse(name, &main_spec_content).map_err(|err| {
             SchemaParseError::MainSpec {
                 name: name.to_owned(),
-                source: e,
+                source: err,
             }
         })?;
 
         let mut dependencies = Vec::new();
         for (dep_name, dep_content) in specs {
-            let dep_spec = MessageSpecification::parse(&dep_name, &dep_content).map_err(|e| {
+            let dep_spec = MessageSpecification::parse(&dep_name, &dep_content).map_err(|err| {
                 SchemaParseError::DependentSpec {
                     name: dep_name.clone(),
-                    source: e,
+                    source: err,
                 }
             })?;
             dependencies.push(dep_spec);

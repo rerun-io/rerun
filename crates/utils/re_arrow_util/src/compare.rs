@@ -68,11 +68,11 @@ pub fn ensure_similar(
         }
 
         for (i, (left_buff, right_buff)) in izip!(left_buffers, right_buffers).enumerate() {
-            ensure_buffers_equal(left_buff, right_buff, data_type).map_err(|e| {
+            ensure_buffers_equal(left_buff, right_buff, data_type).map_err(|err| {
                 ArrayComparisonError::Buffer {
                     index: i,
                     data_type: data_type.clone(),
-                    source: Box::new(e),
+                    source: Box::new(err),
                 }
             })?;
         }
@@ -92,10 +92,10 @@ pub fn ensure_similar(
         }
 
         for (i, (left_child, right_child)) in izip!(left_children, right_children).enumerate() {
-            ensure_similar(left_child, right_child).map_err(|e| ArrayComparisonError::Child {
+            ensure_similar(left_child, right_child).map_err(|err| ArrayComparisonError::Child {
                 index: i,
                 data_type: data_type.clone(),
-                source: Box::new(e),
+                source: Box::new(err),
             })?;
         }
     }
