@@ -12,7 +12,7 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-use rerun::external::re_data_loader::{UrdfTree, urdf_joint_transform};
+use rerun::external::re_data_loader::UrdfTree;
 use rerun::external::{re_log, urdf_rs};
 
 fn main() -> anyhow::Result<()> {
@@ -49,10 +49,9 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
                 // Rerun loads the URDF transforms with child/parent frame relations.
                 // In order to move a joint, we just need to log a new transform between two of those frames.
                 //
-                // We can use the `compute_transform3d` utility here, it handles origin + axis-angle rotation
-                // and sets the parent/child frames according to the joint.
-                let joint_transform =
-                    urdf_joint_transform::compute_transform3d(joint, dynamic_angle, true)?;
+                // `compute_joint_transform` handles origin + axis-angle rotation and sets the
+                // parent/child frames according to the joint.
+                let joint_transform = urdf.compute_joint_transform(joint, dynamic_angle, true)?;
 
                 rec.log("/transforms", &joint_transform)?;
             }

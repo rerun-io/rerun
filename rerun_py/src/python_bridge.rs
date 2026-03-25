@@ -681,7 +681,7 @@ fn shutdown(py: Python<'_>) {
 
 #[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 #[derive(Clone)]
-struct PyRecordingStream(RecordingStream);
+pub(crate) struct PyRecordingStream(RecordingStream);
 
 #[pymethods]
 impl PyRecordingStream {
@@ -735,7 +735,9 @@ fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
 /// Returns the currently active data recording in the global scope, if any; fallbacks to the specified recording otherwise, if any.
 #[pyfunction]
 #[pyo3(signature = (recording=None))]
-fn get_data_recording(recording: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
+pub(crate) fn get_data_recording(
+    recording: Option<&PyRecordingStream>,
+) -> Option<PyRecordingStream> {
     RecordingStream::get_quiet(
         re_sdk::StoreKind::Recording,
         recording.map(|rec| rec.0.clone()),

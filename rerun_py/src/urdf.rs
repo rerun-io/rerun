@@ -2,9 +2,11 @@ use std::path::PathBuf;
 
 use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError};
 use pyo3::prelude::*;
-use re_sdk::EntityPath;
 use re_sdk::external::re_data_loader::{UrdfTree, urdf_joint_transform};
 use re_sdk::external::urdf_rs::{Joint, JointType, Link};
+use re_sdk::{EntityPath, TimePoint};
+
+use crate::python_bridge::{PyRecordingStream, get_data_recording};
 
 /// A `.urdf` file loaded into memory (excluding any mesh files).
 #[pyclass(name = "_UrdfTreeInternal", module = "rerun_bindings.rerun_bindings")]
@@ -14,17 +16,33 @@ pub struct PyUrdfTree(UrdfTree);
 impl PyUrdfTree {
     /// Load the URDF found at `path`.
     #[staticmethod]
-    #[pyo3(text_signature = "(path, entity_path_prefix=None)")]
-    pub fn from_file_path(path: PathBuf, entity_path_prefix: Option<String>) -> PyResult<Self> {
-        UrdfTree::from_file_path(path, entity_path_prefix.map(EntityPath::from_single_string))
-            .map(Self)
-            .map_err(|err| PyRuntimeError::new_err(format!("Failed to load URDF file: {err}")))
+    #[pyo3(text_signature = "(path, entity_path_prefix=None, frame_prefix=None)")]
+    pub fn from_file_path(
+        path: PathBuf,
+        entity_path_prefix: Option<String>,
+        frame_prefix: Option<String>,
+    ) -> PyResult<Self> {
+        let mut tree =
+            UrdfTree::from_file_path(path, entity_path_prefix.map(EntityPath::from_single_string))
+                .map_err(|err| {
+                    PyRuntimeError::new_err(format!("Failed to load URDF file: {err}"))
+                })?;
+        if let Some(prefix) = frame_prefix {
+            tree = tree.with_frame_prefix(prefix);
+        }
+        Ok(Self(tree))
     }
 
     /// Name of the robot defined in this URDF.
     #[getter]
     pub fn name(&self) -> &str {
         self.0.name()
+    }
+
+    /// The frame prefix, if set.
+    #[getter]
+    pub fn frame_prefix(&self) -> Option<&str> {
+        self.0.frame_prefix()
     }
 
     /// Returns the root link of the URDF hierarchy.
@@ -34,7 +52,15 @@ impl PyUrdfTree {
 
     /// Iterate over all joints defined in the URDF.
     pub fn joints(&self) -> Vec<PyUrdfJoint> {
-        self.0.joints().cloned().map(PyUrdfJoint).collect()
+        let frame_prefix = self.0.frame_prefix().map(str::to_owned);
+        self.0
+            .joints()
+            .cloned()
+            .map(|j| PyUrdfJoint {
+                joint: j,
+                frame_prefix: frame_prefix.clone(),
+            })
+            .collect()
     }
 
     /// Find a joint by name.
@@ -42,12 +68,15 @@ impl PyUrdfTree {
         self.0
             .get_joint_by_name(joint_name)
             .cloned()
-            .map(PyUrdfJoint)
+            .map(|j| PyUrdfJoint {
+                joint: j,
+                frame_prefix: self.0.frame_prefix().map(str::to_owned),
+            })
     }
 
     /// Returns the link that is the child of the given joint.
     pub fn get_joint_child(&self, joint: &PyUrdfJoint) -> PyUrdfLink {
-        PyUrdfLink(self.0.get_joint_child(&joint.0).clone())
+        PyUrdfLink(self.0.get_joint_child(&joint.joint).clone())
     }
 
     /// Returns the link with the given name, if it exists.
@@ -75,6 +104,25 @@ impl PyUrdfTree {
             .collect()
     }
 
+    /// Log the full robot model (geometry + static transforms) to a recording stream.
+    ///
+    /// Frame IDs respect the tree's `frame_prefix` if set.
+    #[pyo3(signature = (recording=None))]
+    pub(crate) fn log(&self, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+        let Some(recording) = get_data_recording(recording) else {
+            return Ok(());
+        };
+
+        let mut chunks = Vec::new();
+        self.0
+            .emit(&mut |chunk| chunks.push(chunk), &TimePoint::default(), true)
+            .map_err(|err| PyRuntimeError::new_err(format!("Failed to log URDF: {err}")))?;
+
+        recording.send_chunks(chunks);
+
+        Ok(())
+    }
+
     fn __repr__(&self) -> String {
         format!("UrdfTree(name={:?})", self.0.name())
     }
@@ -83,20 +131,23 @@ impl PyUrdfTree {
 /// Wrapper around a URDF joint.
 #[pyclass(name = "_UrdfJointInternal", module = "rerun_bindings.rerun_bindings")]
 #[derive(Clone)]
-pub struct PyUrdfJoint(pub Joint);
+pub struct PyUrdfJoint {
+    pub joint: Joint,
+    pub frame_prefix: Option<String>,
+}
 
 #[pymethods]
 impl PyUrdfJoint {
     /// Name of the joint.
     #[getter]
     pub fn name(&self) -> &str {
-        &self.0.name
+        &self.joint.name
     }
 
     /// Type of the joint.
     #[getter]
     pub fn joint_type(&self) -> &'static str {
-        match self.0.joint_type {
+        match self.joint.joint_type {
             JointType::Revolute => "revolute",
             JointType::Continuous => "continuous",
             JointType::Prismatic => "prismatic",
@@ -110,55 +161,55 @@ impl PyUrdfJoint {
     /// Name of the parent link.
     #[getter]
     pub fn parent_link(&self) -> &str {
-        &self.0.parent.link
+        &self.joint.parent.link
     }
 
     /// Name of the child link.
     #[getter]
     pub fn child_link(&self) -> &str {
-        &self.0.child.link
+        &self.joint.child.link
     }
 
     /// Axis of the joint.
     #[getter]
     pub fn axis(&self) -> (f64, f64, f64) {
-        self.0.axis.xyz.0.into()
+        self.joint.axis.xyz.0.into()
     }
 
     /// Origin of the joint (translation).
     #[getter]
     pub fn origin_xyz(&self) -> (f64, f64, f64) {
-        self.0.origin.xyz.0.into()
+        self.joint.origin.xyz.0.into()
     }
 
     /// Origin of the joint (rotation in roll, pitch, yaw).
     #[getter]
     pub fn origin_rpy(&self) -> (f64, f64, f64) {
-        self.0.origin.rpy.0.into()
+        self.joint.origin.rpy.0.into()
     }
 
     /// Lower limit of the joint.
     #[getter]
     pub fn limit_lower(&self) -> f64 {
-        self.0.limit.lower
+        self.joint.limit.lower
     }
 
     /// Upper limit of the joint.
     #[getter]
     pub fn limit_upper(&self) -> f64 {
-        self.0.limit.upper
+        self.joint.limit.upper
     }
 
     /// Effort limit of the joint.
     #[getter]
     pub fn limit_effort(&self) -> f64 {
-        self.0.limit.effort
+        self.joint.limit.effort
     }
 
     /// Velocity limit of the joint.
     #[getter]
     pub fn limit_velocity(&self) -> f64 {
-        self.0.limit.velocity
+        self.joint.limit.velocity
     }
 
     /// Compute the transform components for this joint at the given value.
@@ -174,7 +225,7 @@ impl PyUrdfJoint {
         value: f64,
         clamp: bool,
     ) -> PyResult<Py<PyAny>> {
-        match urdf_joint_transform::internal::compute_joint_transform(&self.0, value, clamp) {
+        match urdf_joint_transform::internal::compute_joint_transform(&self.joint, value, clamp) {
             Ok(result) => {
                 let dict = pyo3::types::PyDict::new(py);
                 dict.set_item(
@@ -194,8 +245,14 @@ impl PyUrdfJoint {
                         result.translation.z,
                     ),
                 )?;
-                dict.set_item("parent_frame", result.parent_frame)?;
-                dict.set_item("child_frame", result.child_frame)?;
+                dict.set_item(
+                    "parent_frame",
+                    Self::apply_prefix(&self.frame_prefix, &result.parent_frame),
+                )?;
+                dict.set_item(
+                    "child_frame",
+                    Self::apply_prefix(&self.frame_prefix, &result.child_frame),
+                )?;
                 dict.set_item("warning", result.warning)?;
 
                 Ok(dict.into())
@@ -229,7 +286,8 @@ impl PyUrdfJoint {
         let mut child_frame = String::new();
 
         for (i, &value) in values.iter().enumerate() {
-            match urdf_joint_transform::internal::compute_joint_transform(&self.0, value, clamp) {
+            match urdf_joint_transform::internal::compute_joint_transform(&self.joint, value, clamp)
+            {
                 Ok(result) => {
                     translations.push((
                         result.translation.x,
@@ -246,8 +304,8 @@ impl PyUrdfJoint {
                         warnings.push(warning);
                     }
                     if i == 0 {
-                        parent_frame = result.parent_frame;
-                        child_frame = result.child_frame;
+                        parent_frame = Self::apply_prefix(&self.frame_prefix, &result.parent_frame);
+                        child_frame = Self::apply_prefix(&self.frame_prefix, &result.child_frame);
                     }
                 }
                 Err(e @ urdf_joint_transform::Error::UnsupportedJointType(_)) => {
@@ -269,11 +327,20 @@ impl PyUrdfJoint {
     fn __repr__(&self) -> String {
         format!(
             "UrdfJoint(name={:?}, type={}, parent={:?}, child={:?})",
-            self.0.name,
+            self.joint.name,
             &self.joint_type(),
-            self.0.parent.link,
-            self.0.child.link
+            self.joint.parent.link,
+            self.joint.child.link
         )
+    }
+}
+
+impl PyUrdfJoint {
+    fn apply_prefix(prefix: &Option<String>, frame_id: &str) -> String {
+        match prefix {
+            Some(prefix) => format!("{prefix}{frame_id}"),
+            None => frame_id.to_owned(),
+        }
     }
 }
 

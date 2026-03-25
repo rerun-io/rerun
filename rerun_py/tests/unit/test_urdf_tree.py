@@ -84,6 +84,52 @@ def test_urdf_tree_transform() -> None:
     )
 
 
+def test_urdf_tree_frame_prefix() -> None:
+    prefix = "left_arm/"
+    tree = rru.UrdfTree.from_file_path(URDF_PATH, frame_prefix=prefix)
+
+    assert tree.frame_prefix == prefix
+
+    joint = tree.get_joint_by_name("1")
+    assert joint is not None
+
+    # parent_link and child_link should still return unprefixed URDF link names.
+    assert joint.parent_link == "base"
+    assert joint.child_link == "shoulder"
+
+    # But compute_transform should produce prefixed frame IDs.
+    transform = joint.compute_transform(0.0)
+    assert transform.parent_frame == rr.components.TransformFrameIdBatch(
+        rr.components.TransformFrameId(f"{prefix}{joint.parent_link}")
+    )
+    assert transform.child_frame == rr.components.TransformFrameIdBatch(
+        rr.components.TransformFrameId(f"{prefix}{joint.child_link}")
+    )
+
+    # compute_transform_columns should also produce prefixed frame IDs.
+    columns = joint.compute_transform_columns([0.0, 0.5], clamp=True)
+    from rerun._baseclasses import ComponentColumnList
+
+    assert isinstance(columns, ComponentColumnList)
+
+
+def test_urdf_tree_no_frame_prefix() -> None:
+    tree = rru.UrdfTree.from_file_path(URDF_PATH)
+    assert tree.frame_prefix is None
+
+
+def test_urdf_tree_log() -> None:
+    rec = rr.RecordingStream("rerun_example_test_urdf_tree_log", make_default=False, make_thread_default=False)
+    rec.memory_recording()
+
+    tree = rru.UrdfTree.from_file_path(URDF_PATH)
+    tree.log_urdf_to_recording(rec)
+
+    # Also test with frame_prefix
+    tree_prefixed = rru.UrdfTree.from_file_path(URDF_PATH, frame_prefix="left/")
+    tree_prefixed.log_urdf_to_recording(rec)
+
+
 def test_urdf_compute_transform_columns() -> None:
     tree = rru.UrdfTree.from_file_path(URDF_PATH)
 

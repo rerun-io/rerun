@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
     from . import Transform3D
     from ._baseclasses import ComponentColumnList
+    from .recording_stream import RecordingStream
 
 __all__ = ["UrdfJoint", "UrdfLink", "UrdfTree"]
 
@@ -164,16 +165,21 @@ class UrdfTree:
     """
     A URDF robot model with joints and links.
 
-    Not directly loggable. Use this to access the structure of a URDF file
-    and compute transforms for individual joints, which can then be logged
-    using [`archetypes.Transform3D`][rerun.archetypes.Transform3D].
+    Use :meth:`log_urdf_to_recording` to log the full model (geometry + static transforms), then animate
+    individual joints by logging [`archetypes.Transform3D`][rerun.archetypes.Transform3D] computed via
+    :meth:`UrdfJoint.compute_transform`.
     """
 
     def __init__(self, inner: _UrdfTreeInternal) -> None:
         self._inner = inner
 
     @staticmethod
-    def from_file_path(path: str | Path, entity_path_prefix: str | None = None) -> UrdfTree:
+    def from_file_path(
+        path: str | Path,
+        entity_path_prefix: str | None = None,
+        *,
+        frame_prefix: str | None = None,
+    ) -> UrdfTree:
         """
         Load a URDF file from the given path.
 
@@ -183,14 +189,22 @@ class UrdfTree:
             Path to the URDF file.
         entity_path_prefix:
             Optional entity path prefix.
+        frame_prefix:
+            Optional prefix for all frame IDs.
+            Use to load the same URDF multiple times with unique frames.
 
         """
-        return UrdfTree(_UrdfTreeInternal.from_file_path(path, entity_path_prefix))
+        return UrdfTree(_UrdfTreeInternal.from_file_path(path, entity_path_prefix, frame_prefix))
 
     @property
     def name(self) -> str:
         """Name of the robot defined in this URDF."""
         return self._inner.name
+
+    @property
+    def frame_prefix(self) -> str | None:
+        """The frame prefix, if set."""
+        return self._inner.frame_prefix
 
     def root_link(self) -> UrdfLink:
         """Get the root link of the URDF."""
@@ -275,6 +289,22 @@ class UrdfTree:
         else:
             inner = link._inner
         return self._inner.get_collision_geometry_paths(inner)
+
+    def log_urdf_to_recording(self, recording: RecordingStream | None = None) -> None:
+        """
+        Log the full robot model (geometry + static transforms) to a recording stream.
+
+        This can be used as alternative to :func:`rerun.log_file_from_path` for URDF files,
+        especially in cases where you need the extra configuration options of ``UrdfTree``
+        (e.g. ``frame_prefix`` for multi-robot setups).
+
+        Parameters
+        ----------
+        recording:
+            The recording stream to log to. If ``None``, the current active recording is used.
+
+        """
+        self._inner.log(recording.to_native() if recording is not None else None)
 
     def __repr__(self) -> str:
         return self._inner.__repr__()

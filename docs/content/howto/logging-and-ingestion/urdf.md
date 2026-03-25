@@ -62,6 +62,20 @@ for visual_path in urdf_tree.get_visual_geometry_paths("gripper"):
     rec.log(visual_path, rr.Asset3D.from_fields(albedo_factor=[255, 0, 0, 100]), static=True)
 ```
 
+#### Frame prefix
+
+When loading the same URDF multiple times (e.g. a dual-arm setup), use `frame_prefix` to give each instance unique frame IDs and `entity_path_prefix` to separate their geometry in the entity tree. Use `log_urdf_to_recording()` to log the model with prefixed frame IDs:
+
+```python
+left = rr.urdf.UrdfTree.from_file_path("robot.urdf", entity_path_prefix="left", frame_prefix="left/")
+right = rr.urdf.UrdfTree.from_file_path("robot.urdf", entity_path_prefix="right", frame_prefix="right/")
+
+left.log_urdf_to_recording()
+right.log_urdf_to_recording()
+```
+
+Transforms computed via `joint.compute_transform()` will automatically use the prefixed frame IDs (e.g. `"left/base"`, `"right/shoulder"`).
+
 ### UrdfJoint
 
 Each joint exposes properties from the URDF file:

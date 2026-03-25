@@ -158,22 +158,47 @@ pub(crate) fn emit_robot(
     let urdf_tree = UrdfTree::new(robot, urdf_dir, entity_path_prefix.clone())
         .with_context(|| "Failed to build URDF tree!")?;
 
-    // The robot's root coordinate frame_id.
-    emit_archetype(
-        emit,
-        urdf_tree.log_paths.root.clone(),
-        timepoint,
-        &CoordinateFrame::update_fields().with_frame(urdf_tree.root().name.clone()),
-    )?;
+    urdf_tree.emit(emit, timepoint, include_joint_transforms)
+}
 
-    let transforms = walk_tree(emit, &urdf_tree, timepoint, &urdf_tree.root().name)?;
+impl UrdfTree {
+    /// Emit the full robot model (geometry + transforms) as [`Chunk`]s.
+    pub fn emit(
+        &self,
+        emit: &mut dyn FnMut(Chunk),
+        timepoint: &TimePoint,
+        include_joint_transforms: bool,
+    ) -> anyhow::Result<()> {
+        // The robot's root coordinate frame_id.
+        emit_archetype(
+            emit,
+            self.log_paths.root.clone(),
+            timepoint,
+            &CoordinateFrame::update_fields()
+                .with_frame(self.apply_frame_prefix(&self.root().name)),
+        )?;
 
-    // Emit all transforms as rows in a single chunk.
-    if include_joint_transforms && !transforms.is_empty() {
-        emit_static_transforms_batch(emit, &urdf_tree.log_paths.transforms, &transforms)?;
+        // Bridge the prefixed root frame to the entity hierarchy: a Transform3D with only
+        // child_frame defaults its parent to the entity's implicit parent frame (tf#/…).
+        if self.frame_prefix().is_some() {
+            emit_archetype(
+                emit,
+                self.log_paths.root.clone(),
+                timepoint,
+                &Transform3D::update_fields()
+                    .with_child_frame(self.apply_frame_prefix(&self.root().name)),
+            )?;
+        }
+
+        let transforms = walk_tree(emit, self, timepoint, &self.root().name)?;
+
+        // Emit all transforms as rows in a single chunk.
+        if include_joint_transforms && !transforms.is_empty() {
+            emit_static_transforms_batch(emit, &self.log_paths.transforms, &transforms)?;
+        }
+
+        Ok(())
     }
-
-    Ok(())
 }
 
 fn walk_tree(
@@ -196,7 +221,7 @@ fn walk_tree(
 
     let mut joint_transforms_for_link = Vec::new();
     for joint in joints {
-        joint_transforms_for_link.push(get_joint_transform(joint));
+        joint_transforms_for_link.push(get_joint_transform(urdf_tree, joint));
 
         // Recurse
         let mut child_transforms = walk_tree(emit, urdf_tree, timepoint, &joint.child.link)?;
@@ -206,7 +231,7 @@ fn walk_tree(
     Ok(joint_transforms_for_link)
 }
 
-fn get_joint_transform(joint: &Joint) -> Transform3D {
+fn get_joint_transform(urdf_tree: &UrdfTree, joint: &Joint) -> Transform3D {
     let Joint {
         name: _,
         joint_type: _,
@@ -221,7 +246,11 @@ fn get_joint_transform(joint: &Joint) -> Transform3D {
         safety_controller: _,
     } = joint;
 
-    transform_from_pose(origin, parent.link.clone(), child.link.clone())
+    transform_from_pose(
+        origin,
+        urdf_tree.apply_frame_prefix(&parent.link),
+        urdf_tree.apply_frame_prefix(&child.link),
+    )
 }
 
 /// Emit a batch of static transforms as a single chunk.
@@ -317,6 +346,8 @@ fn emit_link(
         collision: _,
     } = link;
 
+    let frame_id = urdf_tree.apply_frame_prefix(link_name);
+
     for (visual_entity_path, visual) in urdf_tree.get_visual_geometries(link).unwrap_or_default() {
         let urdf_rs::Visual {
             name: _,
@@ -342,7 +373,7 @@ fn emit_link(
             visual_entity_path.clone(),
             timepoint,
             origin,
-            link_name.clone(),
+            frame_id.clone(),
             instance_scale,
         )?;
 
@@ -373,7 +404,7 @@ fn emit_link(
             collision_entity_path.clone(),
             timepoint,
             origin,
-            link_name.clone(),
+            frame_id.clone(),
             instance_scale,
         )?;
 

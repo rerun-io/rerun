@@ -5,7 +5,10 @@ use anyhow::bail;
 use itertools::Itertools as _;
 use re_chunk::EntityPath;
 use re_log_types::EntityPathPart;
+use re_sdk_types::archetypes::Transform3D;
 use urdf_rs::{Joint, Link, Material, Robot};
+
+use super::joint_transform;
 
 /// Helper struct containing the (root) entity paths where the different parts of the URDF model are logged.
 pub(crate) struct UrdfLogPaths {
@@ -55,6 +58,7 @@ pub struct UrdfTree {
     links: HashMap<String, Link>,
     children: HashMap<String, Vec<Joint>>,
     materials: HashMap<String, Material>,
+    frame_prefix: Option<String>,
 }
 
 impl UrdfTree {
@@ -149,12 +153,54 @@ impl UrdfTree {
             children,
             materials,
             log_paths,
+            frame_prefix: None,
         })
+    }
+
+    /// Set the frame prefix applied to all frame IDs.
+    pub fn with_frame_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.frame_prefix = Some(prefix.into());
+        self
     }
 
     /// Name of the robot defined in the URDF.
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    /// The frame prefix, if set.
+    pub fn frame_prefix(&self) -> Option<&str> {
+        self.frame_prefix.as_deref()
+    }
+
+    /// Applies [`Self::frame_prefix`] to the given name, if set.
+    pub fn apply_frame_prefix(&self, name: &str) -> String {
+        match &self.frame_prefix {
+            Some(prefix) => format!("{prefix}{name}"),
+            None => name.to_owned(),
+        }
+    }
+
+    /// Computes a [`Transform3D`] for a joint at the given value.
+    ///
+    /// If [`Self::frame_prefix`] is set, the frame IDs of the transform are prefixed with it.
+    pub fn compute_joint_transform(
+        &self,
+        joint: &Joint,
+        value: f64,
+        clamp: bool,
+    ) -> Result<Transform3D, joint_transform::Error> {
+        let result = joint_transform::internal::compute_joint_transform(joint, value, clamp)?;
+
+        if let Some(warning) = &result.warning {
+            re_log::warn!("{warning}");
+        }
+
+        Ok(Transform3D::update_fields()
+            .with_translation(result.translation.to_array())
+            .with_quaternion(result.quaternion.to_array())
+            .with_parent_frame(self.apply_frame_prefix(&result.parent_frame))
+            .with_child_frame(self.apply_frame_prefix(&result.child_frame)))
     }
 
     /// The root [`Link`] in the URDF hierarchy.
@@ -250,5 +296,47 @@ impl UrdfTree {
     /// Get a material by name, if it exists.
     pub(crate) fn get_material(&self, name: &str) -> Option<&Material> {
         self.materials.get(name)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_minimal_link(name: &str) -> urdf_rs::Link {
+        urdf_rs::Link {
+            name: name.to_owned(),
+            inertial: Default::default(),
+            visual: vec![],
+            collision: vec![],
+        }
+    }
+
+    #[test]
+    fn test_apply_frame_prefix_without_prefix() {
+        let robot = urdf_rs::Robot {
+            name: "test".to_owned(),
+            links: vec![make_minimal_link("base")],
+            joints: vec![],
+            materials: vec![],
+        };
+        let tree = UrdfTree::new(robot, None, None).unwrap();
+        assert_eq!(tree.apply_frame_prefix("base"), "base");
+        assert!(tree.frame_prefix().is_none());
+    }
+
+    #[test]
+    fn test_apply_frame_prefix_with_prefix() {
+        let robot = urdf_rs::Robot {
+            name: "test".to_owned(),
+            links: vec![make_minimal_link("base")],
+            joints: vec![],
+            materials: vec![],
+        };
+        let tree = UrdfTree::new(robot, None, None)
+            .unwrap()
+            .with_frame_prefix("left_arm/");
+        assert_eq!(tree.apply_frame_prefix("base"), "left_arm/base");
+        assert_eq!(tree.frame_prefix(), Some("left_arm/"));
     }
 }
