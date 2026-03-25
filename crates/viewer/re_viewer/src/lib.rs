@@ -206,36 +206,11 @@ impl AppEnvironment {
 
 // ---------------------------------------------------------------------------
 
-/// Owned web display handle that is `Send + Sync`.
-///
-/// `DisplayHandle` from `raw-window-handle` is `!Send`/`!Sync` because the enum
-/// contains platform variants with raw pointers. On web the handle is always empty,
-/// so this wrapper is safe.
-#[cfg(target_arch = "wasm32")]
-#[derive(Clone, Debug)]
-struct WebDisplay;
-
-#[cfg(target_arch = "wasm32")]
-impl egui_wgpu::wgpu::rwh::HasDisplayHandle for WebDisplay {
-    fn display_handle(
-        &self,
-    ) -> Result<egui_wgpu::wgpu::rwh::DisplayHandle<'_>, egui_wgpu::wgpu::rwh::HandleError> {
-        Ok(egui_wgpu::wgpu::rwh::DisplayHandle::web())
-    }
-}
-
 pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuConfiguration {
     re_tracing::profile_function!();
 
     let instance_descriptor = re_renderer::device_caps::instance_descriptor(force_wgpu_backend);
     let backends = instance_descriptor.backends;
-
-    // On web, provide the display handle so WebGL works.
-    // On native, eframe fills it in from the winit event loop automatically.
-    #[cfg(target_arch = "wasm32")]
-    let base = egui_wgpu::WgpuSetupCreateNew::from_display_handle(WebDisplay);
-    #[cfg(not(target_arch = "wasm32"))]
-    let base = egui_wgpu::WgpuSetupCreateNew::without_display_handle();
 
     egui_wgpu::WgpuConfiguration {
         wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
@@ -252,7 +227,7 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
                     .device_descriptor()
             }),
 
-            ..base
+            ..egui_wgpu::WgpuSetupCreateNew::without_display_handle()
         }),
         ..Default::default()
     }

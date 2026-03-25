@@ -14,11 +14,6 @@ pub trait ContextExt {
         crate::design_tokens_of(self.ctx().theme())
     }
 
-    /// Current time in seconds
-    fn time(&self) -> f64 {
-        self.ctx().input(|i| i.time)
-    }
-
     // -----------------------------------------------------
     // Style-related stuff.
     // We could have this on a `StyleExt` trait, but we prefer to have it here on `Context`
@@ -121,7 +116,7 @@ pub trait ContextExt {
         let native_buttons_size_in_native_scale = if make_room_for_window_buttons {
             use raw_window_handle::HasWindowHandle as _;
 
-            use crate::egui_ext::WindowChromeMetrics;
+            use eframe::WindowChromeMetrics;
 
             let metrics = _frame
                 .window_handle()

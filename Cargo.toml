@@ -306,7 +306,6 @@ notify = { version = "8.2", features = ["macos_kqueue"] }
 num-derive = "0.4.2"
 num-traits = "0.2.19"
 numpy = "0.26.0"
-objc2-app-kit = "0.3.2"
 opentelemetry = { version = "0.31.0", features = ["metrics"] }
 opentelemetry-appender-tracing = "0.31.1"
 opentelemetry-http = "0.31.0"
@@ -348,7 +347,7 @@ rayon = "1.11"
 regex-lite = "0.1.9"
 rexif = "0.7.5"
 rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
-ron = { version = "0.11.0", features = ["integer128"] }
+ron = { version = "0.12.0", features = ["integer128"] }
 roxmltree = "0.20.0"
 ring = "0.17.14"
 rustdoc-json = "0.9.9"
@@ -894,7 +893,7 @@ egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
 egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
 emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
 
-kittest = { git = "https://github.com/rerun-io/kittest.git", rev = 'ce7a2f3b12c36021889b50bdff671cec8016b0fb' }
+# kittest = { git = "https://github.com/rerun-io/kittest.git", rev = 'ce7a2f3b12c36021889b50bdff671cec8016b0fb' }
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

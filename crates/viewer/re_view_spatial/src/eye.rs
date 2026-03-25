@@ -5,7 +5,6 @@ use re_log_types::EntityPath;
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::blueprint::components::{AngularSpeed, Eye3DKind};
 use re_sdk_types::components::{LinearSpeed, Position3D, Vector3D};
-use re_ui::ContextExt as _;
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
     RuntimeModifiers, SPEED_UP_3D_MODIFIER,

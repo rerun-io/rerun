@@ -1686,7 +1686,7 @@ checksum = "af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.2.2",
+ "unicode-width 0.1.14",
 ]
 
 [[package]]
@@ -3111,7 +3111,7 @@ version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab8ecd87370524b461f8557c119c405552c396ed91fc0a8eec68679eab26f94a"
 dependencies = [
- "libloading 0.8.9",
+ "libloading 0.7.4",
 ]
 
 [[package]]
@@ -3159,7 +3159,7 @@ checksum = "d6add3b8cff394282be81f3fc1a0605db594ed69890078ca6e2cab1c408bcf04"
 [[package]]
 name = "ecolor"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#a59e803f2567ad12940280e3c50ad22187c10ae6"
+source = "git+https://github.com/emilk/egui.git?branch=main#845b8c2f094e434b81a956519f638062faa3d3fc"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -3176,7 +3176,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#a59e803f2567ad12940280e3c50ad22187c10ae6"
+source = "git+https://github.com/emilk/egui.git?branch=main#845b8c2f094e434b81a956519f638062faa3d3fc"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3191,9 +3191,9 @@ dependencies = [
  "image",
  "js-sys",
  "log",
- "objc2 0.5.2",
- "objc2-app-kit 0.2.2",
- "objc2-foundation 0.2.2",
+ "objc2 0.6.4",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
  "parking_lot",
  "percent-encoding",
  "pollster",
@@ -3214,7 +3214,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#a59e803f2567ad12940280e3c50ad22187c10ae6"
+source = "git+https://github.com/emilk/egui.git?branch=main#845b8c2f094e434b81a956519f638062faa3d3fc"
 dependencies = [
  "accesskit",
  "ahash",
@@ -3234,7 +3234,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#a59e803f2567ad12940280e3c50ad22187c10ae6"
+source = "git+https://github.com/emilk/egui.git?branch=main#845b8c2f094e434b81a956519f638062faa3d3fc"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3253,16 +3253,16 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#a59e803f2567ad12940280e3c50ad22187c10ae6"
+source = "git+https://github.com/emilk/egui.git?branch=main#845b8c2f094e434b81a956519f638062faa3d3fc"
 dependencies = [
  "accesskit_winit",
  "arboard",
  "bytemuck",
  "egui",
  "log",
- "objc2 0.5.2",
- "objc2-foundation 0.2.2",
- "objc2-ui-kit",
+ "objc2 0.6.4",
+ "objc2-foundation 0.3.2",
+ "objc2-ui-kit 0.3.2",
  "profiling",
  "raw-window-handle",
  "serde",
@@ -3321,7 +3321,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#a59e803f2567ad12940280e3c50ad22187c10ae6"
+source = "git+https://github.com/emilk/egui.git?branch=main#845b8c2f094e434b81a956519f638062faa3d3fc"
 dependencies = [
  "ahash",
  "egui",
@@ -3338,7 +3338,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#a59e803f2567ad12940280e3c50ad22187c10ae6"
+source = "git+https://github.com/emilk/egui.git?branch=main#845b8c2f094e434b81a956519f638062faa3d3fc"
 dependencies = [
  "bytemuck",
  "egui",
@@ -3354,7 +3354,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#a59e803f2567ad12940280e3c50ad22187c10ae6"
+source = "git+https://github.com/emilk/egui.git?branch=main#845b8c2f094e434b81a956519f638062faa3d3fc"
 dependencies = [
  "dify",
  "eframe",
@@ -3432,7 +3432,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 [[package]]
 name = "emath"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#a59e803f2567ad12940280e3c50ad22187c10ae6"
+source = "git+https://github.com/emilk/egui.git?branch=main#845b8c2f094e434b81a956519f638062faa3d3fc"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3558,7 +3558,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#a59e803f2567ad12940280e3c50ad22187c10ae6"
+source = "git+https://github.com/emilk/egui.git?branch=main#845b8c2f094e434b81a956519f638062faa3d3fc"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3581,7 +3581,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#a59e803f2567ad12940280e3c50ad22187c10ae6"
+source = "git+https://github.com/emilk/egui.git?branch=main#845b8c2f094e434b81a956519f638062faa3d3fc"
 
 [[package]]
 name = "equivalent"
@@ -5170,8 +5170,9 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
 name = "kittest"
-version = "0.3.0"
-source = "git+https://github.com/rerun-io/kittest.git?rev=ce7a2f3b12c36021889b50bdff671cec8016b0fb#ce7a2f3b12c36021889b50bdff671cec8016b0fb"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90ceaa75eb0036a32b6b9833962eb18137449e9817e2e586006471925b727fd5"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -6643,8 +6644,8 @@ dependencies = [
  "block2 0.5.1",
  "libc",
  "objc2 0.5.2",
- "objc2-core-data 0.2.2",
- "objc2-core-image 0.2.2",
+ "objc2-core-data",
+ "objc2-core-image",
  "objc2-foundation 0.2.2",
  "objc2-quartz-core 0.2.2",
 ]
@@ -6657,17 +6658,10 @@ checksum = "d49e936b501e5c5bf01fda3a9452ff86dc3ea98ad5f283e1455153142d97518c"
 dependencies = [
  "bitflags 2.11.0",
  "block2 0.6.2",
- "libc",
  "objc2 0.6.4",
- "objc2-cloud-kit 0.3.2",
- "objc2-core-data 0.3.2",
  "objc2-core-foundation",
  "objc2-core-graphics",
- "objc2-core-image 0.3.2",
- "objc2-core-text",
- "objc2-core-video",
  "objc2-foundation 0.3.2",
- "objc2-quartz-core 0.3.2",
 ]
 
 [[package]]
@@ -6681,17 +6675,6 @@ dependencies = [
  "objc2 0.5.2",
  "objc2-core-location",
  "objc2-foundation 0.2.2",
-]
-
-[[package]]
-name = "objc2-cloud-kit"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73ad74d880bb43877038da939b7427bba67e9dd42004a18b809ba7d87cee241c"
-dependencies = [
- "bitflags 2.11.0",
- "objc2 0.6.4",
- "objc2-foundation 0.3.2",
 ]
 
 [[package]]
@@ -6715,17 +6698,6 @@ dependencies = [
  "block2 0.5.1",
  "objc2 0.5.2",
  "objc2-foundation 0.2.2",
-]
-
-[[package]]
-name = "objc2-core-data"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b402a653efbb5e82ce4df10683b6b28027616a2715e90009947d50b8dd298fa"
-dependencies = [
- "bitflags 2.11.0",
- "objc2 0.6.4",
- "objc2-foundation 0.3.2",
 ]
 
 [[package]]
@@ -6765,16 +6737,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "objc2-core-image"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5d563b38d2b97209f8e861173de434bd0214cf020e3423a52624cd1d989f006"
-dependencies = [
- "objc2 0.6.4",
- "objc2-foundation 0.3.2",
-]
-
-[[package]]
 name = "objc2-core-location"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6784,31 +6746,6 @@ dependencies = [
  "objc2 0.5.2",
  "objc2-contacts",
  "objc2-foundation 0.2.2",
-]
-
-[[package]]
-name = "objc2-core-text"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0cde0dfb48d25d2b4862161a4d5fcc0e3c24367869ad306b0c9ec0073bfed92d"
-dependencies = [
- "bitflags 2.11.0",
- "objc2 0.6.4",
- "objc2-core-foundation",
- "objc2-core-graphics",
-]
-
-[[package]]
-name = "objc2-core-video"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d425caf1df73233f29fd8a5c3e5edbc30d2d4307870f802d18f00d83dc5141a6"
-dependencies = [
- "bitflags 2.11.0",
- "objc2 0.6.4",
- "objc2-core-foundation",
- "objc2-core-graphics",
- "objc2-io-surface",
 ]
 
 [[package]]
@@ -6837,6 +6774,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272"
 dependencies = [
  "bitflags 2.11.0",
+ "block2 0.6.2",
  "objc2 0.6.4",
  "objc2-core-foundation",
 ]
@@ -6933,9 +6871,9 @@ dependencies = [
  "bitflags 2.11.0",
  "block2 0.5.1",
  "objc2 0.5.2",
- "objc2-cloud-kit 0.2.2",
- "objc2-core-data 0.2.2",
- "objc2-core-image 0.2.2",
+ "objc2-cloud-kit",
+ "objc2-core-data",
+ "objc2-core-image",
  "objc2-core-location",
  "objc2-foundation 0.2.2",
  "objc2-link-presentation",
@@ -6943,6 +6881,18 @@ dependencies = [
  "objc2-symbols",
  "objc2-uniform-type-identifiers",
  "objc2-user-notifications",
+]
+
+[[package]]
+name = "objc2-ui-kit"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d87d638e33c06f577498cbcc50491496a3ed4246998a7fbba7ccb98b1e7eab22"
+dependencies = [
+ "bitflags 2.11.0",
+ "objc2 0.6.4",
+ "objc2-core-foundation",
+ "objc2-foundation 0.3.2",
 ]
 
 [[package]]
@@ -9964,7 +9914,6 @@ dependencies = [
  "jiff",
  "notify",
  "num-traits",
- "objc2-app-kit 0.3.2",
  "parking_lot",
  "rand 0.9.2",
  "raw-window-handle",
@@ -10987,14 +10936,15 @@ dependencies = [
 
 [[package]]
 name = "ron"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db09040cc89e461f1a265139777a2bde7f8d8c67c4936f700c63ce3e2904d468"
+checksum = "fd490c5b18261893f14449cbd28cb9c0b637aebf161cd77900bfdedaff21ec32"
 dependencies = [
- "base64 0.22.1",
  "bitflags 2.11.0",
+ "once_cell",
  "serde",
  "serde_derive",
+ "typeid",
  "unicode-ident",
 ]
 
@@ -12833,6 +12783,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e28f89b80c87b8fb0cf04ab448d5dd0dd0ade2f8891bae878de66a75a28600e"
 
 [[package]]
+name = "typeid"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc7d623258602320d5c55d1bc22793b57daff0ec7efc270ea7d55ce1d5f5471c"
+
+[[package]]
 name = "typenum"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -14254,7 +14210,7 @@ dependencies = [
  "objc2 0.5.2",
  "objc2-app-kit 0.2.2",
  "objc2-foundation 0.2.2",
- "objc2-ui-kit",
+ "objc2-ui-kit 0.2.2",
  "orbclient",
  "percent-encoding",
  "pin-project",

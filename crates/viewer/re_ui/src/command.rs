@@ -3,7 +3,6 @@ use egui::{Id, Key, KeyboardShortcut, Modifiers};
 use smallvec::{SmallVec, smallvec};
 
 use crate::context_ext::ContextExt as _;
-use crate::egui_ext::context_ext::ContextExt as _;
 
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {

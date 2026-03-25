@@ -22,16 +22,8 @@ pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
-    fn theme(&self) -> egui::Theme {
-        if self.ui().visuals().dark_mode {
-            egui::Theme::Dark
-        } else {
-            egui::Theme::Light
-        }
-    }
-
     fn tokens(&self) -> &'static DesignTokens {
-        crate::design_tokens_of(self.theme())
+        crate::design_tokens_of(self.ui().theme())
     }
 
     /// Current time in seconds
@@ -51,11 +43,6 @@ pub trait UiExt {
         {
             panic!("DEBUG ASSERT: Huge tooltip: {}", ui.max_rect().size());
         }
-    }
-
-    #[inline]
-    fn is_tooltip(&self) -> bool {
-        self.ui().layer_id().order == egui::Order::Tooltip
     }
 
     /// Show an animated loading indicator.
