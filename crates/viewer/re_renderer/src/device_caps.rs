@@ -347,6 +347,7 @@ pub fn instance_descriptor(force_backend: Option<&str>) -> wgpu::InstanceDescrip
             .union(wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER),
         memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
         backend_options: wgpu::BackendOptions::default(),
+        display: None, // Needs to be filled out later.
     }
     // Allow manipulation of all options via environment variables.
     .with_env()

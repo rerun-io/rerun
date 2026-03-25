@@ -34,11 +34,11 @@ pub struct ErrorTracker {
 }
 
 impl ErrorTracker {
-    /// Called by the renderer context when the last error scope of a frame has finished.
+    /// Called by the renderer context at the start of each frame to mark the previous frame as finished.
     ///
-    /// Error scopes live on the device timeline, which may be arbitrarily delayed compared to the content timeline.
+    /// On native (wgpu-core), the device timeline is always in sync with the content timeline.
+    /// On WebGPU, the device timeline may be arbitrarily delayed.
     /// See <https://www.w3.org/TR/webgpu/#programming-model-timelines>.
-    /// Do *not* call this with the content pipeline's frame index!
     pub fn on_device_timeline_frame_finished(&self, device_timeline_frame_index: u64) {
         let mut errors = self.errors.lock();
         errors.retain(|_error, entry| {
@@ -49,11 +49,11 @@ impl ErrorTracker {
 
     /// Logs a wgpu error to the tracker.
     ///
-    /// If the error happened already already, it will be deduplicated.
+    /// If the error happened already, it will be deduplicated.
     ///
-    /// `frame_index` should be the frame index associated with the error scope.
-    /// Since errors are reported on the `device timeline`, not the `content timeline`,
-    /// this may not be the currently active frame index!
+    /// `frame_index` should be the frame index associated with the error.
+    /// Since errors may be reported on the `device timeline`, not the `content timeline`,
+    /// this may not be the currently active frame index.
     pub fn handle_error(&self, error: wgpu::Error, frame_index: u64) {
         let is_internal_error = matches!(error, wgpu::Error::Internal { .. });
 

@@ -111,7 +111,7 @@ impl<E: Example + 'static> Application<E> {
         // Run without validation layers, they can be annoying on shader reload depending on the backend.
         instance_desc.flags.remove(wgpu::InstanceFlags::VALIDATION);
 
-        let instance = wgpu::Instance::new(&instance_desc);
+        let instance = wgpu::Instance::new(instance_desc);
         let surface = instance.create_surface(window.clone()).unwrap();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -197,28 +197,23 @@ impl<E: Example + 'static> Application<E> {
             WindowEvent::RedrawRequested => {
                 self.re_ctx.begin_frame();
 
-                // native debug build
-                #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
                 let frame = match self.surface.get_current_texture() {
-                    Ok(frame) => frame,
-                    Err(wgpu::SurfaceError::Timeout | wgpu::SurfaceError::Outdated) => {
-                        // We haven't been able to present anything to the swapchain for
-                        // a while, because the pipeline is poisoned.
-                        // Recreate a sane surface to restart the cycle and see if the
-                        // user has fixed the issue.
+                    wgpu::CurrentSurfaceTexture::Success(surface_texture)
+                    | wgpu::CurrentSurfaceTexture::Suboptimal(surface_texture) => surface_texture,
+                    wgpu::CurrentSurfaceTexture::Timeout
+                    | wgpu::CurrentSurfaceTexture::Occluded => {
+                        // Try again later.
+                        return;
+                    }
+                    wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
+                        // Reconfigure and try again later.
                         self.configure_surface(self.window.inner_size());
                         return;
                     }
-                    Err(err) => {
-                        re_log::warn!("Dropped frame: {err}");
-                        return;
+                    wgpu::CurrentSurfaceTexture::Validation => {
+                        panic!("Validation error when acquiring next swap chain texture");
                     }
                 };
-                #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
-                let frame = self
-                    .surface
-                    .get_current_texture()
-                    .expect("failed to acquire next swap chain texture");
 
                 let view = frame
                     .texture

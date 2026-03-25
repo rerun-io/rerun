@@ -126,7 +126,7 @@ pub struct RenderContext {
     /// See <https://www.w3.org/TR/webgpu/#programming-model-timelines>.
     frame_index_for_uncaptured_errors: Arc<AtomicU64>,
 
-    /// Error tracker used for `top_level_error_scope` and [`wgpu::Device::on_uncaptured_error`].
+    /// Error tracker used for [`wgpu::Device::on_uncaptured_error`].
     top_level_error_tracker: Arc<ErrorTracker>,
 
     pub gpu_resources: WgpuResourcePools, // Last due to drop order.

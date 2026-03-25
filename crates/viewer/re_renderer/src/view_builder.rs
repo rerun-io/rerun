@@ -380,8 +380,8 @@ impl ViewBuilder {
         format: Self::MAIN_TARGET_DEPTH_FORMAT,
         // It's important to set the depth test to GreaterEqual, not to Greater.
         // This way, we ensure that objects that are drawn later with the exact same depth value, can overwrite earlier ones!
-        depth_compare: wgpu::CompareFunction::GreaterEqual,
-        depth_write_enabled: true,
+        depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
+        depth_write_enabled: Some(true),
         stencil: wgpu::StencilState {
             front: wgpu::StencilFaceState::IGNORE,
             back: wgpu::StencilFaceState::IGNORE,
@@ -398,7 +398,7 @@ impl ViewBuilder {
     /// Default depth state for disabled depth write & read.
     pub const MAIN_TARGET_DEFAULT_DEPTH_STATE_NO_WRITE: wgpu::DepthStencilState =
         wgpu::DepthStencilState {
-            depth_write_enabled: false,
+            depth_write_enabled: Some(false),
             ..Self::MAIN_TARGET_DEFAULT_DEPTH_STATE
         };
 

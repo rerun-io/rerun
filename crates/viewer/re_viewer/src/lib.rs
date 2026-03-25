@@ -206,47 +206,56 @@ impl AppEnvironment {
 
 // ---------------------------------------------------------------------------
 
+/// Owned web display handle that is `Send + Sync`.
+///
+/// `DisplayHandle` from `raw-window-handle` is `!Send`/`!Sync` because the enum
+/// contains platform variants with raw pointers. On web the handle is always empty,
+/// so this wrapper is safe.
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Debug)]
+struct WebDisplay;
+
+#[cfg(target_arch = "wasm32")]
+impl egui_wgpu::wgpu::rwh::HasDisplayHandle for WebDisplay {
+    fn display_handle(
+        &self,
+    ) -> Result<egui_wgpu::wgpu::rwh::DisplayHandle<'_>, egui_wgpu::wgpu::rwh::HandleError> {
+        Ok(egui_wgpu::wgpu::rwh::DisplayHandle::web())
+    }
+}
+
 pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuConfiguration {
     re_tracing::profile_function!();
 
     let instance_descriptor = re_renderer::device_caps::instance_descriptor(force_wgpu_backend);
     let backends = instance_descriptor.backends;
 
+    // On web, provide the display handle so WebGL works.
+    // On native, eframe fills it in from the winit event loop automatically.
+    #[cfg(target_arch = "wasm32")]
+    let base = egui_wgpu::WgpuSetupCreateNew::from_display_handle(WebDisplay);
+    #[cfg(not(target_arch = "wasm32"))]
+    let base = egui_wgpu::WgpuSetupCreateNew::without_display_handle();
+
     egui_wgpu::WgpuConfiguration {
-            // When running wgpu on native debug builds, we want some extra control over how
-            // and when a poisoned surface gets recreated.
-            #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-            on_surface_error: std::sync::Arc::new(|err| {
-                // On windows, this error also occurs when the app is minimized.
-                // Silently return here to prevent spamming the console with:
-                // "The underlying surface has changed, and therefore the swap chain
-                //  must be updated"
-                if err == wgpu::SurfaceError::Outdated && !cfg!(target_os = "windows"){
-                    // We haven't been able to present anything to the swapchain for
-                    // a while, because the pipeline is poisoned.
-                    // Recreate a sane surface to restart the cycle and see if the
-                    // user has fixed the issue.
-                    egui_wgpu::SurfaceErrorAction::RecreateSurface
-                } else {
-                    egui_wgpu::SurfaceErrorAction::SkipFrame
-                }
+        wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
+            instance_descriptor,
+
+            // TODO(#8475): Add the ability to pick adapter by name.
+            // (user may e.g. request "nvidia" or "intel" and it should just work!)
+            // Should ideally produce structured reasoning of why which one was picked in the process.
+            native_adapter_selector: Some(std::sync::Arc::new(move |adapters, surface| {
+                re_renderer::device_caps::select_adapter(adapters, backends, surface)
+            })),
+            device_descriptor: std::sync::Arc::new(|adapter| {
+                re_renderer::device_caps::DeviceCaps::from_adapter_without_validation(adapter)
+                    .device_descriptor()
             }),
 
-            wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
-                instance_descriptor,
-
-                // TODO(#8475): Add the ability to pick adapter by name.
-                // (user may e.g. request "nvidia" or "intel" and it should just work!)
-                // Should ideally produce structured reasoning of why which one was picked in the process.
-                native_adapter_selector: Some(std::sync::Arc::new(move |adapters, surface|
-                    re_renderer::device_caps::select_adapter(adapters, backends, surface)
-                )),
-                device_descriptor: std::sync::Arc::new(|adapter| re_renderer::device_caps::DeviceCaps::from_adapter_without_validation(adapter).device_descriptor()),
-
-                ..Default::default()
-             }),
-            ..Default::default()
-        }
+            ..base
+        }),
+        ..Default::default()
+    }
 }
 
 /// Customize eframe and egui to suit the rerun viewer.

@@ -351,7 +351,7 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
         // None of these matter for tests as we're not going to draw to a surfaces.
         present_mode: wgpu::PresentMode::Immediate,
         desired_maximum_frame_latency: None,
-        on_surface_error: Arc::new(|_| {
+        on_surface_status: Arc::new(|_| {
             unreachable!("tests aren't expected to draw to surfaces");
         }),
     };
@@ -396,7 +396,7 @@ static SHARED_WGPU_RENDERER_SETUP: std::sync::LazyLock<SharedWgpuResources> =
     std::sync::LazyLock::new(init_shared_renderer_setup);
 
 fn init_shared_renderer_setup() -> SharedWgpuResources {
-    let instance = wgpu::Instance::new(&re_renderer::device_caps::testing_instance_descriptor());
+    let instance = wgpu::Instance::new(re_renderer::device_caps::testing_instance_descriptor());
     let adapter = pollster::block_on(re_renderer::device_caps::select_testing_adapter(&instance));
 
     let is_ci = std::env::var("CI").is_ok();

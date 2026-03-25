@@ -155,8 +155,8 @@ impl OutlineMaskProcessor {
         format: Self::MASK_DEPTH_FORMAT,
         // Use GreaterEQUAL in order to make outlines overridable.
         // This is useful when a large batch shares a common outline, but some of the items in the batch are rendered again with different outlines.
-        depth_compare: wgpu::CompareFunction::GreaterEqual,
-        depth_write_enabled: true,
+        depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
+        depth_write_enabled: Some(true),
         stencil: wgpu::StencilState {
             front: wgpu::StencilFaceState::IGNORE,
             back: wgpu::StencilFaceState::IGNORE,

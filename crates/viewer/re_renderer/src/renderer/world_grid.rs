@@ -170,8 +170,8 @@ impl Renderer for WorldGridRenderer {
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: ViewBuilder::MAIN_TARGET_DEPTH_FORMAT,
-                    depth_compare: wgpu::CompareFunction::GreaterEqual,
-                    depth_write_enabled: false,
+                    depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
+                    depth_write_enabled: Some(false),
                     stencil: wgpu::StencilState::default(),
                     bias: wgpu::DepthBiasState::default(),
                 }),

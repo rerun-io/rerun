@@ -70,7 +70,7 @@ impl<T> CpuWriteGpuReadBuffer<T>
 where
     T: bytemuck::Pod + Send + Sync,
 {
-    /// Memory as slice.
+    /// Write-only view into the unwritten portion of the buffer.
     ///
     /// Note that we can't rely on any alignment guarantees here!
     /// We could offset the mapped CPU-sided memory, but then the GPU offset won't be aligned anymore.
@@ -79,13 +79,14 @@ where
     ///
     /// Once wgpu has some alignment guarantees, we might be able to use this here to allow faster copies!
     /// (copies of larger blocks are likely less affected as `memcpy` typically does dynamic check/dispatching for SIMD based copies)
-    ///
-    /// Do *not* make this public as we need to guarantee that the memory is *never* read from!
     #[inline(always)]
-    fn as_mut_byte_slice(&mut self) -> &mut [u8] {
-        // TODO(andreas): Is this access slow given that it internally goes through a trait interface? Should we keep the pointer around?
-        &mut self.write_view[self.unwritten_element_range.start * std::mem::size_of::<T>()
-            ..self.unwritten_element_range.end * std::mem::size_of::<T>()]
+    fn write_only_slice(
+        &mut self,
+        range: impl std::ops::RangeBounds<usize>,
+    ) -> wgpu::WriteOnly<'_, [u8]> {
+        let start = self.unwritten_element_range.start * std::mem::size_of::<T>();
+        let end = self.unwritten_element_range.end * std::mem::size_of::<T>();
+        self.write_view.slice(start..end).into_slice(range)
     }
 
     /// Pushes a slice of elements into the buffer.
@@ -114,7 +115,7 @@ where
         };
 
         let bytes = bytemuck::cast_slice(elements);
-        self.as_mut_byte_slice()[..bytes.len()].copy_from_slice(bytes);
+        self.write_only_slice(..bytes.len()).copy_from_slice(bytes);
         self.unwritten_element_range.start += elements.len();
 
         result
@@ -160,7 +161,7 @@ where
                     });
                 }
 
-                self.as_mut_byte_slice()[..std::mem::size_of::<T>()]
+                self.write_only_slice(..std::mem::size_of::<T>())
                     .copy_from_slice(bytemuck::bytes_of(&element));
                 self.unwritten_element_range.start += 1;
             }
@@ -194,12 +195,14 @@ where
         };
 
         let mut offset = 0;
-        let buffer_bytes = self.as_mut_byte_slice();
         let element_bytes = bytemuck::bytes_of(&element);
+        let mut write_slice = self.write_only_slice(..num_elements * std::mem::size_of::<T>());
 
         for _ in 0..num_elements {
             let end = offset + std::mem::size_of::<T>();
-            buffer_bytes[offset..end].copy_from_slice(element_bytes);
+            write_slice
+                .slice(offset..end)
+                .copy_from_slice(element_bytes);
             offset = end;
         }
         self.unwritten_element_range.start += num_elements;
@@ -220,7 +223,7 @@ where
             });
         }
 
-        self.as_mut_byte_slice()[..std::mem::size_of::<T>()]
+        self.write_only_slice(..std::mem::size_of::<T>())
             .copy_from_slice(bytemuck::bytes_of(&element));
         self.unwritten_element_range.start += 1;
 
