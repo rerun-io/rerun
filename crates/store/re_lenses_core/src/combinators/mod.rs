@@ -18,4 +18,4 @@ pub use self::{
     transform::{Then, Transform},
 };
 
-pub(crate) use self::{index::GetIndexList, reshape::PromoteInnerNulls};
+pub(crate) use self::index::GetIndexList;

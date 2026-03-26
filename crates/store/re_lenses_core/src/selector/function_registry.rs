@@ -1,11 +1,10 @@
-use arrow::array::ListArray;
-
-use crate::combinators::Transform;
+use arrow::array::ArrayRef;
 
 use super::Literal;
 
-/// A boxed, type-erased function operating on Arrow list arrays.
-pub type BoxedFunction = Box<dyn Transform<Source = ListArray, Target = ListArray> + Send + Sync>;
+/// A boxed, type-erased function operating on Arrow arrays.
+pub type BoxedFunction =
+    Box<dyn Fn(&ArrayRef) -> Result<Option<ArrayRef>, crate::combinators::Error> + Send + Sync>;
 
 /// A constructor that creates a [`BoxedFunction`] from a list of arguments.
 type FunctionConstructor = Box<dyn Fn(&[Literal]) -> Option<BoxedFunction> + Send + Sync>;
@@ -123,7 +122,7 @@ macro_rules! impl_transform_constructors {
         #[allow(unused_parens)]
         impl<
             $($ident: FromLiteral,)*
-            T: Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+            T: Fn(&ArrayRef) -> Result<Option<ArrayRef>, crate::combinators::Error> + Send + Sync + 'static,
             F: Fn($($ident),*) -> T + Send + Sync + 'static,
         > TransformConstructor<($($ident),*)> for F {
             fn constructor(&self, arguments: &[Literal]) -> Option<BoxedFunction> {

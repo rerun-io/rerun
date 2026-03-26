@@ -4,11 +4,10 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, BooleanBufferBuilder, FixedSizeListArray, ListArray, StructArray, UInt32Array,
-    UInt64Array,
+    Array, ArrayRef, FixedSizeListArray, ListArray, StructArray, UInt32Array, UInt64Array,
 };
 use arrow::buffer::{NullBuffer, OffsetBuffer, ScalarBuffer};
-use arrow::datatypes::{ArrowNativeType as _, Field};
+use arrow::datatypes::Field;
 
 use re_log::debug_assert_eq;
 
@@ -336,45 +335,6 @@ impl Transform for StructToFixedList {
         })?;
         Ok(Some(FixedSizeListArray::new(
             field, list_size, values, None, // No outer nulls
-        )))
-    }
-}
-
-/// Promotes lists with all inner `nulls` to outer `nulls`.
-pub(crate) struct PromoteInnerNulls;
-
-impl Transform for PromoteInnerNulls {
-    type Source = ListArray;
-    type Target = ListArray;
-
-    fn transform(&self, source: &ListArray) -> Result<Option<Self::Target>, Error> {
-        let (field, offsets, values, nulls) = source.clone().into_parts();
-        let inner_nulls = values.logical_nulls();
-
-        let mut null_buf = BooleanBufferBuilder::new(source.len());
-        for i in 0..source.len() {
-            let valid = if nulls.as_ref().is_some_and(|nulls| !nulls.is_valid(i)) {
-                false
-            } else {
-                let start = offsets[i].as_usize();
-                let end = offsets[i + 1].as_usize();
-                if start == end {
-                    true
-                } else {
-                    match &inner_nulls {
-                        Some(nulls) => (start..end).any(|j| nulls.is_valid(j)),
-                        None => true,
-                    }
-                }
-            };
-            null_buf.append(valid);
-        }
-
-        Ok(Some(ListArray::new(
-            field,
-            offsets,
-            values,
-            Some(NullBuffer::from(null_buf.finish())),
         )))
     }
 }

@@ -14,6 +14,7 @@
 //!         | '[' INTEGER ']'
 //!         | '[' ']'
 //!         | '.'                          (identity)
+//!         | 'map' '(' Expr ')'           (map)
 //!         | IDENT ( '(' ArgList? ')' )?  (function)
 //! ArgList → Literal ( ';' Literal )*
 //! Literal → STRING_LITERAL
@@ -79,6 +80,11 @@ pub enum Expr {
         /// semantically be the same though.
         arguments: Option<Vec<Literal>>,
     },
+
+    // TODO(grtlr): For now we define `map()` as an `Expr` in the tree. The
+    // correct modeling would be to add the `map` function to the registry,
+    // and defining it in terms of collect (`[ .[] | f]`).
+    Map(Box<Self>),
 }
 
 impl re_byte_size::SizeBytes for Expr {
@@ -87,7 +93,7 @@ impl re_byte_size::SizeBytes for Expr {
             Self::Identity | Self::Index(_) | Self::Each => 0,
             Self::Field(s) => s.heap_size_bytes(),
             Self::Pipe { left, right, .. } => left.heap_size_bytes() + right.heap_size_bytes(),
-            Self::Try(inner) | Self::NonNull(inner) => inner.heap_size_bytes(),
+            Self::Try(inner) | Self::NonNull(inner) | Self::Map(inner) => inner.heap_size_bytes(),
             Self::Function { name, arguments } => {
                 name.heap_size_bytes() + arguments.heap_size_bytes()
             }
@@ -131,6 +137,7 @@ impl std::fmt::Display for Expr {
 
                 Ok(())
             }
+            Self::Map(body) => write!(f, "map({body})"),
         }
     }
 }
@@ -197,12 +204,17 @@ where
     }
 
     fn term(&mut self) -> Result<Expr> {
-        // Bare identifier: must be a function call
+        // Bare identifier: `map(expr)` or a function call
         if let Some(token) = self.tokens.peek()
             && let TokenType::Ident(name) = &token.typ
         {
             let name = name.clone();
             self.tokens.next();
+
+            if name == "map" {
+                return self.map_expr();
+            }
+
             return self.function_args(name);
         }
 
@@ -253,6 +265,15 @@ where
             }
         }
         expr
+    }
+
+    /// Parse a `map(expr)` expression.
+    /// The `map` identifier has already been consumed.
+    fn map_expr(&mut self) -> Result<Expr> {
+        self.consume(TokenType::LParen)?;
+        let body = self.expr()?;
+        self.consume(TokenType::RParen)?;
+        Ok(Expr::Map(Box::new(body)))
     }
 
     /// Parse function arguments: `(arg1; arg2; …)`.
@@ -678,5 +699,42 @@ mod test {
 
         let expr = parse(r#".path | my_func("a"; "b")"#).unwrap();
         assert_eq!(expr.to_string(), r#".path | my_func("a"; "b")"#);
+    }
+
+    fn map_expr(body: Expr) -> Expr {
+        Expr::Map(Box::new(body))
+    }
+
+    #[test]
+    fn map_simple() {
+        assert_eq!(parse("map(.foo)"), Ok(map_expr(field("foo"))));
+    }
+
+    #[test]
+    fn map_with_pipe() {
+        assert_eq!(
+            parse("map(.foo | .bar)"),
+            Ok(map_expr(pipe(field("foo"), field("bar"))))
+        );
+    }
+
+    #[test]
+    fn map_in_pipe() {
+        assert_eq!(
+            parse(".items | map(.name)"),
+            Ok(pipe(field("items"), map_expr(field("name"))))
+        );
+    }
+
+    #[test]
+    fn map_display_roundtrip() {
+        let expr = parse("map(.foo)").unwrap();
+        assert_eq!(expr.to_string(), "map(.foo)");
+
+        let expr = parse("map(.foo | .bar)").unwrap();
+        assert_eq!(expr.to_string(), "map(.foo | .bar)");
+
+        let expr = parse(".items | map(.name)").unwrap();
+        assert_eq!(expr.to_string(), ".items | map(.name)");
     }
 }

@@ -47,10 +47,11 @@ pub mod function_registry;
 use std::sync::Arc;
 
 pub use parser::Literal;
+use re_chunk::ArrowArray as _;
 pub use runtime::Runtime;
 
 use arrow::{
-    array::ListArray,
+    array::{ArrayRef, ListArray},
     datatypes::{DataType, Fields},
 };
 use vec1::Vec1;
@@ -121,15 +122,33 @@ impl Selector {
         query.parse()
     }
 
+    /// Execute this selector against a raw array.
+    ///
+    /// This is the `ArrayRef`-based entry point. For per-row execution
+    /// on a [`ListArray`], use [`execute_per_row`](Self::execute_per_row).
+    pub fn execute(&self, source: ArrayRef) -> Result<Option<ArrayRef>, Error> {
+        runtime::execute(&self.expr, source, &self.runtime).map_err(Into::into)
+    }
+
     /// Execute this selector against each row of a [`ListArray`].
     ///
     /// Performs implicit iteration over the inner list array, and reconstructs the array at the end.
     ///
-    /// `[.[].poses[].x]` is the actual query, we only require writing the `.poses[].x` portion.
+    /// `map(.poses[].x)` is the actual query, we only require writing the `.poses[].x` portion.
     ///
     /// Returns `None` if the expression's error was suppressed (e.g. `.field?`).
     pub fn execute_per_row(&self, source: &ListArray) -> Result<Option<ListArray>, Error> {
-        runtime::execute_per_row(&self.expr, source, &self.runtime).map_err(Into::into)
+        let res = runtime::eval_map(source, &self.expr, &self.runtime).map_err(Into::into);
+
+        if let Ok(Some(ref output)) = res {
+            re_log::debug_assert_eq!(
+                output.len(),
+                source.len(),
+                "selectors should never change row count"
+            );
+        }
+
+        res
     }
 
     /// Set which runtime this selector should run with.
@@ -147,7 +166,7 @@ impl crate::combinators::Transform for Selector {
         &self,
         source: &Self::Source,
     ) -> Result<Option<Self::Target>, crate::combinators::Error> {
-        runtime::execute_per_row(&self.expr, source, &self.runtime)
+        self.execute_per_row(source).map_err(Into::into)
     }
 }
 

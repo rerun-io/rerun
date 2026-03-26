@@ -341,6 +341,91 @@ pub mod fixtures {
     }
 
     #[test]
+    fn example_struct_column() {
+        let array = struct_column();
+        insta::assert_snapshot!(format!("{}", super::DisplayRB(array)), @r#"
+        ┌──────────────────────────────────────────────────────────────┐
+        │ col                                                          │
+        │ ---                                                          │
+        │ type: Struct("location": Struct("x": Float64, "y": Float64)) │
+        ╞══════════════════════════════════════════════════════════════╡
+        │ {location: {x: 1.0, y: 2.0}}                                 │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ {location: null}                                             │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ {location: {x: 3.0, y: 4.0}}                                 │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ {location: {x: 5.0, y: null}}                                │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ null                                                         │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ {location: {x: 7.0, y: 8.0}}                                 │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ {location: null}                                             │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ {location: null}                                             │
+        └──────────────────────────────────────────────────────────────┘
+        "#);
+    }
+
+    /// A plain `StructArray` (not wrapped in a `ListArray`) with a single `"location"` field
+    /// containing `Struct { x: Float64, y: Float64 }`.
+    ///
+    /// This is the same as the inner data of [`nested_struct_column`] before it gets wrapped
+    /// in a `ListArray`.
+    pub fn struct_column() -> StructArray {
+        let values = shared_values_array();
+        let values_buffer = values.to_data().buffers()[0].clone();
+
+        let inner_struct_fields = Fields::from(vec![
+            Field::new("x", DataType::Float64, true),
+            Field::new("y", DataType::Float64, true),
+        ]);
+
+        let x_nulls = NullBuffer::from(vec![true, false, true, true, false, true, false, false]);
+        let y_nulls = NullBuffer::from(vec![true, false, true, false, false, true, false, false]);
+
+        let x_data = ArrayData::builder(DataType::Float64)
+            .len(8)
+            .null_bit_buffer(Some(x_nulls.buffer().clone()))
+            .add_buffer(values_buffer.slice_with_length(0, 64))
+            .build()
+            .unwrap();
+
+        let y_data = ArrayData::builder(DataType::Float64)
+            .len(8)
+            .null_bit_buffer(Some(y_nulls.buffer().clone()))
+            .add_buffer(values_buffer.slice_with_length(48, 64))
+            .build()
+            .unwrap();
+
+        let x_array = Float64Array::from(x_data);
+        let y_array = Float64Array::from(y_data);
+
+        let inner_struct_nulls =
+            NullBuffer::from(vec![true, false, true, true, false, true, false, false]);
+        let inner_struct = StructArray::new(
+            inner_struct_fields.clone(),
+            vec![Arc::new(x_array), Arc::new(y_array)],
+            Some(inner_struct_nulls),
+        );
+
+        let outer_struct_fields = Fields::from(vec![Field::new(
+            "location",
+            DataType::Struct(inner_struct_fields),
+            true,
+        )]);
+
+        let outer_struct_nulls =
+            NullBuffer::from(vec![true, true, true, true, false, true, true, true]);
+        StructArray::new(
+            outer_struct_fields,
+            vec![Arc::new(inner_struct)],
+            Some(outer_struct_nulls),
+        )
+    }
+
+    #[test]
     fn example_list_not_nullable() {
         let array = list_not_nullable();
         insta::assert_snapshot!(format!("{}", super::DisplayRB(array)), @r"
@@ -394,6 +479,71 @@ pub mod fixtures {
             offsets,
             Arc::new(values),
             Some(nulls),
+        )
+    }
+
+    #[test]
+    fn example_deep_nested_list_column() {
+        let array = deep_nested_list_column();
+        insta::assert_snapshot!(format!("{}", super::DisplayRB(array)), @r#"
+        ┌─────────────────────────────────┐
+        │ col                             │
+        │ ---                             │
+        │ type: List(List(List(Float64))) │
+        ╞═════════════════════════════════╡
+        │ [[[1.0, 3.0], [5.0]], [[7.0]]]  │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ [[[]]]                          │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ [[]]                            │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ null                            │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ []                              │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ [[[9.0]]]                       │
+        └─────────────────────────────────┘
+        "#);
+    }
+
+    pub fn deep_nested_list_column() -> ListArray {
+        let values = shared_values_array();
+        let values_buffer = values.to_data().buffers()[0].clone();
+
+        let float_data = ArrayData::builder(DataType::Float64)
+            .len(5)
+            .add_buffer(values_buffer.slice_with_length(12 * 8, 5 * 8))
+            .build()
+            .unwrap();
+        let float_values = Float64Array::from(float_data);
+
+        let inner_field = Arc::new(Field::new_list_field(DataType::Float64, true));
+        let inner_offsets = OffsetBuffer::from_lengths([2, 1, 1, 0, 1]);
+        let inner_list = ListArray::new(inner_field, inner_offsets, Arc::new(float_values), None);
+
+        let middle_field = Arc::new(Field::new_list_field(
+            DataType::List(Arc::new(Field::new_list_field(DataType::Float64, true))),
+            true,
+        ));
+        let middle_offsets = OffsetBuffer::from_lengths([2, 1, 1, 0, 1]);
+        let middle_list = ListArray::new(middle_field, middle_offsets, Arc::new(inner_list), None);
+
+        // Outer ListArray (6 rows): lengths [2, 1, 1, 0, 0, 1], row 3 is null
+        let outer_field = Arc::new(Field::new_list_field(
+            DataType::List(Arc::new(Field::new_list_field(
+                DataType::List(Arc::new(Field::new_list_field(DataType::Float64, true))),
+                true,
+            ))),
+            true,
+        ));
+        let outer_offsets = OffsetBuffer::from_lengths([2, 1, 1, 0, 0, 1]);
+        let outer_nulls = NullBuffer::from(vec![true, true, true, false, true, true]);
+
+        ListArray::new(
+            outer_field,
+            outer_offsets,
+            Arc::new(middle_list),
+            Some(outer_nulls),
         )
     }
 }
