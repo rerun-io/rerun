@@ -97,6 +97,16 @@ where
             .map(|_| ())
     }
 
+    /// Calls the `/WhoAmI` endpoint to verify authentication and retrieve the user's identity
+    /// and permissions.
+    pub async fn who_am_i(&mut self) -> ApiResult<re_protos::cloud::v1alpha1::WhoAmIResponse> {
+        self.inner()
+            .who_am_i(re_protos::cloud::v1alpha1::WhoAmIRequest {})
+            .await
+            .map(|resp| resp.into_inner())
+            .map_err(|err| ApiError::tonic(err, "/WhoAmI failed"))
+    }
+
     /// Find all entries matching the given filter.
     pub async fn find_entries(&mut self, filter: EntryFilter) -> ApiResult<Vec<EntryDetails>> {
         let result = self

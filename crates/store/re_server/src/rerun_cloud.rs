@@ -429,6 +429,20 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
+    async fn who_am_i(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::WhoAmIRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::WhoAmIResponse>> {
+        // The local server has no authentication, so grant full access.
+        Ok(tonic::Response::new(
+            re_protos::cloud::v1alpha1::WhoAmIResponse {
+                user_id: None,
+                can_read: true,
+                can_write: true,
+            },
+        ))
+    }
+
     // --- Catalog ---
 
     async fn find_entries(

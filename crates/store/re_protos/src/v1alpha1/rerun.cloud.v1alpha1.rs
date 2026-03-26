@@ -29,6 +29,40 @@ impl ::prost::Name for VersionResponse {
         "/rerun.cloud.v1alpha1.VersionResponse".into()
     }
 }
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WhoAmIRequest {}
+impl ::prost::Name for WhoAmIRequest {
+    const NAME: &'static str = "WhoAmIRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.WhoAmIRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.WhoAmIRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WhoAmIResponse {
+    /// The user ID of the authenticated user, if any.
+    #[prost(string, optional, tag = "1")]
+    pub user_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Whether the user has read access.
+    #[prost(bool, tag = "2")]
+    pub can_read: bool,
+    /// Whether the user has write access.
+    #[prost(bool, tag = "3")]
+    pub can_write: bool,
+}
+impl ::prost::Name for WhoAmIResponse {
+    const NAME: &'static str = "WhoAmIResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.WhoAmIResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.WhoAmIResponse".into()
+    }
+}
 /// Application level error - used as `details` in the `google.rpc.Status` message
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Error {
@@ -2020,6 +2054,28 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Returns information about the currently authenticated user.
+        ///
+        /// This is a lightweight endpoint that can be used to verify that authentication
+        /// is successful and to retrieve the user's identity.
+        pub async fn who_am_i(
+            &mut self,
+            request: impl tonic::IntoRequest<super::WhoAmIRequest>,
+        ) -> std::result::Result<tonic::Response<super::WhoAmIResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/WhoAmI",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "WhoAmI",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         pub async fn find_entries(
             &mut self,
             request: impl tonic::IntoRequest<super::FindEntriesRequest>,
@@ -2753,6 +2809,14 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::VersionRequest>,
         ) -> std::result::Result<tonic::Response<super::VersionResponse>, tonic::Status>;
+        /// Returns information about the currently authenticated user.
+        ///
+        /// This is a lightweight endpoint that can be used to verify that authentication
+        /// is successful and to retrieve the user's identity.
+        async fn who_am_i(
+            &self,
+            request: tonic::Request<super::WhoAmIRequest>,
+        ) -> std::result::Result<tonic::Response<super::WhoAmIResponse>, tonic::Status>;
         async fn find_entries(
             &self,
             request: tonic::Request<super::FindEntriesRequest>,
@@ -3140,6 +3204,45 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = VersionSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/WhoAmI" => {
+                    #[allow(non_camel_case_types)]
+                    struct WhoAmISvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService> tonic::server::UnaryService<super::WhoAmIRequest> for WhoAmISvc<T> {
+                        type Response = super::WhoAmIResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::WhoAmIRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::who_am_i(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = WhoAmISvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

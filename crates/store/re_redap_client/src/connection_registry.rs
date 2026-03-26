@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use re_auth::Jwt;
 use re_auth::credentials::CredentialsProviderError;
-use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
+use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest, WhoAmIRequest};
 use re_uri::Origin;
 use tokio::sync::RwLock;
 use tonic::Code;
@@ -404,20 +404,51 @@ impl ConnectionRegistryHandle {
 
         let mut raw_client = crate::grpc::client(origin.clone(), provider).await?;
 
-        // Call the version endpoint to check that authentication is successful. It's ok to do this
-        // since we're caching the client, so we're not spamming such a request unnecessarily.
-        // TODO(rerun-io/dataplatform#1069): use the `whoami` endpoint instead when it exists.
-        let request_result = raw_client
-            .find_entries(FindEntriesRequest {
-                filter: Some(EntryFilter {
-                    id: None,
-                    name: None,
-                    entry_kind: None,
-                }),
-            })
-            .await;
+        // Call the WhoAmI endpoint to check that authentication is successful. It's ok to do
+        // this since we're caching the client, so we're not spamming such a request unnecessarily.
+        let request_result = raw_client.who_am_i(WhoAmIRequest {}).await;
+
+        // TODO(rerun-io/dataplatform#1069): remove the `FindEntries` fallback once all servers
+        // have been updated to support the `WhoAmI` endpoint.
+        let request_result = match request_result {
+            Err(err) if err.code() == Code::Unimplemented => {
+                re_log::debug_once!(
+                    "Server at {origin} does not support WhoAmI, falling back to FindEntries"
+                );
+                raw_client
+                    .find_entries(FindEntriesRequest {
+                        filter: Some(EntryFilter {
+                            id: None,
+                            name: None,
+                            entry_kind: None,
+                        }),
+                    })
+                    .await
+                    .map(drop)
+            }
+            Ok(resp) => {
+                let re_protos::cloud::v1alpha1::WhoAmIResponse {
+                    user_id,
+                    can_read,
+                    can_write,
+                } = resp.into_inner();
+                let user_id = user_id.as_deref().unwrap_or("<anonymous>");
+                re_log::debug_once!(
+                    "Connected to {origin}: {user_id}, can_read={can_read}, can_write={can_write}",
+                );
+                if !can_read {
+                    return Err(ApiError::permission_denied(
+                        "the server reports that you do not have read access",
+                    ));
+                }
+                Ok(())
+            }
+            Err(err) => Err(err),
+        };
 
         match request_result {
+            Ok(_) => Ok(raw_client),
+
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {
                 if let Some(credentials) = credentials {
@@ -458,8 +489,6 @@ impl ConnectionRegistryHandle {
                     Err(ApiError::tonic(err, "verifying connection to server"))
                 }
             }
-
-            Ok(_) => Ok(raw_client),
         }
     }
 

@@ -23,6 +23,12 @@ import "rerun/v1alpha1/log_msg.proto";
 service RerunCloudService {
   rpc Version(VersionRequest) returns (VersionResponse) {}
 
+  // Returns information about the currently authenticated user.
+  //
+  // This is a lightweight endpoint that can be used to verify that authentication
+  // is successful and to retrieve the user's identity.
+  rpc WhoAmI(WhoAmIRequest) returns (WhoAmIResponse) {}
+
   // --- Catalog ---
 
   rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
@@ -219,6 +225,19 @@ message VersionResponse {
 
   // A single version string representing the version of the whole stack.
   string version = 2;
+}
+
+message WhoAmIRequest {}
+
+message WhoAmIResponse {
+  // The user ID of the authenticated user, if any.
+  optional string user_id = 1;
+
+  // Whether the user has read access.
+  bool can_read = 2;
+
+  // Whether the user has write access.
+  bool can_write = 3;
 }
 
 // Application level error - used as `details` in the `google.rpc.Status` message

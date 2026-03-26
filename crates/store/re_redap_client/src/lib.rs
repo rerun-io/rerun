@@ -264,6 +264,10 @@ impl ApiError {
         Self::new(ApiErrorKind::Connection, message)
     }
 
+    pub fn permission_denied(message: impl Into<String>) -> Self {
+        Self::new(ApiErrorKind::PermissionDenied, message)
+    }
+
     /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn credentials_with_source(
         err: ClientCredentialsError,
