@@ -213,6 +213,11 @@ pub fn loop_selection_ui(
         selection_context_menu(ui, ctx, time_commands, is_on_selection);
     });
 
+    // Click outside the selection to remove it:
+    if timeline_response.clicked() && time_ctrl.time_selection().is_some() {
+        time_commands.push(TimeControlCommand::RemoveTimeSelection);
+    }
+
     // Start new selection?
     if !timeline_response.context_menu_opened()
         && timeline_response.hovered()
