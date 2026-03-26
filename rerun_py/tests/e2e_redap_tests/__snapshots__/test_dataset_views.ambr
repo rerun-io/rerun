@@ -1,4 +1,34 @@
 # serializer version: 1
+# name: test_content_filter_exclude_matches_raw
+  '''
+  /obj1:Points3D:positions:
+      b'rerun:archetype': b'rerun.archetypes.Points3D'
+      b'rerun:component': b'Points3D:positions'
+      b'rerun:component_type': b'rerun.components.Position3D'
+      b'rerun:entity_path': b'/obj1'
+      b'rerun:kind': b'data'
+  log_tick:
+      b'rerun:index_name': b'log_tick'
+      b'rerun:kind': b'index'
+  log_time:
+      b'rerun:index_name': b'log_time'
+      b'rerun:kind': b'index'
+  rerun.controls.RowId:
+      b'ARROW:extension:metadata': b'{"namespace":"row"}'
+      b'ARROW:extension:name': b'rerun.datatypes.TUID'
+      b'rerun:kind': b'control'
+  time_1:
+      b'rerun:index_name': b'time_1'
+      b'rerun:kind': b'index'
+  time_2:
+      b'rerun:index_name': b'time_2'
+      b'rerun:kind': b'index'
+  time_3:
+      b'rerun:index_name': b'time_3'
+      b'rerun:kind': b'index'
+  
+  '''
+# ---
 # name: test_dataframe_api_using_index_values
   '''
   ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐

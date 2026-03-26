@@ -20,6 +20,7 @@ from rerun_bindings.types import (
 )
 
 from ._catalog_client import CatalogClient as CatalogClient
+from ._content_filter import ContentFilter as ContentFilter
 from ._entry import (
     DatasetEntry as DatasetEntry,
     DatasetView as DatasetView,

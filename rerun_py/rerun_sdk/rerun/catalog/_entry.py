@@ -16,7 +16,7 @@ from rerun_bindings import (
     TableInsertModeInternal,
 )
 
-from . import EntryId
+from . import ContentFilter, EntryId
 
 #: Type alias for supported batch input types for TableEntry write methods.
 _BatchesType: TypeAlias = (
@@ -556,7 +556,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
-    def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
+    def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given entity paths.
 
@@ -567,8 +567,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Parameters
         ----------
         exprs:
-            Entity path expression or list of entity path expressions. Passing `[]` results in filtering out all
-            contents.
+            A `ContentFilter` built with the fluent builder API, an entity path expression or list of entity
+            path expressions. Passing `[]` results in filtering out all contents.
 
         Returns
         -------
@@ -580,20 +580,30 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ```python
         # Filter to a single entity path
         view = dataset.filter_contents("/points/**")
+        view = dataset.filter_contents(
+            ContentFilter.nothing()
+            .include("/points/**")
+        )
 
         # Filter to specific entity paths
         view = dataset.filter_contents(["/points/**"])
 
         # Exclude certain paths
         view = dataset.filter_contents(["/points/**", "-/text/**"])
+        view = dataset.filter_contents(
+            ContentFilter.nothing()
+            .include("/points", subtree=True)
+            .exclude("/text/**")
+        )
 
         # Chain with segment filters
         view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
         ```
 
         """
-
-        if isinstance(exprs, str):
+        if isinstance(exprs, ContentFilter):
+            exprs = exprs.to_exprs()
+        elif isinstance(exprs, str):
             exprs = [exprs]
 
         return DatasetView(self._internal.filter_contents(list(exprs)))
@@ -1095,7 +1105,7 @@ class DatasetView:
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
-    def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
+    def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given entity paths.
 
@@ -1106,8 +1116,8 @@ class DatasetView:
         Parameters
         ----------
         exprs:
-            Entity path expression or list of entity path expressions. Passing `[]` results in filtering out all
-            contents.
+            A `ContentFilter` built with the fluent builder API, an entity path expression or list of entity
+            path expressions. Passing `[]` results in filtering out all contents.
 
         Returns
         -------
@@ -1126,12 +1136,21 @@ class DatasetView:
         # Exclude certain paths
         view = dataset.filter_contents(["/points/**", "-/text/**"])
 
+        # Using ContentFilter builder
+        view = dataset.filter_contents(
+            ContentFilter.everything()
+            .exclude("/robot/raw/**")
+            .include("/robot/raw/i_need_this")
+        )
+
         # Chain with segment filters
         view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
         ```
 
         """
-        if isinstance(exprs, str):
+        if isinstance(exprs, ContentFilter):
+            exprs = exprs.to_exprs()
+        elif isinstance(exprs, str):
             exprs = [exprs]
 
         return DatasetView(self._internal.filter_contents(list(exprs)))

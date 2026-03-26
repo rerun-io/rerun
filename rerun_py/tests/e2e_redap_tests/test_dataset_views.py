@@ -10,6 +10,7 @@ import numpy as np
 import pyarrow as pa
 import pytest
 from inline_snapshot import snapshot as inline_snapshot
+from rerun.catalog import ContentFilter
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -329,3 +330,62 @@ def test_using_index_values_with_arrow_types(readonly_test_dataset: DatasetEntry
         index="time_1",
         using_index_values=values,
     )
+
+
+def test_content_filter_everything_matches_glob(readonly_test_dataset: DatasetEntry) -> None:
+    """ContentFilter.everything() should produce the same schema as filter_contents('/**')."""
+    raw = sort_schema(pa.schema(readonly_test_dataset.schema()))
+    builder = sort_schema(pa.schema(readonly_test_dataset.filter_contents(ContentFilter.everything()).schema()))
+    assert builder == raw
+
+
+def test_content_filter_nothing_matches_empty_list(readonly_test_dataset: DatasetEntry) -> None:
+    """ContentFilter.nothing() should produce the same schema as filter_contents([])."""
+    raw = sort_schema(pa.schema(readonly_test_dataset.filter_contents([]).schema()))
+    builder = sort_schema(pa.schema(readonly_test_dataset.filter_contents(ContentFilter.nothing()).schema()))
+    assert builder == raw
+
+
+def test_content_filter_include_subtree_matches_raw(readonly_test_dataset: DatasetEntry) -> None:
+    """ContentFilter include with subtree=True should match the equivalent raw expression."""
+    raw = sort_schema(pa.schema(readonly_test_dataset.filter_contents(["/obj1/**"]).schema()))
+    builder = sort_schema(
+        pa.schema(
+            readonly_test_dataset.filter_contents(ContentFilter.nothing().include("/obj1", subtree=True)).schema()
+        )
+    )
+    assert builder == raw
+
+
+def test_content_filter_exclude_matches_raw(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
+    """ContentFilter with include + exclude should match the equivalent raw expression list."""
+    raw_exprs = ["/obj1/**", "/obj2/**", "-/obj2/**"]
+    raw = sort_schema(pa.schema(readonly_test_dataset.filter_contents(raw_exprs).schema()))
+
+    builder = sort_schema(
+        pa.schema(
+            readonly_test_dataset.filter_contents(
+                ContentFilter
+                .nothing()
+                .include("/obj1", subtree=True)
+                .include("/obj2", subtree=True)
+                .exclude("/obj2", subtree=True)
+            ).schema()
+        )
+    )
+    assert builder == raw
+    assert builder == snapshot()
+
+
+def test_content_filter_on_dataset_view(readonly_test_dataset: DatasetEntry) -> None:
+    """ContentFilter should work when called on a DatasetView (chained from filter_segments)."""
+    all_segments = sorted(readonly_test_dataset.segment_ids())
+    assert len(all_segments) >= 1
+
+    view = readonly_test_dataset.filter_segments(all_segments[:1])
+
+    raw = sort_schema(pa.schema(view.filter_contents(["/obj1/**"]).schema()))
+    builder = sort_schema(
+        pa.schema(view.filter_contents(ContentFilter.nothing().include("/obj1", subtree=True)).schema())
+    )
+    assert builder == raw
