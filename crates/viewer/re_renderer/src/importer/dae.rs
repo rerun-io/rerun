@@ -102,7 +102,19 @@ fn load_dae_from_buffer_inner(
     let document = Document::from_reader(buffer).map_err(DaeImportError::Parser)?;
     let maps = document.local_maps();
 
-    // TODO(#12335): Respect up_axis from DAE file via ViewCoordinates.
+    // Compute a correction matrix to rotate from the DAE file's coordinate system into Rerun's
+    // default RFU (X=Right, Y=Forward, Z=Up) convention.
+    let correction = match document.asset.up_axis {
+        dae_parser::UpAxis::ZUp => glam::Affine3A::IDENTITY,
+        dae_parser::UpAxis::YUp => glam::Affine3A::from_mat3(
+            glam::Mat3::from_rotation_x(std::f32::consts::FRAC_PI_2),
+        ),
+        dae_parser::UpAxis::XUp => glam::Affine3A::from_mat3(glam::Mat3::from_cols(
+            glam::Vec3::new(0.0, 0.0, 1.0),
+            glam::Vec3::new(-1.0, 0.0, 0.0),
+            glam::Vec3::new(0.0, -1.0, 0.0),
+        )),
+    };
 
     // Check for textures and warn if found
     check_for_textures(&document);
@@ -146,7 +158,7 @@ fn load_dae_from_buffer_inner(
     for scene in document.iter::<VisualScene>() {
         any_scene = true;
         for root in &scene.nodes {
-            gather_instances_recursive(&mut model, root, &glam::Affine3A::IDENTITY, &mesh_keys);
+            gather_instances_recursive(&mut model, root, &correction, &mesh_keys);
         }
     }
 
