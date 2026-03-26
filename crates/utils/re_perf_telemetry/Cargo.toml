@@ -65,6 +65,7 @@ opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
 opentelemetry_sdk = { workspace = true, features = [
   "rt-tokio",
   "experimental_metrics_custom_reader",
+  "spec_unstable_metrics_views",
 ] }
 parking_lot.workspace = true
 serde.workspace = true

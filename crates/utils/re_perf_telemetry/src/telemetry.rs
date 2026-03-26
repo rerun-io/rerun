@@ -3,7 +3,7 @@ use std::sync::Arc;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithTonicConfig as _;
 use opentelemetry_sdk::logs::SdkLoggerProvider;
-use opentelemetry_sdk::metrics::SdkMeterProvider;
+use opentelemetry_sdk::metrics::{Aggregation, SdkMeterProvider};
 use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor, SdkTracerProvider};
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -394,6 +394,32 @@ impl Telemetry {
         //
         let (metric_provider, metrics_reader) = if otel_enabled {
             let mut builder = SdkMeterProvider::builder();
+
+            // Use base-2 exponential histograms (OTel equivalent of Prometheus native
+            // histograms) instead of explicit bucket histograms. This avoids hardcoding
+            // bucket boundaries and lets the SDK auto-scale resolution.
+            builder = builder.with_view(|instrument: &opentelemetry_sdk::metrics::Instrument| {
+                if instrument.kind() == opentelemetry_sdk::metrics::InstrumentKind::Histogram {
+                    opentelemetry_sdk::metrics::Stream::builder()
+                        .with_aggregation(Aggregation::Base2ExponentialHistogram {
+                            // Max buckets per positive/negative range. Negative buckets
+                            // stay empty for duration/size metrics. Comparable to the
+                            // ~10 explicit buckets we had before, but with auto-scaling
+                            // boundaries.
+                            max_size: 20,
+                            // Starting resolution scale. The base of each bucket is
+                            // 2^(2^(-scale)). At scale 20 (the maximum), buckets are
+                            // extremely fine-grained; the SDK automatically downscales
+                            // when observations exceed max_size buckets.
+                            max_scale: 20,
+                            record_min_max: true,
+                        })
+                        .build()
+                        .ok()
+                } else {
+                    None
+                }
+            });
 
             // OTLP exporter for push-based metrics
             let otlp_exporter = opentelemetry_otlp::MetricExporter::builder()
