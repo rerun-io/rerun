@@ -9,13 +9,12 @@
 //!
 //! ```text
 //! Expr    → Term ( '|' Term )*
-//! Term    → Segment+
-//!         | DOT
-//!         | IDENT ( '(' ArgList? ')' )?
-//! Segment → Primary ( '?' | '!' )*
-//! Primary → FIELD
+//! Term    → Segment ( '?' | '!' )*  ( Segment ( '?' | '!' )* )*
+//! Segment → '.' FIELD
 //!         | '[' INTEGER ']'
 //!         | '[' ']'
+//!         | '.'                          (identity)
+//!         | IDENT ( '(' ArgList? ')' )?  (function)
 //! ArgList → Literal ( ';' Literal )*
 //! Literal → STRING_LITERAL
 //! ```
@@ -29,67 +28,6 @@ where
     I: Iterator<Item = Token>,
 {
     tokens: std::iter::Peekable<I>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum SegmentKind {
-    Field(String),
-    Index(u64),
-    Each,
-}
-
-impl re_byte_size::SizeBytes for SegmentKind {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::Field(s) => s.heap_size_bytes(),
-            Self::Index(_) | Self::Each => 0,
-        }
-    }
-}
-
-impl std::fmt::Display for SegmentKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Field(name) => write!(f, ".{name}"),
-            Self::Index(n) => write!(f, "[{n}]"),
-            Self::Each => write!(f, "[]"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Segment {
-    pub kind: SegmentKind,
-
-    /// When `true`, errors from this segment are suppressed (the `?` operator).
-    pub suppressed: bool,
-
-    /// When `true`, rows where all inner values are null will not produce output (the `!` operator).
-    pub assert_non_null: bool,
-}
-
-impl re_byte_size::SizeBytes for Segment {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            kind,
-            suppressed,
-            assert_non_null,
-        } = self;
-        kind.heap_size_bytes() + suppressed.heap_size_bytes() + assert_non_null.heap_size_bytes()
-    }
-}
-
-impl std::fmt::Display for Segment {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.kind)?;
-        if self.suppressed {
-            write!(f, "?")?;
-        }
-        if self.assert_non_null {
-            write!(f, "!")?;
-        }
-        Ok(())
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -116,8 +54,23 @@ impl std::fmt::Display for Literal {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     Identity,
-    Path(Vec<Segment>),
-    Pipe(Box<Self>, Box<Self>),
+    Field(String),
+    Index(u64),
+    Each,
+    Pipe {
+        left: Box<Self>,
+        right: Box<Self>,
+
+        // TODO(RR-4178): Right now we still assume that `Selectors` have to
+        // roundtrip in the UI, which is why we have to model if a pipe was
+        // written out by the user in the AST. Long-term, we should avoid
+        // coupling the Selector AST to the UI code.
+        /// `true` when the pipe was inferred from adjacent segments (`.foo.bar`),
+        /// `false` when the user wrote an explicit `|`.
+        implicit: bool,
+    },
+    Try(Box<Self>),
+    NonNull(Box<Self>),
     Function {
         name: String,
 
@@ -131,9 +84,10 @@ pub enum Expr {
 impl re_byte_size::SizeBytes for Expr {
     fn heap_size_bytes(&self) -> u64 {
         match self {
-            Self::Identity => 0,
-            Self::Path(segments) => segments.heap_size_bytes(),
-            Self::Pipe(left, right) => left.heap_size_bytes() + right.heap_size_bytes(),
+            Self::Identity | Self::Index(_) | Self::Each => 0,
+            Self::Field(s) => s.heap_size_bytes(),
+            Self::Pipe { left, right, .. } => left.heap_size_bytes() + right.heap_size_bytes(),
+            Self::Try(inner) | Self::NonNull(inner) => inner.heap_size_bytes(),
             Self::Function { name, arguments } => {
                 name.heap_size_bytes() + arguments.heap_size_bytes()
             }
@@ -145,13 +99,22 @@ impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Identity => write!(f, "."),
-            Self::Path(segments) => {
-                for segment in segments {
-                    write!(f, "{segment}")?;
+            Self::Field(name) => write!(f, ".{name}"),
+            Self::Index(n) => write!(f, "[{n}]"),
+            Self::Each => write!(f, "[]"),
+            Self::Pipe {
+                left,
+                right,
+                implicit,
+            } => {
+                if *implicit {
+                    write!(f, "{left}{right}")
+                } else {
+                    write!(f, "{left} | {right}")
                 }
-                Ok(())
             }
-            Self::Pipe(left, right) => write!(f, "{left} | {right}"),
+            Self::Try(inner) => write!(f, "{inner}?"),
+            Self::NonNull(inner) => write!(f, "{inner}!"),
             Self::Function { name, arguments } => {
                 write!(f, "{name}")?;
 
@@ -214,13 +177,17 @@ where
     }
 
     fn expr(&mut self) -> Result<Expr> {
-        let mut left = self.path()?;
+        let mut left = self.term()?;
 
         while let Some(token) = self.tokens.peek() {
             if token.typ == TokenType::Pipe {
                 self.tokens.next(); // Consume explicit pipe
-                let right = self.path()?;
-                left = Expr::Pipe(Box::new(left), Box::new(right));
+                let right = self.term()?;
+                left = Expr::Pipe {
+                    left: Box::new(left),
+                    right: Box::new(right),
+                    implicit: false,
+                };
             } else {
                 break;
             }
@@ -229,7 +196,7 @@ where
         Ok(left)
     }
 
-    fn path(&mut self) -> Result<Expr> {
+    fn term(&mut self) -> Result<Expr> {
         // Bare identifier: must be a function call
         if let Some(token) = self.tokens.peek()
             && let TokenType::Ident(name) = &token.typ
@@ -238,8 +205,6 @@ where
             self.tokens.next();
             return self.function_args(name);
         }
-
-        let mut segments = Vec::new();
 
         // Check if it starts with identity (.)
         if let Some(token) = self.tokens.peek() {
@@ -254,16 +219,40 @@ where
             return Err(Error::UnexpectedEof);
         }
 
-        // Parse segments
+        // Parse first segment
+        let mut left = self.primary()?;
+        left = self.postfix(left);
+
+        // Parse remaining segments, joining with implicit pipes
         while self.is_segment_start() {
-            segments.push(self.segment()?);
+            let mut right = self.primary()?;
+            right = self.postfix(right);
+            left = Expr::Pipe {
+                left: Box::new(left),
+                right: Box::new(right),
+                implicit: true,
+            };
         }
 
-        if segments.is_empty() {
-            Ok(Expr::Identity)
-        } else {
-            Ok(Expr::Path(segments))
+        Ok(left)
+    }
+
+    /// Apply any postfix `?` or `!` operators.
+    fn postfix(&mut self, mut expr: Expr) -> Expr {
+        while let Some(token) = self.tokens.peek() {
+            match token.typ {
+                TokenType::QuestionMark => {
+                    self.tokens.next();
+                    expr = Expr::Try(Box::new(expr));
+                }
+                TokenType::ExclamationMark => {
+                    self.tokens.next();
+                    expr = Expr::NonNull(Box::new(expr));
+                }
+                _ => break,
+            }
         }
+        expr
     }
 
     /// Parse function arguments: `(arg1; arg2; …)`.
@@ -333,37 +322,13 @@ where
         )
     }
 
-    fn segment(&mut self) -> Result<Segment> {
-        let kind = self.primary()?;
-        let mut suppressed = false;
-        let mut assert_non_null = false;
-        while let Some(token) = self.tokens.peek() {
-            match token.typ {
-                TokenType::QuestionMark => {
-                    self.tokens.next();
-                    suppressed = true;
-                }
-                TokenType::ExclamationMark => {
-                    self.tokens.next();
-                    assert_non_null = true;
-                }
-                _ => break,
-            }
-        }
-        Ok(Segment {
-            kind,
-            suppressed,
-            assert_non_null,
-        })
-    }
-
-    fn primary(&mut self) -> Result<SegmentKind> {
+    fn primary(&mut self) -> Result<Expr> {
         match self.tokens.peek() {
             Some(token) => match &token.typ {
                 TokenType::Field(s) => {
                     let result = s.clone();
                     self.tokens.next();
-                    Ok(SegmentKind::Field(result))
+                    Ok(Expr::Field(result))
                 }
                 TokenType::LBracket => {
                     self.tokens.next(); // Consume `[`
@@ -372,13 +337,13 @@ where
                         Some(token) => match &token.typ {
                             TokenType::RBracket => {
                                 self.tokens.next(); // Consume `]`
-                                Ok(SegmentKind::Each)
+                                Ok(Expr::Each)
                             }
                             TokenType::Integer(n) => {
                                 let index = *n;
                                 self.tokens.next();
                                 self.consume(TokenType::RBracket)?;
-                                Ok(SegmentKind::Index(index))
+                                Ok(Expr::Index(index))
                             }
                             unexpected => Err(Error::UnexpectedSymbol {
                                 symbol: unexpected.clone(),
@@ -420,92 +385,56 @@ mod test {
         Parser::new(tokens.into_iter()).parse()
     }
 
-    fn field(name: &str) -> Segment {
-        Segment {
-            kind: SegmentKind::Field(name.into()),
-            suppressed: false,
-            assert_non_null: false,
+    fn field(name: &str) -> Expr {
+        Expr::Field(name.into())
+    }
+
+    fn index(n: u64) -> Expr {
+        Expr::Index(n)
+    }
+
+    fn each() -> Expr {
+        Expr::Each
+    }
+
+    fn implicit_pipe(left: Expr, right: Expr) -> Expr {
+        Expr::Pipe {
+            left: Box::new(left),
+            right: Box::new(right),
+            implicit: true,
         }
     }
 
-    fn field_opt(name: &str) -> Segment {
-        Segment {
-            kind: SegmentKind::Field(name.into()),
-            suppressed: true,
-            assert_non_null: false,
-        }
+    fn try_expr(inner: Expr) -> Expr {
+        Expr::Try(Box::new(inner))
     }
 
-    fn field_nn(name: &str) -> Segment {
-        Segment {
-            kind: SegmentKind::Field(name.into()),
-            suppressed: false,
-            assert_non_null: true,
-        }
-    }
-
-    fn index(n: u64) -> Segment {
-        Segment {
-            kind: SegmentKind::Index(n),
-            suppressed: false,
-            assert_non_null: false,
-        }
-    }
-
-    fn index_opt(n: u64) -> Segment {
-        Segment {
-            kind: SegmentKind::Index(n),
-            suppressed: true,
-            assert_non_null: false,
-        }
-    }
-
-    fn index_nn(n: u64) -> Segment {
-        Segment {
-            kind: SegmentKind::Index(n),
-            suppressed: false,
-            assert_non_null: true,
-        }
-    }
-
-    fn each() -> Segment {
-        Segment {
-            kind: SegmentKind::Each,
-            suppressed: false,
-            assert_non_null: false,
-        }
-    }
-
-    fn each_opt() -> Segment {
-        Segment {
-            kind: SegmentKind::Each,
-            suppressed: true,
-            assert_non_null: false,
-        }
-    }
-
-    fn path(segments: Vec<Segment>) -> Expr {
-        Expr::Path(segments)
+    fn non_null(inner: Expr) -> Expr {
+        Expr::NonNull(Box::new(inner))
     }
 
     fn pipe(left: Expr, right: Expr) -> Expr {
-        Expr::Pipe(Box::new(left), Box::new(right))
+        Expr::Pipe {
+            left: Box::new(left),
+            right: Box::new(right),
+            implicit: false,
+        }
     }
 
     #[test]
     fn basic() {
         assert_eq!(
             parse(".a.b.c"),
-            Ok(path(vec![field("a"), field("b"), field("c")]))
+            Ok(implicit_pipe(
+                implicit_pipe(field("a"), field("b")),
+                field("c")
+            ))
         );
     }
 
     #[test]
     fn explicit_pipe() {
-        assert_eq!(
-            parse(".foo | .bar"),
-            Ok(pipe(path(vec![field("foo")]), path(vec![field("bar")])))
-        );
+        assert_eq!(parse(".foo | .bar"), Ok(pipe(field("foo"), field("bar"))));
     }
 
     #[test]
@@ -515,10 +444,7 @@ mod test {
 
     #[test]
     fn identity_pipe() {
-        assert_eq!(
-            parse(". | .foo"),
-            Ok(pipe(Expr::Identity, path(vec![field("foo")])))
-        );
+        assert_eq!(parse(". | .foo"), Ok(pipe(Expr::Identity, field("foo"))));
     }
 
     #[test]
@@ -533,37 +459,34 @@ mod test {
 
     #[test]
     fn array_index() {
-        assert_eq!(parse(".[0]"), Ok(path(vec![index(0)])));
-        assert_eq!(parse(".[42]"), Ok(path(vec![index(42)])));
+        assert_eq!(parse(".[0]"), Ok(index(0)));
+        assert_eq!(parse(".[42]"), Ok(index(42)));
     }
 
     #[test]
     fn array_index_with_pipe() {
-        assert_eq!(
-            parse(".foo | .[0]"),
-            Ok(pipe(path(vec![field("foo")]), path(vec![index(0)])))
-        );
+        assert_eq!(parse(".foo | .[0]"), Ok(pipe(field("foo"), index(0))));
     }
 
     #[test]
     fn array_index_implicit_pipe() {
-        assert_eq!(parse(".foo[0]"), Ok(path(vec![field("foo"), index(0)])));
+        assert_eq!(parse(".foo[0]"), Ok(implicit_pipe(field("foo"), index(0))));
         assert_eq!(
             parse(".foo[0][1]"),
-            Ok(path(vec![field("foo"), index(0), index(1)]))
+            Ok(implicit_pipe(
+                implicit_pipe(field("foo"), index(0)),
+                index(1)
+            ))
         );
     }
 
     #[test]
     fn array_each() {
-        assert_eq!(parse(".[]"), Ok(path(vec![each()])));
-        assert_eq!(parse(".foo[]"), Ok(path(vec![field("foo"), each()])));
+        assert_eq!(parse(".[]"), Ok(each()));
+        assert_eq!(parse(".foo[]"), Ok(implicit_pipe(field("foo"), each())));
         assert_eq!(
             parse(".foo[] | .bar"),
-            Ok(pipe(
-                path(vec![field("foo"), each()]),
-                path(vec![field("bar")])
-            ))
+            Ok(pipe(implicit_pipe(field("foo"), each()), field("bar")))
         );
     }
 
@@ -571,11 +494,14 @@ mod test {
     fn array_each_implicit_pipe() {
         assert_eq!(
             parse(".foo[].bar"),
-            Ok(path(vec![field("foo"), each(), field("bar")]))
+            Ok(implicit_pipe(
+                implicit_pipe(field("foo"), each()),
+                field("bar")
+            ))
         );
         assert_eq!(
             parse(".foo[][0]"),
-            Ok(path(vec![field("foo"), each(), index(0)]))
+            Ok(implicit_pipe(implicit_pipe(field("foo"), each()), index(0)))
         );
     }
 
@@ -601,25 +527,31 @@ mod test {
 
     #[test]
     fn optional_field() {
-        assert_eq!(parse(".foo?"), Ok(path(vec![field_opt("foo")])));
+        assert_eq!(parse(".foo?"), Ok(try_expr(field("foo"))));
         assert_eq!(
             parse(".foo?.bar"),
-            Ok(path(vec![field_opt("foo"), field("bar")]))
+            Ok(implicit_pipe(try_expr(field("foo")), field("bar")))
         );
     }
 
     #[test]
     fn optional_index() {
-        assert_eq!(parse(".[0]?"), Ok(path(vec![index_opt(0)])));
+        assert_eq!(parse(".[0]?"), Ok(try_expr(index(0))));
     }
 
     #[test]
     fn optional_each() {
-        assert_eq!(parse(".[]?"), Ok(path(vec![each_opt()])));
-        assert_eq!(parse(".[]?.foo"), Ok(path(vec![each_opt(), field("foo")])));
+        assert_eq!(parse(".[]?"), Ok(try_expr(each())));
+        assert_eq!(
+            parse(".[]?.foo"),
+            Ok(implicit_pipe(try_expr(each()), field("foo")))
+        );
         assert_eq!(
             parse(".foo[]?.bar"),
-            Ok(path(vec![field("foo"), each_opt(), field("bar")]))
+            Ok(implicit_pipe(
+                implicit_pipe(field("foo"), try_expr(each())),
+                field("bar")
+            ))
         );
     }
 
@@ -641,37 +573,22 @@ mod test {
 
     #[test]
     fn non_null_field() {
-        assert_eq!(parse(".foo!"), Ok(path(vec![field_nn("foo")])));
+        assert_eq!(parse(".foo!"), Ok(non_null(field("foo"))));
         assert_eq!(
             parse(".foo!.bar"),
-            Ok(path(vec![field_nn("foo"), field("bar")]))
+            Ok(implicit_pipe(non_null(field("foo")), field("bar")))
         );
     }
 
     #[test]
     fn non_null_index() {
-        assert_eq!(parse(".[0]!"), Ok(path(vec![index_nn(0)])));
+        assert_eq!(parse(".[0]!"), Ok(non_null(index(0))));
     }
 
     #[test]
     fn non_null_combined_with_optional() {
-        // Both `?` and `!` on the same segment
-        assert_eq!(
-            parse(".foo?!"),
-            Ok(path(vec![Segment {
-                kind: SegmentKind::Field("foo".into()),
-                suppressed: true,
-                assert_non_null: true,
-            }]))
-        );
-        assert_eq!(
-            parse(".foo!?"),
-            Ok(path(vec![Segment {
-                kind: SegmentKind::Field("foo".into()),
-                suppressed: true,
-                assert_non_null: true,
-            }]))
-        );
+        assert_eq!(parse(".foo?!"), Ok(non_null(try_expr(field("foo")))));
+        assert_eq!(parse(".foo!?"), Ok(try_expr(non_null(field("foo")))));
     }
 
     #[test]
@@ -685,7 +602,6 @@ mod test {
         let expr = parse(".[0]!").unwrap();
         assert_eq!(expr.to_string(), "[0]!");
 
-        // Combined: `?` is displayed before `!`
         let expr = parse(".foo?!").unwrap();
         assert_eq!(expr.to_string(), ".foo?!");
     }
@@ -729,7 +645,7 @@ mod test {
     fn function_no_args_in_pipe() {
         assert_eq!(
             parse(".path | my_func"),
-            Ok(pipe(path(vec![field("path")]), func("my_func", None)))
+            Ok(pipe(field("path"), func("my_func", None)))
         );
     }
 
@@ -738,7 +654,7 @@ mod test {
         assert_eq!(
             parse(r#".path | my_func("arg")"#),
             Ok(pipe(
-                path(vec![field("path")]),
+                field("path"),
                 func("my_func", Some(vec![Literal::String("arg".into())]))
             ))
         );

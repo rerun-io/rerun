@@ -55,7 +55,7 @@ use arrow::{
 };
 use vec1::Vec1;
 
-use parser::{Expr, Segment, SegmentKind};
+use parser::Expr;
 
 /// A parsed selector expression that can be executed against Arrow arrays.
 #[derive(Clone)]
@@ -182,32 +182,41 @@ pub enum Error {
     Runtime(#[from] crate::combinators::Error),
 }
 
+/// Fold an iterator of `Expr` into a left-associative chain of implicit pipes.
+fn chain(exprs: impl IntoIterator<Item = Expr>) -> Expr {
+    let mut iter = exprs.into_iter();
+    let Some(first) = iter.next() else {
+        return Expr::Identity;
+    };
+    iter.fold(first, |left, right| Expr::Pipe {
+        left: Box::new(left),
+        right: Box::new(right),
+        implicit: true,
+    })
+}
+
 /// Dispatch a single datatype: enqueue structs, unwrap lists, or check the predicate.
 fn process_datatype<'a, P>(
-    mut path: Vec<Segment>,
+    mut path: Vec<Expr>,
     datatype: &'a DataType,
     predicate: &P,
     result: &mut Vec<(Selector, DataType)>,
-    queue: &mut std::collections::VecDeque<(Vec<Segment>, &'a Fields)>,
+    queue: &mut std::collections::VecDeque<(Vec<Expr>, &'a Fields)>,
 ) where
     P: Fn(&DataType) -> bool,
 {
     match datatype {
         dt if predicate(dt) => {
-            result.push((Selector::new(Expr::Path(path)), dt.clone()));
+            result.push((Selector::new(chain(path)), dt.clone()));
         }
         DataType::Struct(fields) => {
             queue.push_back((path, fields));
         }
         DataType::List(inner) | DataType::FixedSizeList(inner, ..) => {
-            path.push(Segment {
-                kind: SegmentKind::Each,
-                suppressed: false,
-                assert_non_null: false,
-            });
+            path.push(Expr::Each);
             match inner.data_type() {
                 dt if predicate(dt) => {
-                    result.push((Selector::new(Expr::Path(path)), dt.clone()));
+                    result.push((Selector::new(chain(path)), dt.clone()));
                 }
                 DataType::Struct(nested_fields) => {
                     queue.push_back((path, nested_fields));
@@ -215,12 +224,8 @@ fn process_datatype<'a, P>(
                 DataType::FixedSizeList(field, ..) => {
                     let dt = field.data_type();
                     if predicate(dt) {
-                        path.push(Segment {
-                            kind: SegmentKind::Each,
-                            suppressed: false,
-                            assert_non_null: false,
-                        });
-                        result.push((Selector::new(Expr::Path(path)), dt.clone()));
+                        path.push(Expr::Each);
+                        result.push((Selector::new(chain(path)), dt.clone()));
                     }
                 }
                 _ => {}
@@ -241,7 +246,8 @@ where
     P: Fn(&DataType) -> bool,
 {
     let mut result = Vec::new();
-    let mut queue = std::collections::VecDeque::new();
+    let mut queue: std::collections::VecDeque<(Vec<Expr>, &Fields)> =
+        std::collections::VecDeque::new();
 
     match datatype {
         DataType::Struct(_) | DataType::List(_) | DataType::FixedSizeList(..) => {
@@ -254,11 +260,7 @@ where
     while let Some((path, fields)) = queue.pop_front() {
         for field in fields {
             let mut field_path = path.clone();
-            field_path.push(Segment {
-                kind: SegmentKind::Field(field.name().clone()),
-                suppressed: false,
-                assert_non_null: false,
-            });
+            field_path.push(Expr::Field(field.name().clone()));
             process_datatype(
                 field_path,
                 field.data_type(),

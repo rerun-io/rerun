@@ -40,7 +40,7 @@ impl re_byte_size::SizeBytes for Runtime {
     }
 }
 
-use super::parser::{Expr, Segment, SegmentKind};
+use super::parser::Expr;
 
 /// Executes the given expression against the source array.
 ///
@@ -69,9 +69,14 @@ fn values_downcasts_to<T: 'static>(array: &ListArray) -> bool {
     array.values().as_any().downcast_ref::<T>().is_some()
 }
 
-impl SegmentKind {
-    fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::combinators::Error> {
+impl Expr {
+    fn execute(
+        &self,
+        source: &ListArray,
+        runtime: &Runtime,
+    ) -> Result<Option<ListArray>, crate::combinators::Error> {
         match self {
+            Self::Identity => Ok(Some(source.clone())),
             Self::Field(field_name) => {
                 MapList::new(GetField::new(field_name.clone())).transform(source)
             }
@@ -93,54 +98,20 @@ impl SegmentKind {
                     })
                 }
             }
-        }
-    }
-}
-
-impl Segment {
-    fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::combinators::Error> {
-        let result = match self.kind.execute(source) {
-            Ok(result) => result,
-            // TODO(RR-3435): FixedSizeListArray errors must be suppressed via `?`, but ListArray should not need it.
-            Err(err) if self.suppressed => {
-                re_log::trace!("Suppressed segment `{self}` suppressed error: {err}");
-                return Ok(None);
-            }
-            Err(err) => return Err(err),
-        };
-
-        let Some(result) = result else {
-            return Ok(None);
-        };
-
-        if self.assert_non_null {
-            PromoteInnerNulls.transform(&result)
-        } else {
-            Ok(Some(result))
-        }
-    }
-}
-
-impl Expr {
-    fn execute(
-        &self,
-        source: &ListArray,
-        runtime: &Runtime,
-    ) -> Result<Option<ListArray>, crate::combinators::Error> {
-        match self {
-            Self::Identity => Ok(Some(source.clone())),
-            Self::Path(segments) => {
-                let mut result = source.clone();
-                for segment in segments {
-                    match segment.execute(&result)? {
-                        Some(next) => result = next,
-                        None => return Ok(None),
-                    }
-                }
-                Ok(Some(result))
-            }
-            Self::Pipe(left, right) => match left.as_ref().execute(source, runtime)? {
+            Self::Pipe { left, right, .. } => match left.as_ref().execute(source, runtime)? {
                 Some(intermediate) => right.as_ref().execute(&intermediate, runtime),
+                None => Ok(None),
+            },
+            // TODO(RR-3435): FixedSizeListArray errors must be suppressed via `?`, but ListArray should not need it.
+            Self::Try(inner) => match inner.execute(source, runtime) {
+                Ok(result) => Ok(result),
+                Err(err) => {
+                    re_log::trace!("Try expression suppressed error: {err}");
+                    Ok(None)
+                }
+            },
+            Self::NonNull(inner) => match inner.execute(source, runtime)? {
+                Some(result) => PromoteInnerNulls.transform(&result),
                 None => Ok(None),
             },
             Self::Function { name, arguments } => {
