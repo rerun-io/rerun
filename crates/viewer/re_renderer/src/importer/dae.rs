@@ -104,17 +104,7 @@ fn load_dae_from_buffer_inner(
 
     // Compute a correction matrix to rotate from the DAE file's coordinate system into Rerun's
     // default RFU (X=Right, Y=Forward, Z=Up) convention.
-    let correction = match document.asset.up_axis {
-        dae_parser::UpAxis::ZUp => glam::Affine3A::IDENTITY,
-        dae_parser::UpAxis::YUp => glam::Affine3A::from_mat3(
-            glam::Mat3::from_rotation_x(std::f32::consts::FRAC_PI_2),
-        ),
-        dae_parser::UpAxis::XUp => glam::Affine3A::from_mat3(glam::Mat3::from_cols(
-            glam::Vec3::new(0.0, 0.0, 1.0),
-            glam::Vec3::new(-1.0, 0.0, 0.0),
-            glam::Vec3::new(0.0, -1.0, 0.0),
-        )),
-    };
+    let correction = up_axis_correction(document.asset.up_axis);
 
     // Check for textures and warn if found
     check_for_textures(&document);
@@ -157,8 +147,19 @@ fn load_dae_from_buffer_inner(
     let mut any_scene = false;
     for scene in document.iter::<VisualScene>() {
         any_scene = true;
+        // A <visual_scene> may have its own <asset><up_axis> that overrides the document level.
+        let scene_correction = scene
+            .asset
+            .as_deref()
+            .map_or(correction, |a| up_axis_correction(a.up_axis));
         for root in &scene.nodes {
-            gather_instances_recursive(&mut model, root, &correction, &mesh_keys);
+            gather_instances_recursive(
+                &mut model,
+                root,
+                &glam::Affine3A::IDENTITY,
+                &scene_correction,
+                &mesh_keys,
+            );
         }
     }
 
@@ -305,10 +306,27 @@ fn extract_material_color(
     ))
 }
 
+/// Compute the correction matrix that rotates from a given COLLADA `up_axis` coordinate system
+/// into Rerun's default RFU (X=Right, Y=Forward, Z=Up) convention.
+fn up_axis_correction(up_axis: dae_parser::UpAxis) -> glam::Affine3A {
+    match up_axis {
+        dae_parser::UpAxis::ZUp => glam::Affine3A::IDENTITY,
+        dae_parser::UpAxis::YUp => glam::Affine3A::from_mat3(
+            glam::Mat3::from_rotation_x(std::f32::consts::FRAC_PI_2),
+        ),
+        dae_parser::UpAxis::XUp => glam::Affine3A::from_mat3(glam::Mat3::from_cols(
+            glam::Vec3::new(0.0, 0.0, 1.0),
+            glam::Vec3::new(-1.0, 0.0, 0.0),
+            glam::Vec3::new(0.0, -1.0, 0.0),
+        )),
+    }
+}
+
 fn gather_instances_recursive(
     model: &mut CpuModel,
     node: &DaeNode,
     parent_tf: &glam::Affine3A,
+    correction: &glam::Affine3A,
     meshes: &HashMap<String, CpuModelMeshKey>,
 ) {
     use glam::{Affine3A, Mat4, Quat, Vec3};
@@ -340,6 +358,16 @@ fn gather_instances_recursive(
 
     let world_tf = *parent_tf * Affine3A::from_mat4(local_mat);
 
+    // A <node> may carry its own <asset><up_axis> that overrides the inherited correction
+    // for this node's scope and all descendants (per the COLLADA spec).
+    let node_correction;
+    let effective_correction = if let Some(asset) = &node.asset {
+        node_correction = up_axis_correction(asset.up_axis);
+        &node_correction
+    } else {
+        correction
+    };
+
     for Instance::<Geometry> { url, .. } in &node.instance_geometry {
         let id = match url.val.clone() {
             // URI reference (e.g. "#Cube-mesh"), we need to strip the leading `#`.
@@ -354,14 +382,14 @@ fn gather_instances_recursive(
         };
 
         if let Some(&mesh_key) = meshes.get(&id) {
-            model.add_instance(mesh_key, world_tf);
+            model.add_instance(mesh_key, *effective_correction * world_tf);
         } else {
             re_log::warn_once!("<instance_geometry> references unknown geometry {id}");
         }
     }
 
     for child in &node.children {
-        gather_instances_recursive(model, child, &world_tf, meshes);
+        gather_instances_recursive(model, child, &world_tf, effective_correction, meshes);
     }
 }
 
