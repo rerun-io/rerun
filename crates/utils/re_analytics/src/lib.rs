@@ -39,7 +39,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Error as IoError;
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::time::Duration;
 
 use jiff::Timestamp;
@@ -237,6 +237,9 @@ pub struct Analytics {
 
     default_append_props: HashMap<Cow<'static, str>, Property>,
     event_id: AtomicI64,
+
+    /// Whether the user is currently logged in.
+    user_logged_in: AtomicBool,
 }
 
 #[cfg(not(target_arch = "wasm32"))] // NOTE: can't block on web
@@ -250,7 +253,7 @@ impl Drop for Analytics {
     }
 }
 
-fn load_config() -> Result<Config, ConfigError> {
+fn load_config(_user_logged_in: bool) -> Result<Config, ConfigError> {
     let config = match Config::load() {
         Ok(config) => config,
 
@@ -277,7 +280,10 @@ fn load_config() -> Result<Config, ConfigError> {
 
         #[cfg(not(target_arch = "wasm32"))]
         if config.is_first_run() {
-            eprintln!("{DISCLAIMER}");
+            if !_user_logged_in {
+                // Only print the disclaimer if the user is not logged in.
+                eprintln!("{DISCLAIMER}");
+            }
 
             config.save()?;
             re_log::trace!(?config, "saved analytics config");
@@ -301,8 +307,16 @@ impl Analytics {
     ///
     /// Return `None` if analytics is disabled or some error occurred.
     pub fn global_or_init() -> Option<&'static Self> {
+        Self::global_or_init_with_login_state(false)
+    }
+
+    /// Get the global analytics instance, initializing it if it's not already initialized.
+    /// Also sets the login state of the user.
+    ///
+    /// Return `None` if analytics is disabled or some error occurred.
+    pub fn global_or_init_with_login_state(user_logged_in: bool) -> Option<&'static Self> {
         GLOBAL_ANALYTICS
-            .get_or_init(|| match Self::new(Duration::from_secs(2)) {
+            .get_or_init(|| match Self::new(Duration::from_secs(2), user_logged_in) {
                 Ok(analytics) => Some(analytics),
                 Err(err) => {
                     re_log::error!("Failed to initialize analytics: {err}");
@@ -326,8 +340,8 @@ impl Analytics {
     /// Usually it is better to use [`Self::global_or_init`] instead of calling this directly,
     /// but there are cases where you might want to create a separate instance,
     /// e.g. for testing purposes, or when you want to use a different tick duration.
-    fn new(tick: Duration) -> Result<Self, AnalyticsError> {
-        let config = load_config()?;
+    fn new(tick: Duration, user_logged_in: bool) -> Result<Self, AnalyticsError> {
+        let config = load_config(user_logged_in)?;
         let pipeline = Pipeline::new(&config, tick)?;
         re_log::trace!("initialized analytics pipeline");
 
@@ -336,6 +350,7 @@ impl Analytics {
             default_append_props: Default::default(),
             pipeline,
             event_id: AtomicI64::new(1), // we skip 0 just to be explicit (zeroes can often be implicit)
+            user_logged_in: AtomicBool::new(user_logged_in),
         })
     }
 
@@ -366,6 +381,12 @@ impl Analytics {
         }
     }
 
+    /// Update whether the user is currently logged in.
+    pub fn set_logged_in(&self, logged_in: bool) {
+        self.user_logged_in
+            .store(logged_in, std::sync::atomic::Ordering::Relaxed);
+    }
+
     /// Record an event.
     ///
     /// It will be extended with an `event_id`.
@@ -390,6 +411,13 @@ impl Analytics {
 pub fn record<E: Event>(cb: impl FnOnce() -> E) {
     if let Some(analytics) = Analytics::global_or_init() {
         analytics.record(cb());
+    }
+}
+
+/// Update whether the user is currently logged in.
+pub fn set_logged_in(logged_in: bool) {
+    if let Some(analytics) = Analytics::global_or_init_with_login_state(logged_in) {
+        analytics.set_logged_in(logged_in);
     }
 }
 

@@ -109,6 +109,7 @@ pub fn clear_credentials() -> Result<Option<LogoutOutcome>, CredentialsClearErro
     crate::credentials::oauth::clear_cache();
     crate::credentials::oauth::auth_update(None);
     storage::clear()?;
+    re_analytics::set_logged_in(false);
 
     Ok(outcome)
 }
@@ -377,6 +378,7 @@ impl Credentials {
     /// Link the current analytics ID to this user credentials.
     pub fn link_analytics_id_to_user(&self) {
         re_log::debug!("Linking analytics ID to user: '{}'", self.user.email);
+        re_analytics::set_logged_in(true);
         re_analytics::record(|| re_analytics::event::SetPersonProperty {
             email: self.user.email.clone(),
             organization_id: self.claims.org_id.clone(),
