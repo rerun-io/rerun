@@ -648,7 +648,7 @@ impl StoreHub {
     ///
     /// First cleans up stale references, then:
     /// - If there is already an active blueprint, does nothing.
-    /// - If the heuristic blueprint are about to be enabled for this app, does nothing.
+    /// - If heuristics are about to be enabled, creates a new empty blueprint.
     /// - If there is a default blueprint, clones it and makes it active.
     /// - Otherwise, creates an empty blueprint and registers it as active.
     pub fn ensure_active_blueprint_for_app(&mut self, app_id: &ApplicationId) {
@@ -664,9 +664,16 @@ impl StoreHub {
             self.active_blueprint_by_app_id.remove(app_id);
         }
 
-        if self.active_blueprint_by_app_id.contains_key(app_id)
-            || self.should_enable_heuristics_by_app_id.contains(app_id)
-        {
+        if self.active_blueprint_by_app_id.contains_key(app_id) {
+            return;
+        }
+
+        // If heuristics are about to run, create a new empty blueprint to write into.
+        if self.should_enable_heuristics_by_app_id.contains(app_id) {
+            let blueprint_id = StoreId::default_blueprint(app_id.clone());
+            self.store_bundle.blueprint_entry(&blueprint_id);
+            self.active_blueprint_by_app_id
+                .insert(app_id.clone(), blueprint_id);
             return;
         }
 
