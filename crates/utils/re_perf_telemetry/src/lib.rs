@@ -63,8 +63,8 @@ pub use self::args::{LogFormat, TelemetryArgs};
 pub use self::grpc::{
     BenchmarkIdLayer, ClientTelemetryLayer, GrpcMakeSpan, GrpcOnEos, GrpcOnFirstBodyChunk,
     GrpcOnRequest, GrpcOnResponse, GrpcOnResponseOptions, ServerTelemetryLayer,
-    TelemetryLayerOptions, TracingInjectorInterceptor, new_client_telemetry_layer,
-    new_server_telemetry_layer,
+    SpanMetadataCleanupLayer, TelemetryLayerOptions, TracingInjectorInterceptor,
+    new_client_telemetry_layer, new_server_telemetry_layer,
 };
 pub use self::telemetry::{Telemetry, TelemetryDropBehavior};
 pub use self::utils::to_short_str;

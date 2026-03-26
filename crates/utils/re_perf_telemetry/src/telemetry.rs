@@ -11,7 +11,7 @@ use tracing_subscriber::{EnvFilter, Layer as _};
 
 use crate::shared_reader::SharedManualReader;
 use crate::trace_id_format::TraceIdFormat;
-use crate::{BenchmarkIdLayer, LogFormat, TelemetryArgs};
+use crate::{BenchmarkIdLayer, LogFormat, SpanMetadataCleanupLayer, TelemetryArgs};
 
 // ---
 
@@ -231,6 +231,7 @@ impl Telemetry {
                 //
                 .add_directive_if_absent(base, "lance::index", "off")?
                 .add_directive_if_absent(base, "lance::io::exec", "off")?
+                .add_directive_if_absent(base, "lance::execution", "warn")?
                 .add_directive_if_absent(base, "lance::dataset::scanner", "off")?
                 .add_directive_if_absent(base, "lance_index", "off")?
                 .add_directive_if_absent(base, "lance::dataset::builder", "off")?
@@ -462,6 +463,7 @@ impl Telemetry {
                     .with(layer_logs_and_traces_stdio)
                     .with(layer_traces_otlp)
                     .with(BenchmarkIdLayer::default())
+                    .with(SpanMetadataCleanupLayer::default())
                     .with(self::tracy::tracy_layer())
                     .try_init()?;
             }
@@ -476,6 +478,7 @@ impl Telemetry {
                 .with(layer_logs_and_traces_stdio)
                 .with(layer_traces_otlp)
                 .with(BenchmarkIdLayer::default())
+                .with(SpanMetadataCleanupLayer::default())
                 .try_init()?;
         }
 

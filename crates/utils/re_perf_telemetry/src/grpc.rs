@@ -292,6 +292,16 @@ impl SpanMetadata {
     fn remove_opt(span_id: Option<&tracing::span::Id>) -> Option<Self> {
         span_id.and_then(Self::remove)
     }
+
+    /// Silently removes metadata for a span, returning `Some` if it existed.
+    ///
+    /// Unlike [`Self::remove`], this does NOT warn when the metadata is missing.
+    /// Used by [`SpanMetadataCleanupLayer::on_close`] where the metadata has typically
+    /// already been removed by [`GrpcOnEos`] or [`GrpcOnResponse`].
+    fn remove_silent(span_id: &tracing::span::Id) -> Option<Self> {
+        let spans = SPAN_METADATA.get()?;
+        spans.write().remove(span_id)
+    }
 }
 
 // ---
@@ -862,5 +872,33 @@ where
                 span_ref.extensions_mut().insert(BenchmarkIdInjected);
             }
         }
+    }
+}
+
+// ---
+
+/// A [`tracing_subscriber::Layer`] that cleans up `SpanMetadata` entries when spans close.
+///
+/// In the normal flow, metadata is removed by [`GrpcOnEos`] `on_eos` (streaming responses)
+/// or [`GrpcOnResponse`] `on_response` (immediate errors). However, if the client disconnects
+/// or a transport error occurs, `on_eos` may never be called, leaving stale entries behind.
+///
+/// Because the `tracing` crate recycles span IDs after a span closes, stale entries cause
+/// "overwritten span metadata" warnings when the recycled ID is reused by a new request.
+///
+/// `on_close` is called when all clones of a span are dropped, and critically, **before** the
+/// span ID is recycled. This guarantees any leaked metadata is cleaned up before the ID can
+/// be reused.
+#[derive(Default)]
+pub struct SpanMetadataCleanupLayer {
+    _private: (),
+}
+
+impl<S> Layer<S> for SpanMetadataCleanupLayer
+where
+    S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
+{
+    fn on_close(&self, id: Id, _ctx: Context<'_, S>) {
+        SpanMetadata::remove_silent(&id);
     }
 }
