@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -37,6 +38,8 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.VisibleTimeRanges"
 
     # __init__ can be found in visible_time_ranges_ext.py
 
@@ -93,6 +96,14 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
     def cleared(cls) -> VisibleTimeRanges:
         """Clear all the fields of a `VisibleTimeRanges`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_ranges() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VisibleTimeRanges:ranges",
+            archetype=VisibleTimeRanges.NAME,
+            component_type=blueprint_components.VisibleTimeRangeBatch._COMPONENT_TYPE,
+        )
 
     ranges: blueprint_components.VisibleTimeRangeBatch | None = field(
         metadata={"component": True},

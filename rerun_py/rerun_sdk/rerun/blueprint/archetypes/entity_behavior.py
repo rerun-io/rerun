@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...error_utils import catch_and_log_exceptions
 
@@ -62,6 +63,8 @@ class EntityBehavior(Archetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.EntityBehavior"
 
     def __init__(
         self: Any, *, interactive: datatypes.BoolLike | None = None, visible: datatypes.BoolLike | None = None
@@ -160,6 +163,22 @@ class EntityBehavior(Archetype):
     def cleared(cls) -> EntityBehavior:
         """Clear all the fields of a `EntityBehavior`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_interactive() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EntityBehavior:interactive",
+            archetype=EntityBehavior.NAME,
+            component_type=components.InteractiveBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_visible() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EntityBehavior:visible",
+            archetype=EntityBehavior.NAME,
+            component_type=components.VisibleBatch._COMPONENT_TYPE,
+        )
 
     interactive: components.InteractiveBatch | None = field(
         metadata={"component": True},

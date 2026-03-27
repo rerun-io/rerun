@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -84,6 +85,8 @@ class Cylinders3D(Cylinders3DExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.Cylinders3D"
 
     # __init__ can be found in cylinders3d_ext.py
 
@@ -201,6 +204,94 @@ class Cylinders3D(Cylinders3DExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> Cylinders3D:
         """Clear all the fields of a `Cylinders3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_lengths() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cylinders3D:lengths",
+            archetype=Cylinders3D.NAME,
+            component_type=components.LengthBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cylinders3D:radii",
+            archetype=Cylinders3D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_centers() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cylinders3D:centers",
+            archetype=Cylinders3D.NAME,
+            component_type=components.Translation3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_rotation_axis_angles() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cylinders3D:rotation_axis_angles",
+            archetype=Cylinders3D.NAME,
+            component_type=components.RotationAxisAngleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_quaternions() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cylinders3D:quaternions",
+            archetype=Cylinders3D.NAME,
+            component_type=components.RotationQuatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cylinders3D:colors",
+            archetype=Cylinders3D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_line_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cylinders3D:line_radii",
+            archetype=Cylinders3D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fill_mode() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cylinders3D:fill_mode",
+            archetype=Cylinders3D.NAME,
+            component_type=components.FillModeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cylinders3D:labels",
+            archetype=Cylinders3D.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cylinders3D:show_labels",
+            archetype=Cylinders3D.NAME,
+            component_type=components.ShowLabelsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cylinders3D:class_ids",
+            archetype=Cylinders3D.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

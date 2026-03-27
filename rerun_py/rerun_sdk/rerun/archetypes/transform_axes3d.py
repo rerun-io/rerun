@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -75,6 +76,8 @@ class TransformAxes3D(Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.TransformAxes3D"
 
     def __init__(
         self: Any, axis_length: datatypes.Float32Like, *, show_frame: datatypes.BoolLike | None = None
@@ -159,6 +162,22 @@ class TransformAxes3D(Archetype, VisualizableArchetype):
     def cleared(cls) -> TransformAxes3D:
         """Clear all the fields of a `TransformAxes3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_axis_length() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TransformAxes3D:axis_length",
+            archetype=TransformAxes3D.NAME,
+            component_type=components.AxisLengthBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_frame() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TransformAxes3D:show_frame",
+            archetype=TransformAxes3D.NAME,
+            component_type=components.ShowLabelsBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

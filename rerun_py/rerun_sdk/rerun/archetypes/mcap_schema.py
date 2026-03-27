@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -37,6 +38,8 @@ class McapSchema(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.McapSchema"
 
     def __init__(
         self: Any,
@@ -170,6 +173,38 @@ class McapSchema(Archetype):
     def cleared(cls) -> McapSchema:
         """Clear all the fields of a `McapSchema`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_id() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "McapSchema:id",
+            archetype=McapSchema.NAME,
+            component_type=components.SchemaIdBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_name() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "McapSchema:name",
+            archetype=McapSchema.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_encoding() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "McapSchema:encoding",
+            archetype=McapSchema.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_data() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "McapSchema:data",
+            archetype=McapSchema.NAME,
+            component_type=components.BlobBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

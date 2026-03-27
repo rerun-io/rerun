@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -28,6 +29,8 @@ class EyeControls3D(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.EyeControls3D"
 
     def __init__(
         self: Any,
@@ -193,6 +196,62 @@ class EyeControls3D(Archetype):
     def cleared(cls) -> EyeControls3D:
         """Clear all the fields of a `EyeControls3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_kind() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EyeControls3D:kind",
+            archetype=EyeControls3D.NAME,
+            component_type=blueprint_components.Eye3DKindBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_position() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EyeControls3D:position",
+            archetype=EyeControls3D.NAME,
+            component_type=components.Position3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_look_target() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EyeControls3D:look_target",
+            archetype=EyeControls3D.NAME,
+            component_type=components.Position3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_eye_up() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EyeControls3D:eye_up",
+            archetype=EyeControls3D.NAME,
+            component_type=components.Vector3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_speed() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EyeControls3D:speed",
+            archetype=EyeControls3D.NAME,
+            component_type=components.LinearSpeedBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_tracking_entity() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EyeControls3D:tracking_entity",
+            archetype=EyeControls3D.NAME,
+            component_type=components.EntityPathBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_spin_speed() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EyeControls3D:spin_speed",
+            archetype=EyeControls3D.NAME,
+            component_type=blueprint_components.AngularSpeedBatch._COMPONENT_TYPE,
+        )
 
     kind: blueprint_components.Eye3DKindBatch | None = field(
         metadata={"component": True},

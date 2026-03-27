@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -87,6 +88,8 @@ class Capsules3D(Capsules3DExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.Capsules3D"
 
     # __init__ can be found in capsules3d_ext.py
 
@@ -204,6 +207,94 @@ class Capsules3D(Capsules3DExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> Capsules3D:
         """Clear all the fields of a `Capsules3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_lengths() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Capsules3D:lengths",
+            archetype=Capsules3D.NAME,
+            component_type=components.LengthBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Capsules3D:radii",
+            archetype=Capsules3D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_translations() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Capsules3D:translations",
+            archetype=Capsules3D.NAME,
+            component_type=components.Translation3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_rotation_axis_angles() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Capsules3D:rotation_axis_angles",
+            archetype=Capsules3D.NAME,
+            component_type=components.RotationAxisAngleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_quaternions() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Capsules3D:quaternions",
+            archetype=Capsules3D.NAME,
+            component_type=components.RotationQuatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Capsules3D:colors",
+            archetype=Capsules3D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_line_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Capsules3D:line_radii",
+            archetype=Capsules3D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fill_mode() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Capsules3D:fill_mode",
+            archetype=Capsules3D.NAME,
+            component_type=components.FillModeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Capsules3D:labels",
+            archetype=Capsules3D.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Capsules3D:show_labels",
+            archetype=Capsules3D.NAME,
+            component_type=components.ShowLabelsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Capsules3D:class_ids",
+            archetype=Capsules3D.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

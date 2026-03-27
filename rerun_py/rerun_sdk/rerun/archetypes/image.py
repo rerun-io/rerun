@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -103,6 +104,8 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.Image"
+
     # __init__ can be found in image_ext.py
 
     def __attrs_clear__(self) -> None:
@@ -181,6 +184,46 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> Image:
         """Clear all the fields of a `Image`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_buffer() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Image:buffer",
+            archetype=Image.NAME,
+            component_type=components.ImageBufferBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_format() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Image:format",
+            archetype=Image.NAME,
+            component_type=components.ImageFormatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_opacity() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Image:opacity",
+            archetype=Image.NAME,
+            component_type=components.OpacityBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_draw_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Image:draw_order",
+            archetype=Image.NAME,
+            component_type=components.DrawOrderBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_magnification_filter() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Image:magnification_filter",
+            archetype=Image.NAME,
+            component_type=components.MagnificationFilterBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

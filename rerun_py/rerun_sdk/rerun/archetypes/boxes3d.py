@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -69,6 +70,8 @@ class Boxes3D(Boxes3DExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.Boxes3D"
 
     # __init__ can be found in boxes3d_ext.py
 
@@ -184,6 +187,86 @@ class Boxes3D(Boxes3DExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> Boxes3D:
         """Clear all the fields of a `Boxes3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_half_sizes() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:half_sizes",
+            archetype=Boxes3D.NAME,
+            component_type=components.HalfSize3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_centers() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:centers",
+            archetype=Boxes3D.NAME,
+            component_type=components.Translation3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_rotation_axis_angles() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:rotation_axis_angles",
+            archetype=Boxes3D.NAME,
+            component_type=components.RotationAxisAngleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_quaternions() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:quaternions",
+            archetype=Boxes3D.NAME,
+            component_type=components.RotationQuatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:colors",
+            archetype=Boxes3D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:radii",
+            archetype=Boxes3D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fill_mode() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:fill_mode",
+            archetype=Boxes3D.NAME,
+            component_type=components.FillModeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:labels",
+            archetype=Boxes3D.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:show_labels",
+            archetype=Boxes3D.NAME,
+            component_type=components.ShowLabelsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:class_ids",
+            archetype=Boxes3D.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

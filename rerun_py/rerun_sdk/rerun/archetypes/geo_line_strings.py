@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -67,6 +68,8 @@ class GeoLineStrings(GeoLineStringsExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.GeoLineStrings"
 
     # __init__ can be found in geo_line_strings_ext.py
 
@@ -137,6 +140,30 @@ class GeoLineStrings(GeoLineStringsExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> GeoLineStrings:
         """Clear all the fields of a `GeoLineStrings`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_line_strings() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "GeoLineStrings:line_strings",
+            archetype=GeoLineStrings.NAME,
+            component_type=components.GeoLineStringBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "GeoLineStrings:radii",
+            archetype=GeoLineStrings.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "GeoLineStrings:colors",
+            archetype=GeoLineStrings.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -13,6 +13,7 @@ from attrs import define, field
 from rerun._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from rerun.error_utils import catch_and_log_exceptions
 
@@ -23,6 +24,8 @@ __all__ = ["AffixFuzzer1"]
 
 @define(str=False, repr=False, init=False)
 class AffixFuzzer1(Archetype):
+    NAME: ClassVar[str] = "rerun.testing.archetypes.AffixFuzzer1"
+
     def __init__(
         self: Any,
         *,
@@ -184,6 +187,182 @@ class AffixFuzzer1(Archetype):
     def cleared(cls) -> AffixFuzzer1:
         """Clear all the fields of a `AffixFuzzer1`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_fuzz1001() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1001",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer1Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1002() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1002",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer2Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1003() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1003",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer3Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1004() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1004",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer4Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1005() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1005",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer5Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1006() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1006",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer6Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1007() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1007",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer7Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1008() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1008",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer8Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1009() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1009",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer9Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1010() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1010",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer10Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1011() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1011",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer11Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1012() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1012",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer12Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1013() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1013",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer13Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1014() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1014",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer14Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1015() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1015",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer15Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1016() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1016",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer16Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1017() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1017",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer17Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1018() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1018",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer18Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1019() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1019",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer19Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1020() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1020",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer20Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1021() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1021",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer21Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz1022() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer1:fuzz1022",
+            archetype=AffixFuzzer1.NAME,
+            component_type=components.AffixFuzzer22Batch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

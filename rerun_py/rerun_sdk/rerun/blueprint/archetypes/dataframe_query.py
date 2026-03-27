@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 from ...error_utils import catch_and_log_exceptions
@@ -29,6 +30,8 @@ class DataframeQuery(DataframeQueryExt, Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.DataframeQuery"
 
     # __init__ can be found in dataframe_query_ext.py
 
@@ -125,6 +128,62 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     def cleared(cls) -> DataframeQuery:
         """Clear all the fields of a `DataframeQuery`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_timeline() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:timeline",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.TimelineNameBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_filter_by_range() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:filter_by_range",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.FilterByRangeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_filter_is_not_null() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:filter_is_not_null",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.FilterIsNotNullBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_apply_latest_at() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:apply_latest_at",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.ApplyLatestAtBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_select() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:select",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.SelectedColumnsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_entity_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:entity_order",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.ColumnOrderBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_auto_scroll() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:auto_scroll",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.AutoScrollBatch._COMPONENT_TYPE,
+        )
 
     timeline: blueprint_components.TimelineNameBatch | None = field(
         metadata={"component": True},

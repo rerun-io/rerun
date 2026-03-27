@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -67,6 +68,8 @@ class AnnotationContext(Archetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.AnnotationContext"
 
     def __init__(self: Any, context: components.AnnotationContextLike) -> None:
         """
@@ -136,6 +139,14 @@ class AnnotationContext(Archetype):
     def cleared(cls) -> AnnotationContext:
         """Clear all the fields of a `AnnotationContext`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_context() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AnnotationContext:context",
+            archetype=AnnotationContext.NAME,
+            component_type=components.AnnotationContextBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

@@ -5,11 +5,14 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -25,6 +28,8 @@ class PlotLegend(PlotLegendExt, Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.PlotLegend"
 
     # __init__ can be found in plot_legend_ext.py
 
@@ -88,6 +93,22 @@ class PlotLegend(PlotLegendExt, Archetype):
     def cleared(cls) -> PlotLegend:
         """Clear all the fields of a `PlotLegend`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_corner() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "PlotLegend:corner",
+            archetype=PlotLegend.NAME,
+            component_type=blueprint_components.Corner2DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_visible() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "PlotLegend:visible",
+            archetype=PlotLegend.NAME,
+            component_type=components.VisibleBatch._COMPONENT_TYPE,
+        )
 
     corner: blueprint_components.Corner2DBatch | None = field(
         metadata={"component": True},

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -92,6 +93,8 @@ class Scalars(Archetype):
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.Scalars"
+
     def __init__(self: Any, scalars: datatypes.Float64ArrayLike) -> None:
         """
         Create a new instance of the Scalars archetype.
@@ -160,6 +163,14 @@ class Scalars(Archetype):
     def cleared(cls) -> Scalars:
         """Clear all the fields of a `Scalars`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_scalars() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Scalars:scalars",
+            archetype=Scalars.NAME,
+            component_type=components.ScalarBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

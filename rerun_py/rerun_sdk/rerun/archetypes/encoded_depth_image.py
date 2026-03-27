@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -77,6 +78,8 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.EncodedDepthImage"
 
     def __init__(
         self: Any,
@@ -241,6 +244,70 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
     def cleared(cls) -> EncodedDepthImage:
         """Clear all the fields of a `EncodedDepthImage`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_blob() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedDepthImage:blob",
+            archetype=EncodedDepthImage.NAME,
+            component_type=components.BlobBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_media_type() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedDepthImage:media_type",
+            archetype=EncodedDepthImage.NAME,
+            component_type=components.MediaTypeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_meter() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedDepthImage:meter",
+            archetype=EncodedDepthImage.NAME,
+            component_type=components.DepthMeterBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colormap() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedDepthImage:colormap",
+            archetype=EncodedDepthImage.NAME,
+            component_type=components.ColormapBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_depth_range() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedDepthImage:depth_range",
+            archetype=EncodedDepthImage.NAME,
+            component_type=components.ValueRangeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_point_fill_ratio() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedDepthImage:point_fill_ratio",
+            archetype=EncodedDepthImage.NAME,
+            component_type=components.FillRatioBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_draw_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedDepthImage:draw_order",
+            archetype=EncodedDepthImage.NAME,
+            component_type=components.DrawOrderBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_magnification_filter() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedDepthImage:magnification_filter",
+            archetype=EncodedDepthImage.NAME,
+            component_type=components.MagnificationFilterBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

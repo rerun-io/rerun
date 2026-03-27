@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -28,6 +29,8 @@ class TimePanelBlueprint(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.TimePanelBlueprint"
 
     def __init__(
         self: Any,
@@ -165,6 +168,62 @@ class TimePanelBlueprint(Archetype):
     def cleared(cls) -> TimePanelBlueprint:
         """Clear all the fields of a `TimePanelBlueprint`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_state() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TimePanelBlueprint:state",
+            archetype=TimePanelBlueprint.NAME,
+            component_type=blueprint_components.PanelStateBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_timeline() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TimePanelBlueprint:timeline",
+            archetype=TimePanelBlueprint.NAME,
+            component_type=blueprint_components.TimelineNameBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_playback_speed() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TimePanelBlueprint:playback_speed",
+            archetype=TimePanelBlueprint.NAME,
+            component_type=blueprint_components.PlaybackSpeedBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fps() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TimePanelBlueprint:fps",
+            archetype=TimePanelBlueprint.NAME,
+            component_type=blueprint_components.FpsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_play_state() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TimePanelBlueprint:play_state",
+            archetype=TimePanelBlueprint.NAME,
+            component_type=blueprint_components.PlayStateBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_loop_mode() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TimePanelBlueprint:loop_mode",
+            archetype=TimePanelBlueprint.NAME,
+            component_type=blueprint_components.LoopModeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_time_selection() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TimePanelBlueprint:time_selection",
+            archetype=TimePanelBlueprint.NAME,
+            component_type=blueprint_components.AbsoluteTimeRangeBatch._COMPONENT_TYPE,
+        )
 
     state: blueprint_components.PanelStateBatch | None = field(
         metadata={"component": True},

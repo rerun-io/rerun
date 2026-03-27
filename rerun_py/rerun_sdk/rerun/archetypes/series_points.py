@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -91,6 +92,8 @@ class SeriesPoints(SeriesPointsExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.SeriesPoints"
 
     # __init__ can be found in series_points_ext.py
 
@@ -179,6 +182,46 @@ class SeriesPoints(SeriesPointsExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> SeriesPoints:
         """Clear all the fields of a `SeriesPoints`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesPoints:colors",
+            archetype=SeriesPoints.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_markers() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesPoints:markers",
+            archetype=SeriesPoints.NAME,
+            component_type=components.MarkerShapeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_names() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesPoints:names",
+            archetype=SeriesPoints.NAME,
+            component_type=components.NameBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_visible_series() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesPoints:visible_series",
+            archetype=SeriesPoints.NAME,
+            component_type=components.VisibleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_marker_sizes() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesPoints:marker_sizes",
+            archetype=SeriesPoints.NAME,
+            component_type=components.MarkerSizeBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

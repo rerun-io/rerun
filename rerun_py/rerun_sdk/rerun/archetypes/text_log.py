@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -59,6 +60,8 @@ class TextLog(Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.TextLog"
 
     def __init__(
         self: Any,
@@ -152,6 +155,30 @@ class TextLog(Archetype, VisualizableArchetype):
     def cleared(cls) -> TextLog:
         """Clear all the fields of a `TextLog`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_text() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TextLog:text",
+            archetype=TextLog.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_level() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TextLog:level",
+            archetype=TextLog.NAME,
+            component_type=components.TextLogLevelBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_color() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TextLog:color",
+            archetype=TextLog.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

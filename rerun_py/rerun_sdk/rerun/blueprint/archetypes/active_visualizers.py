@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -35,6 +36,8 @@ class ActiveVisualizers(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.ActiveVisualizers"
 
     def __init__(self: Any, instruction_ids: datatypes.UuidArrayLike) -> None:
         """
@@ -104,6 +107,14 @@ class ActiveVisualizers(Archetype):
     def cleared(cls) -> ActiveVisualizers:
         """Clear all the fields of a `ActiveVisualizers`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_instruction_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ActiveVisualizers:instruction_ids",
+            archetype=ActiveVisualizers.NAME,
+            component_type=blueprint_components.VisualizerInstructionIdBatch._COMPONENT_TYPE,
+        )
 
     instruction_ids: blueprint_components.VisualizerInstructionIdBatch | None = field(
         metadata={"component": True},

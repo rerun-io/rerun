@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...error_utils import catch_and_log_exceptions
 
@@ -25,6 +26,8 @@ class GraphBackground(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.GraphBackground"
 
     def __init__(self: Any, *, color: datatypes.Rgba32Like | None = None) -> None:
         """
@@ -94,6 +97,14 @@ class GraphBackground(Archetype):
     def cleared(cls) -> GraphBackground:
         """Clear all the fields of a `GraphBackground`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_color() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "GraphBackground:color",
+            archetype=GraphBackground.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
 
     color: components.ColorBatch | None = field(
         metadata={"component": True},

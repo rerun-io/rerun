@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -28,6 +29,8 @@ class ForceCollisionRadius(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.ForceCollisionRadius"
 
     def __init__(
         self: Any,
@@ -125,6 +128,30 @@ class ForceCollisionRadius(Archetype):
     def cleared(cls) -> ForceCollisionRadius:
         """Clear all the fields of a `ForceCollisionRadius`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_enabled() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ForceCollisionRadius:enabled",
+            archetype=ForceCollisionRadius.NAME,
+            component_type=blueprint_components.EnabledBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_strength() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ForceCollisionRadius:strength",
+            archetype=ForceCollisionRadius.NAME,
+            component_type=blueprint_components.ForceStrengthBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_iterations() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ForceCollisionRadius:iterations",
+            archetype=ForceCollisionRadius.NAME,
+            component_type=blueprint_components.ForceIterationsBatch._COMPONENT_TYPE,
+        )
 
     enabled: blueprint_components.EnabledBatch | None = field(
         metadata={"component": True},

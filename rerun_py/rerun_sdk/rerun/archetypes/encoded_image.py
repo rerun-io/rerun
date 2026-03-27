@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -61,6 +62,8 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.EncodedImage"
 
     # __init__ can be found in encoded_image_ext.py
 
@@ -146,6 +149,46 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> EncodedImage:
         """Clear all the fields of a `EncodedImage`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_blob() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedImage:blob",
+            archetype=EncodedImage.NAME,
+            component_type=components.BlobBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_media_type() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedImage:media_type",
+            archetype=EncodedImage.NAME,
+            component_type=components.MediaTypeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_opacity() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedImage:opacity",
+            archetype=EncodedImage.NAME,
+            component_type=components.OpacityBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_draw_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedImage:draw_order",
+            archetype=EncodedImage.NAME,
+            component_type=components.DrawOrderBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_magnification_filter() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedImage:magnification_filter",
+            archetype=EncodedImage.NAME,
+            component_type=components.MagnificationFilterBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

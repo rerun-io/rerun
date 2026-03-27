@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -59,6 +60,8 @@ class GeoPoints(GeoPointsExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.GeoPoints"
 
     # __init__ can be found in geo_points_ext.py
 
@@ -135,6 +138,38 @@ class GeoPoints(GeoPointsExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> GeoPoints:
         """Clear all the fields of a `GeoPoints`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_positions() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "GeoPoints:positions",
+            archetype=GeoPoints.NAME,
+            component_type=components.LatLonBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "GeoPoints:radii",
+            archetype=GeoPoints.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "GeoPoints:colors",
+            archetype=GeoPoints.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "GeoPoints:class_ids",
+            archetype=GeoPoints.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

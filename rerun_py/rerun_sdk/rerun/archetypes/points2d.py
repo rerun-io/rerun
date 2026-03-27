@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -107,6 +108,8 @@ class Points2D(Points2DExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.Points2D"
 
     # __init__ can be found in points2d_ext.py
 
@@ -217,6 +220,70 @@ class Points2D(Points2DExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> Points2D:
         """Clear all the fields of a `Points2D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_positions() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points2D:positions",
+            archetype=Points2D.NAME,
+            component_type=components.Position2DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points2D:radii",
+            archetype=Points2D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points2D:colors",
+            archetype=Points2D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points2D:labels",
+            archetype=Points2D.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points2D:show_labels",
+            archetype=Points2D.NAME,
+            component_type=components.ShowLabelsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_draw_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points2D:draw_order",
+            archetype=Points2D.NAME,
+            component_type=components.DrawOrderBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points2D:class_ids",
+            archetype=Points2D.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_keypoint_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points2D:keypoint_ids",
+            archetype=Points2D.NAME,
+            component_type=components.KeypointIdBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

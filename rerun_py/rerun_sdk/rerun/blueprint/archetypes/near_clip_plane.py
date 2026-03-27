@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -28,6 +29,8 @@ class NearClipPlane(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.NearClipPlane"
 
     def __init__(self: Any, near_clip_plane: datatypes.Float32Like) -> None:
         """
@@ -101,6 +104,14 @@ class NearClipPlane(Archetype):
     def cleared(cls) -> NearClipPlane:
         """Clear all the fields of a `NearClipPlane`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_near_clip_plane() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "NearClipPlane:near_clip_plane",
+            archetype=NearClipPlane.NAME,
+            component_type=blueprint_components.NearClipPlaneBatch._COMPONENT_TYPE,
+        )
 
     near_clip_plane: blueprint_components.NearClipPlaneBatch | None = field(
         metadata={"component": True},

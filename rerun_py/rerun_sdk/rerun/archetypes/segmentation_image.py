@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -69,6 +70,8 @@ class SegmentationImage(SegmentationImageExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.SegmentationImage"
 
     # __init__ can be found in segmentation_image_ext.py
 
@@ -143,6 +146,38 @@ class SegmentationImage(SegmentationImageExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> SegmentationImage:
         """Clear all the fields of a `SegmentationImage`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_buffer() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SegmentationImage:buffer",
+            archetype=SegmentationImage.NAME,
+            component_type=components.ImageBufferBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_format() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SegmentationImage:format",
+            archetype=SegmentationImage.NAME,
+            component_type=components.ImageFormatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_opacity() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SegmentationImage:opacity",
+            archetype=SegmentationImage.NAME,
+            component_type=components.OpacityBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_draw_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SegmentationImage:draw_order",
+            archetype=SegmentationImage.NAME,
+            component_type=components.DrawOrderBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

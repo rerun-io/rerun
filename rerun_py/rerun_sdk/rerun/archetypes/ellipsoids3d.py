@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -73,6 +74,8 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.Ellipsoids3D"
 
     # __init__ can be found in ellipsoids3d_ext.py
 
@@ -187,6 +190,86 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> Ellipsoids3D:
         """Clear all the fields of a `Ellipsoids3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_half_sizes() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Ellipsoids3D:half_sizes",
+            archetype=Ellipsoids3D.NAME,
+            component_type=components.HalfSize3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_centers() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Ellipsoids3D:centers",
+            archetype=Ellipsoids3D.NAME,
+            component_type=components.Translation3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_rotation_axis_angles() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Ellipsoids3D:rotation_axis_angles",
+            archetype=Ellipsoids3D.NAME,
+            component_type=components.RotationAxisAngleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_quaternions() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Ellipsoids3D:quaternions",
+            archetype=Ellipsoids3D.NAME,
+            component_type=components.RotationQuatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Ellipsoids3D:colors",
+            archetype=Ellipsoids3D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_line_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Ellipsoids3D:line_radii",
+            archetype=Ellipsoids3D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fill_mode() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Ellipsoids3D:fill_mode",
+            archetype=Ellipsoids3D.NAME,
+            component_type=components.FillModeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Ellipsoids3D:labels",
+            archetype=Ellipsoids3D.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Ellipsoids3D:show_labels",
+            archetype=Ellipsoids3D.NAME,
+            component_type=components.ShowLabelsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Ellipsoids3D:class_ids",
+            archetype=Ellipsoids3D.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

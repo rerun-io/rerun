@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -61,6 +62,8 @@ class Arrows2D(Arrows2DExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.Arrows2D"
 
     # __init__ can be found in arrows2d_ext.py
 
@@ -165,6 +168,70 @@ class Arrows2D(Arrows2DExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> Arrows2D:
         """Clear all the fields of a `Arrows2D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_vectors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Arrows2D:vectors",
+            archetype=Arrows2D.NAME,
+            component_type=components.Vector2DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_origins() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Arrows2D:origins",
+            archetype=Arrows2D.NAME,
+            component_type=components.Position2DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Arrows2D:radii",
+            archetype=Arrows2D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Arrows2D:colors",
+            archetype=Arrows2D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Arrows2D:labels",
+            archetype=Arrows2D.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Arrows2D:show_labels",
+            archetype=Arrows2D.NAME,
+            component_type=components.ShowLabelsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_draw_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Arrows2D:draw_order",
+            archetype=Arrows2D.NAME,
+            component_type=components.DrawOrderBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Arrows2D:class_ids",
+            archetype=Arrows2D.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

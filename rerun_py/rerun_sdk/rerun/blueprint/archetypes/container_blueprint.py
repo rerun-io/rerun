@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -26,6 +27,8 @@ class ContainerBlueprint(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.ContainerBlueprint"
 
     def __init__(
         self: Any,
@@ -196,6 +199,70 @@ class ContainerBlueprint(Archetype):
     def cleared(cls) -> ContainerBlueprint:
         """Clear all the fields of a `ContainerBlueprint`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_container_kind() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ContainerBlueprint:container_kind",
+            archetype=ContainerBlueprint.NAME,
+            component_type=blueprint_components.ContainerKindBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_display_name() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ContainerBlueprint:display_name",
+            archetype=ContainerBlueprint.NAME,
+            component_type=components.NameBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_contents() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ContainerBlueprint:contents",
+            archetype=ContainerBlueprint.NAME,
+            component_type=blueprint_components.IncludedContentBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_col_shares() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ContainerBlueprint:col_shares",
+            archetype=ContainerBlueprint.NAME,
+            component_type=blueprint_components.ColumnShareBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_row_shares() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ContainerBlueprint:row_shares",
+            archetype=ContainerBlueprint.NAME,
+            component_type=blueprint_components.RowShareBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_active_tab() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ContainerBlueprint:active_tab",
+            archetype=ContainerBlueprint.NAME,
+            component_type=blueprint_components.ActiveTabBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_visible() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ContainerBlueprint:visible",
+            archetype=ContainerBlueprint.NAME,
+            component_type=components.VisibleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_grid_columns() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ContainerBlueprint:grid_columns",
+            archetype=ContainerBlueprint.NAME,
+            component_type=blueprint_components.GridColumnsBatch._COMPONENT_TYPE,
+        )
 
     container_kind: blueprint_components.ContainerKindBatch | None = field(
         metadata={"component": True},

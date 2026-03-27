@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -61,6 +62,8 @@ class GraphEdges(Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.GraphEdges"
 
     def __init__(
         self: Any, edges: datatypes.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None
@@ -143,6 +146,22 @@ class GraphEdges(Archetype, VisualizableArchetype):
     def cleared(cls) -> GraphEdges:
         """Clear all the fields of a `GraphEdges`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_edges() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "GraphEdges:edges",
+            archetype=GraphEdges.NAME,
+            component_type=components.GraphEdgeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_graph_type() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "GraphEdges:graph_type",
+            archetype=GraphEdges.NAME,
+            component_type=components.GraphTypeBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

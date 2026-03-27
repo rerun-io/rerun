@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -84,6 +85,8 @@ class InstancePoses3D(Archetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.InstancePoses3D"
 
     def __init__(
         self: Any,
@@ -195,6 +198,46 @@ class InstancePoses3D(Archetype):
     def cleared(cls) -> InstancePoses3D:
         """Clear all the fields of a `InstancePoses3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_translations() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "InstancePoses3D:translations",
+            archetype=InstancePoses3D.NAME,
+            component_type=components.Translation3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_rotation_axis_angles() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "InstancePoses3D:rotation_axis_angles",
+            archetype=InstancePoses3D.NAME,
+            component_type=components.RotationAxisAngleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_quaternions() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "InstancePoses3D:quaternions",
+            archetype=InstancePoses3D.NAME,
+            component_type=components.RotationQuatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_scales() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "InstancePoses3D:scales",
+            archetype=InstancePoses3D.NAME,
+            component_type=components.Scale3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_mat3x3() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "InstancePoses3D:mat3x3",
+            archetype=InstancePoses3D.NAME,
+            component_type=components.TransformMat3x3Batch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

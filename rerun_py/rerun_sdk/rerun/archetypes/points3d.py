@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -171,6 +172,8 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.Points3D"
+
     # __init__ can be found in points3d_ext.py
 
     def __attrs_clear__(self) -> None:
@@ -272,6 +275,62 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> Points3D:
         """Clear all the fields of a `Points3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_positions() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:positions",
+            archetype=Points3D.NAME,
+            component_type=components.Position3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:radii",
+            archetype=Points3D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:colors",
+            archetype=Points3D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:labels",
+            archetype=Points3D.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:show_labels",
+            archetype=Points3D.NAME,
+            component_type=components.ShowLabelsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:class_ids",
+            archetype=Points3D.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_keypoint_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:keypoint_ids",
+            archetype=Points3D.NAME,
+            component_type=components.KeypointIdBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

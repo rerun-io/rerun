@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...error_utils import catch_and_log_exceptions
 
@@ -25,6 +26,8 @@ class TensorScalarMapping(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.TensorScalarMapping"
 
     def __init__(
         self: Any,
@@ -130,6 +133,30 @@ class TensorScalarMapping(Archetype):
     def cleared(cls) -> TensorScalarMapping:
         """Clear all the fields of a `TensorScalarMapping`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_mag_filter() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TensorScalarMapping:mag_filter",
+            archetype=TensorScalarMapping.NAME,
+            component_type=components.MagnificationFilterBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colormap() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TensorScalarMapping:colormap",
+            archetype=TensorScalarMapping.NAME,
+            component_type=components.ColormapBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_gamma() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TensorScalarMapping:gamma",
+            archetype=TensorScalarMapping.NAME,
+            component_type=components.GammaCorrectionBatch._COMPONENT_TYPE,
+        )
 
     mag_filter: components.MagnificationFilterBatch | None = field(
         metadata={"component": True},

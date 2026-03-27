@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -26,6 +27,8 @@ class ForcePosition(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.ForcePosition"
 
     def __init__(
         self: Any,
@@ -119,6 +122,30 @@ class ForcePosition(Archetype):
     def cleared(cls) -> ForcePosition:
         """Clear all the fields of a `ForcePosition`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_enabled() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ForcePosition:enabled",
+            archetype=ForcePosition.NAME,
+            component_type=blueprint_components.EnabledBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_strength() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ForcePosition:strength",
+            archetype=ForcePosition.NAME,
+            component_type=blueprint_components.ForceStrengthBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_position() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ForcePosition:position",
+            archetype=ForcePosition.NAME,
+            component_type=components.Position2DBatch._COMPONENT_TYPE,
+        )
 
     enabled: blueprint_components.EnabledBatch | None = field(
         metadata={"component": True},

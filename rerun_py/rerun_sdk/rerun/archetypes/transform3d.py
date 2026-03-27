@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
@@ -13,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 from .transform3d_ext import Transform3DExt
@@ -219,6 +222,8 @@ class Transform3D(Transform3DExt, Archetype):
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.Transform3D"
+
     # __init__ can be found in transform3d_ext.py
 
     def __attrs_clear__(self) -> None:
@@ -337,6 +342,70 @@ class Transform3D(Transform3DExt, Archetype):
     def cleared(cls) -> Transform3D:
         """Clear all the fields of a `Transform3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_translation() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:translation",
+            archetype=Transform3D.NAME,
+            component_type=components.Translation3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_rotation_axis_angle() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:rotation_axis_angle",
+            archetype=Transform3D.NAME,
+            component_type=components.RotationAxisAngleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_quaternion() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:quaternion",
+            archetype=Transform3D.NAME,
+            component_type=components.RotationQuatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_scale() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:scale",
+            archetype=Transform3D.NAME,
+            component_type=components.Scale3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_mat3x3() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:mat3x3",
+            archetype=Transform3D.NAME,
+            component_type=components.TransformMat3x3Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_relation() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:relation",
+            archetype=Transform3D.NAME,
+            component_type=components.TransformRelationBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_child_frame() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:child_frame",
+            archetype=Transform3D.NAME,
+            component_type=components.TransformFrameIdBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_parent_frame() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:parent_frame",
+            archetype=Transform3D.NAME,
+            component_type=components.TransformFrameIdBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

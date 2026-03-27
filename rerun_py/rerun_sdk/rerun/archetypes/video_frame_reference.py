@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -118,6 +119,8 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype, VisualizableArchety
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.VideoFrameReference"
+
     # __init__ can be found in video_frame_reference_ext.py
 
     def __attrs_clear__(self) -> None:
@@ -206,6 +209,38 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype, VisualizableArchety
     def cleared(cls) -> VideoFrameReference:
         """Clear all the fields of a `VideoFrameReference`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_timestamp() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoFrameReference:timestamp",
+            archetype=VideoFrameReference.NAME,
+            component_type=components.VideoTimestampBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_video_reference() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoFrameReference:video_reference",
+            archetype=VideoFrameReference.NAME,
+            component_type=components.EntityPathBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_opacity() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoFrameReference:opacity",
+            archetype=VideoFrameReference.NAME,
+            component_type=components.OpacityBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_draw_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoFrameReference:draw_order",
+            archetype=VideoFrameReference.NAME,
+            component_type=components.DrawOrderBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

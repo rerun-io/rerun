@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...error_utils import catch_and_log_exceptions
 
@@ -25,6 +26,8 @@ class TextLogRows(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.TextLogRows"
 
     def __init__(self: Any, *, filter_by_log_level: datatypes.Utf8ArrayLike | None = None) -> None:
         """
@@ -98,6 +101,14 @@ class TextLogRows(Archetype):
     def cleared(cls) -> TextLogRows:
         """Clear all the fields of a `TextLogRows`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_filter_by_log_level() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TextLogRows:filter_by_log_level",
+            archetype=TextLogRows.NAME,
+            component_type=components.TextLogLevelBatch._COMPONENT_TYPE,
+        )
 
     filter_by_log_level: components.TextLogLevelBatch | None = field(
         metadata={"component": True},

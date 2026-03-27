@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -70,6 +71,8 @@ class CoordinateFrame(Archetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.CoordinateFrame"
 
     def __init__(self: Any, frame: datatypes.Utf8Like) -> None:
         """
@@ -139,6 +142,14 @@ class CoordinateFrame(Archetype):
     def cleared(cls) -> CoordinateFrame:
         """Clear all the fields of a `CoordinateFrame`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_frame() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "CoordinateFrame:frame",
+            archetype=CoordinateFrame.NAME,
+            component_type=components.TransformFrameIdBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

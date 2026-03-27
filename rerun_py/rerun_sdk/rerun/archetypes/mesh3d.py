@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -110,6 +111,8 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.Mesh3D"
 
     # __init__ can be found in mesh3d_ext.py
 
@@ -226,6 +229,86 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> Mesh3D:
         """Clear all the fields of a `Mesh3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_vertex_positions() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Mesh3D:vertex_positions",
+            archetype=Mesh3D.NAME,
+            component_type=components.Position3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_triangle_indices() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Mesh3D:triangle_indices",
+            archetype=Mesh3D.NAME,
+            component_type=components.TriangleIndicesBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_vertex_normals() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Mesh3D:vertex_normals",
+            archetype=Mesh3D.NAME,
+            component_type=components.Vector3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_vertex_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Mesh3D:vertex_colors",
+            archetype=Mesh3D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_vertex_texcoords() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Mesh3D:vertex_texcoords",
+            archetype=Mesh3D.NAME,
+            component_type=components.Texcoord2DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_albedo_factor() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Mesh3D:albedo_factor",
+            archetype=Mesh3D.NAME,
+            component_type=components.AlbedoFactorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_face_rendering() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Mesh3D:face_rendering",
+            archetype=Mesh3D.NAME,
+            component_type=components.MeshFaceRenderingBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_albedo_texture_buffer() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Mesh3D:albedo_texture_buffer",
+            archetype=Mesh3D.NAME,
+            component_type=components.ImageBufferBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_albedo_texture_format() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Mesh3D:albedo_texture_format",
+            archetype=Mesh3D.NAME,
+            component_type=components.ImageFormatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Mesh3D:class_ids",
+            archetype=Mesh3D.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

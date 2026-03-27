@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
@@ -13,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 from .asset_video_ext import AssetVideoExt
@@ -111,6 +114,8 @@ class AssetVideo(AssetVideoExt, Archetype):
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.AssetVideo"
+
     # __init__ can be found in asset_video_ext.py
 
     def __attrs_clear__(self) -> None:
@@ -175,6 +180,22 @@ class AssetVideo(AssetVideoExt, Archetype):
     def cleared(cls) -> AssetVideo:
         """Clear all the fields of a `AssetVideo`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_blob() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AssetVideo:blob",
+            archetype=AssetVideo.NAME,
+            component_type=components.BlobBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_media_type() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AssetVideo:media_type",
+            archetype=AssetVideo.NAME,
+            component_type=components.MediaTypeBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

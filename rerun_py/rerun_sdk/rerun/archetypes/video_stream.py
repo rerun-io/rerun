@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -120,6 +121,8 @@ class VideoStream(Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.VideoStream"
 
     def __init__(
         self: Any,
@@ -275,6 +278,38 @@ class VideoStream(Archetype, VisualizableArchetype):
     def cleared(cls) -> VideoStream:
         """Clear all the fields of a `VideoStream`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_codec() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoStream:codec",
+            archetype=VideoStream.NAME,
+            component_type=components.VideoCodecBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_sample() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoStream:sample",
+            archetype=VideoStream.NAME,
+            component_type=components.VideoSampleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_opacity() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoStream:opacity",
+            archetype=VideoStream.NAME,
+            component_type=components.OpacityBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_draw_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoStream:draw_order",
+            archetype=VideoStream.NAME,
+            component_type=components.DrawOrderBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

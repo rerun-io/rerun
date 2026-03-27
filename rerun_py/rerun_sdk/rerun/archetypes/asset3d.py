@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -64,6 +65,8 @@ class Asset3D(Asset3DExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.Asset3D"
 
     # __init__ can be found in asset3d_ext.py
 
@@ -140,6 +143,30 @@ class Asset3D(Asset3DExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> Asset3D:
         """Clear all the fields of a `Asset3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_blob() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Asset3D:blob",
+            archetype=Asset3D.NAME,
+            component_type=components.BlobBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_media_type() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Asset3D:media_type",
+            archetype=Asset3D.NAME,
+            component_type=components.MediaTypeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_albedo_factor() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Asset3D:albedo_factor",
+            archetype=Asset3D.NAME,
+            component_type=components.AlbedoFactorBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

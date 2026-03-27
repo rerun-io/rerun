@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
@@ -13,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 from .clear_ext import ClearExt
@@ -67,6 +70,8 @@ class Clear(ClearExt, Archetype):
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.Clear"
+
     # __init__ can be found in clear_ext.py
 
     def __attrs_clear__(self) -> None:
@@ -110,6 +115,14 @@ class Clear(ClearExt, Archetype):
     def cleared(cls) -> Clear:
         """Clear all the fields of a `Clear`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_is_recursive() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Clear:is_recursive",
+            archetype=Clear.NAME,
+            component_type=components.ClearIsRecursiveBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

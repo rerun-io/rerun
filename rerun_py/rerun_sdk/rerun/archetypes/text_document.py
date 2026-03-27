@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -95,6 +96,8 @@ class TextDocument(Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.TextDocument"
 
     def __init__(self: Any, text: datatypes.Utf8Like, *, media_type: datatypes.Utf8Like | None = None) -> None:
         """
@@ -183,6 +186,22 @@ class TextDocument(Archetype, VisualizableArchetype):
     def cleared(cls) -> TextDocument:
         """Clear all the fields of a `TextDocument`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_text() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TextDocument:text",
+            archetype=TextDocument.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_media_type() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TextDocument:media_type",
+            archetype=TextDocument.NAME,
+            component_type=components.MediaTypeBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

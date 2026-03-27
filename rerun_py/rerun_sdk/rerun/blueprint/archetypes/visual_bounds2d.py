@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -35,6 +36,8 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.VisualBounds2D"
 
     # __init__ can be found in visual_bounds2d_ext.py
 
@@ -91,6 +94,14 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
     def cleared(cls) -> VisualBounds2D:
         """Clear all the fields of a `VisualBounds2D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_range() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VisualBounds2D:range",
+            archetype=VisualBounds2D.NAME,
+            component_type=blueprint_components.VisualBounds2DBatch._COMPONENT_TYPE,
+        )
 
     range: blueprint_components.VisualBounds2DBatch | None = field(
         metadata={"component": True},

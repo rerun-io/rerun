@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 from ...error_utils import catch_and_log_exceptions
@@ -25,6 +26,8 @@ class TextLogColumns(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.TextLogColumns"
 
     def __init__(
         self: Any,
@@ -114,6 +117,22 @@ class TextLogColumns(Archetype):
     def cleared(cls) -> TextLogColumns:
         """Clear all the fields of a `TextLogColumns`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_timeline_columns() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TextLogColumns:timeline_columns",
+            archetype=TextLogColumns.NAME,
+            component_type=blueprint_components.TimelineColumnBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_text_log_columns() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TextLogColumns:text_log_columns",
+            archetype=TextLogColumns.NAME,
+            component_type=blueprint_components.TextLogColumnBatch._COMPONENT_TYPE,
+        )
 
     timeline_columns: blueprint_components.TimelineColumnBatch | None = field(
         metadata={"component": True},

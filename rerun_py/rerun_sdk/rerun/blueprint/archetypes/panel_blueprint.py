@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -25,6 +26,8 @@ class PanelBlueprint(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.PanelBlueprint"
 
     def __init__(self: Any, *, state: blueprint_components.PanelStateLike | None = None) -> None:
         """
@@ -94,6 +97,14 @@ class PanelBlueprint(Archetype):
     def cleared(cls) -> PanelBlueprint:
         """Clear all the fields of a `PanelBlueprint`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_state() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "PanelBlueprint:state",
+            archetype=PanelBlueprint.NAME,
+            component_type=blueprint_components.PanelStateBatch._COMPONENT_TYPE,
+        )
 
     state: blueprint_components.PanelStateBatch | None = field(
         metadata={"component": True},

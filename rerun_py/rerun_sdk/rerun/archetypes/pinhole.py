@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -93,6 +94,8 @@ class Pinhole(PinholeExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.Pinhole"
 
     # __init__ can be found in pinhole_ext.py
 
@@ -239,6 +242,70 @@ class Pinhole(PinholeExt, Archetype, VisualizableArchetype):
     def cleared(cls) -> Pinhole:
         """Clear all the fields of a `Pinhole`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_image_from_camera() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Pinhole:image_from_camera",
+            archetype=Pinhole.NAME,
+            component_type=components.PinholeProjectionBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_resolution() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Pinhole:resolution",
+            archetype=Pinhole.NAME,
+            component_type=components.ResolutionBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_camera_xyz() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Pinhole:camera_xyz",
+            archetype=Pinhole.NAME,
+            component_type=components.ViewCoordinatesBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_child_frame() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Pinhole:child_frame",
+            archetype=Pinhole.NAME,
+            component_type=components.TransformFrameIdBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_parent_frame() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Pinhole:parent_frame",
+            archetype=Pinhole.NAME,
+            component_type=components.TransformFrameIdBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_image_plane_distance() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Pinhole:image_plane_distance",
+            archetype=Pinhole.NAME,
+            component_type=components.ImagePlaneDistanceBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_color() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Pinhole:color",
+            archetype=Pinhole.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_line_width() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Pinhole:line_width",
+            archetype=Pinhole.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

@@ -566,7 +566,7 @@ impl PythonCodeGenerator {
             from __future__ import annotations
 
             from collections.abc import Iterable, Mapping, Set, Sequence, Dict
-            from typing import Any, Optional, Union, TYPE_CHECKING, SupportsFloat, Literal, Tuple
+            from typing import Any, ClassVar, Optional, Union, TYPE_CHECKING, SupportsFloat, Literal, Tuple
             from typing_extensions import deprecated # type: ignore[misc, unused-ignore]
 
             from attrs import define, field
@@ -866,6 +866,10 @@ fn code_for_struct(
         code.push_indented(1, "_BATCH_TYPE = None", 1);
     }
 
+    if *kind == ObjectKind::Archetype {
+        code.push_indented(1, format!(r#"NAME: ClassVar[str] = "{}""#, obj.fqname), 2);
+    }
+
     if ext_class.has_init {
         code.push_indented(
             1,
@@ -904,6 +908,7 @@ fn code_for_struct(
     if obj.kind == ObjectKind::Archetype {
         code.push_indented(1, quote_clear_methods(obj), 2);
         code.push_indented(1, quote_partial_update_methods(reporter, obj, objects), 2);
+        code.push_indented(1, quote_descriptor_methods(obj, objects), 2);
         if obj.scope().is_none() {
             code.push_indented(1, quote_columnar_methods(reporter, obj, objects), 2);
         }
@@ -2870,6 +2875,32 @@ fn quote_component_field_mapping(obj: &Object) -> String {
         })
         .collect_vec()
         .join(",\n")
+}
+
+fn quote_descriptor_methods(obj: &Object, objects: &Objects) -> String {
+    let archetype_short_name = &obj.name;
+
+    obj.fields
+        .iter()
+        .map(|field| {
+            let field_name = field.snake_case_name();
+            let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
+            let batch_type = format!("{typ_unwrapped}Batch");
+
+            unindent(&format!(
+                r#"
+                @staticmethod
+                def descriptor_{field_name}() -> ComponentDescriptor:
+                    return ComponentDescriptor(
+                        "{archetype_short_name}:{field_name}",
+                        archetype={archetype_short_name}.NAME,
+                        component_type={batch_type}._COMPONENT_TYPE,
+                    )
+                "#
+            ))
+        })
+        .collect_vec()
+        .join("\n")
 }
 
 fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {

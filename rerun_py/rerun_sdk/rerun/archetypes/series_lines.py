@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -71,6 +72,8 @@ class SeriesLines(Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.SeriesLines"
 
     def __init__(
         self: Any,
@@ -235,6 +238,54 @@ class SeriesLines(Archetype, VisualizableArchetype):
     def cleared(cls) -> SeriesLines:
         """Clear all the fields of a `SeriesLines`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesLines:colors",
+            archetype=SeriesLines.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_widths() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesLines:widths",
+            archetype=SeriesLines.NAME,
+            component_type=components.StrokeWidthBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_names() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesLines:names",
+            archetype=SeriesLines.NAME,
+            component_type=components.NameBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_visible_series() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesLines:visible_series",
+            archetype=SeriesLines.NAME,
+            component_type=components.VisibleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_aggregation_policy() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesLines:aggregation_policy",
+            archetype=SeriesLines.NAME,
+            component_type=components.AggregationPolicyBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_interpolation_mode() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesLines:interpolation_mode",
+            archetype=SeriesLines.NAME,
+            component_type=components.InterpolationModeBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

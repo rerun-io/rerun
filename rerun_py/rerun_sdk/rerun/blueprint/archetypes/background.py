@@ -5,11 +5,14 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -25,6 +28,8 @@ class Background(BackgroundExt, Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.Background"
 
     # __init__ can be found in background_ext.py
 
@@ -84,6 +89,22 @@ class Background(BackgroundExt, Archetype):
     def cleared(cls) -> Background:
         """Clear all the fields of a `Background`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_kind() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Background:kind",
+            archetype=Background.NAME,
+            component_type=blueprint_components.BackgroundKindBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_color() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Background:color",
+            archetype=Background.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
 
     kind: blueprint_components.BackgroundKindBatch | None = field(
         metadata={"component": True},

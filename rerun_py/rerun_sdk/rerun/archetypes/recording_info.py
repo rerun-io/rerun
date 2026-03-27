@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -24,6 +25,8 @@ __all__ = ["RecordingInfo"]
 @define(str=False, repr=False, init=False)
 class RecordingInfo(Archetype):
     """**Archetype**: A list of properties associated with a recording."""
+
+    NAME: ClassVar[str] = "rerun.archetypes.RecordingInfo"
 
     def __init__(
         self: Any, *, start_time: datatypes.TimeIntLike | None = None, name: datatypes.Utf8Like | None = None
@@ -106,6 +109,22 @@ class RecordingInfo(Archetype):
     def cleared(cls) -> RecordingInfo:
         """Clear all the fields of a `RecordingInfo`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_start_time() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "RecordingInfo:start_time",
+            archetype=RecordingInfo.NAME,
+            component_type=components.TimestampBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_name() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "RecordingInfo:name",
+            archetype=RecordingInfo.NAME,
+            component_type=components.NameBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

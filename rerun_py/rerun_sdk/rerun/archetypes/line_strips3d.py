@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -118,6 +119,8 @@ class LineStrips3D(Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.LineStrips3D"
 
     def __init__(
         self: Any,
@@ -249,6 +252,54 @@ class LineStrips3D(Archetype, VisualizableArchetype):
     def cleared(cls) -> LineStrips3D:
         """Clear all the fields of a `LineStrips3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_strips() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineStrips3D:strips",
+            archetype=LineStrips3D.NAME,
+            component_type=components.LineStrip3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineStrips3D:radii",
+            archetype=LineStrips3D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineStrips3D:colors",
+            archetype=LineStrips3D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineStrips3D:labels",
+            archetype=LineStrips3D.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineStrips3D:show_labels",
+            archetype=LineStrips3D.NAME,
+            component_type=components.ShowLabelsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineStrips3D:class_ids",
+            archetype=LineStrips3D.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

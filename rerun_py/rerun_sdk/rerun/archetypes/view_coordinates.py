@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 from .view_coordinates_ext import ViewCoordinatesExt
@@ -68,6 +69,8 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.ViewCoordinates"
 
     def __init__(self: Any, xyz: datatypes.ViewCoordinatesLike) -> None:
         """
@@ -137,6 +140,14 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     def cleared(cls) -> ViewCoordinates:
         """Clear all the fields of a `ViewCoordinates`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_xyz() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ViewCoordinates:xyz",
+            archetype=ViewCoordinates.NAME,
+            component_type=components.ViewCoordinatesBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(

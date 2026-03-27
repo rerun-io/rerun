@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -36,6 +37,8 @@ class McapChannel(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.McapChannel"
 
     def __init__(
         self: Any,
@@ -165,6 +168,38 @@ class McapChannel(Archetype):
     def cleared(cls) -> McapChannel:
         """Clear all the fields of a `McapChannel`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_id() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "McapChannel:id",
+            archetype=McapChannel.NAME,
+            component_type=components.ChannelIdBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_topic() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "McapChannel:topic",
+            archetype=McapChannel.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_message_encoding() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "McapChannel:message_encoding",
+            archetype=McapChannel.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_metadata() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "McapChannel:metadata",
+            archetype=McapChannel.NAME,
+            component_type=components.KeyValuePairsBatch._COMPONENT_TYPE,
+        )
 
     @classmethod
     def columns(
