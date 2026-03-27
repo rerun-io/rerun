@@ -10,12 +10,14 @@
 #### Component mappings
 
 <!-- Component mappings video -->
+https://github.com/user-attachments/assets/18954263-1b34-4819-869d-02fa8117d6a3
 
 You can now map components more generally. Want to display your mesh as a point cloud? Just add a point cloud visualizer and select the vertex positions as the source.
 
 #### Prettier Primitives
 
 <!-- Primtive video -->
+https://github.com/user-attachments/assets/4e523454-4b3c-492b-a2a4-463f0f17ec51
 
 Our 3D primitives got a new default look!
 
@@ -26,7 +28,9 @@ Our 3D primitives got a new default look!
 
 ### ⚠️ Breaking changes
 
-- MCAP "layers" renamed to "decoders".
+- MCAP "layers" renamed to "decoders" [cf0a800](https://github.com/rerun-io/rerun/commit/cf0a800770845d4a88c0d5671b246c45c1f3507d)
+- `rr.Server` and `rr.CatalogClient`: `address` parameter/method renamed to `url`; `rerun server --address` is now `--host` [#12402](https://github.com/rerun-io/rerun/pull/12402)
+- `Entry.update(name=…)` is deprecated in favor of `Entry.set_name(…)` [#12370](https://github.com/rerun-io/rerun/pull/12370)
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-31
 
