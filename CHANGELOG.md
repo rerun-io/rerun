@@ -3,14 +3,32 @@
 
 ## 0.31.0
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-31?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-31
 
 ### ✨ Overview & highlights
-TODO: fill in
+
+#### Component mappings
+
+<!-- Component mappings video -->
+
+You can now map components more generally. Want to display your mesh as a point cloud? Just add a point cloud visualizer and select the vertex positions as the source.
+
+#### Prettier Primitives
+
+<!-- Primtive video -->
+
+Our 3D primitives got a new default look!
+
+#### Performance improvements
+
+- Optimization for point clouds, 
+
 
 ### ⚠️ Breaking changes
-TODO: fill in
-🧳 Migration guide: TODO: add link (yes, again)
+
+- MCAP "layers" renamed to "decoders".
+
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-31
 
 ### 🔎 Details
 
