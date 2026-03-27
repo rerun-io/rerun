@@ -425,6 +425,8 @@ impl RerunCloudService for RerunCloudHandler {
             re_protos::cloud::v1alpha1::VersionResponse {
                 build_info: Some(build_info.into()),
                 version: re_build_info::exposed_version!().to_owned(),
+                cloud_provider: None,
+                cloud_region: None,
             },
         ))
     }

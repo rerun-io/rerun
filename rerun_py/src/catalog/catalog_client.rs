@@ -113,6 +113,16 @@ impl PyCatalogClientInternal {
         self.origin.to_string()
     }
 
+    /// Returns version and deployment information as (version, cloud_provider, cloud_region).
+    fn version_info(
+        self_: Py<Self>,
+        py: Python<'_>,
+    ) -> PyResult<(String, Option<String>, Option<String>)> {
+        let connection = self_.borrow(py).connection.clone();
+        let info = connection.version_info(py)?;
+        Ok((info.version, info.cloud_provider, info.cloud_region))
+    }
+
     /// Get a list of all dataset entries in the catalog.
     fn datasets(
         self_: Py<Self>,

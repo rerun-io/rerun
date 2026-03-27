@@ -2706,6 +2706,27 @@ impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
 
 // ---
 
+/// Ergonomic counterpart to the codegen'd [`crate::cloud::v1alpha1::VersionResponse`].
+pub struct VersionResponse {
+    pub build_info: Option<re_build_info::BuildInfo>,
+    pub version: String,
+    pub cloud_provider: Option<String>,
+    pub cloud_region: Option<String>,
+}
+
+impl From<crate::cloud::v1alpha1::VersionResponse> for VersionResponse {
+    fn from(value: crate::cloud::v1alpha1::VersionResponse) -> Self {
+        Self {
+            build_info: value.build_info.map(Into::into),
+            version: value.version,
+            cloud_provider: value.cloud_provider,
+            cloud_region: value.cloud_region,
+        }
+    }
+}
+
+// ---
+
 #[cfg(test)]
 mod tests {
     use arrow::datatypes::ToByteSlice as _;

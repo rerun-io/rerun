@@ -225,6 +225,12 @@ message VersionResponse {
 
   // A single version string representing the version of the whole stack.
   string version = 2;
+
+  // Cloud provider hosting this instance (e.g. "aws", "azure"). Null if not deployed on cloud.
+  optional string cloud_provider = 3;
+
+  // Cloud region where this instance is deployed (e.g. "us-west-2", "eastus"). Null if not deployed on cloud.
+  optional string cloud_region = 4;
 }
 
 message WhoAmIRequest {}

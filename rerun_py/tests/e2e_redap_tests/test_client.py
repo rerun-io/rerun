@@ -13,6 +13,20 @@ if TYPE_CHECKING:
     from .conftest import PrefilledCatalog
 
 
+def test_version_info(catalog_client: CatalogClient) -> None:
+    """Tests that version_info() returns valid info from any server."""
+
+    info = catalog_client.version_info()
+    assert isinstance(info.version, str)
+    assert info.version  # version should never be empty
+
+    # If a provider is set, region should also be set (and vice versa)
+    if info.cloud_provider:
+        assert info.cloud_region, "cloud_provider is set but cloud_region is empty"
+    if info.cloud_region:
+        assert info.cloud_provider, "cloud_region is set but cloud_provider is empty"
+
+
 def test_urls(prefilled_catalog: PrefilledCatalog) -> None:
     """Tests the url property on the catalog and dataset."""
 

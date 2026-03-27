@@ -13,7 +13,7 @@ use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, DatasetDetails, DatasetEntry, EntryDetails, QueryDatasetRequest,
-    RegisterWithDatasetTaskDescriptor, TableEntry,
+    RegisterWithDatasetTaskDescriptor, TableEntry, VersionResponse,
 };
 use re_protos::cloud::v1alpha1::{EntryFilter, QueryDatasetResponse, QueryTasksResponse};
 use re_protos::common::v1alpha1::TaskId;
@@ -60,6 +60,15 @@ impl ConnectionHandle {
 }
 
 impl ConnectionHandle {
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn version_info(&self, py: Python<'_>) -> PyResult<VersionResponse> {
+        wait_for_future(
+            py,
+            async { self.client().await?.version_info().await.map_err(to_py_err) }
+                .in_current_span(),
+        )
+    }
+
     #[tracing::instrument(level = "info", skip_all)]
     pub fn find_entries(&self, py: Python<'_>, filter: EntryFilter) -> PyResult<Vec<EntryDetails>> {
         wait_for_future(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, overload
 
 from rerun.error_utils import _send_warning_or_raise
@@ -47,6 +48,20 @@ def _compatible_datafusion_version(version: int) -> list[int]:
         if version in compat_set:
             return sorted(compat_set)
     return [version]
+
+
+@dataclass(frozen=True)
+class VersionInfo:
+    """Version and deployment information from a Rerun server."""
+
+    version: str
+    """The version string of the server."""
+
+    cloud_provider: str | None
+    """The cloud provider name (e.g. "aws", "azure"). None if not deployed on cloud."""
+
+    cloud_region: str | None
+    """The cloud region (e.g. "us-west-2", "eastus"). None if not deployed on cloud."""
 
 
 class CatalogClient:
@@ -121,6 +136,16 @@ class CatalogClient:
     def url(self) -> str:
         """Returns the catalog URL."""
         return self._internal.url
+
+    def version_info(self) -> VersionInfo:
+        """
+        Returns version and deployment information from the server.
+
+        Returns a `VersionInfo` object with `version`, `cloud_provider`, and `cloud_region` fields.
+        Cloud fields are `None` if the server is not deployed on a cloud provider.
+        """
+        version, cloud_provider, cloud_region = self._internal.version_info()
+        return VersionInfo(version=version, cloud_provider=cloud_provider, cloud_region=cloud_region)
 
     def entries(self, *, include_hidden: bool = False) -> list[DatasetEntry | TableEntry]:
         """

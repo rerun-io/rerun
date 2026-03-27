@@ -12,7 +12,7 @@ use re_protos::cloud::v1alpha1::ext::{
     ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
     RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableEntry, TableInsertMode,
     UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
-    UpdateEntryRequest, UpdateEntryResponse,
+    UpdateEntryRequest, UpdateEntryResponse, VersionResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::cloud::v1alpha1::{
@@ -95,6 +95,17 @@ where
             .await
             .map_err(|err| ApiError::tonic(err, "/Version failed"))
             .map(|_| ())
+    }
+
+    /// Returns version and deployment information from the server.
+    pub async fn version_info(&mut self) -> ApiResult<VersionResponse> {
+        let response = self
+            .inner()
+            .version(VersionRequest {})
+            .await
+            .map_err(|err| ApiError::tonic(err, "/Version failed"))?
+            .into_inner();
+        Ok(response.into())
     }
 
     /// Calls the `/WhoAmI` endpoint to verify authentication and retrieve the user's identity

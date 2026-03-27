@@ -132,6 +132,16 @@ def test_server_dataset_files_must_be_files() -> None:
         Server(datasets={"bad_dataset": [DATASET_DIR]})
 
 
+def test_server_version_info() -> None:
+    """Test that version_info() returns valid info for a local OSS server."""
+    with Server() as server:
+        client = server.client()
+        info = client.version_info()
+        assert isinstance(info.version, str)
+        assert info.cloud_provider is None
+        assert info.cloud_region is None
+
+
 def test_server_failed_table_creation_does_not_leak_entry(tmp_path: Path) -> None:
     """Regression test for https://linear.app/rerun/issue/RR-3644/create-table-failure-leads-to-unlisted-existing-table."""
 

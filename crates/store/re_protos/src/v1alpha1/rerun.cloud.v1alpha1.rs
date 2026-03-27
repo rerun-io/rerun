@@ -18,6 +18,12 @@ pub struct VersionResponse {
     /// A single version string representing the version of the whole stack.
     #[prost(string, tag = "2")]
     pub version: ::prost::alloc::string::String,
+    /// Cloud provider hosting this instance (e.g. "aws", "azure"). Null if not deployed on cloud.
+    #[prost(string, optional, tag = "3")]
+    pub cloud_provider: ::core::option::Option<::prost::alloc::string::String>,
+    /// Cloud region where this instance is deployed (e.g. "us-west-2", "eastus"). Null if not deployed on cloud.
+    #[prost(string, optional, tag = "4")]
+    pub cloud_region: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for VersionResponse {
     const NAME: &'static str = "VersionResponse";
