@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::renderer::{GpuMeshInstance, LineStripFlags};
@@ -249,9 +251,9 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
                             c.entry(proc_mesh_key, self.render_ctx)
                         })
                 else {
-                    return Err(ViewSystemExecutionError::DrawDataCreationError(
-                        "Failed to allocate wireframe mesh".into(),
-                    ));
+                    return Err(ViewSystemExecutionError::DrawDataCreationError(Arc::new(
+                        std::io::Error::other("Failed to allocate wireframe mesh"),
+                    )));
                 };
 
                 for strip in &wireframe_mesh.line_strips {
@@ -284,9 +286,9 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
                 let Some(solid_mesh) = store_ctx.memoizer(|c: &mut proc_mesh::SolidCache| {
                     c.entry(proc_mesh_key, self.render_ctx)
                 }) else {
-                    return Err(ViewSystemExecutionError::DrawDataCreationError(
-                        "Failed to allocate solid mesh".into(),
-                    ));
+                    return Err(ViewSystemExecutionError::DrawDataCreationError(Arc::new(
+                        std::io::Error::other("Failed to allocate solid mesh"),
+                    )));
                 };
 
                 let tint = if fill_mode == FillMode::TransparentFillMajorWireframe {

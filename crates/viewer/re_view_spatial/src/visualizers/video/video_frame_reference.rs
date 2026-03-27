@@ -7,9 +7,9 @@ use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_sdk_types::components::{Blob, MediaType, Opacity, VideoTimestamp};
 use re_viewer_context::{
-    IdentifiedViewSystem, VideoAssetCache, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerSystem, typed_fallback_for,
+    IdentifiedViewSystem, VideoAssetCache, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::PickableTexturedRect;
@@ -22,16 +22,9 @@ use crate::visualizers::video::{
     show_video_frame, video_stream_id,
 };
 
+#[derive(Default)]
 pub struct VideoFrameReferenceVisualizer {
     pub data: SpatialViewVisualizerData,
-}
-
-impl Default for VideoFrameReferenceVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
-        }
-    }
 }
 
 impl IdentifiedViewSystem for VideoFrameReferenceVisualizer {
@@ -51,6 +44,10 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         )
     }
 
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView2D::identifier())
+    }
+
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -66,7 +63,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
             view_query,
             context_systems,
             &output,
-            self.data.preferred_view_kind,
+            Some(SpatialViewKind::TwoD),
             |ctx, spatial_ctx, results| {
                 // TODO(andreas): Should ignore range queries here and only do latest-at.
                 // Not only would this simplify the code here quite a bit, it would also avoid lots of overhead.
@@ -118,14 +115,12 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
             },
         )?;
 
-        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
-            ctx.viewer_ctx.render_ctx(),
-            &self.data.pickable_rects,
-        )?]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        Ok(output
+            .with_draw_data([PickableTexturedRect::to_draw_data(
+                ctx.viewer_ctx.render_ctx(),
+                &self.data.pickable_rects,
+            )?])
+            .with_visualizer_data(std::mem::take(&mut self.data)))
     }
 }
 

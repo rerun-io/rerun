@@ -220,7 +220,8 @@ Set the displayed dimensions in a selection panel.",
         let state = state.downcast_mut::<ViewTensorState>()?;
         state.tensor = None;
 
-        let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
+        let tensors =
+            system_output.visualizer_data::<Vec<TensorVisualization>>(TensorSystem::identifier())?;
 
         let response = {
             let mut ui = ui.new_child(egui::UiBuilder::new().sense(egui::Sense::click()));

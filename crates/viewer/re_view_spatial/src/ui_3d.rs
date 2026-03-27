@@ -18,8 +18,8 @@ use re_view::controls::{
     SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_viewer_context::{
-    Item, ItemContext, ViewClassExt as _, ViewContext, ViewQuery, ViewSystemExecutionError,
-    ViewerContext, gpu_bridge,
+    IdentifiedViewSystem as _, Item, ItemContext, ViewClassExt as _, ViewContext, ViewQuery,
+    ViewSystemExecutionError, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -29,7 +29,7 @@ use crate::eye::find_camera;
 use crate::pinhole_wrapper::PinholeWrapper;
 use crate::ui::{SpatialViewState, create_labels};
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::{CamerasVisualizer, collect_ui_labels};
+use crate::visualizers::{CamerasVisualizerOutput, collect_ui_labels};
 
 // ---
 
@@ -132,10 +132,13 @@ impl SpatialView3D {
         re_tracing::profile_function!();
 
         let highlights = &query.highlights;
-        let space_cameras = &system_output
-            .view_systems
-            .get::<CamerasVisualizer>()?
-            .pinhole_cameras;
+        let empty_cameras = Vec::new();
+        let space_cameras = system_output
+            .visualizer_data::<CamerasVisualizerOutput>(
+                crate::visualizers::CamerasVisualizer::identifier(),
+            )
+            .map(|d| &d.pinhole_cameras)
+            .unwrap_or(&empty_cameras);
         let scene_view_coordinates = query_view_coordinates_at_closest_ancestor(
             query.space_origin,
             ctx.recording(),
@@ -218,7 +221,7 @@ impl SpatialView3D {
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            &collect_ui_labels(&system_output.view_systems),
+            &collect_ui_labels(&system_output),
             RectTransform::from_to(ui_rect, ui_rect),
             &eye,
             ui,
@@ -451,7 +454,7 @@ impl SpatialView3D {
             ui,
             RectTransform::from_to(ui_rect, ui_rect),
             &eye,
-            &system_output.view_systems,
+            &system_output,
         );
 
         // Add egui-rendered labels on top of everything else:

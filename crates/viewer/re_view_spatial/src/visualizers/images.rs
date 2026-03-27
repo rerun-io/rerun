@@ -3,9 +3,9 @@ use re_sdk_types::archetypes::Image;
 use re_sdk_types::components::{ImageBuffer, ImageFormat, MagnificationFilter, Opacity};
 use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageInfo, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
+    IdentifiedViewSystem, ImageInfo, QueryContext, ViewClass as _, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
@@ -15,16 +15,9 @@ use crate::view_kind::SpatialViewKind;
 use crate::visualizers::{first_copied, textured_rect_from_image};
 use crate::{PickableRectSourceData, PickableTexturedRect};
 
+#[derive(Default)]
 pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,
-}
-
-impl Default for ImageVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
-        }
-    }
 }
 
 struct ImageComponentData {
@@ -51,6 +44,10 @@ impl VisualizerSystem for ImageVisualizer {
         )
     }
 
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView2D::identifier())
+    }
+
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -66,21 +63,19 @@ impl VisualizerSystem for ImageVisualizer {
             view_query,
             context_systems,
             &output,
-            self.data.preferred_view_kind,
+            Some(SpatialViewKind::TwoD),
             |ctx, spatial_ctx, results| {
                 self.process_image(ctx, results, spatial_ctx);
                 Ok(())
             },
         )?;
 
-        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
-            ctx.viewer_ctx.render_ctx(),
-            &self.data.pickable_rects,
-        )?]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        Ok(output
+            .with_draw_data([PickableTexturedRect::to_draw_data(
+                ctx.viewer_ctx.render_ctx(),
+                &self.data.pickable_rects,
+            )?])
+            .with_visualizer_data(std::mem::take(&mut self.data)))
     }
 }
 

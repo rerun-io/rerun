@@ -375,7 +375,6 @@ impl ViewClass for SpatialView3D {
         } = IndicatedVisualizableEntities::new(
             ctx,
             Self::identifier(),
-            SpatialViewKind::ThreeD,
             include_entity,
             |indicated_entities| {
                 // ViewCoordinates is a strong indicator that a 3D view is needed.

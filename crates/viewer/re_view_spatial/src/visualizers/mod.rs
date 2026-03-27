@@ -23,14 +23,14 @@ mod transform_axes_3d;
 pub mod utilities;
 mod video;
 
-pub use cameras::CamerasVisualizer;
-pub use depth_images::{DepthImageProcessResult, DepthImageVisualizer};
-pub use encoded_depth_image::EncodedDepthImageVisualizer;
+pub use cameras::{CamerasVisualizer, CamerasVisualizerOutput};
+pub use depth_images::{DepthImageProcessResult, DepthImageVisualizer, DepthImageVisualizerOutput};
+pub use encoded_depth_image::{EncodedDepthImageVisualizer, EncodedDepthImageVisualizerOutput};
 use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, archetypes};
 pub use transform_axes_3d::{TransformAxes3DVisualizer, add_axis_arrows};
 pub use utilities::{
     SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget, entity_iterator,
-    process_labels_3d, textured_rect_from_image,
+    iter_spatial_data, process_labels_3d, textured_rect_from_image,
 };
 
 /// Shows a loading animation in a spatial view.
@@ -57,8 +57,8 @@ use re_entity_db::EntityPath;
 use re_sdk_types::datatypes::{KeypointId, KeypointPair};
 use re_view::clamped_or_else;
 use re_viewer_context::{
-    Annotations, IdentifiedViewSystem as _, QueryContext, ViewClassRegistryError,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizerCollection,
+    Annotations, IdentifiedViewSystem as _, QueryContext, SystemExecutionOutput,
+    ViewClassRegistryError, ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
     auto_color_egui, typed_fallback_for,
 };
 
@@ -174,10 +174,9 @@ pub fn visualizers_processing_draw_order()
     .into_iter()
 }
 
-pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
-    visualizers
-        .iter_visualizer_data::<SpatialViewVisualizerData>()
-        .flat_map(|data| data.ui_labels.iter().cloned())
+pub fn collect_ui_labels(system_output: &SystemExecutionOutput) -> Vec<UiLabel> {
+    iter_spatial_data(system_output)
+        .flat_map(|(_affinity, data)| data.ui_labels.iter().cloned())
         .collect()
 }
 

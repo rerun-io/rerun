@@ -15,7 +15,7 @@ use crate::transform::RectTransform;
 use crate::wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc};
 use crate::{DrawPhaseManager, Label, MsaaMode, RectInt, RenderConfig, Rgba};
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Clone, Debug)]
 pub enum ViewBuilderError {
     #[error("Screenshot was already scheduled.")]
     ScreenshotAlreadyScheduled,

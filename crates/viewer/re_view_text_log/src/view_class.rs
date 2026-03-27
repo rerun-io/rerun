@@ -187,7 +187,7 @@ Filter message types and toggle column visibility in a selection panel.",
 
         let tokens = ui.tokens();
         let state = state.downcast_mut::<TextViewState>()?;
-        let text = system_output.view_systems.get::<TextLogSystem>()?;
+        let text = system_output.visualizer_data::<Vec<Entry>>(TextLogSystem::identifier())?;
 
         let columns_property = ViewProperty::from_archetype::<TextLogColumns>(
             ctx.blueprint_db(),
@@ -226,7 +226,7 @@ Filter message types and toggle column visibility in a selection panel.",
             TextLogRows::descriptor_filter_by_log_level().component,
         )?;
 
-        for te in &text.entries {
+        for te in text {
             if let Some(lvl) = &te.level {
                 state.seen_levels.insert(lvl.to_string());
             }
@@ -235,7 +235,6 @@ Filter message types and toggle column visibility in a selection panel.",
         // TODO(andreas): Should filter text entries in the part-system instead.
         // this likely requires a way to pass state into a context.
         let entries = text
-            .entries
             .iter()
             .filter(|te| {
                 te.level

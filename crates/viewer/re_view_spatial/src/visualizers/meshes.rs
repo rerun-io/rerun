@@ -7,8 +7,9 @@ use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Mesh3D;
 use re_sdk_types::components::{ImageFormat, Position3D};
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use super::SpatialViewVisualizerData;
@@ -19,15 +20,8 @@ use crate::view_kind::SpatialViewKind;
 
 // ---
 
+#[derive(Default)]
 pub struct Mesh3DVisualizer(SpatialViewVisualizerData);
-
-impl Default for Mesh3DVisualizer {
-    fn default() -> Self {
-        Self(SpatialViewVisualizerData::new(Some(
-            SpatialViewKind::ThreeD,
-        )))
-    }
-}
 
 struct Mesh3DComponentData<'a> {
     index: (TimeInt, RowId),
@@ -125,6 +119,10 @@ impl VisualizerSystem for Mesh3DVisualizer {
         )
     }
 
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
+    }
+
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -142,7 +140,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
             view_query,
             context_systems,
             &output,
-            self.0.preferred_view_kind,
+            Some(SpatialViewKind::ThreeD),
             |ctx, spatial_ctx, results| {
                 let all_vertex_positions =
                     results.iter_required(Mesh3D::descriptor_vertex_positions().component);
@@ -231,17 +229,13 @@ impl VisualizerSystem for Mesh3DVisualizer {
             },
         )?;
 
-        Ok(
-            output.with_draw_data([re_renderer::renderer::MeshDrawData::new(
+        Ok(output
+            .with_draw_data([re_renderer::renderer::MeshDrawData::new(
                 ctx.viewer_ctx.render_ctx(),
                 &instances,
             )?
-            .into()]),
-        )
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.0.as_any())
+            .into()])
+            .with_visualizer_data(std::mem::take(&mut self.0)))
     }
 }
 

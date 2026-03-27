@@ -1,4 +1,6 @@
+use std::any::TypeId;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use parking_lot::Mutex;
 use re_chunk_store::MissingChunkReporter;
@@ -6,11 +8,11 @@ use vec1::Vec1;
 
 use re_chunk::ArchetypeName;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
-use re_sdk_types::{ComponentDescriptor, ComponentIdentifier};
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, ViewClassIdentifier};
 
 use crate::{
-    BufferAndFormatConstraint, IdentifiedViewSystem, SingleRequiredComponentConstraint,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
+    BufferAndFormatConstraint, SingleRequiredComponentConstraint, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
     VisualizabilityConstraints,
 };
 
@@ -216,30 +218,47 @@ impl re_byte_size::SizeBytes for VisualizerInstructionReport {
 }
 
 /// Result of running [`VisualizerSystem::execute`].
+///
+/// Contains two kinds of output:
+/// - [`Self::draw_data`]: GPU render commands, queued by the view for rendering.
+/// - Typed visualizer data: CPU-side typed data read back by the view's own code
+///   (picking, labels, bounding boxes, camera info, plot series, etc.);
+///   see [`Self::with_visualizer_data`].
 #[derive(Default)]
 pub struct VisualizerExecutionOutput {
-    /// Draw data produced by the visualizer.
+    /// GPU render commands produced by the visualizer.
     ///
     /// It's the view's responsibility to queue this data for rendering.
     pub draw_data: Vec<re_renderer::QueueableDrawData>,
 
-    /// Reports (errors and warnings) encountered during execution, mapped to the visualizer instructions that caused them.
+    /// The view class this visualizer has affinity to, i.e. the value returned by
+    /// [`VisualizerSystem::affinity`].
     ///
-    /// Reports from last frame will be shown in the UI for the respective visualizer instruction.
+    /// Populated automatically by the execution framework after calling [`VisualizerSystem::execute`].
+    pub affinity: Option<ViewClassIdentifier>,
+
+    /// Per-instruction diagnostics (errors and warnings) encountered during execution.
+    ///
+    /// Shown in the UI for the respective visualizer instruction.
     /// For errors that prevent any visualization at all, return a
     /// [`ViewSystemExecutionError`] instead.
     ///
-    /// It's mutex protected to make it easier to append errors while processing instructions in parallel.
+    /// Mutex-protected to allow parallel appending across instructions.
     pub reports_per_instruction:
         Mutex<BTreeMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>>,
 
     /// Used to indicate that some chunks were missing
     missing_chunk_reporter: MissingChunkReporter,
-    //
-    // TODO(andreas): We should put other output here as well instead of passing around visualizer
-    // structs themselves which is rather surprising.
-    // Same applies to context systems.
-    // This mechanism could easily replace `VisualizerSystem::data`!
+
+    /// CPU-side typed data produced by the visualizer for consumption by the view.
+    ///
+    /// Keyed by type — each type can appear at most once. A visualizer can store multiple
+    /// independent values of different types (e.g. both `SpatialViewVisualizerData` and
+    /// a visualizer-specific output struct).
+    ///
+    /// Use [`Self::with_visualizer_data`] to store and [`crate::SystemExecutionOutput::visualizer_data`]
+    /// or [`crate::SystemExecutionOutput::iter_visualizer_data`] to retrieve.
+    visualizer_data: HashMap<TypeId, Box<dyn std::any::Any + Send + Sync>>,
 }
 
 impl VisualizerExecutionOutput {
@@ -298,6 +317,23 @@ impl VisualizerExecutionOutput {
         self.draw_data.extend(draw_data);
         self
     }
+
+    /// Add a typed output payload for this visualizer.
+    ///
+    /// Each type can be stored at most once. Calling this multiple times with the same type
+    /// overwrites the previous value.
+    pub fn with_visualizer_data<T: std::any::Any + Send + Sync>(mut self, data: T) -> Self {
+        self.visualizer_data
+            .insert(TypeId::of::<T>(), Box::new(data));
+        self
+    }
+
+    /// Retrieve a typed output payload previously stored with [`Self::with_visualizer_data`].
+    pub fn get_visualizer_data<T: std::any::Any>(&self) -> Option<&T> {
+        self.visualizer_data
+            .get(&TypeId::of::<T>())
+            .and_then(|b| b.downcast_ref::<T>())
+    }
 }
 
 /// Element of a scene derived from a single archetype query.
@@ -313,24 +349,23 @@ pub trait VisualizerSystem: Send + Sync + std::any::Any {
     /// they may not be taken into account.
     fn visualizer_query_info(&self, app_options: &crate::AppOptions) -> VisualizerQueryInfo;
 
+    /// View class that this visualizer prefers to be used in, eg: 2D or 3D.
+    /// Useful for visualizers that can be displayed in 2D and 3D, so heuristics
+    /// can determine the best view to use for the visualizer.
+    fn affinity(&self) -> Option<ViewClassIdentifier> {
+        None
+    }
+
     /// Queries the chunk store and performs data conversions to make it ready for display.
     ///
     /// Mustn't query any data outside of the archetype.
+    /// All output data should be placed in the returned [`VisualizerExecutionOutput`].
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError>;
-
-    /// Optionally retrieves a chunk store reference from the scene element.
-    ///
-    /// This is useful for retrieving data that is common to several visualizers of a [`crate::ViewClass`].
-    /// For example, if most visualizers produce ui elements, a concrete [`crate::ViewClass`]
-    /// can pick those up in its [`crate::ViewClass::ui`] method by iterating over all visualizers.
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        None
-    }
 }
 
 pub struct VisualizerCollection {
@@ -338,18 +373,6 @@ pub struct VisualizerCollection {
 }
 
 impl VisualizerCollection {
-    #[inline]
-    pub fn get<T: VisualizerSystem + IdentifiedViewSystem + 'static>(
-        &self,
-    ) -> Result<&T, ViewSystemExecutionError> {
-        self.systems
-            .get(&T::identifier())
-            .and_then(|s| (s.as_ref() as &dyn std::any::Any).downcast_ref())
-            .ok_or_else(|| {
-                ViewSystemExecutionError::VisualizerSystemNotFound(T::identifier().as_str())
-            })
-    }
-
     #[inline]
     pub fn get_by_type_identifier(
         &self,
@@ -371,14 +394,6 @@ impl VisualizerCollection {
         &self,
     ) -> impl Iterator<Item = (ViewSystemIdentifier, &dyn VisualizerSystem)> {
         self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
-    }
-
-    /// Iterate over all visualizer data that can be downcast to the given type.
-    pub fn iter_visualizer_data<SpecificData: 'static>(
-        &self,
-    ) -> impl Iterator<Item = &'_ SpecificData> {
-        self.iter()
-            .filter_map(|visualizer| visualizer.data()?.downcast_ref::<SpecificData>())
     }
 
     pub fn contains_visualizer_type(&self, name: ViewSystemIdentifier) -> bool {

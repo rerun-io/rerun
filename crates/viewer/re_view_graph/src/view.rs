@@ -9,10 +9,10 @@ use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_view::view_property_ui;
 use re_viewer_context::{
-    Item, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewClass,
-    ViewClassExt as _, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemRegistrator, ViewerContext, suggest_view_for_each_entity,
+    IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _,
+    SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -194,8 +194,18 @@ impl ViewClass for GraphView {
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
-        let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
+        let empty_node_data = ahash::HashMap::default();
+        let empty_edge_data = ahash::HashMap::default();
+        let node_data = system_output
+            .visualizer_data::<ahash::HashMap<EntityPath, crate::visualizers::NodeData>>(
+                NodeVisualizer::identifier(),
+            )
+            .unwrap_or(&empty_node_data);
+        let edge_data = system_output
+            .visualizer_data::<ahash::HashMap<EntityPath, crate::visualizers::EdgeData>>(
+                EdgesVisualizer::identifier(),
+            )
+            .unwrap_or(&empty_edge_data);
 
         let graphs = merge(node_data, edge_data)
             .map(|(ent, nodes, edges)| Graph::new(ui, ent.clone(), nodes, edges))

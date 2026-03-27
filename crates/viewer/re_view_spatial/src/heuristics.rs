@@ -3,8 +3,6 @@ use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
 use re_viewer_context::{ViewClass as _, ViewerContext};
 
-use crate::view_kind::SpatialViewKind;
-use crate::visualizers::SpatialViewVisualizerData;
 use crate::{SpatialView2D, SpatialView3D};
 
 pub struct IndicatedVisualizableEntities {
@@ -25,22 +23,20 @@ impl IndicatedVisualizableEntities {
     pub fn new(
         ctx: &ViewerContext<'_>,
         view_class_identifier: ViewClassIdentifier,
-        visualizer_kind: SpatialViewKind,
         include_entity: &dyn Fn(&EntityPath) -> bool,
         indicate_extra: impl FnOnce(&mut IntSet<EntityPath>),
     ) -> Self {
-        let mut indicated_entities = default_visualized_entities_for_visualizer_kind(
+        let mut indicated_entities = default_visualized_entities_for_visualizer_affinity(
             ctx,
             view_class_identifier,
-            visualizer_kind,
             include_entity,
         );
 
         indicate_extra(&mut indicated_entities);
 
-        let excluded_entities = default_excluded_entities_for_visualizer_kind(
+        let excluded_entities = default_excluded_entities_for_visualizer_affinity(
             ctx,
-            visualizer_kind,
+            view_class_identifier,
             &indicated_entities,
         );
 
@@ -51,10 +47,9 @@ impl IndicatedVisualizableEntities {
     }
 }
 
-fn default_visualized_entities_for_visualizer_kind(
+fn default_visualized_entities_for_visualizer_affinity(
     ctx: &ViewerContext<'_>,
     view_class_identifier: ViewClassIdentifier,
-    visualizer_kind: SpatialViewKind,
     include_entity: &dyn Fn(&EntityPath) -> bool,
 ) -> IntSet<EntityPath> {
     re_tracing::profile_function!();
@@ -63,11 +58,9 @@ fn default_visualized_entities_for_visualizer_kind(
         .new_visualizer_collection(view_class_identifier)
         .iter_with_identifiers()
         .filter_map(|(id, visualizer)| {
-            let data = visualizer
-                .data()?
-                .downcast_ref::<SpatialViewVisualizerData>()?;
+            let affinity = visualizer.affinity()?;
 
-            if data.preferred_view_kind == Some(visualizer_kind) {
+            if affinity == view_class_identifier {
                 let indicator_matching = ctx.indicated_entities_per_visualizer.get(&id)?;
                 let visualizable = ctx.visualizable_entities_per_visualizer.get(&id)?;
                 Some(
@@ -85,14 +78,25 @@ fn default_visualized_entities_for_visualizer_kind(
         .collect()
 }
 
-fn default_excluded_entities_for_visualizer_kind(
+fn opposite_spatial_view(
+    view_class_identifier: ViewClassIdentifier,
+) -> Option<ViewClassIdentifier> {
+    if view_class_identifier == SpatialView2D::identifier() {
+        Some(SpatialView3D::identifier())
+    } else if view_class_identifier == SpatialView3D::identifier() {
+        Some(SpatialView2D::identifier())
+    } else {
+        None
+    }
+}
+
+fn default_excluded_entities_for_visualizer_affinity(
     ctx: &ViewerContext<'_>,
-    visualizer_kind: SpatialViewKind,
+    view_class_identifier: ViewClassIdentifier,
     included_entities: &IntSet<EntityPath>,
 ) -> Vec<EntityPath> {
-    let exclude_kind = match visualizer_kind {
-        SpatialViewKind::TwoD => SpatialViewKind::ThreeD,
-        SpatialViewKind::ThreeD => SpatialViewKind::TwoD,
+    let Some(opposite_view) = opposite_spatial_view(view_class_identifier) else {
+        return Vec::new();
     };
 
     let included_ancestors = included_entities
@@ -111,20 +115,12 @@ fn default_excluded_entities_for_visualizer_kind(
         .collect::<IntSet<_>>();
 
     ctx.view_class_registry()
-        .new_visualizer_collection(match exclude_kind {
-            SpatialViewKind::TwoD => SpatialView2D::identifier(),
-            SpatialViewKind::ThreeD => SpatialView3D::identifier(),
-        })
+        .new_visualizer_collection(opposite_view)
         .iter_with_identifiers()
         .filter_map(|(id, visualizer)| {
-            let data = visualizer
-                .data()?
-                .downcast_ref::<SpatialViewVisualizerData>()?;
+            let affinity = visualizer.affinity()?;
 
-            if data
-                .preferred_view_kind
-                .is_some_and(|vk| vk != visualizer_kind)
-            {
+            if affinity != view_class_identifier {
                 let indicator_matching = ctx.indicated_entities_per_visualizer.get(&id)?;
                 Some(indicator_matching.iter())
             } else {

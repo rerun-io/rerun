@@ -6,9 +6,9 @@ use re_sdk_types::components::{ClassId, Color, LineStrip3D, Radius, ShowLabels};
 use re_sdk_types::{Archetype as _, ArrowString};
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for,
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
 use super::{SpatialViewVisualizerData, process_radius_slice};
@@ -18,16 +18,9 @@ use crate::visualizers::utilities::{LabeledBatch, process_labels_3d};
 
 // ---
 
+#[derive(Default)]
 pub struct Lines3DVisualizer {
     pub data: SpatialViewVisualizerData,
-}
-
-impl Default for Lines3DVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::ThreeD)),
-        }
-    }
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -181,6 +174,10 @@ impl VisualizerSystem for Lines3DVisualizer {
         )
     }
 
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
+    }
+
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -200,7 +197,7 @@ impl VisualizerSystem for Lines3DVisualizer {
             view_query,
             context_systems,
             &output,
-            self.data.preferred_view_kind,
+            Some(SpatialViewKind::ThreeD),
             |ctx, spatial_ctx, results| {
                 let all_strips = results.iter_required(LineStrips3D::descriptor_strips().component);
                 if all_strips.is_empty() {
@@ -264,10 +261,8 @@ impl VisualizerSystem for Lines3DVisualizer {
             },
         )?;
 
-        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        Ok(output
+            .with_draw_data([(line_builder.into_draw_data()?.into())])
+            .with_visualizer_data(std::mem::take(&mut self.data)))
     }
 }

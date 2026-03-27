@@ -7,8 +7,9 @@ use re_sdk_types::ArrowString;
 use re_sdk_types::archetypes::Asset3D;
 use re_sdk_types::components::{AlbedoFactor, Blob};
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use super::SpatialViewVisualizerData;
@@ -16,15 +17,8 @@ use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::view_kind::SpatialViewKind;
 
+#[derive(Default)]
 pub struct Asset3DVisualizer(SpatialViewVisualizerData);
-
-impl Default for Asset3DVisualizer {
-    fn default() -> Self {
-        Self(SpatialViewVisualizerData::new(Some(
-            SpatialViewKind::ThreeD,
-        )))
-    }
-}
 
 struct Asset3DComponentData<'a> {
     index: (TimeInt, RowId),
@@ -124,6 +118,10 @@ impl VisualizerSystem for Asset3DVisualizer {
         )
     }
 
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
+    }
+
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -131,7 +129,7 @@ impl VisualizerSystem for Asset3DVisualizer {
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let output = VisualizerExecutionOutput::default();
-        let preferred_view_kind = self.0.preferred_view_kind;
+        let preferred_view_kind = Some(SpatialViewKind::ThreeD);
         let mut instances = Vec::new();
 
         use super::entity_iterator::process_archetype;
@@ -180,16 +178,12 @@ impl VisualizerSystem for Asset3DVisualizer {
             },
         )?;
 
-        Ok(
-            output.with_draw_data([re_renderer::renderer::MeshDrawData::new(
+        Ok(output
+            .with_draw_data([re_renderer::renderer::MeshDrawData::new(
                 ctx.viewer_ctx.render_ctx(),
                 &instances,
             )?
-            .into()]),
-        )
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.0.as_any())
+            .into()])
+            .with_visualizer_data(std::mem::take(&mut self.0)))
     }
 }

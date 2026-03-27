@@ -38,7 +38,7 @@ pub fn typed_fallback_for<C: Component>(
 }
 
 /// Error type for a fallback request.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Clone, Debug)]
 pub enum ComponentFallbackError {
     /// Not directly returned by the fallback provider, but useful when serializing a fallback value.
     #[error("Fallback value turned up to be empty when we expected a value.")]

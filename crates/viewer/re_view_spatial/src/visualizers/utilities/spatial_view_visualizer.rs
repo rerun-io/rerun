@@ -1,15 +1,15 @@
 use re_log_types::EntityPathHash;
 use re_sdk_types::ViewClassIdentifier;
-use re_viewer_context::ViewClass as _;
+use re_viewer_context::{SystemExecutionOutput, ViewClass as _};
 
 use super::UiLabel;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::LoadingIndicator;
 use crate::{PickableTexturedRect, SpatialView2D};
 
 /// Common data struct for all spatial scene elements.
 ///
 /// Each spatial scene element is expected to fill an instance of this struct with its data.
+#[derive(Default)]
 pub struct SpatialViewVisualizerData {
     /// Loading indicators shown using egui, in world/scene coordinates.
     pub loading_indicators: Vec<LoadingIndicator>,
@@ -29,23 +29,9 @@ pub struct SpatialViewVisualizerData {
 
     /// Textured rectangles that the visualizer produced which can be interacted with.
     pub pickable_rects: Vec<PickableTexturedRect>,
-
-    /// The view kind preferred by this visualizer (used for heuristics).
-    pub preferred_view_kind: Option<SpatialViewKind>,
 }
 
 impl SpatialViewVisualizerData {
-    pub fn new(preferred_view_kind: Option<SpatialViewKind>) -> Self {
-        Self {
-            loading_indicators: Default::default(),
-            ui_labels: Default::default(),
-            bounding_boxes: Default::default(),
-            regions_of_interest: Default::default(),
-            pickable_rects: Default::default(),
-            preferred_view_kind,
-        }
-    }
-
     pub fn add_pickable_rect(
         &mut self,
         pickable_rect: PickableTexturedRect,
@@ -119,8 +105,20 @@ impl SpatialViewVisualizerData {
     ) -> impl ExactSizeIterator<Item = &(EntityPathHash, macaw::BoundingBox)> {
         self.regions_of_interest.iter()
     }
+}
 
-    pub fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+/// Iterate over [`SpatialViewVisualizerData`] from all visualizer outputs,
+/// paired with the affinity of the visualizer that produced it.
+pub fn iter_spatial_data(
+    system_output: &SystemExecutionOutput,
+) -> impl Iterator<Item = (Option<ViewClassIdentifier>, &SpatialViewVisualizerData)> {
+    system_output
+        .visualizer_execution_output
+        .per_visualizer
+        .values()
+        .filter_map(|result| {
+            let output = result.as_ref().ok()?;
+            let data = output.get_visualizer_data::<SpatialViewVisualizerData>()?;
+            Some((output.affinity, data))
+        })
 }

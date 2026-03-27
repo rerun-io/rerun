@@ -22,11 +22,15 @@ pub struct GeoPointBatch {
     pub instance_id: Vec<PickingLayerInstanceId>,
 }
 
+/// Output data from [`GeoPointsVisualizer`].
+#[derive(Default)]
+pub struct GeoPointsOutput {
+    pub batches: Vec<(EntityPath, GeoPointBatch)>,
+}
+
 /// Visualizer for [`GeoPoints`].
 #[derive(Default)]
-pub struct GeoPointsVisualizer {
-    batches: Vec<(EntityPath, GeoPointBatch)>,
-}
+pub struct GeoPointsVisualizer;
 
 impl IdentifiedViewSystem for GeoPointsVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -54,6 +58,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
         let output = VisualizerExecutionOutput::default();
         let annotation_scene_context = context_systems.get::<AnnotationSceneContext>(&output)?;
         let latest_at_query = view_query.latest_at_query();
+        let mut batches = Vec::new();
 
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
@@ -128,15 +133,14 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 }
             }
 
-            self.batches
-                .push((data_result.entity_path.clone(), batch_data));
+            batches.push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(output)
+        Ok(output.with_visualizer_data(GeoPointsOutput { batches }))
     }
 }
 
-impl GeoPointsVisualizer {
+impl GeoPointsOutput {
     /// Compute the [`super::GeoSpan`] of all the points in the visualizer.
     pub fn span(&self) -> Option<super::GeoSpan> {
         super::GeoSpan::from_lat_long(

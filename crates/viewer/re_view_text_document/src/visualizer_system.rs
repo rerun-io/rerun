@@ -19,7 +19,7 @@ pub struct TextDocumentEntry {
 /// A text scene, with everything needed to render it.
 #[derive(Default)]
 pub struct TextDocumentSystem {
-    pub text_entries: Vec<TextDocumentEntry>,
+    text_entries: Vec<TextDocumentEntry>,
 }
 
 impl IdentifiedViewSystem for TextDocumentSystem {
@@ -68,6 +68,7 @@ impl VisualizerSystem for TextDocumentSystem {
             });
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        let text_entries = std::mem::take(&mut self.text_entries);
+        Ok(VisualizerExecutionOutput::default().with_visualizer_data(text_entries))
     }
 }

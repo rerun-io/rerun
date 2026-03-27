@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 use ahash::HashMap;
 use nohash_hasher::IntMap;
@@ -25,8 +24,7 @@ fn run_view_systems(
     >,
     context_systems: &mut ViewContextCollection,
     view_systems: &mut VisualizerCollection,
-) -> PerVisualizerTypeInViewClass<Result<VisualizerExecutionOutput, Arc<ViewSystemExecutionError>>>
-{
+) -> PerVisualizerTypeInViewClass<Result<VisualizerExecutionOutput, ViewSystemExecutionError>> {
     re_tracing::profile_function!(view.class_identifier().as_str());
 
     let view_ctx = view.bundle_context_with_state(ctx, view_state);
@@ -60,8 +58,14 @@ fn run_view_systems(
         .par_iter_mut()
         .map(|(name, vis_system)| {
             re_tracing::profile_scope!("VisualizerSystem::execute", name.as_str());
-            let result = vis_system.execute(&view_ctx, query, context_systems);
-            (*name, result.map_err(Arc::new))
+            let affinity = vis_system.affinity();
+            let result = vis_system
+                .execute(&view_ctx, query, context_systems)
+                .map(|mut output| {
+                    output.affinity = affinity;
+                    output
+                });
+            (*name, result)
         })
         .collect();
 
@@ -139,7 +143,6 @@ pub fn execute_systems_for_view<'a>(
     (
         query,
         SystemExecutionOutput {
-            view_systems,
             context_systems,
             visualizer_execution_output,
         },

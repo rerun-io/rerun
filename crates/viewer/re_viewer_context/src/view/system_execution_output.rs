@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use vec1::Vec1;
@@ -7,21 +6,17 @@ use vec1::Vec1;
 use super::{VisualizerInstructionReport, VisualizerReportSeverity};
 use crate::{
     PerVisualizerTypeInViewClass, ViewContextCollection, ViewSystemExecutionError,
-    ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionOutput, VisualizerReportContext,
+    ViewSystemIdentifier, VisualizerExecutionOutput, VisualizerReportContext,
 };
 
 /// Output of view system execution.
 pub struct SystemExecutionOutput {
-    /// Executed view systems, may hold state that the ui method needs.
-    pub view_systems: VisualizerCollection,
-
     /// Executed context systems, may hold state that the ui method needs.
     pub context_systems: ViewContextCollection,
 
     /// Result of all visualizer executions for this view.
-    pub visualizer_execution_output: PerVisualizerTypeInViewClass<
-        Result<VisualizerExecutionOutput, Arc<ViewSystemExecutionError>>,
-    >,
+    pub visualizer_execution_output:
+        PerVisualizerTypeInViewClass<Result<VisualizerExecutionOutput, ViewSystemExecutionError>>,
 }
 
 impl SystemExecutionOutput {
@@ -48,6 +43,29 @@ impl SystemExecutionOutput {
                     .map(|output| output.draw_data.drain(..))
             })
             .flatten()
+    }
+
+    /// Get typed output data from a specific visualizer's execution result.
+    pub fn visualizer_data<T: 'static>(
+        &self,
+        id: ViewSystemIdentifier,
+    ) -> Result<&T, ViewSystemExecutionError> {
+        self.visualizer_execution_output
+            .per_visualizer
+            .get(&id)
+            .ok_or_else(|| ViewSystemExecutionError::VisualizerSystemNotFound(id.as_str()))?
+            .as_ref()
+            .map_err(|err| err.clone())?
+            .get_visualizer_data::<T>()
+            .ok_or_else(|| ViewSystemExecutionError::MissingOutputData(id))
+    }
+
+    /// Iterate over all visualizer output data that can be downcast to the given type.
+    pub fn iter_visualizer_data<T: 'static>(&self) -> impl Iterator<Item = &T> {
+        self.visualizer_execution_output
+            .per_visualizer
+            .values()
+            .filter_map(|result| result.as_ref().ok()?.get_visualizer_data::<T>())
     }
 }
 
@@ -88,7 +106,7 @@ impl re_byte_size::SizeBytes for VisualizerTypeReport {
 
 impl VisualizerTypeReport {
     pub fn from_result(
-        result: &Result<VisualizerExecutionOutput, Arc<ViewSystemExecutionError>>,
+        result: &Result<VisualizerExecutionOutput, ViewSystemExecutionError>,
     ) -> Option<Self> {
         match result {
             Ok(output) => {

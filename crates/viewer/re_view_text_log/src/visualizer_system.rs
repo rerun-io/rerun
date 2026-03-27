@@ -25,7 +25,7 @@ pub struct Entry {
 /// A text scene, with everything needed to render it.
 #[derive(Default)]
 pub struct TextLogSystem {
-    pub entries: Vec<Entry>,
+    entries: Vec<Entry>,
 }
 
 impl IdentifiedViewSystem for TextLogSystem {
@@ -70,7 +70,8 @@ impl VisualizerSystem for TextLogSystem {
             self.entries.sort_by_key(|e| e.time);
         }
 
-        Ok(output)
+        let entries = std::mem::take(&mut self.entries);
+        Ok(output.with_visualizer_data(entries))
     }
 }
 

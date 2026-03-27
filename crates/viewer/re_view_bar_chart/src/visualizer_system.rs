@@ -28,7 +28,7 @@ pub struct BarChartData {
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
 pub struct BarChartVisualizerSystem {
-    pub charts: BTreeMap<EntityPath, BarChartData>,
+    charts: BTreeMap<EntityPath, BarChartData>,
 }
 
 impl IdentifiedViewSystem for BarChartVisualizerSystem {
@@ -117,6 +117,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             }
         }
 
-        Ok(output)
+        let charts = std::mem::take(&mut self.charts);
+        Ok(output.with_visualizer_data(charts))
     }
 }

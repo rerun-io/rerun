@@ -167,10 +167,10 @@ impl ViewClass for BarChartView {
         let blueprint_db = ctx.blueprint_db();
         let view_id = query.view_id;
 
-        let charts = &system_output
-            .view_systems
-            .get::<BarChartVisualizerSystem>()?
-            .charts;
+        let charts = system_output
+            .visualizer_data::<std::collections::BTreeMap<EntityPath, BarChartData>>(
+                BarChartVisualizerSystem::identifier(),
+            )?;
 
         let ctx = self.view_context(ctx, view_id, state, query.space_origin);
         let background = ViewProperty::from_archetype::<PlotBackground>(

@@ -17,7 +17,7 @@ pub struct TensorVisualization {
 
 #[derive(Default)]
 pub struct TensorSystem {
-    pub tensors: Vec<TensorVisualization>,
+    tensors: Vec<TensorVisualization>,
 }
 
 impl IdentifiedViewSystem for TensorSystem {
@@ -109,6 +109,7 @@ impl VisualizerSystem for TensorSystem {
             }
         }
 
-        Ok(output)
+        let tensors = std::mem::take(&mut self.tensors);
+        Ok(output.with_visualizer_data(tensors))
     }
 }

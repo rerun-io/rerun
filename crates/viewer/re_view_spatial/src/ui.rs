@@ -19,7 +19,7 @@ use crate::pickable_textured_rect::PickableRectSourceData;
 use crate::picking::{PickableUiRect, PickingResult};
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
+use crate::visualizers::{UiLabel, UiLabelStyle, UiLabelTarget, iter_spatial_data};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AutoSizeUnit {
@@ -85,15 +85,12 @@ impl SpatialViewState {
     ) {
         re_tracing::profile_function!();
 
-        self.bounding_boxes
-            .update(ui, &system_output.view_systems, space_kind);
-
-        let view_systems = &system_output.view_systems;
+        self.bounding_boxes.update(ui, system_output, space_kind);
 
         // Reset the counts and start over.
         self.image_counts_last_frame = Default::default();
 
-        for data in view_systems.iter_visualizer_data::<SpatialViewVisualizerData>() {
+        for (_affinity, data) in iter_spatial_data(system_output) {
             for pickable_rect in &data.pickable_rects {
                 match &pickable_rect.source_data {
                     PickableRectSourceData::Image {
@@ -450,13 +447,13 @@ pub fn paint_loading_indicators(
     ui: &mut egui::Ui,
     ui_from_scene: egui::emath::RectTransform,
     eye3d: &Eye,
-    visualizers: &re_viewer_context::VisualizerCollection,
+    system_output: &re_viewer_context::SystemExecutionOutput,
 ) {
     use glam::{Vec3Swizzles as _, Vec4Swizzles as _};
 
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 
-    for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
+    for (_affinity, data) in iter_spatial_data(system_output) {
         for crate::visualizers::LoadingIndicator {
             center,
             half_extent_u,

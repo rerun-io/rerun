@@ -94,6 +94,10 @@ impl VisualizerSystem for Points3DColorVisualizer {
         // We're not using `re_renderer` here, so return an empty vector.
         // If you want to draw additional primitives here, you can emit re_renderer draw data here directly,
         // but your custom view's `ui` implementation has to set up an re_renderer output for this.
-        Ok(output)
+        Ok(output.with_visualizer_data(std::mem::take(&mut self.colors)))
     }
 }
+
+/// Type alias for the output data produced by [`Points3DColorVisualizer`].
+pub type Points3DColorVisualizerOutput =
+    Vec<(EntityPath, VisualizerInstructionId, Vec<ColorWithInstance>)>;

@@ -17,11 +17,14 @@ use crate::series_query::{
 };
 use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, util};
 
-/// The system for rendering [`archetypes::SeriesPoints`] archetypes.
-#[derive(Default, Debug)]
-pub struct SeriesPointsSystem {
+/// Output data from [`SeriesPointsSystem`].
+pub struct SeriesPointsOutput {
     pub all_series: Vec<PlotSeries>,
 }
+
+/// The system for rendering [`archetypes::SeriesPoints`] archetypes.
+#[derive(Default, Debug)]
+pub struct SeriesPointsSystem;
 
 impl IdentifiedViewSystem for SeriesPointsSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -82,9 +85,12 @@ impl VisualizerSystem for SeriesPointsSystem {
             })
             .collect();
 
-        self.all_series.extend(all_series.into_iter().flatten());
+        let mut all_series_flat = Vec::new();
+        all_series_flat.extend(all_series.into_iter().flatten());
 
-        Ok(output)
+        Ok(output.with_visualizer_data(SeriesPointsOutput {
+            all_series: all_series_flat,
+        }))
     }
 }
 

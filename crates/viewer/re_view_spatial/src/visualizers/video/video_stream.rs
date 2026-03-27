@@ -21,16 +21,9 @@ use crate::visualizers::video::{
 };
 use crate::{PickableTexturedRect, SpatialView2D};
 
+#[derive(Default)]
 pub struct VideoStreamVisualizer {
     pub data: SpatialViewVisualizerData,
-}
-
-impl Default for VideoStreamVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
-        }
-    }
 }
 
 impl IdentifiedViewSystem for VideoStreamVisualizer {
@@ -48,6 +41,10 @@ impl VisualizerSystem for VideoStreamVisualizer {
             &VideoStream::descriptor_codec(),
             &VideoStream::all_components(),
         )
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView2D::identifier())
     }
 
     fn execute(
@@ -75,7 +72,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
             let Some(transform_info) = transform_info_for_archetype_or_report_error(
                 entity_path,
                 transforms,
-                self.data.preferred_view_kind,
+                Some(SpatialViewKind::TwoD),
                 view_kind,
                 &instruction.id,
                 &output,
@@ -263,13 +260,11 @@ impl VisualizerSystem for VideoStreamVisualizer {
             }
         }
 
-        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
-            viewer_ctx.render_ctx(),
-            &self.data.pickable_rects,
-        )?]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        Ok(output
+            .with_draw_data([PickableTexturedRect::to_draw_data(
+                viewer_ctx.render_ctx(),
+                &self.data.pickable_rects,
+            )?])
+            .with_visualizer_data(std::mem::take(&mut self.data)))
     }
 }

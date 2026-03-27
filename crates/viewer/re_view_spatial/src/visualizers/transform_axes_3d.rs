@@ -7,25 +7,17 @@ use re_sdk_types::archetypes::{
 use re_sdk_types::components::{AxisLength, ShowLabels};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizabilityConstraints, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerReportSeverity, VisualizerSystem,
+    IdentifiedViewSystem, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizabilityConstraints, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem,
 };
 
 use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 use crate::contexts::TransformTreeContext;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::utilities::format_transform_info_result;
 
+#[derive(Default)]
 pub struct TransformAxes3DVisualizer(SpatialViewVisualizerData);
-
-impl Default for TransformAxes3DVisualizer {
-    fn default() -> Self {
-        Self(SpatialViewVisualizerData::new(Some(
-            SpatialViewKind::ThreeD,
-        )))
-    }
-}
 
 impl IdentifiedViewSystem for TransformAxes3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -51,6 +43,10 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             ),
             queried: TransformAxes3D::all_components().iter().cloned().collect(),
         }
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
     }
 
     fn execute(
@@ -257,11 +253,9 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             }
         }
 
-        Ok(output.with_draw_data([line_builder.into_draw_data()?.into()]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.0.as_any())
+        Ok(output
+            .with_draw_data([line_builder.into_draw_data()?.into()])
+            .with_visualizer_data(std::mem::take(&mut self.0)))
     }
 }
 

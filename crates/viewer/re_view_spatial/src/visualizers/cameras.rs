@@ -18,20 +18,14 @@ use crate::view_kind::SpatialViewKind;
 use crate::visualizers::process_radius;
 use crate::visualizers::utilities::spatial_view_kind_from_view_class;
 
-pub struct CamerasVisualizer {
-    pub data: SpatialViewVisualizerData,
+pub struct CamerasVisualizerOutput {
     pub pinhole_cameras: Vec<PinholeWrapper>,
 }
 
-impl Default for CamerasVisualizer {
-    fn default() -> Self {
-        Self {
-            // Cameras themselves aren't inherently 2D or 3D since they represent intrinsics.
-            // (extrinsics, represented by [`transform3d_arrow::Transform3DArrowsPart`] are 3D though)
-            data: (SpatialViewVisualizerData::new(None)),
-            pinhole_cameras: Vec::new(),
-        }
-    }
+#[derive(Default)]
+pub struct CamerasVisualizer {
+    pub data: SpatialViewVisualizerData,
+    pub pinhole_cameras: Vec<PinholeWrapper>,
 }
 
 impl IdentifiedViewSystem for CamerasVisualizer {
@@ -322,10 +316,11 @@ impl VisualizerSystem for CamerasVisualizer {
             }
         }
 
-        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        Ok(output
+            .with_draw_data([(line_builder.into_draw_data()?.into())])
+            .with_visualizer_data(std::mem::take(&mut self.data))
+            .with_visualizer_data(CamerasVisualizerOutput {
+                pinhole_cameras: std::mem::take(&mut self.pinhole_cameras),
+            }))
     }
 }

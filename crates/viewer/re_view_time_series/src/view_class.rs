@@ -30,9 +30,9 @@ use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
 use vec1::Vec1;
 
-use crate::line_visualizer_system::SeriesLinesSystem;
+use crate::line_visualizer_system::{SeriesLinesOutput, SeriesLinesSystem};
 use crate::naming::{SeriesInfo, SeriesNamesContext};
-use crate::point_visualizer_system::SeriesPointsSystem;
+use crate::point_visualizer_system::{SeriesPointsOutput, SeriesPointsSystem};
 use crate::util::data_result_time_range;
 use crate::{MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY, PlotSeriesKind};
 
@@ -406,8 +406,10 @@ impl ViewClass for TimeSeriesView {
 
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
-        let line_series = system_output.view_systems.get::<SeriesLinesSystem>()?;
-        let point_series = system_output.view_systems.get::<SeriesPointsSystem>()?;
+        let line_series =
+            system_output.visualizer_data::<SeriesLinesOutput>(SeriesLinesSystem::identifier())?;
+        let point_series =
+            system_output.visualizer_data::<SeriesPointsOutput>(SeriesPointsSystem::identifier())?;
 
         let all_plot_series: Vec<_> = std::iter::empty()
             .chain(line_series.all_series.iter())

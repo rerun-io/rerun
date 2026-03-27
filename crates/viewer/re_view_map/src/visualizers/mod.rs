@@ -1,8 +1,8 @@
 mod geo_line_strings;
 mod geo_points;
 
-pub use geo_line_strings::GeoLineStringsVisualizer;
-pub use geo_points::GeoPointsVisualizer;
+pub use geo_line_strings::{GeoLineStringsOutput, GeoLineStringsVisualizer};
+pub use geo_points::{GeoPointsOutput, GeoPointsVisualizer};
 
 /// Helper to track an area span in latitude and longitude.
 #[derive(Debug, Clone)]

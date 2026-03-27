@@ -7,9 +7,9 @@ use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{Archetype as _, ArrowString, components};
 use re_view::clamped_or_else;
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for,
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
@@ -19,15 +19,8 @@ use crate::proc_mesh;
 use crate::view_kind::SpatialViewKind;
 
 // ---
+#[derive(Default)]
 pub struct Cylinders3DVisualizer(SpatialViewVisualizerData);
-
-impl Default for Cylinders3DVisualizer {
-    fn default() -> Self {
-        Self(SpatialViewVisualizerData::new(Some(
-            SpatialViewKind::ThreeD,
-        )))
-    }
-}
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
@@ -149,6 +142,10 @@ impl VisualizerSystem for Cylinders3DVisualizer {
         )
     }
 
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
+    }
+
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -156,7 +153,7 @@ impl VisualizerSystem for Cylinders3DVisualizer {
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let output = VisualizerExecutionOutput::default();
-        let preferred_view_kind = self.0.preferred_view_kind;
+        let preferred_view_kind = Some(SpatialViewKind::ThreeD);
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut self.0,
             ctx.viewer_ctx.render_ctx(),
@@ -251,11 +248,9 @@ impl VisualizerSystem for Cylinders3DVisualizer {
             },
         )?;
 
-        Ok(output.with_draw_data(builder.into_draw_data()?))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.0.as_any())
+        Ok(output
+            .with_draw_data(builder.into_draw_data()?)
+            .with_visualizer_data(std::mem::take(&mut self.0)))
     }
 }
 

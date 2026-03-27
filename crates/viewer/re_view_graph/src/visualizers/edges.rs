@@ -13,9 +13,7 @@ use re_viewer_context::{
 use crate::graph::NodeId;
 
 #[derive(Default)]
-pub struct EdgesVisualizer {
-    pub data: ahash::HashMap<EntityPath, EdgeData>,
-}
+pub struct EdgesVisualizer;
 
 pub struct EdgeInstance {
     // We will need this in the future, when we want to select individual edges.
@@ -58,6 +56,7 @@ impl VisualizerSystem for EdgesVisualizer {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         let output = VisualizerExecutionOutput::default();
+        let mut data: ahash::HashMap<EntityPath, EdgeData> = ahash::HashMap::default();
 
         // TODO(cmc): could we (improve and then) use reflection for this?
         re_sdk_types::static_assert_struct_has_fields!(
@@ -119,7 +118,7 @@ impl VisualizerSystem for EdgesVisualizer {
                     })
                     .collect();
 
-                self.data.insert(
+                data.insert(
                     data_result.entity_path.clone(),
                     EdgeData { graph_type, edges },
                 );
@@ -128,6 +127,6 @@ impl VisualizerSystem for EdgesVisualizer {
 
         // We're not using `re_renderer` here, so return an empty vector.
         // If you want to draw additional primitives here, you can emit re_renderer draw data here directly.
-        Ok(output)
+        Ok(output.with_visualizer_data(data))
     }
 }

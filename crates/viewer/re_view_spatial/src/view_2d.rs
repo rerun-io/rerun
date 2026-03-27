@@ -156,13 +156,7 @@ impl ViewClass for SpatialView2D {
         let IndicatedVisualizableEntities {
             indicated_entities,
             excluded_entities,
-        } = IndicatedVisualizableEntities::new(
-            ctx,
-            Self::identifier(),
-            SpatialViewKind::TwoD,
-            include_entity,
-            |_| {},
-        );
+        } = IndicatedVisualizableEntities::new(ctx, Self::identifier(), include_entity, |_| {});
 
         let image_dimensions =
             crate::max_image_dimension_subscriber::MaxImageDimensionsStoreSubscriber::access(

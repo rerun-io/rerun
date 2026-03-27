@@ -184,9 +184,12 @@ impl ViewClass for ColorCoordinatesView {
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
+        let empty_colors = crate::points3d_color_visualizer::Points3DColorVisualizerOutput::new();
         let colors = system_output
-            .view_systems
-            .get::<Points3DColorVisualizer>()?;
+            .visualizer_data::<crate::points3d_color_visualizer::Points3DColorVisualizerOutput>(
+                Points3DColorVisualizer::identifier(),
+            )
+            .unwrap_or(&empty_colors);
         let state = state.downcast_mut::<ColorCoordinatesViewState>()?;
 
         egui::Frame::default().show(ui, |ui| {
@@ -220,7 +223,7 @@ impl ViewClass for ColorCoordinatesView {
 fn color_space_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    colors: &Points3DColorVisualizer,
+    colors: &crate::points3d_color_visualizer::Points3DColorVisualizerOutput,
     query: &ViewQuery<'_>,
     color_at: impl Fn(f32, f32) -> egui::Color32,
     position_at: impl Fn(egui::Color32) -> (f32, f32),
@@ -259,7 +262,7 @@ fn color_space_ui(
 
     // Circles for the colors in the scene.
     let mut hovering_any_point = false;
-    for (ent_path, visualizer_instruction_id, colors) in &colors.colors {
+    for (ent_path, visualizer_instruction_id, colors) in colors {
         let ent_highlight = query.highlights.entity_highlight(ent_path.hash());
         for ColorWithInstance { instance, color } in colors {
             let highlight = ent_highlight.index_highlight(*instance, *visualizer_instruction_id);

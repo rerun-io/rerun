@@ -12,9 +12,9 @@ use re_sdk_types::archetypes::Points3D;
 use re_sdk_types::components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels};
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
-    Cache, IdentifiedViewSystem, QueryContext, ResolvedAnnotationInfos, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput,
-    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    Cache, IdentifiedViewSystem, QueryContext, ResolvedAnnotationInfos, ViewClass as _,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use super::utilities::LabeledBatch;
@@ -25,16 +25,9 @@ use crate::visualizers::{load_keypoint_connections, process_radius_slice};
 
 // ---
 
+#[derive(Default)]
 pub struct Points3DVisualizer {
     pub data: SpatialViewVisualizerData,
-}
-
-impl Default for Points3DVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::ThreeD)),
-        }
-    }
 }
 
 struct Points3DComponentData<'a> {
@@ -369,6 +362,10 @@ impl VisualizerSystem for Points3DVisualizer {
         )
     }
 
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
+    }
+
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -396,7 +393,7 @@ impl VisualizerSystem for Points3DVisualizer {
             view_query,
             context_systems,
             &output,
-            self.data.preferred_view_kind,
+            Some(SpatialViewKind::ThreeD),
             |ctx, spatial_ctx, results| {
                 re_tracing::profile_scope!("Point3D");
 
@@ -481,13 +478,11 @@ impl VisualizerSystem for Points3DVisualizer {
             },
         )?;
 
-        Ok(output.with_draw_data([
-            point_builder.into_draw_data()?.into(),
-            line_builder.into_draw_data()?.into(),
-        ]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        Ok(output
+            .with_draw_data([
+                point_builder.into_draw_data()?.into(),
+                line_builder.into_draw_data()?.into(),
+            ])
+            .with_visualizer_data(std::mem::take(&mut self.data)))
     }
 }

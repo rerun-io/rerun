@@ -45,7 +45,7 @@ pub struct DebugOverlayRenderer {
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Clone, Debug)]
 pub enum DebugOverlayError {
     #[error("Can't display texture with format: {0:?}")]
     UnsupportedTextureFormat(wgpu::TextureFormat),

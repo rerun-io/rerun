@@ -7,8 +7,8 @@ use re_sdk_types::{
     components::{Blob, Colormap, MagnificationFilter, MediaType},
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageDecodeCache, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    IdentifiedViewSystem, ImageDecodeCache, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
     VisualizerReportSeverity, VisualizerSystem,
 };
 
@@ -27,20 +27,16 @@ use crate::{
 };
 use re_sdk_types::reflection::Enum as _;
 
+pub struct EncodedDepthImageVisualizerOutput {
+    pub depth_cloud_entities: IntMap<EntityPathHash, DepthImageProcessResult>,
+}
+
+#[derive(Default)]
 pub struct EncodedDepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
 
     /// Expose image infos for depth clouds - we need this for picking interaction.
     pub depth_cloud_entities: IntMap<EntityPathHash, DepthImageProcessResult>,
-}
-
-impl Default for EncodedDepthImageVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
-            depth_cloud_entities: Default::default(),
-        }
-    }
 }
 
 impl IdentifiedViewSystem for EncodedDepthImageVisualizer {
@@ -60,13 +56,17 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
         )
     }
 
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView2D::identifier())
+    }
+
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let preferred_view_kind = self.data.preferred_view_kind;
+        let preferred_view_kind = Some(SpatialViewKind::TwoD);
         let output = VisualizerExecutionOutput::default();
         let mut depth_clouds = Vec::new();
 
@@ -177,10 +177,14 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
             },
         )?;
 
-        populate_depth_visualizer_execution_result(ctx, &self.data, depth_clouds, output)
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        populate_depth_visualizer_execution_result(ctx, &self.data, depth_clouds, output).map(
+            |output| {
+                output
+                    .with_visualizer_data(std::mem::take(&mut self.data))
+                    .with_visualizer_data(EncodedDepthImageVisualizerOutput {
+                        depth_cloud_entities: std::mem::take(&mut self.depth_cloud_entities),
+                    })
+            },
+        )
     }
 }

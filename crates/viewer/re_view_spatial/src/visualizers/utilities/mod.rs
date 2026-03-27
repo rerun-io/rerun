@@ -10,7 +10,7 @@ pub use labels::{
     process_labels_3d,
 };
 pub use proc_mesh_vis::{ProcMeshBatch, ProcMeshDrawableBuilder};
-pub use spatial_view_visualizer::SpatialViewVisualizerData;
+pub use spatial_view_visualizer::{SpatialViewVisualizerData, iter_spatial_data};
 pub use textured_rect::textured_rect_from_image;
 pub use transform_retrieval::{
     format_transform_info_result, spatial_view_kind_from_view_class,

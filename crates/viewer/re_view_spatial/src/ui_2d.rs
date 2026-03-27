@@ -236,7 +236,7 @@ impl SpatialView2D {
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            &collect_ui_labels(&system_output.view_systems),
+            &collect_ui_labels(&system_output),
             ui_from_scene,
             &eye,
             ui,
@@ -332,7 +332,7 @@ impl SpatialView2D {
         }
 
         // Add egui-rendered loading indicators on top of re_renderer content:
-        crate::ui::paint_loading_indicators(ui, ui_from_scene, &eye, &system_output.view_systems);
+        crate::ui::paint_loading_indicators(ui, ui_from_scene, &eye, &system_output);
 
         // Add egui-rendered labels on top of everything else:
         painter.extend(label_shapes);

@@ -3,7 +3,7 @@ use re_sdk_types::archetypes::SegmentationImage;
 use re_sdk_types::components::{ImageBuffer, ImageFormat, MagnificationFilter, Opacity};
 use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageInfo, ViewContext, ViewContextCollection, ViewQuery,
+    IdentifiedViewSystem, ImageInfo, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
     VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
 };
@@ -13,16 +13,9 @@ use crate::view_kind::SpatialViewKind;
 use crate::visualizers::textured_rect_from_image;
 use crate::{PickableRectSourceData, PickableTexturedRect};
 
+#[derive(Default)]
 pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,
-}
-
-impl Default for SegmentationImageVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
-        }
-    }
 }
 
 struct SegmentationImageComponentData {
@@ -48,6 +41,10 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         )
     }
 
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView2D::identifier())
+    }
+
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -62,7 +59,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             view_query,
             context_systems,
             &output,
-            self.data.preferred_view_kind,
+            Some(SpatialViewKind::TwoD),
             |ctx, spatial_ctx, results| {
                 let entity_path = ctx.target_entity_path;
 
@@ -145,14 +142,12 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             },
         )?;
 
-        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
-            ctx.viewer_ctx.render_ctx(),
-            &self.data.pickable_rects,
-        )?]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        Ok(output
+            .with_draw_data([PickableTexturedRect::to_draw_data(
+                ctx.viewer_ctx.render_ctx(),
+                &self.data.pickable_rects,
+            )?])
+            .with_visualizer_data(std::mem::take(&mut self.data)))
     }
 }
 

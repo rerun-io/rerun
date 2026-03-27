@@ -5,9 +5,9 @@ use re_sdk_types::components::{ClassId, Color, HalfSize2D, Position2D, Radius, S
 use re_sdk_types::{Archetype as _, ArrowString};
 use re_view::{clamped_or, process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for,
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
 use super::utilities::{LabeledBatch, process_labels};
@@ -18,16 +18,9 @@ use crate::visualizers::UiLabelTarget;
 
 // ---
 
+#[derive(Default)]
 pub struct Boxes2DVisualizer {
     pub data: SpatialViewVisualizerData,
-}
-
-impl Default for Boxes2DVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
-        }
-    }
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -184,6 +177,10 @@ impl VisualizerSystem for Boxes2DVisualizer {
         )
     }
 
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView2D::identifier())
+    }
+
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -202,7 +199,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
             view_query,
             context_systems,
             &output,
-            self.data.preferred_view_kind,
+            Some(SpatialViewKind::TwoD),
             |ctx, spatial_ctx, results| {
                 let all_half_sizes =
                     results.iter_required(Boxes2D::descriptor_half_sizes().component);
@@ -275,10 +272,8 @@ impl VisualizerSystem for Boxes2DVisualizer {
             },
         )?;
 
-        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        Ok(output
+            .with_draw_data([(line_builder.into_draw_data()?.into())])
+            .with_visualizer_data(std::mem::take(&mut self.data)))
     }
 }

@@ -1,10 +1,10 @@
 use egui::NumExt as _;
 use nohash_hasher::IntMap;
 use re_log_types::EntityPathHash;
-use re_viewer_context::VisualizerCollection;
+use re_viewer_context::{SystemExecutionOutput, ViewClass as _};
 
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::SpatialViewVisualizerData;
+use crate::visualizers::iter_spatial_data;
 
 #[derive(Clone)]
 pub struct SceneBoundingBoxes {
@@ -45,7 +45,7 @@ impl SceneBoundingBoxes {
     pub fn update(
         &mut self,
         ui: &egui::Ui,
-        visualizers: &VisualizerCollection,
+        system_output: &SystemExecutionOutput,
         space_kind: SpatialViewKind,
     ) {
         re_tracing::profile_function!();
@@ -56,14 +56,13 @@ impl SceneBoundingBoxes {
         self.region_of_interest_current = macaw::BoundingBox::nothing();
         self.region_of_interest_per_entity.clear();
 
-        for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
-            // If we're in a 3D space, but the visualizer is distintivly 2D, don't count it towards the bounding box.
+        for (affinity, data) in iter_spatial_data(system_output) {
+            // If we're in a 3D space, but the visualizer is distinctly 2D, don't count it towards the bounding box.
             // These visualizers show up when we're on a pinhole camera plane which itself is heuristically fed by the
             // bounding box, creating a feedback loop if we were to add it here.
-            let data_is_only_2d = data
-                .preferred_view_kind
-                .is_some_and(|kind| kind == SpatialViewKind::TwoD);
-            if space_kind == SpatialViewKind::ThreeD && data_is_only_2d {
+            if space_kind == SpatialViewKind::ThreeD
+                && affinity == Some(crate::SpatialView2D::identifier())
+            {
                 continue;
             }
 

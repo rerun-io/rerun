@@ -19,11 +19,15 @@ struct GeoLineStringsBatch {
     instance_id: Vec<PickingLayerInstanceId>,
 }
 
-/// Visualizer for [`GeoLineStrings`].
+/// Output data from [`GeoLineStringsVisualizer`].
 #[derive(Default)]
-pub struct GeoLineStringsVisualizer {
+pub struct GeoLineStringsOutput {
     batches: Vec<(EntityPath, GeoLineStringsBatch)>,
 }
+
+/// Visualizer for [`GeoLineStrings`].
+#[derive(Default)]
+pub struct GeoLineStringsVisualizer;
 
 impl IdentifiedViewSystem for GeoLineStringsVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -49,6 +53,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let output = VisualizerExecutionOutput::default();
+        let mut batches = Vec::new();
 
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
@@ -116,15 +121,14 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 }
             }
 
-            self.batches
-                .push((data_result.entity_path.clone(), batch_data));
+            batches.push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(output)
+        Ok(output.with_visualizer_data(GeoLineStringsOutput { batches }))
     }
 }
 
-impl GeoLineStringsVisualizer {
+impl GeoLineStringsOutput {
     /// Compute the [`super::GeoSpan`] of all the points in the visualizer.
     pub fn span(&self) -> Option<super::GeoSpan> {
         super::GeoSpan::from_lat_long(

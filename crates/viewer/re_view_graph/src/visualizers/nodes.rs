@@ -18,9 +18,7 @@ use re_viewer_context::{
 use crate::graph::NodeId;
 
 #[derive(Default)]
-pub struct NodeVisualizer {
-    pub data: ahash::HashMap<EntityPath, NodeData>,
-}
+pub struct NodeVisualizer;
 
 pub const FALLBACK_RADIUS: f32 = 4.0;
 
@@ -79,6 +77,7 @@ impl VisualizerSystem for NodeVisualizer {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         let output = VisualizerExecutionOutput::default();
+        let mut node_data: ahash::HashMap<EntityPath, NodeData> = ahash::HashMap::default();
 
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
@@ -159,7 +158,7 @@ impl VisualizerSystem for NodeVisualizer {
                 })
                 .collect::<Vec<_>>();
 
-                self.data.insert(
+                node_data.insert(
                     data_result.entity_path.clone(),
                     NodeData {
                         visualizer_instruction_id: instruction.id,
@@ -169,6 +168,6 @@ impl VisualizerSystem for NodeVisualizer {
             }
         }
 
-        Ok(output)
+        Ok(output.with_visualizer_data(node_data))
     }
 }
