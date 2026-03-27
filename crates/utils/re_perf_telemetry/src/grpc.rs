@@ -368,9 +368,6 @@ impl GrpcOnResponse {
         let histogram = meter
             .f64_histogram("grpc_on_response_ms")
             .with_description("Latency percentiles for all gRPC endpoints (\"time to response\")")
-            .with_boundaries(vec![
-                10.0, 25.0, 50.0, 75.0, 100.0, 200.0, 350.0, 500.0, 750.0, 1000.0, 2500.0, 5000.0,
-            ])
             .build();
         let eos_counter = meter
             .u64_counter("grpc_on_eos")
@@ -562,9 +559,6 @@ impl GrpcOnFirstBodyChunk {
             .with_description(
                 "Latency percentiles for all gRPC endpoints (\"time to first chunk\")",
             )
-            .with_boundaries(vec![
-                10.0, 25.0, 50.0, 75.0, 100.0, 200.0, 350.0, 500.0, 750.0, 1000.0, 2500.0, 5000.0,
-            ])
             .build();
         Self { histogram }
     }
