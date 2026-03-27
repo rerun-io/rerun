@@ -2286,8 +2286,7 @@ dependencies = [
 [[package]]
 name = "datafusion"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea28305c211e3541c9cfcf06a23d0d8c7c824b4502ed1fdf0a6ff4ad24ee531c"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "arrow-schema",
@@ -2335,8 +2334,7 @@ dependencies = [
 [[package]]
 name = "datafusion-catalog"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78ab99b6df5f60a6ddbc515e4c05caee1192d395cf3cb67ce5d1c17e3c9b9b74"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2360,8 +2358,7 @@ dependencies = [
 [[package]]
 name = "datafusion-catalog-listing"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77ae3d14912c0d779ada98d30dc60f3244f3c26c2446b87394629ea5c076a31c"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2383,8 +2380,7 @@ dependencies = [
 [[package]]
 name = "datafusion-common"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea2df29b9592a5d55b8238eaf67d2f21963d5a08cd1a8b7670134405206caabd"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "ahash",
  "arrow",
@@ -2406,8 +2402,7 @@ dependencies = [
 [[package]]
 name = "datafusion-common-runtime"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42639baa0049d5fffd7e283504b9b5e7b9b2e7a2dea476eed60ab0d40d999b85"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "futures",
  "log",
@@ -2417,8 +2412,7 @@ dependencies = [
 [[package]]
 name = "datafusion-datasource"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25951b617bb22a9619e1520450590cb2004bfcad10bcb396b961f4a1a10dcec5"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2446,8 +2440,7 @@ dependencies = [
 [[package]]
 name = "datafusion-datasource-arrow"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc0b28226960ba99c50d78ac6f736ebe09eb5cb3bb9bb58194266278000ca41f"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "arrow-ipc",
@@ -2470,8 +2463,7 @@ dependencies = [
 [[package]]
 name = "datafusion-datasource-csv"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f538b57b052a678b1ce860181c65d3ace5a8486312dc50b41c01dd585a773a51"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2493,8 +2485,7 @@ dependencies = [
 [[package]]
 name = "datafusion-datasource-json"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89fbc1d32b1b03c9734e27c0c5f041232b68621c8455f22769838634750a196c"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2515,8 +2506,7 @@ dependencies = [
 [[package]]
 name = "datafusion-datasource-parquet"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "203271d31fe5613a5943181db70ec98162121d1de94a9a300d5e5f19f9500a32"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2545,14 +2535,12 @@ dependencies = [
 [[package]]
 name = "datafusion-doc"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b6450dc702b3d39e8ced54c3356abb453bd2f3cea86d90d555a4b92f7a38462"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 
 [[package]]
 name = "datafusion-execution"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e66a02fa601de49da5181dbdcf904a18b16a184db2b31f5e5534552ea2d5e660"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2572,8 +2560,7 @@ dependencies = [
 [[package]]
 name = "datafusion-expr"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdf59a9b308a1a07dc2eb2f85e6366bc0226dc390b40f3aa0a72d79f1cfe2465"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2594,8 +2581,7 @@ dependencies = [
 [[package]]
 name = "datafusion-expr-common"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd99eac4c6538c708638db43e7a3bd88e0e57955ddb722d420fb9a6d38dfc28f"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -2607,8 +2593,7 @@ dependencies = [
 [[package]]
 name = "datafusion-ffi"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3b7b2b314f996ff30a2c695d74ec8cf9299305ca774269b56caed08652be7b5"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "abi_stable",
  "arrow",
@@ -2637,8 +2622,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11aa2c492ac046397b36d57c62a72982aad306495bbcbcdbcabd424d4a2fe245"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "arrow-buffer",
@@ -2668,8 +2652,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions-aggregate"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "325a00081898945d48d6194d9ca26120e523c993be3bb7c084061a5a2a72e787"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "ahash",
  "arrow",
@@ -2689,8 +2672,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions-aggregate-common"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "809bbcb1e0dbec5d0ce30d493d135aea7564f1ba4550395f7f94321223df2dae"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "ahash",
  "arrow",
@@ -2702,8 +2684,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions-nested"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29ebaa5d7024ef45973e0a7db1e9aeaa647936496f4d4061c0448f23d77d6320"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "arrow-ord",
@@ -2725,8 +2706,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions-table"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60eab6f39df9ee49a2c7fa38eddc01fa0086ee31b29c7d19f38e72f479609752"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2741,8 +2721,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions-window"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e00b2c15e342a90e65a846199c9e49293dd09fe1bcd63d8be2544604892f7eb8"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -2759,8 +2738,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions-window-common"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "493e2e1d1f4753dfc139a5213f1b5d0b97eea46a82d9bda3c7908aa96981b74b"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "datafusion-common",
  "datafusion-physical-expr-common",
@@ -2769,8 +2747,7 @@ dependencies = [
 [[package]]
 name = "datafusion-macros"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba01c55ade8278a791b429f7bf5cb1de64de587a342d084b18245edfae7096e2"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "datafusion-doc",
  "quote",
@@ -2780,8 +2757,7 @@ dependencies = [
 [[package]]
 name = "datafusion-optimizer"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a80c6dfbba6a2163a9507f6353ac78c69d8deb26232c9e419160e58ff7c3e047"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "chrono",
@@ -2799,8 +2775,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d3a86264bb9163e7360b6622e789bc7fcbb43672e78a8493f0bc369a41a57c6"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "ahash",
  "arrow",
@@ -2822,8 +2797,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr-adapter"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f5e00e524ac33500be6c5eeac940bd3f6b984ba9b7df0cd5f6c34a8a2cc4d6b"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -2837,8 +2811,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr-common"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ae769ea5d688b4e74e9be5cad6f9d9f295b540825355868a3ab942380dd97ce"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "ahash",
  "arrow",
@@ -2854,8 +2827,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-optimizer"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3588753ab2b47b0e43cd823fe5e7944df6734dabd6dafb72e2cc1c2a22f1944"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -2872,8 +2844,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-plan"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79949cbb109c2a45c527bfe0d956b9f2916807c05d4d2e66f3fd0af827ac2b61"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "ahash",
  "arrow",
@@ -2903,8 +2874,7 @@ dependencies = [
 [[package]]
 name = "datafusion-proto"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51eb50848366adf7ff2734e767442916bb45b7e739d5edbf33e9e4c47c5fa797"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "chrono",
@@ -2930,8 +2900,7 @@ dependencies = [
 [[package]]
 name = "datafusion-proto-common"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b16bf2f2a9f99c48b61537870736f0aa9500c4128407c9999261ff3e8a170523"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -2941,8 +2910,7 @@ dependencies = [
 [[package]]
 name = "datafusion-pruning"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6434e2ee8a39d04b95fed688ff34dc251af6e4a0c2e1714716b6e3846690d589"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -2958,8 +2926,7 @@ dependencies = [
 [[package]]
 name = "datafusion-session"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c91efb8302b4877d499c37e9a71886b90236ab27d9cc42fd51112febf341abd6"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "async-trait",
  "datafusion-common",
@@ -2972,8 +2939,7 @@ dependencies = [
 [[package]]
 name = "datafusion-sql"
 version = "52.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f01eef7bcf4d00e87305b55f1b75792384e130fe0258bac02cd48378ae5ff87"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=tsaucer%2F52.3.0-inner-ffi#676c9590f19c1fb9fe427a046b426efd003313f4"
 dependencies = [
  "arrow",
  "bigdecimal",
