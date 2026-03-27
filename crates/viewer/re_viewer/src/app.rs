@@ -1422,9 +1422,12 @@ impl App {
         // Go through all sources that are still loading and those that are already in the store_hub.
         // (if we look only at the one from the store_hub, we might miss those that haven't hit it yet)
         let active_sources = self.rx_log.sources();
+        // Only consider recordings for dedup, not blueprints.
+        // Blueprints loaded alongside a recording share the same `data_source`,
+        // but they should not prevent re-opening a closed recording.
         let store_sources = store_hub
             .store_bundle()
-            .entity_dbs()
+            .recordings()
             .filter_map(|db| db.data_source.as_ref());
         let mut all_sources = store_sources.chain(active_sources.iter().map(|s| s.as_ref()));
 
