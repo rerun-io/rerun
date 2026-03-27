@@ -6,7 +6,6 @@ use re_sdk_types::{
 };
 use re_viewer_context::ViewStateExt as _;
 
-use crate::MAX_NUM_ITEMS_IN_PLOT_LEGEND_BEFORE_HIDDEN;
 use crate::view_class::{TimeSeriesViewState, add_margin_to_range, make_range_sane};
 
 /// Register fallback providers for TimeSeriesView-related components and view properties.
@@ -113,24 +112,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
     system_registry.register_fallback_provider::<re_sdk_types::components::Visible>(
         PlotLegend::descriptor_visible().component,
-        |ctx| {
-            let Some(time_series_state) = ctx
-                .view_state()
-                .as_any()
-                .downcast_ref::<TimeSeriesViewState>()
-            else {
-                return true.into();
-            };
-
-            // Don't show the plot legend if there's too many time series.
-            // TODO(RR-2933): Once we can scroll it though it would be nice to show more!
-            let total_num_series = time_series_state
-                .num_time_series_last_frame_per_instruction
-                .values()
-                .map(|set| set.len())
-                .sum::<usize>();
-            (total_num_series <= MAX_NUM_ITEMS_IN_PLOT_LEGEND_BEFORE_HIDDEN).into()
-        },
+        |_ctx| true.into(),
     );
 
     system_registry.register_fallback_provider(

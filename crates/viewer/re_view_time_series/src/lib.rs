@@ -28,7 +28,6 @@ pub use view_class::TimeSeriesView;
 /// since in that case the user explicitly logged `Scalars` data and knows how many series to expect.
 pub(crate) const MAX_NUM_SERIES_FOR_REMAPPED_SCALARS: usize = 100;
 pub const MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY: usize = 4;
-pub(crate) const MAX_NUM_ITEMS_IN_PLOT_LEGEND_BEFORE_HIDDEN: usize = 20;
 
 /// Computes a deterministic, globally unique ID for the plot based on the ID of the view
 /// itself.

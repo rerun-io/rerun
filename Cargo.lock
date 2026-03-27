@@ -9910,6 +9910,7 @@ dependencies = [
  "egui_kittest",
  "egui_tiles",
  "getrandom 0.3.4",
+ "indexmap 2.13.0",
  "itertools 0.14.0",
  "jiff",
  "notify",

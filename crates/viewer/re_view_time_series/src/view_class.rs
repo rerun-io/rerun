@@ -1,6 +1,6 @@
 use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
-use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
+use egui_plot::{Line, Plot, PlotPoint, Points};
 use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
@@ -664,9 +664,13 @@ impl ViewClass for TimeSeriesView {
 
         let plot_id = crate::plot_id(query.view_id);
 
-        set_plot_visibility_from_store(ui.ctx(), &all_plot_series, plot_id);
-
         let min_axis_thickness = ui.tokens().small_icon_size.y;
+
+        let legend_id = egui::Id::new(query.view_id).with("plot_legend");
+        let legend_hovered = ui
+            .ctx()
+            .read_response(re_ui::plot_legend::legend_frame_id(legend_id))
+            .is_some_and(|r| r.contains_pointer());
 
         ui.scope(|ui| {
             // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
@@ -679,6 +683,7 @@ impl ViewClass for TimeSeriesView {
                 .show_grid(**show_grid)
                 .auto_bounds(false)
                 .allow_zoom(!zoom_lock)
+                .allow_scroll(!legend_hovered)
                 .custom_x_axes(vec![
                     egui_plot::AxisHints::new_x()
                         .min_thickness(min_axis_thickness)
@@ -717,15 +722,7 @@ impl ViewClass for TimeSeriesView {
             // Sharing the same cursor is always nice:
             plot = plot.link_cursor(timeline.name().as_str(), [true; 2]);
 
-            if *legend_visible.0 {
-                plot = plot.legend(
-                    Legend::default()
-                        .position(legend_corner.into())
-                        .follow_insertion_order(true)
-                        .grouping(egui_plot::LegendGrouping::ById)
-                        .color_conflict_handling(ColorConflictHandling::PickFirst),
-                );
-            }
+            // Legend is rendered separately after plot.show() using our LegendWidget.
 
             match timeline.typ() {
                 TimeType::Sequence => {}
@@ -853,14 +850,74 @@ impl ViewClass for TimeSeriesView {
                 }
             }
 
-            // Sync visibility of hidden items with the blueprint (user can hide items via the legend).
-            update_series_visibility_overrides_from_plot(
-                ctx,
-                query,
-                &all_plot_series,
-                ui.ctx(),
-                plot_id,
-            );
+            // Render our legend overlay and sync visibility with blueprint.
+            if *legend_visible.0 {
+                // Build a map from label → whether any series with that label is globally hovered.
+                // Multiple series can share a label (e.g. /spiral[0] and /spiral[1]), so we OR
+                // across all of them.
+                let prev_hovered_items = ctx.selection_state().hovered_items();
+                let mut label_hovered: egui::ahash::HashMap<&str, bool> =
+                    egui::ahash::HashMap::default();
+                for series in all_plot_series
+                    .iter()
+                    .filter(|s| !matches!(s.kind, PlotSeriesKind::Clear))
+                {
+                    let address = plot_item_id_to_data_result_address[&series.id()].clone();
+                    let is_hovered = prev_hovered_items
+                        .contains_item(&re_viewer_context::Item::DataResult(address.clone()))
+                        || prev_hovered_items.contains_item(&re_viewer_context::Item::DataResult(
+                            address.as_entity_all(),
+                        ));
+                    if is_hovered {
+                        label_hovered.insert(series.label.as_str(), true);
+                    } else {
+                        label_hovered.entry(series.label.as_str()).or_insert(false);
+                    }
+                }
+
+                let legend_widget =
+                    re_ui::plot_legend::LegendWidget::new(re_ui::plot_legend::LegendConfig {
+                        position: legend_corner.into(),
+                        id: legend_id,
+                    });
+
+                // Render the legend overlaid on the plot rect.
+                let plot_rect = response.rect;
+                let mut legend_ui = ui.new_child(
+                    egui::UiBuilder::new()
+                        .max_rect(plot_rect)
+                        .layout(egui::Layout::left_to_right(egui::Align::Min)),
+                );
+
+                let legend_output = legend_widget.show_entries(
+                    &mut legend_ui,
+                    all_plot_series
+                        .iter()
+                        .filter(|s| !matches!(s.kind, PlotSeriesKind::Clear))
+                        .map(|s| re_ui::plot_legend::LegendEntry {
+                            id: s.id(),
+                            label: s.label.clone(),
+                            color: s.color,
+                            visible: s.visible,
+                            hovered: label_hovered
+                                .get(s.label.as_str())
+                                .copied()
+                                .unwrap_or(false),
+                        }),
+                );
+
+                // Legend hover → global item hover (only when no plot item is hovered).
+                if hovered_data_result.is_none()
+                    && let Some(hovered_id) = legend_output.hovered_id
+                    && let Some(address) = plot_item_id_to_data_result_address.get(&hovered_id)
+                {
+                    ctx.selection_state()
+                        .set_hovered(re_viewer_context::Item::DataResult(address.clone()));
+                }
+
+                let hidden_items = legend_output.hidden_ids;
+                update_series_visibility_from_legend(ctx, query, &all_plot_series, &hidden_items);
+            }
 
             Ok(())
         })
@@ -1162,37 +1219,15 @@ fn transform_axis_range(transform: egui_plot::PlotTransform, axis: usize) -> Ran
     )
 }
 
-fn set_plot_visibility_from_store(
-    egui_ctx: &egui::Context,
-    plot_series_from_store: &[&crate::PlotSeries],
-    plot_id: egui::Id,
-) {
-    // egui_plot has its own memory about which plots are visible.
-    // We want to store that state in blueprint, so overwrite it (we sync with any changes that ui interaction may do later on, see `update_series_visibility`)
-    if let Some(mut plot_memory) = egui_plot::PlotMemory::load(egui_ctx, plot_id) {
-        plot_memory.hidden_items = plot_series_from_store
-            .iter()
-            .filter(|&series| !series.visible)
-            .map(|series| series.id())
-            .collect();
-        plot_memory.store(egui_ctx, plot_id);
-    }
-}
-
-fn update_series_visibility_overrides_from_plot(
+fn update_series_visibility_from_legend(
     ctx: &ViewerContext<'_>,
     query: &ViewQuery<'_>,
     all_plot_series: &[&crate::PlotSeries],
-    egui_ctx: &egui::Context,
-    plot_id: egui::Id,
+    hidden_items: &egui::IdSet,
 ) {
     let Some(query_results) = ctx.query_results.get(&query.view_id) else {
         return;
     };
-    let Some(plot_memory) = egui_plot::PlotMemory::load(egui_ctx, plot_id) else {
-        return;
-    };
-    let hidden_items = plot_memory.hidden_items;
 
     // Determine which series have changed visibility state.
     let mut per_visualizer_inst_id_series_new_visibility_state: HashMap<
@@ -1306,14 +1341,7 @@ fn add_series_to_plot(
                 })
                 .collect::<Vec<_>>()
         } else {
-            // TODO(emilk/egui_plot#92): Note we still need to produce a series, so it shows up in the legend.
-            // As of writing, egui_plot gets confused if this is an empty series, so
-            // we still add a single point (but don't have it influence the scalar range!)
-            series
-                .points
-                .first()
-                .map(|p| vec![[(p.0.saturating_sub(time_offset)) as _, p.1]])
-                .unwrap_or_default()
+            continue; // Skip rendering hidden series.
         };
 
         let color = series.color;

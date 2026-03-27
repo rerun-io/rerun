@@ -592,46 +592,10 @@ pub trait UiExt {
         egui::Grid::new(id).num_columns(2).spacing(spacing)
     }
 
-    /// Draws a shadow into the given rect with the shadow direction given from dark to light
+    /// Draws a shadow into the given rect with the shadow direction given from dark to light.
     fn draw_shadow_line(&self, rect: Rect, direction: egui::Direction) {
         let color_dark = self.tokens().shadow_gradient_dark_start;
-        let color_bright = Color32::TRANSPARENT;
-
-        let (left_top, right_top, left_bottom, right_bottom) = match direction {
-            egui::Direction::RightToLeft => (color_bright, color_dark, color_bright, color_dark),
-            egui::Direction::LeftToRight => (color_dark, color_bright, color_dark, color_bright),
-            egui::Direction::BottomUp => (color_bright, color_bright, color_dark, color_dark),
-            egui::Direction::TopDown => (color_dark, color_dark, color_bright, color_bright),
-        };
-
-        use egui::epaint::Vertex;
-        let shadow = egui::Mesh {
-            indices: vec![0, 1, 2, 2, 1, 3],
-            vertices: vec![
-                Vertex {
-                    pos: rect.left_top(),
-                    uv: egui::epaint::WHITE_UV,
-                    color: left_top,
-                },
-                Vertex {
-                    pos: rect.right_top(),
-                    uv: egui::epaint::WHITE_UV,
-                    color: right_top,
-                },
-                Vertex {
-                    pos: rect.left_bottom(),
-                    uv: egui::epaint::WHITE_UV,
-                    color: left_bottom,
-                },
-                Vertex {
-                    pos: rect.right_bottom(),
-                    uv: egui::epaint::WHITE_UV,
-                    color: right_bottom,
-                },
-            ],
-            texture_id: Default::default(),
-        };
-        self.ui().painter().add(shadow);
+        paint_gradient_rect(self.ui(), rect, direction, color_dark, Color32::TRANSPARENT);
     }
 
     fn draw_focus_outline(&self, rect: Rect) {
@@ -1455,6 +1419,56 @@ pub trait UiExt {
         ui.visuals_mut().widgets.inactive.bg_stroke =
             egui::Stroke::new(1.0, ui.visuals().error_fg_color);
     }
+}
+
+/// Paints a gradient rectangle that transitions from `color_from` to `color_to`
+/// along the given `direction`.
+///
+/// For example, `Direction::TopDown` paints `color_from` at the top edge fading
+/// to `color_to` at the bottom edge.
+fn paint_gradient_rect(
+    ui: &egui::Ui,
+    rect: Rect,
+    direction: egui::Direction,
+    color_from: Color32,
+    color_to: Color32,
+) {
+    use egui::epaint::Vertex;
+
+    let (left_top, right_top, left_bottom, right_bottom) = match direction {
+        egui::Direction::TopDown => (color_from, color_from, color_to, color_to),
+        egui::Direction::BottomUp => (color_to, color_to, color_from, color_from),
+        egui::Direction::LeftToRight => (color_from, color_to, color_from, color_to),
+        egui::Direction::RightToLeft => (color_to, color_from, color_to, color_from),
+    };
+
+    let mesh = egui::Mesh {
+        indices: vec![0, 1, 2, 2, 1, 3],
+        vertices: vec![
+            Vertex {
+                pos: rect.left_top(),
+                uv: egui::epaint::WHITE_UV,
+                color: left_top,
+            },
+            Vertex {
+                pos: rect.right_top(),
+                uv: egui::epaint::WHITE_UV,
+                color: right_top,
+            },
+            Vertex {
+                pos: rect.left_bottom(),
+                uv: egui::epaint::WHITE_UV,
+                color: left_bottom,
+            },
+            Vertex {
+                pos: rect.right_bottom(),
+                uv: egui::epaint::WHITE_UV,
+                color: right_bottom,
+            },
+        ],
+        texture_id: Default::default(),
+    };
+    ui.painter().add(mesh);
 }
 
 impl UiExt for egui::Ui {
