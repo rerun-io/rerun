@@ -103,23 +103,11 @@ pub struct OneToMany {
     pub times: Vec<TimeOutput>,
 }
 
-#[derive(Debug)]
-/// Static lens: outputs have no timelines (timeless data).
-///
-/// In many cases, static lenses will omit the input column entirely.
-pub struct Static {
-    pub target_entity: TargetEntity,
-
-    /// Component columns that will be created.
-    pub components: Vec1<ComponentOutput>,
-}
-
 /// Determines how a lens transforms input rows to output rows.
 #[derive(Debug)]
 pub enum LensKind {
     Columns(OneToOne),
     ScatterColumns(OneToMany),
-    StaticColumns(Static),
 }
 
 /// A lens that transforms component data from one form to another.
@@ -161,7 +149,6 @@ impl Lens {
 
         Either::Right(self.outputs.iter().map(|output| match output {
             LensKind::Columns(one_to_one) => one_to_one.apply(chunk, column),
-            LensKind::StaticColumns(static_columns) => static_columns.apply(chunk, column),
             LensKind::ScatterColumns(one_to_many) => one_to_many.apply(chunk, column),
         }))
     }
@@ -365,42 +352,6 @@ impl OneToOne {
         );
 
         finalize_chunk(entity_path.clone(), chunk_times, component_results, errors)
-    }
-}
-
-impl Static {
-    /// Applies a static lens transformation that produces timeless output data.
-    ///
-    /// The output chunk contains no time columns, only the transformed component columns.
-    /// This is useful for metadata or other data that should not be associated with any timeline.
-    fn apply(
-        &self,
-        chunk: &Chunk,
-        input: &SerializedComponentColumn,
-    ) -> Result<Chunk, PartialChunk> {
-        let entity_path = resolve_entity_path(chunk, &self.target_entity);
-
-        let mut errors = Vec::new();
-
-        // Collect successful components directly into ChunkComponents, accumulate errors
-        let component_results: re_chunk::ChunkComponents =
-            collect_output_components_iter(input, &self.components, entity_path)
-                .filter_map(|result| match result {
-                    Ok(component) => Some(component),
-                    Err(err) => {
-                        errors.push(err);
-                        None
-                    }
-                })
-                .collect();
-
-        // TODO(grtlr): In case of static, should we enforce single rows (i.e. unit chunks)?
-        finalize_chunk(
-            entity_path.clone(),
-            Default::default(),
-            component_results,
-            errors,
-        )
     }
 }
 

@@ -11,7 +11,7 @@ mod sink;
 // We should be careful not to expose too much implementation details here.
 pub use re_lenses::{
     ColumnsBuilder, Lens, LensBuilder, LensError, Lenses, OutputMode, PartialChunk,
-    ScatterColumnsBuilder, StaticColumnsBuilder, op,
+    ScatterColumnsBuilder, op,
 };
 
 pub use re_lenses_core::Selector;

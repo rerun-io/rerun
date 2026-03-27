@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use arrow::array::{AsArray as _, Int32Builder, ListArray, ListBuilder, StringBuilder};
+use arrow::array::{AsArray as _, Int32Builder, ListArray, ListBuilder};
 use arrow::datatypes::{DataType, Field};
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, TimeColumn, TimelineName};
 use re_lenses_core::combinators::Transform as _;
@@ -239,52 +239,6 @@ fn test_inner_count() {
 
     let chunk = &res[0];
     insta::assert_snapshot!("inner_count", format!("{chunk:-240}"));
-}
-
-#[test]
-fn test_static_chunk_creation() {
-    let original_chunk = nullability_chunk();
-
-    let mut metadata_builder_a = ListBuilder::new(StringBuilder::new());
-    metadata_builder_a
-        .values()
-        .append_value("static_metadata_a");
-    metadata_builder_a.append(true);
-
-    let mut metadata_builder_b = ListBuilder::new(StringBuilder::new());
-    metadata_builder_b
-        .values()
-        .append_value("static_metadata_b");
-    metadata_builder_b.append(true);
-
-    let static_lens = Lens::for_input_column(
-        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
-        "strings",
-    )
-    .output_static_columns_at("nullability/static", |out| {
-        out.component(
-            ComponentDescriptor::partial("static_metadata_a"),
-            Selector::parse(".")?.then(op::constant(metadata_builder_a.finish())),
-        )?
-        .component(
-            ComponentDescriptor::partial("static_metadata_b"),
-            Selector::parse(".")?.then(op::constant(metadata_builder_b.finish())),
-        )
-    })
-    .unwrap()
-    .build();
-
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(static_lens);
-
-    let res: Vec<re_chunk::Chunk> = lenses
-        .apply(&original_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
-    assert_eq!(res.len(), 1);
-
-    let chunk = &res[0];
-    insta::assert_snapshot!("single_static", format!("{chunk:-240}"));
 }
 
 #[test]

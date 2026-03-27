@@ -10,7 +10,7 @@ use rerun::lenses::{Lens, LensesSink, Selector, Transform as _, op};
 use rerun::sink::GrpcSink;
 use rerun::{
     ComponentDescriptor, DynamicArchetype, RecordingStream, Scalars, SerializedComponentColumn,
-    SeriesLines, SeriesPoints, TextDocument, TimeCell,
+    TextDocument, TimeCell,
 };
 
 fn lens_flag() -> anyhow::Result<Lens> {
@@ -40,35 +40,11 @@ fn lens_flag() -> anyhow::Result<Lens> {
         )))
     };
 
-    let series_points = SeriesPoints::new()
-        .with_marker_sizes([5.0])
-        .columns_of_unit_batches()
-        .unwrap()
-        .next()
-        .unwrap();
-
-    let series_lines = SeriesLines::new()
-        .with_widths([3.0])
-        .columns_of_unit_batches()
-        .unwrap()
-        .next()
-        .unwrap();
-
     let lens = Lens::for_input_column("/flag".parse()?, "example:Flag:flag")
         .output_columns(|out| {
             out.component(
                 Scalars::descriptor_scalars(),
                 Selector::parse(".")?.then(step_fn),
-            )
-        })?
-        .output_static_columns_at("/flag", |out| {
-            out.component(
-                series_points.descriptor,
-                Selector::parse(".")?.then(op::constant(series_points.list_array)),
-            )?
-            .component(
-                series_lines.descriptor,
-                Selector::parse(".")?.then(op::constant(series_lines.list_array)),
             )
         })?
         .build();

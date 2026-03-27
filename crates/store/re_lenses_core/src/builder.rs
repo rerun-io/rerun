@@ -6,7 +6,7 @@ use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::ComponentDescriptor;
 
-use crate::ast::{OneToMany, OneToOne, Static};
+use crate::ast::{OneToMany, OneToOne};
 use crate::{LensError, ast};
 
 /// Builder for lenses with support for multiple output modes.
@@ -60,36 +60,6 @@ impl LensBuilder {
         builder: impl FnOnce(ColumnsBuilder) -> Result<ColumnsBuilder, LensError>,
     ) -> Result<Self, LensError> {
         let output_builder = ColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
-        let output = builder(output_builder)?.build(&self.input)?;
-        self.outputs.push(output);
-        Ok(self)
-    }
-
-    /// Adds a static output (timeless data).
-    ///
-    /// Creates data that does not change over time and has no associated time columns.
-    ///
-    /// The output will use the same entity path as the input.
-    pub fn output_static_columns(
-        mut self,
-        builder: impl FnOnce(StaticColumnsBuilder) -> Result<StaticColumnsBuilder, LensError>,
-    ) -> Result<Self, LensError> {
-        let output_builder = StaticColumnsBuilder::new(ast::TargetEntity::SameAsInput);
-        let output = builder(output_builder)?.build(&self.input)?;
-        self.outputs.push(output);
-        Ok(self)
-    }
-
-    /// Adds a static output (timeless data) at a specific entity path.
-    ///
-    /// Creates data that does not change over time and has no associated time columns.
-    pub fn output_static_columns_at(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        builder: impl FnOnce(StaticColumnsBuilder) -> Result<StaticColumnsBuilder, LensError>,
-    ) -> Result<Self, LensError> {
-        let output_builder =
-            StaticColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
         let output = builder(output_builder)?.build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
@@ -215,59 +185,6 @@ impl ColumnsBuilder {
                 }
             })?,
             times: self.time_outputs,
-        }))
-    }
-}
-
-/// Builder for static outputs (timeless data).
-///
-/// Creates data that does not change over time. Static outputs have no associated time columns.
-#[must_use]
-pub struct StaticColumnsBuilder {
-    target_entity: ast::TargetEntity,
-    components: Vec<ast::ComponentOutput>,
-}
-
-// TODO(RR-3962): Get rid of the `unnecessary_wraps`.
-#[expect(
-    clippy::unnecessary_wraps,
-    reason = "Result return enables `?` chaining in builder closures"
-)]
-impl StaticColumnsBuilder {
-    fn new(target_entity: ast::TargetEntity) -> Self {
-        Self {
-            target_entity,
-            components: vec![],
-        }
-    }
-
-    /// Adds a component output column.
-    ///
-    /// # Arguments
-    /// * `component_descr` - The descriptor for the output component
-    /// * `selector` - Selector to apply to the input column
-    pub fn component(
-        mut self,
-        component_descr: ComponentDescriptor,
-        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
-    ) -> Result<Self, LensError> {
-        self.components.push(ast::ComponentOutput {
-            component_descr,
-            selector: Box::new(selector),
-        });
-        Ok(self)
-    }
-
-    /// Builds a [`ast::LensKind`], the `input` is passed for providing contextualized errors.
-    fn build(self, input: &ast::InputColumn) -> Result<ast::LensKind, LensError> {
-        Ok(ast::LensKind::StaticColumns(Static {
-            target_entity: self.target_entity,
-            components: self.components.try_into().map_err(|_err| {
-                LensError::MissingOutputComponent {
-                    input_filter: input.entity_path_filter.clone(),
-                    input_component: input.component,
-                }
-            })?,
         }))
     }
 }

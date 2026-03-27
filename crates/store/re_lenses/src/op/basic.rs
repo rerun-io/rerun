@@ -31,22 +31,3 @@ impl Transform for Cast {
 pub fn cast(to_type: DataType) -> Cast {
     Cast { to_type }
 }
-
-/// Ignores the input and returns a fixed [`ListArray`].
-pub struct Constant {
-    value: ListArray,
-}
-
-impl Transform for Constant {
-    type Source = ListArray;
-    type Target = ListArray;
-
-    fn transform(&self, _source: &ListArray) -> Result<Option<ListArray>, Error> {
-        Ok(Some(self.value.clone()))
-    }
-}
-
-/// Creates a [`Constant`] transform that always returns the given [`ListArray`].
-pub fn constant(value: ListArray) -> Constant {
-    Constant { value }
-}
