@@ -74,6 +74,7 @@ impl DrawData for DebugOverlayDrawData {
             DrawPhase::Compositing,
             DrawDataDrawable {
                 distance_sort_key: 100.0, // Should draw after compositing.
+                secondary_sort_key: 0.0,
                 draw_data_payload: 0,
             },
         );

@@ -4,6 +4,7 @@ mod depth_cloud;
 mod generic_skybox;
 mod lines;
 mod mesh_renderer;
+mod plane_clustering;
 mod point_cloud;
 mod rectangles;
 mod test_triangle;
@@ -60,6 +61,12 @@ pub struct DrawDataDrawable {
     /// Sorting for NaN is considered undefined.
     pub distance_sort_key: f32,
 
+    /// Secondary key used to consistently order otherwise similarly sorted drawables.
+    ///
+    /// Higher values are drawn later, so they appear on top when the primary phase sort places
+    /// drawables next to each other.
+    pub secondary_sort_key: f32,
+
     /// Key for identifying the drawable within the [`DrawData`] that produced it..
     ///
     /// This is effectively an arbitrary payload whose meaning is dependent on the drawable type
@@ -85,8 +92,15 @@ impl DrawDataDrawable {
     ) -> Self {
         Self {
             distance_sort_key: world_position.distance_squared(view_info.camera_world_position),
+            secondary_sort_key: 0.0,
             draw_data_payload,
         }
+    }
+
+    #[inline]
+    pub fn with_secondary_sort_key(mut self, secondary_sort_key: f32) -> Self {
+        self.secondary_sort_key = secondary_sort_key;
+        self
     }
 }
 

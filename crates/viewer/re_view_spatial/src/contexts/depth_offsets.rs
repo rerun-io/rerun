@@ -88,6 +88,7 @@ fn collect_draw_order_per_visualizer(
     let mut default_draw_order = None; // determined lazily
 
     for (data_result, instruction) in query.iter_visualizer_instruction_for(visualizer_identifier) {
+        let key = (visualizer_identifier, data_result.entity_path.hash());
         let draw_order = latest_at_with_blueprint_resolved_data(
             ctx,
             None,
@@ -107,7 +108,7 @@ fn collect_draw_order_per_visualizer(
         entities_per_draw_order
             .entry(draw_order)
             .or_default()
-            .insert((visualizer_identifier, data_result.entity_path.hash()));
+            .insert(key);
     }
 }
 
