@@ -32,6 +32,7 @@ ignored = [
   "js-sys", # Needed for wasm builds
   "getrandom",
   "wasm-bindgen",
+  "windows-core", # Need this to enable a feature that wgpu-hal doesn't activate correctly, see https://github.com/gfx-rs/wgpu/pull/9325
 ]
 
 
@@ -100,6 +101,11 @@ tobj = { workspace = true, optional = true }
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 notify.workspace = true
+
+# windows - ensure windows-core/std is enabled so wgpu-hal's gles backend compiles
+# See: https://github.com/gfx-rs/wgpu/pull/9325
+[target.'cfg(windows)'.dependencies]
+windows-core.workspace = true
 
 # web
 [target.'cfg(target_arch = "wasm32")'.dependencies]

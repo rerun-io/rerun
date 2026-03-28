@@ -48,6 +48,7 @@ ignored = [
   "home",
   "profiling",
   "wayland-sys",
+  "windows-core",
 ]
 
 [workspace.dependencies]
@@ -373,7 +374,7 @@ strum = { version = "0.26.3", features = ["derive"] } # need to update re_rav1d 
 strum_macros = "0.26.4" # need to update re_rav1d first
 sublime_fuzzy = "0.7.0"
 syn = "2.0"
-sysinfo = { version = "0.30.13", default-features = false }
+sysinfo = { version = "0.38.4", default-features = false }
 tap = "1.0.1"
 tempfile = "3.26"
 thiserror = "2.0.18"
@@ -429,6 +430,9 @@ web-sys = "0.3.77"
 wayland-sys = "0.31.9"
 web-time = "1.1.0"
 webbrowser = "1.1"
+windows-core = { version = "0.62", default-features = false, features = [
+  "std",
+] } # Ensure `std` is enabled so `windows-result::Error` impls `core::error::Error` (needed by wgpu-hal gles on Windows)
 winit = { version = "0.30.13", default-features = false }
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)

@@ -4,7 +4,8 @@ pub fn total_ram_in_bytes() -> Option<u64> {
     re_tracing::profile_function!();
 
     let mut sys = sysinfo::System::new_with_specifics(
-        sysinfo::RefreshKind::new().with_memory(sysinfo::MemoryRefreshKind::new().with_ram()),
+        sysinfo::RefreshKind::nothing()
+            .with_memory(sysinfo::MemoryRefreshKind::nothing().with_ram()),
     );
 
     {
