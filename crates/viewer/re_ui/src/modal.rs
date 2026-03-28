@@ -121,6 +121,7 @@ impl ModalWrapper {
             min_width: None,
             max_width: None,
             min_height: None,
+            max_height: None,
             default_height: None,
             full_span_content: false,
             set_side_margins: true,
