@@ -14,7 +14,7 @@ https://github.com/user-attachments/assets/18954263-1b34-4819-869d-02fa8117d6a3
 
 You can now map components more generally. Want to display your mesh as a point cloud? Just add a point cloud visualizer and select the vertex positions as the source.
 
-#### Prettier Primitives
+#### Prettier primitives
 
 <!-- Primitive video -->
 https://github.com/user-attachments/assets/4e523454-4b3c-492b-a2a4-463f0f17ec51
@@ -23,7 +23,7 @@ Our 3D primitives got a new default look!
 
 #### Performance improvements
 
-- Optimization for point clouds, 
+- Optimization for point clouds, videos shared among views, data ingestion, and recordings with many entities.
 
 
 ### ⚠️ Breaking changes
