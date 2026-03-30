@@ -1,6 +1,6 @@
 [package]
 name = "dataframe_query"
-version = "0.31.0-rc.2"
+version = "0.31.0"
 edition = "2024"
 rust-version = "1.92"
 license = "MIT OR Apache-2.0"
