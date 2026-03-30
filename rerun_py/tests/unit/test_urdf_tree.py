@@ -39,9 +39,9 @@ def test_urdf_tree_loading() -> None:
     assert visual_paths[0] == "/so_arm100/visual_geometries/wrist/visual_0"
 
     collision_paths = tree.get_collision_geometry_paths(child_link)
-    assert collision_paths[0] == "/so_arm100/collision_geometries/shoulder/collision_0"
+    assert collision_paths[0] == "/so_arm100/collision_geometries/mesh/shoulder/collision_0"
     collision_paths = tree.get_collision_geometry_paths("wrist")
-    assert collision_paths[0] == "/so_arm100/collision_geometries/wrist/collision_0"
+    assert collision_paths[0] == "/so_arm100/collision_geometries/mesh/wrist/collision_0"
 
     root_link = tree.root_link()
     assert root_link.name == "base"
