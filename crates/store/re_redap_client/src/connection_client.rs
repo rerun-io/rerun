@@ -49,6 +49,7 @@ pub struct SegmentQueryParams {
     pub segment_id: SegmentId,
     pub include_static_data: bool,
     pub include_temporal_data: bool,
+    pub generate_direct_urls: bool,
     pub query: Option<re_protos::cloud::v1alpha1::Query>,
 }
 
@@ -521,6 +522,7 @@ where
             include_static_data,
             include_temporal_data,
             query,
+            generate_direct_urls,
         } = params;
 
         let query_request = QueryDatasetRequest {
@@ -539,6 +541,7 @@ where
                 columns: FetchChunksRequest::required_column_names(),
                 ..Default::default()
             }),
+            generate_direct_urls,
         };
 
         Ok(Box::pin(

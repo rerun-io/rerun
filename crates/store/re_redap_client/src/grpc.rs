@@ -269,7 +269,7 @@ where
                     "failed to sync on /FetchChunks response stream",
                 )
             })
-            .and_then(std::convert::identity)
+            .flatten()
         })
 }
 
@@ -613,6 +613,7 @@ async fn stream_segment_from_server(
                     )
                     .into(),
                 ),
+                generate_direct_urls: false,
             })
             .await?;
 
@@ -663,6 +664,7 @@ async fn stream_segment_from_server(
             include_static_data: true,
             include_temporal_data: true,
             query: None, // everything
+            generate_direct_urls: false,
         })
         .await?;
 

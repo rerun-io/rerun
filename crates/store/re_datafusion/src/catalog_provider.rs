@@ -137,14 +137,14 @@ impl CatalogProvider for RedapCatalogProvider {
 
     fn schema_names(&self) -> Vec<String> {
         self.get_schema_names().unwrap_or_else(|err| {
-            log::error!("Error attempting to get table references from server: {err}");
+            re_log::error!("Error attempting to get table references from server: {err}");
             vec![]
         })
     }
 
     fn schema(&self, name: &str) -> Option<Arc<dyn SchemaProvider>> {
         if let Err(err) = self.update_from_server() {
-            log::error!("Error updating table references from server: {err}");
+            re_log::error!("Error updating table references from server: {err}");
             return None;
         }
 
@@ -194,7 +194,7 @@ impl SchemaProvider for RedapSchemaProvider {
 
     fn table_names(&self) -> Vec<String> {
         let table_refs = get_table_refs(&self.client, &self.runtime).unwrap_or_else(|err| {
-            log::error!("Error getting table references: {err}");
+            re_log::error!("Error getting table references: {err}");
             vec![]
         });
 

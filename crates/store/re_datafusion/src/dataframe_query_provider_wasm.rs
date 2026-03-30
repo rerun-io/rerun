@@ -35,7 +35,6 @@ use tonic::IntoRequest as _;
 #[derive(Debug)]
 pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     props: PlanProperties,
-    chunk_info_batches: Arc<Vec<RecordBatch>>,
 
     /// Describes the chunks per segment, derived from `chunk_info_batches`.
     /// We keep both around so that we only have to process once, but we may
@@ -179,7 +178,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         sort_index: Option<Index>,
         projection: Option<&Vec<usize>>,
         num_partitions: usize,
-        chunk_info_batches: Arc<Vec<RecordBatch>>,
+        chunk_info_batches: Option<RecordBatch>,
         query_expression: QueryExpression,
         _index_values: IndexValuesMap,
         client: T,
@@ -243,11 +242,11 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             Boundedness::Bounded,
         );
 
-        let chunk_info = group_chunk_infos_by_segment_id(&chunk_info_batches)?;
+        let chunk_info = group_chunk_infos_by_segment_id(chunk_info_batches.as_slice())?;
+        drop(chunk_info_batches);
 
         Ok(Self {
             props,
-            chunk_info_batches,
             chunk_info,
             query_expression,
             projected_schema,
@@ -341,7 +340,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
 
         let mut plan = Self {
             props: self.props.clone(),
-            chunk_info_batches: self.chunk_info_batches.clone(),
             chunk_info: self.chunk_info.clone(),
             query_expression: self.query_expression.clone(),
             projected_schema: self.projected_schema.clone(),

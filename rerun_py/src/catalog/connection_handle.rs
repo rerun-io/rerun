@@ -657,6 +657,7 @@ impl ConnectionHandle {
                 ],
                 ..Default::default()
             }),
+            generate_direct_urls: false,
         };
 
         wait_for_future(

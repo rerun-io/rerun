@@ -615,6 +615,10 @@ message QueryDatasetRequest {
   // all segments will be queried.
   repeated rerun.common.v1alpha1.SegmentId segment_ids = 11;
 
+  // Will ask the server to generate direct URLs for the requested segments.
+  // It is not guaranteed that the server will return all (or any) of them.
+  bool generate_direct_urls = 12;
+
   // Client can specify specific chunk ids to include. If left unspecified (empty list),
   // all chunks that match other query parameters will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;

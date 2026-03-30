@@ -459,6 +459,7 @@ impl PyDatasetEntryInternal {
                     include_static_data: true,
                     include_temporal_data: true,
                     query: None,
+                    generate_direct_urls: false,
                 })
                 .await
                 .map_err(to_py_err)?;

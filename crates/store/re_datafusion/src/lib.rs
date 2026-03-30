@@ -2,6 +2,8 @@
 
 mod batch_coalescer;
 mod catalog_provider;
+#[cfg(not(target_arch = "wasm32"))]
+mod chunk_fetcher;
 mod dataframe_query_common;
 #[cfg(not(target_arch = "wasm32"))]
 mod dataframe_query_provider;

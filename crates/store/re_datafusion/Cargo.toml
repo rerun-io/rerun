@@ -31,8 +31,10 @@ default = []
 [dependencies]
 # Rerun dependencies:
 re_arrow_util.workspace = true
+re_backoff.workspace = true
 re_dataframe.workspace = true
 re_log.workspace = true
+re_log_encoding = { workspace = true, features = ["decoder"] }
 re_redap_client.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
@@ -47,7 +49,6 @@ async-trait.workspace = true
 datafusion.workspace = true
 futures.workspace = true
 futures-util.workspace = true
-log.workspace = true
 parking_lot.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
@@ -55,7 +56,9 @@ tonic.workspace = true
 tracing.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+opentelemetry.workspace = true
 re_perf_telemetry.workspace = true
+reqwest.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 futures.workspace = true

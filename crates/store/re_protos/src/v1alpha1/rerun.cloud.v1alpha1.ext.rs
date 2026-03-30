@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, BinaryArray, BooleanArray, FixedSizeBinaryBuilder, ListBuilder, RecordBatch,
-    RecordBatchOptions, StringArray, StringBuilder, TimestampNanosecondArray, UInt8Array,
-    UInt64Array,
+    Array, ArrayRef, BinaryArray, BooleanArray, DictionaryArray, FixedSizeBinaryBuilder,
+    ListBuilder, PrimitiveDictionaryBuilder, RecordBatch, RecordBatchOptions, StringArray,
+    StringBuilder, TimestampNanosecondArray, UInt8Array, UInt64Array,
 };
-use arrow::datatypes::{DataType, Field, FieldRef, Schema, TimeUnit};
+use arrow::datatypes::{DataType, Field, FieldRef, Int32Type, Int64Type, Schema, TimeUnit};
 use arrow::error::ArrowError;
 use prost::Name as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -242,6 +242,7 @@ impl crate::cloud::v1alpha1::UnregisterFromDatasetRequest {
 #[derive(Debug, Clone)]
 pub struct QueryDatasetRequest {
     pub segment_ids: Vec<crate::common::v1alpha1::ext::SegmentId>,
+    pub generate_direct_urls: bool,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
     pub select_all_entity_paths: bool,
@@ -264,6 +265,7 @@ impl Default for QueryDatasetRequest {
             exclude_temporal_data: false,
             scan_parameters: None,
             query: None,
+            generate_direct_urls: false,
         }
     }
 }
@@ -284,6 +286,7 @@ impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
             exclude_temporal_data: value.exclude_temporal_data,
             scan_parameters: value.scan_parameters.map(Into::into),
             query: value.query.map(Into::into),
+            generate_direct_urls: value.generate_direct_urls,
         }
     }
 }
@@ -334,6 +337,8 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
                 .transpose()?,
 
             query: value.query.map(|q| q.try_into()).transpose()?,
+
+            generate_direct_urls: value.generate_direct_urls,
         })
     }
 }
@@ -349,7 +354,10 @@ impl QueryDatasetResponse {
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
+    pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
     pub const FIELD_CHUNK_BYTE_LENGTH: &str = "chunk_byte_len";
+    pub const FIELD_DIRECT_URL: &str = "rerun_layer_direct_url";
+    pub const FIELD_DIRECT_URL_EXPIRES_AT: &str = "rerun_layer_direct_url_expires_at";
 
     pub fn field_chunk_id() -> FieldRef {
         lazy_field_ref!(
@@ -423,6 +431,22 @@ impl QueryDatasetResponse {
         ))
     }
 
+    pub fn field_direct_url() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_DIRECT_URL,
+            DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8)),
+            true
+        ))
+    }
+
+    pub fn field_direct_url_expires_at() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_DIRECT_URL_EXPIRES_AT,
+            DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Int64)),
+            true
+        ))
+    }
+
     pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_chunk_id(),
@@ -432,6 +456,8 @@ impl QueryDatasetResponse {
             Self::field_chunk_entity_path(),
             Self::field_chunk_is_static(),
             Self::field_chunk_byte_len(),
+            Self::field_direct_url(),
+            Self::field_direct_url_expires_at(),
         ]
     }
 
@@ -452,8 +478,14 @@ impl QueryDatasetResponse {
         chunk_entity_paths: Vec<String>,
         chunk_is_static: Vec<bool>,
         chunk_byte_lengths: Vec<u64>,
+        chunk_direct_urls: Vec<Option<String>>,
+        chunk_direct_urls_expiry: Vec<Option<i64>>,
     ) -> arrow::error::Result<RecordBatch> {
         let schema = Arc::new(Self::schema());
+
+        let mut chunk_direct_url_expiry_builder =
+            PrimitiveDictionaryBuilder::<Int32Type, Int64Type>::new();
+        chunk_direct_url_expiry_builder.extend(chunk_direct_urls_expiry);
 
         let columns: Vec<ArrayRef> = vec![
             chunk_ids
@@ -465,6 +497,13 @@ impl QueryDatasetResponse {
             Arc::new(StringArray::from(chunk_entity_paths)),
             Arc::new(BooleanArray::from(chunk_is_static)),
             Arc::new(UInt64Array::from(chunk_byte_lengths)),
+            Arc::new(
+                chunk_direct_urls
+                    .iter()
+                    .map(|s| s.as_deref())
+                    .collect::<DictionaryArray<Int32Type>>(),
+            ),
+            Arc::new(chunk_direct_url_expiry_builder.finish()),
         ];
 
         RecordBatch::try_new_with_options(
@@ -2742,6 +2781,8 @@ mod tests {
         let chunk_entity_paths = vec!["/".to_owned(), "/".to_owned()];
         let chunk_is_static = vec![true, false];
         let chunk_byte_lengths = vec![1024u64, 2048u64];
+        let direct_urls = vec![None, None];
+        let direct_urls_expiry = vec![None, None];
 
         QueryDatasetResponse::create_dataframe(
             chunk_ids,
@@ -2751,6 +2792,8 @@ mod tests {
             chunk_entity_paths,
             chunk_is_static,
             chunk_byte_lengths,
+            direct_urls,
+            direct_urls_expiry,
         )
         .unwrap();
     }

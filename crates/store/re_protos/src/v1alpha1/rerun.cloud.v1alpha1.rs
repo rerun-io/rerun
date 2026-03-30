@@ -802,6 +802,10 @@ pub struct QueryDatasetRequest {
     /// all segments will be queried.
     #[prost(message, repeated, tag = "11")]
     pub segment_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::SegmentId>,
+    /// Will ask the server to generate direct URLs for the requested segments.
+    /// It is not guaranteed that the server will return all (or any) of them.
+    #[prost(bool, tag = "12")]
+    pub generate_direct_urls: bool,
     /// Client can specify specific chunk ids to include. If left unspecified (empty list),
     /// all chunks that match other query parameters will be included.
     #[prost(message, repeated, tag = "3")]

@@ -346,6 +346,7 @@ rand_distr = { version = "0.5.1", default-features = false, features = ["std"] }
 raw-window-handle = "0.6.2"
 rayon = "1.11"
 regex-lite = "0.1.9"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 rexif = "0.7.5"
 rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
 ron = { version = "0.12.0", features = ["integer128"] }

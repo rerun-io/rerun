@@ -1410,6 +1410,7 @@ impl RerunCloudService for RerunCloudHandler {
             exclude_temporal_data,
             scan_parameters,
             query,
+            generate_direct_urls: _,
         } = request.into_inner().try_into()?;
 
         if scan_parameters.is_some() {
@@ -1448,6 +1449,8 @@ impl RerunCloudService for RerunCloudHandler {
                 let mut chunk_entity_path = Vec::with_capacity(num_chunks);
                 let mut chunk_is_static = Vec::with_capacity(num_chunks);
                 let mut chunk_byte_sizes = Vec::with_capacity(num_chunks);
+                let mut chunk_direct_urls = Vec::with_capacity(num_chunks);
+                let mut chunk_direct_url_expiry = Vec::with_capacity(num_chunks);
 
                 let mut timelines = BTreeMap::new();
 
@@ -1526,6 +1529,9 @@ impl RerunCloudService for RerunCloudHandler {
                         }
                         .encode()?,
                     );
+
+                    chunk_direct_urls.push(None);
+                    chunk_direct_url_expiry.push(None);
                 }
 
                 let chunk_layer_names = vec![layer_name.clone(); chunk_ids.len()];
@@ -1538,6 +1544,8 @@ impl RerunCloudService for RerunCloudHandler {
                     chunk_entity_path,
                     chunk_is_static,
                     chunk_byte_sizes,
+                    chunk_direct_urls,
+                    chunk_direct_url_expiry,
                 )
                 .map_err(|err| {
                     tonic::Status::internal(format!("Failed to create dataframe: {err:#}"))
