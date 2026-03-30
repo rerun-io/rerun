@@ -2924,7 +2924,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "face_rendering",
                         display_name: "Face rendering",
                         component_type: "rerun.components.MeshFaceRendering".into(),
-                        docstring_md: "Determines which faces of the mesh are rendered.\n\nThe default is [`components.MeshFaceRendering#DoubleSided`](https://rerun.io/docs/reference/types/components/mesh_face_rendering?speculative-link), meaning both front and back faces are shown.",
+                        docstring_md: "Determines which faces of the mesh are rendered.\n\nThe default is [`components.MeshFaceRendering#DoubleSided`](https://rerun.io/docs/reference/types/components/mesh_face_rendering), meaning both front and back faces are shown.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
