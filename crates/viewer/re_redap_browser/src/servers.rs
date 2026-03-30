@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::task::Poll;
 
+use datafusion::common::TableReference;
 use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use egui::{Frame, Margin, RichText};
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
@@ -193,7 +194,7 @@ impl Server {
 
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.clone(),
-            dataset.name().to_string(),
+            TableReference::bare(dataset.name().to_string()),
         )
         .title(dataset.name().to_string())
         .url(re_uri::EntryUri::new(dataset.origin.clone(), dataset.id()).to_string())
@@ -248,7 +249,7 @@ impl Server {
     fn table_entry_ui(&self, viewer_ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, table: &Table) {
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.clone(),
-            table.name().to_string(),
+            TableReference::bare(table.name().to_string()),
         )
         .title(table.name().to_string())
         .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())

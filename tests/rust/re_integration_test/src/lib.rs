@@ -45,6 +45,30 @@ impl TestServer {
         (self, url)
     }
 
+    pub async fn with_named_test_data(
+        self,
+        dataset_name: &str,
+        dataset_id: &str,
+        new_recording_id: &str,
+    ) -> (Self, SegmentId) {
+        let segment_id = {
+            let this = &self;
+            async move {
+                let mut client = this.client().await.expect("Failed to connect");
+                test_data::load_test_data_with_name(
+                    &mut client,
+                    dataset_name,
+                    dataset_id,
+                    new_recording_id,
+                )
+                .await
+                .expect("Failed to load test data")
+            }
+            .await
+        };
+        (self, segment_id)
+    }
+
     pub fn port(&self) -> u16 {
         self.port
     }
