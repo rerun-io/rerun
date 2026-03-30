@@ -197,6 +197,7 @@ exclude = [
 
   # These are APIs:
   'https://api.linear.app/graphql',
+  'https://api.rootly.com/.*',
   'https://api.workos.com/.*',
   'https://rerun.io/api',
   'https://rerun.io/login',
