@@ -16,7 +16,7 @@ You can now map components more generally. Want to display your mesh as a point 
 
 #### Prettier Primitives
 
-<!-- Primtive video -->
+<!-- Primitive video -->
 https://github.com/user-attachments/assets/4e523454-4b3c-492b-a2a4-463f0f17ec51
 
 Our 3D primitives got a new default look!
@@ -53,7 +53,7 @@ Our 3D primitives got a new default look!
 - Reuse precomputed timelines dict in send_columns instead of re-iterating indexes [#12673](https://github.com/rerun-io/rerun/pull/12673) (thanks [@jashshah999](https://github.com/jashshah999)!)
 - Add description back to python package [6ab7971](https://github.com/rerun-io/rerun/commit/6ab7971d88444509e84a2ede36d3b3dff142fa92)
 - Add `save()` to `Recording` [4ab863a](https://github.com/rerun-io/rerun/commit/4ab863a68a0225f443a91d8c79b49b2cd1583480)
-- Add `compress()` and `as_pil_image()` to `DepthImage` with PNG compre… [bde6870](https://github.com/rerun-io/rerun/commit/bde68700b3e0e58061b8a6332f23c64a703a1e0b)
+- Add `compress()` and `as_pil_image()` to `DepthImage` with PNG compression [bde6870](https://github.com/rerun-io/rerun/commit/bde68700b3e0e58061b8a6332f23c64a703a1e0b)
 - Introduce `Chunk` API to the Python SDK [32eb891](https://github.com/rerun-io/rerun/commit/32eb8912030e573450c1f4f0c76e08a7c105e141)
 - Adds `rr.logout` to Python SDK [97af60e](https://github.com/rerun-io/rerun/commit/97af60e47d168fc57d1de866753df9e96020f326)
 - Disable cloud vector & full-text-search for now [3da7180](https://github.com/rerun-io/rerun/commit/3da7180f138adaca596ab551c00c961ba2f5fff4)
