@@ -108,6 +108,9 @@ pub enum ClientCredentialsError {
 
     #[error("{0}")]
     HostMismatch(re_auth::HostMismatchError),
+
+    #[error("the server requires authentication for read access")]
+    NotAuthorized,
 }
 
 /// Registry of all tokens and connections to the redap servers.
@@ -432,11 +435,20 @@ impl ConnectionRegistryHandle {
                     can_read,
                     can_write,
                 } = resp.into_inner();
+                let is_anonymous = user_id.is_none();
                 let user_id = user_id.as_deref().unwrap_or("<anonymous>");
                 re_log::debug_once!(
                     "Connected to {origin}: {user_id}, can_read={can_read}, can_write={can_write}",
                 );
                 if !can_read {
+                    if is_anonymous {
+                        // Anonymous user without read access — treat as a credentials error
+                        // so the auth flow is triggered.
+                        return Err(ApiError::credentials_with_source(
+                            ClientCredentialsError::NotAuthorized,
+                            "the server requires authentication for read access",
+                        ));
+                    }
                     return Err(ApiError::permission_denied(
                         "the server reports that you do not have read access",
                     ));

@@ -266,15 +266,12 @@ fn error_ui(
 ) {
     if let Some(conn_err) = err.as_client_credentials_error() {
         let message = match conn_err {
-            ClientCredentialsError::RefreshError { .. } => {
+            ClientCredentialsError::RefreshError { .. }
+            | ClientCredentialsError::UnauthenticatedMissingToken { .. } => {
                 "There was an error refreshing your credentials"
             }
 
             ClientCredentialsError::SessionExpired => "Your session has expired",
-
-            ClientCredentialsError::UnauthenticatedMissingToken { .. } => {
-                "This server requires authentication to access its data."
-            }
 
             ClientCredentialsError::UnauthenticatedBadToken { credentials, .. } => {
                 match credentials.source {
@@ -287,13 +284,17 @@ fn error_ui(
             }
 
             ClientCredentialsError::HostMismatch(_) => "The token is not allowed for this server",
+            ClientCredentialsError::NotAuthorized => {
+                "This server requires authentication to access its data."
+            }
         };
 
         let show_login = match conn_err {
             ClientCredentialsError::RefreshError(_)
             | ClientCredentialsError::SessionExpired
             | ClientCredentialsError::UnauthenticatedMissingToken(_)
-            | ClientCredentialsError::UnauthenticatedBadToken { .. } => true,
+            | ClientCredentialsError::UnauthenticatedBadToken { .. }
+            | ClientCredentialsError::NotAuthorized => true,
             ClientCredentialsError::HostMismatch(_) => false,
         };
 
