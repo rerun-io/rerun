@@ -29,9 +29,9 @@ UInt8
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `MeshFaceRendering`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html?speculative-link)
- * 🐍 [Python API docs for `MeshFaceRendering`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.MeshFaceRendering)
- * 🦀 [Rust API docs for `MeshFaceRendering`](https://docs.rs/rerun/latest/rerun/components/enum.MeshFaceRendering.html?speculative-link)
+ * 🌊 [C++ API docs for `MeshFaceRendering`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
+ * 🐍 [Python API docs for `MeshFaceRendering`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.MeshFaceRendering)
+ * 🦀 [Rust API docs for `MeshFaceRendering`](https://docs.rs/rerun/latest/rerun/components/enum.MeshFaceRendering.html)
 
 
 ## Used by
