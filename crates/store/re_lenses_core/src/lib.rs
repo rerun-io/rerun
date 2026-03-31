@@ -12,7 +12,8 @@ pub mod combinators;
 mod selector;
 
 pub use crate::selector::{
-    Error as SelectorError, Literal, Runtime, Selector, extract_nested_fields, function_registry,
+    DynExpr, Error as SelectorError, IntoDynExpr, Literal, Runtime, Selector,
+    extract_nested_fields, function_registry,
 };
 
 // Lenses
