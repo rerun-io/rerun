@@ -27,6 +27,28 @@ rerun mcap convert input.mcap -d ros2msg -d raw -d recording_info -o output.rrd
 
 When no `-d` flags are specified, all available decoders are still used by default (same behavior as before).
 
+## Server / Catalog API
+
+### `address` renamed to `url` or `host`
+
+Several server and catalog APIs have been renamed for clarity:
+
+- **CLI**: `rerun server --address …` is now `rerun server --host …`
+- **Python `rr.Server`**: The `addr` constructor argument is now `host`, and the `address` method is now `url`
+- **Python `rr.CatalogClient`**: The `address` parameter is now `url`
+
+### `Entry.update()` deprecated in favor of `Entry.set_name()`
+
+The `Entry.update()` method has been deprecated. Use `Entry.set_name()` instead for renaming entries:
+
+```python
+# Before (deprecated)
+entry.update(name="new_name")
+
+# After
+entry.set_name("new_name")
+```
+
 ## Rust API
 
 ### `re_mcap`: Layer types renamed to Decoder
