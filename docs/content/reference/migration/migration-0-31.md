@@ -27,7 +27,7 @@ rerun mcap convert input.mcap -d ros2msg -d raw -d recording_info -o output.rrd
 
 When no `-d` flags are specified, all available decoders are still used by default (same behavior as before).
 
-## Server / Catalog API
+## Server / catalog API
 
 ### `address` renamed to `url` or `host`
 
