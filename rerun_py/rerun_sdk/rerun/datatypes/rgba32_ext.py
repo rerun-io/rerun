@@ -53,8 +53,8 @@ class Rgba32Ext:
             return int(_numpy_array_to_u32(data.reshape((1, -1)))[0])
         elif isinstance(data, Sequence):
             data = np.array(data).reshape((1, -1))
-            if data.shape[1] not in (3, 4):
-                raise ValueError(f"expected sequence of length of 3 or 4, received {data.shape[1]}")
+            if data.shape[1] not in (3, 4):  # type: ignore[misc]
+                raise ValueError(f"expected sequence of length of 3 or 4, received {data.shape[1]}")  # type: ignore[misc]
             return int(_numpy_array_to_u32(data)[0])
         else:
             return int(data)
