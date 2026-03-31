@@ -140,18 +140,17 @@ fn test_runtime() -> Runtime {
 
 #[test]
 fn register_and_get_no_args() {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
-    assert!(runtime.function_registry.get("double", &[]).is_ok());
+    assert!(rt.function_registry.get("double", &[]).is_ok());
 }
 
 #[test]
 fn register_and_get_with_args() {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
     assert!(
-        runtime
-            .function_registry
+        rt.function_registry
             .get("prepend", &[Literal::String("hello_".into())])
             .is_ok()
     );
@@ -169,11 +168,11 @@ fn get_unknown_function() {
 
 #[test]
 fn get_no_arg_function_with_extra_args() {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
     // The zero-arg constructor ignores extra arguments, so this still succeeds.
     // This test documents the current behavior.
-    let result = runtime
+    let result = rt
         .function_registry
         .get("double", &[Literal::String("unexpected".into())]);
     assert!(result.is_ok());
@@ -181,9 +180,9 @@ fn get_no_arg_function_with_extra_args() {
 
 #[test]
 fn get_one_arg_function_with_no_args() {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
-    let result = runtime.function_registry.get("prepend", &[]);
+    let result = rt.function_registry.get("prepend", &[]);
     assert!(matches!(
         result,
         Err(FunctionRegistryError::WrongArguments { .. })
@@ -192,12 +191,11 @@ fn get_one_arg_function_with_no_args() {
 
 #[test]
 fn register_multiple_functions() {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
-    assert!(runtime.function_registry.get("double", &[]).is_ok());
+    assert!(rt.function_registry.get("double", &[]).is_ok());
     assert!(
-        runtime
-            .function_registry
+        rt.function_registry
             .get("prepend", &[Literal::String("x_".into())])
             .is_ok()
     );
@@ -207,14 +205,12 @@ fn register_multiple_functions() {
 
 #[test]
 fn selector_calls_no_arg_function() -> Result<(), SelectorError> {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
     let array = make_float_list(&[Some(&[1.0, 2.0]), Some(&[3.0]), None]);
 
-    let via_registry = Selector::parse("double()")?
-        .with_runtime(runtime)
-        .execute_per_row(&array)?
-        .unwrap();
+    let selector = Selector::parse("double()")?;
+    let via_registry = rt.execute_per_row(&selector, &array)?.unwrap();
 
     let via_pipe = Selector::parse(".")?
         .pipe(double_values)
@@ -241,7 +237,7 @@ fn selector_calls_no_arg_function() -> Result<(), SelectorError> {
 
 #[test]
 fn selector_calls_function_with_string_arg() -> Result<(), SelectorError> {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
     let array = make_string_list(&[
         Some(&[Some("alice"), Some("bob")]),
@@ -249,10 +245,8 @@ fn selector_calls_function_with_string_arg() -> Result<(), SelectorError> {
         None,
     ]);
 
-    let result = Selector::parse(r#"prepend("hello_")"#)?
-        .with_runtime(runtime)
-        .execute_per_row(&array)?
-        .unwrap();
+    let selector = Selector::parse(r#"prepend("hello_")"#)?;
+    let result = rt.execute_per_row(&selector, &array)?.unwrap();
 
     insta::assert_snapshot!(DisplayRB(result), @r"
     ┌──────────────────────────┐
@@ -272,15 +266,12 @@ fn selector_calls_function_with_string_arg() -> Result<(), SelectorError> {
 
 #[test]
 fn selector_pipes_path_into_function() -> Result<(), SelectorError> {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
     let array = util::fixtures::nested_struct_column();
 
-    let via_registry = ".location.x | double()"
-        .parse::<Selector>()?
-        .with_runtime(runtime.clone())
-        .execute_per_row(&array)?
-        .unwrap();
+    let selector = ".location.x | double()".parse::<Selector>()?;
+    let via_registry = rt.execute_per_row(&selector, &array)?.unwrap();
 
     let via_pipe = Selector::parse(".location.x")?
         .pipe(double_values)
@@ -312,11 +303,8 @@ fn selector_pipes_path_into_function() -> Result<(), SelectorError> {
     ");
 
     // NOTE: We also test functions that insert null values.
-    let via_registry = ".location.x | nullify_gt4() | double()"
-        .parse::<Selector>()?
-        .with_runtime(runtime)
-        .execute_per_row(&array)?
-        .unwrap();
+    let selector = ".location.x | nullify_gt4() | double()".parse::<Selector>()?;
+    let via_registry = rt.execute_per_row(&selector, &array)?.unwrap();
 
     let via_pipe = Selector::parse(".location.x")?
         .pipe(nullify_gt4)
@@ -353,15 +341,12 @@ fn selector_pipes_path_into_function() -> Result<(), SelectorError> {
 
 #[test]
 fn selector_pipes_nested_list_path_into_function() -> Result<(), SelectorError> {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
     let array = util::fixtures::nested_list_struct_column();
 
-    let via_registry = ".poses[].y | double()"
-        .parse::<Selector>()?
-        .with_runtime(runtime.clone())
-        .execute_per_row(&array)?
-        .unwrap();
+    let selector = ".poses[].y | double()".parse::<Selector>()?;
+    let via_registry = rt.execute_per_row(&selector, &array)?.unwrap();
 
     let via_pipe = Selector::parse(".poses[].y")?
         .pipe(double_values)
@@ -390,11 +375,8 @@ fn selector_pipes_nested_list_path_into_function() -> Result<(), SelectorError> 
     └─────────────────────┘
     ");
 
-    let result = ".poses[].y | double | repeat3"
-        .parse::<Selector>()?
-        .with_runtime(runtime.clone())
-        .execute_per_row(&array)?
-        .unwrap();
+    let selector = ".poses[].y | double | repeat3".parse::<Selector>()?;
+    let result = rt.execute_per_row(&selector, &array)?.unwrap();
 
     insta::assert_snapshot!(DisplayRB(result), @"
     ┌──────────────────────────────────────────┐
@@ -416,11 +398,8 @@ fn selector_pipes_nested_list_path_into_function() -> Result<(), SelectorError> 
     └──────────────────────────────────────────┘
     ");
 
-    let result = ".poses[].y | double | repeat3 | .[]"
-        .parse::<Selector>()?
-        .with_runtime(runtime.clone())
-        .execute_per_row(&array)?
-        .unwrap();
+    let selector = ".poses[].y | double | repeat3 | .[]".parse::<Selector>()?;
+    let result = rt.execute_per_row(&selector, &array)?.unwrap();
 
     insta::assert_snapshot!(DisplayRB(result), @"
     ┌──────────────────────────────────────┐
@@ -442,11 +421,8 @@ fn selector_pipes_nested_list_path_into_function() -> Result<(), SelectorError> 
     └──────────────────────────────────────┘
     ");
 
-    let result = "map(.poses[].y | double | repeat3 | .[])"
-        .parse::<Selector>()?
-        .with_runtime(runtime.clone())
-        .execute(Arc::new(array.clone()))?
-        .unwrap();
+    let selector = "map(.poses[].y | double | repeat3 | .[])".parse::<Selector>()?;
+    let result = rt.execute(&selector, Arc::new(array.clone()))?.unwrap();
 
     insta::assert_snapshot!(DisplayRB(result), @"
     ┌──────────────────────────────────────┐
@@ -473,15 +449,12 @@ fn selector_pipes_nested_list_path_into_function() -> Result<(), SelectorError> 
 
 #[test]
 fn selector_pipes_path_into_string_function() -> Result<(), SelectorError> {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
     let array = util::fixtures::nested_string_struct_column();
 
-    let result = r#".data.names | prepend("user_")"#
-        .parse::<Selector>()?
-        .with_runtime(runtime)
-        .execute_per_row(&array)?
-        .unwrap();
+    let selector = r#".data.names | prepend("user_")"#.parse::<Selector>()?;
+    let result = rt.execute_per_row(&selector, &array)?.unwrap();
 
     insta::assert_snapshot!(DisplayRB(result), @r"
     ┌───────────────────┐
@@ -503,15 +476,12 @@ fn selector_pipes_path_into_string_function() -> Result<(), SelectorError> {
 
 #[test]
 fn selector_chains_two_functions() -> Result<(), SelectorError> {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
     let array = make_string_list(&[Some(&[Some("world"), Some("there")]), Some(&[Some("x")])]);
 
-    let via_registry = r#"prepend("hello_") | prepend("say_")"#
-        .parse::<Selector>()?
-        .with_runtime(runtime)
-        .execute_per_row(&array)?
-        .unwrap();
+    let selector = r#"prepend("hello_") | prepend("say_")"#.parse::<Selector>()?;
+    let via_registry = rt.execute_per_row(&selector, &array)?.unwrap();
 
     let via_pipe = Selector::parse(".")?
         .pipe(prepend("hello_".into()))
@@ -549,15 +519,12 @@ fn selector_unknown_function_errors() {
 
 #[test]
 fn selector_pipes_struct_field_into_function() -> Result<(), SelectorError> {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
     let array = util::fixtures::struct_column();
 
-    let via_registry = ".location.y | double()"
-        .parse::<Selector>()?
-        .with_runtime(runtime)
-        .execute(Arc::new(array.clone()))?
-        .unwrap();
+    let selector = ".location.y | double()".parse::<Selector>()?;
+    let via_registry = rt.execute(&selector, Arc::new(array.clone()))?.unwrap();
 
     let via_pipe = Selector::parse(".location.y")?
         .pipe(double_values)
@@ -594,29 +561,23 @@ fn selector_pipes_struct_field_into_function() -> Result<(), SelectorError> {
 
 #[test]
 fn selector_function_with_missing_args_errors() {
-    let runtime = test_runtime();
+    let rt = test_runtime();
 
     let array = make_string_list(&[Some(&[Some("hello")])]);
 
-    let result = "prepend()"
-        .parse::<Selector>()
-        .unwrap()
-        .with_runtime(runtime)
-        .execute_per_row(&array);
+    let selector = "prepend()".parse::<Selector>().unwrap();
+    let result = rt.execute_per_row(&selector, &array);
 
     assert!(result.is_err());
 }
 
 #[test]
 fn selector_deep_nested_list_double() -> Result<(), SelectorError> {
-    let runtime = test_runtime();
+    let rt = test_runtime();
     let array = util::fixtures::deep_nested_list_column();
 
-    let result = ".[] | .[] | double()"
-        .parse::<Selector>()?
-        .with_runtime(runtime.clone())
-        .execute_per_row(&array)?
-        .unwrap();
+    let selector = ".[] | .[] | double()".parse::<Selector>()?;
+    let result = rt.execute_per_row(&selector, &array)?.unwrap();
 
     insta::assert_snapshot!(DisplayRB(result), @r"
     ┌────────────────────────┐
@@ -638,11 +599,8 @@ fn selector_deep_nested_list_double() -> Result<(), SelectorError> {
     └────────────────────────┘
     ");
 
-    let via_registry = "map(.[] | .[] | double())"
-        .parse::<Selector>()?
-        .with_runtime(runtime)
-        .execute(Arc::new(array))?
-        .unwrap();
+    let selector = "map(.[] | .[] | double())".parse::<Selector>()?;
+    let via_registry = rt.execute(&selector, Arc::new(array))?.unwrap();
 
     insta::assert_snapshot!(DisplayRB(via_registry), @r"
     ┌────────────────────────┐

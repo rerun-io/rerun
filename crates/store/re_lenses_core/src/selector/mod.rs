@@ -52,11 +52,8 @@ mod runtime;
 
 pub mod function_registry;
 
-use std::sync::Arc;
-
 pub use dyn_expr::DynExpr;
 pub use parser::Literal;
-use re_chunk::ArrowArray as _;
 pub use runtime::Runtime;
 
 use arrow::{
@@ -71,20 +68,19 @@ use parser::Expr;
 #[derive(Clone)]
 pub struct Selector<E = Expr> {
     expr: E,
-    runtime: Arc<Runtime>,
 }
 
 impl re_byte_size::SizeBytes for Selector {
     fn heap_size_bytes(&self) -> u64 {
-        let Self { expr, runtime } = self;
+        let Self { expr } = self;
 
-        expr.heap_size_bytes() + runtime.heap_size_bytes()
+        expr.heap_size_bytes()
     }
 }
 
 impl std::fmt::Debug for Selector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { expr, runtime: _ } = self;
+        let Self { expr } = self;
 
         f.debug_struct("Selector").field("expr", expr).finish()
     }
@@ -92,9 +88,9 @@ impl std::fmt::Debug for Selector {
 
 impl PartialEq for Selector {
     fn eq(&self, other: &Self) -> bool {
-        let Self { expr, runtime } = self;
+        let Self { expr } = self;
 
-        *expr == other.expr && Arc::ptr_eq(runtime, &other.runtime)
+        *expr == other.expr
     }
 }
 
@@ -102,10 +98,9 @@ impl Eq for Selector {}
 
 impl std::hash::Hash for Selector {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let Self { expr, runtime } = self;
+        let Self { expr } = self;
 
         expr.hash(state);
-        Arc::as_ptr(runtime).hash(state);
     }
 }
 
@@ -116,12 +111,9 @@ impl std::fmt::Display for Selector {
 }
 
 impl Selector {
-    /// Create a new selector using the default runtime.
+    /// Create a new selector.
     pub fn new(expr: Expr) -> Self {
-        Self {
-            expr,
-            runtime: runtime::default_runtime(),
-        }
+        Self { expr }
     }
 
     /// Parse a selector from a query string.
@@ -148,58 +140,40 @@ impl<
 
 impl IntoDynExpr for Selector {
     fn into_dyn_expr(self) -> DynExpr {
-        let Self {
-            expr,
-            runtime: _runtime,
-        } = self;
+        let Self { expr } = self;
         DynExpr::Expr(expr)
     }
 }
 
 impl IntoDynExpr for Selector<DynExpr> {
     fn into_dyn_expr(self) -> DynExpr {
-        let Self {
-            expr,
-            runtime: _runtime,
-        } = self;
+        let Self { expr } = self;
         expr
     }
 }
 
 impl<E: eval::Eval + Into<DynExpr>> Selector<E> {
-    /// Execute this selector against a raw array.
+    /// Execute this selector against a raw array using the default runtime.
     ///
     /// This is the `ArrayRef`-based entry point. For per-row execution
     /// on a [`ListArray`], use [`execute_per_row`](Self::execute_per_row).
+    ///
+    /// To execute with a custom runtime, use [`Runtime::execute`] directly.
     pub fn execute(&self, source: ArrayRef) -> Result<Option<ArrayRef>, Error> {
-        eval::execute(&self.expr, source, &self.runtime).map_err(Into::into)
+        runtime::default_runtime().execute(self, source)
     }
 
-    /// Execute this selector against each row of a [`ListArray`].
+    /// Execute this selector against each row of a [`ListArray`] using the default runtime.
     ///
     /// Performs implicit iteration over the inner list array, and reconstructs the array at the end.
     ///
     /// `map(.poses[].x)` is the actual query, we only require writing the `.poses[].x` portion.
     ///
     /// Returns `None` if the expression's error was suppressed (e.g. `.field?`).
+    ///
+    /// To execute with a custom runtime, use [`Runtime::execute_per_row`] directly.
     pub fn execute_per_row(&self, source: &ListArray) -> Result<Option<ListArray>, Error> {
-        let res = eval::eval_map(source, &self.expr, &self.runtime).map_err(Into::into);
-
-        if let Ok(Some(ref output)) = res {
-            re_log::debug_assert_eq!(
-                output.len(),
-                source.len(),
-                "selectors should never change row count"
-            );
-        }
-
-        res
-    }
-
-    /// Set which runtime this selector should run with.
-    pub fn with_runtime(mut self, runtime: impl Into<Arc<Runtime>>) -> Self {
-        self.runtime = runtime.into();
-        self
+        runtime::default_runtime().execute_per_row(self, source)
     }
 
     /// Pipe this selector into another expression, producing a [`Selector<DynExpr>`].
@@ -212,7 +186,6 @@ impl<E: eval::Eval + Into<DynExpr>> Selector<E> {
                 left: Box::new(self.expr.into()),
                 right: Box::new(rhs.into_dyn_expr()),
             },
-            runtime: self.runtime,
         }
     }
 }

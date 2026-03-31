@@ -45,7 +45,7 @@ impl std::fmt::Debug for DynExpr {
 
 impl std::fmt::Debug for Selector<DynExpr> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { expr, runtime: _ } = self;
+        let Self { expr } = self;
 
         f.debug_struct("Selector").field("expr", expr).finish()
     }
