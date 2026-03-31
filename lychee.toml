@@ -67,6 +67,9 @@ exclude_path = [
   "target",
   "venv",
 
+  # Generated ghat action definitions (contain upstream URLs we don't control)
+  ".github/ghat/actions",
+
   # Actually ignored files beyond .gitignore
   "crates/store/re_uri/src/lib.rs", # Contains some malformed URLs, but they are not actual links.
   "crates/store/re_uri/src/redap_uri.rs", # Same as above.
