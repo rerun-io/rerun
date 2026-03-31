@@ -28,10 +28,6 @@ pub struct Repl {
     /// release version to use in URLs
     #[argh(option, long = "release-version")]
     release_version: Option<Version>,
-
-    /// exclude one or more crates
-    #[argh(option, long = "exclude-crate")]
-    exclude_crates: Vec<String>,
 }
 
 impl Repl {
@@ -39,11 +35,7 @@ impl Repl {
         let client = meili::connect(&self.meilisearch_url, &self.meilisearch_master_key)?;
 
         if self.ingest {
-            let documents = ingest::run(
-                self.release_version.clone(),
-                &self.exclude_crates,
-                "nightly",
-            )?;
+            let documents = ingest::run(self.release_version.clone())?;
             client.index(&self.index_name, &documents)?;
         }
 
@@ -68,11 +60,7 @@ impl Repl {
         match line {
             "quit" | "q" | "" => return Ok(ControlFlow::Break(())),
             "reindex" => {
-                let documents = ingest::run(
-                    self.release_version.clone(),
-                    &self.exclude_crates,
-                    "nightly",
-                )?;
+                let documents = ingest::run(self.release_version.clone())?;
                 search.index(&self.index_name, &documents)?;
             }
             _ => {

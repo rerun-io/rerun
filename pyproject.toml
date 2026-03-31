@@ -366,6 +366,9 @@ ignore = [
 ######################
 
 [tool.mypy]
+# Force mypy to check against 3.10 stdlib, even though pixi runs 3.11.
+# This catches imports like `from typing import Self` that don't exist in 3.10.
+python_version = "3.10"
 # Examples and docs are managed independently of the SDK.
 # in ini file adjacent to this.
 files = [

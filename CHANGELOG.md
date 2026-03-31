@@ -1,7 +1,14 @@
 # Rerun changelog
 
+## [0.31.1](https://github.com/rerun-io/rerun/compare/0.31.0...0.31.1) - 2026-03-31
 
-## 0.31.0
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Fix our python 3.10 support [2ee1f4f](https://github.com/rerun-io/rerun/commit/2ee1f4f8f8d3651e6eefcbb632e14ed4662531f8)
+
+
+## [0.31.0](https://github.com/rerun-io/rerun/compare/0.30.2...0.31.0) - 2026-03-30 - component mappings & prettier primitives
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-31
 

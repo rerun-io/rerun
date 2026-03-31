@@ -6,7 +6,9 @@ import os
 import threading
 import warnings
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
+
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     from types import TracebackType
