@@ -16,3 +16,4 @@ landing/**/*.png filter=lfs diff=lfs merge=lfs -text
 landing/**/*.gif filter=lfs diff=lfs merge=lfs -text
 landing/**/*.webp filter=lfs diff=lfs merge=lfs -text
 examples/assets/example.rrd filter=lfs diff=lfs merge=lfs -text
+tests/assets/image/*.bin filter=lfs diff=lfs merge=lfs -text
