@@ -4,7 +4,7 @@ use arrow::array::{
     Array, FixedSizeListArray, Float32Array, Float64Array, ListArray, StructArray, UInt32Array,
 };
 use re_lenses_core::combinators::{
-    GetField, ListToFixedSizeList, MapFixedSizeList, PrimitiveCast, RowMajorToColumnMajor,
+    GetField, ListToFixedSizeList, MapFixedSizeList, MapList, PrimitiveCast, RowMajorToColumnMajor,
     StructToFixedList, Transform,
 };
 
@@ -64,4 +64,11 @@ pub fn get_field_as<T: Array + Clone + 'static>(
             actual: array_ref.data_type().clone(),
             context: name.to_owned(),
         })
+}
+
+/// Converts a list of structs with `latitude`, `longitude` fields to a list of fixed-size lists with two f64 values.
+pub fn list_lat_lon_struct_to_list_fixed() -> impl Transform<Source = ListArray, Target = ListArray>
+{
+    // [`re_sdk_types::components::LatLon`] (`DVec2D`) requires non-null f64 fields.
+    MapList::new(StructToFixedList::new(["latitude", "longitude"]).with_nullable(false))
 }

@@ -256,6 +256,7 @@ impl Transform for Flatten {
 #[derive(Clone)]
 pub struct StructToFixedList {
     field_names: Vec<String>,
+    nullable: bool,
 }
 
 impl StructToFixedList {
@@ -266,7 +267,16 @@ impl StructToFixedList {
     pub fn new(field_names: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
             field_names: field_names.into_iter().map(|s| s.into()).collect(),
+            nullable: true,
         }
+    }
+
+    /// Sets the nullability of the resulting fixed-size list item field.
+    ///
+    /// The default is `true`.
+    pub fn with_nullable(mut self, nullable: bool) -> Self {
+        self.nullable = nullable;
+        self
     }
 }
 
@@ -326,7 +336,7 @@ impl Transform for StructToFixedList {
         let refs: Vec<&dyn Array> = concatenated_arrays.iter().map(|a| a.as_ref()).collect();
         let values = re_arrow_util::concat_arrays(&refs)?;
 
-        let field = Arc::new(Field::new_list_field(element_type, true));
+        let field = Arc::new(Field::new_list_field(element_type, self.nullable));
 
         let list_size = self.field_names.len();
         let list_size = i32::try_from(list_size).map_err(|err| Error::InvalidNumberOfFields {
