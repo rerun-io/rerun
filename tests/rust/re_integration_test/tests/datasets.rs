@@ -15,6 +15,13 @@ use re_viewer::{
 #[tokio::test(flavor = "multi_thread")]
 pub async fn dataset_ui_test() {
     let (server, _) = TestServer::spawn().await.with_test_data().await;
+    let (server, _) = server
+        .with_named_test_data(
+            "my.dotted.dataset",
+            "287b552b95a5c2f73f37894708825ba6",
+            "recording_in_dotted",
+        )
+        .await;
 
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     let mut snapshot_results = SnapshotResults::new();
@@ -45,22 +52,27 @@ pub async fn dataset_ui_test() {
     harness.get_by_label("Add").click();
     harness.run_ok();
 
+    // Wait for both datasets to appear. Each label appears twice: once in the left panel and
+    // once in the entries table.
     viewer_test_utils::step_until(
-        "Redap server dataset appears",
+        "Redap server datasets appear",
         &mut harness,
-        // The label eventually appears twice: first in the left panel, and in the entries table
-        // when it refreshes. Here we wait for both to appear. Later we pick the first one (in the
-        // left panel).
-        |harness| harness.query_all_by_label_contains("my_dataset").count() == 2,
+        |harness| {
+            harness.query_all_by_label_contains("my_dataset").count() == 2
+                && harness
+                    .query_all_by_label_contains("my.dotted.dataset")
+                    .count()
+                    == 2
+        },
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
 
-    // We pick the first one.
+    // Click the non-dotted dataset (pick the first match, which is in the left panel).
     harness
         .get_all_by_label("my_dataset")
         .next()
-        .unwrap()
+        .expect("my_dataset label should be present")
         .click();
 
     viewer_test_utils::step_until(
@@ -75,6 +87,26 @@ pub async fn dataset_ui_test() {
         Duration::from_secs(5),
     );
     snapshot_results.add(harness.try_snapshot("dataset_ui_table"));
+
+    // Click the dotted dataset.
+    harness
+        .get_all_by_label("my.dotted.dataset")
+        .next()
+        .expect("my.dotted.dataset label should be present")
+        .click();
+
+    viewer_test_utils::step_until(
+        "Redap recording id appears for dotted dataset",
+        &mut harness,
+        |harness| {
+            harness
+                .query_by_label_contains("recording_in_dotted")
+                .is_some()
+        },
+        Duration::from_millis(100),
+        Duration::from_secs(5),
+    );
+    snapshot_results.add(harness.try_snapshot("dataset_ui_table_dotted_name"));
 }
 
 #[tokio::test(flavor = "multi_thread")]

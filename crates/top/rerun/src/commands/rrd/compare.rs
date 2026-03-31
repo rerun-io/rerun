@@ -71,13 +71,6 @@ impl CompareCommand {
             "Application IDs do not match: '{app_id1}' vs. '{app_id2}'"
         );
 
-        anyhow::ensure!(
-            chunks1.len() == chunks2.len(),
-            "Number of Chunks does not match: '{}' vs. '{}'",
-            re_format::format_uint(chunks1.len()),
-            re_format::format_uint(chunks2.len()),
-        );
-
         fn format_chunk(chunk: &Chunk) -> String {
             re_arrow_util::format_record_batch_opts(
                 &chunk.to_record_batch().expect("Cannot fail in practice"),
@@ -134,6 +127,13 @@ impl CompareCommand {
                 anyhow::bail!(error_msg);
             }
         } else {
+            anyhow::ensure!(
+                chunks1.len() == chunks2.len(),
+                "Number of Chunks does not match: '{}' vs. '{}'",
+                re_format::format_uint(chunks1.len()),
+                re_format::format_uint(chunks2.len()),
+            );
+
             for (chunk1, chunk2) in izip!(chunks1, chunks2) {
                 re_chunk::Chunk::ensure_similar(&chunk1, &chunk2).with_context(|| {
                     format!(

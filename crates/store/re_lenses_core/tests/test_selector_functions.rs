@@ -211,12 +211,19 @@ fn selector_calls_no_arg_function() -> Result<(), SelectorError> {
 
     let array = make_float_list(&[Some(&[1.0, 2.0]), Some(&[3.0]), None]);
 
-    let result = Selector::parse("double()")?
+    let via_registry = Selector::parse("double()")?
         .with_runtime(runtime)
         .execute_per_row(&array)?
         .unwrap();
 
-    insta::assert_snapshot!(DisplayRB(result), @r"
+    let via_pipe = Selector::parse(".")?
+        .pipe(double_values)
+        .execute_per_row(&array)?
+        .unwrap();
+
+    assert_eq!(via_registry, via_pipe);
+
+    insta::assert_snapshot!(DisplayRB(via_registry), @r"
     ┌─────────────────────┐
     │ col                 │
     │ ---                 │
@@ -269,13 +276,20 @@ fn selector_pipes_path_into_function() -> Result<(), SelectorError> {
 
     let array = util::fixtures::nested_struct_column();
 
-    let result = ".location.x | double()"
+    let via_registry = ".location.x | double()"
         .parse::<Selector>()?
         .with_runtime(runtime.clone())
         .execute_per_row(&array)?
         .unwrap();
 
-    insta::assert_snapshot!(DisplayRB(result), @r"
+    let via_pipe = Selector::parse(".location.x")?
+        .pipe(double_values)
+        .execute_per_row(&array)?
+        .unwrap();
+
+    assert_eq!(via_registry, via_pipe);
+
+    insta::assert_snapshot!(DisplayRB(via_registry), @r"
     ┌─────────────────────┐
     │ col                 │
     │ ---                 │
@@ -298,13 +312,21 @@ fn selector_pipes_path_into_function() -> Result<(), SelectorError> {
     ");
 
     // NOTE: We also test functions that insert null values.
-    let result = ".location.x | nullify_gt4() | double()"
+    let via_registry = ".location.x | nullify_gt4() | double()"
         .parse::<Selector>()?
         .with_runtime(runtime)
         .execute_per_row(&array)?
         .unwrap();
 
-    insta::assert_snapshot!(DisplayRB(result), @r"
+    let via_pipe = Selector::parse(".location.x")?
+        .pipe(nullify_gt4)
+        .pipe(double_values)
+        .execute_per_row(&array)?
+        .unwrap();
+
+    assert_eq!(via_registry, via_pipe);
+
+    insta::assert_snapshot!(DisplayRB(via_registry), @r"
     ┌─────────────────────┐
     │ col                 │
     │ ---                 │
@@ -335,13 +357,20 @@ fn selector_pipes_nested_list_path_into_function() -> Result<(), SelectorError> 
 
     let array = util::fixtures::nested_list_struct_column();
 
-    let result = ".poses[].y | double()"
+    let via_registry = ".poses[].y | double()"
         .parse::<Selector>()?
         .with_runtime(runtime.clone())
         .execute_per_row(&array)?
         .unwrap();
 
-    insta::assert_snapshot!(DisplayRB(result), @"
+    let via_pipe = Selector::parse(".poses[].y")?
+        .pipe(double_values)
+        .execute_per_row(&array)?
+        .unwrap();
+
+    assert_eq!(via_registry, via_pipe);
+
+    insta::assert_snapshot!(DisplayRB(via_registry), @"
     ┌─────────────────────┐
     │ col                 │
     │ ---                 │
@@ -478,13 +507,21 @@ fn selector_chains_two_functions() -> Result<(), SelectorError> {
 
     let array = make_string_list(&[Some(&[Some("world"), Some("there")]), Some(&[Some("x")])]);
 
-    let result = r#"prepend("hello_") | prepend("say_")"#
+    let via_registry = r#"prepend("hello_") | prepend("say_")"#
         .parse::<Selector>()?
         .with_runtime(runtime)
         .execute_per_row(&array)?
         .unwrap();
 
-    insta::assert_snapshot!(DisplayRB(result), @r"
+    let via_pipe = Selector::parse(".")?
+        .pipe(prepend("hello_".into()))
+        .pipe(prepend("say_".into()))
+        .execute_per_row(&array)?
+        .unwrap();
+
+    assert_eq!(via_registry, via_pipe);
+
+    insta::assert_snapshot!(DisplayRB(via_registry), @r"
     ┌────────────────────────────────────┐
     │ col                                │
     │ ---                                │
@@ -516,13 +553,20 @@ fn selector_pipes_struct_field_into_function() -> Result<(), SelectorError> {
 
     let array = util::fixtures::struct_column();
 
-    let result = ".location.y | double()"
+    let via_registry = ".location.y | double()"
         .parse::<Selector>()?
         .with_runtime(runtime)
+        .execute(Arc::new(array.clone()))?
+        .unwrap();
+
+    let via_pipe = Selector::parse(".location.y")?
+        .pipe(double_values)
         .execute(Arc::new(array))?
         .unwrap();
 
-    insta::assert_snapshot!(util::DisplayRB(result), @"
+    assert_eq!(via_registry.as_ref(), via_pipe.as_ref());
+
+    insta::assert_snapshot!(util::DisplayRB(via_registry), @"
     ┌───────────────┐
     │ col           │
     │ ---           │
@@ -594,13 +638,13 @@ fn selector_deep_nested_list_double() -> Result<(), SelectorError> {
     └────────────────────────┘
     ");
 
-    let result = "map(.[] | .[] | double())"
+    let via_registry = "map(.[] | .[] | double())"
         .parse::<Selector>()?
         .with_runtime(runtime)
         .execute(Arc::new(array))?
         .unwrap();
 
-    insta::assert_snapshot!(DisplayRB(result), @r"
+    insta::assert_snapshot!(DisplayRB(via_registry), @r"
     ┌────────────────────────┐
     │ col                    │
     │ ---                    │

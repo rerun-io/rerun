@@ -1,8 +1,13 @@
 mod util;
 
 use std::str::FromStr as _;
+use std::sync::Arc;
 
-use arrow::array::{Float32Array, Float64Array, Int32Builder, ListArray, ListBuilder, UInt8Array};
+use arrow::array::{
+    Float32Array, Float64Array, Int32Builder, ListArray, ListBuilder, StructArray, UInt8Array,
+};
+use arrow::buffer::OffsetBuffer;
+use arrow::datatypes::{DataType, Field, Fields};
 use re_lenses_core::Selector;
 use re_lenses_core::combinators::{
     Flatten, ListToFixedSizeList, MapFixedSizeList, MapList, MapPrimitive, PrimitiveCast,
@@ -390,6 +395,50 @@ fn test_map_list_nullability() -> Result<(), Box<dyn std::error::Error>> {
     ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
     │ [[7.0, null], [9.0, 10.0]]             │
     └────────────────────────────────────────┘
+    ");
+
+    Ok(())
+}
+
+/// Tests that `StructToFixedList` can override the nullability of the output list.
+#[test]
+fn test_struct_to_fixed_list_nullability_override() -> Result<(), Box<dyn std::error::Error>> {
+    let fields = Fields::from(vec![
+        Field::new("x", DataType::Float64, false),
+        Field::new("y", DataType::Float64, false),
+    ]);
+    let values = StructArray::new(
+        fields.clone(),
+        vec![
+            Arc::new(Float64Array::from(vec![1.0, 3.0, 5.0])),
+            Arc::new(Float64Array::from(vec![2.0, 4.0, 6.0])),
+        ],
+        None,
+    );
+    let array = ListArray::new(
+        Arc::new(Field::new_list_field(DataType::Struct(fields), false)),
+        OffsetBuffer::from_lengths([2, 1, 0]),
+        Arc::new(values),
+        None,
+    );
+    println!("{}", DisplayRB(array.clone()));
+
+    let pipeline = MapList::new(StructToFixedList::new(["x", "y"]).with_nullable(false));
+
+    let result: ListArray = pipeline.transform(&array)?.unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
+    ┌──────────────────────────────────────────────────────────┐
+    │ col                                                      │
+    │ ---                                                      │
+    │ type: List(non-null FixedSizeList(2 x non-null Float64)) │
+    ╞══════════════════════════════════════════════════════════╡
+    │ [[1.0, 2.0], [3.0, 4.0]]                                 │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[5.0, 6.0]]                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                                       │
+    └──────────────────────────────────────────────────────────┘
     ");
 
     Ok(())

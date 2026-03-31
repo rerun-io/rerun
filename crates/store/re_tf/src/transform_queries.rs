@@ -364,9 +364,8 @@ pub fn query_and_resolve_tree_transform_at_entity(
 
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
 ///
-/// If any of the components yields an invalid transform, returns a `glam::DAffine3::ZERO` for that instance.
-/// (this effectively ignores the instance for most visualizations!)
-// TODO(#3849): There's no way to discover invalid transforms right now (they can be intentional but often aren't).
+// TODO(#3849): There's no uniform way to discover invalid transforms right now (they can be intentional but often aren't).
+// Here, we only detect and ignore invalid rotations and log an error.
 pub fn query_and_resolve_instance_poses_at_entity(
     entity_db: &EntityDb,
     missing_chunk_reporter: &MissingChunkReporter,
@@ -477,7 +476,11 @@ pub fn query_and_resolve_instance_poses_at_entity(
     let mut iter_scale = clamped_or_nothing(batch_scale, max_num_instances);
     let mut iter_mat3x3 = clamped_or_nothing(batch_mat3x3, max_num_instances);
 
-    (0..max_num_instances)
+    // Gracefully ignore invalid rotations (e.g. an accidentally unnormalized quaternion like [0, 0, 0, 0]),
+    // but log an error about it to inform the user.
+    let mut has_invalid_rotation = false;
+
+    let transforms = (0..max_num_instances)
         .map(|_| {
             // We apply these in a specific order.
             #[expect(clippy::useless_let_if_seq)]
@@ -492,14 +495,14 @@ pub fn query_and_resolve_instance_poses_at_entity(
                 {
                     transform *= axis_angle;
                 } else {
-                    transform = DAffine3::ZERO;
+                    has_invalid_rotation = true;
                 }
             }
             if let Some(rotation_quat) = iter_rotation_quat.next() {
                 if let Ok(rotation_quat) = convert::rotation_quat_to_daffine3(rotation_quat) {
                     transform *= rotation_quat;
                 } else {
-                    transform = DAffine3::ZERO;
+                    has_invalid_rotation = true;
                 }
             }
             if let Some(scale) = iter_scale.next() {
@@ -510,7 +513,16 @@ pub fn query_and_resolve_instance_poses_at_entity(
             }
             transform
         })
-        .collect()
+        .collect();
+
+    if has_invalid_rotation {
+        re_log::warn_once!(
+            "Detected an invalid rotation in the instance poses at {}. Ignoring it and treating it as an identity rotation.",
+            entity_path
+        );
+    }
+
+    transforms
 }
 
 pub fn query_and_resolve_pinhole_projection_at_entity(
@@ -661,7 +673,7 @@ mod tests {
     use re_entity_db::{EntityDb, EntityPath};
     use re_log_types::example_components::{MyColor, MyIndex, MyLabel, MyPoint, MyPoints};
     use re_log_types::{TimePoint, Timeline};
-    use re_sdk_types::RowId;
+    use re_sdk_types::{RowId, archetypes::InstancePoses3D, components::RotationQuat};
 
     use super::*;
 
@@ -1151,6 +1163,39 @@ mod tests {
         assert_eq!(query_row(20, "tf#/my_entity"), None);
         assert_eq!(query_row(30, "myframe"), Some(row_id_temp0));
         assert_eq!(query_row(30, "tf#/my_entity"), Some(row_id_temp1));
+
+        Ok(())
+    }
+
+    /// Test that an invalid instance pose quaternion is ignored while still keeping the translation.
+    #[test]
+    fn invalid_instance_pose_quaternion_preserves_translation()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
+
+        let timeline = Timeline::new_sequence("t");
+        let entity_path = EntityPath::from("my_entity");
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &InstancePoses3D::new()
+                    .with_translations([[1.0, 2.0, 3.0]])
+                    .with_quaternions([RotationQuat::INVALID]),
+            )
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
+
+        let poses = query_and_resolve_instance_poses_at_entity(
+            &entity_db,
+            &MissingChunkReporter::default(),
+            &entity_path,
+            &LatestAtQuery::new(*timeline.name(), 1),
+        );
+
+        assert_eq!(
+            poses,
+            vec![DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0))]
+        );
 
         Ok(())
     }
