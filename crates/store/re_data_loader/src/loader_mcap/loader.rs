@@ -12,7 +12,10 @@ use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 use re_mcap::{DecoderIdentifier, DecoderRegistry, SelectedDecoders};
 use re_quota_channel::send_crossbeam;
 
-use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
+use crate::{
+    DataLoader, DataLoaderError, DataLoaderSettings, FOXGLOVE_LENSES_IDENTIFIER, LoadedData,
+    URDF_DECODER_IDENTIFIER,
+};
 
 const MCAP_LOADER_NAME: &str = "McapLoader";
 
@@ -80,9 +83,7 @@ impl McapLoader {
         selected_decoders: &SelectedDecoders,
         time_type: re_log_types::TimeType,
     ) -> Option<Arc<Lenses>> {
-        if !selected_decoders.contains(&DecoderIdentifier::from(
-            super::lenses::FOXGLOVE_LENSES_IDENTIFIER,
-        )) {
+        if !selected_decoders.contains(&DecoderIdentifier::from(FOXGLOVE_LENSES_IDENTIFIER)) {
             return None;
         }
 
@@ -301,8 +302,8 @@ pub fn load_mcap(
 
     // Extract URDF from robot_description topics and convert to 3D visualization chunks.
     // Non-fatal: errors here should never prevent the rest of the MCAP from loading.
-    // TODO(michael): make the URDF extraction a proper decoder.
-    if selected_decoders.contains(&DecoderIdentifier::from("urdf"))
+    // TODO(RR-4115): make the URDF extraction a proper decoder / lens.
+    if selected_decoders.contains(&DecoderIdentifier::from(URDF_DECODER_IDENTIFIER))
         && let Err(err) = super::robot_description::extract_urdf_from_robot_descriptions(
             mcap,
             &summary,

@@ -1,5 +1,6 @@
 //! Handles loading of Rerun data from file using data loader plugins.
 
+use std::collections::BTreeSet;
 use std::sync::{Arc, LazyLock};
 
 use re_chunk::{Chunk, ChunkResult};
@@ -44,6 +45,34 @@ pub use self::{
 
 pub mod external {
     pub use urdf_rs;
+}
+
+// ----------------------------------------------------------------------------
+
+/// The identifier used to enable or disable Foxglove lenses when loading MCAP files.
+pub const FOXGLOVE_LENSES_IDENTIFIER: &str = "foxglove";
+
+/// The identifier used to enable or disable URDF extraction from MCAP `robot_description` topics.
+pub const URDF_DECODER_IDENTIFIER: &str = "urdf";
+
+/// All decoder-like identifiers supported by [`McapLoader`].
+///
+/// This merges the built-in MCAP decoders from [`re_mcap`] and the semantic interpretation (e.g. lenses) that are in this crate.
+pub fn supported_mcap_decoder_identifiers(
+    raw_fallback_enabled: bool,
+) -> Vec<re_mcap::DecoderIdentifier> {
+    let mut identifiers = re_mcap::DecoderRegistry::all_builtin(raw_fallback_enabled)
+        .all_identifiers()
+        .into_iter()
+        .map(re_mcap::DecoderIdentifier::from)
+        .collect::<BTreeSet<_>>();
+
+    identifiers.extend([
+        re_mcap::DecoderIdentifier::from(FOXGLOVE_LENSES_IDENTIFIER),
+        re_mcap::DecoderIdentifier::from(URDF_DECODER_IDENTIFIER),
+    ]);
+
+    identifiers.into_iter().collect()
 }
 
 // ----------------------------------------------------------------------------
@@ -582,6 +611,26 @@ fn test_supported_extensions() {
     assert!(is_supported_file_extension("mcap"));
     assert!(is_supported_file_extension("png"));
     assert!(is_supported_file_extension("urdf"));
+}
+
+#[test]
+fn test_supported_mcap_decoder_identifiers() {
+    let identifiers = supported_mcap_decoder_identifiers(true);
+    let as_strings = identifiers
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>();
+
+    // Check that expected identifiers are present.
+    assert!(as_strings.contains(&FOXGLOVE_LENSES_IDENTIFIER.to_owned()));
+    assert!(as_strings.contains(&URDF_DECODER_IDENTIFIER.to_owned()));
+    assert!(as_strings.contains(&"raw".to_owned()));
+    assert!(as_strings.contains(&"protobuf".to_owned()));
+    assert!(as_strings.contains(&"ros2msg".to_owned()));
+
+    // Check that all identifiers are unique.
+    let unique = as_strings.iter().collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(as_strings.len(), unique.len());
 }
 
 #[test]
