@@ -6,8 +6,8 @@ use clap::Subcommand;
 use clap::builder::TypedValueParser as _;
 use re_log_encoding::Encoder;
 use re_log_types::{LogMsg, RecordingId, TimeType};
-use re_mcap::{DecoderIdentifier, DecoderRegistry, SelectedDecoders};
-use re_sdk::external::re_data_loader::McapLoader;
+use re_mcap::{DecoderIdentifier, SelectedDecoders};
+use re_sdk::external::re_data_loader::{McapLoader, supported_mcap_decoder_identifiers};
 use re_sdk::{ApplicationId, DataLoader, DataLoaderSettings, LoadedData};
 
 fn possible_timeline_types() -> impl clap::builder::TypedValueParser {
@@ -22,11 +22,10 @@ fn possible_timeline_types() -> impl clap::builder::TypedValueParser {
 
 fn possible_decoders() -> clap::builder::PossibleValuesParser {
     static DECODER_IDS: std::sync::LazyLock<Vec<String>> = std::sync::LazyLock::new(|| {
-        let mut ids = DecoderRegistry::all_builtin(true).all_identifiers();
-        ids.push("urdf".to_owned());
-        ids.sort();
-        ids.dedup();
-        ids
+        supported_mcap_decoder_identifiers(true)
+            .into_iter()
+            .map(|identifier| identifier.to_string())
+            .collect()
     });
     clap::builder::PossibleValuesParser::new(
         DECODER_IDS.iter().map(String::as_str).collect::<Vec<_>>(),
