@@ -281,6 +281,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // urdf
     crate::urdf::register(py, m)?;
 
+    // chunk stream
+    crate::chunk_stream::register(m)?;
+
     Ok(())
 }
 

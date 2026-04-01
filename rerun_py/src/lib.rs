@@ -25,6 +25,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 mod arrow;
 mod catalog;
 mod chunk;
+mod chunk_stream;
 mod python_bridge;
 mod recording;
 mod server;
