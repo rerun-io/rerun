@@ -81,6 +81,8 @@ jobs:
               - pixi.lock # maybe our build commands have changed
               - pixi.toml # maybe our build commands have changed
               - "**/*.rs"
+              # wgsl is embedded into Rust binaries and should trigger tests.
+              - "rerun/**/*.wgsl"
               - "**/*.toml"
               - "crates/**/*.png"
               - "tests/rust/**/*.png"
