@@ -46,6 +46,9 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     projected_schema: Arc<Schema>,
     target_partitions: usize,
     client: T,
+
+    /// Pending query analytics — keeps alive until all streams complete.
+    pending_analytics: Option<crate::PendingQueryAnalytics>,
 }
 
 pub struct DataframeSegmentStream<T: DataframeClientAPI> {
@@ -55,6 +58,9 @@ pub struct DataframeSegmentStream<T: DataframeClientAPI> {
     current_query: Option<(String, QueryHandle<StorageEngine>)>,
     query_expression: QueryExpression,
     remaining_segment_ids: Vec<String>,
+
+    /// Pending query analytics — kept alive so the event fires on drop.
+    _pending_analytics: Option<crate::PendingQueryAnalytics>,
 }
 
 impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
@@ -182,6 +188,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         query_expression: QueryExpression,
         _index_values: IndexValuesMap,
         client: T,
+        pending_analytics: Option<crate::PendingQueryAnalytics>,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
             Some(p) => Arc::new(table_schema.project(p)?),
@@ -252,6 +259,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             projected_schema,
             target_partitions: num_partitions,
             client,
+            pending_analytics,
         })
     }
 }
@@ -345,6 +353,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             projected_schema: self.projected_schema.clone(),
             target_partitions,
             client: self.client.clone(),
+            pending_analytics: self.pending_analytics.clone(),
         };
 
         plan.props.partitioning = match plan.props.partitioning {
@@ -395,6 +404,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             remaining_segment_ids,
             current_query: None,
             query_expression,
+            _pending_analytics: self.pending_analytics.clone(),
         };
 
         Ok(Box::pin(stream))

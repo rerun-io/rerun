@@ -112,6 +112,10 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// passing trace headers between phases of execution pipeline helps keep
     /// the entire operation under a single trace.
     trace_headers: Option<crate::TraceHeaders>,
+
+    /// Pending query analytics — fetch stats are accumulated here.
+    /// The event is sent when the last clone is dropped.
+    pending_analytics: Option<crate::PendingQueryAnalytics>,
 }
 
 use crate::chunk_fetcher::ChunksWithSegment;
@@ -135,6 +139,9 @@ pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
     /// passing trace headers between phases of execution pipeline helps keep
     /// the entire operation under a single trace.
     trace_headers: Option<crate::TraceHeaders>,
+
+    /// Pending query analytics — keeps alive until stream completes.
+    pending_analytics: Option<crate::PendingQueryAnalytics>,
 }
 
 /// This is a temporary fix to minimize the impact of leaking memory
@@ -195,12 +202,15 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
 
             let client = this.client.clone();
             let chunk_infos = this.chunk_infos.clone();
+            let pending_analytics = this.pending_analytics.clone();
             let current_span = tracing::Span::current();
 
             this.io_join_handle = Some(
                 io_handle.spawn(
-                    async move { chunk_stream_io_loop(client, chunk_infos, chunk_tx).await }
-                        .instrument(current_span.clone()),
+                    async move {
+                        chunk_stream_io_loop(client, chunk_infos, chunk_tx, pending_analytics).await
+                    }
+                    .instrument(current_span.clone()),
                 ),
             );
         }
@@ -209,6 +219,15 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
             .store_output_channel
             .poll_recv(cx)
             .map(|result| Ok(result).transpose());
+
+        if matches!(&result, Poll::Ready(Some(Ok(_))))
+            && let Some(analytics) = &this.pending_analytics
+        {
+            // This could be the first time we return data that will
+            // actually be shown to the user.
+            // This is as close to the perceived latency as we're gonna come right now.
+            analytics.record_first_chunk();
+        }
 
         if matches!(&result, Poll::Ready(None)) {
             this_outer.inner = None;
@@ -240,6 +259,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         index_values: IndexValuesMap,
         client: T,
         trace_headers: Option<crate::TraceHeaders>,
+        pending_analytics: Option<crate::PendingQueryAnalytics>,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
             Some(p) => Arc::new(table_schema.project(p)?),
@@ -341,6 +361,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             worker_runtime,
             client,
             trace_headers,
+            pending_analytics,
         })
     }
 }
@@ -751,6 +772,7 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     client: T,
     chunk_infos: Vec<RecordBatch>,
     output_channel: Sender<ApiResult<SortedChunksWithSegment>>,
+    pending_analytics: Option<crate::PendingQueryAnalytics>,
 ) -> Result<(), DataFusionError> {
     let target_size_bytes = TARGET_BATCH_SIZE_BYTES as u64;
 
@@ -778,13 +800,21 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
             },
             request_batches.len()
         );
-        return fetch_remaining_via_grpc(
+        let result = fetch_remaining_via_grpc(
             &request_batches,
             &client,
             &global_segment_order,
             &output_channel,
         )
         .await;
+
+        // All fetches were gRPC — record total bytes
+        if let Some(analytics) = &pending_analytics {
+            let total_bytes: u64 = request_batches.iter().map(batch_byte_size).sum();
+            analytics.record_grpc_fetch(total_bytes);
+        }
+
+        return result;
     }
 
     // Split each batch into direct-URL rows and non-URL rows, producing independent work items.
@@ -811,18 +841,31 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
         .map(|(task_idx, task)| {
             let http_client = http_client.clone();
             let client = client.clone();
+            let pending_analytics = pending_analytics.clone();
             async move {
                 let chunks = match task {
-                    FetchTask::Direct(batch) => fetch_batch_direct(&batch, &http_client).await?,
-                    FetchTask::Grpc(batch) => {
-                        #[cfg(not(target_arch = "wasm32"))]
-                        {
-                            let bytes = batch_byte_size(&batch);
-                            crate::chunk_fetcher::metrics::record_grpc_no_direct_urls(bytes);
+                    FetchTask::Direct(batch) => {
+                        let bytes = batch_byte_size(&batch);
+                        let chunks = fetch_batch_direct(&batch, &http_client).await?;
+                        if let Some(analytics) = &pending_analytics {
+                            analytics.record_direct_fetch(bytes);
                         }
-                        fetch_batch_group_via_grpc(std::slice::from_ref(&batch), &client)
-                            .await
-                            .map_err(|err| exec_datafusion_err!("Error fetching chunks: {err}"))?
+                        chunks
+                    }
+                    FetchTask::Grpc(batch) => {
+                        let bytes = batch_byte_size(&batch);
+                        #[cfg(not(target_arch = "wasm32"))]
+                        crate::chunk_fetcher::metrics::record_grpc_no_direct_urls(bytes);
+                        let chunks =
+                            fetch_batch_group_via_grpc(std::slice::from_ref(&batch), &client)
+                                .await
+                                .map_err(|err| {
+                                    exec_datafusion_err!("Error fetching chunks: {err}")
+                                })?;
+                        if let Some(analytics) = &pending_analytics {
+                            analytics.record_grpc_fetch(bytes);
+                        }
+                        chunks
                     }
                 };
                 Ok::<_, DataFusionError>((task_idx, chunks))
@@ -848,6 +891,9 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
             next_to_emit += 1;
         }
     }
+
+    // Fetch stats are already recorded per-task into pending_analytics.
+    // The combined event will be sent when the last PendingQueryAnalytics clone is dropped.
 
     Ok(())
 }
@@ -936,6 +982,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             cpu_join_handle,
             cpu_runtime: Arc::clone(&self.worker_runtime),
             trace_headers: self.trace_headers.clone(),
+            pending_analytics: self.pending_analytics.clone(),
         };
         let stream = DataframeSegmentStream {
             inner: Some(stream),
@@ -963,6 +1010,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             worker_runtime: Arc::new(CpuRuntime::try_new(target_partitions)?),
             client: self.client.clone(),
             trace_headers: self.trace_headers.clone(),
+            pending_analytics: self.pending_analytics.clone(),
         };
 
         plan.props.partitioning = match plan.props.partitioning {

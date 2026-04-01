@@ -8690,8 +8690,11 @@ dependencies = [
  "futures",
  "futures-util",
  "getrandom 0.3.4",
+ "http",
  "opentelemetry",
+ "opentelemetry-proto",
  "parking_lot",
+ "re_analytics",
  "re_arrow_util",
  "re_backoff",
  "re_dataframe",
@@ -8707,8 +8710,11 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tonic",
+ "tonic-prost",
+ "tonic-web-wasm-client",
  "tracing",
  "wasm-bindgen-futures",
+ "web-time",
 ]
 
 [[package]]

@@ -1,5 +1,6 @@
 //! The Rerun public data APIs. Access `DataFusion` `TableProviders`.
 
+mod analytics;
 mod batch_coalescer;
 mod catalog_provider;
 #[cfg(not(target_arch = "wasm32"))]
@@ -30,5 +31,6 @@ pub use search_provider::SearchResultsTableProvider;
 pub use segment_table::SegmentTableProvider;
 pub use table_entry_provider::TableEntryTableProvider;
 
+pub use analytics::{ConnectionAnalytics, PendingQueryAnalytics};
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) type TraceHeaders = re_perf_telemetry::TraceHeaders;
