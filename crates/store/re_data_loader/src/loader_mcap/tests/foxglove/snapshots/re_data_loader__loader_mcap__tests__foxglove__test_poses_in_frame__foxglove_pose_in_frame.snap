@@ -1,0 +1,25 @@
+---
+source: crates/store/re_data_loader/src/loader_mcap/tests/foxglove/test_poses_in_frame.rs
+expression: "format!(\"{:-240}\", chunk)"
+---
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                                                                                                                                                              │
+│ * entity_path: /pose_in_frame                                                                                                                                                                                                          │
+│ * id: [**REDACTED**]                                                                                                                                                                                                                   │
+│ * version: [**REDACTED**]                                                                                                                                                                                                              │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌────────────────────────────────┬───────────────────────────────┬────────────────────────────────┬───────────────────────────────┬────────────────────────────────┬────────────────────────────────┬────────────────────────────────┐ │
+│ │ RowId                          ┆ message_log_time              ┆ message_publish_time           ┆ timestamp                     ┆ CoordinateFrame:frame          ┆ InstancePoses3D:quaternions    ┆ InstancePoses3D:translations   │ │
+│ │ ---                            ┆ ---                           ┆ ---                            ┆ ---                           ┆ ---                            ┆ ---                            ┆ ---                            │ │
+│ │ type: non-null                 ┆ type: Timestamp(ns)           ┆ type: Timestamp(ns)            ┆ type: Timestamp(ns)           ┆ type: List(Utf8)               ┆ type: List(FixedSizeList(4 x   ┆ type: List(FixedSizeList(3 x   │ │
+│ │ FixedSizeBinary(16)            ┆ index_name: message_log_time  ┆ index_name:                    ┆ index_name: timestamp         ┆ archetype: CoordinateFrame     ┆ non-null Float32))             ┆ non-null Float32))             │ │
+│ │ ARROW:extension:metadata:      ┆ is_sorted: true               ┆ message_publish_time           ┆ is_sorted: true               ┆ component:                     ┆ archetype: InstancePoses3D     ┆ archetype: InstancePoses3D     │ │
+│ │ {"namespace":"row"}            ┆ kind: index                   ┆ is_sorted: true                ┆ kind: index                   ┆ CoordinateFrame:frame          ┆ component:                     ┆ component:                     │ │
+│ │ ARROW:extension:name: TUID     ┆                               ┆ kind: index                    ┆                               ┆ component_type:                ┆ InstancePoses3D:quaternions    ┆ InstancePoses3D:translations   │ │
+│ │ is_sorted: true                ┆                               ┆                                ┆                               ┆ TransformFrameId               ┆ component_type: RotationQuat   ┆ component_type: Translation3D  │ │
+│ │ kind: control                  ┆                               ┆                                ┆                               ┆ kind: data                     ┆ kind: data                     ┆ kind: data                     │ │
+│ ╞════════════════════════════════╪═══════════════════════════════╪════════════════════════════════╪═══════════════════════════════╪════════════════════════════════╪════════════════════════════════╪════════════════════════════════╡ │
+│ │ row_[**REDACTED**]             ┆ 2026-04-02T13:40:27.787987968 ┆ 2026-04-02T13:40:27.787987968  ┆ 2026-04-02T13:40:27.787987968 ┆ [map]                          ┆ [[0.0, 0.0, 0.25881904,        ┆ [[1.0, 2.0, 0.5]]              │ │
+│ │                                ┆                               ┆                                ┆                               ┆                                ┆ 0.9659258]]                    ┆                                │ │
+│ └────────────────────────────────┴───────────────────────────────┴────────────────────────────────┴───────────────────────────────┴────────────────────────────────┴────────────────────────────────┴────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
