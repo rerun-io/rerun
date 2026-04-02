@@ -62,6 +62,11 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+        with:
+          version: ">= 363.0.0"
+
       - name: Get sha
         id: get-sha
         run: |
@@ -148,7 +153,7 @@ jobs:
           for f in *.html; do
             name="${f%.html}"
             if [ "$name" != "index" ] && [ "$name" != "index_bundled" ]; then
-              gsutil -h "Content-Type:text/html" cp "$f" "gs://rerun-web-viewer/${name}"
+              gcloud storage cp --content-type="text/html" "$f" "gs://rerun-web-viewer/${name}"
             fi
           done
 
