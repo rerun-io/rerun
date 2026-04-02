@@ -318,7 +318,7 @@ impl RerunCloudHandler {
         entry_id: Option<EntryId>,
         name: Option<EntryName>,
         store_kind: Option<StoreKind>,
-    ) -> Result<Vec<EntryDetails>, Status> {
+    ) -> tonic::Result<Vec<EntryDetails>> {
         let store = self.store.read().await;
 
         let dataset = match (entry_id, name) {
@@ -358,7 +358,7 @@ impl RerunCloudHandler {
         &self,
         entry_id: Option<EntryId>,
         name: Option<EntryName>,
-    ) -> Result<Vec<EntryDetails>, Status> {
+    ) -> tonic::Result<Vec<EntryDetails>> {
         let store = self.store.read().await;
 
         let table = match (entry_id, name) {
@@ -947,7 +947,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn unregister_from_dataset(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::UnregisterFromDatasetRequest>,
-    ) -> tonic::Result<Response<Self::UnregisterFromDatasetStream>, Status> {
+    ) -> tonic::Result<Response<Self::UnregisterFromDatasetStream>> {
         let mut store = self.store.write().await;
 
         let entry_id = get_entry_id_from_headers(&store, &request)?;
@@ -1191,7 +1191,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn get_dataset_manifest_schema(
         &self,
         request: Request<GetDatasetManifestSchemaRequest>,
-    ) -> Result<Response<GetDatasetManifestSchemaResponse>, Status> {
+    ) -> tonic::Result<Response<GetDatasetManifestSchemaResponse>> {
         let store = self.store.read().await;
 
         let entry_id = get_entry_id_from_headers(&store, &request)?;
@@ -1218,7 +1218,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn scan_dataset_manifest(
         &self,
         request: Request<ScanDatasetManifestRequest>,
-    ) -> Result<Response<Self::ScanDatasetManifestStream>, Status> {
+    ) -> tonic::Result<Response<Self::ScanDatasetManifestStream>> {
         let store = self.store.read().await;
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
@@ -1699,7 +1699,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn get_table_schema(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::GetTableSchemaRequest>,
-    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::GetTableSchemaResponse>, Status> {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetTableSchemaResponse>> {
         let store = self.store.read().await;
         let Some(entry_id) = request.into_inner().table_id else {
             return Err(Status::not_found("Table ID not specified in request"));
@@ -1726,7 +1726,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn scan_table(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ScanTableRequest>,
-    ) -> Result<tonic::Response<Self::ScanTableStream>, Status> {
+    ) -> tonic::Result<tonic::Response<Self::ScanTableStream>> {
         let store = self.store.read().await;
         let Some(entry_id) = request.into_inner().table_id else {
             return Err(Status::not_found("Table ID not specified in request"));
@@ -1858,7 +1858,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn create_table_entry(
         &self,
         request: Request<re_protos::cloud::v1alpha1::CreateTableEntryRequest>,
-    ) -> Result<Response<re_protos::cloud::v1alpha1::CreateTableEntryResponse>, Status> {
+    ) -> tonic::Result<Response<re_protos::cloud::v1alpha1::CreateTableEntryResponse>> {
         let mut store = self.store.write().await;
 
         let request: CreateTableEntryRequest = request.into_inner().try_into()?;
