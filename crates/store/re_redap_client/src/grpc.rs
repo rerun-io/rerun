@@ -194,7 +194,7 @@ pub(crate) async fn client(
         .layer(AuthDecorator::new(credentials))
         .layer({
             let name = None;
-            let version = None;
+            let version = std::env::var("RERUN_CLIENT_VERSION_OVERRIDE").ok();
             let is_client = true;
             re_protos::headers::new_rerun_headers_layer(name, version, is_client)
         });
