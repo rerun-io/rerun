@@ -10149,6 +10149,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_view_states"
+version = "0.32.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "re_chunk_store",
+ "re_log_types",
+ "re_sdk_types",
+ "re_test_context",
+ "re_test_viewport",
+ "re_tracing",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+]
+
+[[package]]
 name = "re_view_tensor"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
@@ -10318,6 +10335,7 @@ dependencies = [
  "re_view_graph",
  "re_view_map",
  "re_view_spatial",
+ "re_view_states",
  "re_view_tensor",
  "re_view_text_document",
  "re_view_text_log",
@@ -11638,6 +11656,13 @@ name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
+
+[[package]]
+name = "states_example"
+version = "0.31.0-alpha.1+dev"
+dependencies = [
+ "rerun",
+]
 
 [[package]]
 name = "static_assertions"

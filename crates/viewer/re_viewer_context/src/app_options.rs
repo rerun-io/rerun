@@ -153,5 +153,6 @@ pub struct VideoOptions {
 #[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct ExperimentalAppOptions {
-    // None currently
+    /// Enable the experimental States view.
+    pub enable_states_view: bool,
 }

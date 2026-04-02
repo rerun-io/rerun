@@ -5,7 +5,7 @@ use re_log_types::{Timestamp, TimestampFormat};
 use re_memory::MemoryLimit;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::{AppOptions, ExperimentalAppOptions, VideoOptions};
+use re_viewer_context::{AppOptions, VideoOptions};
 
 use crate::StartupOptions;
 
@@ -140,12 +140,16 @@ fn settings_screen_ui_impl(
     ui.strong("Video");
     video_section_ui(ui, video);
 
-    if false {
-        // There are currently no experimental features
-        let ExperimentalAppOptions {} = experimental;
+    {
         separator_with_some_space(ui);
         ui.strong("Experimental");
-        // experimental_section_ui(ui, experimental);
+        ui.re_checkbox(
+            &mut experimental.enable_states_view,
+            "Enable States view (requires restart)",
+        )
+        .on_hover_text(
+            "Show the experimental States view for visualizing state transitions over time.",
+        );
     }
 }
 
