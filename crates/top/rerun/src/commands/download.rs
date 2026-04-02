@@ -1,6 +1,8 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use parking_lot::Mutex;
+
 use re_data_source::{FromUriOptions, LogDataSource};
 use re_log_channel::DataSourceMessage;
 
@@ -22,7 +24,7 @@ pub struct DownloadCommand {
 }
 
 impl DownloadCommand {
-    pub fn run(self, _tokio_runtime: &tokio::runtime::Handle) -> anyhow::Result<()> {
+    pub fn run(self, tokio_runtime: &tokio::runtime::Handle) -> anyhow::Result<()> {
         let output_dir = self
             .output_dir
             .unwrap_or_else(|| std::path::PathBuf::from("."));
@@ -50,14 +52,17 @@ impl DownloadCommand {
 
             let output_path = output_dir.join(output_filename(&data_source, url));
 
-            // Register stored credentials for gRPC dataset segments.
+            // For gRPC dataset segments, ensure credentials are valid before streaming.
             if let LogDataSource::RedapDatasetSegment { ref uri, .. } = data_source {
-                connection_registry
-                    .set_credentials(&uri.origin, re_redap_client::Credentials::Stored);
+                ensure_credentials(tokio_runtime, &connection_registry, &uri.origin)?;
             }
 
-            let on_auth_err: re_data_source::AuthErrorHandler = Arc::new(|uri, err| {
-                re_log::error!(%uri, "Authentication error: {err}");
+            let auth_error: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+            let auth_error_capture = auth_error.clone();
+
+            let on_auth_err: re_data_source::AuthErrorHandler = Arc::new(move |uri, err| {
+                let msg = format!("Authentication failed for {uri}: {err}");
+                *auth_error_capture.lock() = Some(msg);
             });
 
             let downloaded = Arc::new(AtomicU64::new(0));
@@ -88,15 +93,26 @@ impl DownloadCommand {
                 })),
             };
 
+            let readable_url = data_source.as_uri().unwrap_or_else(|| url.clone());
+
             let rx = data_source.stream_with_options(
                 on_auth_err,
                 &connection_registry,
                 streaming_options,
             )?;
 
-            eprintln!("Downloading {url}…");
+            eprintln!("Downloading {readable_url}…");
 
             save_to_rrd(&rx, &output_path)?;
+
+            // Check if the async streaming task encountered an auth error.
+            if let Some(auth_err_msg) = auth_error.lock().take() {
+                // Remove the (likely empty/incomplete) output file.
+                std::fs::remove_file(&output_path).ok();
+                anyhow::bail!(
+                    "{auth_err_msg}\n\nRun `rerun auth login` to re-authenticate, then try again."
+                );
+            }
 
             let total = downloaded.load(Ordering::Relaxed);
             if 0 < total {
@@ -109,6 +125,87 @@ impl DownloadCommand {
 
         Ok(())
     }
+}
+
+/// Ensure we have valid credentials for the given origin.
+///
+/// If stored credentials exist but are expired, this attempts to refresh them.
+/// If the refresh fails (e.g. session ended), it triggers an interactive
+/// device-code login flow so the user can re-authenticate.
+#[cfg(feature = "auth")]
+fn ensure_credentials(
+    tokio_runtime: &tokio::runtime::Handle,
+    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    origin: &re_uri::Origin,
+) -> anyhow::Result<()> {
+    use re_auth::oauth::login_flow::DeviceCodeFlowState;
+
+    match tokio_runtime.block_on(re_auth::oauth::load_and_refresh_credentials()) {
+        Ok(Some(_credentials)) => {
+            // Credentials are valid.
+            connection_registry.set_credentials(origin, re_redap_client::Credentials::Stored);
+        }
+
+        Ok(None) => {
+            // No stored credentials. Proceed without — the server may not require auth.
+        }
+
+        Err(err) => {
+            re_log::debug!("Credential refresh failed: {err}");
+            eprintln!("Session expired. Logging in again…");
+
+            // Trigger interactive device-code login flow.
+            match tokio_runtime.block_on(re_auth::DeviceCodeFlow::init(true)) {
+                Ok(DeviceCodeFlowState::AlreadyLoggedIn(_)) => {
+                    // Shouldn't happen with force_login=true, but handle it gracefully.
+                    connection_registry
+                        .set_credentials(origin, re_redap_client::Credentials::Stored);
+                }
+
+                Ok(DeviceCodeFlowState::LoginFlowStarted(mut flow)) => {
+                    let login_url = flow.login_url();
+                    let user_code = flow.user_code();
+
+                    eprintln!("Open this URL in your browser to log in:\n  {login_url}");
+                    eprintln!("Verify that the code shown in your browser is: {user_code}");
+                    eprintln!("Waiting for login…");
+
+                    match tokio_runtime.block_on(flow.wait_for_user_confirmation()) {
+                        Ok(credentials) => {
+                            eprintln!("Logged in as {}", credentials.user().email);
+                            // Clear the cached client so a new one is created with fresh credentials.
+                            connection_registry.remove_credentials(origin);
+                            connection_registry
+                                .set_credentials(origin, re_redap_client::Credentials::Stored);
+                        }
+                        Err(err) => {
+                            anyhow::bail!(
+                                "Login failed: {err}\n\nRun `rerun auth login` to authenticate manually."
+                            );
+                        }
+                    }
+                }
+
+                Err(err) => {
+                    anyhow::bail!(
+                        "Could not start login flow: {err}\n\nRun `rerun auth login` to authenticate manually."
+                    );
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(not(feature = "auth"))]
+fn ensure_credentials(
+    _tokio_runtime: &tokio::runtime::Handle,
+    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    origin: &re_uri::Origin,
+) -> anyhow::Result<()> {
+    connection_registry.set_credentials(origin, re_redap_client::Credentials::Stored);
+    Ok(())
 }
 
 /// Derive an output `.rrd` filename from the data source.

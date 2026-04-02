@@ -2343,12 +2343,12 @@ struct PyDeviceCodeFlow {
 impl PyDeviceCodeFlow {
     /// Get the URL for the OAuth login flow.
     fn login_url(&self) -> String {
-        self.login_flow.get_login_url().to_owned()
+        self.login_flow.login_url().to_owned()
     }
 
     /// Get the user code.
     fn user_code(&self) -> String {
-        self.login_flow.get_user_code().to_owned()
+        self.login_flow.user_code().to_owned()
     }
 
     /// Finish the OAuth login flow.
