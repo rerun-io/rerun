@@ -3,7 +3,6 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use super::{AsyncDecoder, Chunk, Result};
 
-#[cfg(with_dav1d)]
 use crate::{VideoDataDescription, decode::FrameResult};
 
 use crate::{Receiver, Sender};
@@ -47,7 +46,6 @@ impl Default for Comms {
 }
 
 /// Blocking decoder of video chunks.
-#[cfg(with_dav1d)]
 pub trait SyncDecoder {
     /// Submit some work and read the results.
     ///
@@ -159,7 +157,6 @@ fn decoder_thread(
 ) {
     while let Ok(command) = command_rx.recv() {
         if comms.should_stop.load(Ordering::Acquire) {
-            re_log::debug!("Should stop");
             return;
         }
 
@@ -177,7 +174,6 @@ fn decoder_thread(
                 comms.num_outstanding_resets.fetch_sub(1, Ordering::Release);
             }
             Command::Stop => {
-                re_log::debug!("Stop");
                 return;
             }
         }

@@ -673,12 +673,13 @@ impl LeRobotDatasetV3 {
             ScalarBuffer::from(uniform_times),
         );
 
-        let codec = re_sdk_types::components::VideoCodec::try_from(video.codec).map_err(|err| {
-            anyhow!(
-                "Unsupported video codec {:?} for feature: '{observation}': {err}",
-                video.codec
-            )
-        })?;
+        let codec =
+            re_sdk_types::components::VideoCodec::try_from(video.codec.clone()).map_err(|err| {
+                anyhow!(
+                    "Unsupported video codec {:?} for feature: '{observation}': {err}",
+                    video.codec
+                )
+            })?;
 
         let codec_chunk = Chunk::builder(entity_path)
             .with_archetype(

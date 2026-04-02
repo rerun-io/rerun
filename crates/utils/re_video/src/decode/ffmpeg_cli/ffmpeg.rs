@@ -934,7 +934,7 @@ impl FFmpegCliDecoder {
             ffmpeg,
             output_sender,
             ffmpeg_path,
-            codec: *codec,
+            codec: codec.clone(),
         })
     }
 }

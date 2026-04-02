@@ -69,7 +69,7 @@ pub enum VideoPlayerError {
     DecodeChunk(String),
 
     /// Various errors that can occur during video decoding.
-    #[error("Failed to decode video: {0}")]
+    #[error("Failed to decode: {0}")]
     Decoding(#[from] crate::DecodeError),
 
     #[error("The timestamp passed was negative.")]
@@ -79,7 +79,7 @@ pub enum VideoPlayerError {
     #[error("Bad data.")]
     BadData,
 
-    #[error("Failed to create gpu texture from decoded video data: {0}")]
+    #[error("Failed to create gpu texture from decoded data: {0}")]
     TextureUploadError(String),
 
     #[error("Decoder unexpectedly exited")]

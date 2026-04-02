@@ -23,6 +23,7 @@ pub fn redap_thumbnail(
     let media_type = MediaType::guess_from_data(slice);
 
     let image = ctx.memoizer(|c: &mut re_viewer_context::ImageDecodeCache| {
+        #[expect(deprecated)] // TODO(isse): Figure out a way to do this using the video decoder.
         c.entry_encoded_color(row_id, component, slice, media_type.as_ref())
     })?;
 

@@ -34,6 +34,9 @@ pub struct ImageDecodeCache {
 }
 
 impl ImageDecodeCache {
+    // TODO(isse): Remove this, we want to use the video player instead of this
+    //             but hard to do for the only remaining usage in `redap_thumbnail`.
+    #[deprecated = "Use video stream cache instead if possible."]
     /// Decode some image data and cache the result.
     ///
     /// The `RowId`, if available, may be used to generate the cache key.

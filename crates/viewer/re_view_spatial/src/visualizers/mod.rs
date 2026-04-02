@@ -11,7 +11,6 @@ mod cylinders3d;
 mod depth_images;
 mod ellipsoids;
 mod encoded_depth_image;
-mod encoded_image;
 mod images;
 mod lines2d;
 mod lines3d;
@@ -79,7 +78,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<encoded_depth_image::EncodedDepthImageVisualizer>()?;
-    system_registry.register_visualizer::<encoded_image::EncodedImageVisualizer>()?;
+    system_registry.register_visualizer::<video::EncodedImageVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
@@ -107,7 +106,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<encoded_depth_image::EncodedDepthImageVisualizer>()?;
-    system_registry.register_visualizer::<encoded_image::EncodedImageVisualizer>()?;
+    system_registry.register_visualizer::<video::EncodedImageVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
@@ -143,7 +142,7 @@ pub fn visualizers_processing_draw_order()
             archetypes::EncodedDepthImage::descriptor_draw_order(),
         ),
         (
-            encoded_image::EncodedImageVisualizer::identifier(),
+            video::EncodedImageVisualizer::identifier(),
             archetypes::EncodedImage::descriptor_draw_order(),
         ),
         (

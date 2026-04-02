@@ -20,7 +20,7 @@ use crate::{
 
 #[derive(Clone)]
 #[repr(transparent)]
-pub struct WebVideoFrame(web_sys::VideoFrame);
+pub struct WebVideoFrame(pub(super) web_sys::VideoFrame);
 
 impl re_byte_size::SizeBytes for WebVideoFrame {
     fn heap_size_bytes(&self) -> u64 {
@@ -182,7 +182,7 @@ impl WebVideoDecoder {
             .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
         Ok(Self {
-            codec: video_descr.codec,
+            codec: video_descr.codec.clone(),
 
             timescale,
             first_frame_pts,
