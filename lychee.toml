@@ -177,7 +177,7 @@ exclude = [
   'https://.*\.eks\.amazonaws\.com/', # EKS API server endpoints in CI workflows.
   'https://.*\.blob\.core\.windows\.net/', # Azure blob storage, requires auth.
   'https://rerun\.grafana\.net/api/datasources/.*', # Grafana API endpoints, requires auth.
-  'https://edge.meilisearch.com',
+  'https://ms-b22605aed932-7275.fra.meilisearch.io',
   'https://eu.posthog.com/project/', # Requires to be logged in on PostHog.
   'https://github.com/rerun-io/internal-test-assets/\.*',
   'https://github.com/google/mediapipe/issues/5188', # For some reason that link has always failed.

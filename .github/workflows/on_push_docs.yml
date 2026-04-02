@@ -62,7 +62,7 @@ jobs:
         run: |
           pixi run search-index build \
             landing \
-            --url "https://edge.meilisearch.com" \
+            --url "https://ms-b22605aed932-7275.fra.meilisearch.io" \
             --master-key "${{ secrets.MEILISEARCH_TOKEN }}" \
             --release-version "${{ needs.get-version.outputs.version }}"
 
