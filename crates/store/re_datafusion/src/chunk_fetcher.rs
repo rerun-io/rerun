@@ -281,16 +281,17 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
             chunk_infos: vec![chunk_info],
         };
 
-        let fetch_chunks_response_stream = client
+        let response = client
             .fetch_chunks(fetch_chunks_request.into_request())
             .instrument(tracing::trace_span!("batched_fetch_chunks"))
             .await
-            .map_err(|err| re_redap_client::ApiError::tonic(err, "FetchChunks request failed"))?
-            .into_inner();
+            .map_err(|err| re_redap_client::ApiError::tonic(err, "FetchChunks request failed"))?;
 
-        let chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
-            fetch_chunks_response_stream,
-        );
+        let trace_id = re_redap_client::extract_trace_id(response.metadata());
+        let response_stream = re_redap_client::ResponseStream::new(response.into_inner(), trace_id);
+
+        let chunk_stream =
+            re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(response_stream);
 
         let batch_chunks: Vec<ApiResult<ChunksWithSegment>> = chunk_stream.collect().await;
         for chunk_result in batch_chunks {

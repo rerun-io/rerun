@@ -71,18 +71,19 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
         let chunk_infos = self.chunk_infos.iter().map(Into::into).collect::<Vec<_>>();
         let fetch_chunks_request = FetchChunksRequest { chunk_infos };
 
-        let fetch_chunks_response_stream = self
+        let response = self
             .client
             .fetch_chunks(fetch_chunks_request.into_request())
             .await
-            .map_err(|err| exec_datafusion_err!("{err}"))?
-            .into_inner();
+            .map_err(|err| exec_datafusion_err!("{err}"))?;
+
+        let trace_id = re_redap_client::extract_trace_id(response.metadata());
+        let response_stream = re_redap_client::ResponseStream::new(response.into_inner(), trace_id);
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
-        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
-            fetch_chunks_response_stream,
-        );
+        let mut chunk_stream =
+            re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(response_stream);
 
         // Note: using segment id as the store id, shouldn't really
         // matter since this is just a temporary store.

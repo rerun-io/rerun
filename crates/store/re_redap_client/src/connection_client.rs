@@ -30,19 +30,67 @@ use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
 use tokio_stream::{Stream, StreamExt as _};
+use tonic::IntoStreamingRequest as _;
 use tonic::codegen::{Body, StdError};
-use tonic::{IntoStreamingRequest as _, Status};
 use url::Url;
 
-use crate::{ApiError, ApiResult};
+use crate::{ApiError, ApiResult, extract_trace_id};
 
-pub type ResponseStream<T> = std::pin::Pin<Box<dyn Stream<Item = tonic::Result<T>> + Send>>;
+/// Extension trait for [`tonic::Response`] that extracts both the inner value
+/// and the server's trace-id in one step.
+trait TonicResponseExt<T> {
+    fn into_inner_and_trace_id(self) -> (T, Option<opentelemetry::TraceId>);
+}
+
+impl<T> TonicResponseExt<T> for tonic::Response<T> {
+    fn into_inner_and_trace_id(self) -> (T, Option<opentelemetry::TraceId>) {
+        let trace_id = extract_trace_id(self.metadata());
+        (self.into_inner(), trace_id)
+    }
+}
+
+/// A stream that optionally carries a server-assigned trace-id
+/// from the initial gRPC response metadata.
+///
+/// Functions consuming the stream should attach the trace-id to any errors they produce,
+/// and pass it along to any [`ResponseStream`] they return.
+pub struct ResponseStream<T> {
+    inner: std::pin::Pin<Box<dyn Stream<Item = T> + Send>>,
+    trace_id: Option<opentelemetry::TraceId>,
+}
+
+impl<T> ResponseStream<T> {
+    pub fn new(
+        inner: impl Stream<Item = T> + Send + 'static,
+        trace_id: Option<opentelemetry::TraceId>,
+    ) -> Self {
+        Self {
+            inner: Box::pin(inner),
+            trace_id,
+        }
+    }
+
+    pub fn trace_id(&self) -> Option<opentelemetry::TraceId> {
+        self.trace_id
+    }
+}
+
+impl<T> Stream for ResponseStream<T> {
+    type Item = T;
+
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        self.inner.as_mut().poll_next(cx)
+    }
+}
 
 pub type FetchChunksResponseStream =
-    ResponseStream<re_protos::cloud::v1alpha1::FetchChunksResponse>;
+    ResponseStream<tonic::Result<re_protos::cloud::v1alpha1::FetchChunksResponse>>;
 
 pub type QueryDatasetResponseStream =
-    ResponseStream<re_protos::cloud::v1alpha1::QueryDatasetResponse>;
+    ResponseStream<tonic::Result<re_protos::cloud::v1alpha1::QueryDatasetResponse>>;
 
 pub struct SegmentQueryParams {
     pub dataset_id: EntryId,
@@ -121,22 +169,26 @@ where
 
     /// Find all entries matching the given filter.
     pub async fn find_entries(&mut self, filter: EntryFilter) -> ApiResult<Vec<EntryDetails>> {
-        let result = self
-            .inner()
-            .find_entries(FindEntriesRequest {
-                filter: Some(filter),
-            })
-            .await
-            .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))?
-            .into_inner()
-            .entries;
+        let (response, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .find_entries(FindEntriesRequest {
+                    filter: Some(filter),
+                })
+                .await
+                .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))?,
+        );
 
-        result
+        response
+            .entries
             .into_iter()
             .map(TryInto::try_into)
             .collect::<Result<Vec<EntryDetails>, _>>()
             .map_err(|err| {
-                ApiError::serialization_with_source(err, "failed parsing /FindEntries response")
+                ApiError::deserialization_with_source(
+                    trace_id,
+                    err,
+                    "failed parsing /FindEntries response",
+                )
             })
     }
 
@@ -158,46 +210,50 @@ where
         entry_id: EntryId,
         entry_details_update: EntryDetailsUpdate,
     ) -> ApiResult<EntryDetails> {
-        let response: UpdateEntryResponse = self
-            .inner()
-            .update_entry(tonic::Request::new(
-                UpdateEntryRequest {
-                    id: entry_id,
-                    entry_details_update,
-                }
-                .into(),
-            ))
-            .await
-            .map_err(|err| ApiError::tonic(err, "/UpdateEntry failed"))?
-            .into_inner()
-            .try_into()
-            .map_err(|err| {
-                ApiError::serialization_with_source(err, "failed parsing /UpdateEntry response")
-            })?;
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .update_entry(tonic::Request::new(
+                    UpdateEntryRequest {
+                        id: entry_id,
+                        entry_details_update,
+                    }
+                    .into(),
+                ))
+                .await
+                .map_err(|err| ApiError::tonic(err, "/UpdateEntry failed"))?,
+        );
+        let response: UpdateEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /UpdateEntry response",
+            )
+        })?;
 
         Ok(response.entry_details)
     }
 
     /// Get the Arrow schema for a dataset entry.
     pub async fn get_dataset_schema(&mut self, entry_id: EntryId) -> ApiResult<ArrowSchema> {
-        self.inner()
-            .get_dataset_schema(
-                tonic::Request::new(GetDatasetSchemaRequest {})
-                    .with_entry_id(entry_id)
-                    .map_err(|err| {
-                        ApiError::tonic(err, "failed building /GetDatasetSchema request")
-                    })?,
-            )
-            .await
-            .map_err(|err| ApiError::tonic(err, "/GetDatasetSchema failed"))?
-            .into_inner()
-            .schema()
-            .map_err(|err| {
-                ApiError::serialization_with_source(
-                    err,
-                    "failed parsing /GetDatasetSchema response",
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .get_dataset_schema(
+                    tonic::Request::new(GetDatasetSchemaRequest {})
+                        .with_entry_id(entry_id)
+                        .map_err(|err| {
+                            ApiError::tonic(err, "failed building /GetDatasetSchema request")
+                        })?,
                 )
-            })
+                .await
+                .map_err(|err| ApiError::tonic(err, "/GetDatasetSchema failed"))?,
+        );
+        inner.schema().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /GetDatasetSchema response",
+            )
+        })
     }
 
     /// Create a new dataset entry.
@@ -206,47 +262,47 @@ where
         name: String,
         entry_id: Option<EntryId>,
     ) -> ApiResult<DatasetEntry> {
-        let response: CreateDatasetEntryResponse = self
-            .inner()
-            .create_dataset_entry(CreateDatasetEntryRequest {
-                name: Some(name),
-                id: entry_id.map(Into::into),
-            })
-            .await
-            .map_err(|err| ApiError::tonic(err, "/CreateDatasetEntry failed"))?
-            .into_inner()
-            .try_into()
-            .map_err(|err| {
-                ApiError::serialization_with_source(
-                    err,
-                    "failed parsing /CreateDatasetEntry response",
-                )
-            })?;
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .create_dataset_entry(CreateDatasetEntryRequest {
+                    name: Some(name),
+                    id: entry_id.map(Into::into),
+                })
+                .await
+                .map_err(|err| ApiError::tonic(err, "/CreateDatasetEntry failed"))?,
+        );
+        let response: CreateDatasetEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /CreateDatasetEntry response",
+            )
+        })?;
 
         Ok(response.dataset)
     }
 
     /// Get information on a dataset entry.
     pub async fn read_dataset_entry(&mut self, entry_id: EntryId) -> ApiResult<DatasetEntry> {
-        let response: ReadDatasetEntryResponse = self
-            .inner()
-            .read_dataset_entry(
-                tonic::Request::new(ReadDatasetEntryRequest {})
-                    .with_entry_id(entry_id)
-                    .map_err(|err| {
-                        ApiError::tonic(err, "failed building /ReadDatasetEntry request")
-                    })?,
-            )
-            .await
-            .map_err(|err| ApiError::tonic(err, "/ReadDatasetEntry failed"))?
-            .into_inner()
-            .try_into()
-            .map_err(|err| {
-                ApiError::serialization_with_source(
-                    err,
-                    "failed parsing /ReadDatasetEntry response",
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .read_dataset_entry(
+                    tonic::Request::new(ReadDatasetEntryRequest {})
+                        .with_entry_id(entry_id)
+                        .map_err(|err| {
+                            ApiError::tonic(err, "failed building /ReadDatasetEntry request")
+                        })?,
                 )
-            })?;
+                .await
+                .map_err(|err| ApiError::tonic(err, "/ReadDatasetEntry failed"))?,
+        );
+        let response: ReadDatasetEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /ReadDatasetEntry response",
+            )
+        })?;
 
         Ok(response.dataset_entry)
     }
@@ -257,71 +313,78 @@ where
         entry_id: EntryId,
         dataset_details: DatasetDetails,
     ) -> ApiResult<DatasetEntry> {
-        let response: UpdateDatasetEntryResponse = self
-            .inner()
-            .update_dataset_entry(tonic::Request::new(
-                UpdateDatasetEntryRequest {
-                    id: entry_id,
-                    dataset_details,
-                }
-                .into(),
-            ))
-            .await
-            .map_err(|err| ApiError::tonic(err, "/UpdateDatasetEntry failed"))?
-            .into_inner()
-            .try_into()
-            .map_err(|err| {
-                ApiError::serialization_with_source(
-                    err,
-                    "failed parsing /UpdateDatasetEntry response",
-                )
-            })?;
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .update_dataset_entry(tonic::Request::new(
+                    UpdateDatasetEntryRequest {
+                        id: entry_id,
+                        dataset_details,
+                    }
+                    .into(),
+                ))
+                .await
+                .map_err(|err| ApiError::tonic(err, "/UpdateDatasetEntry failed"))?,
+        );
+        let response: UpdateDatasetEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /UpdateDatasetEntry response",
+            )
+        })?;
 
         Ok(response.dataset_entry)
     }
 
     /// Get information on a table entry.
     pub async fn read_table_entry(&mut self, entry_id: EntryId) -> ApiResult<TableEntry> {
-        let response: ReadTableEntryResponse = self
-            .inner()
-            .read_table_entry(ReadTableEntryRequest {
-                id: Some(entry_id.into()),
-            })
-            .await
-            .map_err(|err| ApiError::tonic(err, "/ReadTableEntry failed"))?
-            .into_inner()
-            .try_into()
-            .map_err(|err| {
-                ApiError::serialization_with_source(err, "failed parsing /ReadTableEntry response")
-            })?;
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .read_table_entry(ReadTableEntryRequest {
+                    id: Some(entry_id.into()),
+                })
+                .await
+                .map_err(|err| ApiError::tonic(err, "/ReadTableEntry failed"))?,
+        );
+        let response: ReadTableEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /ReadTableEntry response",
+            )
+        })?;
 
         Ok(response.table_entry)
     }
 
     //TODO(ab): accept entry name
     pub async fn get_segment_table_schema(&mut self, entry_id: EntryId) -> ApiResult<ArrowSchema> {
-        self.inner()
-            .get_segment_table_schema(
-                tonic::Request::new(GetSegmentTableSchemaRequest {})
-                    .with_entry_id(entry_id)
-                    .map_err(|err| {
-                        ApiError::tonic(err, "failed building /GetSegmentTableSchema request")
-                    })?,
-            )
-            .await
-            .map_err(|err| ApiError::tonic(err, "GetSegmentTableSchema failed"))?
-            .into_inner()
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .get_segment_table_schema(
+                    tonic::Request::new(GetSegmentTableSchemaRequest {})
+                        .with_entry_id(entry_id)
+                        .map_err(|err| {
+                            ApiError::tonic(err, "failed building /GetSegmentTableSchema request")
+                        })?,
+                )
+                .await
+                .map_err(|err| ApiError::tonic(err, "GetSegmentTableSchema failed"))?,
+        );
+        inner
             .schema
             .ok_or_else(|| {
                 let err = missing_field!(GetSegmentTableSchemaResponse, "schema");
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "missing field in /GetSegmentTableSchema response",
                 )
             })?
             .try_into()
             .map_err(|err| {
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "failed parsing /GetSegmentTableSchema response",
                 )
@@ -336,18 +399,20 @@ where
     ) -> ApiResult<Vec<SegmentId>> {
         const COLUMN_NAME: &str = ScanSegmentTableResponse::FIELD_SEGMENT_ID;
 
-        let mut stream = self
-            .inner()
-            .scan_segment_table(
-                tonic::Request::new(ScanSegmentTableRequest {
-                    columns: vec![COLUMN_NAME.to_owned()],
-                })
-                .with_entry_id(entry_id)
-                .map_err(|err| ApiError::tonic(err, "failed building /ScanSegmentTable request"))?,
-            )
-            .await
-            .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))?
-            .into_inner();
+        let (mut stream, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .scan_segment_table(
+                    tonic::Request::new(ScanSegmentTableRequest {
+                        columns: vec![COLUMN_NAME.to_owned()],
+                    })
+                    .with_entry_id(entry_id)
+                    .map_err(|err| {
+                        ApiError::tonic(err, "failed building /ScanSegmentTable request")
+                    })?,
+                )
+                .await
+                .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))?,
+        );
 
         let mut segment_ids = Vec::new();
 
@@ -358,14 +423,16 @@ where
                 })?
                 .data()
                 .map_err(|err| {
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "failed parsing item from /ScanSegmentTable stream",
                     )
                 })?
                 .try_into()
                 .map_err(|err| {
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "failed decoding item from /ScanSegmentTable stream",
                     )
@@ -373,7 +440,8 @@ where
 
             let segment_id_col = record_batch.column_by_name(COLUMN_NAME).ok_or_else(|| {
                 let err = missing_column!(ScanSegmentTableResponse, COLUMN_NAME);
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "missing column from item in /ScanSegmentTable stream",
                 )
@@ -382,7 +450,8 @@ where
             let segment_id_array = segment_id_col
                 .try_downcast_array_ref::<arrow::array::StringArray>()
                 .map_err(|err| {
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "unexpected types in item in /ScanSegmentTable stream",
                     )
@@ -403,28 +472,35 @@ where
         &mut self,
         entry_id: EntryId,
     ) -> ApiResult<ArrowSchema> {
-        self.inner()
-            .get_dataset_manifest_schema(
-                tonic::Request::new(GetDatasetManifestSchemaRequest {})
-                    .with_entry_id(entry_id)
-                    .map_err(|err| {
-                        ApiError::tonic(err, "failed building /GetDatasetManifestSchema request")
-                    })?,
-            )
-            .await
-            .map_err(|err| ApiError::tonic(err, "/GetDatasetManifestSchema failed"))?
-            .into_inner()
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .get_dataset_manifest_schema(
+                    tonic::Request::new(GetDatasetManifestSchemaRequest {})
+                        .with_entry_id(entry_id)
+                        .map_err(|err| {
+                            ApiError::tonic(
+                                err,
+                                "failed building /GetDatasetManifestSchema request",
+                            )
+                        })?,
+                )
+                .await
+                .map_err(|err| ApiError::tonic(err, "/GetDatasetManifestSchema failed"))?,
+        );
+        inner
             .schema
             .ok_or_else(|| {
                 let err = missing_field!(GetDatasetManifestSchemaResponse, "schema");
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "missing field in /GetDatasetManifestSchema response",
                 )
             })?
             .try_into()
             .map_err(|err| {
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "failed parsing /GetDatasetManifestSchema response",
                 )
@@ -439,8 +515,8 @@ where
         &mut self,
         dataset_id: EntryId,
         segment_id: SegmentId,
-    ) -> ApiResult<impl Stream<Item = ApiResult<RawRrdManifest>> + use<T>> {
-        let responses = self
+    ) -> ApiResult<ResponseStream<ApiResult<RawRrdManifest>>> {
+        let response = self
             .inner()
             .get_rrd_manifest(
                 tonic::Request::new(re_protos::cloud::v1alpha1::GetRrdManifestRequest {
@@ -450,12 +526,13 @@ where
                 .map_err(|err| ApiError::tonic(err, "failed building /GetRrdManifest request"))?,
             )
             .await
-            .map_err(|err| ApiError::tonic(err, "/GetRrdManifest failed"))?
-            .into_inner();
+            .map_err(|err| ApiError::tonic(err, "/GetRrdManifest failed"))?;
 
-        Ok(responses.map(|resp| {
+        let trace_id = extract_trace_id(response.metadata());
+        let stream = response.into_inner().map(move |resp| {
             resp.map_err(|err| {
                 ApiError::connection_with_source(
+                    trace_id,
                     err,
                     "failed fetching /GetRrdManifest response part",
                 )
@@ -463,16 +540,22 @@ where
             .rrd_manifest
             .ok_or_else(|| {
                 let err = missing_field!(GetRrdManifestResponse, "rrd_manifest");
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "missing field in /GetRrdManifest response",
                 )
             })?
             .to_application(())
             .map_err(|err| {
-                ApiError::serialization_with_source(err, "failed parsing /GetRrdManifest response")
+                ApiError::deserialization_with_source(
+                    trace_id,
+                    err,
+                    "failed parsing /GetRrdManifest response",
+                )
             })
-        }))
+        });
+        Ok(ResponseStream::new(stream, trace_id))
     }
 
     /// Get the full [`RawRrdManifest`] of a recording, concatenated from all stream parts.
@@ -482,6 +565,7 @@ where
         segment_id: SegmentId,
     ) -> ApiResult<RawRrdManifest> {
         let stream = self.get_rrd_manifest_stream(dataset_id, segment_id).await?;
+        let trace_id = stream.trace_id();
 
         futures::pin_mut!(stream);
 
@@ -491,7 +575,8 @@ where
         }
 
         let Some(mut rrd_manifest) = rrd_manifest_parts.first().cloned() else {
-            return Err(ApiError::serialization(
+            return Err(ApiError::deserialization(
+                trace_id,
                 "failed to parse the response for /GetRrdManifest (no data)",
             ));
         };
@@ -499,7 +584,8 @@ where
         let data_parts = rrd_manifest_parts.into_iter().map(|p| p.data).collect_vec();
         rrd_manifest.data =
             re_arrow_util::concat_polymorphic_batches(&data_parts).map_err(|err| {
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "failed concatenating /GetRrdManifest response parts",
                 )
@@ -544,19 +630,18 @@ where
             generate_direct_urls,
         };
 
-        Ok(Box::pin(
-            self.inner()
-                .query_dataset(
-                    tonic::Request::new(query_request.into())
-                        .with_entry_id(dataset_id)
-                        .map_err(|err| {
-                            ApiError::tonic(err, "failed building /QueryDataset request")
-                        })?,
-                )
-                .await
-                .map_err(|err| ApiError::tonic(err, "/QueryDataset failed"))?
-                .into_inner(),
-        ))
+        let response = self
+            .inner()
+            .query_dataset(
+                tonic::Request::new(query_request.into())
+                    .with_entry_id(dataset_id)
+                    .map_err(|err| ApiError::tonic(err, "failed building /QueryDataset request"))?,
+            )
+            .await
+            .map_err(|err| ApiError::tonic(err, "/QueryDataset failed"))?;
+
+        let trace_id = extract_trace_id(response.metadata());
+        Ok(ResponseStream::new(response.into_inner(), trace_id))
     }
 
     /// Fetches all chunks ids for a specified segment.
@@ -569,8 +654,9 @@ where
         &mut self,
         params: SegmentQueryParams,
     ) -> ApiResult<Vec<RecordBatch>> {
-        self.query_dataset_raw(params)
-            .await?
+        let stream = self.query_dataset_raw(params).await?;
+        let trace_id = stream.trace_id();
+        stream
             .collect::<Vec<_>>()
             .await
             .into_iter()
@@ -585,7 +671,8 @@ where
             .map(|resp| {
                 resp.data.ok_or_else(|| {
                     let err = missing_field!(QueryDatasetResponse, "data");
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "missing field in item in /QueryDataset response stream",
                     )
@@ -593,7 +680,11 @@ where
             })
             .map(|batch| {
                 arrow::array::RecordBatch::try_from(batch?).map_err(|err| {
-                    ApiError::serialization_with_source(err, "failed converting to RecordBatch")
+                    ApiError::deserialization_with_source(
+                        trace_id,
+                        err,
+                        "failed converting to RecordBatch",
+                    )
                 })
             })
             .collect()
@@ -608,14 +699,15 @@ where
             chunk_infos: vec![DataframePart::from(record_batch)],
         };
 
-        let fetch_chunks_response_stream = self
+        let response = self
             .inner()
             .fetch_chunks(fetch_chunks_request)
             .await
-            .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?
-            .into_inner();
+            // NOTE: `ApiError::tonic` already extracts the trace-id from the error metadata.
+            .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?;
 
-        Ok(Box::pin(fetch_chunks_response_stream))
+        let trace_id = extract_trace_id(response.metadata());
+        Ok(ResponseStream::new(response.into_inner(), trace_id))
     }
 
     /// Fetches chunks for a specified partition and query.
@@ -625,9 +717,9 @@ where
         &mut self,
         params: SegmentQueryParams,
     ) -> ApiResult<FetchChunksResponseStream> {
-        let chunk_info_batches = self
-            .query_dataset_raw(params)
-            .await?
+        let stream = self.query_dataset_raw(params).await?;
+        let query_trace_id = stream.trace_id();
+        let chunk_info_batches = stream
             .collect::<Vec<_>>()
             .await
             .into_iter()
@@ -642,7 +734,8 @@ where
             .map(|resp| {
                 resp.data.ok_or_else(|| {
                     let err = missing_field!(QueryDatasetResponse, "data");
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        query_trace_id,
                         err,
                         "missing field in item in /QueryDataset response stream",
                     )
@@ -651,22 +744,25 @@ where
             .collect::<Result<Vec<_>, _>>()?;
 
         if chunk_info_batches.is_empty() {
-            let empty_stream = tokio_stream::empty();
-            return Ok(Box::pin(empty_stream));
+            return Ok(ResponseStream::new(
+                tokio_stream::empty::<tonic::Result<re_protos::cloud::v1alpha1::FetchChunksResponse>>(
+                ),
+                None,
+            ));
         }
 
         let fetch_chunks_request = FetchChunksRequest {
             chunk_infos: chunk_info_batches,
         };
 
-        let fetch_chunks_response_stream = self
+        let response = self
             .inner()
             .fetch_chunks(fetch_chunks_request)
             .await
-            .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?
-            .into_inner();
+            .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?;
 
-        Ok(Box::pin(fetch_chunks_response_stream))
+        let trace_id = extract_trace_id(response.metadata());
+        Ok(ResponseStream::new(response.into_inner(), trace_id))
     }
 
     /// Initiate registration of the provided recording URIs with a dataset and return the
@@ -687,23 +783,26 @@ where
         .with_entry_id(dataset_id)
         .map_err(|err| ApiError::tonic(err, "failed building /RegisterWithDataset request"))?;
 
-        let response: RecordBatch = self
-            .inner()
-            .register_with_dataset(req.map(Into::into))
-            .await
-            .map_err(|err| ApiError::tonic(err, "/RegisterWithDataset failed"))?
-            .into_inner()
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .register_with_dataset(req.map(Into::into))
+                .await
+                .map_err(|err| ApiError::tonic(err, "/RegisterWithDataset failed"))?,
+        );
+        let response: RecordBatch = inner
             .data
             .ok_or_else(|| {
                 let err = missing_field!(RegisterWithDatasetResponse, "data");
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "missing field in /RegisterWithDataset response",
                 )
             })?
             .try_into()
             .map_err(|err| {
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "failed decoding /RegisterWithDataset response",
                 )
@@ -717,7 +816,8 @@ where
                 .contains(&RegisterWithDatasetResponse::schema())
         {
             let err = invalid_schema!(RegisterWithDatasetResponse);
-            return Err(ApiError::serialization_with_source(
+            return Err(ApiError::deserialization_with_source(
+                trace_id,
                 err,
                 "invalid schema in /RegisterWithDataset response",
             ));
@@ -733,7 +833,8 @@ where
                 })
                 .ok_or_else(|| {
                     let err = missing_column!(RegisterWithDatasetResponse, column_name);
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "missing column in /RegisterWithDataset response",
                     )
@@ -749,14 +850,19 @@ where
                         RegisterWithDatasetResponse,
                         RegisterWithDatasetResponse::FIELD_SEGMENT_TYPE
                     );
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "missing column in /RegisterWithDataset response",
                     )
                 })?,
         )
         .map_err(|err| {
-            ApiError::serialization_with_source(err, "failed parsing /RegisterWithDataset response")
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /RegisterWithDataset response",
+            )
         })?;
         let storage_url_column = get_string_array(RegisterWithDatasetResponse::FIELD_STORAGE_URL)?;
         let task_id_column = get_string_array(RegisterWithDatasetResponse::FIELD_TASK_ID)?;
@@ -773,7 +879,8 @@ where
                     segment_id
                         .ok_or_else(|| {
                             let err = missing_field!(RegisterWithDatasetResponse, "segment_id");
-                            ApiError::serialization_with_source(
+                            ApiError::deserialization_with_source(
+                                trace_id,
                                 err,
                                 "missing field in /RegisterWithDataset response",
                             )
@@ -783,13 +890,15 @@ where
                 segment_type,
                 storage_url: url::Url::parse(storage_url.ok_or_else(|| {
                     let err = missing_field!(RegisterWithDatasetResponse, "storage_url");
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "missing field in /RegisterWithDataset response",
                     )
                 })?)
                 .map_err(|err| {
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         TypeConversionError::UrlParseError(err),
                         "failed to parse /RegisterWithDataset response",
                     )
@@ -798,7 +907,8 @@ where
                     id: task_id
                         .ok_or_else(|| {
                             let err = missing_field!(RegisterWithDatasetResponse, "task_id");
-                            ApiError::serialization_with_source(
+                            ApiError::deserialization_with_source(
+                                trace_id,
                                 err,
                                 "missing field in /RegisterWithDataset response",
                             )
@@ -847,12 +957,13 @@ where
         .map_err(|err| ApiError::tonic(err, "failed building /UnregisterFromDataset request"))?;
 
         use futures::TryStreamExt as _;
-        let responses: Vec<_> = self
-            .inner()
-            .unregister_from_dataset(req)
-            .await
-            .map_err(|err| ApiError::tonic(err, "/UnregisterFromDataset failed"))?
-            .into_inner()
+        let (stream, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .unregister_from_dataset(req)
+                .await
+                .map_err(|err| ApiError::tonic(err, "/UnregisterFromDataset failed"))?,
+        );
+        let responses: Vec<_> = stream
             .try_collect()
             .await
             .map_err(|err| ApiError::tonic(err, "/UnregisterFromDataset failed"))?;
@@ -863,14 +974,16 @@ where
                 resp.data
                     .ok_or_else(|| {
                         let err = missing_field!(UnregisterFromDatasetResponse, "data");
-                        ApiError::serialization_with_source(
+                        ApiError::deserialization_with_source(
+                            trace_id,
                             err,
                             "missing field in /UnregisterFromDataset response",
                         )
                     })?
                     .try_into()
                     .map_err(|err| {
-                        ApiError::serialization_with_source(
+                        ApiError::deserialization_with_source(
+                            trace_id,
                             err,
                             "failed decoding /UnregisterFromDataset response",
                         )
@@ -893,18 +1006,24 @@ where
             provider_details: ProviderDetails::LanceTable(LanceTable { table_url: url }),
         };
 
-        let response: RegisterTableResponse = self
-            .inner()
-            .register_table(tonic::Request::new(request.try_into().map_err(|err| {
-                ApiError::serialization_with_source(err, "failed building /RegisterTable request")
-            })?))
-            .await
-            .map_err(|err| ApiError::tonic(err, "/RegisterTable failed"))?
-            .into_inner()
-            .try_into()
-            .map_err(|err| {
-                ApiError::serialization_with_source(err, "failed parsing /RegisterTable response")
-            })?;
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .register_table(tonic::Request::new(request.try_into().map_err(|err| {
+                    ApiError::serialization_with_source(
+                        err,
+                        "failed building /RegisterTable request",
+                    )
+                })?))
+                .await
+                .map_err(|err| ApiError::tonic(err, "/RegisterTable failed"))?,
+        );
+        let response: RegisterTableResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /RegisterTable response",
+            )
+        })?;
 
         Ok(response.table_entry)
     }
@@ -968,7 +1087,7 @@ where
         &mut self,
         task_ids: Vec<TaskId>,
         timeout: std::time::Duration,
-    ) -> ApiResult<tonic::Streaming<QueryTasksOnCompletionResponse>> {
+    ) -> ApiResult<ResponseStream<tonic::Result<QueryTasksOnCompletionResponse>>> {
         let q = QueryTasksOnCompletionRequest { task_ids, timeout };
         let response = self
             .inner()
@@ -979,9 +1098,9 @@ where
                 )
             })?))
             .await
-            .map_err(|err| ApiError::tonic(err, "/QueryTasksOnCompletion failed"))?
-            .into_inner();
-        Ok(response)
+            .map_err(|err| ApiError::tonic(err, "/QueryTasksOnCompletion failed"))?;
+        let trace_id = extract_trace_id(response.metadata());
+        Ok(ResponseStream::new(response.into_inner(), trace_id))
     }
 
     pub async fn query_tasks(&mut self, task_ids: Vec<TaskId>) -> ApiResult<QueryTasksResponse> {
@@ -1002,23 +1121,26 @@ where
         entry_name: &EntryName,
         entry_kind: Option<EntryKind>,
     ) -> ApiResult<Option<EntryId>> {
-        self.inner()
-            .find_entries(FindEntriesRequest {
-                filter: Some(EntryFilter {
-                    id: None,
-                    name: Some(entry_name.to_string()),
-                    entry_kind: entry_kind.map(|kind| kind.into()),
-                }),
-            })
-            .await
-            .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))?
-            .into_inner()
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .find_entries(FindEntriesRequest {
+                    filter: Some(EntryFilter {
+                        id: None,
+                        name: Some(entry_name.to_string()),
+                        entry_kind: entry_kind.map(|kind| kind.into()),
+                    }),
+                })
+                .await
+                .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))?,
+        );
+        inner
             .entries
             .first()
             .and_then(|entry| entry.id)
             .map(|id| {
-                EntryId::try_from(id)
-                    .map_err(|err| ApiError::serialization_with_source(err, "/FindEntries failed"))
+                EntryId::try_from(id).map_err(|err| {
+                    ApiError::deserialization_with_source(trace_id, err, "/FindEntries failed")
+                })
             })
             .transpose()
     }
@@ -1063,23 +1185,23 @@ where
             provider_details,
         };
 
-        let resp = self
+        let (resp, trace_id) = self
             .inner()
             .create_table_entry(tonic::Request::new(request.try_into().map_err(|err| {
-                ApiError::internal_with_source(err, "/CreateTableEntry failed")
+                ApiError::internal_with_source(None, err, "/CreateTableEntry failed")
             })?))
             .await
             .map_err(|err| ApiError::tonic(err, "failed to create table"))?
-            .into_inner();
+            .into_inner_and_trace_id();
 
         resp.table
             .ok_or_else(|| {
-                ApiError::tonic(
-                    Status::invalid_argument("entry ID not set in response"),
-                    "/CreateTable failed",
+                ApiError::deserialization(
+                    trace_id,
+                    "/CreateTable failed: entry ID not set in response",
                 )
             })?
             .try_into()
-            .map_err(|err| ApiError::internal_with_source(err, "/CreateTable failed"))
+            .map_err(|err| ApiError::internal_with_source(trace_id, err, "/CreateTable failed"))
     }
 }

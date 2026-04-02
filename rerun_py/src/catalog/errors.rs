@@ -153,9 +153,9 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::Unauthenticated | ApiErrorKind::PermissionDenied => {
                     PyPermissionError::new_err(err.to_string())
                 }
-                ApiErrorKind::Serialization | ApiErrorKind::InvalidArguments => {
-                    PyValueError::new_err(err.to_string())
-                }
+                ApiErrorKind::Deserialization
+                | ApiErrorKind::Serialization
+                | ApiErrorKind::InvalidArguments => PyValueError::new_err(err.to_string()),
                 ApiErrorKind::NotFound => NotFoundError::new_err(err.to_string()),
                 ApiErrorKind::AlreadyExists => AlreadyExistsError::new_err(err.to_string()),
                 ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),

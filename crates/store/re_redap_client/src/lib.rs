@@ -4,20 +4,28 @@ mod connection_client;
 mod connection_registry;
 mod grpc;
 
-pub use self::connection_client::{GenericConnectionClient, SegmentQueryParams};
+pub use self::connection_client::{
+    FetchChunksResponseStream, GenericConnectionClient, ResponseStream, SegmentQueryParams,
+};
 pub use self::connection_registry::{
     ClientCredentialsError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
     CredentialSource, Credentials, SourcedCredentials,
 };
 pub use self::grpc::{
-    RedapClient, StreamingOptions, channel, fetch_chunks_response_to_chunk_and_segment_id,
-    stream_blueprint_and_segment_from_server,
+    ChunksWithSegment, RedapClient, StreamingOptions, channel,
+    fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
 };
 
 const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
 /// Responses from the Data Platform can optionally include this header to communicate back the trace id of the request.
 const GRPC_RESPONSE_TRACEID_HEADER: &str = "x-request-trace-id";
+
+/// Extract the server's trace-id from gRPC response metadata, if present.
+pub fn extract_trace_id(metadata: &tonic::metadata::MetadataMap) -> Option<opentelemetry::TraceId> {
+    let s = metadata.get(GRPC_RESPONSE_TRACEID_HEADER)?.to_str().ok()?;
+    opentelemetry::TraceId::from_hex(s).ok()
+}
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]
@@ -86,9 +94,10 @@ pub struct ApiError {
     pub kind: ApiErrorKind,
 
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
-    // when the error comes from the server returning a trace id, we include it in the client
-    // error for easier reporting.
-    trace_id: Option<String>,
+
+    /// When the error comes from the server returning a trace id, we include it in the client
+    /// error for easier reporting.
+    trace_id: Option<opentelemetry::TraceId>,
 }
 
 /// Convenience for `Result<T, ApiError>`
@@ -101,14 +110,20 @@ pub enum ApiErrorKind {
     PermissionDenied,
     Unauthenticated,
 
-    /// The gRPC endpoint has not been implemented
+    /// The gRPC endpoint has not been implemented.
     Unimplemented,
     Connection,
     Timeout,
     Internal,
     InvalidArguments,
     ResourcesExhausted,
+
+    /// Failed to decode data received from the server (e.g. protobuf → Arrow conversion).
+    Deserialization,
+
+    /// Failed to encode data for sending to the server.
     Serialization,
+
     InvalidServer,
 }
 
@@ -141,6 +156,7 @@ impl ApiErrorKind {
             | Self::Unauthenticated
             | Self::Unimplemented
             | Self::InvalidArguments
+            | Self::Deserialization
             | Self::Serialization
             | Self::InvalidServer => false,
         }
@@ -159,6 +175,7 @@ impl std::fmt::Display for ApiErrorKind {
             Self::Internal => write!(f, "Internal"),
             Self::InvalidArguments => write!(f, "InvalidArguments"),
             Self::ResourcesExhausted => write!(f, "ResourcesExhausted"),
+            Self::Deserialization => write!(f, "Deserialization"),
             Self::Serialization => write!(f, "Serialization"),
             Self::Timeout => write!(f, "Timeout"),
             Self::InvalidServer => write!(f, "InvalidServer"),
@@ -194,17 +211,17 @@ impl ApiError {
 
     /// Do NOT include `err` in the `message` - it will be added for you.
     #[inline]
-    fn new_with_source_and_trace(
+    fn new_with_source_and_trace_id(
         err: impl std::error::Error + Send + Sync + 'static,
         kind: ApiErrorKind,
         message: impl Into<String>,
-        trace_id: impl Into<String>,
+        trace_id: opentelemetry::TraceId,
     ) -> Self {
         Self {
             message: message.into(),
             kind,
             source: Some(Box::new(err)),
-            trace_id: Some(trace_id.into()),
+            trace_id: Some(trace_id),
         }
     }
 
@@ -212,22 +229,50 @@ impl ApiError {
     pub fn tonic(err: tonic::Status, message: impl Into<String>) -> Self {
         let message = message.into();
         let kind = ApiErrorKind::from(err.code());
-        let trace_id = err
-            .metadata()
-            .get(GRPC_RESPONSE_TRACEID_HEADER)
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_owned());
+        let trace_id = extract_trace_id(err.metadata());
         if let Some(trace_id) = trace_id {
-            Self::new_with_source_and_trace(err, kind, message, trace_id)
+            Self::new_with_source_and_trace_id(err, kind, message, trace_id)
         } else {
             Self::new_with_source(err, kind, message)
         }
     }
 
+    /// Failed to decode data received from the server.
+    pub fn deserialization(
+        trace_id: Option<opentelemetry::TraceId>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Deserialization,
+            source: None,
+            trace_id,
+        }
+    }
+
+    /// Failed to decode data received from the server.
+    ///
+    /// Do NOT include `err` in the `message` - it will be added for you.
+    pub fn deserialization_with_source(
+        trace_id: Option<opentelemetry::TraceId>,
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Deserialization,
+            source: Some(Box::new(err)),
+            trace_id,
+        }
+    }
+
+    /// Failed to encode data for sending to the server.
     pub fn serialization(message: impl Into<String>) -> Self {
         Self::new(ApiErrorKind::Serialization, message)
     }
 
+    /// Failed to encode data for sending to the server.
+    ///
     /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn serialization_with_source(
         err: impl std::error::Error + Send + Sync + 'static,
@@ -238,42 +283,74 @@ impl ApiError {
 
     /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn invalid_arguments_with_source(
+        trace_id: Option<opentelemetry::TraceId>,
         err: impl std::error::Error + Send + Sync + 'static,
         message: impl Into<String>,
     ) -> Self {
-        Self::new_with_source(err, ApiErrorKind::InvalidArguments, message)
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::InvalidArguments,
+            source: Some(Box::new(err)),
+            trace_id,
+        }
     }
 
     /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn internal_with_source(
+        trace_id: Option<opentelemetry::TraceId>,
         err: impl std::error::Error + Send + Sync + 'static,
         message: impl Into<String>,
     ) -> Self {
-        Self::new_with_source(err, ApiErrorKind::Internal, message)
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Internal,
+            source: Some(Box::new(err)),
+            trace_id,
+        }
     }
 
     /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn connection_with_source(
+        trace_id: Option<opentelemetry::TraceId>,
         err: impl std::error::Error + Send + Sync + 'static,
         message: impl Into<String>,
     ) -> Self {
-        Self::new_with_source(err, ApiErrorKind::Connection, message)
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Connection,
+            source: Some(Box::new(err)),
+            trace_id,
+        }
     }
 
     pub fn connection(message: impl Into<String>) -> Self {
         Self::new(ApiErrorKind::Connection, message)
     }
 
-    pub fn permission_denied(message: impl Into<String>) -> Self {
-        Self::new(ApiErrorKind::PermissionDenied, message)
+    pub fn permission_denied(
+        trace_id: Option<opentelemetry::TraceId>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::PermissionDenied,
+            source: None,
+            trace_id,
+        }
     }
 
     /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn credentials_with_source(
+        trace_id: Option<opentelemetry::TraceId>,
         err: ClientCredentialsError,
         message: impl Into<String>,
     ) -> Self {
-        Self::new_with_source(err, ApiErrorKind::Unauthenticated, message)
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Unauthenticated,
+            source: Some(Box::new(err)),
+            trace_id,
+        }
     }
 
     #[expect(clippy::needless_pass_by_value)]
