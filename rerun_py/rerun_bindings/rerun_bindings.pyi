@@ -1422,6 +1422,22 @@ class RrdLoaderInternal:
     @property
     def recording_id(self) -> str | None: ...
 
+class McapLoaderInternal:
+    """Internal implementation. Use McapLoader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: str,
+        timeline_type: str,
+        timestamp_offset_ns: int | None,
+        decoders: list[str] | None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> str: ...
+    @staticmethod
+    def available_decoders() -> list[str]: ...
+
 class LazyChunkStreamInternal:
     """Internal implementation. Use LazyChunkStream from rerun.experimental instead."""
 

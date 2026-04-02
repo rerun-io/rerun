@@ -9,8 +9,9 @@ use re_log_types::{
 };
 use re_types_core::ComponentIdentifier;
 
+use super::ChunkStream;
 use super::error::ChunkPipelineError;
-use super::stream::{ChunkStream, LazyChunkStream, StructuredFilter};
+use super::stream::{LazyChunkStream, StructuredFilter};
 use crate::chunk::PyChunkInternal;
 
 /// Internal lazy chunk stream binding.

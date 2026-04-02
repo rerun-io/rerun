@@ -53,6 +53,9 @@ pub enum ChunkPipelineError {
     #[error("Failed to read RRD file: {reason}")]
     RrdRead { reason: String },
 
+    #[error("MCAP error: {reason}")]
+    Mcap { reason: String },
+
     #[error("{0}")]
     PythonIterator(PythonException),
 }

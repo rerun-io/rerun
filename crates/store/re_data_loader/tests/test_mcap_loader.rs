@@ -4,10 +4,9 @@ mod tests {
 
     use re_chunk::Chunk;
     use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
-    use re_data_loader::loader_mcap::load_mcap;
+    use re_data_loader::loader_mcap::McapLoader;
     use re_data_loader::{DataLoaderSettings, LoadedData};
     use re_log_types::StoreId;
-    use re_mcap::decoders::SelectedDecoders;
 
     // Load an MCAP file into a list of chunks.
     fn load_mcap_chunks(path: impl AsRef<std::path::Path>) -> Vec<Chunk> {
@@ -16,15 +15,10 @@ mod tests {
         let mcap_data = std::fs::read(path).unwrap();
         let (tx, rx) = crossbeam::channel::bounded(1024);
         let settings = DataLoaderSettings::recommended("test");
-        load_mcap(
-            &mcap_data,
-            &settings,
-            &tx,
-            &SelectedDecoders::All,
-            false,
-            None,
-        )
-        .unwrap();
+        McapLoader::default()
+            .with_raw_fallback(false)
+            .load_and_send(&mcap_data, &settings, &tx)
+            .unwrap();
         drop(tx);
 
         // Collect chunks

@@ -8,7 +8,6 @@
 //! Execution happens in [`super::engine`], which is reached through
 //! [`LazyChunkStream::compile`].
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use pyo3::{Py, PyAny};
@@ -16,7 +15,7 @@ use pyo3::{Py, PyAny};
 use re_chunk::{Chunk, ChunkId};
 use re_types_core::ComponentIdentifier;
 
-pub use super::engine::ChunkStream;
+use super::{ChunkStream, ChunkStreamFactory};
 
 /// Declarative, composable filter for chunks.
 ///
@@ -160,8 +159,8 @@ pub enum PipelineStep {
 
 /// The source of chunks for a pipeline.
 pub enum StreamSource {
-    /// Lazily decode an RRD file.
-    RrdFile(PathBuf),
+    /// A stream factory, e.g. a loader that produces chunks from a file.
+    StreamFactory(Box<dyn ChunkStreamFactory>),
 
     /// Wrap a Python iterable of Chunks.
     ///
@@ -170,6 +169,7 @@ pub enum StreamSource {
     /// `PyIterator` source is eventually compiled and executed twice, it will yield no data on
     /// the second execution.
     //TODO(RR-4265): should this be a iterator _factory_ instead?
+    //TODO(ab): abstract this behind `StreamFactory`
     PyIterable(Py<PyAny>),
 
     /// Concatenate multiple streams.
@@ -218,10 +218,10 @@ pub struct LazyChunkStream {
 }
 
 impl LazyChunkStream {
-    //TODO(ab): a better `Loader` abstraction will be introduce when we flesh out the loader part.
-    pub fn from_rrd(path: PathBuf) -> Self {
+    /// Create a lazy stream backed by a factory (e.g. a loader).
+    pub fn from_factory(factory: impl ChunkStreamFactory + 'static) -> Self {
         Self {
-            source: StreamSource::RrdFile(path),
+            source: StreamSource::StreamFactory(Box::new(factory)),
             steps: Vec::new(),
         }
     }

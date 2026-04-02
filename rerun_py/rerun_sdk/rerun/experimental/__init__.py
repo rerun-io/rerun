@@ -9,5 +9,7 @@ from __future__ import annotations
 
 from ._chunk import Chunk as Chunk
 from ._lazy_chunk_stream import LazyChunkStream as LazyChunkStream
+from ._mcap_loader import McapLoader as McapLoader
 from ._rrd_loader import RrdLoader as RrdLoader
+from ._streaming_loader import StreamingLoader as StreamingLoader
 from ._viewer_client import ViewerClient as ViewerClient

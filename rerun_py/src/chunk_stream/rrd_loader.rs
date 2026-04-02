@@ -7,10 +7,10 @@ use pyo3::prelude::*;
 use re_chunk::Chunk;
 use re_log_types::{LogMsg, StoreId, StoreInfo, StoreKind};
 
-use super::engine::ChunkStream;
 use super::error::ChunkPipelineError;
 use super::py_stream::PyLazyChunkStreamInternal;
 use super::stream::LazyChunkStream;
+use super::{ChunkStream, ChunkStreamFactory};
 
 /// Internal RRD loader binding.
 ///
@@ -63,7 +63,9 @@ impl PyRrdLoaderInternal {
 
     /// Return a new lazy stream over all chunks in the RRD file.
     fn stream(&self) -> PyLazyChunkStreamInternal {
-        PyLazyChunkStreamInternal::new(LazyChunkStream::from_rrd(self.path.clone()))
+        PyLazyChunkStreamInternal::new(LazyChunkStream::from_factory(RrdStreamFactory::new(
+            self.path.clone(),
+        )))
     }
 
     /// Application ID from the RRD's StoreInfo, if present.
@@ -79,9 +81,22 @@ impl PyRrdLoaderInternal {
     }
 }
 
-// ---------------------------------------------------------------------------
-// RrdSource — pull-based chunk stream from an RRD file
-// ---------------------------------------------------------------------------
+/// Factory for creating RRD chunk streams.
+pub struct RrdStreamFactory {
+    path: PathBuf,
+}
+
+impl RrdStreamFactory {
+    pub fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+}
+
+impl ChunkStreamFactory for RrdStreamFactory {
+    fn create(&self) -> Result<Box<dyn ChunkStream>, ChunkPipelineError> {
+        Ok(Box::new(RrdStream::new(&self.path)))
+    }
+}
 
 /// Chunk stream that lazily decodes an RRD file.
 ///
@@ -92,11 +107,7 @@ impl PyRrdLoaderInternal {
 ///
 /// Construction is fallible: I/O errors (missing file, permission denied) are
 /// captured and surfaced on the first `next()` call rather than panicking.
-pub struct RrdSource {
-    inner: RrdSourceInner,
-}
-
-enum RrdSourceInner {
+enum RrdStream {
     /// Normal operation: lazily decode messages from the file.
     Live {
         decoder: Box<dyn Iterator<Item = Result<LogMsg, re_log_encoding::DecodeError>> + Send>,
@@ -110,38 +121,34 @@ enum RrdSourceInner {
     Failed(Option<ChunkPipelineError>),
 }
 
-impl RrdSource {
-    pub fn new(path: &Path) -> Self {
+impl RrdStream {
+    fn new(path: &Path) -> Self {
         match std::fs::File::open(path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
                 let decoder = re_log_encoding::Decoder::<LogMsg>::decode_lazy(reader);
-                Self {
-                    inner: RrdSourceInner::Live {
-                        decoder: Box::new(decoder),
-                        target_store_id: None,
-                    },
+                Self::Live {
+                    decoder: Box::new(decoder),
+                    target_store_id: None,
                 }
             }
 
-            Err(err) => Self {
-                inner: RrdSourceInner::Failed(Some(ChunkPipelineError::RrdRead {
-                    reason: format!("{}: {err}", path.display()),
-                })),
-            },
+            Err(err) => Self::Failed(Some(ChunkPipelineError::RrdRead {
+                reason: format!("{}: {err}", path.display()),
+            })),
         }
     }
 }
 
-impl ChunkStream for RrdSource {
+impl ChunkStream for RrdStream {
     fn next(&mut self) -> Result<Option<Arc<Chunk>>, ChunkPipelineError> {
-        match &mut self.inner {
-            RrdSourceInner::Failed(stored_err) => match stored_err.take() {
+        match self {
+            Self::Failed(stored_err) => match stored_err.take() {
                 Some(err) => Err(err),
                 None => Ok(None),
             },
 
-            RrdSourceInner::Live {
+            Self::Live {
                 decoder,
                 target_store_id,
             } => loop {
@@ -196,10 +203,6 @@ impl ChunkStream for RrdSource {
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// RRD I/O helpers
-// ---------------------------------------------------------------------------
 
 /// Open an RRD file and extract the [`StoreInfo`] from the first recording store.
 ///
