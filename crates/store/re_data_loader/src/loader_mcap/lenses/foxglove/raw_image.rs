@@ -1,10 +1,9 @@
 use re_lenses::{Lens, LensError, op};
 use re_lenses_core::Selector;
-use re_lenses_core::combinators::{MapList, Transform as _};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::archetypes::{CoordinateFrame, Image};
 
-use crate::loader_mcap::lenses::image_helpers::{EncodingToImageFormat, ExtractImageBuffer};
+use crate::loader_mcap::lenses::image_helpers::{encoding_to_image_format, extract_image_buffer};
 
 use super::{FOXGLOVE_TIMESTAMP, IMAGE_PLANE_SUFFIX};
 
@@ -18,20 +17,20 @@ pub fn raw_image(time_type: TimeType) -> Result<Lens, LensError> {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
                     time_type,
-                    Selector::parse(".timestamp")?.then(MapList::new(op::timespec_to_nanos())),
+                    Selector::parse(".timestamp")?.pipe(op::timespec_to_nanos()),
                 )?
                 .component(
                     CoordinateFrame::descriptor_frame(),
                     Selector::parse(".frame_id")?
-                        .then(MapList::new(op::string_suffix_nonempty(IMAGE_PLANE_SUFFIX))),
+                        .pipe(op::string_suffix_nonempty(IMAGE_PLANE_SUFFIX)),
                 )?
                 .component(
                     Image::descriptor_format(),
-                    Selector::parse(".")?.then(MapList::new(EncodingToImageFormat)),
+                    Selector::parse(".")?.pipe(encoding_to_image_format()),
                 )?
                 .component(
                     Image::descriptor_buffer(),
-                    Selector::parse(".")?.then(MapList::new(ExtractImageBuffer)),
+                    Selector::parse(".")?.pipe(extract_image_buffer()),
                 )
             })?
             .build(),

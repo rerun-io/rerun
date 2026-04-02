@@ -1,13 +1,12 @@
 //! Builder API for constructing lenses.
 
-use crate::combinators::Transform;
-use arrow::array::ListArray;
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::ComponentDescriptor;
 
 use crate::ast::{OneToMany, OneToOne};
-use crate::{LensError, ast};
+use crate::selector::DynExpr;
+use crate::{LensError, Selector, ast};
 
 /// Builder for lenses with support for multiple output modes.
 #[must_use]
@@ -29,10 +28,6 @@ impl LensBuilder {
             outputs: vec![],
         }
     }
-
-    // TODO(RR-3962): Remove the `Result` return values from the closures again, by
-    // introducing a proxy object to `Selector` that holds a string internally and
-    // therefore is infallible.
 
     /// Adds a temporal output with 1:1 row mapping.
     ///
@@ -143,11 +138,11 @@ impl ColumnsBuilder {
     pub fn component(
         mut self,
         component_descr: ComponentDescriptor,
-        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+        selector: impl Into<Selector<DynExpr>>,
     ) -> Result<Self, LensError> {
         self.components.push(ast::ComponentOutput {
             component_descr,
-            selector: Box::new(selector),
+            selector: selector.into(),
         });
         Ok(self)
     }
@@ -164,12 +159,12 @@ impl ColumnsBuilder {
         mut self,
         timeline_name: impl Into<TimelineName>,
         timeline_type: TimeType,
-        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+        selector: impl Into<Selector<DynExpr>>,
     ) -> Result<Self, LensError> {
         self.time_outputs.push(ast::TimeOutput {
             timeline_name: timeline_name.into(),
             timeline_type,
-            selector: Box::new(selector),
+            selector: selector.into(),
         });
         Ok(self)
     }
@@ -223,11 +218,11 @@ impl ScatterColumnsBuilder {
     pub fn component(
         mut self,
         component_descr: ComponentDescriptor,
-        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+        selector: impl Into<Selector<DynExpr>>,
     ) -> Result<Self, LensError> {
         self.components.push(ast::ComponentOutput {
             component_descr,
-            selector: Box::new(selector),
+            selector: selector.into(),
         });
         Ok(self)
     }
@@ -244,12 +239,12 @@ impl ScatterColumnsBuilder {
         mut self,
         timeline_name: impl Into<TimelineName>,
         timeline_type: TimeType,
-        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+        selector: impl Into<Selector<DynExpr>>,
     ) -> Result<Self, LensError> {
         self.time_outputs.push(ast::TimeOutput {
             timeline_name: timeline_name.into(),
             timeline_type,
-            selector: Box::new(selector),
+            selector: selector.into(),
         });
         Ok(self)
     }

@@ -1,10 +1,7 @@
 use re_lenses::{Lens, LensError, op};
 use re_lenses_core::Selector;
-use re_lenses_core::combinators::{MapList, Transform as _};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::archetypes::Transform3D;
-
-use crate::loader_mcap::lenses::helpers::{xyz_struct_to_fixed, xyzw_struct_to_fixed};
 
 use super::FOXGLOVE_TIMESTAMP;
 
@@ -18,8 +15,7 @@ pub fn frame_transforms(time_type: TimeType) -> Result<Lens, LensError> {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
                     time_type,
-                    Selector::parse(".transforms[].timestamp")?
-                        .then(MapList::new(op::timespec_to_nanos())),
+                    Selector::parse(".transforms[].timestamp")?.pipe(op::timespec_to_nanos()),
                 )?
                 .component(
                     Transform3D::descriptor_parent_frame(),
@@ -32,12 +28,12 @@ pub fn frame_transforms(time_type: TimeType) -> Result<Lens, LensError> {
                 .component(
                     Transform3D::descriptor_translation(),
                     Selector::parse(".transforms[].translation")?
-                        .then(MapList::new(xyz_struct_to_fixed())),
+                        .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z"])),
                 )?
                 .component(
                     Transform3D::descriptor_quaternion(),
                     Selector::parse(".transforms[].rotation")?
-                        .then(MapList::new(xyzw_struct_to_fixed())),
+                        .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z", "w"])),
                 )
             })?
             .build(),

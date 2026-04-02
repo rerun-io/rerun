@@ -190,16 +190,11 @@ impl<E: eval::Eval + Into<DynExpr>> Selector<E> {
     }
 }
 
-// TODO(RR-3967): Remove!
-impl<E: eval::Eval + Into<DynExpr>> crate::combinators::Transform for Selector<E> {
-    type Source = ListArray;
-    type Target = ListArray;
-
-    fn transform(
-        &self,
-        source: &Self::Source,
-    ) -> Result<Option<Self::Target>, crate::combinators::Error> {
-        self.execute_per_row(source).map_err(Into::into)
+impl From<Selector> for Selector<DynExpr> {
+    fn from(selector: Selector) -> Self {
+        Self {
+            expr: DynExpr::from(selector.expr),
+        }
     }
 }
 

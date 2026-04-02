@@ -4,7 +4,8 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
-use crate::combinators::{Explode, Transform};
+use crate::combinators::{Explode, Transform as _};
+use crate::{DynExpr, LensError, Selector};
 use arrow::array::{AsArray as _, Int64Array, ListArray};
 use arrow::compute::take;
 use itertools::Either;
@@ -17,7 +18,6 @@ use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::{ComponentDescriptor, SerializedComponentColumn};
 use vec1::Vec1;
 
-use crate::LensError;
 use crate::builder::LensBuilder;
 
 pub struct InputColumn {
@@ -36,43 +36,22 @@ pub enum TargetEntity {
     Explicit(EntityPath),
 }
 
-// TODO(RR-3968): Switch over to `Selector` once it is expressive enough.
-/// A boxed, type-erased transform from `ListArray` to `Option<ListArray>`.
-pub type BoxedTransform = Box<dyn Transform<Source = ListArray, Target = ListArray> + Send + Sync>;
-
 /// A component output.
 ///
 /// Depending on the context in which this output is used, the result from
 /// applying the transform should be a list array (1:1) or a list array of list arrays (1:N).
+#[derive(Debug)]
 pub struct ComponentOutput {
     pub component_descr: ComponentDescriptor,
-    pub selector: BoxedTransform,
-}
-
-// TODO(RR-3968): Switch over to `Selector` means we can derive this again.
-impl std::fmt::Debug for ComponentOutput {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ComponentOutput")
-            .field("component_descr", &self.component_descr)
-            .finish_non_exhaustive()
-    }
+    pub selector: Selector<DynExpr>,
 }
 
 /// A time extraction output.
+#[derive(Debug)]
 pub struct TimeOutput {
     pub timeline_name: TimelineName,
     pub timeline_type: TimeType,
-    pub selector: BoxedTransform,
-}
-
-// TODO(RR-3968): Switch over to `Selector` means we can derive this again.
-impl std::fmt::Debug for TimeOutput {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TimeOutput")
-            .field("timeline_name", &self.timeline_name)
-            .field("timeline_type", &self.timeline_type)
-            .finish_non_exhaustive()
-    }
+    pub selector: Selector<DynExpr>,
 }
 
 #[derive(Debug)]
@@ -190,8 +169,8 @@ fn collect_output_components_iter<'a>(
     components: &'a [ComponentOutput],
     entity_path: &'a EntityPath,
 ) -> impl Iterator<Item = Result<(ComponentDescriptor, ListArray), LensError>> + 'a {
-    components.iter().filter_map(
-        move |output| match output.selector.transform(&input.list_array) {
+    components.iter().filter_map(move |output| {
+        match output.selector.execute_per_row(&input.list_array) {
             Ok(Some(list_array)) => Some(Ok((output.component_descr.clone(), list_array))),
             Ok(None) => {
                 re_log::debug_once!(
@@ -206,8 +185,8 @@ fn collect_output_components_iter<'a>(
                 component: output.component_descr.component,
                 source: Box::new(source),
             })),
-        },
-    )
+        }
+    })
 }
 
 fn collect_output_times_iter<'a>(
@@ -215,8 +194,8 @@ fn collect_output_times_iter<'a>(
     timelines: &'a [TimeOutput],
     entity_path: &'a EntityPath,
 ) -> impl Iterator<Item = Result<(TimelineName, TimeType, ListArray), LensError>> + 'a {
-    timelines.iter().filter_map(
-        move |time| match time.selector.transform(&input.list_array) {
+    timelines.iter().filter_map(move |time| {
+        match time.selector.execute_per_row(&input.list_array) {
             Ok(Some(list_array)) => Some(Ok((time.timeline_name, time.timeline_type, list_array))),
             Ok(None) => {
                 re_log::debug_once!(
@@ -231,8 +210,8 @@ fn collect_output_times_iter<'a>(
                 timeline_name: time.timeline_name,
                 source: Box::new(source),
             })),
-        },
-    )
+        }
+    })
 }
 
 /// Converts a time array to a time column.
@@ -480,7 +459,7 @@ impl OneToMany {
                                     entity_path: entity_path.clone(),
                                     input_component: input.descriptor.component,
                                     timeline_name,
-                                    source: Box::new(err),
+                                    source: Box::new(err.into()),
                                 });
                                 None
                             }
@@ -507,7 +486,7 @@ impl OneToMany {
                             entity_path: entity_path.clone(),
                             input_component: input.descriptor.component,
                             component: component_descr.component,
-                            source: Box::new(err),
+                            source: Box::new(err.into()),
                         });
                         None
                     }

@@ -1,10 +1,9 @@
 use re_lenses::{Lens, LensError, op};
 use re_lenses_core::Selector;
-use re_lenses_core::combinators::{MapList, Transform as _};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::archetypes::{CoordinateFrame, GeoPoints};
 
-use crate::loader_mcap::lenses::helpers::list_lat_lon_struct_to_list_fixed;
+use crate::loader_mcap::lenses::helpers::lat_lon_struct_to_fixed;
 
 use super::FOXGLOVE_TIMESTAMP;
 
@@ -20,8 +19,7 @@ pub fn location_fixes(time_type: TimeType) -> Result<Lens, LensError> {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
                     time_type,
-                    Selector::parse(".fixes[].timestamp")?
-                        .then(MapList::new(op::timespec_to_nanos())),
+                    Selector::parse(".fixes[].timestamp")?.pipe(op::timespec_to_nanos()),
                 )?
                 // `frame_id` can be missing in old versions of the schema.
                 .component(
@@ -30,13 +28,12 @@ pub fn location_fixes(time_type: TimeType) -> Result<Lens, LensError> {
                 )?
                 .component(
                     GeoPoints::descriptor_positions(),
-                    Selector::parse(".fixes[]")?.then(list_lat_lon_struct_to_list_fixed()),
+                    Selector::parse(".fixes[]")?.pipe(lat_lon_struct_to_fixed()),
                 )?
                 // `color` field is optional.
                 .component(
                     GeoPoints::descriptor_colors(),
-                    Selector::parse(".fixes[].color!")?
-                        .then(MapList::new(op::rgba_struct_to_uint32())),
+                    Selector::parse(".fixes[].color!")?.pipe(op::rgba_struct_to_uint32()),
                 )
             })?
             .build(),

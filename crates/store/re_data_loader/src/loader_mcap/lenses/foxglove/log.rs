@@ -1,7 +1,7 @@
-use arrow::array::StringArray;
+use arrow::array::{Array as _, ArrayRef, StringArray};
 use re_lenses::{Lens, LensError, op};
 use re_lenses_core::Selector;
-use re_lenses_core::combinators::{MapList, Transform};
+use re_lenses_core::combinators::Error;
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::archetypes::TextLog;
 
@@ -17,41 +17,43 @@ pub fn log(time_type: TimeType) -> Result<Lens, LensError> {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
                     time_type,
-                    Selector::parse(".timestamp")?.then(MapList::new(op::timespec_to_nanos())),
+                    Selector::parse(".timestamp")?.pipe(op::timespec_to_nanos()),
                 )?
                 .component(TextLog::descriptor_text(), Selector::parse(".message")?)?
                 .component(
                     TextLog::descriptor_level(),
-                    Selector::parse(".level.name")?.then(MapList::new(FoxgloveToRerunLogLevel)),
+                    Selector::parse(".level.name")?.pipe(foxglove_to_rerun_log_level()),
                 )
             })?
             .build(),
     )
 }
 
-/// Maps Foxglove log level strings to Rerun [`re_sdk_types::components::TextLogLevel`] strings.
-struct FoxgloveToRerunLogLevel;
+/// Returns a pipe-compatible function that maps Foxglove log level strings to Rerun
+/// [`re_sdk_types::components::TextLogLevel`] strings.
+fn foxglove_to_rerun_log_level() -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> {
+    move |source: &ArrayRef| {
+        let source = source
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: "StringArray".to_owned(),
+                actual: source.data_type().clone(),
+                context: "foxglove_to_rerun_log_level input".to_owned(),
+            })?;
 
-impl Transform for FoxgloveToRerunLogLevel {
-    type Source = StringArray;
-    type Target = StringArray;
+        let result: StringArray = source
+            .iter()
+            .map(|level| match level {
+                Some("WARNING") => Some("WARN"),
+                Some("FATAL") => Some("CRITICAL"),
+                // Rerun has no UNKNOWN level.
+                Some("UNKNOWN") | None => None,
+                // DEBUG, INFO, ERROR can be passed through as-is.
+                other => other,
+            })
+            .collect();
 
-    fn transform(
-        &self,
-        source: &StringArray,
-    ) -> Result<Option<StringArray>, re_lenses_core::combinators::Error> {
-        Ok(Some(
-            source
-                .iter()
-                .map(|level| match level {
-                    Some("WARNING") => Some("WARN"),
-                    Some("FATAL") => Some("CRITICAL"),
-                    // Rerun has no UNKNOWN level.
-                    Some("UNKNOWN") | None => None,
-                    // DEBUG, INFO, ERROR can be passed through as-is.
-                    other => other,
-                })
-                .collect(),
-        ))
+        Ok(Some(std::sync::Arc::new(result) as ArrayRef))
     }
 }

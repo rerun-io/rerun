@@ -34,7 +34,7 @@ pub enum LensError {
         input_component: ComponentIdentifier,
         component: ComponentIdentifier,
         #[source]
-        source: Box<crate::combinators::Error>,
+        source: Box<crate::SelectorError>,
     },
 
     #[error(
@@ -45,7 +45,7 @@ pub enum LensError {
         input_component: ComponentIdentifier,
         timeline_name: TimelineName,
         #[source]
-        source: Box<crate::combinators::Error>,
+        source: Box<crate::SelectorError>,
     },
 
     #[error(

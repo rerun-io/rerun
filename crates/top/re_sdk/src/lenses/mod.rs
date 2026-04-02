@@ -15,7 +15,6 @@ pub use re_lenses::{
 };
 
 pub use re_lenses_core::Selector;
-pub use re_lenses_core::combinators::Transform;
 
 // We keep the sink in re_sdk since it depends on LogSink.
 pub use self::sink::LensesSink;

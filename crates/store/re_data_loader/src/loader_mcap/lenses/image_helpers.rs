@@ -3,25 +3,30 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array as _, BinaryArray, ListArray, StringArray, StructArray, UInt8Array, UInt32Array,
+    Array as _, ArrayRef, BinaryArray, ListArray, StringArray, StructArray, UInt8Array, UInt32Array,
 };
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field};
-use re_lenses_core::combinators::{Error, Transform};
+use re_lenses_core::combinators::Error;
 use re_sdk_types::Loggable as _;
 use re_sdk_types::datatypes::ImageFormat;
 
 use super::helpers::get_field_as;
 
-/// Converts a struct with `width`, `height`, and `encoding` fields into a Rerun
-/// [`ImageFormat`] struct array, using [`re_mcap::ImageEncoding`].
-pub(crate) struct EncodingToImageFormat;
+/// Returns a pipe-compatible function that converts a struct with `width`, `height`, and
+/// `encoding` fields into a Rerun [`ImageFormat`] struct array.
+pub(crate) fn encoding_to_image_format()
+-> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> + Send + Sync {
+    move |source: &ArrayRef| {
+        let source = source
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: "StructArray".to_owned(),
+                actual: source.data_type().clone(),
+                context: "encoding_to_image_format input".to_owned(),
+            })?;
 
-impl Transform for EncodingToImageFormat {
-    type Source = StructArray;
-    type Target = StructArray;
-
-    fn transform(&self, source: &StructArray) -> Result<Option<StructArray>, Error> {
         let width_array = get_field_as::<UInt32Array>(source, "width")?;
         let height_array = get_field_as::<UInt32Array>(source, "height")?;
         let encoding_array = get_field_as::<StringArray>(source, "encoding")?;
@@ -42,30 +47,25 @@ impl Transform for EncodingToImageFormat {
         let array_ref = ImageFormat::to_arrow_opt(formats.iter().map(|f| f.as_ref()))
             .map_err(|err| Error::Other(err.to_string()))?;
 
-        array_ref
-            .as_any()
-            .downcast_ref::<StructArray>()
-            .cloned()
-            .ok_or_else(|| Error::TypeMismatch {
-                expected: "StructArray".to_owned(),
-                actual: array_ref.data_type().clone(),
-                context: "ImageFormat serialization".to_owned(),
-            })
-            .map(Some)
+        Ok(Some(array_ref))
     }
 }
 
-/// Extracts image buffer data from a struct with `width`, `height`, `step`, `encoding`,
-/// and `data` fields. Strips row padding when the data is larger than expected for the
-/// given encoding.
-pub(crate) struct ExtractImageBuffer;
-
-impl Transform for ExtractImageBuffer {
-    type Source = StructArray;
-    type Target = ListArray;
-
-    fn transform(&self, source: &StructArray) -> Result<Option<ListArray>, Error> {
+/// Returns a pipe-compatible function that extracts image buffer data from a struct with
+/// `width`, `height`, `step`, `encoding`, and `data` fields.
+pub(crate) fn extract_image_buffer()
+-> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> + Send + Sync {
+    move |source: &ArrayRef| {
         re_tracing::profile_function!();
+
+        let source = source
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: "StructArray".to_owned(),
+                actual: source.data_type().clone(),
+                context: "extract_image_buffer input".to_owned(),
+            })?;
 
         let width_array = get_field_as::<UInt32Array>(source, "width")?;
         let height_array = get_field_as::<UInt32Array>(source, "height")?;
@@ -87,7 +87,7 @@ impl Transform for ExtractImageBuffer {
             let height = height_array.value(i) as usize;
             let blob = data_array.value(i);
 
-            // How many bytes Rerun expects for this encoding (e.g. 8×8 16UC1 -> 128).
+            // How many bytes Rerun expects for this encoding (e.g. 8x8 16UC1 -> 128).
             let encoding = parse_encoding(encoding_array.value(i))?;
             let total_num_bytes = encoding
                 .to_image_format([width_array.value(i), height_array.value(i)])
@@ -111,7 +111,7 @@ impl Transform for ExtractImageBuffer {
             };
 
             if row_stride > bytes_per_row && height > 0 {
-                // Row stride larger than the actual pixel data — strip per-row padding.
+                // Row stride larger than the actual pixel data -- strip per-row padding.
                 for row in 0..height {
                     let start = row * row_stride;
                     buffer.extend_from_slice(&blob[start..start + bytes_per_row]);
@@ -130,12 +130,12 @@ impl Transform for ExtractImageBuffer {
         let values = UInt8Array::from(buffer);
         let field = Arc::new(Field::new_list_field(DataType::UInt8, false));
 
-        Ok(Some(ListArray::new(
+        Ok(Some(Arc::new(ListArray::new(
             field,
             OffsetBuffer::new(offsets.into()),
             Arc::new(values),
             source.nulls().cloned(),
-        )))
+        )) as ArrayRef))
     }
 }
 

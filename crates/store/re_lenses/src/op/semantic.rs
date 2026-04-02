@@ -219,25 +219,77 @@ impl Transform for RgbaStructToUInt32 {
 }
 
 /// Converts binary data (i32 offsets) to a list of `u8` values.
-pub fn binary_to_list_uint8() -> BinaryToListUInt8<i32> {
-    BinaryToListUInt8::new()
+pub fn binary_to_list_uint8()
+-> impl Fn(&arrow::array::ArrayRef) -> Result<Option<arrow::array::ArrayRef>, Error> + Send + Sync {
+    move |source: &arrow::array::ArrayRef| {
+        let binary = source
+            .as_any()
+            .downcast_ref::<arrow::array::BinaryArray>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: "BinaryArray".to_owned(),
+                actual: source.data_type().clone(),
+                context: "binary_to_list_uint8 input".to_owned(),
+            })?;
+        Ok(BinaryToListUInt8::<i32, i32>::new()
+            .transform(binary)?
+            .map(|arr| Arc::new(arr) as arrow::array::ArrayRef))
+    }
 }
 
 /// Converts a timestamp struct (`seconds`/`nanos`) to nanoseconds.
-pub fn timespec_to_nanos() -> TimeSpecToNanos {
-    TimeSpecToNanos::default()
+pub fn timespec_to_nanos()
+-> impl Fn(&arrow::array::ArrayRef) -> Result<Option<arrow::array::ArrayRef>, Error> + Send + Sync {
+    move |source: &arrow::array::ArrayRef| {
+        let struct_array = source
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: "StructArray".to_owned(),
+                actual: source.data_type().clone(),
+                context: "timespec_to_nanos input".to_owned(),
+            })?;
+        Ok(TimeSpecToNanos::default()
+            .transform(struct_array)?
+            .map(|arr| Arc::new(arr) as arrow::array::ArrayRef))
+    }
 }
 
 /// Converts video codec name strings to `VideoCodec` enum values.
-pub fn string_to_video_codec() -> StringToVideoCodecUInt32 {
-    StringToVideoCodecUInt32::default()
+pub fn string_to_video_codec()
+-> impl Fn(&arrow::array::ArrayRef) -> Result<Option<arrow::array::ArrayRef>, Error> + Send + Sync {
+    move |source: &arrow::array::ArrayRef| {
+        let string_array = source
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: "StringArray".to_owned(),
+                actual: source.data_type().clone(),
+                context: "string_to_video_codec input".to_owned(),
+            })?;
+        Ok(StringToVideoCodecUInt32::default()
+            .transform(string_array)?
+            .map(|arr| Arc::new(arr) as arrow::array::ArrayRef))
+    }
 }
 
 /// Converts structs with r, g, b, a fields to packed RGBA u32 values.
 ///
 /// Supports both f32 and f64 field types, and handles clamping and nulls.
-pub fn rgba_struct_to_uint32() -> RgbaStructToUInt32 {
-    RgbaStructToUInt32::default()
+pub fn rgba_struct_to_uint32()
+-> impl Fn(&arrow::array::ArrayRef) -> Result<Option<arrow::array::ArrayRef>, Error> + Send + Sync {
+    move |source: &arrow::array::ArrayRef| {
+        let struct_array = source
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: "StructArray".to_owned(),
+                actual: source.data_type().clone(),
+                context: "rgba_struct_to_uint32 input".to_owned(),
+            })?;
+        Ok(RgbaStructToUInt32::default()
+            .transform(struct_array)?
+            .map(|arr| Arc::new(arr) as arrow::array::ArrayRef))
+    }
 }
 
 #[cfg(test)]
