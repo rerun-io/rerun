@@ -4,7 +4,7 @@ use re_sdk_types::archetypes::{CoordinateFrame, DepthImage, Image};
 use re_sdk_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 
 use super::super::Ros2MessageParser;
-use super::super::util::suffix_image_plane_frame_ids;
+use super::super::util::spatial_camera_frame_ids_or_log_missing;
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};
 use crate::parsers::ros2msg::definitions::sensor_msgs;
@@ -75,6 +75,13 @@ impl MessageParser for ImageMessageParser {
         } = *self;
 
         let entity_path = ctx.entity_path().clone();
+        let spatial_frame_ids = spatial_camera_frame_ids_or_log_missing(
+            ctx.channel_topic(),
+            &entity_path,
+            "sensor_msgs/msg/Image",
+            "Importing the topic as plain 2D image data.",
+            frame_ids,
+        );
         let timelines = ctx.build_timelines();
 
         // TODO(#10726): big assumption here: image format can technically be different for each image on the topic, e.g. depth and color archetypes could be mixed here!
@@ -92,14 +99,13 @@ impl MessageParser for ImageMessageParser {
                 .collect()
         };
 
-        // We need a frame ID for the image plane. This doesn't exist in ROS,
-        // so we use the camera frame ID with a suffix here (see also camera info parser).
-        let image_plane_frame_ids = suffix_image_plane_frame_ids(frame_ids);
-        chunk_components.extend(
-            CoordinateFrame::update_fields()
-                .with_many_frame(image_plane_frame_ids)
-                .columns_of_unit_batches()?,
-        );
+        if let Some(frame_ids) = spatial_frame_ids {
+            chunk_components.extend(
+                CoordinateFrame::update_fields()
+                    .with_many_frame(frame_ids.image_plane_frame_ids)
+                    .columns_of_unit_batches()?,
+            );
+        }
 
         Ok(vec![Chunk::from_auto_row_ids(
             ChunkId::new(),
@@ -107,6 +113,87 @@ impl MessageParser for ImageMessageParser {
             timelines.clone(),
             chunk_components.into_iter().collect(),
         )?])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_chunk::EntityPath;
+    use re_log_types::TimeType;
+
+    use super::*;
+
+    fn test_ctx() -> ParserContext {
+        ParserContext::new(
+            EntityPath::from("/tests/image"),
+            "/tests/image",
+            TimeType::TimestampNs,
+        )
+    }
+
+    fn install_warn_logger() -> re_log::Receiver<re_log::LogMsg> {
+        re_log::setup_logging();
+        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Warn);
+        re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
+        log_rx
+    }
+
+    #[track_caller]
+    fn expect_single_matching_warning(
+        log_rx: &re_log::Receiver<re_log::LogMsg>,
+        expected_substring: &str,
+    ) {
+        let matching_logs = std::iter::from_fn(|| log_rx.try_recv().ok())
+            .filter(|log| log.level == re_log::Level::Warn && log.msg.contains(expected_substring))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            matching_logs.len(),
+            1,
+            "Expected exactly one matching warning containing {expected_substring:?}, got {matching_logs:?}"
+        );
+    }
+
+    #[test]
+    fn omits_coordinate_frame_when_any_image_frame_id_is_missing() {
+        let log_rx = install_warn_logger();
+
+        let parser = ImageMessageParser {
+            blobs: vec![vec![255, 0, 0], vec![0, 255, 0]],
+            image_formats: vec![ImageFormat::rgb8([1, 1]), ImageFormat::rgb8([1, 1])],
+            is_depth_image: false,
+            frame_ids: vec!["camera".to_owned(), "".to_owned()],
+        };
+
+        let chunks = Box::new(parser).finalize(test_ctx()).unwrap();
+        let chunk = chunks.first().unwrap();
+
+        assert_eq!(chunks.len(), 1);
+        assert!(
+            !chunk
+                .components()
+                .contains_component(CoordinateFrame::descriptor_frame().component)
+        );
+        expect_single_matching_warning(&log_rx, "plain 2D image data");
+    }
+
+    #[test]
+    fn keeps_coordinate_frame_for_valid_image_frame_ids() {
+        let parser = ImageMessageParser {
+            blobs: vec![vec![255, 0, 0]],
+            image_formats: vec![ImageFormat::rgb8([1, 1])],
+            is_depth_image: false,
+            frame_ids: vec!["camera".to_owned()],
+        };
+
+        let chunks = Box::new(parser).finalize(test_ctx()).unwrap();
+        let chunk = chunks.first().unwrap();
+
+        assert_eq!(chunks.len(), 1);
+        assert!(
+            chunk
+                .components()
+                .contains_component(CoordinateFrame::descriptor_frame().component)
+        );
     }
 }
 

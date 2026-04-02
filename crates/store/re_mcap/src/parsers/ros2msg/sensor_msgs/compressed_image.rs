@@ -5,7 +5,7 @@ use re_sdk_types::components::{MediaType, VideoCodec};
 
 use super::super::Ros2MessageParser;
 use super::super::definitions::sensor_msgs;
-use super::super::util::suffix_image_plane_frame_ids;
+use super::super::util::spatial_camera_frame_ids_or_log_missing;
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};
 use crate::util::TimestampCell;
@@ -70,6 +70,13 @@ impl MessageParser for CompressedImageMessageParser {
         } = *self;
 
         let entity_path = ctx.entity_path().clone();
+        let spatial_frame_ids = spatial_camera_frame_ids_or_log_missing(
+            ctx.channel_topic(),
+            &entity_path,
+            "sensor_msgs/msg/CompressedImage",
+            "Importing the topic as plain 2D image/video data.",
+            frame_ids,
+        );
         let timelines = ctx.build_timelines();
 
         let mut components: Vec<_> = match mode {
@@ -94,14 +101,13 @@ impl MessageParser for CompressedImageMessageParser {
             }
         };
 
-        // We need a frame ID for the image plane. This doesn't exist in ROS,
-        // so we use the camera frame ID with a suffix here (see also camera info parser).
-        let image_plane_frame_ids = suffix_image_plane_frame_ids(frame_ids);
-        components.extend(
-            CoordinateFrame::update_fields()
-                .with_many_frame(image_plane_frame_ids)
-                .columns_of_unit_batches()?,
-        );
+        if let Some(frame_ids) = spatial_frame_ids {
+            components.extend(
+                CoordinateFrame::update_fields()
+                    .with_many_frame(frame_ids.image_plane_frame_ids)
+                    .columns_of_unit_batches()?,
+            );
+        }
 
         let chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
@@ -172,5 +178,76 @@ mod tests {
         assert!(is_rvl("32FC1; compressedDepth RVL"));
         assert!(!is_rvl("16UC1; compressedDepth png"));
         assert!(!is_rvl("jpeg"));
+    }
+
+    fn test_ctx() -> ParserContext {
+        ParserContext::new(
+            re_chunk::EntityPath::from("/tests/compressed_image"),
+            "/tests/compressed_image",
+            re_log_types::TimeType::TimestampNs,
+        )
+    }
+
+    fn install_warn_logger() -> re_log::Receiver<re_log::LogMsg> {
+        re_log::setup_logging();
+        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Warn);
+        re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
+        log_rx
+    }
+
+    #[track_caller]
+    fn expect_single_matching_warning(
+        log_rx: &re_log::Receiver<re_log::LogMsg>,
+        expected_substring: &str,
+    ) {
+        let matching_logs = std::iter::from_fn(|| log_rx.try_recv().ok())
+            .filter(|log| log.level == re_log::Level::Warn && log.msg.contains(expected_substring))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            matching_logs.len(),
+            1,
+            "Expected exactly one matching warning containing {expected_substring:?}, got {matching_logs:?}"
+        );
+    }
+
+    #[test]
+    fn omits_coordinate_frame_when_any_compressed_image_frame_id_is_missing() {
+        let log_rx = install_warn_logger();
+
+        let parser = CompressedImageMessageParser {
+            blobs: vec![vec![1, 2, 3], vec![4, 5, 6]],
+            mode: ParsedPayloadKind::Encoded,
+            frame_ids: vec!["camera".to_owned(), " \t".to_owned()],
+        };
+
+        let chunks = Box::new(parser).finalize(test_ctx()).unwrap();
+        let chunk = chunks.first().unwrap();
+
+        assert_eq!(chunks.len(), 1);
+        assert!(
+            !chunk
+                .components()
+                .contains_component(CoordinateFrame::descriptor_frame().component)
+        );
+        expect_single_matching_warning(&log_rx, "plain 2D image/video data");
+    }
+
+    #[test]
+    fn keeps_coordinate_frame_for_valid_compressed_image_frame_ids() {
+        let parser = CompressedImageMessageParser {
+            blobs: vec![vec![1, 2, 3]],
+            mode: ParsedPayloadKind::Encoded,
+            frame_ids: vec!["camera".to_owned()],
+        };
+
+        let chunks = Box::new(parser).finalize(test_ctx()).unwrap();
+        let chunk = chunks.first().unwrap();
+
+        assert_eq!(chunks.len(), 1);
+        assert!(
+            chunk
+                .components()
+                .contains_component(CoordinateFrame::descriptor_frame().component)
+        );
     }
 }

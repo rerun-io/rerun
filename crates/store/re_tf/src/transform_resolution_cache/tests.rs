@@ -1618,11 +1618,14 @@ fn test_different_associated_paths_for_static_and_temporal()
     Ok(())
 }
 
-#[track_caller]
-fn ensure_no_logged_error(rx: &re_log::Receiver<re_log::LogMsg>) {
-    if let Ok(msg) = rx.try_recv() {
-        panic!("Unexpected log output: {msg:?}");
-    }
+fn drain_matching_logs(
+    rx: &re_log::Receiver<re_log::LogMsg>,
+    level: re_log::Level,
+    needle: &str,
+) -> Vec<re_log::LogMsg> {
+    std::iter::from_fn(|| rx.try_recv().ok())
+        .filter(|msg| msg.level == level && msg.msg.contains(needle))
+        .collect()
 }
 
 fn test_error_on_changing_associated_path(time: TimeInt) -> Result<(), Box<dyn std::error::Error>> {
@@ -1642,42 +1645,60 @@ fn test_error_on_changing_associated_path(time: TimeInt) -> Result<(), Box<dyn s
         [(timeline, time)].into()
     };
 
+    let (entity_a, entity_b, frame_name) = if time.is_static() {
+        ("entity_a_static", "entity_b_static", "my_frame_static")
+    } else {
+        (
+            "entity_a_temporal",
+            "entity_b_temporal",
+            "my_frame_temporal",
+        )
+    };
+
     // First, create temporal transform
-    let temporal_chunk1 = Chunk::builder(EntityPath::from("entity_a"))
+    let temporal_chunk1 = Chunk::builder(EntityPath::from(entity_a))
         .with_archetype_auto_row(
             time_point.clone(),
-            &Transform3D::from_translation([1.0, 0.0, 0.0]).with_child_frame("my_frame"),
+            &Transform3D::from_translation([1.0, 0.0, 0.0]).with_child_frame(frame_name),
         )
         .build()?;
     cache.process_store_events(entity_db.add_chunk(&Arc::new(temporal_chunk1))?.iter());
 
-    ensure_no_logged_error(&log_rx);
+    assert!(
+        drain_matching_logs(&log_rx, re_log::Level::Error, frame_name).is_empty(),
+        "Unexpected matching log output for {frame_name:?}",
+    );
 
     // Try to associate the same frame with a different temporal entity - should log error
-    let temporal_chunk2 = Chunk::builder(EntityPath::from("entity_b"))
+    let temporal_chunk2 = Chunk::builder(EntityPath::from(entity_b))
         .with_archetype_auto_row(
             time_point,
-            &Transform3D::from_translation([2.0, 0.0, 0.0]).with_child_frame("my_frame"),
+            &Transform3D::from_translation([2.0, 0.0, 0.0]).with_child_frame(frame_name),
         )
         .build()?;
     cache.process_store_events(entity_db.add_chunk(&Arc::new(temporal_chunk2))?.iter());
 
-    let error = log_rx.try_recv().unwrap();
-    ensure_no_logged_error(&log_rx); // Exactly one error.
+    let matching_errors = drain_matching_logs(&log_rx, re_log::Level::Error, frame_name);
+    assert_eq!(
+        matching_errors.len(),
+        1,
+        "Expected exactly one matching error for {frame_name:?}, got {matching_errors:?}",
+    );
+    let error = &matching_errors[0];
 
     assert_eq!(error.level, re_log::Level::Error);
     assert!(
-        error.msg.contains("entity_a"),
+        error.msg.contains(entity_a),
         "Expected to mention previous entity, but msg was {}",
         error.msg
     );
     assert!(
-        error.msg.contains("entity_b"),
+        error.msg.contains(entity_b),
         "Expected to mention new entity, but msg was {}",
         error.msg
     );
     assert!(
-        error.msg.contains("my_frame"),
+        error.msg.contains(frame_name),
         "Expected to mention target, but msg was {}",
         error.msg
     );

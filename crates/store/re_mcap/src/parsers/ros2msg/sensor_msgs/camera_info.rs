@@ -3,7 +3,7 @@ use re_sdk_types::archetypes::{CoordinateFrame, Pinhole};
 
 use super::super::Ros2MessageParser;
 use super::super::definitions::sensor_msgs;
-use super::super::util::suffix_image_plane_frame_ids;
+use super::super::util::spatial_camera_frame_ids_or_log_missing;
 use crate::Error;
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};
@@ -73,24 +73,29 @@ impl MessageParser for CameraInfoMessageParser {
         } = *self;
 
         let entity_path = ctx.entity_path().clone();
+        let Some(frame_ids) = spatial_camera_frame_ids_or_log_missing(
+            ctx.channel_topic(),
+            &entity_path,
+            "sensor_msgs/msg/CameraInfo",
+            "Skipping camera calibration import for this topic.",
+            frame_ids,
+        ) else {
+            return Ok(Vec::new());
+        };
         let timelines = ctx.build_timelines();
-
-        // We need a frame ID for the image plane. This doesn't exist in ROS,
-        // so we use the camera frame ID with a suffix here (and in the image parsers).
-        let image_plane_frame_ids = suffix_image_plane_frame_ids(frame_ids.clone());
 
         let mut components: Vec<_> = Pinhole::update_fields()
             .with_many_image_from_camera(image_from_cameras)
             .with_many_resolution(resolutions)
-            .with_many_parent_frame(frame_ids.clone())
-            .with_many_child_frame(image_plane_frame_ids)
+            .with_many_parent_frame(frame_ids.camera_frame_ids.clone())
+            .with_many_child_frame(frame_ids.image_plane_frame_ids)
             .columns_of_unit_batches()
             .map_err(|err| Error::Other(anyhow::anyhow!(err)))?
             .collect();
 
         components.extend(
             CoordinateFrame::update_fields()
-                .with_many_frame(frame_ids)
+                .with_many_frame(frame_ids.camera_frame_ids)
                 .columns_of_unit_batches()
                 .map_err(|err| Error::Other(anyhow::anyhow!(err)))?,
         );
@@ -103,5 +108,88 @@ impl MessageParser for CameraInfoMessageParser {
         )?;
 
         Ok(vec![pinhole_chunk])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_chunk::EntityPath;
+    use re_log_types::TimeType;
+
+    use super::*;
+
+    fn test_ctx() -> ParserContext {
+        ParserContext::new(
+            EntityPath::from("/tests/camera_info"),
+            "/tests/camera_info",
+            TimeType::TimestampNs,
+        )
+    }
+
+    fn install_warn_logger() -> re_log::Receiver<re_log::LogMsg> {
+        re_log::setup_logging();
+        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Warn);
+        re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
+        log_rx
+    }
+
+    #[track_caller]
+    fn expect_single_matching_warning(
+        log_rx: &re_log::Receiver<re_log::LogMsg>,
+        expected_substring: &str,
+    ) {
+        let matching_logs = std::iter::from_fn(|| log_rx.try_recv().ok())
+            .filter(|log| log.level == re_log::Level::Warn && log.msg.contains(expected_substring))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            matching_logs.len(),
+            1,
+            "Expected exactly one matching warning containing {expected_substring:?}, got {matching_logs:?}"
+        );
+    }
+
+    #[test]
+    fn drops_camera_info_topic_when_any_frame_id_is_missing() {
+        let log_rx = install_warn_logger();
+
+        let parser = CameraInfoMessageParser {
+            image_from_cameras: vec![[1.0; 9], [2.0; 9]],
+            resolutions: vec![(640.0, 480.0), (640.0, 480.0)],
+            frame_ids: vec!["camera".to_owned(), "   ".to_owned()],
+        };
+
+        let chunks = Box::new(parser).finalize(test_ctx()).unwrap();
+
+        assert!(chunks.is_empty());
+        expect_single_matching_warning(&log_rx, "Skipping camera calibration import");
+    }
+
+    #[test]
+    fn keeps_spatial_components_for_camera_info_with_valid_frame_ids() {
+        let parser = CameraInfoMessageParser {
+            image_from_cameras: vec![[1.0; 9]],
+            resolutions: vec![(640.0, 480.0)],
+            frame_ids: vec!["camera".to_owned()],
+        };
+
+        let chunks = Box::new(parser).finalize(test_ctx()).unwrap();
+        let chunk = chunks.first().unwrap();
+
+        assert_eq!(chunks.len(), 1);
+        assert!(
+            chunk
+                .components()
+                .contains_component(Pinhole::descriptor_parent_frame().component)
+        );
+        assert!(
+            chunk
+                .components()
+                .contains_component(Pinhole::descriptor_child_frame().component)
+        );
+        assert!(
+            chunk
+                .components()
+                .contains_component(CoordinateFrame::descriptor_frame().component)
+        );
     }
 }

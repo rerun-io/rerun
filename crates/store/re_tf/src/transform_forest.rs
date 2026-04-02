@@ -780,7 +780,7 @@ fn transforms_at(
     #![expect(clippy::useless_let_if_seq)]
 
     let mut parent_from_child;
-    let pinhole_projection;
+    let mut pinhole_projection;
 
     if let Some(source_transforms) = transforms_for_timeline.frame_transforms(child_frame) {
         parent_from_child =
@@ -789,6 +789,18 @@ fn transforms_at(
             source_transforms.latest_at_pinhole(entity_db, missing_chunk_reporter, query);
     } else {
         parent_from_child = None;
+        pinhole_projection = None;
+    }
+
+    if let Some(projection) = pinhole_projection.as_ref()
+        && projection.parent == child_frame
+    {
+        re_log::warn_once!(
+            "Ignoring self-referential pinhole projection on frame {:?}: pinhole parent and child frame ids must differ.",
+            id_registry
+                .lookup_frame_id(child_frame)
+                .map_or_else(|| format!("{child_frame:?}"), ToString::to_string)
+        );
         pinhole_projection = None;
     }
 
@@ -953,6 +965,15 @@ mod tests {
             result = result.replace(&format!("{hash:#?}"), &format!("{frame}"));
         }
         result
+    }
+
+    fn drain_matching_warnings(
+        log_rx: &re_log::Receiver<re_log::LogMsg>,
+        needle: &str,
+    ) -> Vec<re_log::LogMsg> {
+        std::iter::from_fn(|| log_rx.try_recv().ok())
+            .filter(|log| log.level == re_log::Level::Warn && log.msg.contains(needle))
+            .collect()
     }
 
     #[test]
@@ -1523,15 +1544,49 @@ mod tests {
             )]
         );
 
-        let received_log = log_rx.try_recv()?;
-        assert_eq!(received_log.level, re_log::Level::Warn);
-        assert!(
-            received_log
-                .msg
-                .contains("Ignoring transform at root entity"),
-            "Expected warning about ignoring implicit root parent frame, got: {}",
-            received_log.msg
+        let matching_logs = drain_matching_warnings(&log_rx, "Ignoring transform at root entity");
+        assert_eq!(
+            matching_logs.len(),
+            1,
+            "Expected exactly one warning about ignoring the implicit root parent frame, got: {matching_logs:?}",
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_self_referential_pinhole_is_ignored_with_warning()
+    -> Result<(), Box<dyn std::error::Error>> {
+        re_log::setup_logging();
+        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Warn);
+        re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
+
+        let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder(EntityPath::from("camera"))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &test_pinhole().with_child_frame("").with_parent_frame(""),
+                )
+                .build()?,
+        ))?;
+
+        let query = LatestAtQuery::latest(TimelineName::log_tick());
+        let mut transform_cache = TransformResolutionCache::new(&entity_db);
+        transform_cache
+            .ensure_timeline_is_initialized(entity_db.storage_engine().store(), query.timeline());
+        let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
+        assert!(!transform_forest.any_missing_chunks());
+
+        assert_eq!(
+            transform_forest.root_info(TransformFrameIdHash::from_str("")),
+            Some(&TransformTreeRootInfo::TransformFrameRoot)
+        );
+
+        let matching_logs =
+            drain_matching_warnings(&log_rx, "Ignoring self-referential pinhole projection");
+        assert_eq!(matching_logs.len(), 1);
 
         Ok(())
     }
