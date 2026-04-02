@@ -651,7 +651,7 @@ impl LeRobotDatasetV3 {
         let (samples_meta, samples): (Vec<_>, Vec<_>) = samples.into_iter().unzip();
 
         let samples_column = VideoStream::update_fields()
-            .with_many_sample(samples)
+            .with_sample(samples)
             .columns_of_unit_batches()
             .with_context(|| "Failed to create VideoStream")?;
 

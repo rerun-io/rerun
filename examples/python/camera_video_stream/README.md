@@ -43,7 +43,9 @@ Note that unlike with unlike with [`VideoAsset`](https://www.rerun.io/docs/refer
 there's no need to log [`VideoFrameReference`](https://www.rerun.io/docs/reference/types/archetypes/video_frame_reference),
 to map the video's PTS to the Rerun timeline, since the time at which video samples
 are logged directly represents the PTS.
-TODO(#10090): In the presence of H.264/H.265 b-frames, separate _decode timestamps_ (DTS) are needed. This is not yet supported.
+When B-frames are present in H.264/H.265 streams, the time at which samples are logged represents
+the _decode timestamp_ (DTS), and the `presentation_time_offset` field should be used to communicate
+the difference between DTS and PTS for each sample.
 
 The frame data, known as a frame-`sample` since this may contain data relevant for an arbitrary number of frames in the future,
 is then logged with:

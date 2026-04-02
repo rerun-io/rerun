@@ -86,8 +86,9 @@ class VideoStream(Archetype, VisualizableArchetype):
     assert isinstance(stream, av.video.stream.VideoStream)
     stream.width = width
     stream.height = height
-    # TODO(#10090): Rerun Video Streams don't support b-frames yet.
-    # Note that b-frames are generally not recommended for low-latency streaming and may make logging more complex.
+    # B-frames are generally not recommended for low-latency streaming and may make logging more complex.
+    # If b-frames are present, the `presentation_time_offset` field should be used to communicate
+    # the difference between decode and presentation timestamps.
     stream.max_b_frames = 0
 
     # Log codec only once as static data (it naturally never changes). This isn't strictly necessary, but good practice.
@@ -128,7 +129,8 @@ class VideoStream(Archetype, VisualizableArchetype):
         self: Any,
         codec: components.VideoCodecLike,
         *,
-        sample: datatypes.BlobLike | None = None,
+        sample: datatypes.BlobArrayLike | None = None,
+        presentation_time_offset: datatypes.VideoPresentationTimestampOffsetArrayLike | None = None,
         opacity: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> None:
@@ -144,10 +146,17 @@ class VideoStream(Archetype, VisualizableArchetype):
         sample:
             Video sample data (also known as "video chunk").
 
-            The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
-            There is currently no way to log differing decoding timestamps, meaning
-            that there is no support for B-frames.
-            See <https://github.com/rerun-io/rerun/issues/10090> for more details.
+            Each element in this array must contain the encoded data for exactly one video frame.
+            When logging a single frame per row, this is simply a single-element array (or a scalar).
+
+            For B-frame support (H.264/H.265), multiple samples can be batched into a single row.
+            Samples within a row must be in **decode order**.
+            The current timestamp on the timeline is used as the decode timestamp (DTS) for the first sample;
+            subsequent samples in the same row are assigned sequentially increasing DTS values.
+            See `presentation_time_offset` for specifying presentation timestamps that differ from decode timestamps.
+
+            When no `presentation_time_offset` is provided, the presentation timestamp (PTS)
+            equals the decode timestamp for each sample (i.e. no B-frames).
 
             Rerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,
             but may cause the video playback in the Viewer to reset.
@@ -157,14 +166,25 @@ class VideoStream(Archetype, VisualizableArchetype):
             codec parameters & resolution.
 
             The samples are expected to be encoded using the `codec` field.
-            Each video sample must contain enough data for exactly one video frame
-            (this restriction may be relaxed in the future for some codecs).
 
             Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
             never log this component as static data as this means that you loose all information of
             previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+        presentation_time_offset:
+            Per-sample offset from decode timestamp (DTS) to presentation timestamp (PTS).
+
+            When present, the presentation timestamp for sample `i` is computed as
+            `DTS_i + presentation_time_offset[i]`, where `DTS_i` is the decode timestamp of that sample.
+
+            This is needed for H.264/H.265 streams that use B-frames (bidirectionally predicted frames),
+            as B-frames cause decode order and presentation order to differ.
+
+            When absent, the presentation timestamp equals the decode timestamp for all samples
+            in this row (i.e. no B-frames, which is the common case for low-latency streaming).
+
+            The number of offsets should match the number of samples in this row.
         opacity:
             Opacity of the video stream, useful for layering several media.
 
@@ -179,7 +199,13 @@ class VideoStream(Archetype, VisualizableArchetype):
 
         # You can define your own __init__ function as a member of VideoStreamExt in video_stream_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(codec=codec, sample=sample, opacity=opacity, draw_order=draw_order)
+            self.__attrs_init__(
+                codec=codec,
+                sample=sample,
+                presentation_time_offset=presentation_time_offset,
+                opacity=opacity,
+                draw_order=draw_order,
+            )
             return
         self.__attrs_clear__()
 
@@ -188,6 +214,7 @@ class VideoStream(Archetype, VisualizableArchetype):
         self.__attrs_init__(
             codec=None,
             sample=None,
+            presentation_time_offset=None,
             opacity=None,
             draw_order=None,
         )
@@ -205,7 +232,8 @@ class VideoStream(Archetype, VisualizableArchetype):
         *,
         clear_unset: bool = False,
         codec: components.VideoCodecLike | None = None,
-        sample: datatypes.BlobLike | None = None,
+        sample: datatypes.BlobArrayLike | None = None,
+        presentation_time_offset: datatypes.VideoPresentationTimestampOffsetArrayLike | None = None,
         opacity: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> VideoStream:
@@ -223,10 +251,17 @@ class VideoStream(Archetype, VisualizableArchetype):
         sample:
             Video sample data (also known as "video chunk").
 
-            The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
-            There is currently no way to log differing decoding timestamps, meaning
-            that there is no support for B-frames.
-            See <https://github.com/rerun-io/rerun/issues/10090> for more details.
+            Each element in this array must contain the encoded data for exactly one video frame.
+            When logging a single frame per row, this is simply a single-element array (or a scalar).
+
+            For B-frame support (H.264/H.265), multiple samples can be batched into a single row.
+            Samples within a row must be in **decode order**.
+            The current timestamp on the timeline is used as the decode timestamp (DTS) for the first sample;
+            subsequent samples in the same row are assigned sequentially increasing DTS values.
+            See `presentation_time_offset` for specifying presentation timestamps that differ from decode timestamps.
+
+            When no `presentation_time_offset` is provided, the presentation timestamp (PTS)
+            equals the decode timestamp for each sample (i.e. no B-frames).
 
             Rerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,
             but may cause the video playback in the Viewer to reset.
@@ -236,14 +271,25 @@ class VideoStream(Archetype, VisualizableArchetype):
             codec parameters & resolution.
 
             The samples are expected to be encoded using the `codec` field.
-            Each video sample must contain enough data for exactly one video frame
-            (this restriction may be relaxed in the future for some codecs).
 
             Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
             never log this component as static data as this means that you loose all information of
             previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+        presentation_time_offset:
+            Per-sample offset from decode timestamp (DTS) to presentation timestamp (PTS).
+
+            When present, the presentation timestamp for sample `i` is computed as
+            `DTS_i + presentation_time_offset[i]`, where `DTS_i` is the decode timestamp of that sample.
+
+            This is needed for H.264/H.265 streams that use B-frames (bidirectionally predicted frames),
+            as B-frames cause decode order and presentation order to differ.
+
+            When absent, the presentation timestamp equals the decode timestamp for all samples
+            in this row (i.e. no B-frames, which is the common case for low-latency streaming).
+
+            The number of offsets should match the number of samples in this row.
         opacity:
             Opacity of the video stream, useful for layering several media.
 
@@ -261,6 +307,7 @@ class VideoStream(Archetype, VisualizableArchetype):
             kwargs = {
                 "codec": codec,
                 "sample": sample,
+                "presentation_time_offset": presentation_time_offset,
                 "opacity": opacity,
                 "draw_order": draw_order,
             }
@@ -317,6 +364,7 @@ class VideoStream(Archetype, VisualizableArchetype):
         *,
         codec: components.VideoCodecArrayLike | None = None,
         sample: datatypes.BlobArrayLike | None = None,
+        presentation_time_offset: datatypes.VideoPresentationTimestampOffsetArrayLike | None = None,
         opacity: datatypes.Float32ArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
@@ -337,10 +385,17 @@ class VideoStream(Archetype, VisualizableArchetype):
         sample:
             Video sample data (also known as "video chunk").
 
-            The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
-            There is currently no way to log differing decoding timestamps, meaning
-            that there is no support for B-frames.
-            See <https://github.com/rerun-io/rerun/issues/10090> for more details.
+            Each element in this array must contain the encoded data for exactly one video frame.
+            When logging a single frame per row, this is simply a single-element array (or a scalar).
+
+            For B-frame support (H.264/H.265), multiple samples can be batched into a single row.
+            Samples within a row must be in **decode order**.
+            The current timestamp on the timeline is used as the decode timestamp (DTS) for the first sample;
+            subsequent samples in the same row are assigned sequentially increasing DTS values.
+            See `presentation_time_offset` for specifying presentation timestamps that differ from decode timestamps.
+
+            When no `presentation_time_offset` is provided, the presentation timestamp (PTS)
+            equals the decode timestamp for each sample (i.e. no B-frames).
 
             Rerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,
             but may cause the video playback in the Viewer to reset.
@@ -350,14 +405,25 @@ class VideoStream(Archetype, VisualizableArchetype):
             codec parameters & resolution.
 
             The samples are expected to be encoded using the `codec` field.
-            Each video sample must contain enough data for exactly one video frame
-            (this restriction may be relaxed in the future for some codecs).
 
             Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
             never log this component as static data as this means that you loose all information of
             previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+        presentation_time_offset:
+            Per-sample offset from decode timestamp (DTS) to presentation timestamp (PTS).
+
+            When present, the presentation timestamp for sample `i` is computed as
+            `DTS_i + presentation_time_offset[i]`, where `DTS_i` is the decode timestamp of that sample.
+
+            This is needed for H.264/H.265 streams that use B-frames (bidirectionally predicted frames),
+            as B-frames cause decode order and presentation order to differ.
+
+            When absent, the presentation timestamp equals the decode timestamp for all samples
+            in this row (i.e. no B-frames, which is the common case for low-latency streaming).
+
+            The number of offsets should match the number of samples in this row.
         opacity:
             Opacity of the video stream, useful for layering several media.
 
@@ -375,6 +441,7 @@ class VideoStream(Archetype, VisualizableArchetype):
             inst.__attrs_init__(
                 codec=codec,
                 sample=sample,
+                presentation_time_offset=presentation_time_offset,
                 opacity=opacity,
                 draw_order=draw_order,
             )
@@ -386,6 +453,7 @@ class VideoStream(Archetype, VisualizableArchetype):
         kwargs = {
             "VideoStream:codec": codec,
             "VideoStream:sample": sample,
+            "VideoStream:presentation_time_offset": presentation_time_offset,
             "VideoStream:opacity": opacity,
             "VideoStream:draw_order": draw_order,
         }
@@ -440,10 +508,17 @@ class VideoStream(Archetype, VisualizableArchetype):
     )
     # Video sample data (also known as "video chunk").
     #
-    # The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
-    # There is currently no way to log differing decoding timestamps, meaning
-    # that there is no support for B-frames.
-    # See <https://github.com/rerun-io/rerun/issues/10090> for more details.
+    # Each element in this array must contain the encoded data for exactly one video frame.
+    # When logging a single frame per row, this is simply a single-element array (or a scalar).
+    #
+    # For B-frame support (H.264/H.265), multiple samples can be batched into a single row.
+    # Samples within a row must be in **decode order**.
+    # The current timestamp on the timeline is used as the decode timestamp (DTS) for the first sample;
+    # subsequent samples in the same row are assigned sequentially increasing DTS values.
+    # See `presentation_time_offset` for specifying presentation timestamps that differ from decode timestamps.
+    #
+    # When no `presentation_time_offset` is provided, the presentation timestamp (PTS)
+    # equals the decode timestamp for each sample (i.e. no B-frames).
     #
     # Rerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,
     # but may cause the video playback in the Viewer to reset.
@@ -453,14 +528,32 @@ class VideoStream(Archetype, VisualizableArchetype):
     # codec parameters & resolution.
     #
     # The samples are expected to be encoded using the `codec` field.
-    # Each video sample must contain enough data for exactly one video frame
-    # (this restriction may be relaxed in the future for some codecs).
     #
     # Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
     # never log this component as static data as this means that you loose all information of
     # previous samples which may be required to decode an image.
     #
     # See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    presentation_time_offset: components.VideoPresentationTimestampOffsetBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.VideoPresentationTimestampOffsetBatch._converter,  # type: ignore[misc]
+    )
+    # Per-sample offset from decode timestamp (DTS) to presentation timestamp (PTS).
+    #
+    # When present, the presentation timestamp for sample `i` is computed as
+    # `DTS_i + presentation_time_offset[i]`, where `DTS_i` is the decode timestamp of that sample.
+    #
+    # This is needed for H.264/H.265 streams that use B-frames (bidirectionally predicted frames),
+    # as B-frames cause decode order and presentation order to differ.
+    #
+    # When absent, the presentation timestamp equals the decode timestamp for all samples
+    # in this row (i.e. no B-frames, which is the common case for low-latency streaming).
+    #
+    # The number of offsets should match the number of samples in this row.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

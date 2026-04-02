@@ -78,6 +78,12 @@ from .uvec4d import UVec4D, UVec4DArrayLike, UVec4DBatch, UVec4DLike
 from .vec2d import Vec2D, Vec2DArrayLike, Vec2DBatch, Vec2DLike
 from .vec3d import Vec3D, Vec3DArrayLike, Vec3DBatch, Vec3DLike
 from .vec4d import Vec4D, Vec4DArrayLike, Vec4DBatch, Vec4DLike
+from .video_presentation_timestamp_offset import (
+    VideoPresentationTimestampOffset,
+    VideoPresentationTimestampOffsetArrayLike,
+    VideoPresentationTimestampOffsetBatch,
+    VideoPresentationTimestampOffsetLike,
+)
 from .video_timestamp import VideoTimestamp, VideoTimestampArrayLike, VideoTimestampBatch, VideoTimestampLike
 from .view_coordinates import ViewCoordinates, ViewCoordinatesArrayLike, ViewCoordinatesBatch, ViewCoordinatesLike
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeArrayLike, VisibleTimeRangeBatch, VisibleTimeRangeLike
@@ -267,6 +273,10 @@ __all__ = [
     "Vec4DArrayLike",
     "Vec4DBatch",
     "Vec4DLike",
+    "VideoPresentationTimestampOffset",
+    "VideoPresentationTimestampOffsetArrayLike",
+    "VideoPresentationTimestampOffsetBatch",
+    "VideoPresentationTimestampOffsetLike",
     "VideoTimestamp",
     "VideoTimestampArrayLike",
     "VideoTimestampBatch",

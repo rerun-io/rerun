@@ -75,6 +75,7 @@ value_range.rs linguist-generated=true
 vector2d.rs linguist-generated=true
 vector3d.rs linguist-generated=true
 video_codec.rs linguist-generated=true
+video_presentation_timestamp_offset.rs linguist-generated=true
 video_sample.rs linguist-generated=true
 video_timestamp.rs linguist-generated=true
 view_coordinates.rs linguist-generated=true

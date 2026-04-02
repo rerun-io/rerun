@@ -41,10 +41,17 @@ pub struct VideoStream {
 
     /// Video sample data (also known as "video chunk").
     ///
-    /// The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
-    /// There is currently no way to log differing decoding timestamps, meaning
-    /// that there is no support for B-frames.
-    /// See <https://github.com/rerun-io/rerun/issues/10090> for more details.
+    /// Each element in this array must contain the encoded data for exactly one video frame.
+    /// When logging a single frame per row, this is simply a single-element array (or a scalar).
+    ///
+    /// For B-frame support (H.264/H.265), multiple samples can be batched into a single row.
+    /// Samples within a row must be in **decode order**.
+    /// The current timestamp on the timeline is used as the decode timestamp (DTS) for the first sample;
+    /// subsequent samples in the same row are assigned sequentially increasing DTS values.
+    /// See `presentation_time_offset` for specifying presentation timestamps that differ from decode timestamps.
+    ///
+    /// When no `presentation_time_offset` is provided, the presentation timestamp (PTS)
+    /// equals the decode timestamp for each sample (i.e. no B-frames).
     ///
     /// Rerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,
     /// but may cause the video playback in the Viewer to reset.
@@ -54,8 +61,6 @@ pub struct VideoStream {
     /// codec parameters & resolution.
     ///
     /// The samples are expected to be encoded using the `codec` field.
-    /// Each video sample must contain enough data for exactly one video frame
-    /// (this restriction may be relaxed in the future for some codecs).
     ///
     /// Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes::EncodedImage`][crate::archetypes::EncodedImage])
     /// never log this component as static data as this means that you loose all information of
@@ -63,6 +68,20 @@ pub struct VideoStream {
     ///
     /// See [`components::VideoCodec`][crate::components::VideoCodec] for codec specific requirements.
     pub sample: Option<SerializedComponentBatch>,
+
+    /// Per-sample offset from decode timestamp (DTS) to presentation timestamp (PTS).
+    ///
+    /// When present, the presentation timestamp for sample `i` is computed as
+    /// `DTS_i + presentation_time_offset[i]`, where `DTS_i` is the decode timestamp of that sample.
+    ///
+    /// This is needed for H.264/H.265 streams that use B-frames (bidirectionally predicted frames),
+    /// as B-frames cause decode order and presentation order to differ.
+    ///
+    /// When absent, the presentation timestamp equals the decode timestamp for all samples
+    /// in this row (i.e. no B-frames, which is the common case for low-latency streaming).
+    ///
+    /// The number of offsets should match the number of samples in this row.
+    pub presentation_time_offset: Option<SerializedComponentBatch>,
 
     /// Opacity of the video stream, useful for layering several media.
     ///
@@ -101,6 +120,18 @@ impl VideoStream {
         }
     }
 
+    /// Returns the [`ComponentDescriptor`] for [`Self::presentation_time_offset`].
+    ///
+    /// The corresponding component is [`crate::components::VideoPresentationTimestampOffset`].
+    #[inline]
+    pub fn descriptor_presentation_time_offset() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.VideoStream".into()),
+            component: "VideoStream:presentation_time_offset".into(),
+            component_type: Some("rerun.components.VideoPresentationTimestampOffset".into()),
+        }
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
     ///
     /// The corresponding component is [`crate::components::Opacity`].
@@ -132,27 +163,29 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
     std::sync::LazyLock::new(|| [VideoStream::descriptor_sample()]);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
+            VideoStream::descriptor_presentation_time_offset(),
             VideoStream::descriptor_opacity(),
             VideoStream::descriptor_draw_order(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
     std::sync::LazyLock::new(|| {
         [
             VideoStream::descriptor_codec(),
             VideoStream::descriptor_sample(),
+            VideoStream::descriptor_presentation_time_offset(),
             VideoStream::descriptor_opacity(),
             VideoStream::descriptor_draw_order(),
         ]
     });
 
 impl VideoStream {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 impl ::re_types_core::Archetype for VideoStream {
@@ -199,6 +232,14 @@ impl ::re_types_core::Archetype for VideoStream {
         let sample = arrays_by_descr
             .get(&Self::descriptor_sample())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_sample()));
+        let presentation_time_offset = arrays_by_descr
+            .get(&Self::descriptor_presentation_time_offset())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_presentation_time_offset(),
+                )
+            });
         let opacity = arrays_by_descr
             .get(&Self::descriptor_opacity())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_opacity()));
@@ -210,6 +251,7 @@ impl ::re_types_core::Archetype for VideoStream {
         Ok(Self {
             codec,
             sample,
+            presentation_time_offset,
             opacity,
             draw_order,
         })
@@ -223,6 +265,7 @@ impl ::re_types_core::AsComponents for VideoStream {
         [
             self.codec.clone(),
             self.sample.clone(),
+            self.presentation_time_offset.clone(),
             self.opacity.clone(),
             self.draw_order.clone(),
         ]
@@ -248,6 +291,7 @@ impl VideoStream {
         Self {
             codec: try_serialize_field(Self::descriptor_codec(), [codec]),
             sample: None,
+            presentation_time_offset: None,
             opacity: None,
             draw_order: None,
         }
@@ -271,6 +315,10 @@ impl VideoStream {
             sample: Some(SerializedComponentBatch::new(
                 crate::components::VideoSample::arrow_empty(),
                 Self::descriptor_sample(),
+            )),
+            presentation_time_offset: Some(SerializedComponentBatch::new(
+                crate::components::VideoPresentationTimestampOffset::arrow_empty(),
+                Self::descriptor_presentation_time_offset(),
             )),
             opacity: Some(SerializedComponentBatch::new(
                 crate::components::Opacity::arrow_empty(),
@@ -308,6 +356,11 @@ impl VideoStream {
             self.sample
                 .map(|sample| sample.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.presentation_time_offset
+                .map(|presentation_time_offset| {
+                    presentation_time_offset.partitioned(_lengths.clone())
+                })
+                .transpose()?,
             self.opacity
                 .map(|opacity| opacity.partitioned(_lengths.clone()))
                 .transpose()?,
@@ -328,11 +381,16 @@ impl VideoStream {
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_codec = self.codec.as_ref().map(|b| b.array.len());
         let len_sample = self.sample.as_ref().map(|b| b.array.len());
+        let len_presentation_time_offset = self
+            .presentation_time_offset
+            .as_ref()
+            .map(|b| b.array.len());
         let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
         let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_codec)
             .or(len_sample)
+            .or(len_presentation_time_offset)
             .or(len_opacity)
             .or(len_draw_order)
             .unwrap_or(0);
@@ -363,10 +421,17 @@ impl VideoStream {
 
     /// Video sample data (also known as "video chunk").
     ///
-    /// The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
-    /// There is currently no way to log differing decoding timestamps, meaning
-    /// that there is no support for B-frames.
-    /// See <https://github.com/rerun-io/rerun/issues/10090> for more details.
+    /// Each element in this array must contain the encoded data for exactly one video frame.
+    /// When logging a single frame per row, this is simply a single-element array (or a scalar).
+    ///
+    /// For B-frame support (H.264/H.265), multiple samples can be batched into a single row.
+    /// Samples within a row must be in **decode order**.
+    /// The current timestamp on the timeline is used as the decode timestamp (DTS) for the first sample;
+    /// subsequent samples in the same row are assigned sequentially increasing DTS values.
+    /// See `presentation_time_offset` for specifying presentation timestamps that differ from decode timestamps.
+    ///
+    /// When no `presentation_time_offset` is provided, the presentation timestamp (PTS)
+    /// equals the decode timestamp for each sample (i.e. no B-frames).
     ///
     /// Rerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,
     /// but may cause the video playback in the Viewer to reset.
@@ -376,8 +441,6 @@ impl VideoStream {
     /// codec parameters & resolution.
     ///
     /// The samples are expected to be encoded using the `codec` field.
-    /// Each video sample must contain enough data for exactly one video frame
-    /// (this restriction may be relaxed in the future for some codecs).
     ///
     /// Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes::EncodedImage`][crate::archetypes::EncodedImage])
     /// never log this component as static data as this means that you loose all information of
@@ -385,21 +448,37 @@ impl VideoStream {
     ///
     /// See [`components::VideoCodec`][crate::components::VideoCodec] for codec specific requirements.
     #[inline]
-    pub fn with_sample(mut self, sample: impl Into<crate::components::VideoSample>) -> Self {
-        self.sample = try_serialize_field(Self::descriptor_sample(), [sample]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::components::VideoSample`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_sample`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_sample(
+    pub fn with_sample(
         mut self,
         sample: impl IntoIterator<Item = impl Into<crate::components::VideoSample>>,
     ) -> Self {
         self.sample = try_serialize_field(Self::descriptor_sample(), sample);
+        self
+    }
+
+    /// Per-sample offset from decode timestamp (DTS) to presentation timestamp (PTS).
+    ///
+    /// When present, the presentation timestamp for sample `i` is computed as
+    /// `DTS_i + presentation_time_offset[i]`, where `DTS_i` is the decode timestamp of that sample.
+    ///
+    /// This is needed for H.264/H.265 streams that use B-frames (bidirectionally predicted frames),
+    /// as B-frames cause decode order and presentation order to differ.
+    ///
+    /// When absent, the presentation timestamp equals the decode timestamp for all samples
+    /// in this row (i.e. no B-frames, which is the common case for low-latency streaming).
+    ///
+    /// The number of offsets should match the number of samples in this row.
+    #[inline]
+    pub fn with_presentation_time_offset(
+        mut self,
+        presentation_time_offset: impl IntoIterator<
+            Item = impl Into<crate::components::VideoPresentationTimestampOffset>,
+        >,
+    ) -> Self {
+        self.presentation_time_offset = try_serialize_field(
+            Self::descriptor_presentation_time_offset(),
+            presentation_time_offset,
+        );
         self
     }
 
@@ -454,6 +533,7 @@ impl ::re_byte_size::SizeBytes for VideoStream {
     fn heap_size_bytes(&self) -> u64 {
         self.codec.heap_size_bytes()
             + self.sample.heap_size_bytes()
+            + self.presentation_time_offset.heap_size_bytes()
             + self.opacity.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
     }

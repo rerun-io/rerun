@@ -41,8 +41,9 @@ stream = container.add_stream(encoders[codec], rate=fps)
 assert isinstance(stream, av.video.stream.VideoStream)
 stream.width = width
 stream.height = height
-# TODO(#10090): Rerun Video Streams don't support b-frames yet.
-# Note that b-frames are generally not recommended for low-latency streaming and may make logging more complex.
+# B-frames are generally not recommended for low-latency streaming and may make logging more complex.
+# If b-frames are present, the `presentation_time_offset` field should be used to communicate
+# the difference between decode and presentation timestamps.
 stream.max_b_frames = 0
 
 # Log codec only once as static data (it naturally never changes). This isn't strictly necessary, but good practice.

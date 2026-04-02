@@ -22,6 +22,7 @@ TODO(#10422): [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference
 * `sample`: [`VideoSample`](../components/video_sample.md)
 
 ### Optional
+* `presentation_time_offset`: [`VideoPresentationTimestampOffset`](../components/video_presentation_timestamp_offset.md)
 * `opacity`: [`Opacity`](../components/opacity.md)
 * `draw_order`: [`DrawOrder`](../components/draw_order.md)
 

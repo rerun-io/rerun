@@ -111,6 +111,7 @@ from .value_range import ValueRange, ValueRangeBatch
 from .vector2d import Vector2D, Vector2DBatch
 from .vector3d import Vector3D, Vector3DBatch
 from .video_codec import VideoCodec, VideoCodecArrayLike, VideoCodecBatch, VideoCodecLike
+from .video_presentation_timestamp_offset import VideoPresentationTimestampOffset, VideoPresentationTimestampOffsetBatch
 from .video_sample import VideoSample, VideoSampleBatch
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch
 from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch
@@ -297,6 +298,8 @@ __all__ = [
     "VideoCodecArrayLike",
     "VideoCodecBatch",
     "VideoCodecLike",
+    "VideoPresentationTimestampOffset",
+    "VideoPresentationTimestampOffsetBatch",
     "VideoSample",
     "VideoSampleBatch",
     "VideoTimestamp",
