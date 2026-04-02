@@ -147,7 +147,7 @@ jobs:
           for f in *.html; do
             name="${f%.html}"
             if [ "$name" != "index" ] && [ "$name" != "index_bundled" ]; then
-              gsutil -h "Content-Type:text/html" cp "$f" "gs://rerun-web-viewer/${name}"
+              gcloud storage cp --content-type="text/html" "$f" "gs://rerun-web-viewer/${name}"
             fi
           done
 
