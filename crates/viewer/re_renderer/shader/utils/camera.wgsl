@@ -122,10 +122,12 @@ fn ray_sphere_distance(ray: Ray, sphere_origin: vec3f, sphere_radius: f32) -> ve
     return vec2f(d, -b - sqrt(max(h, 0.0)));
 }
 
-// Returns the projected size of a pixel at a given distance from the camera.
+// Returns the world-space size of a pixel at a given camera-space depth.
 //
-// This is accurate for objects in the middle of the screen, (depending on the angle) less so at the corners
-// since an object parallel to the camera (like a conceptual pixel) has a bigger projected surface at higher angles.
+// `camera_distance` should be the depth along the camera forward axis (i.e. the dot product of
+// (point - camera_pos) with camera_forward), NOT the full Euclidean distance. The perspective
+// formula is derived from screen_in_world = tan(FOV/2) * depth * 2, so it expects depth.
+// For orthographic cameras the argument is ignored.
 fn approx_pixel_world_size_at(camera_distance: f32) -> f32 {
     return select(frame.pixel_world_size_from_camera_distance, camera_distance * frame.pixel_world_size_from_camera_distance, is_camera_perspective());
 }
