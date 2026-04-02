@@ -150,6 +150,8 @@ def lint_url(url: str) -> str | None:
                 pass  # Probably fine
             elif url.startswith("https://github.com/rerun-io/rerun/blob/"):
                 pass  # TODO(#6077): figure out how we best link to our own code from our docs
+            elif url.startswith("https://github.com/anthropics/claude-code-action"):
+                pass
             else:
                 return f"Do not link directly to a file on '{branch}' - it may disappear! Use a commit hash or tag instead. Url: {url}"
 
