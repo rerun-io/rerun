@@ -189,6 +189,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         query_expression: QueryExpression,
         _index_values: IndexValuesMap,
         client: T,
+        _limit: Option<usize>,
         pending_analytics: Option<crate::PendingQueryAnalytics>,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {

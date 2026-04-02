@@ -109,6 +109,11 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     worker_runtime: Arc<CpuRuntime>,
     client: T,
 
+    /// Optional row limit pushed down from the scan. When set, background
+    /// threads will stop fetching/processing data once this many rows have
+    /// been produced.
+    limit: Option<usize>,
+
     /// passing trace headers between phases of execution pipeline helps keep
     /// the entire operation under a single trace.
     trace_headers: Option<crate::TraceHeaders>,
@@ -258,6 +263,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         mut query_expression: QueryExpression,
         index_values: IndexValuesMap,
         client: T,
+        limit: Option<usize>,
         trace_headers: Option<crate::TraceHeaders>,
         pending_analytics: Option<crate::PendingQueryAnalytics>,
     ) -> datafusion::common::Result<Self> {
@@ -360,6 +366,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             target_partitions: num_partitions,
             worker_runtime,
             client,
+            limit,
             trace_headers,
             pending_analytics,
         })
@@ -372,7 +379,14 @@ async fn send_next_row(
     segment_id: &str,
     target_schema: &Arc<Schema>,
     output_channel: &Sender<RecordBatch>,
+    rows_sent: &mut usize,
+    limit: Option<usize>,
 ) -> Result<Option<()>, DataFusionError> {
+    // If we have already sent enough rows, stop early.
+    if limit.is_some_and(|l| *rows_sent >= l) {
+        return Ok(None);
+    }
+
     let query_schema = Arc::clone(query_handle.schema());
     let num_fields = query_schema.fields.len();
 
@@ -407,6 +421,23 @@ async fn send_next_row(
 
     let output_batch = align_record_batch_to_schema(&batch, target_schema)?;
 
+    // Slice the batch to respect the row limit
+    let output_batch = if let Some(limit) = limit {
+        let remaining = limit.saturating_sub(*rows_sent);
+        if remaining == 0 {
+            return Ok(None);
+        }
+        if output_batch.num_rows() > remaining {
+            output_batch.slice(0, remaining)
+        } else {
+            output_batch
+        }
+    } else {
+        output_batch
+    };
+
+    *rows_sent += output_batch.num_rows();
+
     output_channel
         .send(output_batch)
         .await
@@ -423,6 +454,7 @@ async fn chunk_store_cpu_worker_thread(
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
     index_values: IndexValuesMap,
+    limit: Option<usize>,
 ) -> Result<(), DataFusionError> {
     struct CurrentStores {
         segment_id: String,
@@ -462,16 +494,21 @@ async fn chunk_store_cpu_worker_thread(
             }
         }
 
+        /// Flush all remaining rows from the query handle, respecting the row limit.
         async fn flush(
             self,
             projected_schema: &Arc<Schema>,
             output_channel: &Sender<RecordBatch>,
+            rows_sent: &mut usize,
+            limit: Option<usize>,
         ) -> Result<(), DataFusionError> {
             while send_next_row(
                 &self.query_handle,
                 &self.segment_id,
                 projected_schema,
                 output_channel,
+                rows_sent,
+                limit,
             )
             .await?
             .is_some()
@@ -480,6 +517,7 @@ async fn chunk_store_cpu_worker_thread(
         }
     }
     let mut current_stores: Option<CurrentStores> = None;
+    let mut rows_sent: usize = 0;
     while let Some(chunks_and_segment_ids) = input_channel.recv().await {
         let (segment_id, chunks) =
             chunks_and_segment_ids.map_err(|err| exec_datafusion_err!("{err}"))?;
@@ -498,8 +536,12 @@ async fn chunk_store_cpu_worker_thread(
         // When we change segments, flush the outputs
         if let Some(current_stores) = current_stores.take_if(|s| s.segment_id != segment_id) {
             current_stores
-                .flush(&projected_schema, &output_channel)
+                .flush(&projected_schema, &output_channel, &mut rows_sent, limit)
                 .await?;
+
+            if limit.is_some_and(|l| rows_sent >= l) {
+                return Ok(());
+            }
         }
 
         let CurrentStores { store, .. } = current_stores.get_or_insert_with(|| {
@@ -507,9 +549,6 @@ async fn chunk_store_cpu_worker_thread(
         });
 
         for chunk in chunks {
-            // let segment_id = segment_id
-            //     .ok_or_else(|| exec_datafusion_err!("Received chunk without a segment id"))?;
-
             store
                 .write()
                 .insert_chunk(&Arc::new(chunk))
@@ -520,7 +559,7 @@ async fn chunk_store_cpu_worker_thread(
     // Flush out remaining of last segment
     if let Some(current_stores) = current_stores {
         current_stores
-            .flush(&projected_schema, &output_channel)
+            .flush(&projected_schema, &output_channel, &mut rows_sent, limit)
             .await?;
     }
 
@@ -962,6 +1001,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         let (batches_tx, batches_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
         let query_expression = self.query_expression.clone();
         let projected_schema = self.projected_schema.clone();
+        let limit = self.limit;
         let cpu_join_handle = Some(self.worker_runtime.handle().spawn(
             chunk_store_cpu_worker_thread(
                 chunk_rx,
@@ -969,6 +1009,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 query_expression,
                 projected_schema,
                 self.index_values.clone(),
+                limit,
             ),
         ));
 
@@ -1009,6 +1050,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             target_partitions,
             worker_runtime: Arc::new(CpuRuntime::try_new(target_partitions)?),
             client: self.client.clone(),
+            limit: self.limit,
             trace_headers: self.trace_headers.clone(),
             pending_analytics: self.pending_analytics.clone(),
         };

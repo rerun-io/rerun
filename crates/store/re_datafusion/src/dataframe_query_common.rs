@@ -428,6 +428,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             query_expression,
             self.index_values.clone(),
             self.client.clone(),
+            limit,
             #[cfg(not(target_arch = "wasm32"))]
             self.trace_headers.clone(),
             pending_analytics,

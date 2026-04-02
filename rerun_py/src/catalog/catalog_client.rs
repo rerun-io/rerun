@@ -1,5 +1,8 @@
 use std::collections::HashSet;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
+
+static RERUN_SDK_NUM_CPUS: LazyLock<Option<String>> =
+    LazyLock::new(|| std::env::var("RERUN_SDK_NUM_CPUS").ok());
 
 use arrow::datatypes::Schema;
 use arrow::pyarrow::PyArrowType;
@@ -43,6 +46,10 @@ fn setup_datafusion_context(py: Python<'_>) -> PyResult<Py<PyAny>> {
 
     let config_options = PyDict::new(py);
     config_options.set_item("datafusion.execution.coalesce_batches", "false")?;
+
+    if let Some(cores) = RERUN_SDK_NUM_CPUS.as_deref() {
+        config_options.set_item("datafusion.execution.target_partitions", cores)?;
+    }
 
     let session_config = df_module.call_method1("SessionConfig", (config_options,))?;
     let datafusion_ctx = df_module.call_method1("SessionContext", (session_config,))?;
