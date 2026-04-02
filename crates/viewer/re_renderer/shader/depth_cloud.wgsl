@@ -164,7 +164,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     if 0.0 < point_data.unresolved_radius {
         // Span quad
-        let camera_distance = distance(frame.camera_position, point_data.pos_in_world);
+        // Use depth along camera forward axis (see approx_pixel_world_size_at doc comment).
+        let camera_distance = dot(point_data.pos_in_world - frame.camera_position, frame.camera_forward);
         let world_scale_factor = average_scale_from_transform(depth_cloud_info.world_from_rdf); // TODO(andreas): somewhat costly, should precompute this
         let world_radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, world_scale_factor) +
                            world_size_from_point_size(depth_cloud_info.radius_boost_in_ui_points, camera_distance);
