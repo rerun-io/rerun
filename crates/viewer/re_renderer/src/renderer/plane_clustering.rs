@@ -1,7 +1,5 @@
 //! Helpers for grouping coplanar [`TexturedRect`]s into overlap clusters.
 
-use crate::OutlineMaskPreference;
-
 use super::rectangles::TexturedRect;
 
 /// Per-rectangle clustering result.
@@ -10,12 +8,8 @@ pub(crate) struct RectangleClusterInfo {
     /// Shared world-space position for the cluster.
     pub sorting_position: glam::Vec3A,
 
-    /// Whether this rectangle belongs to a multi-rectangle overlap cluster
-    /// and therefore needs to be forced into the transparent draw phase to avoid z-fighting.
-    pub force_transparent: bool,
-
-    /// Outline mask propagated to all members of the cluster.
-    pub outline_mask: OutlineMaskPreference,
+    /// Whether this rectangle belongs to a multi-rectangle overlap cluster.
+    pub has_coplanar_overlap: bool,
 }
 
 /// Identifies a plane bucket for grouping rectangles that are approximately coplanar.
@@ -32,7 +26,6 @@ struct BucketedRectangle {
     index: usize,
     center: glam::Vec3A,
     projected_rect: OrientedRect2D,
-    outline_mask: OutlineMaskPreference,
 }
 
 #[derive(Clone, Copy)]
@@ -44,9 +37,8 @@ struct OrientedRect2D {
 
 /// Groups rectangles into coplanar overlap clusters.
 ///
-/// Single rectangles keep their own center and outline mask.
-/// Connected overlap components with more than one rectangle get a shared sort position,
-/// a merged outline mask, and are forced into the transparent draw phase.
+/// Single rectangles keep their own center.
+/// Connected overlap components with more than one rectangle get a shared sort position.
 pub(crate) fn cluster_rectangles(rectangles: &[TexturedRect]) -> Vec<RectangleClusterInfo> {
     re_tracing::profile_function!();
 
@@ -56,8 +48,7 @@ pub(crate) fn cluster_rectangles(rectangles: &[TexturedRect]) -> Vec<RectangleCl
         .iter()
         .map(|rectangle| RectangleClusterInfo {
             sorting_position: rectangle.center(),
-            force_transparent: false,
-            outline_mask: rectangle.options.outline_mask,
+            has_coplanar_overlap: false,
         })
         .collect::<Vec<_>>();
 
@@ -73,19 +64,10 @@ pub(crate) fn cluster_rectangles(rectangles: &[TexturedRect]) -> Vec<RectangleCl
             let cluster_center =
                 cluster.iter().map(|rect| rect.center).sum::<glam::Vec3A>() / cluster.len() as f32;
 
-            // We have to merge the outline mask within a cluster to avoid z-fighting,
-            // as the outline is a separate pass that always writes to depth buffer.
-            // This would lead to flickering outlines if two rectangles with different outline masks overlap and occlude each other.
-            //
-            // Tradeoff: The drawback is that we might end up with a larger outline than strictly necessary,
-            // but this is a lot better than flickering.
-            let cluster_outline_mask = merged_outline_mask(&cluster);
-
             for rectangle in cluster {
                 cluster_infos[rectangle.index] = RectangleClusterInfo {
                     sorting_position: cluster_center,
-                    force_transparent: true,
-                    outline_mask: cluster_outline_mask,
+                    has_coplanar_overlap: true,
                 };
             }
         }
@@ -117,7 +99,6 @@ fn bucket_rectangles_by_plane(
                 index,
                 center: rectangle.center(),
                 projected_rect,
-                outline_mask: rectangle.options.outline_mask,
             });
     }
 
@@ -174,15 +155,6 @@ fn overlapping_clusters(bucket_rectangles: &[BucketedRectangle]) -> Vec<Vec<&Buc
     }
 
     clusters
-}
-
-/// Merges outline masks across one overlap cluster.
-fn merged_outline_mask(cluster: &[&BucketedRectangle]) -> OutlineMaskPreference {
-    cluster
-        .iter()
-        .fold(OutlineMaskPreference::NONE, |merged, rectangle| {
-            merged.with_fallback_to(rectangle.outline_mask)
-        })
 }
 
 /// Computes the quantized plane bucket for a rectangle.

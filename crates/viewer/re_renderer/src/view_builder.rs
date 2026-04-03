@@ -613,7 +613,7 @@ impl ViewBuilder {
                 | DrawPhase::Transparent
                 | DrawPhase::Compositing;
             if config.outline_config.is_some() {
-                active_draw_phases |= DrawPhase::OutlineMask;
+                active_draw_phases |= DrawPhase::OutlineMask | DrawPhase::OutlineMaskNoDepth;
             }
             if picking_processor.is_some() {
                 active_draw_phases |= DrawPhase::PickingLayer;
@@ -821,6 +821,12 @@ impl ViewBuilder {
                     &renderers,
                     &pipelines,
                     DrawPhase::OutlineMask,
+                    &mut pass,
+                );
+                self.draw_phase_manager.draw(
+                    &renderers,
+                    &pipelines,
+                    DrawPhase::OutlineMaskNoDepth,
                     &mut pass,
                 );
             }

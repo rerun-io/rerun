@@ -181,7 +181,7 @@ impl DrawPhaseManager {
 
         // TODO(andreas): once we have traits/more dynamic interfaces for phases, they should own the sorting configuration.
         for phase in self.active_phases {
-            if phase == DrawPhase::Transparent {
+            if phase == DrawPhase::Transparent || phase == DrawPhase::OutlineMaskNoDepth {
                 Drawable::sort_for_transparent_phase(&mut self.drawables[phase as usize]);
             } else {
                 Drawable::sort_for_opaque_phase(&mut self.drawables[phase as usize]);
