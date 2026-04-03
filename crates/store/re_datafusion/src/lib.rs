@@ -11,6 +11,7 @@ mod dataframe_query_provider;
 #[cfg(target_arch = "wasm32")]
 mod dataframe_query_provider_wasm;
 mod dataset_manifest;
+mod errors;
 mod grpc_streaming_provider;
 pub(crate) mod pushdown_expressions;
 mod search_provider;
@@ -18,6 +19,8 @@ mod segment_table;
 mod table_entry_provider;
 mod wasm_compat;
 
+pub(crate) use self::errors::IntoDfError;
+pub use analytics::{ConnectionAnalytics, PendingQueryAnalytics};
 pub use catalog_provider::{DEFAULT_CATALOG_NAME, RedapCatalogProvider, get_all_catalog_names};
 pub use dataframe_query_common::{
     DataframeClientAPI, DataframeQueryTableProvider, query_from_query_expression,
@@ -31,6 +34,5 @@ pub use search_provider::SearchResultsTableProvider;
 pub use segment_table::SegmentTableProvider;
 pub use table_entry_provider::TableEntryTableProvider;
 
-pub use analytics::{ConnectionAnalytics, PendingQueryAnalytics};
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) type TraceHeaders = re_perf_telemetry::TraceHeaders;

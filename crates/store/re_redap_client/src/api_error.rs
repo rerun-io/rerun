@@ -221,6 +221,10 @@ impl ApiError {
         }
     }
 
+    pub fn internal(message: impl Into<String>) -> Self {
+        Self::new(ApiErrorKind::Internal, message)
+    }
+
     /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn internal_with_source(
         trace_id: Option<opentelemetry::TraceId>,
