@@ -153,11 +153,16 @@ fn load_dae_from_buffer_inner(
             .as_deref()
             .map_or(correction, |a| up_axis_correction(a.up_axis));
         for root in &scene.nodes {
+            // Each root node uses its own <asset><up_axis> if present, otherwise the scene's.
+            let root_pending = root
+                .asset
+                .as_deref()
+                .map_or(scene_correction, |a| up_axis_correction(a.up_axis));
             gather_instances_recursive(
                 &mut model,
                 root,
                 &glam::Affine3A::IDENTITY,
-                &scene_correction,
+                &root_pending,
                 &mesh_keys,
             );
         }
@@ -356,17 +361,10 @@ fn gather_instances_recursive(
         }
     }
 
-    let world_tf = *parent_tf * Affine3A::from_mat4(local_mat);
-
-    // A <node> may carry its own <asset><up_axis> that overrides the inherited correction
-    // for this node's scope and all descendants (per the COLLADA spec).
-    let node_correction;
-    let effective_correction = if let Some(asset) = &node.asset {
-        node_correction = up_axis_correction(asset.up_axis);
-        &node_correction
-    } else {
-        correction
-    };
+    // Apply the pending correction at the scope boundary, before composing with parent_tf.
+    // This ensures local_mat (expressed in this node's basis) is rebased to RFU before
+    // being combined with parent_tf (which is already in RFU).
+    let world_tf = *parent_tf * *correction * Affine3A::from_mat4(local_mat);
 
     for Instance::<Geometry> { url, .. } in &node.instance_geometry {
         let id = match url.val.clone() {
@@ -382,14 +380,21 @@ fn gather_instances_recursive(
         };
 
         if let Some(&mesh_key) = meshes.get(&id) {
-            model.add_instance(mesh_key, *effective_correction * world_tf);
+            model.add_instance(mesh_key, world_tf);
         } else {
             re_log::warn_once!("<instance_geometry> references unknown geometry {id}");
         }
     }
 
     for child in &node.children {
-        gather_instances_recursive(model, child, &world_tf, effective_correction, meshes);
+        // Each child uses its own <asset><up_axis> if present, otherwise IDENTITY —
+        // world_tf is already in RFU, so children that don't override need no correction.
+        let child_pending = child
+            .asset
+            .as_deref()
+            .map(|a| up_axis_correction(a.up_axis))
+            .unwrap_or(glam::Affine3A::IDENTITY);
+        gather_instances_recursive(model, child, &world_tf, &child_pending, meshes);
     }
 }
 
