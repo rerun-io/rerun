@@ -83,7 +83,7 @@ impl State {
 
                             on_done(Ok(credentials));
                         }
-                        Err(res) => on_done(Err(res.to_string())),
+                        Err(err) => on_done(Err(err.to_string())),
                     },
                 );
                 self.pending_authentication = true;

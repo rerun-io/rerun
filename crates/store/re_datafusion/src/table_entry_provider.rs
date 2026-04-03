@@ -355,12 +355,12 @@ impl Stream for RecordBatchGrpcOutputStream {
         // Check for gRPC errors first (only if we haven't already stored one)
         if self.grpc_error.is_none() {
             match Pin::new(&mut self.thread_status).poll(cx) {
-                Poll::Ready(Ok(Err(status))) => {
+                Poll::Ready(Ok(Err(err))) => {
                     // Store the error for potential future use
                     // Not ideal to throw out the ApiError, but it doesn't impl Clone
-                    self.grpc_error = Some(tonic::Status::internal(status.to_string()));
+                    self.grpc_error = Some(tonic::Status::internal(err.to_string()));
                     // Return the error immediately
-                    return Poll::Ready(Some(Err(DataFusionError::External(Box::new(status)))));
+                    return Poll::Ready(Some(Err(DataFusionError::External(Box::new(err)))));
                 }
                 Poll::Ready(Ok(Ok(())) | Err(_)) => {
                     self.complete = true;

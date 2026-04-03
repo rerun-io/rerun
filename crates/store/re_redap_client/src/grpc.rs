@@ -89,21 +89,21 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
 
     match endpoint {
         Ok(channel) => Ok(channel),
-        Err(original_error) => {
+        Err(original_err) => {
             if ![
                 url::Host::Domain("localhost".to_owned()),
                 url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             ]
             .contains(&origin.host)
             {
-                return Err(original_error);
+                return Err(original_err);
             }
 
             // If we can't establish a connection, we probe if the server is
             // expecting unencrypted traffic. If that is the case, we return
             // a more meaningful error message.
             let Ok(endpoint) = Endpoint::new(origin.coerce_http_url()) else {
-                return Err(original_error);
+                return Err(original_err);
             };
 
             let endpoint = endpoint.http2_adaptive_window(true); // Optimize for throughput
@@ -113,7 +113,7 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
                     "the server is expecting an unencrypted connection (try `rerun+http://` if you are sure)",
                 ))
             } else {
-                Err(original_error)
+                Err(original_err)
             }
         }
     }

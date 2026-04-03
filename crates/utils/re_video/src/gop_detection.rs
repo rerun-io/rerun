@@ -106,8 +106,8 @@ fn guess_image_meta(sample_data: &[u8]) -> Result<(String, ImageMeta), ImageSize
             Ok(meta) => return Ok((name.to_owned(), meta)),
             // Try the next format if magic bytes didn't match.
             Err(ImageSizeError::WrongFormat(_)) => {}
-            Err(other) => {
-                return Err(other);
+            Err(err) => {
+                return Err(err);
             }
         }
     }

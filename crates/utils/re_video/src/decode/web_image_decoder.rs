@@ -1,7 +1,7 @@
 use js_sys::Uint8Array;
 use wasm_bindgen::JsCast as _;
 
-use super::{AsyncDecoder, Chunk, Frame, FrameInfo, Result};
+use super::{AsyncDecoder, Chunk, Frame, FrameInfo, Result, webcodecs::string_from_js_value};
 use crate::{DecodeError, FrameResult, Sender, VideoDataDescription};
 
 pub struct WebImageDecoder {
@@ -59,13 +59,13 @@ async fn decode_image(chunk: Chunk, mime_type: &str) -> Result<Frame> {
         options.set_type(mime_type);
     }
 
-    let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &options).map_err(
-        |js_err| {
+    let blob =
+        web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &options).map_err(|err| {
             DecodeError::WebDecoder(super::webcodecs::WebError::Decoding(format!(
-                "Failed to create Blob: {js_err:?}"
+                "Failed to create Blob: {}",
+                string_from_js_value(&err)
             )))
-        },
-    )?;
+        })?;
 
     // Decode the image using createImageBitmap.
     let window = web_sys::window().ok_or_else(|| {
@@ -74,19 +74,19 @@ async fn decode_image(chunk: Chunk, mime_type: &str) -> Result<Frame> {
         ))
     })?;
 
-    let promise = window
-        .create_image_bitmap_with_blob(&blob)
-        .map_err(|js_err| {
-            DecodeError::WebDecoder(super::webcodecs::WebError::Decoding(format!(
-                "createImageBitmap failed: {js_err:?}"
-            )))
-        })?;
+    let promise = window.create_image_bitmap_with_blob(&blob).map_err(|err| {
+        DecodeError::WebDecoder(super::webcodecs::WebError::Decoding(format!(
+            "createImageBitmap failed: {}",
+            string_from_js_value(&err)
+        )))
+    })?;
 
     let bitmap_js = wasm_bindgen_futures::JsFuture::from(promise)
         .await
-        .map_err(|js_err| {
+        .map_err(|err| {
             DecodeError::WebDecoder(super::webcodecs::WebError::Decoding(format!(
-                "createImageBitmap rejected: {js_err:?}"
+                "createImageBitmap rejected: {}",
+                string_from_js_value(&err)
             )))
         })?;
 
@@ -103,9 +103,10 @@ async fn decode_image(chunk: Chunk, mime_type: &str) -> Result<Frame> {
     let video_frame = web_sys::VideoFrame::new_with_image_bitmap_and_video_frame_init(
         &bitmap, &init,
     )
-    .map_err(|js_err| {
+    .map_err(|err| {
         DecodeError::WebDecoder(super::webcodecs::WebError::Decoding(format!(
-            "Failed to create VideoFrame from ImageBitmap: {js_err:?}"
+            "Failed to create VideoFrame from ImageBitmap: {}",
+            string_from_js_value(&err)
         )))
     })?;
 
