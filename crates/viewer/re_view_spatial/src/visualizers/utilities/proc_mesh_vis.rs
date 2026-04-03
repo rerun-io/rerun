@@ -10,13 +10,24 @@ use re_tf::convert;
 use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
 #[cfg(doc)]
 use re_viewer_context::VisualizerSystem;
-use re_viewer_context::{QueryContext, ViewQuery, ViewSystemExecutionError, typed_fallback_for};
+use re_viewer_context::{
+    QueryContext, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput,
+    VisualizerReportSeverity, typed_fallback_for,
+};
 use vec1::smallvec_v1::SmallVec1;
 
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::proc_mesh::{self, ProcMeshKey};
 use crate::visualizers::utilities::LabeledBatch;
 use crate::visualizers::{SpatialViewVisualizerData, process_labels_3d, process_radius_slice};
+
+/// Maximum number of instances a single batch will draw before being capped.
+///
+/// This limit exists to prevent the viewer from becoming unresponsive when a
+/// single entity contains a very large number of 3D shape instances (boxes,
+/// capsules, cylinders, ellipsoids). It can be lifted in the viewer settings
+/// via [`AppOptions::visualizer_limits_enabled`](re_viewer_context::AppOptions::visualizer_limits_enabled).
+const NUM_INSTANCE_LIMIT_PER_BATCH: usize = 60_000;
 
 /// To be used within the scope of a single [`VisualizerSystem::execute()`] call
 /// when the visualizer wishes to draw batches of [`ProcMeshKey`] meshes.
@@ -35,6 +46,7 @@ pub struct ProcMeshDrawableBuilder<'ctx> {
 
     pub query: &'ctx ViewQuery<'ctx>,
     pub render_ctx: &'ctx RenderContext,
+    pub output: &'ctx VisualizerExecutionOutput,
 }
 
 /// A [batch] of instances to draw. This struct is just arguments to
@@ -127,6 +139,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
         data: &'ctx mut SpatialViewVisualizerData,
         render_ctx: &'ctx re_renderer::RenderContext,
         view_query: &'ctx ViewQuery<'ctx>,
+        output: &'ctx VisualizerExecutionOutput,
         line_batch_debug_label: impl Into<re_renderer::Label>,
     ) -> Self {
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
@@ -141,6 +154,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             solid_instances: Vec::new(),
             query: view_query,
             render_ctx,
+            output,
         }
     }
 
@@ -171,6 +185,29 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             batch.quaternions,
         );
         let num_instances = target_from_instances.len();
+
+        let num_instances = if query_context
+            .app_ctx()
+            .app_options
+            .visualizer_limits_enabled
+            && num_instances > NUM_INSTANCE_LIMIT_PER_BATCH
+        {
+            if let Some(instruction_id) = query_context.instruction_id {
+                self.output.report_unspecified_source(
+                    instruction_id,
+                    VisualizerReportSeverity::Warning,
+                    format!(
+                        "Too many instances ({}), capping to {}. \
+                             This limit can be lifted in Settings.",
+                        re_format::format_uint(num_instances),
+                        re_format::format_uint(NUM_INSTANCE_LIMIT_PER_BATCH),
+                    ),
+                );
+            }
+            NUM_INSTANCE_LIMIT_PER_BATCH
+        } else {
+            num_instances
+        };
 
         re_tracing::profile_function_if!(10_000 < num_instances);
 
@@ -361,6 +398,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             solid_instances,
             query: _,
             render_ctx,
+            output: _,
         } = self;
         let wireframe_draw_data: re_renderer::QueueableDrawData =
             line_builder.into_draw_data()?.into();
