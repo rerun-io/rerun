@@ -1015,7 +1015,7 @@ dependencies = [
 requires-dist = [
     { name = "dicom-numpy", specifier = "==0.6.2" },
     { name = "numpy" },
-    { name = "pydicom", specifier = "==2.3.0" },
+    { name = "pydicom", specifier = "==2.4.5" },
     { name = "requests", specifier = ">=2.31,<3" },
     { name = "rerun-sdk", editable = "rerun_py" },
     { name = "types-requests", specifier = ">=2.31,<3" },
@@ -4120,11 +4120,11 @@ wheels = [
 
 [[package]]
 name = "pydicom"
-version = "2.3.0"
+version = "2.4.5"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/14/04/13462460b0d28fa513f8bed141609fc17fcfb1d32f64ce2a163550706f9b/pydicom-2.3.0.tar.gz", hash = "sha256:dbfa081c9ad9ac8ff8a8efbd71784104db9eecf02fd775f7d7773f2183f89386", size = 2164552, upload-time = "2022-03-29T17:01:06.981Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cf/8b/6fca5f1f0cc74b2ad9ea0271d374bee2cb13ed3b2793fd93254678de1aba/pydicom-2.4.5.tar.gz", hash = "sha256:ba2077bd76cb49e05fe51c3e1e0b2d77218f50c6c231120b443d29b38ea6b7a8", size = 2018349, upload-time = "2026-03-20T14:39:26.931Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/45/97660cc1ec770e2e82fd5d704c1d6ff9c308ecfcbbf07c2b2f92ca755b70/pydicom-2.3.0-py3-none-any.whl", hash = "sha256:8ff31e077cc51d19ac3b8ca988ac486099cdebfaf885989079fdc7c75068cdd8", size = 1963518, upload-time = "2022-03-29T17:01:04.956Z" },
+    { url = "https://files.pythonhosted.org/packages/db/5b/4e7d67d880b3344afff01708725a39717694a79391a32711fd40a8958bed/pydicom-2.4.5-py3-none-any.whl", hash = "sha256:35a594cc8ebae8dd40b1f632cd7c9f08ecaa147cb9305a9f9fbca2c03f5ccc93", size = 1771963, upload-time = "2026-03-20T14:39:24.178Z" },
 ]
 
 [[package]]
