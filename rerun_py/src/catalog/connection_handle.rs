@@ -513,12 +513,6 @@ impl ConnectionHandle {
                 // will complete the stream
                 while let Some(response) = response_stream.next().await {
                     let item: RecordBatch = response
-                        .map_err(|err| {
-                            ApiError::tonic(
-                                err,
-                                "failed waiting for tasks done: error receiving completion notifications",
-                            )
-                        })
                         .map_err(to_py_err)?
                         .data
                         .ok_or_else(|| {

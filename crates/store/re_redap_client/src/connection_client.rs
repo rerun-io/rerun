@@ -34,7 +34,7 @@ use tonic::IntoStreamingRequest as _;
 use tonic::codegen::{Body, StdError};
 use url::Url;
 
-use crate::{ApiError, ApiResult, extract_trace_id};
+use crate::{ApiError, ApiResponseStream, ApiResult, extract_trace_id};
 
 /// Extension trait for [`tonic::Response`] that extracts both the inner value
 /// and the server's trace-id in one step.
@@ -49,48 +49,11 @@ impl<T> TonicResponseExt<T> for tonic::Response<T> {
     }
 }
 
-/// A stream that optionally carries a server-assigned trace-id
-/// from the initial gRPC response metadata.
-///
-/// Functions consuming the stream should attach the trace-id to any errors they produce,
-/// and pass it along to any [`ResponseStream`] they return.
-pub struct ResponseStream<T> {
-    inner: std::pin::Pin<Box<dyn Stream<Item = T> + Send>>,
-    trace_id: Option<opentelemetry::TraceId>,
-}
-
-impl<T> ResponseStream<T> {
-    pub fn new(
-        inner: impl Stream<Item = T> + Send + 'static,
-        trace_id: Option<opentelemetry::TraceId>,
-    ) -> Self {
-        Self {
-            inner: Box::pin(inner),
-            trace_id,
-        }
-    }
-
-    pub fn trace_id(&self) -> Option<opentelemetry::TraceId> {
-        self.trace_id
-    }
-}
-
-impl<T> Stream for ResponseStream<T> {
-    type Item = T;
-
-    fn poll_next(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        self.inner.as_mut().poll_next(cx)
-    }
-}
-
 pub type FetchChunksResponseStream =
-    ResponseStream<tonic::Result<re_protos::cloud::v1alpha1::FetchChunksResponse>>;
+    ApiResponseStream<re_protos::cloud::v1alpha1::FetchChunksResponse>;
 
 pub type QueryDatasetResponseStream =
-    ResponseStream<tonic::Result<re_protos::cloud::v1alpha1::QueryDatasetResponse>>;
+    ApiResponseStream<re_protos::cloud::v1alpha1::QueryDatasetResponse>;
 
 pub struct SegmentQueryParams {
     pub dataset_id: EntryId,
@@ -399,28 +362,25 @@ where
     ) -> ApiResult<Vec<SegmentId>> {
         const COLUMN_NAME: &str = ScanSegmentTableResponse::FIELD_SEGMENT_ID;
 
-        let (mut stream, trace_id) = TonicResponseExt::into_inner_and_trace_id(
-            self.inner()
-                .scan_segment_table(
-                    tonic::Request::new(ScanSegmentTableRequest {
-                        columns: vec![COLUMN_NAME.to_owned()],
-                    })
-                    .with_entry_id(entry_id)
-                    .map_err(|err| {
-                        ApiError::tonic(err, "failed building /ScanSegmentTable request")
-                    })?,
-                )
-                .await
-                .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))?,
-        );
+        let response = self
+            .inner()
+            .scan_segment_table(
+                tonic::Request::new(ScanSegmentTableRequest {
+                    columns: vec![COLUMN_NAME.to_owned()],
+                })
+                .with_entry_id(entry_id)
+                .map_err(|err| ApiError::tonic(err, "failed building /ScanSegmentTable request"))?,
+            )
+            .await
+            .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))?;
+
+        let mut stream = ApiResponseStream::from_tonic_response(response, "/ScanSegmentTable");
+        let trace_id = stream.trace_id();
 
         let mut segment_ids = Vec::new();
 
         while let Some(resp) = stream.next().await {
-            let record_batch: RecordBatch = resp
-                .map_err(|err| {
-                    ApiError::tonic(err, "failed receiving item from /ScanSegmentTable stream")
-                })?
+            let record_batch: RecordBatch = resp?
                 .data()
                 .map_err(|err| {
                     ApiError::deserialization_with_source(
@@ -515,7 +475,7 @@ where
         &mut self,
         dataset_id: EntryId,
         segment_id: SegmentId,
-    ) -> ApiResult<ResponseStream<ApiResult<RawRrdManifest>>> {
+    ) -> ApiResult<ApiResponseStream<RawRrdManifest>> {
         let response = self
             .inner()
             .get_rrd_manifest(
@@ -528,34 +488,29 @@ where
             .await
             .map_err(|err| ApiError::tonic(err, "/GetRrdManifest failed"))?;
 
-        let trace_id = extract_trace_id(response.metadata());
-        let stream = response.into_inner().map(move |resp| {
-            resp.map_err(|err| {
-                ApiError::connection_with_source(
-                    trace_id,
-                    err,
-                    "failed fetching /GetRrdManifest response part",
-                )
-            })?
-            .rrd_manifest
-            .ok_or_else(|| {
-                let err = missing_field!(GetRrdManifestResponse, "rrd_manifest");
-                ApiError::deserialization_with_source(
-                    trace_id,
-                    err,
-                    "missing field in /GetRrdManifest response",
-                )
-            })?
-            .to_application(())
-            .map_err(|err| {
-                ApiError::deserialization_with_source(
-                    trace_id,
-                    err,
-                    "failed parsing /GetRrdManifest response",
-                )
-            })
+        let stream = ApiResponseStream::from_tonic_response(response, "/GetRrdManifest");
+        let trace_id = stream.trace_id();
+        let stream = stream.map(move |resp| {
+            resp?
+                .rrd_manifest
+                .ok_or_else(|| {
+                    let err = missing_field!(GetRrdManifestResponse, "rrd_manifest");
+                    ApiError::deserialization_with_source(
+                        trace_id,
+                        err,
+                        "missing field in /GetRrdManifest response",
+                    )
+                })?
+                .to_application(())
+                .map_err(|err| {
+                    ApiError::deserialization_with_source(
+                        trace_id,
+                        err,
+                        "failed parsing /GetRrdManifest response",
+                    )
+                })
         });
-        Ok(ResponseStream::new(stream, trace_id))
+        Ok(ApiResponseStream::new(stream, trace_id))
     }
 
     /// Get the full [`RawRrdManifest`] of a recording, concatenated from all stream parts.
@@ -640,8 +595,10 @@ where
             .await
             .map_err(|err| ApiError::tonic(err, "/QueryDataset failed"))?;
 
-        let trace_id = extract_trace_id(response.metadata());
-        Ok(ResponseStream::new(response.into_inner(), trace_id))
+        Ok(ApiResponseStream::from_tonic_response(
+            response,
+            "/QueryDataset",
+        ))
     }
 
     /// Fetches all chunks ids for a specified segment.
@@ -660,13 +617,7 @@ where
             .collect::<Vec<_>>()
             .await
             .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| {
-                ApiError::tonic(
-                    err,
-                    "failed receiving items in /QueryDataset response stream",
-                )
-            })?
+            .collect::<Result<Vec<_>, _>>()?
             .into_iter()
             .map(|resp| {
                 resp.data.ok_or_else(|| {
@@ -706,8 +657,10 @@ where
             // NOTE: `ApiError::tonic` already extracts the trace-id from the error metadata.
             .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?;
 
-        let trace_id = extract_trace_id(response.metadata());
-        Ok(ResponseStream::new(response.into_inner(), trace_id))
+        Ok(ApiResponseStream::from_tonic_response(
+            response,
+            "/FetchChunks",
+        ))
     }
 
     /// Fetches chunks for a specified partition and query.
@@ -723,13 +676,7 @@ where
             .collect::<Vec<_>>()
             .await
             .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| {
-                ApiError::tonic(
-                    err,
-                    "failed receiving items in /QueryDataset response stream",
-                )
-            })?
+            .collect::<Result<Vec<_>, _>>()?
             .into_iter()
             .map(|resp| {
                 resp.data.ok_or_else(|| {
@@ -744,9 +691,8 @@ where
             .collect::<Result<Vec<_>, _>>()?;
 
         if chunk_info_batches.is_empty() {
-            return Ok(ResponseStream::new(
-                tokio_stream::empty::<tonic::Result<re_protos::cloud::v1alpha1::FetchChunksResponse>>(
-                ),
+            return Ok(ApiResponseStream::new(
+                tokio_stream::empty::<ApiResult<re_protos::cloud::v1alpha1::FetchChunksResponse>>(),
                 None,
             ));
         }
@@ -761,8 +707,10 @@ where
             .await
             .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?;
 
-        let trace_id = extract_trace_id(response.metadata());
-        Ok(ResponseStream::new(response.into_inner(), trace_id))
+        Ok(ApiResponseStream::from_tonic_response(
+            response,
+            "/FetchChunks",
+        ))
     }
 
     /// Initiate registration of the provided recording URIs with a dataset and return the
@@ -957,16 +905,15 @@ where
         .map_err(|err| ApiError::tonic(err, "failed building /UnregisterFromDataset request"))?;
 
         use futures::TryStreamExt as _;
-        let (stream, trace_id) = TonicResponseExt::into_inner_and_trace_id(
-            self.inner()
-                .unregister_from_dataset(req)
-                .await
-                .map_err(|err| ApiError::tonic(err, "/UnregisterFromDataset failed"))?,
-        );
-        let responses: Vec<_> = stream
-            .try_collect()
+        let response = self
+            .inner()
+            .unregister_from_dataset(req)
             .await
             .map_err(|err| ApiError::tonic(err, "/UnregisterFromDataset failed"))?;
+
+        let stream = ApiResponseStream::from_tonic_response(response, "/UnregisterFromDataset");
+        let trace_id = stream.trace_id();
+        let responses: Vec<_> = stream.try_collect().await?;
 
         let batches: ApiResult<Vec<RecordBatch>> = responses
             .into_iter()
@@ -1087,7 +1034,7 @@ where
         &mut self,
         task_ids: Vec<TaskId>,
         timeout: std::time::Duration,
-    ) -> ApiResult<ResponseStream<tonic::Result<QueryTasksOnCompletionResponse>>> {
+    ) -> ApiResult<ApiResponseStream<QueryTasksOnCompletionResponse>> {
         let q = QueryTasksOnCompletionRequest { task_ids, timeout };
         let response = self
             .inner()
@@ -1099,8 +1046,10 @@ where
             })?))
             .await
             .map_err(|err| ApiError::tonic(err, "/QueryTasksOnCompletion failed"))?;
-        let trace_id = extract_trace_id(response.metadata());
-        Ok(ResponseStream::new(response.into_inner(), trace_id))
+        Ok(ApiResponseStream::from_tonic_response(
+            response,
+            "/QueryTasksOnCompletion",
+        ))
     }
 
     pub async fn query_tasks(&mut self, task_ids: Vec<TaskId>) -> ApiResult<QueryTasksResponse> {

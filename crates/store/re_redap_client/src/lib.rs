@@ -1,13 +1,15 @@
 //! Official gRPC client for the Rerun Data Protocol.
 
 mod api_error;
+mod api_response_stream;
 mod connection_client;
 mod connection_registry;
 mod grpc;
 
 pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
+pub use self::api_response_stream::ApiResponseStream;
 pub use self::connection_client::{
-    FetchChunksResponseStream, GenericConnectionClient, ResponseStream, SegmentQueryParams,
+    FetchChunksResponseStream, GenericConnectionClient, SegmentQueryParams,
 };
 pub use self::connection_registry::{
     ClientCredentialsError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,

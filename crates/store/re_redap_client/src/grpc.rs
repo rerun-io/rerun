@@ -222,7 +222,7 @@ pub type ChunksWithSegment = Vec<(Chunk, Option<String>)>;
 #[cfg(not(target_arch = "wasm32"))]
 pub fn fetch_chunks_response_to_chunk_and_segment_id(
     response: crate::FetchChunksResponseStream,
-) -> crate::ResponseStream<ApiResult<ChunksWithSegment>> {
+) -> crate::ApiResponseStream<ChunksWithSegment> {
     let trace_id = response.trace_id();
     let stream = response
         .then(move |resp| {
@@ -231,9 +231,7 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
             // not going to make this one single pipeline any faster, but it will prevent starvation of
             // the Tokio runtime (which would slow down every other futures currently scheduled!).
             tokio::task::spawn_blocking(move || {
-                let r = resp.map_err(|err| {
-                    ApiError::tonic(err, "failed to get item in /FetchChunks response stream")
-                })?;
+                let r = resp?;
                 let _span =
                     tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = r.chunks.len())
                         .entered();
@@ -277,19 +275,17 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
             })
             .flatten()
         });
-    crate::ResponseStream::new(stream, trace_id)
+    crate::ApiResponseStream::new(stream, trace_id)
 }
 
 // This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
 #[cfg(target_arch = "wasm32")]
 pub fn fetch_chunks_response_to_chunk_and_segment_id(
     response: crate::FetchChunksResponseStream,
-) -> crate::ResponseStream<ApiResult<ChunksWithSegment>> {
+) -> crate::ApiResponseStream<ChunksWithSegment> {
     let trace_id = response.trace_id();
     let stream = response.map(move |resp| {
-        let resp = resp.map_err(|err| {
-            ApiError::tonic(err, "failed to get item in /FetchChunks response stream")
-        })?;
+        let resp = resp?;
 
         let _span =
             tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = resp.chunks.len())
@@ -322,7 +318,7 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
             })
             .collect::<Result<Vec<_>, _>>()
     });
-    crate::ResponseStream::new(stream, trace_id)
+    crate::ApiResponseStream::new(stream, trace_id)
 }
 
 /// Callback invoked as chunks are downloaded.
@@ -826,9 +822,8 @@ async fn load_small_chunk_batch(
 ) -> ApiResult<(ControlFlow<()>, u64)> {
     // TODO(RR-3323): FetchChunks should expose a proper bidirectional streaming path on native.
     let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
-    let chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
+    let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
     let trace_id = chunk_stream.trace_id();
-    let mut chunk_stream = chunk_stream;
 
     let mut batch_bytes: u64 = 0;
 

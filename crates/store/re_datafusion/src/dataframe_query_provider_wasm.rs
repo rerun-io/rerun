@@ -77,8 +77,8 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?;
 
-        let trace_id = re_redap_client::extract_trace_id(response.metadata());
-        let response_stream = re_redap_client::ResponseStream::new(response.into_inner(), trace_id);
+        let response_stream =
+            re_redap_client::ApiResponseStream::from_tonic_response(response, "/FetchChunks");
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).

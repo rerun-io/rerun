@@ -287,8 +287,8 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
             .await
             .map_err(|err| re_redap_client::ApiError::tonic(err, "FetchChunks request failed"))?;
 
-        let trace_id = re_redap_client::extract_trace_id(response.metadata());
-        let response_stream = re_redap_client::ResponseStream::new(response.into_inner(), trace_id);
+        let response_stream =
+            re_redap_client::ApiResponseStream::from_tonic_response(response, "/FetchChunks");
 
         let chunk_stream =
             re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(response_stream);

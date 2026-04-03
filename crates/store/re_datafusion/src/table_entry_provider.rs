@@ -299,7 +299,7 @@ struct RecordBatchGrpcOutputStream {
     grpc_sender: Option<GrpcStreamSender>,
     thread_status: tokio::sync::oneshot::Receiver<re_redap_client::ApiResult>,
     complete: bool,
-    grpc_error: Option<tonic::Status>,
+    grpc_error: Option<re_redap_client::ApiError>,
 }
 
 struct GrpcStreamSender {
@@ -357,9 +357,7 @@ impl Stream for RecordBatchGrpcOutputStream {
             match Pin::new(&mut self.thread_status).poll(cx) {
                 Poll::Ready(Ok(Err(err))) => {
                     // Store the error for potential future use
-                    // Not ideal to throw out the ApiError, but it doesn't impl Clone
-                    self.grpc_error = Some(tonic::Status::internal(err.to_string()));
-                    // Return the error immediately
+                    self.grpc_error = Some(err.clone());
                     return Poll::Ready(Some(Err(DataFusionError::External(Box::new(err)))));
                 }
                 Poll::Ready(Ok(Ok(())) | Err(_)) => {
@@ -384,9 +382,9 @@ impl Stream for RecordBatchGrpcOutputStream {
                         Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
                             // Channel closed - the gRPC task may have failed
                             // Check if we have a stored error
-                            if let Some(status) = self.grpc_error.take() {
+                            if let Some(err) = self.grpc_error.take() {
                                 return Poll::Ready(Some(Err(DataFusionError::External(
-                                    Box::new(status),
+                                    Box::new(err),
                                 ))));
                             } else {
                                 // Channel closed without error - treat as broken pipe

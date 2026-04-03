@@ -1,14 +1,16 @@
+use std::sync::Arc;
+
 use crate::connection_registry::ClientCredentialsError;
 use crate::extract_trace_id;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ApiError {
     /// A message that does NOT include the contents of [`Self::source`].
     pub message: String,
 
     pub kind: ApiErrorKind,
 
-    pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    pub source: Option<Arc<dyn std::error::Error + Send + Sync + 'static>>,
 
     /// When the error comes from the server returning a trace id, we include it in the client
     /// error for easier reporting.
@@ -119,7 +121,7 @@ impl ApiError {
         Self {
             message: message.into(),
             kind,
-            source: Some(Box::new(err)),
+            source: Some(Arc::new(err)),
             trace_id: None,
         }
     }
@@ -135,7 +137,7 @@ impl ApiError {
         Self {
             message: message.into(),
             kind,
-            source: Some(Box::new(err)),
+            source: Some(Arc::new(err)),
             trace_id: Some(trace_id),
         }
     }
@@ -150,6 +152,15 @@ impl ApiError {
         } else {
             Self::new_with_source(err, kind, message)
         }
+    }
+
+    /// Sets the trace-id if not already set.
+    #[must_use]
+    pub fn with_trace_id(mut self, trace_id: Option<opentelemetry::TraceId>) -> Self {
+        if self.trace_id.is_none() {
+            self.trace_id = trace_id;
+        }
+        self
     }
 
     /// Failed to decode data received from the server.
@@ -176,7 +187,7 @@ impl ApiError {
         Self {
             message: message.into(),
             kind: ApiErrorKind::Deserialization,
-            source: Some(Box::new(err)),
+            source: Some(Arc::new(err)),
             trace_id,
         }
     }
@@ -205,7 +216,7 @@ impl ApiError {
         Self {
             message: message.into(),
             kind: ApiErrorKind::InvalidArguments,
-            source: Some(Box::new(err)),
+            source: Some(Arc::new(err)),
             trace_id,
         }
     }
@@ -219,7 +230,7 @@ impl ApiError {
         Self {
             message: message.into(),
             kind: ApiErrorKind::Internal,
-            source: Some(Box::new(err)),
+            source: Some(Arc::new(err)),
             trace_id,
         }
     }
@@ -233,7 +244,7 @@ impl ApiError {
         Self {
             message: message.into(),
             kind: ApiErrorKind::Connection,
-            source: Some(Box::new(err)),
+            source: Some(Arc::new(err)),
             trace_id,
         }
     }
@@ -263,7 +274,7 @@ impl ApiError {
         Self {
             message: message.into(),
             kind: ApiErrorKind::Unauthenticated,
-            source: Some(Box::new(err)),
+            source: Some(Arc::new(err)),
             trace_id,
         }
     }
@@ -282,14 +293,14 @@ impl ApiError {
     #[inline]
     pub fn as_client_credentials_error(&self) -> Option<&ClientCredentialsError> {
         self.source
-            .as_deref()?
+            .as_ref()?
             .downcast_ref::<ClientCredentialsError>()
     }
 
     #[inline]
     pub fn is_client_credentials_error(&self) -> bool {
         self.kind == ApiErrorKind::Unauthenticated
-            && matches!(self.source.as_deref(), Some(e) if e.is::<ClientCredentialsError>())
+            && matches!(self.source.as_ref(), Some(e) if e.is::<ClientCredentialsError>())
     }
 }
 
@@ -319,7 +330,7 @@ impl std::fmt::Display for ApiError {
 impl std::error::Error for ApiError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.source
-            .as_deref()
-            .map(|e| e as &(dyn std::error::Error + 'static))
+            .as_ref()
+            .map(|e| e.as_ref() as &(dyn std::error::Error + 'static))
     }
 }

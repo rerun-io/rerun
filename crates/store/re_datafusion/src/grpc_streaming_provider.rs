@@ -174,17 +174,11 @@ impl GrpcStream {
         T: GrpcStreamToTable + Send + 'static,
     {
         let adapted_stream = Box::pin(async_stream::try_stream! {
-            let mut stream = client.send_streaming_request().await.map_err(|err| DataFusionError::External(Box::new(
-                tonic::Status::internal(err.to_string())
-            )))?.into_inner();
+            let mut stream = client.send_streaming_request().await?.into_inner();
 
             while let Some(msg) = stream.next().await {
                 let msg = msg.map_err(|err| DataFusionError::External(Box::new(err)))?;
-                let processed = client
-                    .process_response(msg)
-                    .map_err(|err| DataFusionError::External(Box::new(
-                        tonic::Status::internal(err.to_string())
-                    )))?;
+                let processed = client.process_response(msg)?;
                 yield processed;
             }
         });
