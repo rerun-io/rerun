@@ -15,6 +15,7 @@
 #![allow(clippy::allow_attributes, clippy::disallowed_types)] // False positives for using files on Wasm
 #![expect(clippy::unwrap_used)]
 
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, bail, ensure};
@@ -234,7 +235,8 @@ pub fn init() {
             check_hermeticity(&manifest_path, entry.path()); // will fail if not hermetic
         }
 
-        contents += &format!(
+        write!(
+            contents,
             "
     {{
         let virtpath = Path::new(\"{virtpath}\");
@@ -242,7 +244,8 @@ pub fn init() {
         fs.create_file(virtpath, content).unwrap();
     }}
 ",
-        );
+        )
+        .ok();
     }
 
     contents = format!("{}\n}}\n", contents.trim_end());

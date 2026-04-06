@@ -306,7 +306,7 @@ pub fn new_decoder(
         #[cfg(with_ffmpeg)]
         crate::VideoCodec::H264 | crate::VideoCodec::H265 => Ok(Box::new(FFmpegCliDecoder::new(
             debug_name.to_owned(),
-            &video.encoding_details,
+            video.encoding_details.as_ref(),
             output_sender,
             decode_settings.ffmpeg_path.clone(),
             &video.codec,

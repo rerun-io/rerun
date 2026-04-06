@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::error::Error as _;
+use std::fmt::Write as _;
 use std::sync::Arc;
 
 use re_auth::Jwt;
@@ -389,7 +390,7 @@ impl ConnectionRegistryHandle {
                     Err(err) => {
                         let mut msg = format!("failed to connect to server '{origin}': {err}");
                         if let Some(suggested) = suggest_api_prefix(&origin) {
-                            msg.push_str(&format!(". Did you mean '{suggested}'?"));
+                            write!(msg, ". Did you mean '{suggested}'?").ok();
                         }
                         Err(ApiError::connection(msg))
                     }
@@ -464,7 +465,7 @@ impl ConnectionRegistryHandle {
         };
 
         match request_result {
-            Ok(_) => Ok(raw_client),
+            Ok(()) => Ok(raw_client),
 
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {

@@ -88,7 +88,7 @@ impl DataLoader for UrdfDataLoader {
             &mut emit,
             robot,
             filepath.parent().map(|path| path.to_path_buf()),
-            &settings.entity_path_prefix,
+            settings.entity_path_prefix.as_ref(),
             &settings.timepoint.clone().unwrap_or_default(),
             true,
         )
@@ -133,7 +133,7 @@ impl DataLoader for UrdfDataLoader {
             &mut emit,
             robot,
             filepath.parent().map(|path| path.to_path_buf()),
-            &settings.entity_path_prefix,
+            settings.entity_path_prefix.as_ref(),
             &settings.timepoint.clone().unwrap_or_default(),
             true,
         )
@@ -151,11 +151,11 @@ pub(crate) fn emit_robot(
     emit: &mut dyn FnMut(Chunk),
     robot: urdf_rs::Robot,
     urdf_dir: Option<PathBuf>,
-    entity_path_prefix: &Option<EntityPath>,
+    entity_path_prefix: Option<&EntityPath>,
     timepoint: &TimePoint,
     include_joint_transforms: bool,
 ) -> anyhow::Result<()> {
-    let urdf_tree = UrdfTree::new(robot, urdf_dir, entity_path_prefix.clone())
+    let urdf_tree = UrdfTree::new(robot, urdf_dir, entity_path_prefix.cloned())
         .with_context(|| "Failed to build URDF tree!")?;
 
     urdf_tree.emit(emit, timepoint, include_joint_transforms)

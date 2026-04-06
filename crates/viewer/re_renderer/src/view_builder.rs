@@ -660,7 +660,7 @@ impl ViewBuilder {
                     .outline_mask_processor
                     .as_ref()
                     .map(|p| p.final_voronoi_texture()),
-                &config.outline_config,
+                config.outline_config.as_ref(),
                 config.blend_with_background,
             ),
         );

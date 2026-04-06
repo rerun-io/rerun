@@ -78,9 +78,9 @@ static CHUNK_STRATEGY: LazyLock<String> = LazyLock::new(|| {
 #[cfg(not(target_arch = "wasm32"))]
 #[inline]
 fn attach_trace_context(
-    trace_headers: &Option<crate::TraceHeaders>,
+    trace_headers: Option<&crate::TraceHeaders>,
 ) -> Option<re_perf_telemetry::external::opentelemetry::ContextGuard> {
-    let headers = trace_headers.as_ref()?;
+    let headers = trace_headers?;
     if !headers.traceparent.is_empty() {
         let parent_ctx =
             re_perf_telemetry::external::opentelemetry::global::get_text_map_propagator(|prop| {
@@ -171,7 +171,7 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
         };
 
         #[cfg(not(target_arch = "wasm32"))]
-        let _trace_guard = attach_trace_context(&this.trace_headers);
+        let _trace_guard = attach_trace_context(this.trace_headers.as_ref());
         let _span = tracing::info_span!("poll_next").entered();
 
         // If we have any errors on the worker thread, we want to ensure we pass them up
@@ -971,7 +971,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         _context: Arc<TaskContext>,
     ) -> datafusion::common::Result<SendableRecordBatchStream> {
         #[cfg(not(target_arch = "wasm32"))]
-        let _trace_guard = attach_trace_context(&self.trace_headers);
+        let _trace_guard = attach_trace_context(self.trace_headers.as_ref());
         let _span = tracing::info_span!("execute").entered();
 
         let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);

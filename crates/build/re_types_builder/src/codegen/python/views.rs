@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use super::ExtensionClass;
 use crate::codegen::Target;
 use crate::codegen::common::StringExt as _;
@@ -86,9 +88,9 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
             });
 
         let parameter_name = &property.name;
-        code.push_str(&format!(
-            "{parameter_name}: blueprint_archetypes.{property_type_name} | {additional_type_annotations} None = None,\n"
-        ));
+        writeln!(code,
+            "{parameter_name}: blueprint_archetypes.{property_type_name} | {additional_type_annotations} None = None,"
+        ).ok();
     }
 
     code.push_indented(1, ") -> None:", 1);

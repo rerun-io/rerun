@@ -369,7 +369,7 @@ impl<'a, T: ShowIndex> ShowIndexState<'a> for T {
 
     fn write(
         &self,
-        _: &Self::State,
+        (): &Self::State,
         idx: usize,
         f: &mut SyntaxHighlightedBuilder,
     ) -> EmptyArrowResult {

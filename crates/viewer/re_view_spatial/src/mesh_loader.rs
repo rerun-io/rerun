@@ -170,8 +170,8 @@ impl LoadedMesh {
         };
 
         let albedo = try_get_or_create_albedo_texture(
-            &albedo_texture_buffer,
-            &albedo_texture_format,
+            albedo_texture_buffer.as_ref(),
+            albedo_texture_format.as_ref(),
             render_ctx,
             texture_key,
             &name,
@@ -221,8 +221,8 @@ impl LoadedMesh {
 }
 
 fn try_get_or_create_albedo_texture(
-    albedo_texture_buffer: &Option<datatypes::Blob>,
-    albedo_texture_format: &Option<datatypes::ImageFormat>,
+    albedo_texture_buffer: Option<&datatypes::Blob>,
+    albedo_texture_format: Option<&datatypes::ImageFormat>,
     render_ctx: &RenderContext,
     texture_key: u64,
     name: &str,

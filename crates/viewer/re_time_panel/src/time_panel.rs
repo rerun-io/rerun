@@ -793,10 +793,7 @@ impl TimePanel {
         let collapse_scope = self.collapse_scope();
 
         // Expand if one of the children is focused
-        let focused_entity_path = store_ctx
-            .focused_item()
-            .as_ref()
-            .and_then(|item| item.entity_path());
+        let focused_entity_path = store_ctx.focused_item().and_then(|item| item.entity_path());
 
         if focused_entity_path
             .is_some_and(|focused_entity_path| focused_entity_path.is_descendant_of(entity_path))

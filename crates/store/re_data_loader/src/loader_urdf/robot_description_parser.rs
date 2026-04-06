@@ -9,7 +9,7 @@ use re_log_types::TimePoint;
 /// are emitted in addition to the robot geometry.
 pub(crate) fn build_urdf_chunks_from_xml(
     urdf_xml: &str,
-    entity_path_prefix: &Option<EntityPath>,
+    entity_path_prefix: Option<&EntityPath>,
     timepoint: &TimePoint,
     include_joint_transforms: bool,
 ) -> anyhow::Result<Vec<re_chunk::Chunk>> {

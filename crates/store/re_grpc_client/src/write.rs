@@ -365,7 +365,7 @@ async fn message_proxy_client(
                         re_log::debug!("Shutting down client without flush");
                         return;
                     }
-                    _ = tokio::time::sleep(Duration::from_millis(100)) => {
+                    () = tokio::time::sleep(Duration::from_millis(100)) => {
                     }
                 }
             }

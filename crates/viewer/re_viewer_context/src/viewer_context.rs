@@ -225,7 +225,7 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Item that got focused on the last frame if any.
-    pub fn focused_item(&self) -> &Option<crate::Item> {
+    pub fn focused_item(&self) -> Option<&crate::Item> {
         self.app_ctx.focused_item()
     }
 

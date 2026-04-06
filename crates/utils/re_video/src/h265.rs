@@ -1,5 +1,7 @@
 //! General H.265 utilities.
 //!
+use std::fmt::Write as _;
+
 use cros_codecs::codec::h264::nalu::Header as _;
 use cros_codecs::codec::h265::parser::{Nalu, NaluType, Parser, ProfileTierLevel, Sps};
 
@@ -50,7 +52,7 @@ fn hevc_codec_string(profile_tier_level: &ProfileTierLevel) -> String {
         3 => codec.push('C'),
         _ => {}
     }
-    codec.push_str(&format!("{}", profile_tier_level.general_profile_idc));
+    write!(codec, "{}", profile_tier_level.general_profile_idc).ok();
 
     // .B: A 32-bit value representing one or more general profile compatibility flags.
     let mut reversed = 0;
@@ -68,7 +70,7 @@ fn hevc_codec_string(profile_tier_level: &ProfileTierLevel) -> String {
     } else {
         codec.push_str(".L");
     }
-    codec.push_str(&format!("{}", profile_tier_level.general_level_idc as u8));
+    write!(codec, "{}", profile_tier_level.general_level_idc as u8).ok();
 
     // .D: One or more 6-byte constraint flags. Note that each flag is encoded as a hexadecimal number, and separated by an additional period; trailing bytes that are zero may be omitted.
     let mut constraints = [0u8; 2];
@@ -93,7 +95,7 @@ fn hevc_codec_string(profile_tier_level: &ProfileTierLevel) -> String {
     let mut has_byte = false;
     for constraint in constraints {
         if constraint > 0 || has_byte {
-            codec.push_str(&format!(".{constraint:X}"));
+            write!(codec, ".{constraint:X}").ok();
             has_byte = true;
         }
     }

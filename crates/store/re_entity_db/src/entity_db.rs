@@ -1,6 +1,6 @@
 use std::{
     collections::BTreeSet,
-    fmt::{Debug, Formatter},
+    fmt::{Debug, Formatter, Write as _},
     ops::Deref,
     sync::Arc,
 };
@@ -180,7 +180,7 @@ impl Debug for EntityDb {
             .field("store_id", &self.store_id)
             .field("data_source", &self.data_source)
             .field("set_store_info", &self.set_store_info)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -247,7 +247,7 @@ impl EntityDb {
                 }
                 let depth = entity_path.len() - 1;
                 let indent = "  ".repeat(depth);
-                text.push_str(&format!("{indent}{entity_path}\n"));
+                writeln!(text, "{indent}{entity_path}").ok();
                 let Some(components) = store.schema().all_components_for_entity(entity_path) else {
                     return;
                 };
@@ -258,9 +258,9 @@ impl EntityDb {
                     {
                         let name = component_type
                             .map_or_else(|| component.to_string(), |ct| ct.short_name().to_owned());
-                        text.push_str(&format!("{component_indent}{name}: {datatype}\n"));
+                        writeln!(text, "{component_indent}{name}: {datatype}").ok();
                     } else {
-                        text.push_str(&format!("{component_indent}{component}\n"));
+                        writeln!(text, "{component_indent}{component}").ok();
                     }
                 }
             });

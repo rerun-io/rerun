@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use indexmap::IndexMap;
 use itertools::Itertools as _;
 use re_chunk::EntityPath;
@@ -278,7 +280,7 @@ impl ItemCollection {
                 content_description.push_str(desc);
             } else {
                 // Plural
-                content_description.push_str(&format!("{desc}s"));
+                write!(content_description, "{desc}s").ok();
             }
 
             let texts = entries.into_iter().join("\n");

@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::external::arrow::util::display::{ArrayFormatter, FormatOptions};
 use re_test_context::TestContext;
@@ -46,7 +48,7 @@ fn test_all_component_fallbacks() {
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                arch_display.push_str(&format!("{}: [{values}]\n", field.name));
+                writeln!(arch_display, "{}: [{values}]", field.name).ok();
             }
 
             let name = format!("arch_fallback_{arch_name}");

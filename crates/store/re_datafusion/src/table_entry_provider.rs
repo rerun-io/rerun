@@ -44,7 +44,7 @@ impl std::fmt::Debug for TableEntryTableProvider {
         f.debug_struct("TableEntryTableProvider")
             .field("table", &self.table)
             .field("table_id", &self.table_id)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

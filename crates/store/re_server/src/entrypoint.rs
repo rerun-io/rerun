@@ -212,7 +212,7 @@ impl Args {
                 info!("received SIGINT, gracefully shutting down");
             }
 
-            _ = server_handle.wait_for_shutdown() => {
+            () = server_handle.wait_for_shutdown() => {
                 warn!("gRPC endpoint shut down on its own, terminating redap-server");
             }
         }

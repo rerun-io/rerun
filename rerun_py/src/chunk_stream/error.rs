@@ -35,7 +35,7 @@ impl std::fmt::Debug for PythonException {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PythonException")
             .field("reason", &self.reason)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

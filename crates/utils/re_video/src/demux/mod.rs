@@ -101,7 +101,7 @@ pub type SampleIndex = usize;
 pub type KeyframeIndex = usize;
 
 /// Distinguishes static videos from potentially ongoing video streams.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum VideoDeliveryMethod {
     /// A static video with a fixed, known duration which won't be updated further.
     Static { duration: Time },
@@ -1136,12 +1136,25 @@ impl re_byte_size::SizeBytes for VideoLoadError {
 
 impl std::fmt::Debug for VideoDataDescription {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            codec,
+            encoding_details,
+            timescale,
+            delivery_method,
+            keyframe_indices,
+            samples,
+            samples_statistics,
+            mp4_tracks,
+        } = self;
         f.debug_struct("Video")
-            .field("codec", &self.codec)
-            .field("encoding_details", &self.encoding_details)
-            .field("timescale", &self.timescale)
-            .field("keyframe_indices", &self.keyframe_indices)
-            .field("samples", &self.samples.iter_indexed().collect::<Vec<_>>())
+            .field("codec", codec)
+            .field("encoding_details", encoding_details)
+            .field("timescale", timescale)
+            .field("delivery_method", delivery_method)
+            .field("keyframe_indices", keyframe_indices)
+            .field("samples", &samples.iter_indexed().collect::<Vec<_>>())
+            .field("samples_statistics", samples_statistics)
+            .field("mp4_tracks", mp4_tracks)
             .finish()
     }
 }

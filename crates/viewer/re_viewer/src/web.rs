@@ -374,7 +374,7 @@ impl WebHandle {
             let egui_ctx = app.egui_ctx.clone();
 
             match log_tx.send(msg.into()) {
-                Ok(_) => egui_ctx.request_repaint_after(std::time::Duration::from_millis(10)),
+                Ok(()) => egui_ctx.request_repaint_after(std::time::Duration::from_millis(10)),
                 Err(err) => {
                     re_log::info_once!("Failed to dispatch log message to viewer: {err}");
                 }

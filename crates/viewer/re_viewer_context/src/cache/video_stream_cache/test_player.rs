@@ -133,7 +133,7 @@ impl TestVideoPlayer {
         self.video.frame_at(
             Time::from_secs(time, re_video::Timescale::NANOSECOND),
             &self.video_descr,
-            &mut |_, _| Ok(()),
+            &mut |(), _| Ok(()),
             get_buffer,
         )?;
 

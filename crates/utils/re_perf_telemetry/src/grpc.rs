@@ -531,7 +531,7 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
                 SpanMetadata::remove_opt(span.id().as_ref());
             }
 
-            tower_http::classify::ClassifiedResponse::Ready(Ok(_)) => {
+            tower_http::classify::ClassifiedResponse::Ready(Ok(())) => {
                 record(span, Some(tonic::Code::Ok));
             }
 

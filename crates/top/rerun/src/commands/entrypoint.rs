@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::net::IpAddr;
 use std::time::Duration;
 
@@ -469,9 +470,9 @@ impl Args {
 
                 let mut rendered = String::new();
                 if let Some(about) = cmd.get_long_about() {
-                    rendered += &format!("{about}\n\n");
+                    write!(rendered, "{about}\n\n").ok();
                 } else if let Some(about) = cmd.get_about() {
-                    rendered += &format!("{about}.\n\n");
+                    write!(rendered, "{about}.\n\n").ok();
                 }
                 rendered += format!("**Usage**: `{} {usage}`", full_name.join(" ")).trim();
 
@@ -772,7 +773,7 @@ where
 
     match res {
         // Clean success
-        Ok(_) => Ok(0),
+        Ok(()) => Ok(0),
 
         // Clean failure -- known error AddrInUse
         Err(err)

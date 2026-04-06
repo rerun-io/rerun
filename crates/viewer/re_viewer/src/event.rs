@@ -152,7 +152,7 @@ pub enum SelectionChangeItem {
     },
 }
 
-fn get_position(context: &Option<ItemContext>) -> Option<glam::Vec3> {
+fn get_position(context: Option<&ItemContext>) -> Option<glam::Vec3> {
     match context {
         Some(ItemContext::TwoD { pos, .. }) => Some(*pos),
         Some(ItemContext::ThreeD { pos, .. }) => *pos,
@@ -175,7 +175,7 @@ fn get_container_name(blueprint: &ViewportBlueprint, container_id: &ContainerId)
 impl SelectionChangeItem {
     pub fn new(
         item: &Item,
-        context: &Option<ItemContext>,
+        context: Option<&ItemContext>,
         blueprint: &ViewportBlueprint,
     ) -> Option<Self> {
         match item {
@@ -278,7 +278,7 @@ impl ViewerEventDispatcher {
                 items: items
                     .iter()
                     .filter_map(|(item, ctx)| {
-                        SelectionChangeItem::new(item, ctx, viewport_blueprint)
+                        SelectionChangeItem::new(item, ctx.as_ref(), viewport_blueprint)
                     })
                     .collect(),
             },

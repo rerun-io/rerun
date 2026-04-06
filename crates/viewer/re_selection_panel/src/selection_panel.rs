@@ -1211,7 +1211,7 @@ fn container_top_level_properties(
 
     if container.container_kind == ContainerKind::Grid {
         ui.list_item_flat_noninteractive(PropertyContent::new("Columns").value_fn(|ui, _| {
-            fn columns_to_string(columns: &Option<u32>) -> String {
+            fn columns_to_string(columns: Option<u32>) -> String {
                 match columns {
                     None => "Auto".to_owned(),
                     Some(cols) => cols.to_string(),
@@ -1221,9 +1221,9 @@ fn container_top_level_properties(
             let mut new_columns = container.grid_columns;
 
             egui::ComboBox::from_id_salt("container_grid_columns")
-                .selected_text(columns_to_string(&new_columns))
+                .selected_text(columns_to_string(new_columns))
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut new_columns, None, columns_to_string(&None));
+                    ui.selectable_value(&mut new_columns, None, columns_to_string(None));
 
                     ui.separator();
 
@@ -1231,7 +1231,7 @@ fn container_top_level_properties(
                         ui.selectable_value(
                             &mut new_columns,
                             Some(columns),
-                            columns_to_string(&Some(columns)),
+                            columns_to_string(Some(columns)),
                         );
                     }
                 });

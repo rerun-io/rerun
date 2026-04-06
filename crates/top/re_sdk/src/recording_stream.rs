@@ -815,7 +815,7 @@ impl fmt::Debug for RecordingStreamInner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RecordingStreamInner")
             .field("store_id", &self.store_info.store_id)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

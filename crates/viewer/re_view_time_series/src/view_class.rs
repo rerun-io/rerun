@@ -737,7 +737,7 @@ impl ViewClass for TimeSeriesView {
 
             let mut plot_double_clicked = false;
             let egui_plot::PlotResponse {
-                inner: _,
+                inner: (),
                 response,
                 transform,
                 hovered_plot_item,
@@ -1040,7 +1040,7 @@ fn all_scalar_mappings(
     // Flatten all (component, selector) pairs into a single comparable list
     // to find the globally best match across all components.
     let candidates = matches.iter().flat_map(|(source_component, match_info)| {
-        let is_rerun_native_type = match_info.component_type() == &target.component_type;
+        let is_rerun_native_type = match_info.component_type() == target.component_type.as_ref();
 
         // If it's not the exact semantic type that we're looking for,
         // but it is a Rerun-builtin semantic type then we don't consider it at all.

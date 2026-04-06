@@ -62,7 +62,7 @@ impl PyDatasetViewInternal {
             return schema;
         }
 
-        let filter = resolved_entity_path_filter(&self.content_filters);
+        let filter = resolved_entity_path_filter(self.content_filters.as_ref());
 
         // Filter columns: keep non-component columns (row_id, index) and matching component columns
         let filtered_columns: Vec<ColumnDescriptor> = schema
@@ -251,7 +251,7 @@ impl PyDatasetViewInternal {
             py,
             &self_.dataset,
             self_.segment_filter.clone(),
-            &self_.content_filters,
+            self_.content_filters.as_ref(),
             index,
             include_semantically_empty_columns,
             include_tombstone_columns,
@@ -301,7 +301,7 @@ impl PyDatasetViewInternal {
 /// - `filter_contents("/does/exist")` -> only matching columns
 ///
 /// Also, it always applies the "hide properties by default" implicit behavior.
-fn resolved_entity_path_filter(content_filters: &Option<Vec<String>>) -> ResolvedEntityPathFilter {
+fn resolved_entity_path_filter(content_filters: Option<&Vec<String>>) -> ResolvedEntityPathFilter {
     match content_filters {
         None => {
             // No filter specified - accept everything
@@ -323,7 +323,7 @@ fn resolved_entity_path_filter(content_filters: &Option<Vec<String>>) -> Resolve
 /// Build a `ViewContentsSelector` from content filters.
 fn build_view_contents(
     schema: &ArrowSchema,
-    content_filters: &Option<Vec<String>>,
+    content_filters: Option<&Vec<String>>,
 ) -> ViewContentsSelector {
     let filter = resolved_entity_path_filter(content_filters);
 
@@ -349,7 +349,7 @@ fn build_dataframe_query_table_provider(
     py: Python<'_>,
     dataset: &Py<PyDatasetEntryInternal>,
     segment_filter: Option<HashSet<String>>,
-    content_filters: &Option<Vec<String>>,
+    content_filters: Option<&Vec<String>>,
     index: Option<String>,
     include_semantically_empty_columns: bool,
     include_tombstone_columns: bool,
