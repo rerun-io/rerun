@@ -1407,3 +1407,77 @@ def logout() -> str | None:
 
 def rerun_trace_context() -> Any:
     """Get the trace context ContextVar for distributed tracing propagation."""
+
+#####################################################################################################################
+## PIPELINE APIS                                                                                                   ##
+#####################################################################################################################
+
+class RrdLoaderInternal:
+    """Internal implementation. Use RrdLoader from rerun.experimental instead."""
+
+    def __init__(self, path: str) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def application_id(self) -> str | None: ...
+    @property
+    def recording_id(self) -> str | None: ...
+
+class McapLoaderInternal:
+    """Internal implementation. Use McapLoader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: str,
+        timeline_type: str,
+        timestamp_offset_ns: int | None,
+        decoders: list[str] | None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> str: ...
+    @staticmethod
+    def available_decoders() -> list[str]: ...
+
+class LazyChunkStreamInternal:
+    """Internal implementation. Use LazyChunkStream from rerun.experimental instead."""
+
+    def filter(
+        self,
+        *,
+        content: list[str] | None = None,
+        has_timeline: str | None = None,
+        is_static: bool | None = None,
+        components: list[str] | None = None,
+    ) -> LazyChunkStreamInternal: ...
+    def drop_matching(
+        self,
+        *,
+        content: list[str] | None = None,
+        has_timeline: str | None = None,
+        is_static: bool | None = None,
+        components: list[str] | None = None,
+    ) -> LazyChunkStreamInternal: ...
+    def split(
+        self,
+        *,
+        content: list[str] | None = None,
+        has_timeline: str | None = None,
+        is_static: bool | None = None,
+        components: list[str] | None = None,
+    ) -> tuple[LazyChunkStreamInternal, LazyChunkStreamInternal]: ...
+    @staticmethod
+    def merge(streams: list[LazyChunkStreamInternal]) -> LazyChunkStreamInternal: ...
+    def write_rrd(self, path: str, application_id: str, recording_id: str) -> None: ...
+    def collect(self) -> list[ChunkInternal]: ...
+    def __iter__(self) -> LazyChunkStreamIterator: ...
+    @staticmethod
+    def from_iter(iterable: Any) -> LazyChunkStreamInternal: ...
+
+class LazyChunkStreamIterator:
+    """Iterator over chunks from a compiled stream."""
+
+    def __iter__(self) -> LazyChunkStreamIterator:
+        """Implement iter(self)."""
+
+    def __next__(self) -> ChunkInternal:
+        """Implement next(self)."""

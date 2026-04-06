@@ -63,10 +63,10 @@ impl re_byte_size::SizeBytes for DatatypeMatch {
 }
 
 impl DatatypeMatch {
-    pub fn component_type(&self) -> &Option<re_chunk::ComponentType> {
+    pub fn component_type(&self) -> Option<&re_chunk::ComponentType> {
         match self {
             Self::PhysicalDatatypeOnly { component_type, .. }
-            | Self::NativeSemantics { component_type, .. } => component_type,
+            | Self::NativeSemantics { component_type, .. } => component_type.as_ref(),
         }
     }
 

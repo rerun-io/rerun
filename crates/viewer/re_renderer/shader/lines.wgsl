@@ -220,7 +220,9 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     } else {
         camera_ray = camera_ray_to_world_pos_perspective(center_position);
     }
-    let camera_distance = distance(camera_ray.origin, center_position);
+    // `approx_pixel_world_size_at` expects depth, see its doc comment.
+    // For orthographic cameras the argument is ignored, so this is always safe.
+    let camera_distance = dot(center_position - frame.camera_position, frame.camera_forward);
     let world_scale_factor = average_scale_from_transform(batch.world_from_obj); // TODO(andreas): somewhat costly, should precompute this
     var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, world_scale_factor);
 

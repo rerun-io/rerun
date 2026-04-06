@@ -92,6 +92,7 @@ docs/snippets/**/*.rrd
 
 /meilisearch
 
+.claude
 .pixi/*
 justfile
 

@@ -2280,14 +2280,18 @@ impl App {
             return;
         };
 
+        use std::fmt::Write as _;
+
         let mut hierarchy_text = String::new();
 
         // Add application ID and recording ID header
-        hierarchy_text.push_str(&format!(
+        write!(
+            hierarchy_text,
             "Application ID: {}\nRecording ID: {}\n\n",
             entity_db.application_id(),
             entity_db.recording_id()
-        ));
+        )
+        .ok();
 
         hierarchy_text.push_str(&entity_db.format_with_components());
 

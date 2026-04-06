@@ -698,10 +698,8 @@ impl DataFusionTableDelegate<'_> {
                     }
                 };
 
-                if response.clicked_with_open_in_background() {
+                if response.clicked() {
                     open(true);
-                } else if response.clicked() {
-                    open(false);
                 }
             }
         });

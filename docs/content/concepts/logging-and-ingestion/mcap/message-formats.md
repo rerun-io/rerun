@@ -21,7 +21,7 @@ We are continually adding support for more standard message types.
 | Video | `sensor_msgs/CompressedImage` (h264) | `CompressedVideo` | [VideoStream](../../../reference/types/archetypes/video_stream.md) |
 | Camera calibration | `sensor_msgs/CameraInfo` | `CameraCalibration` | [Pinhole](../../../reference/types/archetypes/pinhole.md) |
 | Point cloud | `sensor_msgs/PointCloud2` | `PointCloud` | [Points3D](../../../reference/types/archetypes/points3d.md) |
-| Geo points | `sensor_msgs/NavSatFix` | `LocationFix`, `LocationFixes`* | [GeoPoints](../../../reference/types/archetypes/geo_points.md) |
+| Geo points | `sensor_msgs/NavSatFix` | `LocationFix`, `LocationFixes` | [GeoPoints](../../../reference/types/archetypes/geo_points.md) |
 | Transforms | `tf2_msgs/TFMessage` | `FrameTransform`, `FrameTransforms` | [Transform3D](../../../reference/types/archetypes/transform3d.md) |
 | Poses | `geometry_msgs/PoseStamped` | `PoseInFrame`, `PosesInFrame` | [InstancePoses3D](../../../reference/types/archetypes/instance_poses3d.md) |
 | Coordinate frame | `.frame_id` field in `std_msgs/Header` | `.frame_id` field | [CoordinateFrame](../../../reference/types/archetypes/coordinate_frame.md)
@@ -29,8 +29,6 @@ We are continually adding support for more standard message types.
 | Misc. scalar sensor data | `sensor_msgs/Imu`, `sensor_msgs/JointState`, `sensor_msgs/Temperature`, `sensor_msgs/FluidPressure`, `sensor_msgs/RelativeHumidity`, `sensor_msgs/Illuminance`, `sensor_msgs/Range`, `sensor_msgs/BatteryState`, `sensor_msgs/Joy` | - *(usually covered via custom schemas, see [Schema reflection](#schema-reflection) below on this page)* | [Scalars](../../../reference/types/archetypes/scalars.md) |
 | Text | `std_msgs/String` | - | [TextDocument](../../../reference/types/archetypes/text_document.md) |
 | Log messages | `rcl_interfaces/Log` | `Log` | [TextLog](../../../reference/types/archetypes/text_log.md) |
-
-> *Support for `LocationFix` is coming soon.
 
 ### Timelines
 

@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 
 use camino::Utf8PathBuf;
 use proc_macro2::TokenStream;
@@ -16,7 +17,7 @@ pub(crate) fn generate_blueprint_validation(
 ) {
     let blueprint_scope = Some("blueprint".to_owned());
     let mut code = String::new();
-    code.push_str(&format!("// {}\n\n", autogen_warning!()));
+    write!(code, "// {}\n\n", autogen_warning!()).ok();
     code.push_str("#![allow(clippy::empty_line_after_doc_comments)]\n\n");
 
     code.push_str("use re_entity_db::EntityDb;\n");
@@ -29,9 +30,11 @@ pub(crate) fn generate_blueprint_validation(
             if crate_name == "re_viewer" {
                 crate_name = "crate".to_owned();
             }
-            code.push_str(&format!(
-                "pub use {crate_name}::blueprint::components::{type_name};\n"
-            ));
+            writeln!(
+                code,
+                "pub use {crate_name}::blueprint::components::{type_name};"
+            )
+            .ok();
         }
     }
 

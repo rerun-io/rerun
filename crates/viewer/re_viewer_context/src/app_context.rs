@@ -174,8 +174,8 @@ impl AppContext<'_> {
     }
 
     /// Item that got focused on the last frame if any.
-    pub fn focused_item(&self) -> &Option<crate::Item> {
-        self.focused_item
+    pub fn focused_item(&self) -> Option<&crate::Item> {
+        self.focused_item.as_ref()
     }
 
     /// Helper object to manage drag-and-drop operations.

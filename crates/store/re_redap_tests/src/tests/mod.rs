@@ -76,6 +76,7 @@ define_redap_tests! {
     query_dataset::query_simple_dataset,
     query_dataset::query_simple_dataset_with_layers,
     query_filter::query_dataset_simple_filter,
+    query_filter::query_dataset_with_limit,
     query_index_values::query_dataset_index_values,
     register_segment::register_and_scan_blueprint_dataset,
     register_segment::register_and_scan_empty_dataset,

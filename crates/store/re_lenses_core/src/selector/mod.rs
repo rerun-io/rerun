@@ -37,17 +37,23 @@
 //!   during schema evolution or when optional columns are omitted.
 //! * `!` promotes rows where **all** inner values are null to an outer null, collapsing
 //!   `[null]` → `null` so downstream consumers see clean nullability.
+//!
+//! # Anonymous functions
+//!
+//! Using [`Selector::pipe`] it is possible to chain anonymous functions to selectors. The result will be a
+//! [`Selector<DynExpr>`], which can be executed just like a regular selector. The difference is that the
+//! dynamic variant does not implement [`std::fmt::Display`], i.e. it is not serializable.
 
+mod dyn_expr;
+mod eval;
 mod lexer;
 mod parser;
 mod runtime;
 
 pub mod function_registry;
 
-use std::sync::Arc;
-
+pub use dyn_expr::DynExpr;
 pub use parser::Literal;
-use re_chunk::ArrowArray as _;
 pub use runtime::Runtime;
 
 use arrow::{
@@ -60,22 +66,21 @@ use parser::Expr;
 
 /// A parsed selector expression that can be executed against Arrow arrays.
 #[derive(Clone)]
-pub struct Selector {
-    expr: Expr,
-    runtime: Arc<Runtime>,
+pub struct Selector<E = Expr> {
+    expr: E,
 }
 
 impl re_byte_size::SizeBytes for Selector {
     fn heap_size_bytes(&self) -> u64 {
-        let Self { expr, runtime } = self;
+        let Self { expr } = self;
 
-        expr.heap_size_bytes() + runtime.heap_size_bytes()
+        expr.heap_size_bytes()
     }
 }
 
 impl std::fmt::Debug for Selector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { expr, runtime: _ } = self;
+        let Self { expr } = self;
 
         f.debug_struct("Selector").field("expr", expr).finish()
     }
@@ -83,9 +88,9 @@ impl std::fmt::Debug for Selector {
 
 impl PartialEq for Selector {
     fn eq(&self, other: &Self) -> bool {
-        let Self { expr, runtime } = self;
+        let Self { expr } = self;
 
-        *expr == other.expr && Arc::ptr_eq(runtime, &other.runtime)
+        *expr == other.expr
     }
 }
 
@@ -93,10 +98,9 @@ impl Eq for Selector {}
 
 impl std::hash::Hash for Selector {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let Self { expr, runtime } = self;
+        let Self { expr } = self;
 
         expr.hash(state);
-        Arc::as_ptr(runtime).hash(state);
     }
 }
 
@@ -107,12 +111,9 @@ impl std::fmt::Display for Selector {
 }
 
 impl Selector {
-    /// Create a new selector using the default runtime.
+    /// Create a new selector.
     pub fn new(expr: Expr) -> Self {
-        Self {
-            expr,
-            runtime: runtime::default_runtime(),
-        }
+        Self { expr }
     }
 
     /// Parse a selector from a query string.
@@ -121,52 +122,79 @@ impl Selector {
     pub fn parse(query: &str) -> Result<Self, Error> {
         query.parse()
     }
+}
 
-    /// Execute this selector against a raw array.
+/// Implementors can be converted into [`DynExpr`] and therefore be piped into [`Selector`]s.
+pub trait IntoDynExpr {
+    fn into_dyn_expr(self) -> DynExpr;
+}
+
+impl<
+    F: Fn(&ArrayRef) -> Result<Option<ArrayRef>, crate::combinators::Error> + Send + Sync + 'static,
+> IntoDynExpr for F
+{
+    fn into_dyn_expr(self) -> DynExpr {
+        DynExpr::Function(Box::new(self))
+    }
+}
+
+impl IntoDynExpr for Selector {
+    fn into_dyn_expr(self) -> DynExpr {
+        let Self { expr } = self;
+        DynExpr::Expr(expr)
+    }
+}
+
+impl IntoDynExpr for Selector<DynExpr> {
+    fn into_dyn_expr(self) -> DynExpr {
+        let Self { expr } = self;
+        expr
+    }
+}
+
+impl<E: eval::Eval + Into<DynExpr>> Selector<E> {
+    /// Execute this selector against a raw array using the default runtime.
     ///
     /// This is the `ArrayRef`-based entry point. For per-row execution
     /// on a [`ListArray`], use [`execute_per_row`](Self::execute_per_row).
+    ///
+    /// To execute with a custom runtime, use [`Runtime::execute`] directly.
     pub fn execute(&self, source: ArrayRef) -> Result<Option<ArrayRef>, Error> {
-        runtime::execute(&self.expr, source, &self.runtime).map_err(Into::into)
+        runtime::default_runtime().execute(self, source)
     }
 
-    /// Execute this selector against each row of a [`ListArray`].
+    /// Execute this selector against each row of a [`ListArray`] using the default runtime.
     ///
     /// Performs implicit iteration over the inner list array, and reconstructs the array at the end.
     ///
     /// `map(.poses[].x)` is the actual query, we only require writing the `.poses[].x` portion.
     ///
     /// Returns `None` if the expression's error was suppressed (e.g. `.field?`).
+    ///
+    /// To execute with a custom runtime, use [`Runtime::execute_per_row`] directly.
     pub fn execute_per_row(&self, source: &ListArray) -> Result<Option<ListArray>, Error> {
-        let res = runtime::eval_map(source, &self.expr, &self.runtime).map_err(Into::into);
-
-        if let Ok(Some(ref output)) = res {
-            re_log::debug_assert_eq!(
-                output.len(),
-                source.len(),
-                "selectors should never change row count"
-            );
-        }
-
-        res
+        runtime::default_runtime().execute_per_row(self, source)
     }
 
-    /// Set which runtime this selector should run with.
-    pub fn with_runtime(mut self, runtime: impl Into<Arc<Runtime>>) -> Self {
-        self.runtime = runtime.into();
-        self
+    /// Pipe this selector into another expression, producing a [`Selector<DynExpr>`].
+    ///
+    /// Accepts any type that converts into a [`DynExpr`], including [`Selector<Expr>`] and
+    /// [`Selector<DynExpr>`], and anonymous functions that operate on [`ArrayRef`].
+    pub fn pipe(self, rhs: impl IntoDynExpr) -> Selector<DynExpr> {
+        Selector {
+            expr: DynExpr::Pipe {
+                left: Box::new(self.expr.into()),
+                right: Box::new(rhs.into_dyn_expr()),
+            },
+        }
     }
 }
 
-impl crate::combinators::Transform for Selector {
-    type Source = ListArray;
-    type Target = ListArray;
-
-    fn transform(
-        &self,
-        source: &Self::Source,
-    ) -> Result<Option<Self::Target>, crate::combinators::Error> {
-        self.execute_per_row(source).map_err(Into::into)
+impl From<Selector> for Selector<DynExpr> {
+    fn from(selector: Selector) -> Self {
+        Self {
+            expr: DynExpr::from(selector.expr),
+        }
     }
 }
 

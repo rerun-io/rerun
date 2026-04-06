@@ -6,7 +6,9 @@ import inspect
 import math
 import uuid
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Self, TypeVar, overload
+from typing import TYPE_CHECKING, Any, TypeVar, overload
+
+from typing_extensions import Self
 
 import rerun as rr
 from rerun import bindings

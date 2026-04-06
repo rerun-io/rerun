@@ -279,7 +279,7 @@ impl<W: std::io::Write> Encoder<W> {
                 transport.to_rrd_bytes(&mut self.scratch)?;
                 let n = w
                     .write_all(&self.scratch)
-                    .map(|_| self.scratch.len() as u64)
+                    .map(|()| self.scratch.len() as u64)
                     .map_err(EncodeError::Write)?;
                 self.num_written += n;
                 n
@@ -348,7 +348,7 @@ impl<W: std::io::Write> Encoder<W> {
                 message.to_rrd_bytes(&mut self.scratch)?;
                 let n = w
                     .write_all(&self.scratch)
-                    .map(|_| self.scratch.len() as u64)
+                    .map(|()| self.scratch.len() as u64)
                     .map_err(EncodeError::Write)?;
                 self.num_written += n;
                 n

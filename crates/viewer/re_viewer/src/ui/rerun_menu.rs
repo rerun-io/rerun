@@ -1,5 +1,7 @@
 //! The main Rerun drop-down menu found in the top panel.
 
+use std::fmt::Write as _;
+
 #[cfg(debug_assertions)]
 use egui::containers::menu;
 use egui::containers::menu::{MenuButton, MenuConfig};
@@ -213,18 +215,18 @@ impl App {
         // It is really the features of `rerun-cli` (the `rerun` binary) that are interesting.
         // For the web-viewer we get `crate_name: "re_viewer"` here, which is much less interesting.
         if crate_name == "rerun-cli" && !features.is_empty() {
-            label += &format!("\n{crate_name} features: {features}");
+            write!(label, "\n{crate_name} features: {features}").ok();
         }
 
         if !rustc_version.is_empty() {
-            label += &format!("\nrustc {rustc_version}");
+            write!(label, "\nrustc {rustc_version}").ok();
             if !llvm_version.is_empty() {
-                label += &format!(", LLVM {llvm_version}");
+                write!(label, ", LLVM {llvm_version}").ok();
             }
         }
 
         if !datetime.is_empty() {
-            label += &format!("\nbuilt {datetime}");
+            write!(label, "\nbuilt {datetime}").ok();
         }
 
         ui.label(label);

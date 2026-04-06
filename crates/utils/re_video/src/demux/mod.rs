@@ -59,7 +59,7 @@ impl std::fmt::Display for ChromaSubsamplingModes {
 }
 
 /// The basic codec family used to encode the video.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VideoCodec {
     /// Advanced Video Coding (AVC/H.264)
     ///
@@ -85,33 +85,13 @@ pub enum VideoCodec {
     ///
     /// See <https://en.wikipedia.org/wiki/VP9>
     VP9,
-}
 
-impl VideoCodec {
-    /// Base part of the web codec string, without additional parameters.
+    /// Not a video in the traditional sense, but the data is a sequence
+    /// of images that are decoded by image decoders.
     ///
-    /// See <https://www.w3.org/TR/webcodecs-codec-registry/#video-codec-registry>
-    pub fn base_webcodec_string(&self) -> &'static str {
-        match self {
-            // https://www.w3.org/TR/webcodecs-av1-codec-registration/#fully-qualified-codec-strings
-            Self::AV1 => "av01",
-
-            // https://www.w3.org/TR/webcodecs-avc-codec-registration/#fully-qualified-codec-strings
-            // avc3 is valid as well.
-            Self::H264 => "avc1",
-
-            // https://www.w3.org/TR/webcodecs-hevc-codec-registration/#fully-qualified-codec-strings
-            // hvc1 is valid as well.
-            Self::H265 => "hev1",
-
-            // https://www.w3.org/TR/webcodecs-vp8-codec-registration/#fully-qualified-codec-strings
-            // Special! This *is* the fully qualified codec string.
-            Self::VP8 => "vp8",
-
-            // https://www.w3.org/TR/webcodecs-vp9-codec-registration/#fully-qualified-codec-strings
-            Self::VP9 => "vp09",
-        }
-    }
+    /// The stored string is the mime-type of the image format. For example
+    /// `image/png`. If this is None it means it should be guessed.
+    ImageSequence(Option<String>),
 }
 
 /// Index used for referencing into [`VideoDataDescription::samples`].
@@ -121,7 +101,7 @@ pub type SampleIndex = usize;
 pub type KeyframeIndex = usize;
 
 /// Distinguishes static videos from potentially ongoing video streams.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum VideoDeliveryMethod {
     /// A static video with a fixed, known duration which won't be updated further.
     Static { duration: Time },
@@ -235,6 +215,20 @@ impl VideoDataDescription {
                     .copied()
                     .unwrap_or_else(|| self.samples.next_index()),
         )
+    }
+
+    /// If this video is a [`VideoCodec::ImageSequence`], returns the
+    /// specified or guessed image mime-type if it exists.
+    pub fn image_codec_mime_type(&self) -> Option<&str> {
+        let VideoCodec::ImageSequence(codec) = &self.codec else {
+            return None;
+        };
+
+        if let Some(details) = &self.encoding_details {
+            Some(&details.codec_string)
+        } else {
+            codec.as_deref()
+        }
     }
 
     /// Checks various invariants that the video description should always uphold.
@@ -361,19 +355,21 @@ impl VideoDataDescription {
         chunk: &crate::Chunk,
     ) -> Result<Vec<u8>, SampleConversionError> {
         match self.codec {
-            VideoCodec::AV1 => Ok(chunk.data.clone()),
+            VideoCodec::AV1 | VideoCodec::ImageSequence(_) => Ok(chunk.data.clone()),
             VideoCodec::H264 => {
                 let stsd = self
                     .encoding_details
                     .as_ref()
-                    .ok_or(SampleConversionError::MissingEncodingDetails(self.codec))?
+                    .ok_or_else(|| {
+                        SampleConversionError::MissingEncodingDetails(self.codec.clone())
+                    })?
                     .stsd
                     .as_ref()
-                    .ok_or(SampleConversionError::MissingStsd(self.codec))?;
+                    .ok_or_else(|| SampleConversionError::MissingStsd(self.codec.clone()))?;
 
                 let re_mp4::StsdBoxContent::Avc1(avc1_box) = &stsd.contents else {
                     return Err(SampleConversionError::UnexpectedStsdContent {
-                        codec: self.codec,
+                        codec: self.codec.clone(),
                         found: format!("{:?}", stsd.contents),
                     });
                 };
@@ -387,17 +383,19 @@ impl VideoDataDescription {
                 let stsd = self
                     .encoding_details
                     .as_ref()
-                    .ok_or(SampleConversionError::MissingEncodingDetails(self.codec))?
+                    .ok_or_else(|| {
+                        SampleConversionError::MissingEncodingDetails(self.codec.clone())
+                    })?
                     .stsd
                     .as_ref()
-                    .ok_or(SampleConversionError::MissingStsd(self.codec))?;
+                    .ok_or_else(|| SampleConversionError::MissingStsd(self.codec.clone()))?;
 
                 let hvcc_box = match &stsd.contents {
                     re_mp4::StsdBoxContent::Hvc1(hvc1_box)
                     | re_mp4::StsdBoxContent::Hev1(hvc1_box) => hvc1_box,
                     other => {
                         return Err(SampleConversionError::UnexpectedStsdContent {
-                            codec: self.codec,
+                            codec: self.codec.clone(),
                             found: format!("{other:?}"),
                         });
                     }
@@ -410,7 +408,7 @@ impl VideoDataDescription {
             }
             VideoCodec::VP8 | VideoCodec::VP9 => {
                 // TODO(#10186): Support VP8/VP9 for the `VideoStream` archetype
-                Err(SampleConversionError::UnsupportedCodec(self.codec))
+                Err(SampleConversionError::UnsupportedCodec(self.codec.clone()))
             }
         }
     }
@@ -444,6 +442,9 @@ pub struct VideoEncodingDetails {
     /// Detailed codec string as specified by the `WebCodecs` codec registry.
     ///
     /// See <https://www.w3.org/TR/webcodecs-codec-registry/#video-codec-registry>
+    ///
+    /// For image based decoders this is the mime-type of the image format. For
+    /// example `image/png`.
     pub codec_string: String,
 
     /// Encoded width & height.
@@ -586,6 +587,13 @@ impl VideoDataDescription {
             VideoCodec::H265 => "H.265 HEV1",
             VideoCodec::VP8 => "VP8",
             VideoCodec::VP9 => "VP9",
+            VideoCodec::ImageSequence(_) => {
+                if let Some(codec) = self.image_codec_mime_type() {
+                    return codec.to_owned();
+                } else {
+                    return "unknown".to_owned();
+                }
+            }
         }
         .to_owned();
 
@@ -1128,12 +1136,25 @@ impl re_byte_size::SizeBytes for VideoLoadError {
 
 impl std::fmt::Debug for VideoDataDescription {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            codec,
+            encoding_details,
+            timescale,
+            delivery_method,
+            keyframe_indices,
+            samples,
+            samples_statistics,
+            mp4_tracks,
+        } = self;
         f.debug_struct("Video")
-            .field("codec", &self.codec)
-            .field("encoding_details", &self.encoding_details)
-            .field("timescale", &self.timescale)
-            .field("keyframe_indices", &self.keyframe_indices)
-            .field("samples", &self.samples.iter_indexed().collect::<Vec<_>>())
+            .field("codec", codec)
+            .field("encoding_details", encoding_details)
+            .field("timescale", timescale)
+            .field("delivery_method", delivery_method)
+            .field("keyframe_indices", keyframe_indices)
+            .field("samples", &samples.iter_indexed().collect::<Vec<_>>())
+            .field("samples_statistics", samples_statistics)
+            .field("mp4_tracks", mp4_tracks)
             .finish()
     }
 }
@@ -1254,7 +1275,7 @@ mod tests {
         data.windows(4).any(|w| w == ANNEXB_NAL_START_CODE)
     }
 
-    fn video_test_file_mp4(codec: VideoCodec, need_dts_equal_pts: bool) -> std::path::PathBuf {
+    fn video_test_file_mp4(codec: &VideoCodec, need_dts_equal_pts: bool) -> std::path::PathBuf {
         let workspace_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .and_then(|p| p.parent())
@@ -1270,9 +1291,10 @@ mod tests {
                 panic!("We don't have test data for vp8, because Mp4 doesn't support vp8.")
             }
             VideoCodec::AV1 => "av1",
+            VideoCodec::ImageSequence(_) => panic!("mp4 won't be an image sequence"),
         };
 
-        if need_dts_equal_pts && (codec == VideoCodec::H264 || codec == VideoCodec::H265) {
+        if need_dts_equal_pts && (*codec == VideoCodec::H264 || *codec == VideoCodec::H265) {
             // Only H264 and H265 have DTS != PTS when b-frames are present.
             workspace_dir.join(format!(
                 "tests/assets/video/Big_Buck_Bunny_1080_1s_{codec_str}_nobframes.mp4",
@@ -1285,7 +1307,7 @@ mod tests {
     }
 
     /// Helper function to test video sampling for a specific codec
-    fn test_video_codec_sampling(codec: VideoCodec, need_dts_equal_pts: bool) {
+    fn test_video_codec_sampling(codec: &VideoCodec, need_dts_equal_pts: bool) {
         let video_path = video_test_file_mp4(codec, need_dts_equal_pts);
         let data = std::fs::read(&video_path).unwrap();
         let video_data = VideoDataDescription::load_from_bytes(
@@ -1311,7 +1333,7 @@ mod tests {
                 idr_count += 1;
 
                 // IDR frame should have SPS/PPS (only for H.264)
-                if codec == VideoCodec::H264 {
+                if *codec == VideoCodec::H264 {
                     let has_sps = converted
                         .windows(5)
                         .any(|w| w[0..4] == *ANNEXB_NAL_START_CODE && (w[4] & 0x1F) == 7);
@@ -1322,7 +1344,7 @@ mod tests {
             }
 
             // All frames should have Annex B start codes (only for H.264/H.265)
-            if codec == VideoCodec::H264 || codec == VideoCodec::H265 {
+            if *codec == VideoCodec::H264 || *codec == VideoCodec::H265 {
                 assert!(
                     has_annexb_start_codes(&converted),
                     "Frame at index {sample_idx} should have Annex B start codes",
@@ -1338,7 +1360,7 @@ mod tests {
     fn test_full_video_sampling_all_codecs() {
         // TODO(#10186): Add VP9 once we have it.
         for codec in [VideoCodec::H264, VideoCodec::H265, VideoCodec::AV1] {
-            test_video_codec_sampling(codec, false);
+            test_video_codec_sampling(&codec, false);
         }
     }
 }

@@ -12,7 +12,10 @@ use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 use re_mcap::{DecoderIdentifier, DecoderRegistry, SelectedDecoders};
 use re_quota_channel::send_crossbeam;
 
-use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
+use crate::{
+    DataLoader, DataLoaderError, DataLoaderSettings, FOXGLOVE_LENSES_IDENTIFIER, LoadedData,
+    URDF_DECODER_IDENTIFIER,
+};
 
 const MCAP_LOADER_NAME: &str = "McapLoader";
 
@@ -28,6 +31,7 @@ const MCAP_LOADER_NAME: &str = "McapLoader";
 /// to an .rrd. Here are a few examples:
 /// - [`re_mcap::decoders::McapProtobufDecoder`]
 /// - [`re_mcap::decoders::McapRawDecoder`]
+#[derive(Clone)]
 pub struct McapLoader {
     selected_decoders: SelectedDecoders,
     // TODO(RR-3491): We don't need the fallback logic anymore; use `OutputMode` instead.
@@ -80,9 +84,7 @@ impl McapLoader {
         selected_decoders: &SelectedDecoders,
         time_type: re_log_types::TimeType,
     ) -> Option<Arc<Lenses>> {
-        if !selected_decoders.contains(&DecoderIdentifier::from(
-            super::lenses::FOXGLOVE_LENSES_IDENTIFIER,
-        )) {
+        if !selected_decoders.contains(&DecoderIdentifier::from(FOXGLOVE_LENSES_IDENTIFIER)) {
             return None;
         }
 
@@ -95,6 +97,65 @@ impl McapLoader {
                 None
             }
         }
+    }
+
+    /// Load chunks from MCAP bytes, calling `emit_chunk` for each produced chunk.
+    ///
+    /// Bypasses the `DataLoader` / `LoadedData` / `SetStoreInfo` ceremony.
+    /// Uses the decoders, raw fallback, and lenses already configured on this loader.
+    pub fn emit_chunks(
+        &self,
+        mcap: &[u8],
+        timeline_type: re_log_types::TimeType,
+        timestamp_offset_ns: Option<i64>,
+        emit_chunk: &mut dyn FnMut(re_chunk::Chunk),
+    ) -> Result<(), DataLoaderError> {
+        re_tracing::profile_function!();
+
+        let lenses = self.lenses_for(timeline_type);
+
+        let mut on_chunk_with_transforms = |chunk: re_chunk::Chunk| {
+            if let Some(ref lenses) = lenses {
+                for result in lenses.apply(&chunk) {
+                    match result {
+                        Ok(c) => emit_chunk(apply_timestamp_offset(c, timestamp_offset_ns)),
+                        Err(partial) => {
+                            for error in partial.errors() {
+                                re_log::error_once!("Lens error: {error}");
+                            }
+                            if let Some(c) = partial.take() {
+                                emit_chunk(apply_timestamp_offset(c, timestamp_offset_ns));
+                            }
+                        }
+                    }
+                }
+            } else {
+                emit_chunk(apply_timestamp_offset(chunk, timestamp_offset_ns));
+            }
+        };
+
+        let reader = Cursor::new(&mcap);
+        let summary = re_mcap::read_summary(reader)?
+            .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
+
+        DecoderRegistry::all_builtin(self.raw_fallback_enabled)
+            .select(&self.selected_decoders)
+            .plan(mcap, &summary)?
+            .run(mcap, &summary, timeline_type, &mut on_chunk_with_transforms)?;
+
+        if self
+            .selected_decoders
+            .contains(&DecoderIdentifier::from(URDF_DECODER_IDENTIFIER))
+            && let Err(err) = super::robot_description::extract_urdf_from_robot_descriptions(
+                mcap,
+                &summary,
+                &mut on_chunk_with_transforms,
+            )
+        {
+            re_log::warn_once!("Failed to extract URDF from robot_description topics: {err}");
+        }
+
+        Ok(())
     }
 }
 
@@ -121,21 +182,30 @@ impl DataLoader for McapLoader {
         // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
         // their response via channels: we cannot be waiting for these responses on the
         // common rayon thread pool.
+        let loader = self.clone();
         let settings = settings.clone();
-        let selected_decoders = self.selected_decoders.clone();
-        let raw_fallback_enabled = self.raw_fallback_enabled;
-        let lenses = self.lenses_for(settings.timeline_type);
         std::thread::Builder::new()
-            .name(format!("load_mcap({path:?}"))
+            .name(format!("load_mcap({path:?})"))
             .spawn(move || {
-                if let Err(err) = load_mcap_mmap(
-                    &path,
-                    &settings,
-                    &tx,
-                    &selected_decoders,
-                    raw_fallback_enabled,
-                    lenses.as_deref(),
-                ) {
+                let file = match std::fs::File::open(&path) {
+                    Ok(f) => f,
+                    Err(err) => {
+                        re_log::error!("Failed to open MCAP file: {err}");
+                        return;
+                    }
+                };
+
+                // SAFETY: file-backed mmap; we don't modify the file while mapped.
+                #[expect(unsafe_code)]
+                let mmap = match unsafe { memmap2::Mmap::map(&file) } {
+                    Ok(m) => m,
+                    Err(err) => {
+                        re_log::error!("Failed to mmap MCAP file: {err}");
+                        return;
+                    }
+                };
+
+                if let Err(err) = loader.load_and_send(&mmap, &settings, &tx) {
                     re_log::error!("Failed to load MCAP file: {err}");
                 }
             })
@@ -158,10 +228,8 @@ impl DataLoader for McapLoader {
         re_tracing::profile_function!();
 
         let contents = contents.into_owned();
+        let loader = self.clone();
         let settings = settings.clone();
-        let selected_decoders = self.selected_decoders.clone();
-        let raw_fallback_enabled = self.raw_fallback_enabled;
-        let lenses = self.lenses_for(settings.timeline_type);
 
         // NOTE: this must be spawned on a dedicated thread to avoid a deadlock!
         // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
@@ -169,26 +237,12 @@ impl DataLoader for McapLoader {
         // common rayon thread pool.
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
-                load_mcap(
-                    &contents,
-                    &settings,
-                    &tx,
-                    &selected_decoders,
-                    raw_fallback_enabled,
-                    lenses.as_deref(),
-                )?;
+                loader.load_and_send(&contents, &settings, &tx)?;
             } else {
                 std::thread::Builder::new()
                     .name(format!("load_mcap({filepath:?})"))
                     .spawn(move || {
-                        if let Err(err) = load_mcap(
-                            &contents,
-                            &settings,
-                            &tx,
-                            &selected_decoders,
-                            raw_fallback_enabled,
-                            lenses.as_deref(),
-                        ) {
+                        if let Err(err) = loader.load_and_send(&contents, &settings, &tx) {
                             re_log::error!("Failed to load MCAP file: {err}");
                         }
                     })
@@ -200,128 +254,49 @@ impl DataLoader for McapLoader {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn load_mcap_mmap(
-    filepath: &std::path::PathBuf,
-    settings: &DataLoaderSettings,
-    tx: &Sender<LoadedData>,
-    selected_decoders: &SelectedDecoders,
-    raw_fallback_enabled: bool,
-    lenses: Option<&Lenses>,
-) -> Result<(), DataLoaderError> {
-    use std::fs::File;
-    let file = File::open(filepath)?;
-
-    // SAFETY: file-backed memory maps are marked unsafe because of potential UB when using the map and the underlying file is modified.
-    #[expect(unsafe_code)]
-    let mmap = unsafe { memmap2::Mmap::map(&file)? };
-
-    load_mcap(
-        &mmap,
-        settings,
-        tx,
-        selected_decoders,
-        raw_fallback_enabled,
-        lenses,
-    )
-}
-
-pub fn load_mcap(
-    mcap: &[u8],
-    settings: &DataLoaderSettings,
-    tx: &Sender<LoadedData>,
-    selected_decoders: &SelectedDecoders,
-    raw_fallback_enabled: bool,
-    lenses: Option<&Lenses>,
-) -> Result<(), DataLoaderError> {
-    re_tracing::profile_function!();
-    re_log::debug!(
-        "Loading MCAP with timeline type {:?}",
-        settings.timeline_type
-    );
-    let store_id = settings.recommended_store_id();
-
-    if send_crossbeam(
-        tx,
-        LoadedData::LogMsg(
-            MCAP_LOADER_NAME.to_owned(),
-            re_log_types::LogMsg::SetStoreInfo(store_info(store_id.clone())),
-        ),
-    )
-    .is_err()
-    {
-        re_log::debug_once!(
-            "Failed to send `SetStoreInfo` because smart channel closed unexpectedly."
+impl McapLoader {
+    /// Send `SetStoreInfo` then decode chunks via [`Self::emit_chunks`],
+    /// forwarding each chunk to the `DataLoader` channel.
+    pub fn load_and_send(
+        &self,
+        mcap: &[u8],
+        settings: &DataLoaderSettings,
+        tx: &Sender<LoadedData>,
+    ) -> Result<(), DataLoaderError> {
+        re_log::debug!(
+            "Loading MCAP with timeline type {:?}",
+            settings.timeline_type
         );
-        // If the other side decided to hang up this is not our problem.
-        return Ok(());
-    }
+        let store_id = settings.recommended_store_id();
 
-    let timestamp_offset_ns = settings.timestamp_offset_ns;
-    let time_type = settings.timeline_type;
-
-    let mut send_chunk = |chunk: re_chunk::Chunk| {
-        // Apply lenses if configured, otherwise forward the chunk directly.
-        if let Some(lenses) = lenses {
-            for result in lenses.apply(&chunk) {
-                match result {
-                    Ok(transformed_chunk) => {
-                        send_chunk_to_channel(
-                            tx,
-                            &store_id,
-                            transformed_chunk,
-                            timestamp_offset_ns,
-                        );
-                    }
-                    Err(partial_chunk) => {
-                        for error in partial_chunk.errors() {
-                            re_log::error_once!("Lens error: {error}");
-                        }
-                        if let Some(chunk) = partial_chunk.take() {
-                            send_chunk_to_channel(tx, &store_id, chunk, timestamp_offset_ns);
-                        }
-                    }
-                }
-            }
-        } else {
-            send_chunk_to_channel(tx, &store_id, chunk, timestamp_offset_ns);
-        }
-    };
-
-    let reader = Cursor::new(&mcap);
-
-    let summary = re_mcap::read_summary(reader)?
-        .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
-
-    // TODO(#10862): Add warning for channel that miss semantic information.
-    DecoderRegistry::all_builtin(raw_fallback_enabled)
-        .select(selected_decoders)
-        .plan(mcap, &summary)?
-        .run(mcap, &summary, time_type, &mut send_chunk)?;
-
-    // Extract URDF from robot_description topics and convert to 3D visualization chunks.
-    // Non-fatal: errors here should never prevent the rest of the MCAP from loading.
-    // TODO(michael): make the URDF extraction a proper decoder.
-    if selected_decoders.contains(&DecoderIdentifier::from("urdf"))
-        && let Err(err) = super::robot_description::extract_urdf_from_robot_descriptions(
-            mcap,
-            &summary,
-            &mut send_chunk,
+        if send_crossbeam(
+            tx,
+            LoadedData::LogMsg(
+                MCAP_LOADER_NAME.to_owned(),
+                re_log_types::LogMsg::SetStoreInfo(store_info(store_id.clone())),
+            ),
         )
-    {
-        re_log::warn_once!("Failed to extract URDF from robot_description topics: {err}");
-    }
+        .is_err()
+        {
+            re_log::debug_once!(
+                "Failed to send `SetStoreInfo` because smart channel closed unexpectedly."
+            );
+            return Ok(());
+        }
 
-    Ok(())
+        self.emit_chunks(
+            mcap,
+            settings.timeline_type,
+            settings.timestamp_offset_ns,
+            &mut |chunk| {
+                send_chunk_to_channel(tx, &store_id, chunk);
+            },
+        )
+    }
 }
 
-fn send_chunk_to_channel(
-    tx: &Sender<LoadedData>,
-    store_id: &StoreId,
-    mut chunk: re_chunk::Chunk,
-    timestamp_offset_ns: Option<i64>,
-) {
-    if let Some(offset_ns) = timestamp_offset_ns {
+fn apply_timestamp_offset(mut chunk: re_chunk::Chunk, offset_ns: Option<i64>) -> re_chunk::Chunk {
+    if let Some(offset_ns) = offset_ns {
         let offset_timelines: Vec<_> = chunk
             .timelines()
             .values()
@@ -332,7 +307,10 @@ fn send_chunk_to_channel(
             chunk.add_timeline(time_col).ok();
         }
     }
+    chunk
+}
 
+fn send_chunk_to_channel(tx: &Sender<LoadedData>, store_id: &StoreId, chunk: re_chunk::Chunk) {
     if send_crossbeam(
         tx,
         LoadedData::Chunk(MCAP_LOADER_NAME.to_owned(), store_id.clone(), chunk),

@@ -27,6 +27,7 @@ impl DrawData for TestTriangleDrawData {
             DrawPhase::Opaque,
             DrawDataDrawable {
                 distance_sort_key: 0.0,
+                secondary_sort_key: 0.0,
                 draw_data_payload: 0,
             },
         );

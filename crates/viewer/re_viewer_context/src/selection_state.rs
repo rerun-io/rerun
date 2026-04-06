@@ -210,8 +210,8 @@ impl ApplicationSelectionState {
                     | Item::DataResult(DataResultInteractionAddress { instance_path, .. }) => {
                         current_instance_path.entity_path == instance_path.entity_path
                             && either_none_or_same(
-                                &current_instance_path.instance.specific_index(),
-                                &instance_path.instance.specific_index(),
+                                current_instance_path.instance.specific_index().as_ref(),
+                                instance_path.instance.specific_index().as_ref(),
                             )
                     }
                 },
@@ -231,8 +231,12 @@ impl ApplicationSelectionState {
                     | Item::DataResult(DataResultInteractionAddress { instance_path, .. }) => {
                         current_data_result.instance_path.entity_path == instance_path.entity_path
                             && either_none_or_same(
-                                &current_data_result.instance_path.instance.specific_index(),
-                                &instance_path.instance.specific_index(),
+                                current_data_result
+                                    .instance_path
+                                    .instance
+                                    .specific_index()
+                                    .as_ref(),
+                                instance_path.instance.specific_index().as_ref(),
                             )
                     }
                 },
@@ -245,6 +249,6 @@ impl ApplicationSelectionState {
     }
 }
 
-fn either_none_or_same<T: PartialEq>(a: &Option<T>, b: &Option<T>) -> bool {
+fn either_none_or_same<T: PartialEq>(a: Option<&T>, b: Option<&T>) -> bool {
     a.is_none() || b.is_none() || a == b
 }

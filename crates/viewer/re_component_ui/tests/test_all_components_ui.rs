@@ -393,7 +393,7 @@ fn check_and_print_results(test_cases: &[TestCase], results: &[Result<(), Snapsh
 
     for (test_case, result) in test_cases.iter().zip(results.iter()) {
         match result {
-            Ok(_) => println!(
+            Ok(()) => println!(
                 "{:>component_type_width$}[{:label_width$}] OK",
                 test_case.component_type.short_name(),
                 test_case.label,

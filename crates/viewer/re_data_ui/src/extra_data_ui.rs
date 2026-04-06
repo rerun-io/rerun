@@ -22,12 +22,16 @@ impl ExtraDataUi {
         chunk: &UnitChunkShared,
         entity_components: &[(ComponentDescriptor, UnitChunkShared)],
     ) -> Option<Self> {
-        BlobUi::from_components(ctx, entity_path, descr, chunk, entity_components)
-            .map(Self::Blob)
+        // Try video UI first.
+        VideoUi::from_components(ctx, entity_path, descr)
+            .map(Self::Video)
+            .or_else(|| {
+                BlobUi::from_components(ctx, entity_path, descr, chunk, entity_components)
+                    .map(Self::Blob)
+            })
             .or_else(|| {
                 ImageUi::from_components(ctx, descr, chunk, entity_components).map(Self::Image)
             })
-            .or_else(|| VideoUi::from_components(ctx, entity_path, descr).map(Self::Video))
             .or_else(|| {
                 TransformFramesUi::from_components(ctx, descr, chunk, entity_components)
                     .map(Self::TransformHierarchy)

@@ -50,7 +50,7 @@ fn cast_list_array(
 fn transform_chunk(
     target: &ComponentIdentifier,
     source: &ComponentIdentifier,
-    selector: &Option<re_lenses_core::Selector>,
+    selector: Option<&re_lenses_core::Selector>,
     target_datatype: Option<&arrow::datatypes::DataType>,
     chunk: &re_chunk_store::Chunk,
 ) -> Result<re_chunk_store::Chunk, ComponentMappingError> {
@@ -247,8 +247,13 @@ pub fn range_with_blueprint_resolved_data<'a>(
             if let Some(mut chunks) = results.components.get(source).cloned() {
                 'ctx: {
                     for chunk in &mut chunks {
-                        let result =
-                            transform_chunk(target, source, selector, target_datatype, chunk);
+                        let result = transform_chunk(
+                            target,
+                            source,
+                            selector.as_ref(),
+                            target_datatype,
+                            chunk,
+                        );
 
                         match result {
                             Ok(modified_chunk) => *chunk = modified_chunk,
@@ -417,7 +422,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         // NOTE: We borrow the chunk instead of removing it, because multiple mappings may
         // reference the same source component.
         if let Some(chunk) = store_results.components.get(source) {
-            let result = transform_chunk(target, source, selector, target_datatype, chunk);
+            let result = transform_chunk(target, source, selector.as_ref(), target_datatype, chunk);
             match result {
                 Ok(modified_chunk) => {
                     let chunk = std::sync::Arc::new(modified_chunk)

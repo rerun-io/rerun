@@ -121,7 +121,7 @@ impl PickingContext {
         &self,
         render_ctx: &re_renderer::RenderContext,
         gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
-        previous_picking_result: &Option<PickingResult>,
+        previous_picking_result: Option<&PickingResult>,
         images: impl Iterator<Item = &'a PickableTexturedRect>,
         ui_rects: &[PickableUiRect],
     ) -> PickingResult {
@@ -189,7 +189,7 @@ fn picking_gpu(
     render_ctx: &re_renderer::RenderContext,
     gpu_readback_identifier: u64,
     context: &PickingContext,
-    previous_picking_result: &Option<PickingResult>,
+    previous_picking_result: Option<&PickingResult>,
 ) -> Option<PickingRayHit> {
     re_tracing::profile_function!();
 

@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::fmt::Write as _;
 
 use egui::NumExt as _;
 use jiff::SignedDuration;
@@ -25,9 +26,9 @@ impl crate::AppUi for EntityDb {
             // contexts).
             let mut string = self.store_id().recording_id().to_string();
             if let Some(data_source) = &self.data_source {
-                string += &format!(", {data_source}");
+                write!(string, ", {data_source}").ok();
             }
-            string += &format!(", {}", self.store_id().application_id());
+            write!(string, ", {}", self.store_id().application_id()).ok();
 
             ui.label(string);
             return;

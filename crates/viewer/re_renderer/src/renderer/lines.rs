@@ -208,6 +208,7 @@ impl DrawData for LineDrawData {
                 DrawDataDrawable {
                     // TODO(andreas): Don't have distance information yet. For now just always draw lines last since they're quite expensive.
                     distance_sort_key: f32::MAX,
+                    secondary_sort_key: 0.0,
                     draw_data_payload: batch_idx as _,
                 },
             );

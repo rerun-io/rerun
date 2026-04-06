@@ -2,10 +2,10 @@ use egui::{NumExt as _, Rangef, Vec2};
 use re_capabilities::MainThreadToken;
 use re_chunk_store::UnitChunkShared;
 use re_renderer::renderer::ColormappedTexture;
-use re_sdk_types::components;
 use re_sdk_types::components::MediaType;
 use re_sdk_types::datatypes::{ChannelDatatype, ColorModel};
 use re_sdk_types::image::ImageKind;
+use re_sdk_types::{Archetype as _, components};
 use re_types_core::{Component as _, ComponentDescriptor, RowId};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
@@ -346,8 +346,14 @@ impl ImageUi {
         blob: &re_sdk_types::datatypes::Blob,
         media_type: Option<&MediaType>,
     ) -> Option<Self> {
+        if blob_component_descriptor.archetype
+            != Some(re_sdk_types::archetypes::EncodedDepthImage::name())
+        {
+            return None;
+        }
+
         ctx.memoizer(|c: &mut re_viewer_context::ImageDecodeCache| {
-            c.entry_encoded_color(
+            c.entry_encoded_depth(
                 blob_row_id,
                 blob_component_descriptor.component,
                 blob,

@@ -69,7 +69,7 @@ pub fn picking(
     let picking_result = picking_context.pick(
         ctx.render_ctx(),
         query.view_id.gpu_readback_id(),
-        &state.previous_picking_result,
+        state.previous_picking_result.as_ref(),
         iter_pickable_rects(system_output),
         ui_rects,
     );

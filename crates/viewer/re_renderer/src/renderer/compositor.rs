@@ -60,6 +60,7 @@ impl DrawData for CompositorDrawData {
             DrawPhase::Compositing | DrawPhase::CompositingScreenshot,
             DrawDataDrawable {
                 distance_sort_key: 0.0,
+                secondary_sort_key: 0.0,
                 draw_data_payload: 0,
             },
         );
@@ -71,12 +72,12 @@ impl CompositorDrawData {
         ctx: &RenderContext,
         color_texture: &GpuTexture,
         outline_final_voronoi: Option<&GpuTexture>,
-        outline_config: &Option<OutlineConfig>,
+        outline_config: Option<&OutlineConfig>,
         enable_blending: bool,
     ) -> Self {
         let compositor = ctx.renderer::<Compositor>();
 
-        let outline_config = outline_config.clone().unwrap_or(OutlineConfig {
+        let outline_config = outline_config.cloned().unwrap_or(OutlineConfig {
             outline_radius_pixel: 0.0,
             color_layer_a: Rgba::TRANSPARENT,
             color_layer_b: Rgba::TRANSPARENT,

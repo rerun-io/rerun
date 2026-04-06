@@ -95,8 +95,6 @@ skip-tree = [
   { name = "toml" }, # b/c cargo_metadata
   { name = "webpki-roots" }, # need to update ureq
   { name = "windows-sys" }, # Impossible
-  { name = "windows-targets" }, # Impossible
-  { name = "windows" }, # Impossible
   { name = "zerocopy" }, # Need to update re_rav1d
   # NOTE: `skip-tree` skips the whole tree! Consider adding to just `skip` instead (scroll up!)
 ]

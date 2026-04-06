@@ -67,6 +67,9 @@ exclude_path = [
   "target",
   "venv",
 
+  # Generated ghat action definitions (contain upstream URLs we don't control)
+  ".github/ghat/actions",
+
   # Actually ignored files beyond .gitignore
   "crates/store/re_uri/src/lib.rs", # Contains some malformed URLs, but they are not actual links.
   "crates/store/re_uri/src/redap_uri.rs", # Same as above.
@@ -132,6 +135,7 @@ exclude = [
   'file://somehost/file/path.rrd',
   'file:///tmp/droidnano/Fri_Aug_18_09:46:43_2023.rrd',
 
+  'https://customer.cloud.rerun.io/.*',
   'https://redap.rerun.io',
   'http://wrong-scheme',
   'rerun\+http://localhost:\{grpc_port\}/proxy',
@@ -173,7 +177,8 @@ exclude = [
   # Needs authentication
   'https://.*\.eks\.amazonaws\.com/', # EKS API server endpoints in CI workflows.
   'https://.*\.blob\.core\.windows\.net/', # Azure blob storage, requires auth.
-  'https://edge.meilisearch.com',
+  'https://rerun\.grafana\.net/api/datasources/.*', # Grafana API endpoints, requires auth.
+  'https://ms-b22605aed932-7275.fra.meilisearch.io',
   'https://eu.posthog.com/project/', # Requires to be logged in on PostHog.
   'https://github.com/rerun-io/internal-test-assets/\.*',
   'https://github.com/google/mediapipe/issues/5188', # For some reason that link has always failed.
@@ -196,6 +201,7 @@ exclude = [
 
   # These are APIs:
   'https://api.linear.app/graphql',
+  'https://api.rootly.com/.*',
   'https://api.workos.com/.*',
   'https://rerun.io/api',
   'https://rerun.io/login',

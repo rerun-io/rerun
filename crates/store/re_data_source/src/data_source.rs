@@ -13,6 +13,7 @@ pub type AuthErrorHandler =
     Arc<dyn Fn(re_uri::DatasetSegmentUri, &re_redap_client::ClientCredentialsError) + Send + Sync>;
 
 /// Somewhere we can get Rerun logging data from.
+// TODO(emilk): there is a lot of overlap between this and `ViewerOpenUrl`
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LogDataSource {
     /// A remote file, served over http.
@@ -205,6 +206,20 @@ impl LogDataSource {
                     url,
                     follow: options.follow,
                 })
+            } else if contains_viewer_query_url_param {
+                // This is a web viewer URL with a `?url=` parameter.
+                // Extract the URL parameter and try to parse it as a redap URI.
+                let (_, value) = url.query_pairs().find(|(key, _)| key == "url")?;
+                if let Ok(uri) = value.parse::<re_uri::DatasetSegmentUri>() {
+                    Some(Self::RedapDatasetSegment {
+                        uri,
+                        select_when_loaded: true,
+                    })
+                } else if let Ok(uri) = value.parse::<re_uri::ProxyUri>() {
+                    Some(Self::RedapProxy(uri))
+                } else {
+                    None
+                }
             } else {
                 None // Has an extension but it's not one we support
             }
@@ -425,6 +440,20 @@ impl LogDataSource {
             FileSource::Sdk => "sdk",
         }
     }
+
+    /// Concert the data source to a URI string, if possible.
+    pub fn as_uri(&self) -> Option<String> {
+        match self {
+            Self::HttpUrl { url, .. } => Some(url.to_string()),
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::FilePath { path, .. } => Some(format!("file://{}", path.display())),
+            Self::FileContents { .. } => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::Stdin => Some("-".to_owned()),
+            Self::RedapDatasetSegment { uri, .. } => Some(uri.to_string()),
+            Self::RedapProxy(uri) => Some(uri.to_string()),
+        }
+    }
 }
 
 /// Analytics data extracted from a [`LogDataSource`].
@@ -609,5 +638,26 @@ mod tests {
         }
 
         assert!(!failed, "one or more test cases failed");
+    }
+
+    #[test]
+    fn test_data_source_from_viewer_url() {
+        // This is the sort of url:s we get when sharing copying links from the web viewer:
+
+        let url = "https://customer.cloud.rerun.io/?url=rerun%3A%2F%2Fapi.customer.cloud.rerun.io%3A443%2Fdataset%2F18A23D2FAC59F8572563b312ef21f53b%3Fsegment_id%3Dthe_segment_name";
+
+        let data_source = LogDataSource::from_uri(FileSource::Cli, url, &FromUriOptions::default());
+        assert_eq!(
+            data_source,
+            Some(LogDataSource::RedapDatasetSegment {
+                uri: re_uri::DatasetSegmentUri {
+                    origin: "api.customer.cloud.rerun.io:443".parse().unwrap(),
+                    dataset_id: "18A23D2FAC59F8572563b312ef21f53b".parse().unwrap(),
+                    segment_id: "the_segment_name".to_owned(),
+                    fragment: Default::default(),
+                },
+                select_when_loaded: true
+            })
+        );
     }
 }

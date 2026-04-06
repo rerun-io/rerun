@@ -38,7 +38,7 @@ web-time.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 backtrace.workspace = true
 memory-stats = { workspace = true, features = ["always_use_statm"] }
-sysinfo = { workspace = true, default-features = false }
+sysinfo = { workspace = true, features = ["system"] }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

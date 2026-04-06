@@ -17,6 +17,7 @@
 //!   be used directly using, e.g. `PyValueError::new_err("message")`.
 
 use std::error::Error as _;
+use std::fmt::Write as _;
 
 use pyo3::PyErr;
 use pyo3::exceptions::{
@@ -127,7 +128,7 @@ impl From<ExternalError> for PyErr {
                         status.code()
                     );
                     if let Some(source) = status.source() {
-                        msg.push_str(&format!(", source: {source})"));
+                        write!(msg, ", source: {source})").ok();
                     } else {
                         msg.push(')');
                     }
@@ -153,9 +154,9 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::Unauthenticated | ApiErrorKind::PermissionDenied => {
                     PyPermissionError::new_err(err.to_string())
                 }
-                ApiErrorKind::Serialization | ApiErrorKind::InvalidArguments => {
-                    PyValueError::new_err(err.to_string())
-                }
+                ApiErrorKind::Deserialization
+                | ApiErrorKind::Serialization
+                | ApiErrorKind::InvalidArguments => PyValueError::new_err(err.to_string()),
                 ApiErrorKind::NotFound => NotFoundError::new_err(err.to_string()),
                 ApiErrorKind::AlreadyExists => AlreadyExistsError::new_err(err.to_string()),
                 ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),

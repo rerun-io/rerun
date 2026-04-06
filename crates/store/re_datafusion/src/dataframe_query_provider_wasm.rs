@@ -35,7 +35,6 @@ use tonic::IntoRequest as _;
 #[derive(Debug)]
 pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     props: PlanProperties,
-    chunk_info_batches: Arc<Vec<RecordBatch>>,
 
     /// Describes the chunks per segment, derived from `chunk_info_batches`.
     /// We keep both around so that we only have to process once, but we may
@@ -47,6 +46,9 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     projected_schema: Arc<Schema>,
     target_partitions: usize,
     client: T,
+
+    /// Pending query analytics — keeps alive until all streams complete.
+    pending_analytics: Option<crate::PendingQueryAnalytics>,
 }
 
 pub struct DataframeSegmentStream<T: DataframeClientAPI> {
@@ -56,6 +58,9 @@ pub struct DataframeSegmentStream<T: DataframeClientAPI> {
     current_query: Option<(String, QueryHandle<StorageEngine>)>,
     query_expression: QueryExpression,
     remaining_segment_ids: Vec<String>,
+
+    /// Pending query analytics — kept alive so the event fires on drop.
+    _pending_analytics: Option<crate::PendingQueryAnalytics>,
 }
 
 impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
@@ -66,18 +71,19 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
         let chunk_infos = self.chunk_infos.iter().map(Into::into).collect::<Vec<_>>();
         let fetch_chunks_request = FetchChunksRequest { chunk_infos };
 
-        let fetch_chunks_response_stream = self
+        let response = self
             .client
             .fetch_chunks(fetch_chunks_request.into_request())
             .await
-            .map_err(|err| exec_datafusion_err!("{err}"))?
-            .into_inner();
+            .map_err(|err| exec_datafusion_err!("{err}"))?;
+
+        let response_stream =
+            re_redap_client::ApiResponseStream::from_tonic_response(response, "/FetchChunks");
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
-        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
-            fetch_chunks_response_stream,
-        );
+        let mut chunk_stream =
+            re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(response_stream);
 
         // Note: using segment id as the store id, shouldn't really
         // matter since this is just a temporary store.
@@ -179,10 +185,12 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         sort_index: Option<Index>,
         projection: Option<&Vec<usize>>,
         num_partitions: usize,
-        chunk_info_batches: Arc<Vec<RecordBatch>>,
+        chunk_info_batches: Option<RecordBatch>,
         query_expression: QueryExpression,
         _index_values: IndexValuesMap,
         client: T,
+        _limit: Option<usize>,
+        pending_analytics: Option<crate::PendingQueryAnalytics>,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
             Some(p) => Arc::new(table_schema.project(p)?),
@@ -243,16 +251,17 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             Boundedness::Bounded,
         );
 
-        let chunk_info = group_chunk_infos_by_segment_id(&chunk_info_batches)?;
+        let chunk_info = group_chunk_infos_by_segment_id(chunk_info_batches.as_slice())?;
+        drop(chunk_info_batches);
 
         Ok(Self {
             props,
-            chunk_info_batches,
             chunk_info,
             query_expression,
             projected_schema,
             target_partitions: num_partitions,
             client,
+            pending_analytics,
         })
     }
 }
@@ -341,12 +350,12 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
 
         let mut plan = Self {
             props: self.props.clone(),
-            chunk_info_batches: self.chunk_info_batches.clone(),
             chunk_info: self.chunk_info.clone(),
             query_expression: self.query_expression.clone(),
             projected_schema: self.projected_schema.clone(),
             target_partitions,
             client: self.client.clone(),
+            pending_analytics: self.pending_analytics.clone(),
         };
 
         plan.props.partitioning = match plan.props.partitioning {
@@ -397,6 +406,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             remaining_segment_ids,
             current_query: None,
             query_expression,
+            _pending_analytics: self.pending_analytics.clone(),
         };
 
         Ok(Box::pin(stream))

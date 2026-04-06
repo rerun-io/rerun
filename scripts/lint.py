@@ -27,7 +27,7 @@ from gitignore_parser import parse_gitignore
 # Set in main().
 rerun_prefix = "./"
 
-debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
+debug_format_of_err = re.compile(r"\{\:#?\?\}.*, \w*err")
 error_match_name = re.compile(r"Err\((\w+)\)")
 error_map_err_name = re.compile(r"map_err\(\|(\w+)\|")
 
@@ -150,6 +150,8 @@ def lint_url(url: str) -> str | None:
                 pass  # Probably fine
             elif url.startswith("https://github.com/rerun-io/rerun/blob/"):
                 pass  # TODO(#6077): figure out how we best link to our own code from our docs
+            elif url.startswith("https://github.com/anthropics/claude-code-action"):
+                pass
             else:
                 return f"Do not link directly to a file on '{branch}' - it may disappear! Use a commit hash or tag instead. Url: {url}"
 
@@ -252,10 +254,10 @@ def lint_line(
     if re.search(r'TODO([^_"(]|$)', line):
         return "TODO:s should be written as `TODO(yourname): what to do`"
 
-    if "{err:?}" in line or "{err:#?}" in line or debug_format_of_err.search(line):
+    if re.search(r"\{\w*err:#?\?\}", line) or debug_format_of_err.search(line):
         return "Format errors with re_error::format or using Display - NOT Debug formatting!"
 
-    if re.search(r"\?err\b", line):
+    if re.search(r"\?\w*err\b", line):
         return "Use `%err` (Display) instead of `?err` (Debug) in tracing macros"
 
     if log_with_inline_sensitive_data.search(line):
@@ -272,9 +274,9 @@ def lint_line(
 
     if m := re.search(error_map_err_name, line) or re.search(error_match_name, line):
         name = m.group(1)
-        # if name not in ("err", "_err", "_"):
-        if name in ("e", "error"):
-            return "Errors should be called 'err', '_err' or '_'"
+        # if name not in ("_", "_ignored") and not re.fullmatch(r"_?\w*err", name):
+        if name == "e" or name.endswith(("error", "status", "res")):
+            return f"Errors should be called `err` or have a `_err` suffix. Found: '{name}'"
 
     if m := re.search(else_return, line):
         match = m.group(0)
@@ -480,7 +482,17 @@ def test_lint_line() -> None:
         'eprintln!("{err:#?}")',
         'eprintln!("{:?}", err)',
         'eprintln!("{:#?}", err)',
+        'eprintln!("{js_err:?}")',
+        'eprintln!("{js_err:#?}")',
+        'eprintln!("{:?}", js_err)',
+        'eprintln!("{:#?}", js_err)',
+        # ?err (Debug) in tracing macros (bad - use %err for Display):
+        'tracing::warn!(?err, "something failed");',
+        're_log::error!(?err, "something failed");',
+        'tracing::warn!(?js_err, "something failed");',
+        're_log::error!(?js_err, "something failed");',
         "if let Err(error) = foo",
+        "Ok(Err(status))",
         "map_err(|e| …)",
         "We use WASM in Rerun",
         "nb_instances",
@@ -531,9 +543,6 @@ def test_lint_line() -> None:
         # thiserror with multiple unnamed fields (bad)
         '#[error("Failed to do {0}: {1}")]',
         '#[error("{0} failed with {1} at {2}")]',
-        # ?err (Debug) in tracing macros (bad - use %err for Display)
-        'tracing::warn!(?err, "something failed");',
-        're_log::error!(?err, "something failed");',
     ]
 
     for test in should_pass:
@@ -1350,7 +1359,7 @@ class SourceFile:
     """Wrapper over a source file with some utility functions."""
 
     def __init__(self, path: str) -> None:
-        self.path = os.path.realpath(path)
+        self.path = path
         self.ext = path.split(".")[-1]
         with open(path, encoding="utf8") as f:
             self.lines = f.readlines()

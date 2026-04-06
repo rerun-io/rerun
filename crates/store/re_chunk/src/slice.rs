@@ -223,7 +223,7 @@ impl Chunk {
         chunk
     }
 
-    /// Slices the [`Chunk`] horizontally by keeping only the selected `component`.
+    /// Slices the [`Chunk`] by keeping only the selected `component` column.
     ///
     /// The result is a new [`Chunk`] with the same rows and (at-most) one component column.
     /// All non-component columns will be kept as-is.
@@ -235,6 +235,86 @@ impl Chunk {
     #[must_use]
     #[inline]
     pub fn component_sliced(&self, component: ComponentIdentifier) -> Self {
+        self.components_sliced(&[component])
+    }
+
+    /// Slices the [`Chunk`] by removing the specified `component` column.
+    ///
+    /// The result is a new [`Chunk`] with the same rows and all component columns
+    /// except the one matching `component`. All non-component columns are kept as-is.
+    ///
+    /// If `component` is not found within the [`Chunk`], the chunk is returned unchanged
+    /// (with all original component columns).
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
+    #[inline]
+    pub fn component_dropped(&self, component: ComponentIdentifier) -> Self {
+        self.components_dropped(&[component])
+    }
+
+    /// Slices the [`Chunk`] by keeping only the listed component columns.
+    ///
+    /// The result is a new [`Chunk`] with the same rows but only the component columns
+    /// whose [`ComponentIdentifier`] appears in `components_to_keep`.
+    /// All non-component columns (entity path, timelines, row IDs) are preserved.
+    ///
+    /// If none of the listed components exist in the [`Chunk`], the end result will be the same as the
+    /// current chunk but without any component column.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
+    #[inline]
+    pub fn components_sliced(&self, components_to_keep: &[ComponentIdentifier]) -> Self {
+        let Self {
+            id,
+            entity_path,
+            heap_size_bytes: _,
+            is_sorted,
+            row_ids,
+            timelines,
+            components,
+        } = self;
+
+        let chunk = Self {
+            id: *id,
+            entity_path: entity_path.clone(),
+            heap_size_bytes: Default::default(),
+            is_sorted: *is_sorted,
+            row_ids: row_ids.clone(),
+            timelines: timelines.clone(),
+            components: components_to_keep
+                .iter()
+                .filter_map(|c| {
+                    components.get(*c).map(|column| {
+                        SerializedComponentColumn::new(
+                            column.list_array.clone(),
+                            column.descriptor.clone(),
+                        )
+                    })
+                })
+                .collect(),
+        };
+
+        #[cfg(debug_assertions)]
+        #[expect(clippy::unwrap_used)] // debug-only
+        chunk.sanity_check().unwrap();
+
+        chunk
+    }
+
+    /// Slices the [`Chunk`] by removing the listed component columns.
+    ///
+    /// The result is a new [`Chunk`] with the same rows and all component columns
+    /// except those whose [`ComponentIdentifier`] appears in `components_to_drop`.
+    /// All non-component columns are kept as-is.
+    ///
+    /// If none of the listed components exist in the [`Chunk`], the chunk is returned unchanged.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
+    #[inline]
+    pub fn components_dropped(&self, components_to_drop: &[ComponentIdentifier]) -> Self {
         let Self {
             id,
             entity_path,
@@ -253,14 +333,14 @@ impl Chunk {
             row_ids: row_ids.clone(),
             timelines: timelines.clone(),
             components: components
-                .get(component)
-                .map(|column| {
+                .iter()
+                .filter(|(id, _)| !components_to_drop.contains(id))
+                .map(|(_id, column)| {
                     SerializedComponentColumn::new(
                         column.list_array.clone(),
                         column.descriptor.clone(),
                     )
                 })
-                .into_iter()
                 .collect(),
         };
 
@@ -1702,6 +1782,138 @@ mod tests {
         );
 
         eprintln!("✓ Raw arrow array slice memory calculation test passed!");
+
+        Ok(())
+    }
+
+    #[test]
+    fn components_sliced() -> anyhow::Result<()> {
+        let points_descr = MyPoints::descriptor_points();
+        let colors_descr = MyPoints::descriptor_colors();
+        let labels_descr = MyPoints::descriptor_labels();
+
+        let row_id = RowId::new();
+        let timepoint = [(Timeline::new_sequence("frame"), 1)];
+
+        let chunk = Chunk::builder("my/entity")
+            .with_sparse_component_batches(
+                row_id,
+                timepoint,
+                [
+                    (points_descr.clone(), Some(&[MyPoint::new(1.0, 2.0)] as _)),
+                    (
+                        colors_descr.clone(),
+                        Some(&[MyColor::from_rgb(255, 0, 0)] as _),
+                    ),
+                    (labels_descr.clone(), Some(&[MyLabel("hello".into())] as _)),
+                ],
+            )
+            .build()?;
+        assert_eq!(chunk.num_components(), 3);
+
+        // Keep points and labels — colors removed
+        let sliced = chunk.components_sliced(&[points_descr.component, labels_descr.component]);
+        assert_eq!(sliced.num_components(), 2);
+        assert!(
+            sliced
+                .components()
+                .contains_component(points_descr.component)
+        );
+        assert!(
+            !sliced
+                .components()
+                .contains_component(colors_descr.component)
+        );
+        assert!(
+            sliced
+                .components()
+                .contains_component(labels_descr.component)
+        );
+        assert_eq!(sliced.num_rows(), chunk.num_rows());
+        assert_eq!(sliced.id(), chunk.id());
+
+        // Partial: keep [points, nonexistent] — only points survives
+        let partial = chunk.components_sliced(&[
+            points_descr.component,
+            ComponentIdentifier::from("Nonexistent:foo"),
+        ]);
+        assert_eq!(partial.num_components(), 1);
+        assert!(
+            partial
+                .components()
+                .contains_component(points_descr.component)
+        );
+
+        // None present — empty component set
+        let empty = chunk.components_sliced(&[
+            ComponentIdentifier::from("Nonexistent:a"),
+            ComponentIdentifier::from("Nonexistent:b"),
+        ]);
+        assert_eq!(empty.num_components(), 0);
+        assert_eq!(empty.num_rows(), chunk.num_rows());
+
+        Ok(())
+    }
+
+    #[test]
+    fn components_dropped() -> anyhow::Result<()> {
+        let points_descr = MyPoints::descriptor_points();
+        let colors_descr = MyPoints::descriptor_colors();
+        let labels_descr = MyPoints::descriptor_labels();
+
+        let row_id = RowId::new();
+        let timepoint = [(Timeline::new_sequence("frame"), 1)];
+
+        let chunk = Chunk::builder("my/entity")
+            .with_sparse_component_batches(
+                row_id,
+                timepoint,
+                [
+                    (points_descr.clone(), Some(&[MyPoint::new(1.0, 2.0)] as _)),
+                    (
+                        colors_descr.clone(),
+                        Some(&[MyColor::from_rgb(255, 0, 0)] as _),
+                    ),
+                    (labels_descr.clone(), Some(&[MyLabel("hello".into())] as _)),
+                ],
+            )
+            .build()?;
+        assert_eq!(chunk.num_components(), 3);
+
+        // Drop points and colors — labels remain
+        let dropped = chunk.components_dropped(&[points_descr.component, colors_descr.component]);
+        assert_eq!(dropped.num_components(), 1);
+        assert!(
+            !dropped
+                .components()
+                .contains_component(points_descr.component)
+        );
+        assert!(
+            !dropped
+                .components()
+                .contains_component(colors_descr.component)
+        );
+        assert!(
+            dropped
+                .components()
+                .contains_component(labels_descr.component)
+        );
+        assert_eq!(dropped.num_rows(), chunk.num_rows());
+
+        // Drop nonexistent — chunk unchanged
+        let noop = chunk.components_dropped(&[
+            ComponentIdentifier::from("Nonexistent:a"),
+            ComponentIdentifier::from("Nonexistent:b"),
+        ]);
+        assert_eq!(noop.num_components(), 3);
+
+        // Drop all — empty component set
+        let all_dropped = chunk.components_dropped(&[
+            points_descr.component,
+            colors_descr.component,
+            labels_descr.component,
+        ]);
+        assert_eq!(all_dropped.num_components(), 0);
 
         Ok(())
     }

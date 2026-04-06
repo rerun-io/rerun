@@ -4,11 +4,11 @@ use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::catalog::TableProvider;
-use datafusion::error::{DataFusionError, Result as DataFusionResult};
+use datafusion::error::Result as DataFusionResult;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{ScanSegmentTableRequest, ScanSegmentTableResponse};
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_redap_client::ConnectionClient;
+use re_redap_client::{ApiError, ApiResult, ConnectionClient};
 use tracing::instrument;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
@@ -25,7 +25,7 @@ impl std::fmt::Debug for SegmentTableProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SegmentTableProvider")
             .field("dataset_id", &self.dataset_id)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -45,23 +45,13 @@ impl GrpcStreamToTable for SegmentTableProvider {
     type GrpcStreamData = ScanSegmentTableResponse;
 
     #[instrument(skip(self), err)]
-    async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
+    async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
         let mut client = self.client.clone();
-
         let dataset_id = self.dataset_id;
 
         Ok(Arc::new(
-            make_future_send(async move {
-                client
-                    .get_segment_table_schema(dataset_id)
-                    .await
-                    .map_err(|err| {
-                        DataFusionError::External(
-                            format!("Couldn't get segment table schema: {err}").into(),
-                        )
-                    })
-            })
-            .await?,
+            make_future_send(async move { client.get_segment_table_schema(dataset_id).await })
+                .await?,
         ))
     }
 
@@ -70,30 +60,43 @@ impl GrpcStreamToTable for SegmentTableProvider {
     #[instrument(skip(self), err)]
     async fn send_streaming_request(
         &mut self,
-    ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
+    ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
         let request = tonic::Request::new(ScanSegmentTableRequest {
             columns: vec![], // all of them
         })
         .with_entry_id(self.dataset_id)
-        .map_err(|err| DataFusionError::External(Box::new(err)))?;
+        .map_err(|err| ApiError::tonic(err, "failed building /ScanSegmentTable request"))?;
 
         let mut client = self.client.clone();
 
-        make_future_send(async move { Ok(client.inner().scan_segment_table(request).await) })
-            .await?
-            .map_err(|err| DataFusionError::External(Box::new(err)))
+        let response = make_future_send(async move {
+            client
+                .inner()
+                .scan_segment_table(request)
+                .await
+                .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))
+        })
+        .await?;
+
+        Ok(re_redap_client::ApiResponseStream::from_tonic_response(
+            response,
+            "/ScanSegmentTable",
+        ))
     }
 
-    fn process_response(
-        &mut self,
-        response: Self::GrpcStreamData,
-    ) -> DataFusionResult<RecordBatch> {
+    fn process_response(&mut self, response: Self::GrpcStreamData) -> ApiResult<RecordBatch> {
         response
             .data
-            .ok_or(DataFusionError::Execution(
-                "DataFrame missing from SegmentTable response".to_owned(),
-            ))?
+            .ok_or_else(|| {
+                ApiError::deserialization(None, "DataFrame missing from SegmentTable response")
+            })?
             .try_into()
-            .map_err(|err| DataFusionError::External(Box::new(err)))
+            .map_err(|err: re_protos::TypeConversionError| {
+                ApiError::deserialization_with_source(
+                    None,
+                    err,
+                    "failed decoding /ScanSegmentTable response",
+                )
+            })
     }
 }

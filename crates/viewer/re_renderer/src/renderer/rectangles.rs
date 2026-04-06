@@ -13,6 +13,7 @@
 use itertools::{Itertools as _, izip};
 use smallvec::smallvec;
 
+use super::plane_clustering::cluster_rectangles;
 use super::{DrawData, DrawError, RenderContext, Renderer};
 use crate::allocator::create_and_fill_uniform_buffer_batch;
 use crate::depth_offset::DepthOffset;
@@ -178,6 +179,10 @@ pub struct TexturedRect {
 }
 
 impl TexturedRect {
+    pub(super) fn center(&self) -> glam::Vec3A {
+        (self.top_left_corner_position + self.extent_u * 0.5 + self.extent_v * 0.5).into()
+    }
+
     /// Returns axis aligned bounding box for this rectangle.
     pub fn bounding_box(&self) -> macaw::BoundingBox {
         let left_top = self.top_left_corner_position;
@@ -302,7 +307,10 @@ mod gpu_data {
     }
 
     impl UniformBuffer {
-        pub fn from_textured_rect(rectangle: &super::TexturedRect) -> Result<Self, RectangleError> {
+        pub fn from_textured_rect_with_outline_mask(
+            rectangle: &super::TexturedRect,
+            outline_mask_override: crate::OutlineMaskPreference,
+        ) -> Result<Self, RectangleError> {
             let texture_format = rectangle.colormapped_texture.texture.format();
 
             if texture_format.is_srgb() && rectangle.colormapped_texture.decode_srgb {
@@ -386,7 +394,11 @@ mod gpu_data {
                 extent_v: (*extent_v).into(),
                 depth_offset: *depth_offset as f32,
                 multiplicative_tint: *multiplicative_tint,
-                outline_mask: outline_mask.0.unwrap_or_default().into(),
+                outline_mask: outline_mask_override
+                    .with_fallback_to(*outline_mask)
+                    .0
+                    .unwrap_or_default()
+                    .into(),
                 range_min_max: (*range).into(),
                 color_mapper: color_mapper_int,
                 gamma: *gamma,
@@ -404,9 +416,11 @@ mod gpu_data {
 
 #[derive(Clone)]
 struct RectangleInstance {
-    center_position: glam::Vec3A,
+    sorting_position: glam::Vec3A,
+    secondary_sort_key: f32,
+    force_transparent: bool,
     bind_group: GpuBindGroup,
-    draw_outline_mask: bool,
+    outline_mask_draw_phase: Option<DrawPhase>,
     has_transparency: bool,
 }
 
@@ -427,25 +441,25 @@ impl DrawData for RectangleDrawData {
         // For 2D draw order based sorting, we should never enable depth write and always perform back to front sorting.
 
         for (index, instance) in self.instances.iter().enumerate() {
-            let mut phases = enumset::EnumSet::new();
-            phases.insert(if instance.has_transparency {
-                DrawPhase::Transparent
-            } else {
-                DrawPhase::Opaque
-            });
-            phases.insert(DrawPhase::PickingLayer);
-            if instance.draw_outline_mask {
-                phases.insert(DrawPhase::OutlineMask);
-            }
+            let drawable = DrawDataDrawable::from_world_position(
+                view_info,
+                instance.sorting_position,
+                index as u32,
+            )
+            .with_secondary_sort_key(instance.secondary_sort_key);
 
             collector.add_drawable(
-                phases,
-                DrawDataDrawable::from_world_position(
-                    view_info,
-                    instance.center_position,
-                    index as u32,
-                ),
+                if instance.force_transparent || instance.has_transparency {
+                    enumset::enum_set![DrawPhase::Transparent | DrawPhase::PickingLayer]
+                } else {
+                    enumset::enum_set![DrawPhase::Opaque | DrawPhase::PickingLayer]
+                },
+                drawable,
             );
+
+            if let Some(outline_mask_draw_phase) = instance.outline_mask_draw_phase {
+                collector.add_drawable_for_phase(outline_mask_draw_phase, drawable);
+            }
         }
     }
 }
@@ -462,10 +476,17 @@ impl RectangleDrawData {
             });
         }
 
+        let cluster_infos = cluster_rectangles(rectangles);
+
         // TODO(emilk): continue on error (skipping just that rectangle)?
         let uniform_buffers: Vec<_> = rectangles
             .iter()
-            .map(gpu_data::UniformBuffer::from_textured_rect)
+            .map(|rectangle| {
+                gpu_data::UniformBuffer::from_textured_rect_with_outline_mask(
+                    rectangle,
+                    OutlineMaskPreference::NONE,
+                )
+            })
             .try_collect()?;
 
         let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
@@ -475,7 +496,9 @@ impl RectangleDrawData {
         );
 
         let mut instances = Vec::with_capacity(rectangles.len());
-        for (rectangle, uniform_buffer) in izip!(rectangles, uniform_buffer_bindings) {
+        for ((rectangle, uniform_buffer), cluster_info) in
+            izip!(rectangles, uniform_buffer_bindings).zip(cluster_infos)
+        {
             let texture = &rectangle.colormapped_texture.texture;
             let texture_format = texture.creation_desc.format;
             if texture_format.required_features() != Default::default() {
@@ -516,11 +539,14 @@ impl RectangleDrawData {
                     ctx.texture_manager_2d.zeroed_texture_float().handle
                 };
 
+            // If the rectangle belongs to a coplanar overlap cluster,
+            // force it into the transparent draw phase to avoid z-fighting.
+            let force_transparent = cluster_info.has_coplanar_overlap;
+
             instances.push(RectangleInstance {
-                center_position: (rectangle.top_left_corner_position
-                    + rectangle.extent_u * 0.5
-                    + rectangle.extent_v * 0.5)
-                    .into(),
+                sorting_position: cluster_info.sorting_position,
+                secondary_sort_key: rectangle.options.depth_offset as f32,
+                force_transparent,
                 bind_group: ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &ctx.gpu_resources,
@@ -536,11 +562,18 @@ impl RectangleDrawData {
                         layout: rectangle_renderer.bind_group_layout,
                     },
                 ),
-                draw_outline_mask: rectangle.options.outline_mask.is_some(),
+                outline_mask_draw_phase: if rectangle.options.outline_mask.is_some() && !cluster_info.has_coplanar_overlap {
+                    Some(DrawPhase::OutlineMask)
+                } else if rectangle.options.outline_mask.is_some() && cluster_info.has_coplanar_overlap {
+                    // Outlines for rectangles that have coplanar overlaps need special casing against z-fighting.
+                    Some(DrawPhase::OutlineMaskNoDepth)
+                } else {
+                    None
+                },
                 has_transparency: rectangle.options.multiplicative_tint.a() < 1.0
                     || rectangle.colormapped_texture.texture.alpha_channel_usage()
                         == AlphaChannelUsage::AlphaChannelInUse
-                    || matches!(&rectangle.colormapped_texture.color_mapper, ColorMapper::Texture(texture) if texture.alpha_channel_usage() == AlphaChannelUsage::AlphaChannelInUse),
+                    || matches!(&rectangle.colormapped_texture.color_mapper, ColorMapper::Texture(texture) if texture.alpha_channel_usage() == AlphaChannelUsage::AlphaChannelInUse)
             });
         }
 
@@ -553,6 +586,7 @@ pub struct RectangleRenderer {
     render_pipeline_color_transparent: GpuRenderPipelineHandle,
     render_pipeline_picking_layer: GpuRenderPipelineHandle,
     render_pipeline_outline_mask: GpuRenderPipelineHandle,
+    render_pipeline_outline_mask_no_depth: GpuRenderPipelineHandle,
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
@@ -681,6 +715,9 @@ impl Renderer for RectangleRenderer {
                 cull_mode: None,
                 ..Default::default()
             },
+            // Depth-test transparent rectangles against previously drawn geometry,
+            // but do not write depth so later transparent/coplanar layers can still blend in sorted order.
+            depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE_NO_WRITE),
             ..render_pipeline_desc_color_opaque.clone()
         };
         let render_pipeline_color_transparent =
@@ -708,12 +745,25 @@ impl Renderer for RectangleRenderer {
                 ..render_pipeline_desc_color_opaque.clone()
             }),
         );
+        // Outline mask render pipeline for special case of overlapping coplanar rectangles.
+        let render_pipeline_outline_mask_no_depth = render_pipelines.get_or_create(
+            ctx,
+            &(RenderPipelineDesc {
+                label: "RectangleRenderer::render_pipeline_outline_mask_no_depth".into(),
+                fragment_entrypoint: "fs_main_outline_mask".into(),
+                render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
+                depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE_NO_DEPTH,
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(ctx.device_caps().tier),
+                ..render_pipeline_desc_color_opaque.clone()
+            }),
+        );
 
         Self {
             render_pipeline_color_opaque,
             render_pipeline_color_transparent,
             render_pipeline_picking_layer,
             render_pipeline_outline_mask,
+            render_pipeline_outline_mask_no_depth,
             bind_group_layout,
         }
     }
@@ -732,6 +782,7 @@ impl Renderer for RectangleRenderer {
             DrawPhase::Opaque => self.render_pipeline_color_opaque,
             DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
             DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
+            DrawPhase::OutlineMaskNoDepth => self.render_pipeline_outline_mask_no_depth,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
         let pipeline = render_pipelines.get(pipeline_handle)?;

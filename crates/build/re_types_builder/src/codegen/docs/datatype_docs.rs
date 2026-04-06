@@ -1,5 +1,7 @@
 //! Document a datatype as human-readable markdown.
 
+use std::fmt::Write as _;
+
 use crate::codegen::StringExt as _;
 use crate::data_type::{AtomicDataType, DataType, UnionMode};
 
@@ -44,7 +46,7 @@ fn datatype_docs_impl(page: &mut String, indent: usize, datatype: &DataType) {
             page.push(')');
         }
         DataType::FixedSizeList(inner, length) => {
-            page.push_str(&format!("FixedSizeList({length} x "));
+            write!(page, "FixedSizeList({length} x ").ok();
             if !inner.is_nullable() {
                 page.push_str("non-null ");
             }

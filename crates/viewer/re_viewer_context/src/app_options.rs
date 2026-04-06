@@ -41,6 +41,13 @@ pub struct AppOptions {
     /// Video decoding options.
     pub video: VideoOptions,
 
+    /// Whether per-visualizer instance/element limits are enabled.
+    ///
+    /// Several visualizers (3D shapes, time series lines, etc.) cap the number of elements
+    /// they process to avoid hangs. When disabled, those caps are removed entirely,
+    /// which may cause the viewer to become unresponsive with very large data sets.
+    pub visualizer_limits_enabled: bool,
+
     /// Mapbox API key (used to enable Mapbox-based map view backgrounds).
     ///
     /// Can also be set using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
@@ -79,6 +86,8 @@ impl Default for AppOptions {
             timestamp_format: TimestampFormat::default(),
 
             video: Default::default(),
+
+            visualizer_limits_enabled: true,
 
             mapbox_access_token: String::new(),
 
@@ -153,5 +162,6 @@ pub struct VideoOptions {
 #[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct ExperimentalAppOptions {
-    // None currently
+    /// Enable the experimental States view.
+    pub enable_states_view: bool,
 }

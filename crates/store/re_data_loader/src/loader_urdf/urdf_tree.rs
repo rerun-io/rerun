@@ -6,9 +6,20 @@ use itertools::Itertools as _;
 use re_chunk::EntityPath;
 use re_log_types::EntityPathPart;
 use re_sdk_types::archetypes::Transform3D;
-use urdf_rs::{Joint, Link, Material, Robot};
+use urdf_rs::{Geometry, Joint, Link, Material, Robot};
 
 use super::joint_transform;
+
+/// Returns a short name for the geometry type, used as a path segment.
+fn geometry_type_name(geometry: &Geometry) -> &'static str {
+    match geometry {
+        Geometry::Mesh { .. } => "mesh",
+        Geometry::Box { .. } => "box",
+        Geometry::Cylinder { .. } => "cylinder",
+        Geometry::Capsule { .. } => "capsule",
+        Geometry::Sphere { .. } => "sphere",
+    }
+}
 
 /// Helper struct containing the (root) entity paths where the different parts of the URDF model are logged.
 pub(crate) struct UrdfLogPaths {
@@ -257,6 +268,10 @@ impl UrdfTree {
     }
 
     /// Get the collision geometries of a link and their entity paths, if any.
+    ///
+    /// Collision geometries are organized by geometry type under `collision_root`:
+    /// `collision_geometries/{geometry_type}/{link_name}/{collision_name}`.
+    /// This makes it easy to toggle visibility per geometry type (e.g. hide meshes but keep primitives).
     pub fn get_collision_geometries(
         &self,
         link: &Link,
@@ -266,24 +281,22 @@ impl UrdfTree {
             return None;
         }
 
-        // The base path for all collision geometries of this link.
-        // We use flat paths under `collision_root` since link names have to be unique and to avoid deep nesting.
-        let collision_base_path_for_link =
-            self.log_paths.collision_root.clone() / EntityPathPart::new(&link.name);
-
-        // Collect all the link's collision geometries and build their entity paths.
+        // Collect all the link's collision geometries and build their entity paths,
+        // organized by geometry type for easy per-type visibility toggling.
         link.collision
             .iter()
             .enumerate()
             .map(|(i, collision)| {
+                let geometry_type = geometry_type_name(&collision.geometry);
                 let collision_name = collision
                     .name
                     .clone()
                     .unwrap_or_else(|| format!("collision_{i}"));
-                (
-                    collision_base_path_for_link.clone() / EntityPathPart::new(collision_name),
-                    collision,
-                )
+                let path = self.log_paths.collision_root.clone()
+                    / EntityPathPart::new(geometry_type)
+                    / EntityPathPart::new(&link.name)
+                    / EntityPathPart::new(collision_name);
+                (path, collision)
             })
             .collect::<Vec<_>>()
             .into()

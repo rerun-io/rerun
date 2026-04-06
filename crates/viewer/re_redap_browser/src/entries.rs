@@ -4,6 +4,7 @@ use std::task::Poll;
 
 use ahash::HashMap;
 use datafusion::catalog::TableProvider;
+use datafusion::common::TableReference;
 use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
@@ -184,9 +185,14 @@ async fn fetch_entries_and_register_tables(
             // Create cached provider that reads from the raw table
             let cached_provider = StreamingCacheTableProvider::new(provider, runtime.clone());
 
-            // Register cached provider with original name (in default schema)
+            // Register cached provider with original name (in default schema).
+            // Use `TableReference::bare` to prevent DataFusion from splitting
+            // names containing dots into schema.table pairs.
             session_ctx
-                .register_table(details.name.as_str(), Arc::new(cached_provider))
+                .register_table(
+                    TableReference::bare(details.name.as_str()),
+                    Arc::new(cached_provider),
+                )
                 .ok();
 
             inner
@@ -251,7 +257,8 @@ fn fetch_entry_details(
             let err = TypeConversionError::from(prost::UnknownEnumValue(kind as i32));
             Some(Right(future::ready((
                 entry,
-                Err(ApiError::serialization_with_source(
+                Err(ApiError::deserialization_with_source(
+                    None,
                     err,
                     "unknown entry kind",
                 )),
@@ -277,7 +284,7 @@ async fn fetch_dataset_details(
         .into_provider()
         .await
         .map_err(|err| {
-            ApiError::internal_with_source(err, "failed creating segment table provider")
+            ApiError::internal_with_source(None, err, "failed creating segment table provider")
         })?;
 
     Ok((result, table_provider))
@@ -304,7 +311,7 @@ async fn fetch_table_details(
         .into_provider()
         .await
         .map_err(|err| {
-            ApiError::internal_with_source(err, "failed creating table-entry table provider")
+            ApiError::internal_with_source(None, err, "failed creating table-entry table provider")
         })?;
 
     Ok((result, table_provider))

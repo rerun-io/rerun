@@ -122,6 +122,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
             &mut self.0,
             ctx.viewer_ctx.render_ctx(),
             view_query,
+            &output,
             "boxes3d",
         );
 
@@ -226,8 +227,9 @@ impl VisualizerSystem for Boxes3DVisualizer {
             },
         )?;
 
+        let draw_data = builder.into_draw_data()?;
         Ok(output
-            .with_draw_data(builder.into_draw_data()?)
+            .with_draw_data(draw_data)
             .with_visualizer_data(std::mem::take(&mut self.0)))
     }
 }

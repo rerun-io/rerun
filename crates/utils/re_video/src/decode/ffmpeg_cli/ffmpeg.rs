@@ -242,7 +242,7 @@ impl FFmpegProcessAndListener {
     fn new(
         debug_name: &str,
         output_sender: Sender<FrameResult>,
-        encoding_details: &Option<VideoEncodingDetails>,
+        encoding_details: Option<&VideoEncodingDetails>,
         ffmpeg_path: Option<&std::path::Path>,
         codec: &crate::VideoCodec,
     ) -> Result<Self, Error> {
@@ -251,7 +251,7 @@ impl FFmpegProcessAndListener {
         // TODO(andreas): should get SPS also without AVCC from ongoing stream.
 
         let (pixel_format, ffmpeg_pix_fmt) = if let Some(chroma_subsampling) =
-            encoding_details.as_ref().and_then(|e| e.chroma_subsampling)
+            encoding_details.and_then(|e| e.chroma_subsampling)
         {
             // We always get planar layouts back from ffmpeg.
             let (layout, ffmpeg_pix_fmt) = match chroma_subsampling {
@@ -373,7 +373,6 @@ impl FFmpegProcessAndListener {
             .expect("Failed to spawn ffmpeg listener thread");
 
         let codec_meta = encoding_details
-            .as_ref()
             .and_then(|e| e.stsd.as_ref())
             .and_then(CodecMeta::from_stsd)
             .unwrap_or(CodecMeta::RawBytestream);
@@ -905,7 +904,7 @@ pub struct FFmpegCliDecoder {
 impl FFmpegCliDecoder {
     pub fn new(
         debug_name: String,
-        encoding_details: &Option<VideoEncodingDetails>,
+        encoding_details: Option<&VideoEncodingDetails>,
         output_sender: Sender<FrameResult>,
         ffmpeg_path: Option<std::path::PathBuf>,
         codec: &crate::VideoCodec,
@@ -934,7 +933,7 @@ impl FFmpegCliDecoder {
             ffmpeg,
             output_sender,
             ffmpeg_path,
-            codec: *codec,
+            codec: codec.clone(),
         })
     }
 }
@@ -995,7 +994,7 @@ impl AsyncDecoder for FFmpegCliDecoder {
         self.ffmpeg = FFmpegProcessAndListener::new(
             &self.debug_name,
             self.output_sender.clone(),
-            &video_descr.encoding_details,
+            video_descr.encoding_details.as_ref(),
             self.ffmpeg_path.as_deref(),
             &self.codec,
         )?;

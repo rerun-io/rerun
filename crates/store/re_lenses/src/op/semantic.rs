@@ -4,10 +4,10 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use arrow::array::{
-    Array as _, ArrowNativeTypeOp as _, GenericBinaryArray, GenericListArray, Int64Array,
-    OffsetSizeTrait, StringArray, StructArray, UInt32Array, UInt32Builder,
+    Array as _, ArrowNativeTypeOp as _, AsArray as _, GenericBinaryArray, GenericListArray,
+    Int64Array, OffsetSizeTrait, StringArray, StructArray, UInt32Array, UInt32Builder,
 };
-use arrow::datatypes::{DataType, Field, Int32Type, Int64Type};
+use arrow::datatypes::{DataType, Field, Float64Type, Int32Type, Int64Type};
 use arrow::error::ArrowError;
 use re_sdk_types::components::VideoCodec;
 
@@ -168,19 +168,128 @@ impl Transform for StringToVideoCodecUInt32 {
     }
 }
 
+/// Converts RGBA structs (r, g, b, a as f32 or f64 in 0..1) to packed RGBA u32 values.
+#[derive(Default)]
+pub struct RgbaStructToUInt32 {}
+
+impl Transform for RgbaStructToUInt32 {
+    type Source = StructArray;
+    type Target = UInt32Array;
+
+    fn transform(&self, source: &StructArray) -> Result<Option<Self::Target>, Error> {
+        // Helper to extract a color channel field, supporting both f32 and f64.
+        let get_channel = |name: &str| -> Result<_, Error> {
+            let field =
+                GetField::new(name)
+                    .transform(source)?
+                    .ok_or_else(|| Error::FieldNotFound {
+                        field_name: name.to_owned(),
+                        available_fields: source
+                            .fields()
+                            .iter()
+                            .map(|f| f.name().to_owned())
+                            .collect(),
+                    })?;
+            Ok(arrow::compute::cast(&field, &DataType::Float64)?
+                .as_primitive::<Float64Type>()
+                .clone())
+        };
+
+        let r = get_channel("r")?;
+        let g = get_channel("g")?;
+        let b = get_channel("b")?;
+        let a = get_channel("a")?;
+
+        let result: UInt32Array = (0..source.len())
+            .map(|i| {
+                if source.is_null(i) {
+                    None
+                } else {
+                    let rv = (r.value(i).clamp(0.0, 1.0) * 255.0).round() as u32;
+                    let gv = (g.value(i).clamp(0.0, 1.0) * 255.0).round() as u32;
+                    let bv = (b.value(i).clamp(0.0, 1.0) * 255.0).round() as u32;
+                    let av = (a.value(i).clamp(0.0, 1.0) * 255.0).round() as u32;
+                    Some((rv << 24) | (gv << 16) | (bv << 8) | av)
+                }
+            })
+            .collect();
+
+        Ok(Some(result))
+    }
+}
+
 /// Converts binary data (i32 offsets) to a list of `u8` values.
-pub fn binary_to_list_uint8() -> BinaryToListUInt8<i32> {
-    BinaryToListUInt8::new()
+pub fn binary_to_list_uint8()
+-> impl Fn(&arrow::array::ArrayRef) -> Result<Option<arrow::array::ArrayRef>, Error> + Send + Sync {
+    move |source: &arrow::array::ArrayRef| {
+        let binary = source
+            .as_any()
+            .downcast_ref::<arrow::array::BinaryArray>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: "BinaryArray".to_owned(),
+                actual: source.data_type().clone(),
+                context: "binary_to_list_uint8 input".to_owned(),
+            })?;
+        Ok(BinaryToListUInt8::<i32, i32>::new()
+            .transform(binary)?
+            .map(|arr| Arc::new(arr) as arrow::array::ArrayRef))
+    }
 }
 
 /// Converts a timestamp struct (`seconds`/`nanos`) to nanoseconds.
-pub fn timespec_to_nanos() -> TimeSpecToNanos {
-    TimeSpecToNanos::default()
+pub fn timespec_to_nanos()
+-> impl Fn(&arrow::array::ArrayRef) -> Result<Option<arrow::array::ArrayRef>, Error> + Send + Sync {
+    move |source: &arrow::array::ArrayRef| {
+        let struct_array = source
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: "StructArray".to_owned(),
+                actual: source.data_type().clone(),
+                context: "timespec_to_nanos input".to_owned(),
+            })?;
+        Ok(TimeSpecToNanos::default()
+            .transform(struct_array)?
+            .map(|arr| Arc::new(arr) as arrow::array::ArrayRef))
+    }
 }
 
 /// Converts video codec name strings to `VideoCodec` enum values.
-pub fn string_to_video_codec() -> StringToVideoCodecUInt32 {
-    StringToVideoCodecUInt32::default()
+pub fn string_to_video_codec()
+-> impl Fn(&arrow::array::ArrayRef) -> Result<Option<arrow::array::ArrayRef>, Error> + Send + Sync {
+    move |source: &arrow::array::ArrayRef| {
+        let string_array = source
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: "StringArray".to_owned(),
+                actual: source.data_type().clone(),
+                context: "string_to_video_codec input".to_owned(),
+            })?;
+        Ok(StringToVideoCodecUInt32::default()
+            .transform(string_array)?
+            .map(|arr| Arc::new(arr) as arrow::array::ArrayRef))
+    }
+}
+
+/// Converts structs with r, g, b, a fields to packed RGBA u32 values.
+///
+/// Supports both f32 and f64 field types, and handles clamping and nulls.
+pub fn rgba_struct_to_uint32()
+-> impl Fn(&arrow::array::ArrayRef) -> Result<Option<arrow::array::ArrayRef>, Error> + Send + Sync {
+    move |source: &arrow::array::ArrayRef| {
+        let struct_array = source
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: "StructArray".to_owned(),
+                actual: source.data_type().clone(),
+                context: "rgba_struct_to_uint32 input".to_owned(),
+            })?;
+        Ok(RgbaStructToUInt32::default()
+            .transform(struct_array)?
+            .map(|arr| Arc::new(arr) as arrow::array::ArrayRef))
+    }
 }
 
 #[cfg(test)]
@@ -188,8 +297,8 @@ mod tests {
     use std::sync::Arc;
 
     use arrow::array::{
-        Array as _, GenericByteBuilder, Int32Array, Int64Array, StringArray, StructArray,
-        UInt32Array,
+        Array as _, Float32Array, Float64Array, GenericByteBuilder, Int32Array, Int64Array,
+        StringArray, StructArray, UInt32Array,
     };
     use arrow::datatypes::{DataType, Field, GenericBinaryType};
     use re_lenses_core::combinators::{Error, Transform as _};
@@ -474,5 +583,73 @@ mod tests {
         assert_eq!(output_array, expected_array);
 
         Ok(())
+    }
+
+    /// Helper to build an RGBA struct array from channel arrays of a given type.
+    fn make_rgba_struct<T: arrow::array::Array + 'static>(
+        r: T,
+        g: T,
+        b: T,
+        a: T,
+        nulls: Option<arrow::buffer::NullBuffer>,
+    ) -> StructArray {
+        let dt = r.data_type().clone();
+        StructArray::new(
+            vec![
+                Arc::new(Field::new("r", dt.clone(), true)),
+                Arc::new(Field::new("g", dt.clone(), true)),
+                Arc::new(Field::new("b", dt.clone(), true)),
+                Arc::new(Field::new("a", dt, true)),
+            ]
+            .into(),
+            vec![Arc::new(r), Arc::new(g), Arc::new(b), Arc::new(a)],
+            nulls,
+        )
+    }
+
+    /// Tests RGBA conversion with f64 fields, including clamping and null handling.
+    #[test]
+    fn test_rgba_struct_to_uint32_f64() {
+        let nulls = arrow::buffer::NullBuffer::from(vec![true, true, false, true]);
+        let struct_array = make_rgba_struct(
+            Float64Array::from(vec![1.0, 0.0, 0.0, 1.5]),
+            Float64Array::from(vec![0.5, 0.0, 0.0, -0.1]),
+            Float64Array::from(vec![0.0, 1.0, 0.0, 0.0]),
+            Float64Array::from(vec![1.0, 0.5, 0.0, 1.0]),
+            Some(nulls),
+        );
+        let output = RgbaStructToUInt32::default()
+            .transform(&struct_array)
+            .expect("transformation failed");
+        let expected = UInt32Array::from(vec![
+            Some(0xFF80_00FF), // r=255, g=128, b=0, a=255
+            Some(0x0000_FF80), // r=0, g=0, b=255, a=128
+            None,              // struct-level null
+            Some(0xFF00_00FF), // clamped: r=255, g=0, b=0, a=255
+        ]);
+        assert_eq!(output, Some(expected));
+    }
+
+    /// Tests RGBA conversion with f32 fields, including clamping and null handling.
+    #[test]
+    fn test_rgba_struct_to_uint32_f32() {
+        let nulls = arrow::buffer::NullBuffer::from(vec![true, false, true, true]);
+        let struct_array = make_rgba_struct(
+            Float32Array::from(vec![1.0f32, 0.0, 0.0, 1.5]),
+            Float32Array::from(vec![0.0f32, 0.0, 1.0, -0.1]),
+            Float32Array::from(vec![0.0f32, 0.0, 0.0, 0.0]),
+            Float32Array::from(vec![1.0f32, 0.0, 1.0, 1.0]),
+            Some(nulls),
+        );
+        let output = RgbaStructToUInt32::default()
+            .transform(&struct_array)
+            .expect("transformation failed with f32 input");
+        let expected = UInt32Array::from(vec![
+            Some(0xFF00_00FF), // red
+            None,              // struct-level null
+            Some(0x00FF_00FF), // green
+            Some(0xFF00_00FF), // clamped: r=255, g=0, b=0, a=255
+        ]);
+        assert_eq!(output, Some(expected));
     }
 }

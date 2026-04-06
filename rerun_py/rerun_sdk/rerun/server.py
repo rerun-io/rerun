@@ -3,9 +3,9 @@ from __future__ import annotations
 import socket
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
-from typing_extensions import deprecated
+from typing_extensions import Self, deprecated
 
 from rerun.error_utils import _send_warning_or_raise
 from rerun_bindings import _ServerInternal

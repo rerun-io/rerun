@@ -158,8 +158,9 @@ pub enum DType {
 /// Name metadata for a feature in the `LeRobot` dataset.
 ///
 /// The name metadata can consist of
+/// - A single string (e.g., `"img_state_delta"`).
 /// - A flat list of names for each dimension of a feature (e.g., `["height", "width", "channel"]`).
-/// - A nested list of names for each dimension of a feature (e.g., `[[""kLeftShoulderPitch", "kLeftShoulderRoll"]]`)
+/// - A nested list of names for each dimension of a feature (e.g., `[["kLeftShoulderPitch", "kLeftShoulderRoll"]]`)
 /// - A map with a string array value (e.g., `{ "motors": ["motor_0", "motor_1", …] }` or `{ "axes": ["x", "y", "z"] }`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Names(pub(super) Vec<String>);
@@ -176,6 +177,7 @@ impl Names {
 /// Visitor implementation for deserializing the [`Names`] type.
 ///
 /// Handles multiple representation formats:
+/// - Single strings: `"img_state_delta"`
 /// - Flat string arrays: `["x", "y", "z"]`
 /// - Nested string arrays: `[["motor_1", "motor_2"]]`
 /// - Single-entry objects: `{"motors": ["motor_1", "motor_2"]}` or `{"axes": null}`
@@ -188,8 +190,16 @@ impl<'de> Visitor<'de> for NamesVisitor {
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(
-            "a flat string array, a nested string array, or a single-entry object with a string array or null value",
+            "a string, a flat string array, a nested string array, or a single-entry object with a string array or null value",
         )
+    }
+
+    /// Handle a single string: `"img_state_delta"`
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(Names(vec![v.to_owned()]))
     }
 
     /// Handle sequences:
@@ -379,6 +389,14 @@ mod tests {
     use serde_json;
 
     use super::*;
+
+    #[test]
+    fn test_deserialize_single_string() {
+        let json = r#""some_name""#;
+        let expected = Names(vec!["some_name".to_owned()]);
+        let names: Names = serde_json::from_str(json).unwrap();
+        assert_eq!(names, expected);
+    }
 
     #[test]
     fn test_deserialize_flat_list() {

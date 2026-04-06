@@ -104,16 +104,6 @@ jobs:
         run: |
           pixi run rerun-build-web-release
 
-      - name: "Create HTML aliases without extensions"
-        run: |
-          cd crates/viewer/re_web_viewer_server/web_viewer
-          for f in *.html; do
-            name="${f%.html}"
-            if [ "$name" != "index" ] && [ "$name" != "index_bundled" ]; then
-              cp "$f" "$name"
-            fi
-          done
-
       - name: Build examples
         run: |
           pixi run build-examples rrd --install \
@@ -147,6 +137,19 @@ jobs:
           destination: "rerun-web-viewer/commit/${{ needs.get-commit-sha.outputs.short-sha }}"
           parent: false
           process_gcloudignore: false
+
+      # Upload extensionless HTML aliases (signed-in, signed-out) to the
+      # bucket root with the correct Content-Type. The OAuth redirect uses the
+      # origin (app.rerun.io/signed-in), not a versioned path.
+      - name: "Upload HTML aliases to bucket root"
+        run: |
+          cd crates/viewer/re_web_viewer_server/web_viewer
+          for f in *.html; do
+            name="${f%.html}"
+            if [ "$name" != "index" ] && [ "$name" != "index_bundled" ]; then
+              gcloud storage cp --content-type="text/html" "$f" "gs://rerun-web-viewer/${name}"
+            fi
+          done
 
       - name: Publish app.rerun.io
         if: inputs.update-latest

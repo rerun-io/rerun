@@ -1,0 +1,28 @@
+---
+source: crates/store/re_data_loader/src/loader_mcap/tests/foxglove/test_camera_calibration.rs
+expression: "format!(\"{:-240}\", chunk)"
+---
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                                                                                                                                                         │
+│ * entity_path: /camera/calibration                                                                                                                                                                                                │
+│ * id: [**REDACTED**]                                                                                                                                                                                                              │
+│ * version: [**REDACTED**]                                                                                                                                                                                                         │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌───────────────────────────┬───────────────────────────┬───────────────────────────┬───────────────────────────┬───────────────────────────┬───────────────────────────┬───────────────────────────┬───────────────────────────┐ │
+│ │ RowId                     ┆ message_log_time          ┆ message_publish_time      ┆ timestamp                 ┆ Pinhole:child_frame       ┆ Pinhole:image_from_camera ┆ Pinhole:parent_frame      ┆ Pinhole:resolution        │ │
+│ │ ---                       ┆ ---                       ┆ ---                       ┆ ---                       ┆ ---                       ┆ ---                       ┆ ---                       ┆ ---                       │ │
+│ │ type: non-null            ┆ type: Timestamp(ns)       ┆ type: Timestamp(ns)       ┆ type: Timestamp(ns)       ┆ type: List(Utf8)          ┆ type:                     ┆ type: List(Utf8)          ┆ type:                     │ │
+│ │ FixedSizeBinary(16)       ┆ index_name:               ┆ index_name:               ┆ index_name: timestamp     ┆ archetype: Pinhole        ┆ List(FixedSizeList(9 x    ┆ archetype: Pinhole        ┆ List(FixedSizeList(2 x    │ │
+│ │ ARROW:extension:metadata: ┆ message_log_time          ┆ message_publish_time      ┆ is_sorted: true           ┆ component:                ┆ non-null Float32))        ┆ component:                ┆ non-null Float32))        │ │
+│ │ {"namespace":"row"}       ┆ is_sorted: true           ┆ is_sorted: true           ┆ kind: index               ┆ Pinhole:child_frame       ┆ archetype: Pinhole        ┆ Pinhole:parent_frame      ┆ archetype: Pinhole        │ │
+│ │ ARROW:extension:name:     ┆ kind: index               ┆ kind: index               ┆                           ┆ component_type:           ┆ component:                ┆ component_type:           ┆ component:                │ │
+│ │ TUID                      ┆                           ┆                           ┆                           ┆ TransformFrameId          ┆ Pinhole:image_from_camera ┆ TransformFrameId          ┆ Pinhole:resolution        │ │
+│ │ is_sorted: true           ┆                           ┆                           ┆                           ┆ kind: data                ┆ component_type:           ┆ kind: data                ┆ component_type:           │ │
+│ │ kind: control             ┆                           ┆                           ┆                           ┆                           ┆ PinholeProjection         ┆                           ┆ Resolution                │ │
+│ │                           ┆                           ┆                           ┆                           ┆                           ┆ kind: data                ┆                           ┆ kind: data                │ │
+│ ╞═══════════════════════════╪═══════════════════════════╪═══════════════════════════╪═══════════════════════════╪═══════════════════════════╪═══════════════════════════╪═══════════════════════════╪═══════════════════════════╡ │
+│ │ row_[**REDACTED**]        ┆ 2026-04-02T13:27:59.61039 ┆ 2026-04-02T13:27:59.61039 ┆ 2026-04-02T13:27:59.61039 ┆ [camera_optical_frame_ima ┆ [[525.0, 0.0, 0.0, 0.0,   ┆ [camera_optical_frame]    ┆ [[640.0, 480.0]]          │ │
+│ │                           ┆ 1040                      ┆ 1040                      ┆ 1040                      ┆ ge_plane]                 ┆ 525.0, 0.0, 319.5, 239.5, ┆                           ┆                           │ │
+│ │                           ┆                           ┆                           ┆                           ┆                           ┆ 1.0]]                     ┆                           ┆                           │ │
+│ └───────────────────────────┴───────────────────────────┴───────────────────────────┴───────────────────────────┴───────────────────────────┴───────────────────────────┴───────────────────────────┴───────────────────────────┘ │
+└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘

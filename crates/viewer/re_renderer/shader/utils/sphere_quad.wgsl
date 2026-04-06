@@ -49,9 +49,11 @@ fn circle_quad(point_pos: vec3f, point_radius: f32, top_bottom: f32, left_right:
     let pos_in_quad = top_bottom * quad_up + left_right * quad_right;
 
     // Add half a pixel of margin for the feathering we do for antialiasing the spheres.
-    // It's fairly subtle but if we don't do this our spheres look slightly squarish
-    // TODO(andreas): Computing distance to camera here is a bit excessive, should get distance more easily - keep in mind this code runs for ortho & perspective.
-    let radius = point_radius + 0.5 * approx_pixel_world_size_at(distance(point_pos, frame.camera_position));
+    // It's fairly subtle but if we don't do this our spheres look slightly squarish.
+    // Use depth along the camera forward axis, as the pixel size formula
+    // expects camera-space depth. For orthographic cameras the distance argument is ignored.
+    let camera_depth = dot(point_pos - frame.camera_position, frame.camera_forward);
+    let radius = point_radius + 0.5 * approx_pixel_world_size_at(camera_depth);
 
     return point_pos + pos_in_quad * radius;
 }

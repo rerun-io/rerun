@@ -148,7 +148,10 @@ fn copy_native_video_frame_to_texture(
                 target_texture,
             );
         }
-        re_video::PixelFormat::Rgba8Unorm | re_video::PixelFormat::Yuv { .. } => {}
+        re_video::PixelFormat::Rgba8Unorm
+        | re_video::PixelFormat::Yuv { .. }
+        | re_video::PixelFormat::L8
+        | re_video::PixelFormat::L16 => {}
     }
 
     re_tracing::profile_function!();
@@ -183,6 +186,14 @@ fn copy_native_video_frame_to_texture(
                 re_video::YuvRange::Full => YuvRange::Full,
             },
         },
+
+        re_video::PixelFormat::L8 => {
+            SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::R8Unorm)
+        }
+
+        re_video::PixelFormat::L16 => {
+            SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::R16Unorm)
+        }
     };
 
     transfer_image_data_to_texture(

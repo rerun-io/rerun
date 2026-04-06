@@ -35,6 +35,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr as _;
 use std::sync::Arc;
+use web_time::Instant;
 
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
 /// The default for Data Fusion is 8192, which leads to a 256Kb record batch on average for
@@ -63,6 +64,9 @@ pub struct DataframeQueryTableProvider<T: DataframeClientAPI> {
     /// the entire operation under a single trace.
     #[cfg(not(target_arch = "wasm32"))]
     trace_headers: Option<crate::TraceHeaders>,
+
+    /// Per-connection analytics sender for query stats.
+    analytics: Option<crate::ConnectionAnalytics>,
 }
 
 /// This trait provides the specific methods used when interacting with the
@@ -131,11 +135,11 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
     ) -> Result<Self, DataFusionError> {
         let client = connection
-            .client(origin)
+            .client(origin.clone())
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?;
 
-        Self::new_from_client(
+        let mut provider = Self::new_from_client(
             client,
             dataset_id,
             query_expression,
@@ -144,7 +148,11 @@ impl DataframeQueryTableProvider<ConnectionClient> {
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers,
         )
-        .await
+        .await?;
+
+        provider.analytics = Some(crate::ConnectionAnalytics::new(origin));
+
+        Ok(provider)
     }
 }
 
@@ -210,6 +218,7 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
                 columns: FetchChunksRequest::required_column_names(),
                 ..Default::default()
             }),
+            generate_direct_urls: true,
         };
 
         let schema = Arc::new(prepend_string_column_schema(
@@ -227,6 +236,7 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             index_values,
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers,
+            analytics: None,
         })
     }
 
@@ -302,6 +312,9 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> datafusion::common::Result<Arc<dyn ExecutionPlan>> {
+        let scan_start_wall = web_time::SystemTime::now();
+        let scan_start = Instant::now();
+
         let mut dataset_queries = vec![self.query_dataset_request.clone()];
         for filter in filters {
             if let Some(updated_queries) =
@@ -314,9 +327,14 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
         let mut query_expression = self.query_expression.clone();
 
         let mut chunk_info_batches = Vec::with_capacity(dataset_queries.len());
+        let mut time_to_first_chunk_info: Option<std::time::Duration> = None;
+
+        let mut trace_id: Option<opentelemetry::TraceId> = None;
 
         for dataset_query in dataset_queries {
-            let response_stream = self
+            let query_start = Instant::now();
+
+            let response = self
                 .client
                 .clone()
                 .query_dataset(
@@ -325,27 +343,71 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                         .map_err(|err| exec_datafusion_err!("{err}"))?,
                 )
                 .await
-                .map_err(|err| exec_datafusion_err!("{err}"))?
-                .into_inner();
+                .map_err(|err| exec_datafusion_err!("{err}"))?;
 
-            let batches: Vec<RecordBatch> = response_stream
-                .collect::<Vec<_>>()
-                .await
-                .into_iter()
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|err| exec_datafusion_err!("{err}"))?
-                .into_iter()
-                .filter_map(|response| response.data)
-                .map(|dataframe_part| {
-                    dataframe_part
-                        .try_into()
-                        .map_err(|err| exec_datafusion_err!("{err}"))
-                })
-                .collect::<Result<Vec<_>, _>>()?;
+            // Capture the server-side trace-id from response metadata.
+            if trace_id.is_none() {
+                trace_id = response
+                    .metadata()
+                    .get("x-request-trace-id")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|s| opentelemetry::TraceId::from_hex(s).ok());
+            }
 
-            chunk_info_batches.push(batches);
+            let mut response_stream = response.into_inner();
+
+            while let Some(response) = response_stream.next().await {
+                if time_to_first_chunk_info.is_none() {
+                    time_to_first_chunk_info = Some(query_start.elapsed());
+                }
+
+                let response = response.map_err(|err| exec_datafusion_err!("{err}"))?;
+                let Some(dataframe_part) = response.data else {
+                    continue;
+                };
+                let batch: RecordBatch = dataframe_part
+                    .try_into()
+                    .map_err(|err| exec_datafusion_err!("{err}"))?;
+
+                chunk_info_batches.push(batch);
+            }
         }
-        let chunk_info_batches = Arc::new(compute_unique_chunk_info_ids(chunk_info_batches)?);
+        let chunk_info_batches = compute_unique_chunk_info_ids(vec![chunk_info_batches])?;
+
+        // Begin per-connection analytics tracking.
+        // Fetch stats will be accumulated by the IO loops; the event is sent on drop.
+        let pending_analytics = self.analytics.as_ref().map(|analytics| {
+            let query_chunks = chunk_info_batches.as_ref().map_or(0, |b| b.num_rows());
+
+            let query_segments = chunk_info_batches.as_ref().map_or(0, |batch| {
+                batch
+                    .column_by_name(QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
+                    .and_then(|col| col.as_any().downcast_ref::<StringArray>())
+                    .map_or(0, |arr| arr.iter().flatten().collect::<BTreeSet<_>>().len())
+            });
+
+            let total_chunk_bytes: u64 = chunk_info_batches.as_ref().map_or(0, |batch| {
+                batch
+                    .column_by_name(QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
+                    .and_then(|col| col.as_any().downcast_ref::<arrow::array::UInt64Array>())
+                    .map_or(0, |arr| arr.iter().flatten().sum())
+            });
+
+            analytics.begin_query(
+                crate::analytics::QueryInfo {
+                    dataset_id: self.dataset_id.to_string(),
+                    query_chunks,
+                    query_segments,
+                    query_columns: self.schema.fields().len(),
+                    query_entities: self.query_dataset_request.entity_paths.len(),
+                    query_bytes: total_chunk_bytes,
+                    time_range: scan_start_wall..web_time::SystemTime::now(),
+                    time_to_first_chunk_info,
+                    trace_id,
+                },
+                scan_start,
+            )
+        });
 
         // Find the first column selection that is a component
         if query_expression.filtered_is_not_null.is_none() {
@@ -366,8 +428,10 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             query_expression,
             self.index_values.clone(),
             self.client.clone(),
+            limit,
             #[cfg(not(target_arch = "wasm32"))]
             self.trace_headers.clone(),
+            pending_analytics,
         )
         .map(Arc::new)
         .map(|exec| {
@@ -494,11 +558,11 @@ pub(crate) fn prepend_string_column_schema(schema: &Schema, column_name: &str) -
 /// see `SegmentStreamExec::try_new` for more details.
 #[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn group_chunk_infos_by_segment_id(
-    chunk_info_batches: &Arc<Vec<RecordBatch>>,
+    chunk_info_batches: &[RecordBatch],
 ) -> Result<Arc<BTreeMap<String, Vec<RecordBatch>>>, DataFusionError> {
-    let mut results = BTreeMap::new();
+    let mut results: BTreeMap<String, Vec<RecordBatch>> = BTreeMap::new();
 
-    for batch in chunk_info_batches.as_ref() {
+    for batch in chunk_info_batches {
         let segment_ids = batch
             .column_by_name(QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
             .ok_or(exec_datafusion_err!(
@@ -532,10 +596,7 @@ pub(crate) fn group_chunk_infos_by_segment_id(
 
             let segment_batch = re_arrow_util::take_record_batch(batch, &row_indices)?;
 
-            results
-                .entry(segment_id)
-                .or_insert_with(Vec::new)
-                .push(segment_batch);
+            results.entry(segment_id).or_default().push(segment_batch);
         }
     }
 
@@ -596,7 +657,7 @@ pub fn query_from_query_expression(query_expression: &QueryExpression) -> Query 
         }),
         columns_always_include_everything: false,
         columns_always_include_entity_paths: false,
-        columns_always_include_byte_offsets: false,
+        columns_always_include_byte_offsets: true, // so we know exactly what to fetch from direct URLs
         columns_always_include_static_indexes: false,
         columns_always_include_global_indexes: false,
         columns_always_include_component_indexes: false,
@@ -605,10 +666,10 @@ pub fn query_from_query_expression(query_expression: &QueryExpression) -> Query 
 
 fn compute_unique_chunk_info_ids(
     chunk_info_batches: Vec<Vec<RecordBatch>>,
-) -> Result<Vec<RecordBatch>, DataFusionError> {
+) -> Result<Option<RecordBatch>, DataFusionError> {
     let batches: Vec<_> = chunk_info_batches.into_iter().flatten().collect();
     if batches.is_empty() {
-        return Ok(vec![]);
+        return Ok(None);
     }
 
     let schema = batches[0].schema();
@@ -616,7 +677,7 @@ fn compute_unique_chunk_info_ids(
 
     // Find the chunk_id column
     let chunk_id_col = combined
-        .column_by_name("chunk_id")
+        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
         .ok_or(exec_datafusion_err!("chunk_id column not found"))?;
 
     let chunk_id_array = chunk_id_col
@@ -642,11 +703,11 @@ fn compute_unique_chunk_info_ids(
 
     let distinct_columns = arrow::compute::take_arrays(combined.columns(), &indices, None)?;
 
-    Ok(vec![RecordBatch::try_new_with_options(
+    Ok(Some(RecordBatch::try_new_with_options(
         schema,
         distinct_columns,
         &RecordBatchOptions::default(),
-    )?])
+    )?))
 }
 
 #[cfg(test)]

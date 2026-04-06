@@ -16,4 +16,6 @@ chunk_key: non-null Binary
 chunk_segment_id: non-null Utf8 [
     rerun:kind: "control"
 ]
+rerun_layer_direct_url: Dictionary(Int32, Utf8)
+rerun_layer_direct_url_expires_at: Dictionary(Int32, Int64)
 rerun_segment_layer: non-null Utf8

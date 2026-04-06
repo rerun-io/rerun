@@ -54,7 +54,7 @@ pub(crate) fn extract_urdf_from_robot_descriptions(
     for urdf_xml in urdf_by_channel.into_values() {
         match crate::loader_urdf::build_urdf_chunks_from_xml(
             &urdf_xml,
-            &None,
+            None,
             &re_log_types::TimePoint::STATIC,
             false,
         ) {

@@ -505,6 +505,7 @@ impl ConnectionHandle {
                     .query_tasks_on_completion(task_ids, timeout)
                     .await
                     .map_err(to_py_err)?;
+                let trace_id = response_stream.trace_id();
 
                 let mut errors: Vec<String> = Vec::new();
 
@@ -512,17 +513,12 @@ impl ConnectionHandle {
                 // will complete the stream
                 while let Some(response) = response_stream.next().await {
                     let item: RecordBatch = response
-                        .map_err(|err| {
-                            ApiError::tonic(
-                                err,
-                                "failed waiting for tasks done: error receiving completion notifications",
-                            )
-                        })
                         .map_err(to_py_err)?
                         .data
                         .ok_or_else(|| {
                             let err = missing_field!(QueryTasksResponse, "data");
-                            let err = ApiError::serialization_with_source(
+                            let err = ApiError::deserialization_with_source(
+                                trace_id,
                                 err,
                                 "failed waiting for tasks done: received item without data",
                             );
@@ -537,7 +533,8 @@ impl ConnectionHandle {
                     let schema = item.schema();
                     if !schema.contains(&QueryTasksResponse::schema()) {
                         let err = invalid_schema!(QueryTasksResponse);
-                        let err = ApiError::serialization_with_source(
+                        let err = ApiError::deserialization_with_source(
+                            trace_id,
                             err,
                             "failed waiting for tasks done: received item with invalid schema",
                         );
@@ -553,7 +550,8 @@ impl ConnectionHandle {
                     .map(|name| schema.index_of(name))
                     .collect::<Result<Vec<_>, _>>()
                     .map_err(|err| {
-                        to_py_err(ApiError::serialization_with_source(
+                        to_py_err(ApiError::deserialization_with_source(
+                            trace_id,
                             err,
                             "failed waiting for tasks done: missing column on item",
                         ))
@@ -657,6 +655,7 @@ impl ConnectionHandle {
                 ],
                 ..Default::default()
             }),
+            generate_direct_urls: false,
         };
 
         wait_for_future(

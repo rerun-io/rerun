@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::fmt::Write as _;
 
 use camino::Utf8PathBuf;
 use itertools::Itertools as _;
@@ -41,7 +42,7 @@ pub fn generate_reflection(
     code.push_str("#![allow(unused_imports)]\n");
     code.push('\n');
     for namespace in imports {
-        code.push_str(&format!("use {namespace};\n"));
+        writeln!(code, "use {namespace};").ok();
     }
 
     let quoted_reflection = quote! {

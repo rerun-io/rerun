@@ -68,10 +68,11 @@ impl re_byte_size::SizeBytes for VideoStreamCacheEntry {
 
 /// Identifies a video stream.
 
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Hash, Eq, PartialEq)]
 struct VideoStreamKey {
     entity_path: EntityPathHash,
     timeline: TimelineName,
+    sample_component: re_chunk::ComponentIdentifier,
 }
 
 impl re_byte_size::SizeBytes for VideoStreamKey {
@@ -79,8 +80,11 @@ impl re_byte_size::SizeBytes for VideoStreamKey {
         let Self {
             entity_path,
             timeline,
+            sample_component,
         } = self;
-        entity_path.heap_size_bytes() + timeline.heap_size_bytes()
+        entity_path.heap_size_bytes()
+            + timeline.heap_size_bytes()
+            + sample_component.heap_size_bytes()
     }
 }
 
@@ -88,7 +92,10 @@ impl re_byte_size::SizeBytes for VideoStreamKey {
 ///
 /// It also keeps track of any additions and removals of video chunks.
 #[derive(Default)]
-pub struct VideoStreamCache(HashMap<VideoStreamKey, VideoStreamCacheEntry>);
+pub struct VideoStreamCache {
+    entries: HashMap<VideoStreamKey, VideoStreamCacheEntry>,
+    keys_per_entity: HashMap<EntityPathHash, Vec<VideoStreamKey>>,
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum VideoStreamProcessingError {
@@ -128,33 +135,101 @@ impl VideoStreamCache {
     /// it creates all the necessary metadata.
     /// For any stream in the cache, metadata will be kept automatically up to date for incoming
     /// and removed video frames chunks.
-    pub fn entry(
+    pub fn video_entry(
         &mut self,
         store: &re_entity_db::EntityDb,
         entity_path: &EntityPath,
         timeline: TimelineName,
         decode_settings: DecodeSettings,
     ) -> Result<SharablePlayableVideoStream, VideoStreamProcessingError> {
+        let sample_component = VideoStream::descriptor_sample().component;
+        let codec_component = VideoStream::descriptor_codec().component;
+
+        self.entry(
+            store,
+            entity_path,
+            timeline,
+            decode_settings,
+            sample_component,
+            &|| {
+                let query_result = store.storage_engine().cache().latest_at(
+                    // Get the last logged codec. Should be unchanging so if correctly
+                    // logged it doesn't matter which one we get.
+                    &re_chunk::LatestAtQuery::new(timeline, re_chunk::TimeInt::MAX),
+                    entity_path,
+                    [codec_component],
+                );
+
+                let codec_chunk = query_result.get_required(codec_component).map_err(|_err| {
+                    if store
+                        .storage_engine()
+                        .store()
+                        .entity_has_component_on_timeline(&timeline, entity_path, codec_component)
+                    {
+                        VideoStreamProcessingError::UnloadedCodec
+                    } else {
+                        VideoStreamProcessingError::MissingCodec
+                    }
+                })?;
+
+                // Translate codec by looking at the last codec.
+                // TODO(andreas): Should validate whether all codecs ever logged are the same, but it's a bit tedious.
+                let last_codec = codec_chunk
+                    .component_mono::<components::VideoCodec>(codec_component)
+                    .ok_or(VideoStreamProcessingError::MissingCodec)?
+                    .map_err(|err| VideoStreamProcessingError::FailedReadingCodec(Box::new(err)))?;
+                Ok(last_codec.into())
+            },
+        )
+    }
+
+    /// Looks up something playable by the video player.
+    ///
+    /// The first time this video-like that is looked up that isn't in the cache,
+    /// it creates all the necessary metadata.
+    /// For any stream in the cache, metadata will be kept automatically up to date for incoming
+    /// and removed video frames chunks.
+    pub fn entry(
+        &mut self,
+        store: &re_entity_db::EntityDb,
+        entity_path: &EntityPath,
+        timeline: TimelineName,
+        decode_settings: DecodeSettings,
+        sample_component: re_chunk::ComponentIdentifier,
+        get_codec: &dyn Fn() -> Result<re_video::VideoCodec, VideoStreamProcessingError>,
+    ) -> Result<SharablePlayableVideoStream, VideoStreamProcessingError> {
         re_tracing::profile_function!();
 
         let key = VideoStreamKey {
             entity_path: entity_path.hash(),
             timeline,
+            sample_component,
         };
 
-        let entry = match self.0.entry(key) {
+        let entry = match self.entries.entry(key) {
             std::collections::hash_map::Entry::Occupied(occupied_entry) => {
                 occupied_entry.into_mut()
             }
             std::collections::hash_map::Entry::Vacant(vacant_entry) => {
-                let (video_descr, known_chunk_ranges) =
-                    load_video_data_from_chunks(store, entity_path, timeline)?;
+                let (video_descr, known_chunk_ranges) = load_video_data_from_chunks(
+                    store,
+                    entity_path,
+                    timeline,
+                    sample_component,
+                    get_codec,
+                )?;
 
                 let video = re_renderer::video::Video::load(
                     entity_path.to_string(),
                     video_descr,
                     decode_settings,
                 );
+
+                self.keys_per_entity
+                    .entry(key.entity_path)
+                    .or_default()
+                    .push(key);
+
                 vacant_entry.insert(VideoStreamCacheEntry {
                     used_this_frame: AtomicBool::new(true),
                     video_stream: Arc::new(RwLock::new(PlayableVideoStream {
@@ -179,7 +254,7 @@ impl VideoStreamCache {
         timeline: &Timeline,
         key: &VideoStreamKey,
     ) {
-        let Some(entry) = self.0.get_mut(key) else {
+        let Some(entry) = self.entries.get_mut(key) else {
             // If we don't have a cache entry yet, we can skip over this event as there's nothing to update.
             return;
         };
@@ -217,6 +292,7 @@ impl VideoStreamCache {
                         known_range,
                         known_range,
                         video_data,
+                        key.sample_component,
                     )
                 } else {
                     match &add.direct_lineage {
@@ -228,6 +304,7 @@ impl VideoStreamCache {
                                 chunk,
                                 original_chunk,
                                 siblings,
+                                key.sample_component,
                             )
                         }
                         ChunkDirectLineageReport::CompactedFrom(old_chunks) => {
@@ -238,6 +315,7 @@ impl VideoStreamCache {
                                 chunk,
                                 old_chunks,
                                 requires_sorting,
+                                key.sample_component,
                             )
                         }
                         _ => read_samples_from_new_chunk(
@@ -245,6 +323,7 @@ impl VideoStreamCache {
                             chunk,
                             video_data,
                             &mut entry.known_chunk_ranges,
+                            key.sample_component,
                         ),
                     }
                 };
@@ -259,6 +338,7 @@ impl VideoStreamCache {
                             &mut entry.known_chunk_ranges,
                             timeline_name,
                             chunk,
+                            key.sample_component,
                         ) {
                             Ok(info) => {
                                 insertion_info = Some(info);
@@ -273,7 +353,14 @@ impl VideoStreamCache {
 
             ChunkStoreDiff::Deletion(del) => {
                 let known_ranges = &mut entry.known_chunk_ranges;
-                handle_deletion(entity_db, timeline, video_data, &del.chunk, known_ranges)
+                handle_deletion(
+                    entity_db,
+                    timeline,
+                    video_data,
+                    &del.chunk,
+                    known_ranges,
+                    key.sample_component,
+                )
             }
 
             ChunkStoreDiff::VirtualAddition(_) | ChunkStoreDiff::SchemaAddition(_) => Ok(()),
@@ -331,7 +418,7 @@ impl VideoStreamCache {
                 // In release builds discard this video stream cache entry to reconstruct it with all data in mind.
                 //
                 // This shouldn't happen, but we can restore the state if it does.
-                self.0.remove(key);
+                self.entries.remove(key);
             }
             Err(VideoStreamProcessingError::UnexpectedChunkChanges) => {
                 re_log::debug_warn_once!("Unexpected chunk changes for video samples");
@@ -339,7 +426,7 @@ impl VideoStreamCache {
                 // Discard this video stream cache entry to reconstruct it with all data in mind.
                 //
                 // This shouldn't happen, but we can restore the state if it does.
-                self.0.remove(key);
+                self.entries.remove(key);
             }
             Err(err) => {
                 re_log::error_once!(
@@ -363,6 +450,7 @@ fn handle_deletion(
     video_data: &mut re_video::VideoDataDescription,
     deleted_chunk: &re_chunk::Chunk,
     known_ranges: &mut BTreeMap<ChunkId, ChunkSampleRange>,
+    sample_component: re_chunk::ComponentIdentifier,
 ) -> Result<(), VideoStreamProcessingError> {
     let Some(known_range) = known_ranges.remove(&deleted_chunk.id()) else {
         // We don't have any samples of this chunk, so just ignore it.
@@ -379,7 +467,7 @@ fn handle_deletion(
         .and_then(|manifest| manifest.temporal_map().get(deleted_chunk.entity_path()))
         .and_then(|per_timeline| {
             let per_component = per_timeline.get(timeline)?;
-            per_component.get(&VideoStream::descriptor_sample().component)
+            per_component.get(&sample_component)
         })
         .unwrap_or(&tmp);
 
@@ -441,7 +529,15 @@ fn handle_deletion(
     } else if required_removals <= possibly_end_removals {
         false
     } else {
-        // We can't remove enough samples.
+        // This could happen *if* there's some bug in the chunk store, causing
+        // the removed chunk be larger than the same chunk but added.
+        //
+        // This was also reached when still using the wrong sample component for some
+        // functions in this file.
+        re_log::debug_warn!(
+            "Can't remove enough video samples for chunk {}",
+            deleted_chunk.id().short_string(),
+        );
         return Err(VideoStreamProcessingError::UnexpectedChunkChanges);
     };
 
@@ -518,6 +614,7 @@ fn handle_compacted_chunk_addition(
     compacted_chunk: &re_chunk::Chunk,
     old_chunks: &BTreeMap<ChunkId, Arc<re_chunk::Chunk>>,
     chunk_order_changed: bool,
+    sample_component: re_chunk::ComponentIdentifier,
 ) -> Result<(), VideoStreamProcessingError> {
     let mut reused_chunks = Vec::new();
     let mut unseen_chunks = Vec::new();
@@ -536,6 +633,7 @@ fn handle_compacted_chunk_addition(
             compacted_chunk,
             video_data,
             known_chunk_ranges,
+            sample_component,
         );
     }
 
@@ -589,7 +687,9 @@ fn handle_compacted_chunk_addition(
     }
 
     for unseen_chunk in unseen_chunks {
-        let Some(chunk_samples) = ChunkSamples::from_physical(unseen_chunk, timeline) else {
+        let Some(chunk_samples) =
+            ChunkSamples::from_physical(unseen_chunk, timeline, sample_component)
+        else {
             continue;
         };
 
@@ -629,6 +729,7 @@ fn handle_compacted_chunk_addition(
             &known_range,
             load_range,
             video_data,
+            sample_component,
         );
 
         known_chunk_ranges.insert(compacted_chunk.id(), known_range);
@@ -657,9 +758,16 @@ fn handle_split_chunk_addition(
     split_chunk: &re_chunk::Chunk,
     original_chunk: &re_chunk::Chunk,
     siblings: &[Arc<re_chunk::Chunk>],
+    sample_component: re_chunk::ComponentIdentifier,
 ) -> Result<(), VideoStreamProcessingError> {
     let Some(old_known_range) = known_chunk_ranges.remove(&original_chunk.id()) else {
-        return read_samples_from_new_chunk(timeline, split_chunk, video_data, known_chunk_ranges);
+        return read_samples_from_new_chunk(
+            timeline,
+            split_chunk,
+            video_data,
+            known_chunk_ranges,
+            sample_component,
+        );
     };
 
     let mut samples = video_data
@@ -670,7 +778,7 @@ fn handle_split_chunk_addition(
     flatten_chunk_samples(
         std::iter::once(split_chunk)
             .chain(siblings.iter().map(|c| &**c))
-            .filter_map(|chunk| ChunkSamples::from_physical(chunk, timeline))
+            .filter_map(|chunk| ChunkSamples::from_physical(chunk, timeline, sample_component))
             .collect(),
         known_chunk_ranges,
         |next_sample| {
@@ -706,6 +814,7 @@ fn handle_split_chunk_addition(
             known_range,
             known_range,
             video_data,
+            sample_component,
         );
 
         adjust_keyframes_for_removed_samples(video_data);
@@ -721,6 +830,8 @@ fn load_video_data_from_chunks(
     store: &re_entity_db::EntityDb,
     entity_path: &EntityPath,
     timeline: TimelineName,
+    sample_component: re_chunk::ComponentIdentifier,
+    get_codec: &dyn Fn() -> Result<re_video::VideoCodec, VideoStreamProcessingError>,
 ) -> Result<
     (
         re_video::VideoDataDescription,
@@ -730,8 +841,7 @@ fn load_video_data_from_chunks(
 > {
     re_tracing::profile_function!();
 
-    let sample_component = VideoStream::descriptor_sample().component;
-    let codec_component = VideoStream::descriptor_codec().component;
+    let codec = get_codec()?;
 
     // Query for all video chunks on the **entire** timeline.
     // Tempting to bypass the query cache for this, but we don't expect to get new video chunks every frame
@@ -744,31 +854,9 @@ fn load_video_data_from_chunks(
     let query_results = store.storage_engine().cache().range(
         &entire_timeline_query,
         entity_path,
-        [sample_component, codec_component],
+        [sample_component],
     );
     let sample_chunks = query_results.get_required(sample_component).unwrap_or(&[]);
-    let codec_chunks = query_results
-        .get_required(codec_component)
-        .map_err(|_err| {
-            if store
-                .storage_engine()
-                .store()
-                .entity_has_component_on_timeline(&timeline, entity_path, codec_component)
-            {
-                VideoStreamProcessingError::UnloadedCodec
-            } else {
-                VideoStreamProcessingError::MissingCodec
-            }
-        })?;
-
-    // Translate codec by looking at the last codec.
-    // TODO(andreas): Should validate whether all codecs ever logged are the same, but it's a bit tedious.
-    let last_codec = codec_chunks
-        .last()
-        .and_then(|chunk| chunk.component_instance::<components::VideoCodec>(codec_component, 0, 0))
-        .ok_or(VideoStreamProcessingError::MissingCodec)?
-        .map_err(|err| VideoStreamProcessingError::FailedReadingCodec(Box::new(err)))?;
-    let codec = last_codec.into();
 
     // Extract all video samples.
     let mut video_descr = re_video::VideoDataDescription {
@@ -784,16 +872,6 @@ fn load_video_data_from_chunks(
 
     let mut known_chunk_ranges = BTreeMap::new();
 
-    let known_chunks = if let Some(manifest) = store.rrd_manifest_index().manifest()
-        && let Some(entity_timelines) = manifest.temporal_map().get(entity_path)
-        && let Some((_, components)) = entity_timelines.iter().find(|(t, _)| *t.name() == timeline)
-        && let Some(chunks) = components.get(&sample_component)
-    {
-        chunks
-    } else {
-        &BTreeMap::new()
-    };
-
     let sorted_chunks = sample_chunks
         .iter()
         .map(|c| c.sorted_by_timeline_if_unsorted(&timeline))
@@ -801,11 +879,12 @@ fn load_video_data_from_chunks(
 
     load_known_chunk_ranges(
         &mut video_descr,
-        store.storage_engine().store(),
+        store,
         &mut known_chunk_ranges,
-        known_chunks,
         &sorted_chunks,
+        entity_path,
         timeline,
+        sample_component,
     );
 
     re_tracing::profile_scope!("read", format!("{} chunks", sorted_chunks.len()));
@@ -823,6 +902,7 @@ fn load_video_data_from_chunks(
             known_range,
             known_range,
             &mut video_descr,
+            sample_component,
         ) {
             match err {
                 VideoStreamProcessingError::OutOfOrderSamples => {
@@ -928,6 +1008,7 @@ fn read_samples_from_known_chunk(
     known_range: &ChunkSampleRange,
     load_range: &ChunkSampleRange,
     video_descr: &mut re_video::VideoDataDescription,
+    sample_component: re_chunk::ComponentIdentifier,
 ) -> Result<(), VideoStreamProcessingError> {
     re_tracing::profile_function!(format!("{} rows", chunk.num_rows()));
 
@@ -939,7 +1020,6 @@ fn read_samples_from_known_chunk(
         ..
     } = video_descr;
 
-    let sample_component = VideoStream::descriptor_sample().component;
     let Some(raw_array) = chunk.raw_component_array(sample_component) else {
         // This chunk doesn't have any video chunks.
         return Ok(());
@@ -1057,7 +1137,7 @@ fn is_sample_sync(
     encoding_details: &mut Option<re_video::VideoEncodingDetails>,
     sample_bytes: &[u8],
 ) -> bool {
-    match re_video::detect_gop_start(sample_bytes, *codec) {
+    match re_video::detect_gop_start(sample_bytes, codec.clone()) {
         Ok(re_video::GopStartDetection::StartOfGop(new_encoding_details)) => {
             if encoding_details.as_ref() != Some(&new_encoding_details) {
                 if let Some(old_encoding_details) = encoding_details.as_ref() {
@@ -1174,6 +1254,7 @@ fn read_samples_from_new_chunk(
     chunk: &re_chunk::Chunk,
     video_descr: &mut re_video::VideoDataDescription,
     known_ranges: &mut BTreeMap<ChunkId, ChunkSampleRange>,
+    sample_component: re_chunk::ComponentIdentifier,
 ) -> Result<(), VideoStreamProcessingError> {
     re_tracing::profile_function!();
 
@@ -1185,7 +1266,6 @@ fn read_samples_from_new_chunk(
         ..
     } = video_descr;
 
-    let sample_component = VideoStream::descriptor_sample().component;
     let Some(raw_array) = chunk.raw_component_array(sample_component) else {
         // This chunk doesn't have any video chunks.
         return Ok(());
@@ -1315,7 +1395,7 @@ impl Cache for VideoStreamCache {
         // Scanning an entire video stream again is very costly,
         // so we keep the cache around. But we remove all unused decoders.
         #[expect(clippy::iter_over_hash_type)]
-        for entry in self.0.values_mut() {
+        for entry in self.entries.values_mut() {
             entry.used_this_frame.store(false, Ordering::Release);
             let video_stream = entry.video_stream.write();
             video_stream.video_renderer.begin_frame();
@@ -1328,20 +1408,25 @@ impl Cache for VideoStreamCache {
 
     fn purge_memory(&mut self) {
         // Clean up unused video data.
-        self.0
+        self.entries
             .retain(|_, entry| entry.used_this_frame.load(Ordering::Acquire));
+
+        self.keys_per_entity.retain(|_, keys| {
+            keys.retain(|k| self.entries.contains_key(k));
+
+            !keys.is_empty()
+        });
     }
 
     /// Keep existing cache entries up to date with new and removed video data.
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
-        let sample_component = VideoStream::descriptor_sample().component;
-
         for event in events {
             if event.is_virtual_addition() {
                 // Reset everything when we receive an rrd manifest.
-                self.0.clear();
+                self.entries.clear();
+                self.keys_per_entity.clear();
                 continue;
             }
 
@@ -1349,25 +1434,30 @@ impl Cache for VideoStreamCache {
                 continue;
             };
 
-            if !delta_chunk
-                .components()
-                .contains_component(sample_component)
-            {
+            let Some(keys) = self
+                .keys_per_entity
+                .get(&delta_chunk.entity_path().hash())
+                // Clone to avoid borrow issues, as `handle_store_event` takes &mut self.
+                .cloned()
+            else {
                 continue;
-            }
+            };
 
-            #[expect(clippy::iter_over_hash_type)] //  TODO(#6198): verify that this is fine
-            for col in delta_chunk.timelines().values() {
+            for key in keys {
+                if !delta_chunk
+                    .components()
+                    .contains_component(key.sample_component)
+                {
+                    continue;
+                }
+
+                let Some(col) = delta_chunk.timelines().get(&key.timeline) else {
+                    continue;
+                };
+
                 let timeline = col.timeline();
-                self.handle_store_event(
-                    entity_db,
-                    event,
-                    timeline,
-                    &VideoStreamKey {
-                        entity_path: delta_chunk.entity_path().hash(),
-                        timeline: *timeline.name(),
-                    },
-                );
+
+                self.handle_store_event(entity_db, event, timeline, &key);
             }
         }
     }
@@ -1375,7 +1465,15 @@ impl Cache for VideoStreamCache {
 
 impl re_byte_size::MemUsageTreeCapture for VideoStreamCache {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
-        re_byte_size::MemUsageTree::Bytes(self.0.total_size_bytes())
+        let Self {
+            entries,
+            keys_per_entity,
+        } = self;
+
+        re_byte_size::MemUsageNode::default()
+            .with_child("entries", entries.total_size_bytes())
+            .with_child("keys_per_entity", keys_per_entity.total_size_bytes())
+            .into_tree()
     }
 }
 
@@ -1384,9 +1482,13 @@ struct ChunkSamples {
 }
 
 impl ChunkSamples {
-    fn from_physical(chunk: &re_chunk::Chunk, timeline: TimelineName) -> Option<Self> {
+    fn from_physical(
+        chunk: &re_chunk::Chunk,
+        timeline: TimelineName,
+        sample_component: re_chunk::ComponentIdentifier,
+    ) -> Option<Self> {
         let mut samples: Vec<_> = chunk
-            .iter_component_timepoints(VideoStream::descriptor_sample().component)
+            .iter_component_timepoints(sample_component)
             .filter_map(|t| t.get(&timeline))
             .map(|time| SampleMetadataState::Unloaded {
                 source_id: chunk.id().as_tuid(),
@@ -1557,13 +1659,27 @@ fn flatten_chunk_samples(
 /// `loaded_chunks` should be sorted by start time, and internally sorted on `timeline`.
 fn load_known_chunk_ranges(
     data_descr: &mut re_video::VideoDataDescription,
-    store: &re_chunk_store::ChunkStore,
+    store: &EntityDb,
     known_chunk_ranges: &mut BTreeMap<ChunkId, ChunkSampleRange>,
-    chunks_from_manifest: &BTreeMap<ChunkId, re_log_encoding::RrdManifestTemporalMapEntry>,
     loaded_chunks: &[re_chunk::Chunk],
+    entity_path: &EntityPath,
     timeline: TimelineName,
+    sample_component: re_chunk::ComponentIdentifier,
 ) {
     re_tracing::profile_function!();
+
+    let chunks_from_manifest = if let Some(manifest) = store.rrd_manifest_index().manifest()
+        && let Some(entity_timelines) = manifest.temporal_map().get(entity_path)
+        && let Some((_, components)) = entity_timelines.iter().find(|(t, _)| *t.name() == timeline)
+        && let Some(chunks) = components.get(&sample_component)
+    {
+        chunks
+    } else {
+        &BTreeMap::new()
+    };
+
+    let storage_engine = store.storage_engine();
+    let store = storage_engine.store();
 
     // Count how many samples are already loaded for each root manifest chunk
     // via physical children (split/compacted chunks). We subtract these from
@@ -1572,7 +1688,7 @@ fn load_known_chunk_ranges(
     let mut loaded_chunks_counts: ahash::HashMap<re_chunk::ChunkId, u64> = HashMap::default();
 
     for c in loaded_chunks {
-        if let Some(cs) = ChunkSamples::from_physical(c, timeline) {
+        if let Some(cs) = ChunkSamples::from_physical(c, timeline, sample_component) {
             for id in store.find_root_chunks(&c.id()) {
                 *loaded_chunks_counts.entry(id).or_default() += cs.samples.len() as u64;
             }
@@ -1599,7 +1715,7 @@ fn load_known_chunk_ranges(
         .chain(
             loaded_chunks
                 .iter()
-                .filter_map(|c| ChunkSamples::from_physical(c, timeline)),
+                .filter_map(|c| ChunkSamples::from_physical(c, timeline, sample_component)),
         )
         .collect();
 
@@ -1743,12 +1859,14 @@ fn handle_out_of_order_chunk(
     known_ranges: &mut BTreeMap<ChunkId, ChunkSampleRange>,
     timeline: TimelineName,
     conflicting_chunk: &re_chunk::Chunk,
+    sample_component: re_chunk::ComponentIdentifier,
 ) -> Result<SampleReorderInfo, VideoStreamProcessingError> {
     re_tracing::profile_function!();
 
     // Build ChunkSamples for the new chunk to know its time range.
-    let conflicting_chunk_samples = ChunkSamples::from_physical(conflicting_chunk, timeline)
-        .ok_or(VideoStreamProcessingError::NoVideoSamplesFound)?;
+    let conflicting_chunk_samples =
+        ChunkSamples::from_physical(conflicting_chunk, timeline, sample_component)
+            .ok_or(VideoStreamProcessingError::NoVideoSamplesFound)?;
 
     let sample_range = find_affected_sample_range(
         video_descr,
@@ -1931,6 +2049,7 @@ fn handle_out_of_order_chunk(
         known_range,
         known_range,
         video_descr,
+        sample_component,
     )?;
 
     Ok(SampleReorderInfo {
@@ -2088,7 +2207,7 @@ mod tests {
             .unwrap();
 
         let video_stream_lock = cache
-            .entry(
+            .video_entry(
                 &store,
                 &"vid".into(),
                 *timeline.name(),
@@ -2123,7 +2242,7 @@ mod tests {
         }
 
         let video_stream_lock = cache
-            .entry(
+            .video_entry(
                 &store,
                 &"vid".into(),
                 *timeline.name(),
@@ -2166,7 +2285,7 @@ mod tests {
                 .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
                 .unwrap();
             let video_stream = cache
-                .entry(
+                .video_entry(
                     &store,
                     &"vid".into(),
                     *timeline.name(),
@@ -2190,7 +2309,7 @@ mod tests {
                 cache.on_store_events(&store_events_refs, &store);
 
                 let video_stream = cache
-                    .entry(
+                    .video_entry(
                         &store,
                         &"vid".into(),
                         *timeline.name(),
@@ -2226,7 +2345,7 @@ mod tests {
 
         // Create the cache entry.
         cache
-            .entry(
+            .video_entry(
                 &store,
                 &"vid".into(),
                 *timeline.name(),
@@ -2252,7 +2371,7 @@ mod tests {
         // Check whether the chunk removal had the expected effect.
 
         let video_stream_lock = cache
-            .entry(
+            .video_entry(
                 &store,
                 &"vid".into(),
                 *timeline.name(),

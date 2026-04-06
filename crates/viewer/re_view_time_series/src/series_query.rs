@@ -42,11 +42,21 @@ pub fn determine_num_series(
     let scalar_component = archetypes::Scalars::descriptor_scalars().component;
     let is_identity = results.has_identity_mapping_for_component(scalar_component);
 
-    if !is_identity && count > MAX_NUM_SERIES_FOR_REMAPPED_SCALARS {
-        results.report_unspecified_source(VisualizerReportSeverity::Error, format!(
-            "Number of series ({count}) exceeds the maximum ({MAX_NUM_SERIES_FOR_REMAPPED_SCALARS}). \
-             Only the first {MAX_NUM_SERIES_FOR_REMAPPED_SCALARS} series will be visualized."
-        ));
+    let limits_enabled = results
+        .query_context()
+        .app_ctx()
+        .app_options
+        .visualizer_limits_enabled;
+    if !is_identity && limits_enabled && count > MAX_NUM_SERIES_FOR_REMAPPED_SCALARS {
+        results.report_unspecified_source(
+            VisualizerReportSeverity::Error,
+            format!(
+                "Too many series ({}), capping to {}. \
+             This limit can be lifted in Settings.",
+                re_format::format_uint(count),
+                re_format::format_uint(MAX_NUM_SERIES_FOR_REMAPPED_SCALARS),
+            ),
+        );
         MAX_NUM_SERIES_FOR_REMAPPED_SCALARS
     } else {
         count

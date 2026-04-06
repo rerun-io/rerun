@@ -170,6 +170,26 @@ impl OutlineMaskProcessor {
         },
     });
 
+    /// Depth state for outline mask pipelines that should follow draw order instead of depth.
+    /// Use for special cases like coplanar geometries that would otherwise have z-fighting.
+    pub const MASK_DEPTH_STATE_NO_DEPTH: Option<wgpu::DepthStencilState> =
+        Some(wgpu::DepthStencilState {
+            format: Self::MASK_DEPTH_FORMAT,
+            depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
+            depth_write_enabled: Some(false),
+            stencil: wgpu::StencilState {
+                front: wgpu::StencilFaceState::IGNORE,
+                back: wgpu::StencilFaceState::IGNORE,
+                read_mask: 0,
+                write_mask: 0,
+            },
+            bias: wgpu::DepthBiasState {
+                constant: 0,
+                slope_scale: 0.0,
+                clamp: 0.0,
+            },
+        });
+
     /// Holds two pairs of pixel coordinates (one for each layer).
     const VORONOI_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 

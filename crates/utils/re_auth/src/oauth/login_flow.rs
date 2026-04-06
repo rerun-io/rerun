@@ -156,11 +156,13 @@ impl DeviceCodeFlow {
         })))
     }
 
-    pub fn get_login_url(&self) -> &str {
+    /// The URL the user should open in their browser to authenticate.
+    pub fn login_url(&self) -> &str {
         &self.verification_uri
     }
 
-    pub fn get_user_code(&self) -> &str {
+    /// The code the user should see in their browser to verify they are authenticating the correct session.
+    pub fn user_code(&self) -> &str {
         &self.user_code
     }
 
