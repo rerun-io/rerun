@@ -1557,13 +1557,14 @@ fn duration_from_sec(seconds: f64) -> PyResult<Duration> {
 ///
 /// Returns the URI of the server so you can connect the viewer to it.
 #[pyfunction]
-#[pyo3(signature = (grpc_port, server_memory_limit, newest_first = false, default_blueprint = None, recording = None))]
+#[pyo3(signature = (grpc_port, server_memory_limit, newest_first = false, default_blueprint = None, recording = None, cors_allow_origin = vec![]))]
 fn serve_grpc(
     grpc_port: Option<u16>,
     server_memory_limit: String,
     newest_first: bool,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
+    cors_allow_origin: Vec<String>,
 ) -> PyResult<String> {
     #[cfg(feature = "server")]
     {
@@ -1582,6 +1583,8 @@ fn serve_grpc(
             memory_limit: re_memory::MemoryLimit::parse(&server_memory_limit).map_err(|err| {
                 PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:"))
             })?,
+
+            cors_allowed_origins: cors_allow_origin,
         };
 
         let sink = re_sdk::grpc_server::GrpcServerSink::new(
@@ -1610,6 +1613,7 @@ fn serve_grpc(
             newest_first,
             default_blueprint,
             recording,
+            cors_allow_origin,
         );
 
         Err(PyRuntimeError::new_err(
@@ -1659,7 +1663,7 @@ fn serve_web_viewer(
 // NOTE: DEPRECATED
 #[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
+#[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None, cors_allow_origin = vec![]))]
 fn serve_web(
     open_browser: bool,
     web_port: Option<u16>,
@@ -1667,6 +1671,7 @@ fn serve_web(
     server_memory_limit: String,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
+    cors_allow_origin: Vec<String>,
 ) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
@@ -1684,6 +1689,7 @@ fn serve_web(
                 PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:"))
             })?,
             playback_behavior: re_grpc_server::PlaybackBehavior::OldestFirst,
+            cors_allowed_origins: cors_allow_origin,
         };
 
         let sink = re_sdk::web_viewer::new_sink(
@@ -1712,6 +1718,7 @@ fn serve_web(
         _ = grpc_port;
         _ = open_browser;
         _ = server_memory_limit;
+        _ = cors_allow_origin;
         Err(PyRuntimeError::new_err(
             "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))

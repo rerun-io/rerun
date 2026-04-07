@@ -731,6 +731,7 @@ def serve_grpc(
     newest_first: bool = False,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    cors_allow_origin: list[str] = ...,  # type: ignore[assignment]
 ) -> str:
     """
     Spawn a gRPC server which an SDK or Viewer can connect to.
@@ -752,6 +753,7 @@ def serve_web(
     server_memory_limit: str,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    cors_allow_origin: list[str] = ...,  # type: ignore[assignment]
 ) -> None:
     """Serve a web-viewer AND host a gRPC server."""
 

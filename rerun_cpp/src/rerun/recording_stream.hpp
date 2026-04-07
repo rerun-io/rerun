@@ -185,7 +185,8 @@ namespace rerun {
         Result<std::string> serve_grpc(
             std::string_view bind_ip = "0.0.0.0", uint16_t port = 9876,
             std::string_view server_memory_limit = "1GiB",
-            PlaybackBehavior playback_behavior = PlaybackBehavior::OldestFirst
+            PlaybackBehavior playback_behavior = PlaybackBehavior::OldestFirst,
+            std::vector<std::string> cors_allow_origins = {}
         ) const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it

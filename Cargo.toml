@@ -416,6 +416,7 @@ url = "2.5.8"
 uuid = { version = "1.21", features = ["serde", "v4", "js"] }
 vec1 = { version = "1.12", features = ["serde", "smallvec-v1"] }
 walkdir = "2.5"
+wildmatch = "2.6.1"
 # TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
 #     Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
 #     `crates/viewer/re_viewer/Cargo.toml`, and make sure that notebooks still work:

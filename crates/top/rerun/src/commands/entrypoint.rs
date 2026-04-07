@@ -165,6 +165,20 @@ Example: `16GB` or `50%` (of system total)."
     #[clap(long)]
     newest_first: bool,
 
+    /// Additional origin patterns allowed to make CORS requests to the gRPC server.
+    ///
+    /// Use this when hosting a custom viewer on a different domain.
+    /// Patterns are matched against the full Origin header (e.g. `https://example.com:8080`),
+    /// using glob-style matching where `*` matches any sequence of characters.
+    /// Can be specified multiple times.
+    ///
+    /// Examples:
+    ///   `--cors-allow-origin "https://*.example.com"`
+    ///   `--cors-allow-origin "https://example.com:8080"`
+    ///   `--cors-allow-origin "https://example.com:*"`
+    #[clap(long)]
+    cors_allow_origin: Vec<String>,
+
     #[clap(
         long,
         default_value_t = true,
@@ -828,6 +842,8 @@ fn run_impl(
             re_memory::MemoryLimit::parse(limit)
                 .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
         },
+
+        cors_allowed_origins: args.cors_allow_origin.clone(),
     };
 
     // All URLs that we want to process.
@@ -1722,6 +1738,7 @@ fn record_cli_command_analytics(args: &Args) {
         bind: _,
         memory_limit: _,
         server_memory_limit: _,
+        cors_allow_origin: _,
         port: _,
         new: _,
     } = args;

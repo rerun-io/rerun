@@ -26,7 +26,7 @@ use tokio::sync::oneshot;
 use tokio_stream::{Stream, StreamExt as _};
 use tonic::transport::Server;
 use tonic::transport::server::TcpIncoming;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::priority_stream::PriorityMerge;
 
@@ -48,7 +48,7 @@ const CHANNEL_SIZE_MESSAGES: usize = 1024; // TODO(emilk): move into `ServerOpti
 const CHANNEL_SIZE_BYTES: u64 = 128 * 1024 * 1024; // TODO(emilk): move into `ServerOptions` after the patch release.
 
 /// Options for the gRPC Proxy Server
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct ServerOptions {
     /// When a client connect, should they be sent the oldest data first, or the newest?
     pub playback_behavior: PlaybackBehavior,
@@ -57,6 +57,18 @@ pub struct ServerOptions {
     ///
     /// It will start garbage collecting old data when we reach this.
     pub memory_limit: MemoryLimit, // TODO(emilk): rename `history_limit`
+
+    /// Additional origin patterns allowed to make cross-origin requests to the server.
+    ///
+    /// By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed.
+    /// Patterns are matched against the full `Origin` header value (e.g. `https://example.com:8080`),
+    /// using glob-style matching where `*` matches any sequence of characters.
+    ///
+    /// Examples:
+    /// - `"https://*.example.com"` — all subdomains on the default port (443)
+    /// - `"https://example.com:8080"` — exact origin with a specific port
+    /// - `"https://example.com:*"` — any port on example.com
+    pub cors_allowed_origins: Vec<String>,
 }
 
 impl Default for ServerOptions {
@@ -64,6 +76,7 @@ impl Default for ServerOptions {
         Self {
             playback_behavior: PlaybackBehavior::OldestFirst,
             memory_limit: MemoryLimit::from_bytes(1024 * 1024 * 1024), // Be very conservative by default
+            cors_allowed_origins: Vec::new(),
         }
     }
 }
@@ -124,6 +137,42 @@ impl From<tonic::Status> for TonicStatusError {
     }
 }
 
+const DEFAULT_CORS_PATTERNS: &[&str] = &[
+    "*://localhost",
+    "*://localhost:*",
+    "*://127.0.0.1",
+    "*://127.0.0.1:*",
+    "*://rerun.io",
+    "*://rerun.io:*",
+];
+
+/// Returns true if the given origin is allowed by the given patterns.
+fn is_origin_allowed(origin: &str, patterns: &[wildmatch::WildMatch]) -> bool {
+    patterns.iter().any(|pat| pat.matches(origin))
+}
+
+/// Build a CORS layer that allows only localhost, 127.0.0.1, rerun.io,
+/// and any additional user-specified origin patterns.
+///
+/// Patterns are matched against the full `Origin` header value,
+/// using glob-style matching where `*` matches any sequence of characters.
+pub fn cors_layer(extra_allowed_origins: &[String]) -> CorsLayer {
+    let allowed_origin_patterns: Vec<wildmatch::WildMatch> = DEFAULT_CORS_PATTERNS
+        .iter()
+        .copied()
+        .chain(extra_allowed_origins.iter().map(String::as_str))
+        .map(wildmatch::WildMatch::new)
+        .collect();
+    CorsLayer::very_permissive().allow_origin(AllowOrigin::predicate(
+        move |origin, _request_parts| {
+            let Ok(origin) = origin.to_str() else {
+                return false;
+            };
+            is_origin_allowed(origin, &allowed_origin_patterns)
+        },
+    ))
+}
+
 // TODO(jan): Refactor `serve`/`spawn` variants into a builder?
 
 /// Start a Rerun server, listening on `addr`.
@@ -147,7 +196,8 @@ pub async fn serve(
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
 ) -> anyhow::Result<()> {
-    serve_impl(addr, options, MessageProxy::new(options), shutdown).await
+    let message_proxy = MessageProxy::new(options.clone());
+    serve_impl(addr, options, message_proxy, shutdown).await
 }
 
 async fn serve_impl(
@@ -205,7 +255,7 @@ async fn serve_impl(
 
     re_log::debug!("Server memory limit set at {}", options.memory_limit);
 
-    let cors = CorsLayer::very_permissive();
+    let cors = cors_layer(&options.cors_allowed_origins);
     let grpc_web = tonic_web::GrpcWebLayer::new();
 
     let routes = {
@@ -247,7 +297,7 @@ pub async fn serve_from_channel(
     shutdown: shutdown::Shutdown,
     channel_rx: re_log_channel::LogReceiver,
 ) {
-    let message_proxy = MessageProxy::new(options);
+    let message_proxy = MessageProxy::new(options.clone());
     let event_tx = message_proxy.event_tx.clone();
 
     tokio::task::spawn_blocking(move || {
@@ -322,7 +372,7 @@ pub fn spawn_from_rx_set(
     shutdown: shutdown::Shutdown,
     rxs: re_log_channel::LogReceiverSet,
 ) {
-    let message_proxy = MessageProxy::new(options);
+    let message_proxy = MessageProxy::new(options.clone());
     let event_tx = message_proxy.event_tx.clone();
 
     tokio::spawn(async move {
@@ -416,7 +466,7 @@ pub fn spawn_with_recv(
     let (channel_log_tx, channel_log_rx) =
         re_log_channel::log_channel(re_log_channel::LogSource::MessageProxy(uri));
 
-    let (message_proxy, mut broadcast_log_rx) = MessageProxy::new_with_recv(options);
+    let (message_proxy, mut broadcast_log_rx) = MessageProxy::new_with_recv(options.clone());
 
     tokio::spawn(async move {
         if let Err(err) = serve_impl(addr, options, message_proxy, shutdown).await {
@@ -891,10 +941,13 @@ impl MessageProxy {
             async_mpsc_channel::channel("re_grpc_server events", message_queue_capacity)
         };
 
-        let task_handle = tokio::spawn(async move {
-            EventLoop::new(options, event_rx, broadcast_log_tx)
-                .run_in_place()
-                .await;
+        let task_handle = tokio::spawn({
+            let options = options.clone();
+            async move {
+                EventLoop::new(options, event_rx, broadcast_log_tx)
+                    .run_in_place()
+                    .await;
+            }
         });
 
         (
@@ -1247,6 +1300,7 @@ mod tests {
         setup_opt(ServerOptions {
             playback_behavior: PlaybackBehavior::OldestFirst,
             memory_limit: MemoryLimit::UNLIMITED,
+            cors_allowed_origins: vec![],
         })
         .await
     }
@@ -1255,6 +1309,7 @@ mod tests {
         setup_opt(ServerOptions {
             playback_behavior: PlaybackBehavior::OldestFirst,
             memory_limit,
+            cors_allowed_origins: vec![],
         })
         .await
     }
@@ -1582,6 +1637,7 @@ mod tests {
         let (completion, addr) = setup_opt(ServerOptions {
             playback_behavior: PlaybackBehavior::NewestFirst, // this is what we want to test
             memory_limit: MemoryLimit::UNLIMITED,
+            cors_allowed_origins: vec![],
         })
         .await;
         let mut client = make_client(addr).await;
@@ -1613,5 +1669,59 @@ mod tests {
         assert_eq!(actual, expected);
 
         completion.finish();
+    }
+
+    mod cors_tests {
+        use super::super::{DEFAULT_CORS_PATTERNS, is_origin_allowed};
+
+        fn check(origin: &str, extra: &[&str]) -> bool {
+            let patterns: Vec<wildmatch::WildMatch> = DEFAULT_CORS_PATTERNS
+                .iter()
+                .copied()
+                .chain(extra.iter().copied())
+                .map(wildmatch::WildMatch::new)
+                .collect();
+            is_origin_allowed(origin, &patterns)
+        }
+
+        #[test]
+        fn default_allowed_origins() {
+            assert!(check("http://localhost", &[]));
+            assert!(check("http://localhost:8080", &[]));
+            assert!(check("https://127.0.0.1", &[]));
+            assert!(check("https://127.0.0.1:9090", &[]));
+            assert!(check("https://rerun.io", &[]));
+            assert!(check("https://rerun.io:443", &[]));
+        }
+
+        #[test]
+        fn default_rejected_origins() {
+            assert!(!check("https://evil.com", &[]));
+            assert!(!check("https://notlocalhost.com", &[]));
+            assert!(!check("https://localhost.evil.com", &[]));
+        }
+
+        #[test]
+        fn extra_patterns() {
+            assert!(check("https://app.example.com", &["https://*.example.com"]));
+            assert!(!check("https://evil.com", &["https://*.example.com"]));
+
+            // `?` is a bit of a footgun, you might think this could work but it doesn't:
+            assert!(check("https://example.com", &["http?://example.com"]));
+            assert!(!check("http://example.com", &["http?://example.com"]));
+
+            // Port wildcard
+            assert!(check(
+                "https://example.com:8080",
+                &["https://example.com:*"]
+            ));
+        }
+
+        #[test]
+        fn edge_cases() {
+            assert!(!check("", &[]));
+            assert!(!check("localhost", &[]));
+            assert!(!check("evil.com", &[]));
+        }
     }
 }

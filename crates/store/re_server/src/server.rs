@@ -26,6 +26,7 @@ pub struct Server {
     routes: Routes,
     artificial_latency: std::time::Duration,
     bandwidth_limit: Option<u64>,
+    cors_allowed_origins: Vec<String>,
 }
 
 /// `ServerHandle` is a tiny helper abstraction that enables us to
@@ -99,6 +100,7 @@ impl Server {
             routes,
             artificial_latency,
             bandwidth_limit,
+            cors_allowed_origins,
         } = self;
 
         let (ready_tx, ready_rx) = mpsc::channel(1);
@@ -155,7 +157,7 @@ impl Server {
                     let is_client = false;
                     re_protos::headers::new_rerun_headers_layer(name, version, is_client)
                 })
-                .layer(tower_http::cors::CorsLayer::permissive()) // Allow CORS for all origins (to support web clients)
+                .layer(re_grpc_server::cors_layer(&cors_allowed_origins))
                 .layer(crate::latency_layer::LatencyLayer::new(artificial_latency))
                 .layer(crate::bandwidth_layer::BandwidthLayer::new(bandwidth_limit))
                 // NOTE: GrpcWebLayer is applied directly to gRPC routes in ServerBuilder::build()
@@ -204,6 +206,7 @@ pub struct ServerBuilder {
     axum_routes: axum::Router,
     artificial_latency: std::time::Duration,
     bandwidth_limit: Option<u64>,
+    cors_allowed_origins: Vec<String>,
 }
 
 impl ServerBuilder {
@@ -248,6 +251,14 @@ impl ServerBuilder {
         self
     }
 
+    /// Set additional origin patterns allowed to make cross-origin requests.
+    ///
+    /// By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed.
+    pub fn with_cors_allowed_origins(mut self, origins: Vec<String>) -> Self {
+        self.cors_allowed_origins = origins;
+        self
+    }
+
     pub fn build(self) -> Server {
         let Self {
             addr,
@@ -255,6 +266,7 @@ impl ServerBuilder {
             axum_routes,
             artificial_latency,
             bandwidth_limit,
+            cors_allowed_origins,
         } = self;
 
         let grpc_routes = routes_builder.routes();
@@ -278,6 +290,7 @@ impl ServerBuilder {
             routes: routes.into(),
             artificial_latency,
             bandwidth_limit,
+            cors_allowed_origins,
         }
     }
 }

@@ -73,6 +73,7 @@ exclude_path = [
   # Actually ignored files beyond .gitignore
   "crates/store/re_uri/src/lib.rs", # Contains some malformed URLs, but they are not actual links.
   "crates/store/re_uri/src/redap_uri.rs", # Same as above.
+  "crates/store/re_grpc_server/src/lib.rs", # Contains CORS tests with fake origin URLs
   "crates/utils/re_analytics/src/event.rs", # Contains test with malformed urls
   "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
   "docs/snippets/INDEX.md", # The snippet index is guaranteed should be correct by design.

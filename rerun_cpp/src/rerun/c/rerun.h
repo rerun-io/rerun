@@ -521,9 +521,16 @@ extern void rr_recording_stream_connect_grpc(
 /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
 ///
 /// `newest_first` controls whether or not to play back the newest data first to clients.
+///
+/// `cors_allow_origins` is an optional array of origin patterns allowed to make cross-origin requests
+/// to the gRPC server. By default only localhost and rerun.io are allowed.
+/// Patterns are matched against the full Origin header (e.g. "https://example.com:8080"),
+/// using glob-style matching where `*` matches any sequence of characters.
+/// Examples: "https://*.example.com", "https://example.com:8080", "https://example.com:*".
 extern void rr_recording_stream_serve_grpc(
     rr_recording_stream stream, rr_string bind_ip, uint16_t port, rr_string server_memory_limit,
-    bool newest_first, rr_error* error
+    bool newest_first, const rr_string* cors_allow_origins, uint32_t num_cors_allow_origins,
+    rr_error* error
 );
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it

@@ -66,6 +66,13 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
+* `--cors-allow-origin <CORS_ALLOW_ORIGIN>`
+> Additional origin patterns allowed to make CORS requests to the gRPC server.
+>
+> Use this when hosting a custom viewer on a different domain. Patterns are matched against the full Origin header (e.g. `https://example.com:8080`), using glob-style matching where `*` matches any sequence of characters. Can be specified multiple times.
+>
+> Examples: `--cors-allow-origin "https://*.example.com"` `--cors-allow-origin "https://example.com:8080"` `--cors-allow-origin "https://example.com:*"`
+
 * `--persist-state <PERSIST_STATE>`
 > Whether the Rerun Viewer should persist the state of the viewer to disk.
 > When persisted, the state will be stored at the following locations:
@@ -812,6 +819,11 @@ In-memory Rerun data server.
 
 * `--bandwidth-limit <BANDWIDTH_LIMIT>`
 > Artificial bandwidth limit for responses (e.g. '10MB' for 10 megabytes per second).
+
+* `--cors-allow-origin <CORS_ALLOW_ORIGIN>`
+> Additional origin patterns allowed to make cross-origin requests to the server (can be specified multiple times).
+>
+> By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed. Patterns are matched against the full `Origin` header value, using glob-style matching where `*` matches any sequence of characters.
 
 * `-V, --version `
 > Print version.

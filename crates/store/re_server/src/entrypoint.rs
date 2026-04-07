@@ -52,6 +52,15 @@ pub struct Args {
     /// Artificial bandwidth limit for responses (e.g. '10MB' for 10 megabytes per second).
     #[clap(long, value_parser = parse_bandwidth_limit)]
     pub bandwidth_limit: Option<u64>,
+
+    /// Additional origin patterns allowed to make cross-origin requests to the server
+    /// (can be specified multiple times).
+    ///
+    /// By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed.
+    /// Patterns are matched against the full `Origin` header value,
+    /// using glob-style matching where `*` matches any sequence of characters.
+    #[clap(long = "cors-allow-origin")]
+    pub cors_allow_origin: Vec<String>,
 }
 
 fn parse_bandwidth_limit(s: &str) -> Result<u64, String> {
@@ -70,6 +79,7 @@ impl Default for Args {
             tables: vec![],
             latency_ms: 0,
             bandwidth_limit: None,
+            cors_allow_origin: Vec::new(),
         }
     }
 }
@@ -118,6 +128,7 @@ impl Args {
             tables,
             latency_ms,
             bandwidth_limit,
+            cors_allow_origin,
         } = self;
 
         let rerun_cloud_server = {
@@ -179,7 +190,8 @@ impl Args {
                 axum::routing::get(async move || re_build_info::build_info!().to_string()),
             )
             .with_artificial_latency(std::time::Duration::from_millis(latency_ms as _))
-            .with_bandwidth_limit(bandwidth_limit);
+            .with_bandwidth_limit(bandwidth_limit)
+            .with_cors_allowed_origins(cors_allow_origin);
 
         let server = server_builder.build();
 

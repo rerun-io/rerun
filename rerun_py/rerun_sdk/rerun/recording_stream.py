@@ -604,6 +604,7 @@ class RecordingStream:
         default_blueprint: BlueprintLike | None = None,
         server_memory_limit: str = "1GiB",
         newest_first: bool = False,
+        cors_allow_origin: list[str] | None = None,
     ) -> str:
         """
         Serve log-data over gRPC.
@@ -636,6 +637,13 @@ class RecordingStream:
         newest_first:
             If `True`, the server will start sending back the newest messages _first_.
             If `False`, the messages will be played back in the order they arrived.
+        cors_allow_origin:
+            Additional origin patterns allowed to make CORS requests to the gRPC server.
+            By default, only localhost and rerun.io are allowed.
+            Patterns are matched against the full `Origin` header (e.g. `"https://example.com:8080"`),
+            using glob-style matching where `*` matches any sequence of characters.
+            Examples: `"https://*.example.com"`, `"https://example.com:8080"`,
+            `"https://example.com:*"`.
 
         """
 
@@ -647,6 +655,7 @@ class RecordingStream:
             server_memory_limit=server_memory_limit,
             recording=self,
             newest_first=newest_first,
+            cors_allow_origin=cors_allow_origin,
         )
 
     def send_blueprint(
