@@ -20,6 +20,7 @@
 mod engine;
 pub mod error;
 mod mcap_loader;
+mod parquet_loader;
 mod py_stream;
 pub(crate) mod rrd_loader;
 pub mod stream;
@@ -32,6 +33,7 @@ use re_chunk::Chunk;
 
 use self::error::ChunkPipelineError;
 use self::mcap_loader::PyMcapLoaderInternal;
+use self::parquet_loader::PyParquetLoaderInternal;
 use self::py_stream::{PyLazyChunkStreamInternal, PyLazyChunkStreamIterator};
 use self::rrd_loader::PyRrdLoaderInternal;
 
@@ -39,6 +41,7 @@ use self::rrd_loader::PyRrdLoaderInternal;
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyRrdLoaderInternal>()?;
     m.add_class::<PyMcapLoaderInternal>()?;
+    m.add_class::<PyParquetLoaderInternal>()?;
     m.add_class::<PyLazyChunkStreamInternal>()?;
     m.add_class::<PyLazyChunkStreamIterator>()?;
     Ok(())

@@ -26,8 +26,10 @@ pub mod loader_mcap;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_external;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod loader_parquet;
 
-pub use self::load_file::load_from_file_contents;
+pub use self::load_file::{load_from_file_contents, prepare_store_info};
 pub use self::loader_archetype::ArchetypeLoader;
 pub use self::loader_directory::DirectoryLoader;
 pub use self::loader_mcap::McapLoader;
@@ -41,6 +43,7 @@ pub use self::{
         iter_external_loaders,
     },
     loader_lerobot::LeRobotDatasetLoader,
+    loader_parquet::ParquetLoader,
 };
 
 pub mod external {
@@ -483,6 +486,8 @@ static BUILTIN_LOADERS: LazyLock<Vec<Arc<dyn DataLoader>>> = LazyLock::new(|| {
         Arc::new(DirectoryLoader),
         Arc::new(McapLoader::default()),
         #[cfg(not(target_arch = "wasm32"))]
+        Arc::new(ParquetLoader::default()),
+        #[cfg(not(target_arch = "wasm32"))]
         Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(ExternalLoader),
@@ -548,6 +553,8 @@ pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 /// 3rd party formats with built-in support.
 pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap", "urdf"];
 
+pub const SUPPORTED_PARQUET_EXTENSIONS: &[&str] = &["parquet"];
+
 // TODO(#4555): Add catch-all builtin `DataLoader` for text files
 pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
 
@@ -561,6 +568,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
         .chain(SUPPORTED_VIDEO_EXTENSIONS)
         .chain(SUPPORTED_MESH_EXTENSIONS)
         .chain(SUPPORTED_POINT_CLOUD_EXTENSIONS)
+        .chain(SUPPORTED_PARQUET_EXTENSIONS)
         .chain(SUPPORTED_TEXT_EXTENSIONS)
         .copied()
 }

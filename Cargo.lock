@@ -8538,6 +8538,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_mcap",
+ "re_parquet",
  "re_quota_channel",
  "re_sdk_types",
  "re_tracing",
@@ -9104,6 +9105,22 @@ dependencies = [
  "cfg-if",
  "parking_lot",
  "re_log",
+]
+
+[[package]]
+name = "re_parquet"
+version = "0.32.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "bytes",
+ "parquet",
+ "re_chunk",
+ "re_log",
+ "re_log_types",
+ "re_sdk_types",
+ "re_tracing",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -10833,6 +10850,7 @@ dependencies = [
  "re_log_types",
  "re_mcap",
  "re_memory",
+ "re_parquet",
  "re_perf_telemetry",
  "re_protos",
  "re_quota_channel",

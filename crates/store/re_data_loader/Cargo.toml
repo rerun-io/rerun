@@ -61,8 +61,9 @@ urdf-rs.workspace = true
 walkdir.workspace = true
 
 [target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]
-parquet = { workspace = true, features = ["arrow", "snap"] }
+parquet = { workspace = true, features = ["arrow", "snap", "zstd"] }
 re_crash_handler.workspace = true
+re_parquet.workspace = true
 
 [dev-dependencies]
 re_chunk_store.workspace = true

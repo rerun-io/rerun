@@ -98,10 +98,7 @@ pub fn load_from_file_contents(
 // ---
 
 /// Prepares an adequate [`re_log_types::StoreInfo`] [`LogMsg`] given the input.
-pub(crate) fn prepare_store_info(
-    store_id: &re_log_types::StoreId,
-    file_source: FileSource,
-) -> LogMsg {
+pub fn prepare_store_info(store_id: &re_log_types::StoreId, file_source: FileSource) -> LogMsg {
     re_tracing::profile_function!();
 
     use re_log_types::SetStoreInfo;

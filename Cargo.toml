@@ -80,6 +80,7 @@ re_log_channel = { path = "crates/store/re_log_channel", version = "=0.32.0-alph
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.32.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.32.0-alpha.1", default-features = false }
 re_mcap = { path = "crates/store/re_mcap", version = "=0.32.0-alpha.1", default-features = false }
+re_parquet = { path = "crates/store/re_parquet", version = "=0.32.0-alpha.1", default-features = false }
 re_protos = { path = "crates/store/re_protos", version = "=0.32.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.32.0-alpha.1", default-features = false }
 re_redap_client = { path = "crates/store/re_redap_client", version = "=0.32.0-alpha.1", default-features = false }

@@ -56,6 +56,9 @@ pub enum ChunkPipelineError {
     #[error("MCAP error: {reason}")]
     Mcap { reason: String },
 
+    #[error("Parquet error: {reason}")]
+    Parquet { reason: String },
+
     #[error("{0}")]
     PythonIterator(PythonException),
 }
