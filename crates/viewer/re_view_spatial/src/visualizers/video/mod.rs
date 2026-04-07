@@ -177,9 +177,7 @@ fn execute_video_stream_like(
 
             let storage_engine = ctx.viewer_ctx.store_context.recording.storage_engine();
             let get_chunk_array = |id| {
-                let chunk = storage_engine
-                    .store()
-                    .use_physical_chunk_or_report_missing(&id);
+                let chunk = storage_engine.store().use_chunk_or_report_missing(&id);
 
                 let Some(chunk) = chunk else {
                     output.set_missing_chunks(); // Make sure we show a view-wide loading indicator

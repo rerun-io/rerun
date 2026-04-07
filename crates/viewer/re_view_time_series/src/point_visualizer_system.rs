@@ -7,7 +7,7 @@ use re_view::{ChunksWithComponent, clamped_or_nothing, range_with_blueprint_reso
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    ViewStateExt as _, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
     VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
 };
 
@@ -63,9 +63,10 @@ impl VisualizerSystem for SeriesPointsSystem {
 
         let output = VisualizerExecutionOutput::default();
 
-        let plot_mem =
-            egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
-        let time_per_pixel = util::determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
+        let time_per_pixel = ctx
+            .view_state
+            .downcast_ref::<crate::view_class::TimeSeriesViewState>()
+            .map_or(1.0, |state| state.time_per_pixel);
 
         let data_results: Vec<_> = query
             .iter_visualizer_instruction_for(Self::identifier())

@@ -27,23 +27,6 @@ pub fn series_supported_datatypes() -> impl IntoIterator<Item = arrow::datatypes
     ]
 }
 
-/// Find the number of time units per physical pixel.
-pub fn determine_time_per_pixel(
-    ctx: &ViewerContext<'_>,
-    plot_mem: Option<&egui_plot::PlotMemory>,
-) -> f64 {
-    let egui_ctx = ctx.egui_ctx();
-
-    // How many ui points per time unit?
-    let points_per_time = plot_mem
-        .as_ref()
-        .map_or(1.0, |mem| mem.transform().dpos_dvalue_x());
-    let pixels_per_time = egui_ctx.pixels_per_point() as f64 * points_per_time;
-
-    // How many time units per physical pixel?
-    1.0 / pixels_per_time.max(f64::EPSILON)
-}
-
 /// The overlap of an entity's query range with the range we have data on the entity for in the store.
 pub fn data_result_time_range(
     ctx: &ViewerContext<'_>,

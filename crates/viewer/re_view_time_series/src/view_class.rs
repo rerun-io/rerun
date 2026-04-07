@@ -67,6 +67,14 @@ pub struct TimeSeriesViewState {
     /// since every color change, every discontinuity, etc. creates a new series, sharing the same egui id.
     pub(crate) num_time_series_last_frame_per_instruction:
         HashMap<VisualizerInstructionId, IntSet<egui::Id>>,
+
+    /// How many time units correspond to a single physical pixel on the plot.
+    ///
+    /// Computed from the plot's transform after each frame and used by visualizers
+    /// on the next frame to determine aggregation levels.
+    /// This avoids relying on `egui_plot::PlotMemory` keyed by view id, which breaks
+    /// when the same blueprint view is shown multiple times.
+    pub(crate) time_per_pixel: f64,
 }
 
 impl Default for TimeSeriesViewState {
@@ -77,6 +85,7 @@ impl Default for TimeSeriesViewState {
             time_offset: 0,
             default_series_name_formats: Default::default(),
             num_time_series_last_frame_per_instruction: Default::default(),
+            time_per_pixel: 1.0,
         }
     }
 }
@@ -664,8 +673,6 @@ impl ViewClass for TimeSeriesView {
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
         let timestamp_format = ctx.app_options().timestamp_format;
 
-        let plot_id = crate::plot_id(query.view_id);
-
         let min_axis_thickness = ui.tokens().small_icon_size.y;
 
         let legend_id = egui::Id::new(query.view_id).with("plot_legend");
@@ -675,8 +682,10 @@ impl ViewClass for TimeSeriesView {
             .is_some_and(|r| r.contains_pointer());
 
         ui.scope(|ui| {
-            // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
+            // Use timeline_name as part of id, so that egui stores different pan/zoom for different timelines.
+            // Derived from `ui.id()` so it's unique per UI location (i.e. works when the same view is shown multiple times).
             let plot_id_src = ("plot", &timeline_name);
+            let plot_id = ui.make_persistent_id(plot_id_src);
 
             ui.style_mut().visuals.extreme_bg_color = background_color.into();
 
@@ -766,6 +775,13 @@ impl ViewClass for TimeSeriesView {
                     &mut state.scalar_range,
                 );
             });
+
+            // Update time_per_pixel from the plot transform for use by visualizers next frame.
+            {
+                let points_per_time = transform.dpos_dvalue_x();
+                let pixels_per_time = ui.ctx().pixels_per_point() as f64 * points_per_time;
+                state.time_per_pixel = 1.0 / pixels_per_time.max(f64::EPSILON);
+            }
 
             // Interact with the plot items (lines, scatters, etc.)
             let hovered_data_result = hovered_plot_item

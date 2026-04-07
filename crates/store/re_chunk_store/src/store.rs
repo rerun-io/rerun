@@ -909,13 +909,11 @@ impl ChunkStore {
 
     /// Get a *physical* chunk based on its ID and track the chunk as either
     /// used or missing, to signal that it should be kept or fetched.
+    ///
+    /// If the given chunk isn't physical `None` is returned and the ID is reported
+    /// missing.
     #[track_caller]
-    pub fn use_physical_chunk_or_report_missing(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
-        debug_assert!(
-            !self.split_on_ingest.contains(id),
-            "Asked for a physical chunk, but this chunk was split on ingestion and was never physical: {id}"
-        );
-
+    pub fn use_chunk_or_report_missing(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
         let chunk = self.physical_chunk(id);
 
         if chunk.is_some() {
@@ -1017,16 +1015,6 @@ impl ChunkStore {
             self.chunks_lineage.contains_key(&chunk_id),
             "A chunk was reported missing, with no known lineage: {chunk_id}"
         );
-        if self.split_on_ingest.contains(&chunk_id) {
-            if cfg!(debug_assertions) {
-                re_log::warn_once!(
-                    "Tried to report a chunk missing that was the source of a split (manual)"
-                );
-            }
-            re_log::debug_once!(
-                "Tried to report a chunk missing that was the source of a split: {chunk_id} (manual)"
-            );
-        }
 
         self.queried_chunk_id_tracker
             .write()

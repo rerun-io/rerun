@@ -29,18 +29,6 @@ pub use view_class::TimeSeriesView;
 pub(crate) const MAX_NUM_SERIES_FOR_REMAPPED_SCALARS: usize = 100;
 pub const MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY: usize = 4;
 
-/// Computes a deterministic, globally unique ID for the plot based on the ID of the view
-/// itself.
-///
-/// Use it to access the plot's state from anywhere, e.g.:
-/// ```ignore
-/// let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.view_id));
-/// ```
-#[inline]
-pub(crate) fn plot_id(view_id: re_viewer_context::ViewId) -> egui::Id {
-    egui::Id::new(("plot", view_id))
-}
-
 // ---
 
 #[derive(Clone, Debug)]
