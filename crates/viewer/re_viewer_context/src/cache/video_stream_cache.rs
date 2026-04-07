@@ -421,14 +421,17 @@ fn handle_deletion(
         .map(|(entry, _)| entry.num_rows as usize)
         .sum::<usize>();
 
+    // How many positions at the start/end of the deque we can remove without
+    // touching another chunk's samples. Everything before `other_min` (or after
+    // `other_max`) belongs exclusively to the deleted chunk.
     let possibly_start_removals = if known_range.first_sample == video_data.samples.min_index() {
-        other_min - known_range.first_sample + 1
+        other_min - known_range.first_sample
     } else {
         0
     };
 
     let possibly_end_removals = if known_range.last_sample + 1 == video_data.samples.next_index() {
-        known_range.last_sample - other_max + 1
+        known_range.last_sample - other_max
     } else {
         0
     };
@@ -981,7 +984,7 @@ fn read_samples_from_known_chunk(
         }
 
         let Some((sample_idx, sample)) = samples_iter.next() else {
-            re_log::error!("Failed to add all video stream samples from chunk");
+            re_log::error_once!("Failed to add all video stream samples from chunk");
             break;
         };
 

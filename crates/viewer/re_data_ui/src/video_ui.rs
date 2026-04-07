@@ -678,9 +678,7 @@ impl VideoUi {
 
                 let storage_engine = ctx.db.storage_engine();
                 let get_chunk_array = |id| {
-                    let chunk = storage_engine
-                        .store()
-                        .use_physical_chunk_or_report_missing(&id)?;
+                    let chunk = storage_engine.store().use_chunk_or_report_missing(&id)?;
 
                     let sample_component = archetypes::VideoStream::descriptor_sample().component;
 

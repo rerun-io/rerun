@@ -185,7 +185,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 let get_chunk_array = |id| {
                     let chunk = storage_engine
                         .store()
-                        .use_physical_chunk_or_report_missing(&id);
+                        .use_chunk_or_report_missing(&id);
 
                     let Some(chunk) = chunk else {
                         output.set_missing_chunks(); // Make sure we show a view-wide loading indicator

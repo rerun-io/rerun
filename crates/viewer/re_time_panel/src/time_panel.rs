@@ -1232,7 +1232,7 @@ impl TimePanel {
                     store.collect_physical_descendents_of(&info.id, &mut descendents_scratch);
 
                     for chunk in descendents_scratch.drain(..) {
-                        store.use_physical_chunk_or_report_missing(&chunk);
+                        store.use_chunk_or_report_missing(&chunk);
                     }
                 }
             }

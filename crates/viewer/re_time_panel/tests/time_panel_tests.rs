@@ -466,7 +466,7 @@ fn run_time_panel_and_save_snapshot(
                         .recording()
                         .storage_engine()
                         .store()
-                        .use_physical_chunk_or_report_missing(chunk_id);
+                        .use_chunk_or_report_missing(chunk_id);
                 }
 
                 if options.expand_all {
