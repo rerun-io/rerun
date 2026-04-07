@@ -9,23 +9,98 @@ async function fetch_viewer_js(base_url?: string): Promise<(() => typeof wasm_bi
   return (await import("./re_viewer")).default;
 }
 
-async function fetch_viewer_wasm(base_url?: string): Promise<Response> {
+async function fetch_viewer_wasm(
+  base_url?: string,
+  on_progress?: (received: number, total: number | null) => void,
+): Promise<Response> {
   //!<INLINE-MARKER-OPEN>
-  if (base_url) {
-    return fetch(new URL("./re_viewer_bg.wasm", base_url))
-  } else {
-    return fetch(new URL("./re_viewer_bg.wasm", import.meta.url));
+  const url = base_url
+    ? new URL("./re_viewer_bg.wasm", base_url)
+    : new URL("./re_viewer_bg.wasm", import.meta.url);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch viewer WASM: ${response.status} ${response.statusText}`,
+    );
   }
+  return wrap_fetch_with_progress(response, on_progress);
   //!<INLINE-MARKER-CLOSE>
 }
 
-async function load(base_url?: string): Promise<typeof wasm_bindgen.WebHandle> {
+/**
+ * Estimates total uncompressed bytes for progress display.
+ * This is a rough estimate — do NOT use for truncation detection.
+ */
+function estimate_total_bytes(response: Response): number | null {
+  // When served with `rerun-final-length`, use that (set by `re_web_viewer_server`).
+  const final_length = response.headers.get("rerun-final-length");
+  if (final_length != null) return parseInt(final_length, 10);
+
+  // When gzip-compressed, try the GCS uncompressed-size header.
+  if (response.headers.get("content-encoding") === "gzip") {
+    const uncompressed = response.headers.get("x-goog-meta-uncompressed-size");
+    if (uncompressed != null) return parseInt(uncompressed, 10);
+
+    // Fall back to content-length * 3 (good empirical approximation for gzip'd wasm).
+    const cl = response.headers.get("content-length");
+    if (cl != null) return parseInt(cl, 10) * 3;
+  }
+
+  // Uncompressed: content-length is the exact size.
+  const cl = response.headers.get("content-length");
+  if (cl != null) return parseInt(cl, 10);
+
+  return null;
+}
+
+/**
+ * Wraps a fetch response to track download progress.
+ */
+function wrap_fetch_with_progress(
+  response: Response,
+  on_progress?: (received: number, total: number | null) => void,
+): Response {
+  const total_bytes = estimate_total_bytes(response);
+
+  if (!response.body) return response;
+
+  let received = 0;
+  const body = response.body;
+  const tracked = new ReadableStream({
+    async start(controller) {
+      const reader = body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        received += value.byteLength;
+        on_progress?.(received, total_bytes);
+        controller.enqueue(value);
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(tracked, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+
+function format_mib(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(1) + " MiB";
+}
+
+async function load(
+  base_url?: string,
+  on_progress?: (received: number, total: number | null) => void,
+): Promise<typeof wasm_bindgen.WebHandle> {
   // instantiate wbg globals+module for every invocation of `load`,
   // but don't load the JS/Wasm source every time
   if (!get_wasm_bindgen || !_wasm_module) {
     [get_wasm_bindgen, _wasm_module] = await Promise.all([
       fetch_viewer_js(base_url),
-      WebAssembly.compileStreaming(fetch_viewer_wasm(base_url)),
+      WebAssembly.compileStreaming(fetch_viewer_wasm(base_url, on_progress)),
     ]);
   }
   let bindgen = get_wasm_bindgen();
@@ -371,22 +446,36 @@ export class WebViewer {
     this.#canvas.style.height = options.height ?? "360px";
     parent.append(this.#canvas);
 
-    // Show loading spinner
+    // Show loading progress bar
     this.#loader = document.createElement("div");
-    this.#loader.id = "rerun-loader";
     this.#loader.innerHTML = `
-      <style>
-        @keyframes rerun-spin { to { transform: rotate(360deg); } }
-      </style>
       <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background-color: #1c1c1c; font-family: sans-serif; color: white;">
-        <div style="width: 40px; height: 40px; border: 3px solid #444; border-top-color: white; border-radius: 50%; animation: rerun-spin 1s linear infinite;"></div>
-        <div style="margin-top: 16px;">Loading Rerun…</div>
+        <div style="margin-bottom: 16px;">Loading Rerun\u2026</div>
+        <div style="width: 200px;">
+          <div style="background: #333; border-radius: 4px; height: 6px; overflow: hidden;">
+            <div class="rerun-progress-bar" style="background: white; height: 100%; width: 0%; transition: width 0.2s;"></div>
+          </div>
+          <div class="rerun-progress-text" style="margin-top: 6px; font-size: 12px; color: #999;"></div>
+        </div>
       </div>
     `;
     this.#loader.style.position = "absolute";
     this.#loader.style.inset = "0";
     parent.style.position = "relative";
     parent.append(this.#loader);
+
+    const progress_bar = this.#loader.querySelector(".rerun-progress-bar") as HTMLElement;
+    const progress_text = this.#loader.querySelector(".rerun-progress-text") as HTMLElement;
+
+    const on_progress = (received: number, total: number | null) => {
+      if (total != null && total > 0) {
+        const pct = Math.min((received / total) * 100, 100);
+        progress_bar.style.width = pct.toFixed(1) + "%";
+        progress_text.textContent = `${Math.round(pct)}%`;
+      } else {
+        progress_text.textContent = format_mib(received);
+      }
+    };
 
     // This yield appears to be necessary to ensure that the canvas is attached to the DOM
     // and visible. Without it we get occasionally get a panic about a failure to find a canvas
@@ -400,7 +489,7 @@ export class WebViewer {
 
     let WebHandle_class: typeof wasm_bindgen.WebHandle;
     try {
-      WebHandle_class = await load(base_url);
+      WebHandle_class = await load(base_url, on_progress);
     } catch (e) {
       this.#clearLoader();
       this.#fail("Failed to load rerun", String(e));
@@ -686,22 +775,22 @@ export class WebViewer {
       const parent = this.canvas.parentElement;
       parent.innerHTML = `
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: white; font-family: sans-serif; background-color: #1c1c1c;">
-          <h1 id="fail-message"></h1>
-          <pre id="fail-error" style="text-align: left;"></pre>
-          <button id="fail-clear-cache">Clear caches and reload</button>
+          <h1 class="rerun-fail-message"></h1>
+          <pre class="rerun-fail-error" style="text-align: left; white-space: pre-wrap; word-break: break-word; max-width: 90vw;"></pre>
+          <button class="rerun-fail-clear-cache">Clear caches and reload</button>
         </div>
       `;
 
-      document.getElementById("fail-message")!.textContent = message;
+      parent.querySelector(".rerun-fail-message")!.textContent = message;
 
-      const errorEl = document.getElementById("fail-error")!;
+      const errorEl = parent.querySelector(".rerun-fail-error")!;
       if (error_message) {
         errorEl.textContent = error_message;
       } else {
         errorEl.remove();
       }
 
-      document.getElementById("fail-clear-cache")!.addEventListener("click", async () => {
+      parent.querySelector(".rerun-fail-clear-cache")!.addEventListener("click", async () => {
         if ("caches" in window) {
           const keys = await caches.keys();
           await Promise.all(keys.map((key) => caches.delete(key)));
