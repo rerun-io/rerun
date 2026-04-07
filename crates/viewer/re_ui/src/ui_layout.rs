@@ -153,7 +153,17 @@ impl UiLayout {
     }
 
     fn data_label_impl(self, ui: &mut egui::Ui, mut layout_job: LayoutJob) -> egui::Response {
-        let wrap_width = ui.available_width();
+        let mut wrap_width = ui.available_width();
+
+        if layout_job.text.contains("://") {
+            // This is a link and will be shown with re_hyperlink, which adds an icon to the
+            // left. We need to consider the icon and space so we can wrap correctly (otherwise
+            // resizing of table columns breaks). Usually this would be handled by atoms, but since
+            // we calculate the galley early here, we need this workaround.
+            wrap_width -= ui.spacing().icon_spacing;
+            wrap_width -= ui.tokens().small_icon_size.x;
+        }
+
         layout_job.wrap = TextWrapping::wrap_at_width(wrap_width);
 
         match self {

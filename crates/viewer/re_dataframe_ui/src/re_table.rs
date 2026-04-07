@@ -141,8 +141,8 @@ impl egui_table::TableDelegate for ReTable<'_> {
         let table_style = self.table_style;
 
         header_ui(ui, table_style, cell.group_index != 0, |ui| {
-            ui.set_truncate_style();
             ui.set_style(self.original_style.clone());
+            ui.set_truncate_style();
 
             if cell.group_index == 0 {
                 let hovered = ui.rect_contains_pointer(

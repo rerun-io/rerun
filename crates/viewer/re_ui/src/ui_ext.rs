@@ -1080,6 +1080,8 @@ pub trait UiExt {
             let style = ui.style_mut();
             style.visuals.button_frame = false;
 
+            // At the top of [`Ui::data_label_impl`] we make assumptions on the spacing and
+            // icon size of re_hyperlink, if we adjust this we need to check if the workaround still works
             let response = ui
                 .add(crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text))
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
