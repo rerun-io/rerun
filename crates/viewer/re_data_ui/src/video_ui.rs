@@ -815,9 +815,7 @@ impl VideoUi {
 
                 let storage_engine = ctx.db.storage_engine();
                 let get_chunk_array = |id| {
-                    let chunk = storage_engine
-                        .store()
-                        .use_physical_chunk_or_report_missing(&id)?;
+                    let chunk = storage_engine.store().use_chunk_or_report_missing(&id)?;
 
                     let (_, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
                         chunk.raw_component_array(*sample_component)?,

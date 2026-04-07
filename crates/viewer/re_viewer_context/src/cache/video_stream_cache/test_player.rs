@@ -1463,3 +1463,39 @@ fn cache_with_manifest_skips_conflicting_chunk_keyframe() {
     player.play_store(1.0..7.0, 1.0, &store).unwrap();
     player.expect_decoded_samples(0..6);
 }
+
+/// A chunk loaded second has timestamps that interleave with an already-loaded chunk,
+/// triggering a sample reorder. After GC removes the interleaving chunk, the remaining
+/// chunk's samples must all be decodable from its own keyframe.
+#[test]
+fn cache_with_gc_after_interleaved_arrival() {
+    let mut cache = VideoStreamCache::default();
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    let codec = Arc::new(codec_chunk());
+    let chunk_y = Arc::new(video_chunk(1.0, 1.0, 1, 4));
+    // Starts before Y but loaded second, triggering out-of-order handling.
+    let chunk_x = Arc::new(video_chunk(0.5, 1.0, 2, 1));
+
+    load_chunks(&mut store, &mut cache, std::slice::from_ref(&codec));
+    load_chunks(&mut store, &mut cache, std::slice::from_ref(&chunk_y));
+
+    // Create a live entry before chunk_x arrives, so handle_deletion runs on it later.
+    let _ = playable_stream(&mut cache, &store);
+
+    // Loading X after Y triggers handle_out_of_order_chunk, interleaving the deques.
+    load_chunks(&mut store, &mut cache, std::slice::from_ref(&chunk_x));
+
+    // Evict X and the codec while keeping Y.
+    unload_chunks(&store, &mut cache, 2.0..5.0);
+
+    // Reload the codec.
+    load_chunks(&mut store, &mut cache, std::slice::from_ref(&codec));
+
+    // The entry was either correctly rebuilt (correct path) or corrupted (buggy path).
+    let video_stream = playable_stream(&mut cache, &store);
+    let mut player = TestVideoPlayer::from_stream(video_stream);
+
+    player.play_store(2.0..5.0, 0.25, &store).unwrap();
+    player.expect_decoded_samples(0..4);
+}
