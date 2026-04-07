@@ -1295,7 +1295,12 @@ impl App {
                 }
             }
             SystemCommand::Logout => {
-                match re_auth::oauth::clear_credentials() {
+                let signed_out_url = self
+                    .startup_options
+                    .login
+                    .as_ref()
+                    .map(|l| l.signed_out_url.as_str());
+                match re_auth::oauth::clear_credentials(signed_out_url) {
                     Ok(Some(outcome)) => {
                         // Open the WorkOS logout URL to also end the browser session.
                         // This opens in a new tab/window so the viewer state is preserved.
@@ -2426,6 +2431,7 @@ impl App {
                             &self.connection_registry,
                             &self.async_runtime,
                             &self.egui_ctx,
+                            self.startup_options.login_enabled(),
                         );
                     }
 

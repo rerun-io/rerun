@@ -69,10 +69,18 @@ pub struct LogoutOutcome {
 /// On native, this also starts a local callback server so the browser has
 /// somewhere to redirect after the `WorkOS` session is cleared.
 ///
+/// On web, `signed_out_url` is used as the post-logout redirect. If `None`,
+/// no `return_to` is included in the logout URL.
+///
 /// The logout URL should be opened in the user's browser to also end the
 /// `WorkOS` session. If no credentials were stored (or the session ID could
 /// not be determined), `Ok(None)` is returned.
-pub fn clear_credentials() -> Result<Option<LogoutOutcome>, CredentialsClearError> {
+/// `signed_out_url` is only used on web — on native, it is ignored.
+pub fn clear_credentials(
+    signed_out_url: Option<&str>,
+) -> Result<Option<LogoutOutcome>, CredentialsClearError> {
+    let _ = &signed_out_url; // only used on web
+
     // Load credentials before clearing so we can extract the session ID.
     let outcome = storage::load().ok().flatten().map(|creds| {
         #[cfg(not(target_arch = "wasm32"))]
@@ -96,12 +104,8 @@ pub fn clear_credentials() -> Result<Option<LogoutOutcome>, CredentialsClearErro
 
         #[cfg(target_arch = "wasm32")]
         {
-            // On web, redirect to /signed-out on the current origin after logout.
-            let return_to = web_sys::window()
-                .and_then(|w| w.location().origin().ok())
-                .map(|origin| format!("{origin}/signed-out"));
             LogoutOutcome {
-                logout_url: api::logout_url(&creds.claims.sid, return_to.as_deref()),
+                logout_url: api::logout_url(&creds.claims.sid, signed_out_url),
             }
         }
     });

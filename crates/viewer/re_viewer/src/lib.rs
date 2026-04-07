@@ -71,7 +71,7 @@ pub use re_viewer_context::{
     AsyncRuntimeHandle, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
     command_channel,
 };
-pub use startup_options::StartupOptions;
+pub use startup_options::{LoginOptions, StartupOptions};
 pub(crate) use ui::memory_panel;
 
 pub mod external {

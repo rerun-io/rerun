@@ -354,7 +354,7 @@ fn error_ui(
                                     )
                                     .ok();
                                 }
-                            } else {
+                            } else if viewer_ctx.app_ctx.login_enabled {
                                 // User is not logged in — start login flow
                                 // Opening the popup synchronously in the click handler is
                                 // required for Safari, which blocks popups not initiated
@@ -363,7 +363,10 @@ fn error_ui(
                                     .add(re_ui::ReButton::new("Log in").primary().small())
                                     .clicked()
                                 {
-                                    match LoginFlow::open_and_start(ui.ctx()) {
+                                    match LoginFlow::open_and_start(
+                                        ui.ctx(),
+                                        viewer_ctx.app_ctx.login_signed_in_url,
+                                    ) {
                                         Ok(flow) => {
                                             *inline_login_flow =
                                                 Some((origin.clone(), Box::new(flow)));
@@ -649,6 +652,7 @@ impl RedapServers {
         connection_registry: &ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
+        login_enabled: bool,
     ) {
         self.pending_servers.drain(..).for_each(|origin| {
             send_crossbeam(
@@ -662,7 +666,13 @@ impl RedapServers {
             .ok();
         });
         while let Ok(command) = self.command_receiver.try_recv() {
-            self.handle_command(connection_registry, runtime, egui_ctx, command);
+            self.handle_command(
+                connection_registry,
+                runtime,
+                egui_ctx,
+                command,
+                login_enabled,
+            );
         }
 
         // Poll inline login flow
@@ -693,16 +703,20 @@ impl RedapServers {
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         command: Command,
+        login_enabled: bool,
     ) {
         match command {
             Command::OpenAddServerModal => {
                 self.server_modal_ui
-                    .open(ServerModalMode::Add, connection_registry);
+                    .open(ServerModalMode::Add, connection_registry, login_enabled);
             }
 
             Command::OpenEditServerModal(origin) => {
-                self.server_modal_ui
-                    .open(ServerModalMode::Edit(origin), connection_registry);
+                self.server_modal_ui.open(
+                    ServerModalMode::Edit(origin),
+                    connection_registry,
+                    login_enabled,
+                );
             }
 
             Command::AddServer {

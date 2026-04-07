@@ -669,6 +669,7 @@ pub struct AppOptions {
     // height: Option<String>,
     fallback_token: Option<String>,
     theme: Option<String>,
+    login: Option<crate::LoginOptions>,
 
     // Hidden `WebViewerOptions`
     // ------------
@@ -737,6 +738,7 @@ fn create_app(
 
         fallback_token,
         theme,
+        login,
     } = app_options;
 
     if let Some(fallback_token) = fallback_token {
@@ -785,6 +787,7 @@ fn create_app(
 
         enable_history,
         viewer_base_url,
+        login,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 

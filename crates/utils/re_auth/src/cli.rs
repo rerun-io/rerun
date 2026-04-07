@@ -113,7 +113,7 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
 
 /// Log out of Rerun by clearing stored credentials.
 pub fn logout(options: &LogoutOptions) -> Result<(), Error> {
-    match crate::oauth::clear_credentials() {
+    match crate::oauth::clear_credentials(None) {
         Ok(Some(outcome)) => {
             if options.open_browser {
                 println!("Opening browser to end your session…");
