@@ -129,6 +129,13 @@ export type PanelState = "hidden" | "collapsed" | "expanded";
 export type Backend = "webgpu" | "webgl";
 export type VideoDecoder = "auto" | "prefer_software" | "prefer_hardware";
 
+export interface LoginOptions {
+  /** URL to redirect to after successful OAuth login (e.g. "/signed-in" or "https://example.com/signed-in"). */
+  signed_in_url: string;
+  /** URL to redirect to after logout (e.g. "/signed-out" or "https://example.com/signed-out"). */
+  signed_out_url: string;
+}
+
 // NOTE: When changing these options, consider how it affects the `web-viewer-react` package:
 //       - Should this option be exposed?
 //       - Should changing this option result in the viewer being restarted?
@@ -183,6 +190,24 @@ export interface WebViewerOptions {
    * If not set, the viewer uses the previously persisted theme preference or defaults to "system".
    */
   theme?: "dark" | "light" | "system";
+
+  /**
+   * Enable OAuth login in the viewer.
+   *
+   * When set, the viewer shows login UI and uses the provided URLs for OAuth redirects.
+   *
+   * To use this:
+   * 1. Host the `signed-in.html` and `signed-out.html` pages alongside your viewer.
+   *    Templates can be found at:
+   *    - https://github.com/rerun-io/rerun/blob/main/crates/viewer/re_web_viewer_server/web_viewer/signed-in.html
+   *    - https://github.com/rerun-io/rerun/blob/main/crates/viewer/re_web_viewer_server/web_viewer/signed-out.html
+   * 2. Set the URLs to those pages here.
+   * 3. Contact your Rerun representative to have the redirect URLs
+   *    and origin whitelisted in the OAuth configuration.
+   *
+   * When not set (default), login UI is hidden. Token-based auth still works.
+   */
+  login?: LoginOptions;
 }
 
 // `AppOptions` and `WebViewerOptions` must be compatible
@@ -382,6 +407,11 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Resolve a potentially relative URL against the current origin. */
+function resolveAbsoluteUrl(url: string): string {
+  return new URL(url, window.location.href).toString();
+}
+
 /**
  * Rerun Web Viewer
  *
@@ -521,8 +551,16 @@ export class WebViewer {
       );
     }
 
+    const login = options.login
+      ? {
+          signed_in_url: resolveAbsoluteUrl(options.login.signed_in_url),
+          signed_out_url: resolveAbsoluteUrl(options.login.signed_out_url),
+        }
+      : undefined;
+
     this.#handle = new WebHandle_class({
       ...options,
+      login,
       fullscreen,
       on_viewer_event,
     });

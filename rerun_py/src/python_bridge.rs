@@ -2451,7 +2451,7 @@ fn get_credentials(py: Python<'_>) -> PyResult<Option<PyCredentials>> {
 /// str | None
 ///     The logout URL to end the session, or `None` if already logged out.
 fn logout() -> PyResult<Option<String>> {
-    match re_auth::oauth::clear_credentials() {
+    match re_auth::oauth::clear_credentials(None) {
         Ok(Some(outcome)) => Ok(Some(outcome.logout_url)),
         Ok(None) => Ok(None),
         Err(err) => Err(PyRuntimeError::new_err(err.to_string())),

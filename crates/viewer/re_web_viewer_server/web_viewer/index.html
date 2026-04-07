@@ -352,6 +352,10 @@
           notebook: get_query_bool(query, "notebook", false),
           persist: get_query_bool(query, "persist", true),
           fallback_token: query.get("token"),
+          login: {
+            signed_in_url: location.origin + "/signed-in",
+            signed_out_url: location.origin + "/signed-out",
+          },
         };
 
         let handle = new wasm_bindgen.WebHandle(options);

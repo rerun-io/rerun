@@ -450,6 +450,11 @@ impl AppState {
                         active_time_ctrl: Some(time_ctrl),
                         connected_receivers: rx_log,
                         auth_context: auth_state.as_ref(),
+                        login_enabled: startup_options.login_enabled(),
+                        login_signed_in_url: startup_options
+                            .login
+                            .as_ref()
+                            .map(|l| l.signed_in_url.as_str()),
                     },
                     connected_receivers: rx_log,
                     store_context,

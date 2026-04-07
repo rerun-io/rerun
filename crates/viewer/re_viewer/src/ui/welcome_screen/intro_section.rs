@@ -38,8 +38,8 @@ pub enum IntroItem {
 }
 
 impl IntroItem {
-    fn items() -> Vec<Self> {
-        vec![
+    fn items(login_enabled: bool) -> Vec<Self> {
+        let mut items = vec![
             Self::DocItem {
                 title: "Send data in",
                 url: "https://rerun.io/docs/getting-started/data-in",
@@ -55,8 +55,11 @@ impl IntroItem {
                 url: "https://rerun.io/docs/getting-started/data-out",
                 body: "Perform analysis and send back the results to the original recording.",
             },
-            Self::CloudLoginItem,
-        ]
+        ];
+        if login_enabled {
+            items.push(Self::CloudLoginItem);
+        }
+        items
     }
 
     fn frame(&self, ui: &Ui) -> Frame {
@@ -199,7 +202,7 @@ impl IntroItem {
 }
 
 pub fn intro_section(ui: &mut egui::Ui, ctx: &AppContext<'_>, cloud_state: &CloudState) {
-    let items = IntroItem::items();
+    let items = IntroItem::items(ctx.login_enabled);
 
     ui.add_space(32.0);
 

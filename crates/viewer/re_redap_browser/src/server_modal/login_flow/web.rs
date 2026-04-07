@@ -6,7 +6,6 @@ use re_auth::oauth::api::{AuthenticateWithCode, Pkce, authorization_url, send_as
 use re_log::ResultExt as _;
 use re_ui::UiExt as _;
 use re_viewer_context::AsyncRuntimeHandle;
-use url::Url;
 use uuid::Uuid;
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::prelude::Closure;
@@ -32,6 +31,7 @@ pub struct State {
     child_window: Option<web_sys::Window>,
     on_storage_event: Option<Closure<StorageEventCallback>>,
 
+    signed_in_url: String,
     pkce: Rc<Pkce>,
     state: String,
 
@@ -73,24 +73,7 @@ impl State {
 
         let parent_window = web_sys::window().expect("no window available");
 
-        // Open popup window:
-        //   <origin>/signed-in
-        let redirect_uri = {
-            let location = parent_window.location();
-            let origin = location.origin().map_err(js_value_to_string)?;
-            let mut url = Url::parse(&origin).map_err(|err| err.to_string())?;
-            if url.host_str() == Some("localhost") {
-                // For `localhost`, we have to map it to `127.0.0.1`, otherwise
-                // it's not a valid redirect URI.
-                let port = url.port();
-                url.set_host(Some("127.0.0.1")).ok();
-                url.set_port(port).ok();
-            }
-
-            url.set_path("signed-in");
-            url.to_string()
-        };
-        let login_url = authorization_url(&redirect_uri, &self.state, &self.pkce);
+        let login_url = authorization_url(&self.signed_in_url, &self.state, &self.pkce);
 
         let Some(child_window) = parent_window
             .open_with_url_and_target_and_features(&login_url, "auth", "width=480,height=640")
@@ -136,7 +119,7 @@ impl State {
     }
 
     #[expect(clippy::unnecessary_wraps)]
-    pub fn open(egui_ctx: &egui::Context) -> Result<Self, String> {
+    pub fn open(egui_ctx: &egui::Context, signed_in_url: String) -> Result<Self, String> {
         let parent_window = web_sys::window().expect("no window available");
         let pkce = Rc::new(Pkce::new());
         let state = Uuid::new_v4().to_string();
@@ -171,6 +154,7 @@ impl State {
         Ok(Self {
             child_window: None,
             on_storage_event: Some(on_storage_event),
+            signed_in_url,
             pkce,
             state,
             result,

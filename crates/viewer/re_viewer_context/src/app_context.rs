@@ -86,6 +86,14 @@ pub struct AppContext<'a> {
 
     /// Are we logged in to rerun cloud?
     pub auth_context: Option<&'a AuthContext>,
+
+    /// Whether `OAuth` login is enabled in this viewer instance.
+    pub login_enabled: bool,
+
+    /// The signed-in redirect URL for `OAuth` login.
+    ///
+    /// Only used on web. On native, this is always `None`.
+    pub login_signed_in_url: Option<&'a str>,
 }
 
 pub struct AuthContext {

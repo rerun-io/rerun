@@ -685,6 +685,8 @@ impl TestContext {
                 active_time_ctrl: Some(&self.time_ctrl.read()),
                 connected_receivers: &Default::default(),
                 auth_context: None,
+                login_enabled: false,
+                login_signed_in_url: None,
             },
             connected_receivers: &Default::default(),
             store_context: &store_context,
