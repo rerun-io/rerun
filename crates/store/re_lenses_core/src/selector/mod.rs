@@ -41,8 +41,7 @@
 //! # Anonymous functions
 //!
 //! Using [`Selector::pipe`] it is possible to chain anonymous functions to selectors. The result will be a
-//! [`Selector<DynExpr>`], which can be executed just like a regular selector. The difference is that the
-//! dynamic variant does not implement [`std::fmt::Display`], i.e. it is not serializable.
+//! [`Selector<DynExpr>`], which can be executed just like a regular selector.
 
 mod dyn_expr;
 mod eval;
@@ -134,7 +133,7 @@ impl<
 > IntoDynExpr for F
 {
     fn into_dyn_expr(self) -> DynExpr {
-        DynExpr::Function(Box::new(self))
+        DynExpr::Function(std::sync::Arc::new(self))
     }
 }
 
@@ -168,6 +167,8 @@ impl<E: eval::Eval + Into<DynExpr>> Selector<E> {
     /// Performs implicit iteration over the inner list array, and reconstructs the array at the end.
     ///
     /// `map(.poses[].x)` is the actual query, we only require writing the `.poses[].x` portion.
+    ///
+    /// The output is guaranteed to have the same number of rows as the input.
     ///
     /// Returns `None` if the expression's error was suppressed (e.g. `.field?`).
     ///

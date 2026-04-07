@@ -284,6 +284,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // chunk stream
     crate::chunk_stream::register(m)?;
 
+    // selector
+    crate::selector::register(m)?;
+
     Ok(())
 }
 

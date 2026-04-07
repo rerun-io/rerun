@@ -6,6 +6,7 @@ use super::{Selector, parser::Expr};
 ///
 /// Unlike `Expr`, a `DynExpr` cannot implement [`Display`](std::fmt::Display) because
 /// anonymous functions are not serializable.
+#[derive(Clone)]
 pub enum DynExpr {
     /// Delegate to a static `Expr`.
     Expr(Expr),
@@ -40,6 +41,24 @@ impl std::fmt::Debug for DynExpr {
                 .finish(),
             Self::Function(_) => f.debug_tuple("Function").field(&"<dyn>").finish(),
         }
+    }
+}
+
+impl Selector<DynExpr> {
+    /// Returns a human-readable string representation of this selector.
+    ///
+    /// Anonymous functions are not serializable, so they are represented as `<function>`.
+    pub fn to_string_lossy(&self) -> String {
+        fn fmt(expr: &DynExpr) -> String {
+            match expr {
+                DynExpr::Expr(expr) => format!("{expr}"),
+                DynExpr::Pipe { left, right } => {
+                    format!("{} | {}", fmt(left), fmt(right))
+                }
+                DynExpr::Function(_) => "<function>".to_owned(),
+            }
+        }
+        fmt(&self.expr)
     }
 }
 

@@ -28,6 +28,7 @@ mod chunk;
 mod chunk_stream;
 mod python_bridge;
 mod recording;
+mod selector;
 mod server;
 mod urdf;
 mod utils;

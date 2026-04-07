@@ -10827,6 +10827,7 @@ dependencies = [
  "re_datafusion",
  "re_grpc_client",
  "re_grpc_server",
+ "re_lenses_core",
  "re_log",
  "re_log_encoding",
  "re_log_types",
