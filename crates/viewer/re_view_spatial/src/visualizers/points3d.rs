@@ -38,6 +38,7 @@ impl Default for Points3DVisualizer {
 }
 
 struct Points3DComponentData<'a> {
+    index: (re_log_types::TimeInt, re_chunk_store::RowId),
     query_result_hash: Hash64,
 
     // Point of views
@@ -266,7 +267,7 @@ impl Points3DVisualizer {
             }
 
             let cache_key = Points3DCacheKey {
-                query_result_hash: data.query_result_hash,
+                query_result_hash: Hash64::hash((data.query_result_hash, data.index)),
                 annotation_row_id: ent_context.annotations.row_id(),
             };
 
@@ -444,7 +445,7 @@ impl VisualizerSystem for Points3DVisualizer {
                 )
                 .map(
                     |(
-                        _index,
+                        index,
                         positions,
                         colors,
                         radii,
@@ -454,6 +455,7 @@ impl VisualizerSystem for Points3DVisualizer {
                         show_labels,
                     )| {
                         Points3DComponentData {
+                            index,
                             query_result_hash,
                             positions: bytemuck::cast_slice(positions),
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
