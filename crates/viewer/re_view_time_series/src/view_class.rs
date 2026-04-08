@@ -6,7 +6,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
-use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
+use re_log_types::{AbsoluteTimeRange, EntityPath};
 use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::blueprint::components::{
@@ -660,16 +660,6 @@ impl ViewClass for TimeSeriesView {
             )?,
         );
 
-        // TODO(jleibs): If this is allowed to be different, need to track it per line.
-        let aggregation_factor = all_plot_series
-            .first()
-            .map_or(1.0, |line| line.aggregation_factor);
-
-        let aggregator = all_plot_series
-            .first()
-            .map(|line| line.aggregator)
-            .unwrap_or_default();
-
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
         let timestamp_format = ctx.app_options().timestamp_format;
 
@@ -678,7 +668,7 @@ impl ViewClass for TimeSeriesView {
         let legend_id = egui::Id::new(query.view_id).with("plot_legend");
         let legend_hovered = ui
             .ctx()
-            .read_response(re_ui::plot_legend::legend_frame_id(legend_id))
+            .read_response(re_plot::legend::legend_frame_id(legend_id))
             .is_some_and(|r| r.contains_pointer());
 
         ui.scope(|ui| {
@@ -711,24 +701,9 @@ impl ViewClass for TimeSeriesView {
                         .min_thickness(min_axis_thickness)
                         .formatter(move |mark, _| format_y_axis(mark)),
                 ])
-                .label_formatter(move |name, value| {
-                    let name = if name.is_empty() { "y" } else { name };
-                    let label = time_type.format(
-                        TimeInt::new_temporal((value.x as i64).saturating_add(time_offset)),
-                        timestamp_format,
-                    );
-
-                    let y_value = re_format::format_f64(value.y);
-
-                    if aggregator == AggregationPolicy::Off || aggregation_factor <= 1.0 {
-                        format!("{timeline_name}: {label}\n{name}: {y_value}")
-                    } else {
-                        format!(
-                            "{timeline_name}: {label}\n{name}: {y_value}\n\
-                        {aggregator} aggregation over approx. {aggregation_factor:.1} time points",
-                        )
-                    }
-                });
+                // Suppress egui_plot's built-in tooltip so we can render our own.
+                .show_x(false)
+                .show_y(false);
 
             // Sharing the same cursor is always nice:
             plot = plot.link_cursor(timeline.name().as_str(), [true; 2]);
@@ -749,7 +724,7 @@ impl ViewClass for TimeSeriesView {
                 inner: (),
                 response,
                 transform,
-                hovered_plot_item,
+                hovered_plot_item: _,
             } = plot.show(ui, |plot_ui| {
                 if plot_ui.response().secondary_clicked()
                     && let Some(pointer) = plot_ui.pointer_coordinate()
@@ -783,12 +758,22 @@ impl ViewClass for TimeSeriesView {
                 state.time_per_pixel = 1.0 / pixels_per_time.max(f64::EPSILON);
             }
 
-            // Interact with the plot items (lines, scatters, etc.)
-            let hovered_data_result = hovered_plot_item
-                .and_then(|hovered_plot_item| {
-                    plot_item_id_to_data_result_address.get(&hovered_plot_item)
+            // Custom hover detection: find nearest actual data point and show tooltip.
+            let hovered_data_result = (!legend_hovered)
+                .then(|| {
+                    find_nearest_data_point_and_show_tooltip(
+                        ui,
+                        &response,
+                        &transform,
+                        &all_plot_series,
+                        time_offset,
+                        time_type,
+                        timestamp_format,
+                        &plot_item_id_to_data_result_address,
+                    )
                 })
-                .map(|address| re_viewer_context::Item::DataResult(address.clone()));
+                .flatten();
+
             if let Some(hovered) = hovered_data_result.clone().or_else(|| {
                 if response.hovered() {
                     Some(re_viewer_context::Item::View(query.view_id))
@@ -894,7 +879,7 @@ impl ViewClass for TimeSeriesView {
                 }
 
                 let legend_widget =
-                    re_ui::plot_legend::LegendWidget::new(re_ui::plot_legend::LegendConfig {
+                    re_plot::legend::LegendWidget::new(re_plot::legend::LegendConfig {
                         position: legend_corner.into(),
                         id: legend_id,
                     });
@@ -912,7 +897,7 @@ impl ViewClass for TimeSeriesView {
                     all_plot_series
                         .iter()
                         .filter(|s| !matches!(s.kind, PlotSeriesKind::Clear))
-                        .map(|s| re_ui::plot_legend::LegendEntry {
+                        .map(|s| re_plot::legend::LegendEntry {
                             id: s.id(),
                             label: s.label.clone(),
                             color: s.color,
@@ -1159,6 +1144,125 @@ fn all_scalar_mappings(
                 )
             }),
     )
+}
+
+/// Find the nearest actual data point to the cursor and show a custom tooltip.
+///
+/// Returns the hovered data result item for selection/highlighting, or `None` if
+/// no data point is close enough.
+#[expect(clippy::too_many_arguments)]
+fn find_nearest_data_point_and_show_tooltip(
+    ui: &egui::Ui,
+    response: &egui::Response,
+    transform: &egui_plot::PlotTransform,
+    all_plot_series: &[&crate::PlotSeries],
+    time_offset: i64,
+    time_type: TimeType,
+    timestamp_format: re_log_types::TimestampFormat,
+    plot_item_id_to_data_result_address: &egui::ahash::HashMap<
+        egui::Id,
+        DataResultInteractionAddress,
+    >,
+) -> Option<re_viewer_context::Item> {
+    let hover_pos = match response.hover_pos() {
+        Some(pos) if response.rect.contains(pos) => pos,
+        _ => return None,
+    };
+
+    // Use a larger radius than the default egui interact_radius (5px) for better UX.
+    // This makes it easier to hover data points without needing pixel-perfect precision.
+    const TOOLTIP_INTERACT_RADIUS: f32 = 16.0;
+    let interact_radius_sq = TOOLTIP_INTERACT_RADIUS.powi(2);
+
+    // Find the closest actual data point across all visible series.
+    let hover_value = transform.value_from_position(hover_pos);
+    let hover_time = (hover_value.x as i64).saturating_add(time_offset);
+
+    let mut closest: Option<(f32, usize)> = None; // (dist_sq, series_index)
+    let mut closest_time: i64 = 0;
+    let mut closest_value: f64 = 0.0;
+
+    for (series_idx, series) in all_plot_series.iter().enumerate() {
+        if !series.visible || series.points.is_empty() {
+            continue;
+        }
+
+        let idx = series
+            .points
+            .binary_search_by_key(&hover_time, |&(t, _)| t)
+            .unwrap_or_else(|i| i);
+
+        // Check the point at `idx` and the one before it (the two nearest candidates).
+        let candidates = [idx.saturating_sub(1), idx.min(series.points.len() - 1)];
+        for &candidate_idx in &candidates {
+            if candidate_idx >= series.points.len() {
+                continue;
+            }
+            let (t, v) = series.points[candidate_idx];
+            let plot_x = (t.saturating_sub(time_offset)) as f64;
+            let screen_pos = transform.position_from_point(&PlotPoint::new(plot_x, v));
+            let dist_sq = hover_pos.distance_sq(screen_pos);
+
+            if dist_sq <= interact_radius_sq && closest.is_none_or(|(best, _)| dist_sq < best) {
+                closest = Some((dist_sq, series_idx));
+                closest_time = t;
+                closest_value = v;
+            }
+        }
+    }
+
+    let (_, series_idx) = closest?;
+    let series = all_plot_series[series_idx];
+
+    // Draw a small dot at the hovered data point (always shown, no delay).
+    let plot_x = (closest_time.saturating_sub(time_offset)) as f64;
+    let point_screen_pos = transform.position_from_point(&PlotPoint::new(plot_x, closest_value));
+    let painter = ui.painter();
+    let series_color = series.color;
+    painter.circle_filled(point_screen_pos, 3.0, series_color);
+
+    // Strip the date to keep the tooltip compact — most recordings don't span midnight.
+    // Formatting still auto-trims trailing zeros (ms → 3 digits, µs → 6, etc.).
+    let time_label = {
+        let tooltip_format = if time_type == TimeType::TimestampNs {
+            timestamp_format.with_date_visibility(re_log_types::DateVisibility::HideDate)
+        } else {
+            timestamp_format
+        };
+        time_type.format(
+            re_log_types::TimeInt::new_temporal(closest_time),
+            tooltip_format,
+        )
+    };
+    let y_value_text = re_format::format_f64(closest_value);
+    let series_name = if series.label.is_empty() {
+        "y".to_owned()
+    } else {
+        series.label.clone()
+    };
+    // Append aggregation policy to the label when data is aggregated.
+    let is_aggregated =
+        series.aggregator != AggregationPolicy::Off && series.aggregation_factor > 1.0;
+    let display_label = if is_aggregated {
+        format!("{series_name}, {}", series.aggregator)
+    } else {
+        series_name
+    };
+
+    re_plot::tooltip::show_plot_tooltip(
+        ui,
+        response,
+        series.id(),
+        &time_label,
+        &display_label,
+        &y_value_text,
+        series_color,
+    );
+
+    // Map the hovered series to a data result for selection/highlighting.
+    plot_item_id_to_data_result_address
+        .get(&series.id())
+        .map(|address| re_viewer_context::Item::DataResult(address.clone()))
 }
 
 fn paint_time_cursor(

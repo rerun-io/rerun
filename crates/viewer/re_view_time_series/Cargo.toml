@@ -24,6 +24,7 @@ re_component_ui.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
+re_plot.workspace = true
 re_query.workspace = true
 re_renderer.workspace = true
 re_tracing.workspace = true

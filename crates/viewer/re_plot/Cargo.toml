@@ -1,0 +1,24 @@
+[package]
+authors.workspace = true
+description = "Shared utilities for plot-based views."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "re_plot"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+egui.workspace = true
+indexmap.workspace = true
+re_ui.workspace = true

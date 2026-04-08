@@ -9156,6 +9156,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_plot"
+version = "0.32.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "indexmap 2.13.0",
+ "re_ui",
+]
+
+[[package]]
 name = "re_protos"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
@@ -9911,7 +9920,6 @@ dependencies = [
  "egui_kittest",
  "egui_tiles",
  "getrandom 0.3.4",
- "indexmap 2.13.0",
  "itertools 0.14.0",
  "jiff",
  "notify",
@@ -10024,7 +10032,9 @@ dependencies = [
  "egui_plot",
  "re_chunk_store",
  "re_entity_db",
+ "re_format",
  "re_log_types",
+ "re_plot",
  "re_sdk_types",
  "re_test_context",
  "re_test_viewport",
@@ -10266,6 +10276,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_plot",
  "re_query",
  "re_renderer",
  "re_sdk_types",

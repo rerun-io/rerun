@@ -52,7 +52,6 @@ egui_extras.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
 getrandom.workspace = true
-indexmap.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 num-traits.workspace = true

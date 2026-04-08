@@ -1,7 +1,10 @@
-use egui::{Align2, Color32, Frame, Id, NumExt as _, Sense, Shadow, Stroke, Ui, UiBuilder, Vec2};
+use egui::{
+    Align2, Atom, AtomLayoutResponse, Color32, Frame, Id, NumExt as _, Sense, Shadow, Stroke, Ui,
+    UiBuilder, Vec2,
+};
 
-use crate::UiExt as _;
-use crate::egui_ext::Group;
+use re_ui::UiExt as _;
+use re_ui::egui_ext::Group;
 
 /// Configuration for the legend container widget.
 pub struct LegendConfig {
@@ -183,9 +186,6 @@ struct LegendEntryWidget {
 
 impl LegendEntryWidget {
     fn show(&self, ui: &mut Ui) -> egui::Response {
-        let swatch_id = Id::new(&self.label).with("swatch");
-        let swatch_size = Vec2::splat(8.0);
-
         let tokens = ui.tokens();
         let text_color = if self.hovered {
             tokens.list_item_strong_text
@@ -195,15 +195,9 @@ impl LegendEntryWidget {
             tokens.list_item_noninteractive_text.gamma_multiply(0.5)
         };
 
-        let display_color = if self.visible {
-            self.color
-        } else {
-            self.color.gamma_multiply(0.5)
-        };
-
         let text = egui::RichText::new(&self.label).color(text_color);
 
-        let atoms = egui::Atoms::new((egui::Atom::custom(swatch_id, swatch_size), text));
+        let atoms = egui::Atoms::new((LegendSwatch::atom(), text));
 
         let mut atom_layout = egui::AtomLayout::new(atoms)
             .gap(4.0)
@@ -218,7 +212,40 @@ impl LegendEntryWidget {
         let atom_response = atom_layout.paint(ui);
 
         // Paint the color dot / outline.
-        if let Some(rect) = atom_response.rect(swatch_id) {
+        LegendSwatch {
+            color: self.color,
+            visible: self.visible,
+        }
+        .paint(ui, &atom_response);
+
+        atom_response.response
+    }
+}
+
+pub struct LegendSwatch {
+    pub color: Color32,
+    pub visible: bool,
+}
+
+impl LegendSwatch {
+    fn id() -> Id {
+        Id::new("legend_swatch")
+    }
+
+    const SWATCH_SIZE: f32 = 8.0;
+
+    pub fn atom() -> Atom<'static> {
+        egui::Atom::custom(Self::id(), Vec2::splat(Self::SWATCH_SIZE))
+    }
+
+    pub fn paint(self, ui: &Ui, response: &AtomLayoutResponse) {
+        let display_color = if self.visible {
+            self.color
+        } else {
+            self.color.gamma_multiply(0.5)
+        };
+
+        if let Some(rect) = response.rect(Self::id()) {
             if self.visible {
                 ui.painter()
                     .circle_filled(rect.center(), 4.0, display_color);
@@ -229,7 +256,5 @@ impl LegendEntryWidget {
                     .circle_stroke(rect.center(), 3.5, Stroke::new(1.0, stroke_color));
             }
         }
-
-        atom_response.response
     }
 }

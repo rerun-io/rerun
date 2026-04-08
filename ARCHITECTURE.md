@@ -142,6 +142,7 @@ Update instructions:
 | re_component_ui        | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_dataframe_ui        | Rich table widget over DataFusion.                                                                         |
 | re_memory_view         | Flamegraph visualization for memory usage trees                                                            |
+| re_plot                | Plot ui components shared between time series and bar chart view.                                          |
 | re_recording_panel     | The UI for the recording panel.                                                                            |
 | re_redap_browser       | The UI and communication to implement the in-viewer redap server browser.                                  |
 | re_selection_panel     | The UI for the selection panel.                                                                            |
