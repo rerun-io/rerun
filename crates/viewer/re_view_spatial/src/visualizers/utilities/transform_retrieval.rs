@@ -18,6 +18,22 @@ pub fn spatial_view_kind_from_view_class(class: ViewClassIdentifier) -> SpatialV
     }
 }
 
+/// Derive the spatial view kind from an optional view class affinity.
+///
+/// Returns `None` if the affinity is `None` or not a spatial view class.
+pub fn spatial_view_kind_from_affinity(
+    affinity: Option<ViewClassIdentifier>,
+) -> Option<SpatialViewKind> {
+    let class = affinity?;
+    if class == crate::SpatialView3D::identifier() {
+        Some(SpatialViewKind::ThreeD)
+    } else if class == crate::SpatialView2D::identifier() {
+        Some(SpatialViewKind::TwoD)
+    } else {
+        None
+    }
+}
+
 /// Retrieves the transform info for the given entity and checks if it is valid for the archetype's space kind.
 pub fn transform_info_for_archetype_or_report_error<'a>(
     entity_path: &EntityPath,

@@ -18,9 +18,7 @@ pub struct TextDocumentEntry {
 
 /// A text scene, with everything needed to render it.
 #[derive(Default)]
-pub struct TextDocumentSystem {
-    text_entries: Vec<TextDocumentEntry>,
-}
+pub struct TextDocumentSystem;
 
 impl IdentifiedViewSystem for TextDocumentSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -40,12 +38,14 @@ impl VisualizerSystem for TextDocumentSystem {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
+
+        let mut text_entries = Vec::new();
 
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
@@ -61,14 +61,13 @@ impl VisualizerSystem for TextDocumentSystem {
             else {
                 continue;
             };
-            self.text_entries.push(TextDocumentEntry {
+            text_entries.push(TextDocumentEntry {
                 body: text.clone(),
                 media_type: results
                     .get_mono_with_fallback(TextDocument::descriptor_media_type().component),
             });
         }
 
-        let text_entries = std::mem::take(&mut self.text_entries);
         Ok(VisualizerExecutionOutput::default().with_visualizer_data(text_entries))
     }
 }

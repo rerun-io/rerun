@@ -37,7 +37,7 @@ impl VisualizerSystem for HeightFieldVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,

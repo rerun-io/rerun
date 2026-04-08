@@ -19,7 +19,6 @@ use super::{
 };
 use crate::{
     contexts::TransformTreeContext,
-    view_kind::SpatialViewKind,
     visualizers::{
         depth_images::{DepthImageProcessResult, populate_depth_visualizer_execution_result},
         first_copied,
@@ -32,12 +31,7 @@ pub struct EncodedDepthImageVisualizerOutput {
 }
 
 #[derive(Default)]
-pub struct EncodedDepthImageVisualizer {
-    pub data: SpatialViewVisualizerData,
-
-    /// Expose image infos for depth clouds - we need this for picking interaction.
-    pub depth_cloud_entities: IntMap<EntityPathHash, DepthImageProcessResult>,
-}
+pub struct EncodedDepthImageVisualizer;
 
 impl IdentifiedViewSystem for EncodedDepthImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -61,23 +55,24 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let preferred_view_kind = Some(SpatialViewKind::TwoD);
         let output = VisualizerExecutionOutput::default();
         let mut depth_clouds = Vec::new();
+        let mut data = SpatialViewVisualizerData::default();
+        let mut depth_cloud_entities = IntMap::default();
 
         let transforms = context_systems.get::<TransformTreeContext>(&output)?;
 
-        process_archetype::<Self, EncodedDepthImage, _>(
+        process_archetype::<EncodedDepthImage, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            preferred_view_kind,
+            self,
             |ctx, spatial_ctx, results| {
                 let all_blobs =
                     results.iter_required(EncodedDepthImage::descriptor_blob().component);
@@ -143,7 +138,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                         }
                     };
 
-                    let data = DepthImageComponentData {
+                    let component_data = DepthImageComponentData {
                         image,
                         depth_meter: first_copied(depth_meter).map(Into::into),
                         fill_ratio: first_copied(fill_ratio).map(Into::into),
@@ -161,11 +156,11 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     process_depth_image_data(
                         ctx,
                         spatial_ctx,
-                        &mut self.data,
-                        &mut self.depth_cloud_entities,
+                        &mut data,
+                        &mut depth_cloud_entities,
                         &mut depth_clouds,
                         transforms,
-                        data,
+                        component_data,
                         EncodedDepthImage::name(),
                         EncodedDepthImage::descriptor_meter().component,
                         EncodedDepthImage::descriptor_colormap().component,
@@ -177,14 +172,12 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
             },
         )?;
 
-        populate_depth_visualizer_execution_result(ctx, &self.data, depth_clouds, output).map(
-            |output| {
-                output
-                    .with_visualizer_data(std::mem::take(&mut self.data))
-                    .with_visualizer_data(EncodedDepthImageVisualizerOutput {
-                        depth_cloud_entities: std::mem::take(&mut self.depth_cloud_entities),
-                    })
-            },
-        )
+        populate_depth_visualizer_execution_result(ctx, &data, depth_clouds, output).map(|output| {
+            output.with_visualizer_data(data).with_visualizer_data(
+                EncodedDepthImageVisualizerOutput {
+                    depth_cloud_entities,
+                },
+            )
+        })
     }
 }

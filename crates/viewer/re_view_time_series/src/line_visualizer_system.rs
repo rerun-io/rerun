@@ -57,7 +57,7 @@ impl VisualizerSystem for SeriesLinesSystem {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context: &re_viewer_context::ViewContextCollection,

@@ -12,9 +12,7 @@ use crate::visualizers::SpatialViewVisualizerData;
 use crate::visualizers::video::execute_video_stream_like;
 
 #[derive(Default)]
-pub struct VideoStreamVisualizer {
-    pub data: SpatialViewVisualizerData,
-}
+pub struct VideoStreamVisualizer;
 
 impl IdentifiedViewSystem for VideoStreamVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -38,18 +36,20 @@ impl VisualizerSystem for VideoStreamVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let mut data = SpatialViewVisualizerData::default();
+
         execute_video_stream_like(
             ctx,
             view_query,
             context_systems,
-            &mut self.data,
+            &mut data,
             Self::identifier(),
             VideoStream::name(),
             VideoStream::descriptor_sample().component,

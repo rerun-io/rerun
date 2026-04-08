@@ -58,9 +58,7 @@ fn default_visualized_entities_for_visualizer_affinity(
         .new_visualizer_collection(view_class_identifier)
         .iter_with_identifiers()
         .filter_map(|(id, visualizer)| {
-            let affinity = visualizer.affinity()?;
-
-            if affinity == view_class_identifier {
+            if visualizer.affinity()? == view_class_identifier {
                 let indicator_matching = ctx.indicated_entities_per_visualizer.get(&id)?;
                 let visualizable = ctx.visualizable_entities_per_visualizer.get(&id)?;
                 Some(
@@ -118,9 +116,7 @@ fn default_excluded_entities_for_visualizer_affinity(
         .new_visualizer_collection(opposite_view)
         .iter_with_identifiers()
         .filter_map(|(id, visualizer)| {
-            let affinity = visualizer.affinity()?;
-
-            if affinity != view_class_identifier {
+            if visualizer.affinity()? != view_class_identifier {
                 let indicator_matching = ctx.indicated_entities_per_visualizer.get(&id)?;
                 Some(indicator_matching.iter())
             } else {

@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::EntityPath;
 use re_sdk_types::{
     Archetype as _,
     archetypes::BarChart,
@@ -27,9 +26,7 @@ pub struct BarChartData {
 
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
-pub struct BarChartVisualizerSystem {
-    charts: BTreeMap<EntityPath, BarChartData>,
-}
+pub struct BarChartVisualizerSystem;
 
 impl IdentifiedViewSystem for BarChartVisualizerSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -49,7 +46,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
@@ -57,6 +54,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
         let output = VisualizerExecutionOutput::default();
+        let mut charts = BTreeMap::new();
 
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
@@ -105,7 +103,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                     .0
                     .into()
                 });
-                self.charts.insert(
+                charts.insert(
                     data_result.entity_path.clone(),
                     BarChartData {
                         abscissa: abscissa.0.clone(),
@@ -117,7 +115,6 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             }
         }
 
-        let charts = std::mem::take(&mut self.charts);
         Ok(output.with_visualizer_data(charts))
     }
 }

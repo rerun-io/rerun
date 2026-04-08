@@ -11,9 +11,7 @@ use super::SpatialViewVisualizerData;
 use crate::visualizers::video::execute_video_stream_like;
 
 #[derive(Default)]
-pub struct EncodedImageVisualizer {
-    pub data: SpatialViewVisualizerData,
-}
+pub struct EncodedImageVisualizer;
 
 impl IdentifiedViewSystem for EncodedImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -37,12 +35,14 @@ impl VisualizerSystem for EncodedImageVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        let mut data = SpatialViewVisualizerData::default();
 
         let arch_name = EncodedImage::name();
         let sample_component = EncodedImage::descriptor_blob().component;
@@ -79,7 +79,7 @@ impl VisualizerSystem for EncodedImageVisualizer {
             ctx,
             view_query,
             context_systems,
-            &mut self.data,
+            &mut data,
             Self::identifier(),
             arch_name,
             sample_component,

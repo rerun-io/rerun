@@ -50,7 +50,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,

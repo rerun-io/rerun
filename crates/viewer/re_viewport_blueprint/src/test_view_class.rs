@@ -28,7 +28,7 @@ impl VisualizerSystem for TestVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         _ctx: &ViewContext<'_>,
         _query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,

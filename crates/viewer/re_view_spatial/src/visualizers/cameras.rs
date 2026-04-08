@@ -23,10 +23,7 @@ pub struct CamerasVisualizerOutput {
 }
 
 #[derive(Default)]
-pub struct CamerasVisualizer {
-    pub data: SpatialViewVisualizerData,
-    pub pinhole_cameras: Vec<PinholeWrapper>,
-}
+pub struct CamerasVisualizer;
 
 impl IdentifiedViewSystem for CamerasVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -44,8 +41,10 @@ struct CameraComponentDataWithFallbacks {
 }
 
 impl CamerasVisualizer {
+    #[expect(clippy::too_many_arguments)]
     fn visit_instance(
-        &mut self,
+        data: &mut SpatialViewVisualizerData,
+        pinhole_cameras: &mut Vec<PinholeWrapper>,
         ctx: &re_viewer_context::QueryContext<'_>,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformTreeContext,
@@ -103,7 +102,7 @@ impl CamerasVisualizer {
 
         // If the camera is the target frame of a 2D view, there is nothing for us to display.
         if transforms.target_frame() == pinhole_frame_id && view_kind == SpatialViewKind::TwoD {
-            self.pinhole_cameras.push(PinholeWrapper {
+            pinhole_cameras.push(PinholeWrapper {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
                 world_from_camera: macaw::IsoTransform::IDENTITY,
@@ -126,7 +125,7 @@ impl CamerasVisualizer {
 
         re_log::debug_assert!(world_from_camera_iso.is_finite());
 
-        self.pinhole_cameras.push(PinholeWrapper {
+        pinhole_cameras.push(PinholeWrapper {
             ent_path: ent_path.clone(),
             pinhole_view_coordinates: pinhole_properties.camera_xyz,
             world_from_camera: world_from_camera_iso,
@@ -208,8 +207,7 @@ impl CamerasVisualizer {
         }
 
         // world_from_camera is the transform to the pinhole origin.
-        self.data
-            .add_bounding_box(ent_path.hash(), macaw::BoundingBox::ZERO, world_from_camera);
+        data.add_bounding_box(ent_path.hash(), macaw::BoundingBox::ZERO, world_from_camera);
 
         Ok(())
     }
@@ -227,12 +225,14 @@ impl VisualizerSystem for CamerasVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let output = VisualizerExecutionOutput::default();
+        let mut data = SpatialViewVisualizerData::default();
+        let mut pinhole_cameras = Vec::new();
 
         let transforms = context_systems.get::<TransformTreeContext>(&output)?;
         let view_kind = spatial_view_kind_from_view_class(ctx.view_class_identifier);
@@ -300,7 +300,9 @@ impl VisualizerSystem for CamerasVisualizer {
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash());
 
-            if let Err(err) = self.visit_instance(
+            if let Err(err) = Self::visit_instance(
+                &mut data,
+                &mut pinhole_cameras,
                 &ctx.query_context(data_result, query.latest_at_query(), instruction.id),
                 &mut line_builder,
                 transforms,
@@ -318,9 +320,7 @@ impl VisualizerSystem for CamerasVisualizer {
 
         Ok(output
             .with_draw_data([(line_builder.into_draw_data()?.into())])
-            .with_visualizer_data(std::mem::take(&mut self.data))
-            .with_visualizer_data(CamerasVisualizerOutput {
-                pinhole_cameras: std::mem::take(&mut self.pinhole_cameras),
-            }))
+            .with_visualizer_data(data)
+            .with_visualizer_data(CamerasVisualizerOutput { pinhole_cameras }))
     }
 }

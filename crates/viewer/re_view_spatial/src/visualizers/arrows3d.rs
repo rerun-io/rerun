@@ -14,30 +14,26 @@ use re_viewer_context::{
 use super::utilities::LabeledBatch;
 use super::{SpatialViewVisualizerData, process_labels_3d, process_radius_slice};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
-use crate::view_kind::SpatialViewKind;
-
 // ---
 
 #[derive(Default)]
-pub struct Arrows3DVisualizer {
-    pub data: SpatialViewVisualizerData,
-}
+pub struct Arrows3DVisualizer;
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Arrows3DVisualizer {
     fn process_data<'a>(
-        &mut self,
+        data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
-        data: impl Iterator<Item = Arrows3DComponentData<'a>>,
+        results_iter: impl Iterator<Item = Arrows3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
 
-        for data in data {
-            let num_instances = data.vectors.len();
+        for ent_data in results_iter {
+            let num_instances = ent_data.vectors.len();
             if num_instances == 0 {
                 continue;
             }
@@ -45,7 +41,7 @@ impl Arrows3DVisualizer {
             let annotation_infos = process_annotation_slices(
                 query.latest_at,
                 num_instances,
-                data.class_ids,
+                ent_data.class_ids,
                 &ent_context.annotations,
             );
 
@@ -53,7 +49,7 @@ impl Arrows3DVisualizer {
                 ctx,
                 entity_path,
                 num_instances,
-                data.radii,
+                ent_data.radii,
                 Arrows3D::descriptor_radii().component,
             );
             let colors = process_color_slice(
@@ -61,7 +57,7 @@ impl Arrows3DVisualizer {
                 Arrows3D::descriptor_colors().component,
                 num_instances,
                 &annotation_infos,
-                data.colors,
+                ent_data.colors,
             );
 
             let world_from_obj = ent_context
@@ -77,10 +73,10 @@ impl Arrows3DVisualizer {
 
             let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
 
-            let origins = clamped_or(data.origins, &Position3D::ZERO);
+            let origins = clamped_or(ent_data.origins, &Position3D::ZERO);
 
             for (i, (vector, origin, radius, &color)) in
-                itertools::izip!(data.vectors, origins, radii, &colors).enumerate()
+                itertools::izip!(ent_data.vectors, origins, radii, &colors).enumerate()
             {
                 let vector: glam::Vec3 = vector.0.into();
                 let origin: glam::Vec3 = origin.0.into();
@@ -110,30 +106,29 @@ impl Arrows3DVisualizer {
                 obj_space_bounding_box.extend(end);
             }
 
-            self.data
-                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
+            data.add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             {
                 let instance_positions = {
                     // Take middle point of every arrow.
-                    let origins = clamped_or(data.origins, &Position3D::ZERO);
+                    let origins = clamped_or(ent_data.origins, &Position3D::ZERO);
 
-                    itertools::izip!(data.vectors, origins).map(|(vector, origin)| {
+                    itertools::izip!(ent_data.vectors, origins).map(|(vector, origin)| {
                         // `0.45` rather than `0.5` to account for cap and such
                         glam::Vec3::from(origin.0) + glam::Vec3::from(vector.0) * 0.45
                     })
                 };
 
-                self.data.ui_labels.extend(process_labels_3d(
+                data.ui_labels.extend(process_labels_3d(
                     LabeledBatch {
                         entity_path,
                         visualizer_instruction: ent_context.visualizer_instruction,
                         num_instances,
                         overall_position: obj_space_bounding_box.center(),
                         instance_positions,
-                        labels: &data.labels,
+                        labels: &ent_data.labels,
                         colors: &colors,
-                        show_labels: data.show_labels.unwrap_or_else(|| {
+                        show_labels: ent_data.show_labels.unwrap_or_else(|| {
                             typed_fallback_for(ctx, Arrows3D::descriptor_show_labels().component)
                         }),
                         annotation_infos: &annotation_infos,
@@ -184,11 +179,12 @@ impl VisualizerSystem for Arrows3DVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
 
         let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
@@ -197,12 +193,12 @@ impl VisualizerSystem for Arrows3DVisualizer {
         );
 
         use super::entity_iterator::process_archetype;
-        process_archetype::<Self, Arrows3D, _>(
+        process_archetype::<Arrows3D, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            Some(SpatialViewKind::ThreeD),
+            self,
             |ctx, spatial_ctx, results| {
                 let all_vectors = results.iter_required(Arrows3D::descriptor_vectors().component);
                 if all_vectors.is_empty() {
@@ -233,7 +229,7 @@ impl VisualizerSystem for Arrows3DVisualizer {
                 let all_show_labels =
                     results.iter_optional(Arrows3D::descriptor_show_labels().component);
 
-                let data = re_query::range_zip_1x6(
+                let results_iter = re_query::range_zip_1x6(
                     all_vectors.slice::<[f32; 3]>(),
                     all_origins.slice::<[f32; 3]>(),
                     all_colors.slice::<u32>(),
@@ -259,7 +255,14 @@ impl VisualizerSystem for Arrows3DVisualizer {
                     },
                 );
 
-                self.process_data(ctx, &mut line_builder, view_query, spatial_ctx, data);
+                Self::process_data(
+                    &mut data,
+                    ctx,
+                    &mut line_builder,
+                    view_query,
+                    spatial_ctx,
+                    results_iter,
+                );
 
                 Ok(())
             },
@@ -267,6 +270,6 @@ impl VisualizerSystem for Arrows3DVisualizer {
 
         Ok(output
             .with_draw_data([(line_builder.into_draw_data()?.into())])
-            .with_visualizer_data(std::mem::take(&mut self.data)))
+            .with_visualizer_data(data))
     }
 }

@@ -15,10 +15,9 @@ use re_viewer_context::{
 use super::SpatialViewVisualizerData;
 use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
-use crate::view_kind::SpatialViewKind;
 
 #[derive(Default)]
-pub struct Asset3DVisualizer(SpatialViewVisualizerData);
+pub struct Asset3DVisualizer;
 
 struct Asset3DComponentData<'a> {
     index: (TimeInt, RowId),
@@ -33,16 +32,16 @@ struct Asset3DComponentData<'a> {
 // timestamps within a time range -- it's _a lot_.
 impl Asset3DVisualizer {
     fn process_data<'a>(
-        &mut self,
+        data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         instances: &mut Vec<GpuMeshInstance>,
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
-        data: impl Iterator<Item = Asset3DComponentData<'a>>,
+        asset_data: impl Iterator<Item = Asset3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
 
-        for data in data {
-            let primary_row_id = data.index.1;
+        for asset in asset_data {
+            let primary_row_id = asset.index.1;
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
             let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
 
@@ -51,8 +50,8 @@ impl Asset3DVisualizer {
             let mesh = ctx.store_ctx().memoizer(|c: &mut MeshCache| {
                 let key = MeshCacheKey {
                     versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
-                    query_result_hash: data.query_result_hash,
-                    media_type: data.media_type.clone().map(Into::into),
+                    query_result_hash: asset.query_result_hash,
+                    media_type: asset.media_type.clone().map(Into::into),
                 };
 
                 c.entry(
@@ -60,9 +59,9 @@ impl Asset3DVisualizer {
                     key.clone(),
                     AnyMesh::Asset {
                         asset: crate::mesh_loader::NativeAsset3D {
-                            bytes: &data.blob,
-                            media_type: data.media_type.clone().map(Into::into),
-                            albedo_factor: data.albedo_factor.map(|a| a.0.into()),
+                            bytes: &asset.blob,
+                            media_type: asset.media_type.clone().map(Into::into),
+                            albedo_factor: asset.albedo_factor.map(|a| a.0.into()),
                         },
                     },
                     ctx.render_ctx(),
@@ -93,8 +92,7 @@ impl Asset3DVisualizer {
                         }
                     }));
 
-                    self.0
-                        .add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_pose);
+                    data.add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_pose);
                 }
             }
         }
@@ -123,22 +121,22 @@ impl VisualizerSystem for Asset3DVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
-        let preferred_view_kind = Some(SpatialViewKind::ThreeD);
         let mut instances = Vec::new();
 
         use super::entity_iterator::process_archetype;
-        process_archetype::<Self, Asset3D, _>(
+        process_archetype::<Asset3D, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            preferred_view_kind,
+            self,
             |ctx, spatial_ctx, results| {
                 let all_blobs = results.iter_required(Asset3D::descriptor_blob().component);
                 if all_blobs.is_empty() {
@@ -152,7 +150,7 @@ impl VisualizerSystem for Asset3DVisualizer {
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query::range_zip_1x2(
+                let asset_data = re_query::range_zip_1x2(
                     all_blobs.slice::<&[u8]>(),
                     all_media_types.slice::<String>(),
                     all_albedo_factors.slice::<u32>(),
@@ -172,7 +170,7 @@ impl VisualizerSystem for Asset3DVisualizer {
                     })
                 });
 
-                self.process_data(ctx, &mut instances, spatial_ctx, data);
+                Self::process_data(&mut data, ctx, &mut instances, spatial_ctx, asset_data);
 
                 Ok(())
             },
@@ -184,6 +182,6 @@ impl VisualizerSystem for Asset3DVisualizer {
                 &instances,
             )?
             .into()])
-            .with_visualizer_data(std::mem::take(&mut self.0)))
+            .with_visualizer_data(data))
     }
 }
