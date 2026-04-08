@@ -1,5 +1,25 @@
 # Rerun changelog
 
+## [0.31.2](https://github.com/rerun-io/rerun/compare/0.31.1...0.31.2) - 2026-04-08
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Fix MCAP CLI decoder identifier list [24f2604](https://github.com/rerun-io/rerun/commit/24f26047da9433924d7a00d7039be18cbe19c9ca)
+- Fix bug where shapes defined with UI units were scaled incorrectly [9a28f8e](https://github.com/rerun-io/rerun/commit/9a28f8e089d30680bc14ab59653ca8d7b2e5d308)
+- Fix off-by-one bug in video stream cache [e4eddc9](https://github.com/rerun-io/rerun/commit/e4eddc9a1ed798c60ae696e7e605c5a80279db30)
+- Fix range queries on 3D points in `SpatialView3D` [213957c](https://github.com/rerun-io/rerun/commit/213957c5cd2dbbb7acfffd894310d7ec58ef7f5e)
+
+#### 📚 Docs
+- Fix typo in micro-batching documentation [#12716](https://github.com/rerun-io/rerun/pull/12716) (thanks [@wolfd](https://github.com/wolfd)!)
+
+#### 🕸️ Web
+- Add progress bar to rerun-js and handle incomplete wasm downloads [476a178](https://github.com/rerun-io/rerun/commit/476a1780a52cf99b600d51a184e16028a05f6cce)
+- Add rerun-js login setting and default to hiding the login button [3203577](https://github.com/rerun-io/rerun/commit/320357798161a7663dea5777bec8d73431585239)
+
+#### 🤷‍ Other
+- Stop creating the search index into `docs.rs` [6afa84b](https://github.com/rerun-io/rerun/commit/6afa84bfaf501cacb46cbdf5a63ea626473cd1a1)
+
 ## [0.31.1](https://github.com/rerun-io/rerun/compare/0.31.0...0.31.1) - 2026-03-31
 
 ### 🔎 Details
