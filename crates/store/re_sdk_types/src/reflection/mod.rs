@@ -1994,7 +1994,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     name: "frame",
                     display_name: "Frame",
                     component_type: "rerun.components.TransformFrameId".into(),
-                    docstring_md: "The coordinate frame to use for the current entity.",
+                    docstring_md: "The coordinate frame to use for the current entity.\n\nNote that empty strings are not valid transform frame IDs.",
                     flags: ArchetypeFieldFlags::REQUIRED,
                 }],
             },

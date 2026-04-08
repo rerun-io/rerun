@@ -54,13 +54,21 @@ fn iter_child_frames_in_chunk(
             let offsets = list_array.offsets().iter().map(|idx| *idx as usize);
             let lengths = list_array.offsets().lengths();
 
-            Either::Right(izip!(offsets, lengths).map(move |(offset, length)| {
+            Either::Right(izip!(offsets, lengths).filter_map(move |(offset, length)| {
                 // No need to check for nulls since we treat nulls and empty arrays both as the implicit frame.
                 if length == 0 {
-                    implicit_frame
+                    Some(implicit_frame)
                 } else {
                     // There can only be a single frame id per row today, so only look at the first element.
-                    TransformFrameIdHash::from_str(values.value(offset))
+                    let frame_id = values.value(offset);
+                    if frame_id.is_empty() {
+                        // Special case: we have a frame id value, but it's an empty string.
+                        // Empty explicit frame names are undefined and thus ignored here.
+                        // (see related errors / warnings that are shown in this case elsewhere)
+                        None
+                    } else {
+                        Some(TransformFrameIdHash::from_str(frame_id))
+                    }
                 }
             }))
         }

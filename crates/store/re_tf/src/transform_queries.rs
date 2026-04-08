@@ -28,6 +28,14 @@ pub enum TransformError {
     MissingTransform { entity_path: EntityPath },
 
     #[error(
+        "Ignoring transform due to empty parent frame name for component `{component}` on entity `{entity_path}`."
+    )]
+    EmptyParentFrame {
+        entity_path: EntityPath,
+        component: ComponentIdentifier,
+    },
+
+    #[error(
         "Ignoring transform at root entity /. Transforms require either a parent entity that can be used as implicit frame, or the parent_frame field to be set."
     )]
     ImplicitRootParentFrame,
@@ -610,7 +618,16 @@ fn get_parent_frame(
                     .ok_or(TransformError::ImplicitRootParentFrame)
                     .map(|parent| TransformFrameIdHash::from_entity_path(&parent))
             },
-            |frame_id| Ok(TransformFrameIdHash::new(&frame_id)),
+            |frame_id| {
+                if frame_id.as_str().is_empty() {
+                    Err(TransformError::EmptyParentFrame {
+                        entity_path: entity_path.clone(),
+                        component: identifier_parent_frame,
+                    })
+                } else {
+                    Ok(TransformFrameIdHash::new(&frame_id))
+                }
+            },
         )
 }
 

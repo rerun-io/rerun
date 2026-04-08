@@ -809,6 +809,12 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
             );
         });
 
+    if frame_id_before.is_empty() {
+        ui.warning_label(
+            "Transform relation can't be resolved due to empty coordinate frame name.",
+        );
+    }
+
     if frame_id_before != frame_id {
         // Save as blueprint override.
         ctx.save_blueprint_component(

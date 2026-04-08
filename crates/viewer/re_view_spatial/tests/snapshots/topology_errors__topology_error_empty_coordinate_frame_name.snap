@@ -1,0 +1,6 @@
+---
+source: crates/viewer/re_view_spatial/tests/topology_errors.rs
+assertion_line: 300
+expression: "snapshot_visualizer_errors(&test_context, view_id)"
+---
+"Points3D": /points3d_entity: Transform relation can't be resolved due to empty coordinate frame name.
