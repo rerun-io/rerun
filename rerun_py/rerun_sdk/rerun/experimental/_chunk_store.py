@@ -52,6 +52,10 @@ class ChunkStore:
 
         return LazyChunkStream(self._internal.stream())
 
+    def compact(self) -> ChunkStore:
+        """Return a new ChunkStore with chunks compacted for optimal storage."""
+        return ChunkStore(self._internal.compact())
+
     def write_rrd(
         self,
         path: str | Path,

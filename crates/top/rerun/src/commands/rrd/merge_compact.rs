@@ -2,7 +2,7 @@ use std::io::{IsTerminal as _, Write as _};
 
 use anyhow::Context as _;
 use itertools::Either;
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreError};
+use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
 use re_sdk::StoreKind;
@@ -232,34 +232,30 @@ fn merge_and_compact(
         }
     }
 
-    for pass in 0..num_passes {
-        re_log::info!(pass, "running extra compaction pass…");
-
+    if num_passes > 0 {
         let now = std::time::Instant::now();
 
         let num_chunks_before = entity_dbs
             .values()
             .map(|db| db.storage_engine().store().num_physical_chunks() as u64)
             .sum::<u64>();
-        let mut num_chunks_after = 0;
-        entity_dbs = entity_dbs
-            .into_iter()
-            .map(|(store_id, db)| {
-                // Safety: we are the only owners of that data, it's fine.
-                #[expect(unsafe_code)]
-                let engine = unsafe { db.storage_engine_raw() };
 
-                let mut store = ChunkStore::new(store_id.clone(), store_config.clone());
-                for chunk in engine.read().store().iter_physical_chunks() {
-                    store.insert_chunk(chunk)?;
-                }
+        for db in entity_dbs.values() {
+            // Safety: we are the only owners of that data, it's fine.
+            #[expect(unsafe_code)]
+            let engine = unsafe { db.storage_engine_raw() };
 
-                num_chunks_after += store.num_physical_chunks() as u64;
-                *engine.write().store() = store;
+            let compacted = engine
+                .read()
+                .store()
+                .compacted(store_config, Some(num_passes as usize))?;
+            *engine.write().store() = compacted;
+        }
 
-                Ok::<_, ChunkStoreError>((store_id, db))
-            })
-            .collect::<Result<_, _>>()?;
+        let num_chunks_after = entity_dbs
+            .values()
+            .map(|db| db.storage_engine().store().num_physical_chunks() as u64)
+            .sum::<u64>();
 
         let num_chunks_reduction = format!(
             "-{:3.3}%",
@@ -267,14 +263,9 @@ fn merge_and_compact(
         );
 
         re_log::info!(
-            pass, num_chunks_before, num_chunks_after, num_chunks_reduction, time=?now.elapsed(),
-            "extra compaction pass completed",
+            num_chunks_before, num_chunks_after, num_chunks_reduction, time=?now.elapsed(),
+            "compaction completed",
         );
-
-        if num_chunks_before == num_chunks_after {
-            re_log::info!(pass, time=?now.elapsed(), "cannot possibly improve further, stopping early");
-            break;
-        }
     }
 
     let mut rrd_out = if let Some(path) = path_to_output_rrd {

@@ -242,25 +242,6 @@ def load_recording(path_to_rrd: str | os.PathLike[str]) -> RecordingInternal:
 def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchiveInternal:
     """Load a rerun archive from an RRD file."""
 
-class ParquetLoaderInternal:
-    """Internal implementation. Use ParquetLoader from rerun.experimental instead."""
-
-    def __init__(
-        self,
-        path: str,
-        entity_path_prefix: str | None = None,
-        column_grouping: str = "prefix",
-        delimiter: str = "_",
-        static_columns: list[str] | None = None,
-        index_columns: list[tuple[str, str, str | None]] | None = None,
-        pos_suffixes: list[list[str]] | None = None,
-        quat_suffixes: list[list[str]] | None = None,
-        scalar_suffixes: list[tuple[list[str], list[str]]] | None = None,
-    ) -> None: ...
-    def stream(self) -> LazyChunkStreamInternal: ...
-    @property
-    def path(self) -> Path: ...
-
 # AI generated stubs for `PyRecordingStream` related class and functions
 # TODO(#9187): this will be entirely replaced when `RecordingStream` is itself written in Rust
 class PyRecordingStream:
@@ -1448,6 +1429,7 @@ class ChunkStoreInternal:
     @staticmethod
     def from_chunks(chunks: list[ChunkInternal]) -> ChunkStoreInternal: ...
     def schema(self) -> SchemaInternal: ...
+    def compact(self) -> ChunkStoreInternal: ...
     def stream(self) -> LazyChunkStreamInternal: ...
 
 class RrdLoaderInternal:
@@ -1478,6 +1460,25 @@ class McapLoaderInternal:
     def path(self) -> Path: ...
     @staticmethod
     def available_decoders() -> list[str]: ...
+
+class ParquetLoaderInternal:
+    """Internal implementation. Use ParquetLoader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: str,
+        entity_path_prefix: str | None = None,
+        column_grouping: str = "prefix",
+        delimiter: str = "_",
+        static_columns: list[str] | None = None,
+        index_columns: list[tuple[str, str, str | None]] | None = None,
+        pos_suffixes: list[list[str]] | None = None,
+        quat_suffixes: list[list[str]] | None = None,
+        scalar_suffixes: list[tuple[list[str], list[str]]] | None = None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> Path: ...
 
 class LazyChunkStreamInternal:
     """Internal implementation. Use LazyChunkStream from rerun.experimental instead."""

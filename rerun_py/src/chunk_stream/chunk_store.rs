@@ -54,6 +54,20 @@ impl PyChunkStoreInternal {
         }
     }
 
+    /// Return a new store with chunks compacted for optimal storage.
+    fn compact(&self, py: Python<'_>) -> PyResult<Self> {
+        let store_handle = self.store.clone();
+        py.detach(move || {
+            store_handle
+                .read()
+                .compacted(&ChunkStoreConfig::CHANGELOG_DISABLED, None)
+                .map(|store| Self {
+                    store: ChunkStoreHandle::new(store),
+                })
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+        })
+    }
+
     /// Return a lazy stream over all chunks in this store.
     fn stream(&self) -> PyLazyChunkStreamInternal {
         // Each compile() snapshots the store's current physical chunks.

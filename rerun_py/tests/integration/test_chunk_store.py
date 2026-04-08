@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+import rerun as rr
 from rerun.experimental import (
     ChunkStore,
     LazyChunkStream,
@@ -16,6 +18,26 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from syrupy import SnapshotAssertion
+
+
+@pytest.fixture(scope="session")
+def fragmented_rrd_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """RRD with many tiny single-row chunks, ideal for compaction testing."""
+
+    rrd_path = tmp_path_factory.mktemp("compact") / "fragmented.rrd"
+
+    with rr.RecordingStream("rerun_example_compact_test", recording_id="compact-test-id") as rec:
+        rec.save(rrd_path)
+
+        # 20 individual send_columns calls -> 20 separate chunks for the same entity
+        for i in range(20):
+            rec.send_columns(
+                "/sensor",
+                indexes=[rr.TimeColumn("frame", sequence=[i])],
+                columns=rr.Scalars.columns(scalars=[float(i)]),
+            )
+
+    return rrd_path
 
 
 # ---------------------------------------------------------------------------
@@ -115,3 +137,36 @@ def test_write_rrd_metadata(test_rrd_path: Path, tmp_path: Path) -> None:
     loader = RrdLoader(out)
     assert loader.application_id == "my-app"
     assert loader.recording_id == "my-rec"
+
+
+# ---------------------------------------------------------------------------
+# ChunkStore.compact()
+# ---------------------------------------------------------------------------
+
+
+def test_compact_reduces_chunks(fragmented_rrd_path: Path) -> None:
+    """compact() merges small chunks into fewer, larger ones."""
+    store = RrdLoader(fragmented_rrd_path).store()
+    before = len(store.stream().to_chunks())
+
+    compacted = store.compact()
+    after = len(compacted.stream().to_chunks())
+
+    assert after < before
+
+
+def test_compact_preserves_schema(fragmented_rrd_path: Path) -> None:
+    """compact() preserves the schema."""
+    store = RrdLoader(fragmented_rrd_path).store()
+    compacted = store.compact()
+    assert store.schema() == compacted.schema()
+
+
+def test_compact_preserves_row_count(fragmented_rrd_path: Path) -> None:
+    """compact() preserves the total number of rows across all chunks."""
+    store = RrdLoader(fragmented_rrd_path).store()
+    compacted = store.compact()
+
+    original_rows = sum(c.num_rows for c in store.stream().to_chunks())
+    compacted_rows = sum(c.num_rows for c in compacted.stream().to_chunks())
+    assert compacted_rows == original_rows

@@ -14,6 +14,7 @@
 #![doc = document_features::document_features!()]
 //!
 
+mod compact;
 mod dataframe;
 mod drop_time_range;
 pub mod entity_tree;
