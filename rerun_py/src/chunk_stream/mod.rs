@@ -17,6 +17,7 @@
 //! - The PyO3 bindings ([`rrd_loader`], [`py_stream`]) translate between
 //!   Python objects and the Rust pipeline types.
 
+mod chunk_store;
 mod engine;
 pub mod error;
 mod mcap_loader;
@@ -29,21 +30,15 @@ use std::sync::Arc;
 
 use pyo3::types::{PyModule, PyModuleMethods as _};
 use pyo3::{Bound, PyResult};
-use re_chunk::Chunk;
-
-use self::error::ChunkPipelineError;
-use self::mcap_loader::PyMcapLoaderInternal;
-use self::parquet_loader::PyParquetLoaderInternal;
-use self::py_stream::{PyLazyChunkStreamInternal, PyLazyChunkStreamIterator};
-use self::rrd_loader::PyRrdLoaderInternal;
 
 /// Register chunk pipeline classes into the module.
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PyRrdLoaderInternal>()?;
-    m.add_class::<PyMcapLoaderInternal>()?;
-    m.add_class::<PyParquetLoaderInternal>()?;
-    m.add_class::<PyLazyChunkStreamInternal>()?;
-    m.add_class::<PyLazyChunkStreamIterator>()?;
+    m.add_class::<rrd_loader::PyRrdLoaderInternal>()?;
+    m.add_class::<mcap_loader::PyMcapLoaderInternal>()?;
+    m.add_class::<parquet_loader::PyParquetLoaderInternal>()?;
+    m.add_class::<py_stream::PyLazyChunkStreamInternal>()?;
+    m.add_class::<py_stream::PyLazyChunkStreamIterator>()?;
+    m.add_class::<chunk_store::PyChunkStoreInternal>()?;
     Ok(())
 }
 
@@ -55,7 +50,7 @@ const CHUNK_CHANNEL_CAPACITY: usize = 16;
 /// `Ok(None)` indicates successful termination of the stream.
 /// `Err(err)` indicates a fatal error that should terminate the pipeline.
 pub trait ChunkStream: Send {
-    fn next(&mut self) -> Result<Option<Arc<Chunk>>, ChunkPipelineError>;
+    fn next(&mut self) -> Result<Option<Arc<re_chunk::Chunk>>, error::ChunkPipelineError>;
 }
 
 /// Factory that creates a [`ChunkStream`], e.g. from a data source.
@@ -64,5 +59,5 @@ pub trait ChunkStream: Send {
 /// (new file handle, new decoder state, etc.). Implementations hold source configuration
 /// (e.g. paths, decoder settings, etc.).
 pub trait ChunkStreamFactory: Send + Sync {
-    fn create(&self) -> Result<Box<dyn ChunkStream>, ChunkPipelineError>;
+    fn create(&self) -> Result<Box<dyn ChunkStream>, error::ChunkPipelineError>;
 }

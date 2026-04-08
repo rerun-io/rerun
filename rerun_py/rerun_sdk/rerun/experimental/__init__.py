@@ -8,6 +8,8 @@ going through the normal deprecation cycle.
 from __future__ import annotations
 
 from ._chunk import Chunk as Chunk
+from ._chunk_store import ChunkStore as ChunkStore
+from ._indexed_loader import IndexedLoader as IndexedLoader
 from ._lazy_chunk_stream import LazyChunkStream as LazyChunkStream
 from ._mcap_loader import McapLoader as McapLoader
 from ._parquet_loader import ParquetLoader as ParquetLoader

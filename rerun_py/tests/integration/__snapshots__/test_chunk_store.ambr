@@ -1,0 +1,34 @@
+# serializer version: 1
+# name: test_schema
+  '''
+  Index(timeline:my_index)
+  Index(timeline:other_timeline)
+  Column name: /cameras/front:TextLog:text
+  	Entity path: /cameras/front
+  	Archetype: rerun.archetypes.TextLog
+  	Component type: rerun.components.Text
+  	Component: TextLog:text
+  Column name: /config:TextLog:text
+  	Entity path: /config
+  	Archetype: rerun.archetypes.TextLog
+  	Component type: rerun.components.Text
+  	Component: TextLog:text
+  	Static: true
+  Column name: /robots/arm:Points3D:colors
+  	Entity path: /robots/arm
+  	Archetype: rerun.archetypes.Points3D
+  	Component type: rerun.components.Color
+  	Component: Points3D:colors
+  Column name: /robots/arm:Points3D:positions
+  	Entity path: /robots/arm
+  	Archetype: rerun.archetypes.Points3D
+  	Component type: rerun.components.Position3D
+  	Component: Points3D:positions
+  Column name: property:RecordingInfo:start_time
+  	Entity path: /__properties
+  	Archetype: rerun.archetypes.RecordingInfo
+  	Component type: rerun.components.Timestamp
+  	Component: RecordingInfo:start_time
+  	Static: true
+  '''
+# ---

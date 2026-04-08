@@ -54,17 +54,15 @@ def chunk_summary(chunks: list[Chunk]) -> str:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.local_only
 def test_load_point_cloud(snapshot: SnapshotAssertion) -> None:
     """Default load of point cloud MCAP: correct entities, components, and timelines."""
-    chunks = McapLoader(POINT_CLOUD_MCAP).stream().collect()
+    chunks = McapLoader(POINT_CLOUD_MCAP).stream().to_chunks()
     assert chunk_summary(chunks) == snapshot
 
 
-@pytest.mark.local_only
 def test_load_log(snapshot: SnapshotAssertion) -> None:
     """Default load of log MCAP: TextLog with 6 rows."""
-    chunks = McapLoader(LOG_MCAP).stream().collect()
+    chunks = McapLoader(LOG_MCAP).stream().to_chunks()
     assert chunk_summary(chunks) == snapshot
 
 
@@ -73,13 +71,11 @@ def test_load_log(snapshot: SnapshotAssertion) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.local_only
 def test_file_not_found(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="not found"):
         McapLoader(tmp_path / "nonexistent.mcap")
 
 
-@pytest.mark.local_only
 def test_invalid_timeline_type() -> None:
     with pytest.raises(ValueError, match="Invalid timeline_type"):
         McapLoader(POINT_CLOUD_MCAP, timeline_type="sequence")  # type: ignore[arg-type]
@@ -90,31 +86,27 @@ def test_invalid_timeline_type() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.local_only
 def test_decoders_protobuf_only(snapshot: SnapshotAssertion) -> None:
     """Selecting only protobuf decoder still produces data (point cloud is protobuf-encoded)."""
-    chunks = McapLoader(POINT_CLOUD_MCAP, decoders=["protobuf"]).stream().collect()
+    chunks = McapLoader(POINT_CLOUD_MCAP, decoders=["protobuf"]).stream().to_chunks()
     assert chunk_summary(chunks) == snapshot
 
 
-@pytest.mark.local_only
 def test_decoders_empty() -> None:
     """Empty decoder list produces no chunks at all."""
-    chunks = McapLoader(POINT_CLOUD_MCAP, decoders=[]).stream().collect()
+    chunks = McapLoader(POINT_CLOUD_MCAP, decoders=[]).stream().to_chunks()
     assert len(chunks) == 0
 
 
-@pytest.mark.local_only
 def test_timeline_type_duration() -> None:
     """Duration timeline type changes Arrow field types from timestamp[ns] to duration[ns]."""
-    chunks = McapLoader(LOG_MCAP, timeline_type="duration").stream().collect()
+    chunks = McapLoader(LOG_MCAP, timeline_type="duration").stream().to_chunks()
     temporal = [c for c in chunks if not c.is_static]
     rb = temporal[0].to_record_batch()
     ts_field = next(f for f in rb.schema if f.name == "timestamp")
     assert ts_field.type == pa.duration("ns")
 
 
-@pytest.mark.local_only
 def test_timestamp_offset() -> None:
     """Offset shifts all timestamp timelines by the given amount."""
     offset_ns = 1_000_000_000
@@ -127,8 +119,8 @@ def test_timestamp_offset() -> None:
                 return int(ts_col[0].as_py().value)
         raise AssertionError("no temporal chunk found")
 
-    base_ts = first_timestamp_ns(McapLoader(LOG_MCAP).stream().collect())
-    offset_ts = first_timestamp_ns(McapLoader(LOG_MCAP, timestamp_offset_ns=offset_ns).stream().collect())
+    base_ts = first_timestamp_ns(McapLoader(LOG_MCAP).stream().to_chunks())
+    offset_ts = first_timestamp_ns(McapLoader(LOG_MCAP, timestamp_offset_ns=offset_ns).stream().to_chunks())
 
     assert offset_ts - base_ts == offset_ns
 
@@ -138,6 +130,5 @@ def test_timestamp_offset() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.local_only
 def test_streaming_loader_protocol() -> None:
     assert isinstance(McapLoader(POINT_CLOUD_MCAP), StreamingLoader)

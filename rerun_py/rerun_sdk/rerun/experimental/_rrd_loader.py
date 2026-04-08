@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from rerun_bindings import RrdLoaderInternal
 
+from ._chunk_store import ChunkStore
 from ._lazy_chunk_stream import LazyChunkStream
 
 if TYPE_CHECKING:
@@ -26,7 +27,12 @@ class RrdLoader:
 
     def stream(self) -> LazyChunkStream:
         """Return a lazy stream over all chunks in the RRD file."""
+        # TODO(RR-4321): this should probably be self.store().stream() instead, when `ChunkStore` is lazily loaded
         return LazyChunkStream(self._internal.stream())
+
+    def store(self) -> ChunkStore:
+        """Load the entire RRD into a fully materialized ChunkStore."""
+        return ChunkStore(self._internal.store())
 
     @property
     def application_id(self) -> str | None:
@@ -38,5 +44,10 @@ class RrdLoader:
         """Recording ID from the RRD's StoreInfo, if present."""
         return self._internal.recording_id
 
+    @property
+    def path(self) -> Path:
+        """The file path of the RRD file."""
+        return self._internal.path
+
     def __repr__(self) -> str:
-        return f"RrdLoader({self._internal.application_id!r})"
+        return f"RrdLoader({self._internal.path})"

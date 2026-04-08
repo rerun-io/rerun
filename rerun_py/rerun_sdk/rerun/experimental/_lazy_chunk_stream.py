@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 
     from rerun_bindings import ComponentDescriptor
 
+    from ._chunk_store import ChunkStore
+
 
 class LazyChunkStream:
     """
@@ -195,9 +197,15 @@ class LazyChunkStream:
             recording_id,
         )
 
-    def collect(self) -> list[Chunk]:
+    def collect(self) -> ChunkStore:
+        """Consume the stream and materialize all chunks into a ChunkStore."""
+        from ._chunk_store import ChunkStore
+
+        return ChunkStore(self._internal.collect())
+
+    def to_chunks(self) -> list[Chunk]:
         """Consume the stream and return all chunks as a list."""
-        return [Chunk(internal) for internal in self._internal.collect()]
+        return [Chunk(internal) for internal in self._internal.to_chunks()]
 
     def __iter__(self) -> Iterator[Chunk]:
         """Iterate over chunks one at a time (triggers execution)."""

@@ -98,8 +98,8 @@ impl PyMcapLoaderInternal {
 
     /// The file path this loader was constructed with.
     #[getter]
-    fn path(&self) -> &str {
-        self.path.to_str().unwrap_or("<non-utf8 path>")
+    fn path(&self) -> PathBuf {
+        self.path.clone()
     }
 
     /// Return the list of all supported decoder identifiers.

@@ -9,7 +9,10 @@ use re_log_types::{
 };
 use re_types_core::ComponentIdentifier;
 
+use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+
 use super::ChunkStream;
+use super::chunk_store::PyChunkStoreInternal;
 use super::error::ChunkPipelineError;
 use super::stream::{LazyChunkStream, StructuredFilter};
 use crate::chunk::PyChunkInternal;
@@ -135,8 +138,28 @@ impl PyLazyChunkStreamInternal {
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 
+    /// Consume the stream and materialize all chunks into a ChunkStore.
+    fn collect(&self, py: Python<'_>) -> PyResult<PyChunkStoreInternal> {
+        let mut compiled = self.compile_inner()?;
+        py.detach(move || -> Result<_, ChunkPipelineError> {
+            let store_id = StoreId::random(StoreKind::Recording, "chunk-store");
+            let mut store = ChunkStore::new(store_id, ChunkStoreConfig::ALL_DISABLED);
+            while let Some(chunk) = compiled.next()? {
+                store
+                    .insert_chunk(&chunk)
+                    .map_err(|err| ChunkPipelineError::ChunkStoreInsert {
+                        reason: err.to_string(),
+                    })?;
+            }
+            Ok(PyChunkStoreInternal {
+                store: ChunkStoreHandle::new(store),
+            })
+        })
+        .map_err(PyErr::from)
+    }
+
     /// Consume the stream and return all chunks as a list.
-    fn collect(&self, py: Python<'_>) -> PyResult<Vec<PyChunkInternal>> {
+    fn to_chunks(&self, py: Python<'_>) -> PyResult<Vec<PyChunkInternal>> {
         let mut compiled = self.compile_inner()?;
         let chunks: Vec<Arc<re_chunk::Chunk>> = py
             .detach(move || -> Result<_, ChunkPipelineError> {

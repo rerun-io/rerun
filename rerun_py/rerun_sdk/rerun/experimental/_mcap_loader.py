@@ -37,8 +37,13 @@ class McapLoader:
         """Return a lazy stream over all chunks in the MCAP file."""
         return LazyChunkStream(self._internal.stream())
 
+    @property
+    def path(self) -> Path:
+        """The file path of the MCAP file."""
+        return self._internal.path
+
     def __repr__(self) -> str:
-        return f"McapLoader({self._internal.path!r})"
+        return f"McapLoader({self._internal.path})"
 
     @staticmethod
     def available_decoders() -> list[str]:
