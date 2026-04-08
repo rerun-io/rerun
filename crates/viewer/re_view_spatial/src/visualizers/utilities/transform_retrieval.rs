@@ -62,7 +62,18 @@ pub fn format_transform_info_result<'a>(
     result: Option<&'a Result<TransformInfo, re_tf::TransformFromToError>>,
 ) -> Result<&'a TransformInfo, String> {
     match result {
-        None => Err("No transform relation known for this entity.".to_owned()),
+        None => {
+            if transform_context
+                .is_empty_frame_name(transform_context.transform_frame_id_for(entity_path.hash()))
+            {
+                Err(
+                    "Transform relation can't be resolved due to empty coordinate frame name."
+                        .to_owned(),
+                )
+            } else {
+                Err("No transform relation known for this entity.".to_owned())
+            }
+        }
 
         Some(Err(re_tf::TransformFromToError::NoPathBetweenFrames { src, target, .. })) => {
             let src = if let Some(frame_id) =
@@ -86,6 +97,16 @@ pub fn format_transform_info_result<'a>(
         }
 
         Some(Err(re_tf::TransformFromToError::UnknownTargetFrame(target))) => {
+            if transform_context
+                .lookup_frame_id(*target)
+                .is_some_and(|frame_id| frame_id.as_str().is_empty())
+            {
+                return Err(
+                    "View target frame can't be resolved due to empty coordinate frame name."
+                        .to_owned(),
+                );
+            }
+
             let target = if let Some(target) =
                 transform_context.format_frame_or_debug_warn(*target, entity_path)
             {
@@ -98,6 +119,13 @@ pub fn format_transform_info_result<'a>(
         }
 
         Some(Err(re_tf::TransformFromToError::UnknownSourceFrame(src))) => {
+            if transform_context.is_empty_frame_name(*src) {
+                return Err(
+                    "Transform relation can't be resolved due to empty coordinate frame name."
+                        .to_owned(),
+                );
+            }
+
             let src = if let Some(frame_id) =
                 transform_context.format_frame_or_debug_warn(*src, entity_path)
             {

@@ -71,15 +71,23 @@ impl CamerasVisualizer {
         // Sticking with the semantics of `CoordinateFrame::frame_id`, we should give it precedence,
         // but this implies ignoring `CoordinateFrame::frame_id`'s fallback in all other cases, which is arguably
         // even more confusing. So instead, we rely _solely_ on `Pinhole::child_frame` for now.
-        let pinhole_frame_id = re_tf::TransformFrameIdHash::new(&pinhole_properties.child_frame);
+        let pinhole_child_frame_id =
+            re_tf::TransformFrameIdHash::new(&pinhole_properties.child_frame);
 
         // Query the pinhole from the transform tree since it uses atomic-latest-at.
-        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(pinhole_frame_id)
+        let Some(pinhole_tree_root_info) =
+            transforms.pinhole_tree_root_info(pinhole_child_frame_id)
         else {
             // This implies that the transform context didn't see the pinhole transform.
             // This can happen with various frame id mismatches. TODO(andreas): When exactly does this happen? Can we add a unit test and improve the message?
-            let frame = if let Some(frame_id) =
-                transforms.format_frame_or_debug_warn(pinhole_frame_id, ctx.target_entity_path)
+            if transforms.is_empty_frame_name(pinhole_child_frame_id) {
+                return Err(
+                    "Pinhole transform can't be resolved due to empty child frame ID.".to_owned(),
+                );
+            }
+
+            let frame = if let Some(frame_id) = transforms
+                .format_frame_or_debug_warn(pinhole_child_frame_id, ctx.target_entity_path)
             {
                 format!("child frame {frame_id:?}")
             } else {
@@ -108,7 +116,8 @@ impl CamerasVisualizer {
         };
 
         // If the camera is the target frame of a 2D view, there is nothing for us to display.
-        if transforms.target_frame() == pinhole_frame_id && view_kind == SpatialViewKind::TwoD {
+        if transforms.target_frame() == pinhole_child_frame_id && view_kind == SpatialViewKind::TwoD
+        {
             self.pinhole_cameras.push(PinholeWrapper {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
@@ -121,7 +130,8 @@ impl CamerasVisualizer {
 
         // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
-        let Some(world_from_camera) = transforms.target_from_pinhole_root(pinhole_frame_id) else {
+        let Some(world_from_camera) = transforms.target_from_pinhole_root(pinhole_child_frame_id)
+        else {
             return Err("Pinhole is not connected to the view's target frame.".to_owned());
         };
         let world_from_camera = world_from_camera.as_affine3a();

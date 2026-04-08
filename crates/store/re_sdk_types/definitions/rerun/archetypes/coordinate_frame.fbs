@@ -18,5 +18,7 @@ table CoordinateFrame (
   "attr.rust.derive": "PartialEq"
 ) {
   /// The coordinate frame to use for the current entity.
+  ///
+  /// Note that empty strings are not valid transform frame IDs.
   frame: rerun.components.TransformFrameId ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 }
