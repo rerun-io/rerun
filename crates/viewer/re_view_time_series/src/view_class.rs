@@ -678,10 +678,13 @@ impl ViewClass for TimeSeriesView {
             let plot_id = ui.make_persistent_id(plot_id_src);
 
             ui.style_mut().visuals.extreme_bg_color = background_color.into();
+            let tokens = re_ui::design_tokens_of_visuals(ui.visuals());
 
             let mut plot = Plot::new(plot_id_src)
                 .id(plot_id)
                 .show_grid(**show_grid)
+                .grid_color(tokens.plot_grid_color)
+                .grid_fade(tokens.plot_grid_fade)
                 .auto_bounds(false)
                 .allow_zoom(!zoom_lock)
                 .allow_scroll(!legend_hovered)

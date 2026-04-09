@@ -205,8 +205,11 @@ impl ViewClass for BarChartView {
         ui.scope(|ui| {
             let background_color = background_color.into();
             ui.style_mut().visuals.extreme_bg_color = background_color;
+            let tokens = re_ui::design_tokens_of_visuals(ui.visuals());
             let plot = Plot::new("bar_chart_plot")
                 .show_grid(**show_grid)
+                .grid_color(tokens.plot_grid_color)
+                .grid_fade(tokens.plot_grid_fade)
                 .clamp_grid(true)
                 .allow_scroll(!legend_hovered);
 

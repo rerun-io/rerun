@@ -183,6 +183,8 @@ pub struct DesignTokens {
 
     pub floating_color: Color32,
     pub faint_bg_color: Color32,
+    pub plot_grid_color: Color32,
+    pub plot_grid_fade: f32,
     pub extreme_bg_color: Color32,
     pub extreme_fg_color: Color32,
     pub widget_inactive_bg_fill: Color32,
@@ -368,6 +370,8 @@ impl DesignTokens {
 
             floating_color: get_color("floating_color"),
             faint_bg_color: get_color("faint_bg_color"),
+            plot_grid_color: get_color("plot_grid_color"),
+            plot_grid_fade: get_scalar("plot_grid_fade")?,
             extreme_bg_color: get_color("extreme_bg_color"),
             extreme_fg_color: get_color("extreme_fg_color"),
             widget_inactive_bg_fill: get_color("widget_inactive_bg_fill"),
