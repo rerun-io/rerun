@@ -1048,14 +1048,7 @@ impl TimeControl {
                     .or_insert_with(|| TimeState::new(*time));
                 state.time = *time;
 
-                // If we were following, pause so we stay at the scrubbed time
-                // instead of advancing. This also persists to the blueprint so
-                // `update_from_blueprint` doesn't re-enable following on the next frame.
-                if self.play_state() == PlayState::Following {
-                    self.pause(blueprint_ctx);
-                }
-
-                self.following = false;
+                self.exit_follow_mode(entity_db, blueprint_ctx);
                 self.wait_for_data = true;
 
                 if repaint {
@@ -1148,7 +1141,20 @@ impl TimeControl {
     ) {
         re_tracing::profile_function!();
         self.pause(blueprint_ctx);
+        self.step_time_back_no_pause(entity_db);
+    }
 
+    fn step_time_fwd(
+        &mut self,
+        entity_db: &EntityDb,
+        blueprint_ctx: Option<&impl BlueprintContext>,
+    ) {
+        re_tracing::profile_function!();
+        self.pause(blueprint_ctx);
+        self.step_time_fwd_no_pause(entity_db);
+    }
+
+    fn step_time_back_no_pause(&mut self, entity_db: &EntityDb) {
         if let Some(time) = self.time() {
             let timeline = self.timeline_name();
             let prev = entity_db.prev_time_on_timeline(timeline, time.ceil());
@@ -1185,14 +1191,7 @@ impl TimeControl {
         }
     }
 
-    fn step_time_fwd(
-        &mut self,
-        entity_db: &EntityDb,
-        blueprint_ctx: Option<&impl BlueprintContext>,
-    ) {
-        re_tracing::profile_function!();
-        self.pause(blueprint_ctx);
-
+    fn step_time_fwd_no_pause(&mut self, entity_db: &EntityDb) {
         if let Some(time) = self.time() {
             let timeline = self.timeline_name();
             let next = entity_db.next_time_on_timeline(timeline, time.floor());
@@ -1229,6 +1228,7 @@ impl TimeControl {
         }
     }
 
+    /// Move time by arrow keys. Preserves play/pause state, but exits follow mode.
     fn move_time(
         &mut self,
         entity_db: &EntityDb,
@@ -1236,6 +1236,8 @@ impl TimeControl {
         direction: MoveDirection,
         speed: MoveSpeed,
     ) {
+        self.exit_follow_mode(entity_db, blueprint_ctx);
+
         match self.time_type() {
             Some(TimeType::Sequence) => {
                 let steps = match speed {
@@ -1245,10 +1247,10 @@ impl TimeControl {
                 for _ in 0..steps {
                     match direction {
                         MoveDirection::Back => {
-                            self.step_time_back(entity_db, blueprint_ctx);
+                            self.step_time_back_no_pause(entity_db);
                         }
                         MoveDirection::Forward => {
-                            self.step_time_fwd(entity_db, blueprint_ctx);
+                            self.step_time_fwd_no_pause(entity_db);
                         }
                     }
                 }
@@ -1294,6 +1296,17 @@ impl TimeControl {
             if let Some(state) = self.states.get_mut(self.timeline.name()) {
                 state.time = new_time;
             }
+        }
+    }
+
+    /// If following, switch to playing. Otherwise keep the current play state.
+    fn exit_follow_mode(
+        &mut self,
+        entity_db: &EntityDb,
+        blueprint_ctx: Option<&impl BlueprintContext>,
+    ) {
+        if self.following {
+            self.set_play_state(Some(entity_db), PlayState::Playing, blueprint_ctx);
         }
     }
 
