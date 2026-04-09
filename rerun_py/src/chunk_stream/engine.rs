@@ -307,6 +307,7 @@ fn compile_inner(stream: &LazyChunkStream, ctx: &mut CompileContext) -> Box<dyn 
         compiled = match step {
             PipelineStep::Filter(f) => Box::new(FilterStream::new(compiled, f.clone())),
             PipelineStep::Drop(f) => Box::new(DropStream::new(compiled, f.clone())),
+            PipelineStep::Lenses(l) => Box::new(LensesStream::new(compiled, l.clone())),
         };
     }
 
@@ -317,7 +318,7 @@ fn compile_inner(stream: &LazyChunkStream, ctx: &mut CompileContext) -> Box<dyn 
 // PyIteratorSource
 // ---------------------------------------------------------------------------
 
-pub struct PyIteratorSource {
+struct PyIteratorSource {
     iter_obj: Py<PyAny>,
 }
 
@@ -354,7 +355,7 @@ impl ChunkStream for PyIteratorSource {
 // FilterStream
 // ---------------------------------------------------------------------------
 
-pub struct FilterStream {
+struct FilterStream {
     inner: Box<dyn ChunkStream>,
     filter: StructuredFilter,
 }
@@ -383,7 +384,7 @@ impl ChunkStream for FilterStream {
 // DropStream
 // ---------------------------------------------------------------------------
 
-pub struct DropStream {
+struct DropStream {
     inner: Box<dyn ChunkStream>,
     filter: StructuredFilter,
 }
@@ -409,10 +410,67 @@ impl ChunkStream for DropStream {
 }
 
 // ---------------------------------------------------------------------------
+// LensesStream
+// ---------------------------------------------------------------------------
+
+struct LensesStream {
+    inner: Box<dyn ChunkStream>,
+    lenses: re_lenses_core::Lenses,
+    buffer: std::collections::VecDeque<Arc<Chunk>>,
+}
+
+impl LensesStream {
+    pub fn new(inner: Box<dyn ChunkStream>, lenses: re_lenses_core::Lenses) -> Self {
+        Self {
+            inner,
+            lenses,
+            buffer: std::collections::VecDeque::new(),
+        }
+    }
+}
+
+impl ChunkStream for LensesStream {
+    fn next(&mut self) -> Result<Option<Arc<Chunk>>, ChunkPipelineError> {
+        loop {
+            // Drain buffer first.
+            if let Some(chunk) = self.buffer.pop_front() {
+                return Ok(Some(chunk));
+            }
+
+            // Pull next chunk from upstream.
+            let Some(chunk) = self.inner.next()? else {
+                return Ok(None);
+            };
+
+            // Apply lenses — may produce 0..N output chunks.
+            for result in self.lenses.apply(&chunk) {
+                match result {
+                    Ok(out) => self.buffer.push_back(Arc::new(out)),
+                    Err(partial) => {
+                        //TODO(ab, grtlr): is this correct? Should we be strict and return an error
+                        //  instead (aka kill the stream and raise an exception)?
+                        for error in partial.errors() {
+                            re_log::error_once!("Error encountered for lens: {error}");
+                        }
+                        if let Some(out) = partial.take() {
+                            self.buffer.push_back(Arc::new(out));
+                        }
+                    }
+                }
+            }
+
+            // If lenses produced output, the next iteration will drain the buffer.
+            // If they produced nothing (e.g. DropUnmatched with no match), loop to
+            // pull the next upstream chunk.
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // ChannelStream
 // ---------------------------------------------------------------------------
 
-pub struct ChannelStream {
+struct ChannelStream {
     rx: crossbeam::channel::Receiver<ChannelItem>,
 }
 

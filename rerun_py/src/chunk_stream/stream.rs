@@ -150,11 +150,11 @@ impl StructuredFilter {
 }
 
 /// A single transformation step in the pipeline.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum PipelineStep {
     Filter(StructuredFilter),
     Drop(StructuredFilter),
-    //TODO(ab): lenses go here
+    Lenses(re_lenses_core::Lenses),
 }
 
 /// The source of chunks for a pipeline.
@@ -240,6 +240,11 @@ impl LazyChunkStream {
 
     pub fn drop_matching(mut self, f: StructuredFilter) -> Self {
         self.steps.push(PipelineStep::Drop(f));
+        self
+    }
+
+    pub fn lenses(mut self, lenses: re_lenses_core::Lenses) -> Self {
+        self.steps.push(PipelineStep::Lenses(lenses));
         self
     }
 

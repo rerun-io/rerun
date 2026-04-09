@@ -20,6 +20,7 @@ use vec1::Vec1;
 
 use crate::builder::LensBuilder;
 
+#[derive(Clone)]
 pub struct InputColumn {
     pub entity_path_filter: EntityPathFilter,
     pub component: ComponentIdentifier,
@@ -40,21 +41,21 @@ pub enum TargetEntity {
 ///
 /// Depending on the context in which this output is used, the result from
 /// applying the transform should be a list array (1:1) or a list array of list arrays (1:N).
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ComponentOutput {
     pub component_descr: ComponentDescriptor,
     pub selector: Selector<DynExpr>,
 }
 
 /// A time extraction output.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct TimeOutput {
     pub timeline_name: TimelineName,
     pub timeline_type: TimeType,
     pub selector: Selector<DynExpr>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 /// Each input row produces exactly one output row (1:1 mapping).
 ///
 /// Outputs inherit times from the input chunk.
@@ -68,7 +69,7 @@ pub struct OneToOne {
     pub times: Vec<TimeOutput>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 /// Each input row produces multiple output rows (1:N flat-map).
 ///
 /// Outputs inherit times from the input chunk.
@@ -83,7 +84,7 @@ pub struct OneToMany {
 }
 
 /// Determines how a lens transforms input rows to output rows.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum LensKind {
     Columns(OneToOne),
     ScatterColumns(OneToMany),
@@ -100,6 +101,7 @@ pub enum LensKind {
 /// Works on component columns within a chunk. Because what goes into a chunk
 /// is non-deterministic, and dependent on the batcher, no assumptions should be
 /// made for values across rows.
+#[derive(Clone)]
 pub struct Lens {
     pub(crate) input: InputColumn,
     pub(crate) outputs: Vec<LensKind>,
@@ -531,6 +533,7 @@ pub enum OutputMode {
 /// This can hold multiple lenses that match different entity paths and components.
 /// When a chunk is processed, all relevant lenses (those whose entity path filters match
 /// the chunk's entity path) are applied.
+#[derive(Clone)]
 pub struct Lenses {
     lenses: Vec<Lens>,
     mode: OutputMode,

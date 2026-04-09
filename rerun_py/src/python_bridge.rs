@@ -287,6 +287,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // selector
     crate::selector::register(m)?;
 
+    // lenses
+    crate::lenses::register(m)?;
+
     Ok(())
 }
 

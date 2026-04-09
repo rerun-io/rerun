@@ -46,6 +46,18 @@ class ChunkStore:
 
         return Schema(self._internal.schema())
 
+    def summary(self) -> str:
+        """
+        Compact, deterministic summary of every chunk in the store.
+
+        Each line describes one chunk:
+
+            {entity_path}  rows={n}  static={True|False}  timelines=[…]  cols=[…]
+
+        Useful for snapshot testing.
+        """
+        return self._internal.summary()
+
     def stream(self) -> LazyChunkStream:
         """Return a lazy stream over all chunks in this store."""
         from ._lazy_chunk_stream import LazyChunkStream

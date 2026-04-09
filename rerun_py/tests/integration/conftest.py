@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pyarrow as pa
 import pytest
 import rerun as rr
 
@@ -48,6 +49,25 @@ def test_rrd_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
             "/config",
             indexes=[],
             columns=rr.TextLog.columns(text=["v1"]),
+        )
+
+        # Temporal: dynamic archetype with a struct component (for selector field access tests)
+        imu_data = pa.StructArray.from_arrays(
+            [
+                pa.array([0.1, 0.4], type=pa.float64()),
+                pa.array([0.2, 0.5], type=pa.float64()),
+                pa.array([9.8, 9.7], type=pa.float64()),
+                pa.array([1000000000, 2000000000], type=pa.int64()),
+            ],
+            names=["x", "y", "z", "timestamp"],
+        )
+        rec.send_columns(
+            "/sensors/imu",
+            indexes=[rr.TimeColumn("my_index", sequence=[1, 2])],
+            columns=rr.DynamicArchetype.columns(
+                archetype="Imu",
+                components={"accel": imu_data},
+            ),
         )
 
     return rrd_path

@@ -26,6 +26,7 @@ mod arrow;
 mod catalog;
 mod chunk;
 mod chunk_stream;
+mod lenses;
 mod python_bridge;
 mod recording;
 mod selector;

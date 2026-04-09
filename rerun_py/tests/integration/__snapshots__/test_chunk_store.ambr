@@ -24,6 +24,11 @@
   	Archetype: rerun.archetypes.Points3D
   	Component type: rerun.components.Position3D
   	Component: Points3D:positions
+  Column name: /sensors/imu:Imu:accel
+  	Entity path: /sensors/imu
+  	Archetype: Imu
+  	Component type: 
+  	Component: Imu:accel
   Column name: property:RecordingInfo:start_time
   	Entity path: /__properties
   	Archetype: rerun.archetypes.RecordingInfo

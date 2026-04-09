@@ -17,6 +17,12 @@ pub struct PySelectorInternal {
     selector: Selector<DynExpr>,
 }
 
+impl PySelectorInternal {
+    pub fn selector(&self) -> &Selector<DynExpr> {
+        &self.selector
+    }
+}
+
 /// Wrap a Python callable into a closure compatible with [`re_lenses_core::IntoDynExpr`].
 fn wrap_py_callable(
     callback: Py<PyAny>,

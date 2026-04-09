@@ -68,6 +68,72 @@ impl PyChunkStoreInternal {
         })
     }
 
+    /// Compact, deterministic summary of every chunk in the store for snapshot testing.
+    ///
+    /// Each line describes one chunk:
+    /// `{entity_path} rows={n} static={bool} timelines=[…] cols=[…]`
+    ///
+    /// Chunks are sorted by `(entity_path, !is_static)`. The `cols` list
+    /// combines timeline and component column names (sorted), excluding
+    /// `rerun.controls` columns.
+    //TODO(ab): should that be implemented on `re_chunk_store::ChunkStore` directly?
+    fn summary(&self) -> String {
+        let guard = self.store.read();
+
+        let mut chunks: Vec<&Chunk> = guard.iter_physical_chunks().map(|c| c.as_ref()).collect();
+        chunks.sort_by(|a, b| {
+            a.entity_path()
+                .cmp(b.entity_path())
+                .then_with(|| a.is_static().cmp(&b.is_static()).reverse())
+        });
+
+        let mut lines = Vec::new();
+        for chunk in &chunks {
+            let mut timelines: Vec<&str> = chunk.timelines().keys().map(|t| t.as_str()).collect();
+            timelines.sort();
+
+            let mut cols: Vec<&str> = chunk
+                .timelines()
+                .keys()
+                .map(|t| t.as_str())
+                .chain(
+                    chunk
+                        .components()
+                        .component_descriptors()
+                        .map(|d| d.display_name()),
+                )
+                .collect();
+            cols.sort();
+
+            let timelines_str = format!(
+                "[{timelines}]",
+                timelines = timelines
+                    .iter()
+                    .map(|t| format!("'{t}'"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+            let cols_str = format!(
+                "[{cols}]",
+                cols = cols
+                    .iter()
+                    .map(|c| format!("'{c}'"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+
+            let is_static = if chunk.is_static() { "True" } else { "False" };
+
+            lines.push(format!(
+                "{entity_path} rows={rows} static={is_static} timelines={timelines_str} cols={cols_str}",
+                entity_path = chunk.entity_path(),
+                rows = chunk.num_rows(),
+            ));
+        }
+
+        lines.join("\n")
+    }
+
     /// Return a lazy stream over all chunks in this store.
     fn stream(&self) -> PyLazyChunkStreamInternal {
         // Each compile() snapshots the store's current physical chunks.

@@ -110,6 +110,22 @@ impl PyLazyChunkStreamInternal {
         Ok((Self::new(a), Self::new(b)))
     }
 
+    /// Apply lenses to transform chunk data. Consumes this stream.
+    #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned Vec
+    fn lenses(
+        &self,
+        lenses: Vec<PyRef<'_, crate::lenses::PyLensInternal>>,
+        output_mode: &str,
+    ) -> PyResult<Self> {
+        let stream = self.take_inner()?;
+        let mode = crate::lenses::parse_output_mode(output_mode)?;
+        let mut collection = re_lenses_core::Lenses::new(mode);
+        for lens in &lenses {
+            collection.add_lens(lens.inner().clone());
+        }
+        Ok(Self::new(stream.lenses(collection)))
+    }
+
     /// Concatenate chunks from multiple streams into one.
     #[staticmethod]
     #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned Vec for #[staticmethod]
