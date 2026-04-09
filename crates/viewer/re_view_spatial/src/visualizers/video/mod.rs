@@ -113,6 +113,14 @@ fn execute_video_stream_like(
             .copied()
             .map(Opacity::from);
 
+        // Perform a latest-at query for the sample component to give the video stream cache something to hook onto.
+        let _sample_result = data_result.latest_at_with_blueprint_resolved_data_for_component(
+            ctx,
+            &latest_at,
+            sample_component,
+            Some(instruction),
+        );
+
         let video = match viewer_ctx
             .store_context
             .memoizer(|c: &mut VideoStreamCache| {

@@ -380,6 +380,8 @@ impl VideoStreamCache {
             );
         }
 
+        video_data.samples_statistics = re_video::SamplesStatistics::new(&video_data.samples);
+
         let _ = video_data;
 
         if encoding_details_changed {
@@ -917,6 +919,8 @@ fn load_video_data_from_chunks(
             }
         }
     }
+
+    video_descr.samples_statistics = re_video::SamplesStatistics::new(&video_descr.samples);
 
     Ok((video_descr, known_chunk_ranges))
 }
@@ -2151,7 +2155,8 @@ mod tests {
             delivery_method,
             re_video::VideoDeliveryMethod::Stream { .. }
         ));
-        assert_eq!(samples_statistics, re_video::SamplesStatistics::NO_BFRAMES);
+        assert!(samples_statistics.dts_always_equal_pts);
+        assert!(samples_statistics.has_sample_highest_pts_so_far.is_none());
         assert!(mp4_tracks.is_empty());
 
         let VideoEncodingDetails {

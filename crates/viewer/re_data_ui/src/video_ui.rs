@@ -186,11 +186,31 @@ fn video_data_ui(
             )
             .on_hover_text("The total number of keyframes in the video.");
 
-            let re_video::SamplesStatistics {dts_always_equal_pts, has_sample_highest_pts_so_far: _} = &video_descr.samples_statistics;
+            let re_video::SamplesStatistics {
+                dts_always_equal_pts,
+                has_sample_highest_pts_so_far: _,
+                gop_sizes,
+            } = &video_descr.samples_statistics;
 
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("All PTS equal DTS").value_bool(*dts_always_equal_pts)
             ).on_hover_text("Whether all decode timestamps are equal to presentation timestamps. If true, the video typically has no B-frames.");
+
+            if cfg!(debug_assertions) && gop_sizes.smallest > 0 {
+                if gop_sizes.smallest == gop_sizes.largest {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("GOP size").value_uint(gop_sizes.smallest)
+                    ).on_hover_text("All known gops are this size.");
+                } else {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Smallest GOP size").value_uint(gop_sizes.smallest)
+                    ).on_hover_text("The smallest observed gop size.");
+
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Largest GOP size").value_uint(gop_sizes.largest)
+                    ).on_hover_text("The largest observed gop size.");
+                }
+            }
         });
 
         ui.list_item_collapsible_noninteractive_label("Video samples", false, |ui| {
@@ -568,7 +588,7 @@ fn frame_info_ui(
             .samples_statistics
             .has_sample_highest_pts_so_far
             .as_ref()
-            && let Some(sample_idx) =
+            && let Ok(sample_idx) =
                 video_descr.latest_sample_index_at_presentation_timestamp(presentation_timestamp)
         {
             ui.list_item_flat_noninteractive(

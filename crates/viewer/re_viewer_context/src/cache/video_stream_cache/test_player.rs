@@ -482,7 +482,10 @@ fn player_fetching_unloaded() {
 
         &[]
     }));
-    assert_eq!(fetched.read().as_slice(), &[samples[1].source_id()]);
+    assert_eq!(
+        fetched.read().as_slice(),
+        &[samples[2].source_id(), samples[1].source_id()]
+    );
 
     video.expect_decoded_samples(None);
 
@@ -515,11 +518,11 @@ fn player_fetching_unloaded() {
     assert_eq!(
         fetched.read().as_slice(),
         &[
-            // in `request_keyframe_before`
-            samples[7].source_id(),
-            samples[8].source_id(),
-            samples[9].source_id(),
+            // in `request_keyframe_before` (reversed)
             samples[10].source_id(),
+            samples[9].source_id(),
+            samples[8].source_id(),
+            samples[7].source_id(),
             // in `enqueue_sample_range`
             samples[7].source_id(),
             samples[8].source_id(),
@@ -553,8 +556,8 @@ fn player_fetching_unloaded() {
     }));
     assert_eq!(
         fetched.read().as_slice(),
-        // Both in `request_keyframe_before`.
-        &[samples[11].source_id(), samples[12].source_id()]
+        // Both in `request_keyframe_before` (reversed).
+        &[samples[12].source_id(), samples[11].source_id()]
     );
 
     video.expect_decoded_samples(None);
@@ -819,7 +822,7 @@ fn cache_with_manifest_and_streaming() {
     // Load some chunks.
     load_chunks(&mut store, &mut cache, &chunks[3..5]);
 
-    assert_loading(player.play_store(0.0..3.0, 0.25, &store));
+    assert_loading(player.play_store(1.0..3.0, 0.25, &store));
     player.expect_decoded_samples(None);
 
     player.play_store(3.0..5.0, 0.25, &store).unwrap();

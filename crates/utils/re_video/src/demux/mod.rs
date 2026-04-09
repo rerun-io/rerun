@@ -475,6 +475,19 @@ pub struct VideoEncodingDetails {
     pub stsd: Option<re_mp4::StsdBox>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GopSizes {
+    pub smallest: usize,
+    pub largest: usize,
+}
+
+impl GopSizes {
+    const NO_SAMPLES: Self = Self {
+        smallest: 0,
+        largest: 0,
+    };
+}
+
 /// Meta information about the video samples.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SamplesStatistics {
@@ -490,6 +503,11 @@ pub struct SamplesStatistics {
     /// TODO(andreas): We don't have a mechanism for shrinking this bitvec when dropping samples, i.e. it will keep growing.
     /// ([`StableIndexDeque`] makes sure that indices in the bitvec will still match up with the samples even when samples are dropped from the front.)
     pub has_sample_highest_pts_so_far: Option<BitVec>,
+
+    /// Stats about the gop sizes that have been observed.
+    ///
+    /// This can be 0 if we haven't seen any samples yet.
+    pub gop_sizes: GopSizes,
 }
 
 impl re_byte_size::SizeBytes for SamplesStatistics {
@@ -497,6 +515,7 @@ impl re_byte_size::SizeBytes for SamplesStatistics {
         let Self {
             dts_always_equal_pts: _,
             has_sample_highest_pts_so_far,
+            gop_sizes: _,
         } = self;
         has_sample_highest_pts_so_far
             .as_ref()
@@ -512,6 +531,7 @@ impl SamplesStatistics {
     pub const NO_BFRAMES: Self = Self {
         dts_always_equal_pts: true,
         has_sample_highest_pts_so_far: None,
+        gop_sizes: GopSizes::NO_SAMPLES,
     };
 
     pub fn new(samples: &StableIndexDeque<SampleMetadataState>) -> Self {
@@ -539,9 +559,44 @@ impl SamplesStatistics {
                 .collect()
         });
 
+        let gop_sizes = samples
+            .iter()
+            .fold(
+                (None::<GopSizes>, 0usize),
+                |(mut sizes, mut count), sample| {
+                    let ends_gop = match sample {
+                        SampleMetadataState::Present(s) => s.is_sync,
+                        SampleMetadataState::Unloaded { .. } => true,
+                    };
+
+                    if ends_gop && count > 0 {
+                        sizes = Some(match sizes {
+                            Some(s) => GopSizes {
+                                smallest: s.smallest.min(count),
+                                largest: s.largest.max(count),
+                            },
+                            None => GopSizes {
+                                smallest: count,
+                                largest: count,
+                            },
+                        });
+                        count = 0;
+                    }
+
+                    if sample.is_loaded() {
+                        count += 1;
+                    }
+
+                    (sizes, count)
+                },
+            )
+            .0
+            .unwrap_or(GopSizes::NO_SAMPLES);
+
         Self {
             dts_always_equal_pts,
             has_sample_highest_pts_so_far,
+            gop_sizes,
         }
     }
 }
@@ -694,79 +749,46 @@ impl VideoDataDescription {
     /// For a given decode (!) timestamp, returns the index of the first sample whose
     /// decode timestamp is lesser than or equal to the given timestamp.
     fn latest_sample_index_at_decode_timestamp(
-        keyframes: &[KeyframeIndex],
         samples: &StableIndexDeque<SampleMetadataState>,
         decode_time: Time,
     ) -> Option<SampleIndex> {
-        // First find what keyframe this decode timestamp is in, as an optimization since
-        // we can't efficiently binary search the sample list with possible gaps.
-        //
-        // Keyframes will always be [`SampleMetadataState::Present`] and
-        // have a decode timestamp we can compare against.
-        let keyframe_idx = keyframes
-            .partition_point(|p| {
-                samples
-                    .get(*p)
-                    .map(|s| s.sample())
-                    .inspect(|_s| {
-                        debug_assert!(_s.is_some(), "Keyframes mentioned in the keyframe lookup list should always be loaded");
-                    })
-                    .flatten()
-                    .is_some_and(|s| s.decode_timestamp <= decode_time)
-            })
-            .checked_sub(1)?;
-
-        let start = *keyframes.get(keyframe_idx)?;
-        let end = keyframes
-            .get(keyframe_idx + 1)
-            .copied()
-            .unwrap_or_else(|| samples.next_index());
-
-        // Within that keyframe's range, find the most suitable frame for the given decode time.
-        let range = start..end;
-
-        let mut found_sample_idx = None;
-        for (idx, sample) in samples.iter_index_range_clamped(&range) {
-            let Some(s) = sample.sample() else {
-                continue;
-            };
-
-            if s.decode_timestamp <= decode_time {
-                found_sample_idx = Some(idx);
-            } else {
-                break;
-            }
-        }
-
-        found_sample_idx
+        samples
+            .partition_point(|sample| sample.decode_timestamp() <= decode_time)
+            .checked_sub(1)
     }
 
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
     ///
-    /// The returned sample index is guaranteed to be [`SampleMetadataState::Present`].
+    /// If ok, the returned sample index is guaranteed to be [`SampleMetadataState::Present`].
+    ///
+    /// ### Returns
+    /// If we find a loaded sample with the best presentation timestamp, returns `Ok(sample_idx)`.
+    /// If we run into some unloaded sample that should be decoded at this timestamp, returns
+    /// `Err(Some(sample_idx))`. Otherwise, returns `Err(None)`.
     fn latest_sample_index_at_presentation_timestamp_internal(
-        keyframes: &[KeyframeIndex],
         samples: &StableIndexDeque<SampleMetadataState>,
         sample_statistics: &SamplesStatistics,
         presentation_timestamp: Time,
-    ) -> Option<SampleIndex> {
+    ) -> Result<SampleIndex, Option<SampleIndex>> {
         // Find the latest sample where `decode_timestamp <= presentation_timestamp`.
         // Because `decode <= presentation`, we never have to look further backwards in the
         // video than this.
-        let decode_sample_idx = Self::latest_sample_index_at_decode_timestamp(
-            keyframes,
-            samples,
-            presentation_timestamp,
-        );
+        let decode_sample_idx =
+            Self::latest_sample_index_at_decode_timestamp(samples, presentation_timestamp)
+                .ok_or(None)?;
 
-        let decode_sample_idx = decode_sample_idx?;
+        if let Some(sample) = samples.get(decode_sample_idx)
+            && sample.is_unloaded()
+        {
+            return Err(Some(decode_sample_idx));
+        }
 
         // It's very common that dts==pts in which case we're done!
         let Some(has_sample_highest_pts_so_far) =
             sample_statistics.has_sample_highest_pts_so_far.as_ref()
         else {
             debug_assert!(sample_statistics.dts_always_equal_pts);
-            return Some(decode_sample_idx);
+            return Ok(decode_sample_idx);
         };
         debug_assert!(has_sample_highest_pts_so_far.len() == samples.next_index());
 
@@ -780,13 +802,13 @@ impl VideoDataDescription {
         let mut best_pts = Time::MIN;
         for sample_idx in (samples.min_index()..=decode_sample_idx).rev() {
             let Some(sample) = samples[sample_idx].sample() else {
-                continue;
+                return Err(Some(sample_idx));
             };
 
             if sample.presentation_timestamp == presentation_timestamp {
                 // Clean hit. Take this one, no questions asked :)
                 // (assuming that each PTS is unique!)
-                return Some(sample_idx);
+                return Ok(sample_idx);
             }
 
             if sample.presentation_timestamp < presentation_timestamp
@@ -798,11 +820,11 @@ impl VideoDataDescription {
 
             if best_pts != Time::MIN && has_sample_highest_pts_so_far[sample_idx] {
                 // We won't see any bigger PTS values anymore, meaning we're as close as we can get to the requested PTS!
-                return Some(best_index);
+                return Ok(best_index);
             }
         }
 
-        None
+        Err(None)
     }
 
     /// For a given presentation timestamp, return the index of the first sample
@@ -810,12 +832,16 @@ impl VideoDataDescription {
     ///
     /// Remember that samples after (i.e. with higher index) may have a *lower* presentation time
     /// if the stream has sample reordering!
+    ///
+    /// ### Returns
+    /// If we find a loaded sample with the best presentation timestamp, returns `Ok(sample_idx)`.
+    /// If we run into some unloaded sample that should be decoded at this timestamp, returns
+    /// `Err(Some(sample_idx))`. Otherwise, returns `Err(None)`.
     pub fn latest_sample_index_at_presentation_timestamp(
         &self,
         presentation_timestamp: Time,
-    ) -> Option<SampleIndex> {
+    ) -> Result<SampleIndex, Option<SampleIndex>> {
         Self::latest_sample_index_at_presentation_timestamp_internal(
-            &self.keyframe_indices,
             &self.samples,
             &self.samples_statistics,
             presentation_timestamp,
@@ -829,11 +855,11 @@ impl VideoDataDescription {
     /// Therefore, this may be a jump on sample index.
     pub fn previous_presented_sample(&self, sample: &SampleMetadata) -> Option<&SampleMetadata> {
         let idx = Self::latest_sample_index_at_presentation_timestamp_internal(
-            &self.keyframe_indices,
             &self.samples,
             &self.samples_statistics,
             sample.presentation_timestamp - Time::new(1),
-        )?;
+        )
+        .ok()?;
         match self.samples.get(idx) {
             Some(SampleMetadataState::Present(sample)) => Some(sample),
             None | Some(_) => unreachable!(),
@@ -1185,7 +1211,7 @@ mod tests {
         assert!(pts.iter().zip(dts.iter()).all(|(pts, dts)| dts <= pts));
 
         // Create fake samples from this.
-        let samples = pts
+        let mut samples = pts
             .into_iter()
             .zip(dts)
             .map(|(pts, dts)| {
@@ -1200,8 +1226,6 @@ mod tests {
                 })
             })
             .collect::<StableIndexDeque<_>>();
-        let keyframe_indices: Vec<SampleIndex> =
-            (samples.min_index()..samples.next_index()).collect();
 
         let sample_statistics = SamplesStatistics::new(&samples);
         assert!(!sample_statistics.dts_always_equal_pts);
@@ -1209,7 +1233,6 @@ mod tests {
         // Test queries on the samples.
         let query_pts = |pts| {
             VideoDataDescription::latest_sample_index_at_presentation_timestamp_internal(
-                &keyframe_indices,
                 &samples,
                 &sample_statistics,
                 pts,
@@ -1219,7 +1242,7 @@ mod tests {
         // Check that query for all exact positions works as expected using brute force search as the reference.
         for (idx, sample) in samples.iter_indexed() {
             assert_eq!(
-                Some(idx),
+                Ok(idx),
                 query_pts(sample.sample().unwrap().presentation_timestamp)
             );
         }
@@ -1228,11 +1251,11 @@ mod tests {
         // This works because for this dataset we know the minimum presentation timesetampe distance is always 256.
         for (idx, sample) in samples.iter_indexed() {
             assert_eq!(
-                Some(idx),
+                Ok(idx),
                 query_pts(sample.sample().unwrap().presentation_timestamp + Time(1))
             );
             assert_eq!(
-                Some(idx),
+                Ok(idx),
                 query_pts(sample.sample().unwrap().presentation_timestamp + Time(255))
             );
         }
@@ -1240,34 +1263,51 @@ mod tests {
         // A few hardcoded cases - both for illustrative purposes and to make sure the generic tests above are correct.
 
         // Querying before the first sample.
-        assert_eq!(None, query_pts(Time(-1)));
-        assert_eq!(None, query_pts(Time(-123)));
+        assert_eq!(Err(None), query_pts(Time(-1)));
+        assert_eq!(Err(None), query_pts(Time(-123)));
 
         // Querying for the first sample
-        assert_eq!(Some(0), query_pts(Time(0)));
-        assert_eq!(Some(0), query_pts(Time(1)));
-        assert_eq!(Some(0), query_pts(Time(88)));
-        assert_eq!(Some(0), query_pts(Time(255)));
+        assert_eq!(Ok(0), query_pts(Time(0)));
+        assert_eq!(Ok(0), query_pts(Time(1)));
+        assert_eq!(Ok(0), query_pts(Time(88)));
+        assert_eq!(Ok(0), query_pts(Time(255)));
 
         // The next sample is a jump in index!
-        assert_eq!(Some(3), query_pts(Time(256)));
-        assert_eq!(Some(3), query_pts(Time(257)));
-        assert_eq!(Some(3), query_pts(Time(400)));
-        assert_eq!(Some(3), query_pts(Time(511)));
+        assert_eq!(Ok(3), query_pts(Time(256)));
+        assert_eq!(Ok(3), query_pts(Time(257)));
+        assert_eq!(Ok(3), query_pts(Time(400)));
+        assert_eq!(Ok(3), query_pts(Time(511)));
 
         // And the one after that should jump back again.
-        assert_eq!(Some(2), query_pts(Time(512)));
-        assert_eq!(Some(2), query_pts(Time(513)));
-        assert_eq!(Some(2), query_pts(Time(600)));
-        assert_eq!(Some(2), query_pts(Time(767)));
+        assert_eq!(Ok(2), query_pts(Time(512)));
+        assert_eq!(Ok(2), query_pts(Time(513)));
+        assert_eq!(Ok(2), query_pts(Time(600)));
+        assert_eq!(Ok(2), query_pts(Time(767)));
 
         // And another one!
-        assert_eq!(Some(4), query_pts(Time(768)));
-        assert_eq!(Some(4), query_pts(Time(1023)));
+        assert_eq!(Ok(4), query_pts(Time(768)));
+        assert_eq!(Ok(4), query_pts(Time(1023)));
 
         // Test way outside of the range.
         // (this is not the last element in the list since that one doesn't have the highest PTS)
-        assert_eq!(Some(48), query_pts(Time(123123123123123123)));
+        assert_eq!(Ok(48), query_pts(Time(123123123123123123)));
+
+        // Unload sample 4 (dts=512). Querying for a PTS where the decode
+        // lookup lands directly on the unloaded sample returns Err(Some).
+        samples[4].unload(None);
+        let sample_statistics = SamplesStatistics::new(&samples);
+        let query_pts_unloaded = |pts| {
+            VideoDataDescription::latest_sample_index_at_presentation_timestamp_internal(
+                &samples,
+                &sample_statistics,
+                pts,
+            )
+        };
+        assert_eq!(Err(Some(4)), query_pts_unloaded(Time(768)));
+
+        // Queries that don't touch the unloaded sample still work.
+        assert_eq!(Ok(0), query_pts_unloaded(Time(0)));
+        assert_eq!(Ok(3), query_pts_unloaded(Time(256)));
     }
 
     /// Helper function to check if data contains Annex B start codes
@@ -1362,5 +1402,105 @@ mod tests {
         for codec in [VideoCodec::H264, VideoCodec::H265, VideoCodec::AV1] {
             test_video_codec_sampling(&codec, false);
         }
+    }
+
+    fn sample(dts: i64, is_sync: bool) -> SampleMetadataState {
+        SampleMetadataState::Present(SampleMetadata {
+            is_sync,
+            frame_nr: 0,
+            decode_timestamp: Time(dts),
+            presentation_timestamp: Time(dts),
+            duration: Some(Time(1)),
+            source_id: Tuid::new(),
+            byte_span: Default::default(),
+        })
+    }
+
+    fn unloaded(dts: i64) -> SampleMetadataState {
+        SampleMetadataState::Unloaded {
+            source_id: Tuid::new(),
+            min_dts: Time(dts),
+        }
+    }
+
+    #[test]
+    fn test_gop_sizes_empty() {
+        let samples = StableIndexDeque::new();
+        let stats = SamplesStatistics::new(&samples);
+        assert_eq!(stats.gop_sizes, GopSizes::NO_SAMPLES);
+    }
+
+    /// Uniform GOPs: [K _ _ _ K _ _ _]
+    #[test]
+    fn test_gop_sizes_uniform() {
+        let samples: StableIndexDeque<_> = [
+            sample(0, true),
+            sample(1, false),
+            sample(2, false),
+            sample(3, false),
+            sample(4, true),
+            sample(5, false),
+            sample(6, false),
+            sample(7, false),
+        ]
+        .into_iter()
+        .collect();
+
+        let stats = SamplesStatistics::new(&samples);
+        assert_eq!(stats.gop_sizes.smallest, 4);
+        assert_eq!(stats.gop_sizes.largest, 4);
+    }
+
+    /// Varying GOPs: [K _ K _ _ K _ _ _]
+    #[test]
+    fn test_gop_sizes_varying() {
+        let samples: StableIndexDeque<_> = [
+            sample(0, true),
+            sample(1, false),
+            sample(2, true),
+            sample(3, false),
+            sample(4, false),
+            sample(5, true),
+            sample(6, false),
+            sample(7, false),
+            sample(8, false),
+        ]
+        .into_iter()
+        .collect();
+
+        let stats = SamplesStatistics::new(&samples);
+        assert_eq!(stats.gop_sizes.smallest, 2);
+        assert_eq!(stats.gop_sizes.largest, 3);
+    }
+
+    /// An unloaded sample terminates the current GOP: [K _ _ U K _ _]
+    #[test]
+    fn test_gop_sizes_with_unloaded() {
+        let samples: StableIndexDeque<_> = [
+            sample(0, true),
+            sample(1, false),
+            sample(2, false),
+            unloaded(3),
+            sample(4, true),
+            sample(5, false),
+            sample(6, false),
+        ]
+        .into_iter()
+        .collect();
+
+        let stats = SamplesStatistics::new(&samples);
+        assert_eq!(stats.gop_sizes.smallest, 3);
+        assert_eq!(stats.gop_sizes.largest, 3);
+    }
+
+    /// A single GOP that is never closed by another keyframe produces no size info.
+    #[test]
+    fn test_gop_sizes_single_keyframe() {
+        let samples: StableIndexDeque<_> = [sample(0, true), sample(1, false), sample(2, false)]
+            .into_iter()
+            .collect();
+
+        let stats = SamplesStatistics::new(&samples);
+        assert_eq!(stats.gop_sizes, GopSizes::NO_SAMPLES);
     }
 }
