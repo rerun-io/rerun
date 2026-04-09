@@ -7,6 +7,7 @@ albedo_factor.py linguist-generated=true
 annotation_context.py linguist-generated=true
 axis_length.py linguist-generated=true
 blob.py linguist-generated=true
+cell_size.py linguist-generated=true
 channel_id.py linguist-generated=true
 channel_message_counts.py linguist-generated=true
 class_id.py linguist-generated=true

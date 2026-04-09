@@ -25,6 +25,7 @@ List(non-null UInt8)
 ## Used by
 
 * [`DepthImage`](../archetypes/depth_image.md)
+* [`GridMap`](../archetypes/grid_map.md?speculative-link)
 * [`Image`](../archetypes/image.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)

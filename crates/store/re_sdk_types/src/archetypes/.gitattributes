@@ -20,6 +20,7 @@ geo_line_strings.rs linguist-generated=true
 geo_points.rs linguist-generated=true
 graph_edges.rs linguist-generated=true
 graph_nodes.rs linguist-generated=true
+grid_map.rs linguist-generated=true
 image.rs linguist-generated=true
 instance_poses3d.rs linguist-generated=true
 line_strips2d.rs linguist-generated=true

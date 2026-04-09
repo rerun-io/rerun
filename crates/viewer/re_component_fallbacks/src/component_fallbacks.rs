@@ -8,6 +8,8 @@ pub fn type_fallbacks(registry: &mut FallbackProviderRegistry) {
     registry.register_type_fallback_provider::<components::Color>(|ctx| {
         auto_color_for_entity_path(ctx.target_entity_path)
     });
+    registry
+        .register_type_fallback_provider::<components::Opacity>(|_| components::Opacity::from(1.0));
     registry.register_type_fallback_provider(|_| archetypes::Pinhole::DEFAULT_CAMERA_XYZ);
     registry.register_type_fallback_provider(|ctx| {
         // If the Pinhole has no resolution, use the resolution for the image logged at the same path.
@@ -362,6 +364,16 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
     registry.register_component_fallback_provider(
         archetypes::Image::descriptor_draw_order().component,
         |_| components::DrawOrder::DEFAULT_IMAGE,
+    );
+
+    // GridMap
+    registry.register_component_fallback_provider(
+        archetypes::GridMap::descriptor_draw_order().component,
+        |_| components::DrawOrder::DEFAULT_IMAGE,
+    );
+    registry.register_component_fallback_provider(
+        archetypes::GridMap::descriptor_cell_size().component,
+        |_| components::CellSize::from(0.01),
     );
 
     // SegmentationImage

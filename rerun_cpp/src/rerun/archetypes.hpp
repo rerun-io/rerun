@@ -22,6 +22,7 @@
 #include "archetypes/geo_points.hpp"
 #include "archetypes/graph_edges.hpp"
 #include "archetypes/graph_nodes.hpp"
+#include "archetypes/grid_map.hpp"
 #include "archetypes/image.hpp"
 #include "archetypes/instance_poses3d.hpp"
 #include "archetypes/line_strips2d.hpp"

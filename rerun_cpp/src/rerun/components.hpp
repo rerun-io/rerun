@@ -7,6 +7,7 @@
 #include "components/annotation_context.hpp"
 #include "components/axis_length.hpp"
 #include "components/blob.hpp"
+#include "components/cell_size.hpp"
 #include "components/channel_id.hpp"
 #include "components/channel_message_counts.hpp"
 #include "components/class_id.hpp"

@@ -18,6 +18,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`AnnotationContext`](components/annotation_context.md): The annotation context provides additional information on how to display entities.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
+* [`CellSize`](components/cell_size.md): The metric size of one grid cell in local scene units.
 * [`ChannelId`](components/channel_id.md): A 16-bit ID representing an MCAP channel.
 * [`ChannelMessageCounts`](components/channel_message_counts.md): A mapping of channel IDs to their respective message counts.
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.

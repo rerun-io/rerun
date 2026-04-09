@@ -22,6 +22,7 @@ geo_line_strings.py linguist-generated=true
 geo_points.py linguist-generated=true
 graph_edges.py linguist-generated=true
 graph_nodes.py linguist-generated=true
+grid_map.py linguist-generated=true
 image.py linguist-generated=true
 instance_poses3d.py linguist-generated=true
 line_strips2d.py linguist-generated=true

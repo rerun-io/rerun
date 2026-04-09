@@ -115,6 +115,7 @@ from .archetypes import (
     GeoPoints as GeoPoints,
     GraphEdges as GraphEdges,
     GraphNodes as GraphNodes,
+    GridMap as GridMap,
     Image as Image,
     InstancePoses3D as InstancePoses3D,
     LineStrips2D as LineStrips2D,
