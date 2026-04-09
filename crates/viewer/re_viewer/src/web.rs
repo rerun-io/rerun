@@ -8,7 +8,7 @@ use std::str::FromStr as _;
 use ahash::HashMap;
 use arrow::array::RecordBatch;
 use re_log::ResultExt as _;
-use re_log_channel::LogSender;
+use re_log_channel::{LogSender, RecordingOpenBehavior};
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
 use re_sdk_types::blueprint::components::PlayState;
@@ -211,7 +211,7 @@ impl WebHandle {
                     &open_url::OpenUrlOptions {
                         // TODO(andreas): should follow be part of the fragments?
                         follow: follow.unwrap_or(false),
-                        select_redap_source_when_loaded: true,
+                        recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                         show_loader: true,
                     },
                     &app.command_sender,
@@ -834,7 +834,7 @@ fn create_app(
                         &app.egui_ctx,
                         &open_url::OpenUrlOptions {
                             follow: false,
-                            select_redap_source_when_loaded: true,
+                            recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                             show_loader: true,
                         },
                         &app.command_sender,

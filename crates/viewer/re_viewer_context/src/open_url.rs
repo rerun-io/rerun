@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 
 use re_chunk::ChunkId;
 use re_data_source::LogDataSource;
-use re_log_channel::LogSource;
+use re_log_channel::{LogSource, RecordingOpenBehavior};
 use re_log_types::StoreId;
 use re_uri::Scheme;
 use re_uri::external::url::{self, Url};
@@ -201,7 +201,7 @@ impl ViewerOpenUrl {
 
                 LogDataSource::RedapDatasetSegment {
                     uri,
-                    select_when_loaded: _,
+                    open_behavior: _,
                 } => Ok(Self::RedapDatasetSegment(uri)),
 
                 LogDataSource::RedapProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri)),
@@ -241,17 +241,27 @@ pub fn base_url(url: &Url) -> Url {
     base_url
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct OpenUrlOptions {
     /// Follow live HTTP or file paths.
     //
     // TODO(emilk): consider making this part of `ViewerOpenUrl::RrdHttpUrl/FilePath` instead
     pub follow: bool,
 
-    pub select_redap_source_when_loaded: bool,
+    pub recording_open_behavior: RecordingOpenBehavior,
 
     /// Shows the loading screen.
     pub show_loader: bool,
+}
+
+impl Default for OpenUrlOptions {
+    fn default() -> Self {
+        Self {
+            follow: false,
+            recording_open_behavior: RecordingOpenBehavior::Open,
+            show_loader: false,
+        }
+    }
 }
 
 impl ViewerOpenUrl {
@@ -337,7 +347,7 @@ impl ViewerOpenUrl {
 
             LogSource::RedapGrpcStream {
                 uri,
-                select_when_loaded: _,
+                open_behavior: _,
             } => Ok(Self::RedapDatasetSegment(uri.clone())),
 
             LogSource::MessageProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri.clone())),
@@ -529,7 +539,7 @@ impl ViewerOpenUrl {
             }),
             Self::RedapDatasetSegment(uri) => Some(LogSource::RedapGrpcStream {
                 uri: uri.clone(),
-                select_when_loaded: false,
+                open_behavior: RecordingOpenBehavior::Background,
             }),
             Self::RedapProxy(uri) => Some(LogSource::MessageProxy(uri.clone())),
             Self::WebEventListener => Some(LogSource::RrdWebEvent),
@@ -593,8 +603,8 @@ impl ViewerOpenUrl {
                 command_sender.send_system(SystemCommand::LoadDataSource(
                     LogDataSource::RedapDatasetSegment {
                         uri,
-                        // `select_when_loaded` is not encoded in the url itself right now.
-                        select_when_loaded: options.select_redap_source_when_loaded,
+                        // Open behavior is not encoded in the url right now.
+                        open_behavior: options.recording_open_behavior,
                     },
                 ));
             }
@@ -859,7 +869,7 @@ mod tests {
 
     use re_chunk::ChunkId;
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
-    use re_log_channel::LogSource;
+    use re_log_channel::{LogSource, RecordingOpenBehavior};
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
     use re_uri::{CatalogUri, DatasetSegmentUri, Fragment, Scheme};
     use re_uri::{
@@ -1161,7 +1171,7 @@ mod tests {
             &mut store_hub,
             Some(LogSource::RedapGrpcStream {
                 uri: uri.parse().unwrap(),
-                select_when_loaded: false,
+                open_behavior: RecordingOpenBehavior::Background,
             }),
         );
 

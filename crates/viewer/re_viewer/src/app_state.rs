@@ -7,7 +7,7 @@ use egui::text_selection::LabelSelectionState;
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_channel::{LogReceiverSet, LogSource};
+use re_log_channel::{LogReceiverSet, LogSource, RecordingOpenBehavior};
 use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
@@ -965,7 +965,11 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
                         egui_ctx,
                         &open_url::OpenUrlOptions {
                             follow: false,
-                            select_redap_source_when_loaded: !open_url.new_tab,
+                            recording_open_behavior: if open_url.new_tab {
+                                RecordingOpenBehavior::Open
+                            } else {
+                                RecordingOpenBehavior::OpenAndSelect
+                            },
                             show_loader: !open_url.new_tab,
                         },
                         command_sender,

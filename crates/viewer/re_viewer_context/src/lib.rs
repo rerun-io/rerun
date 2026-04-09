@@ -109,7 +109,7 @@ pub use self::selection_state::{
     SelectionHighlight,
 };
 pub use self::storage_context::StorageContext;
-pub use self::store_hub::StoreHub;
+pub use self::store_hub::{EntityDbUsages, StoreHub};
 pub use self::store_view_context::StoreViewContext;
 pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};

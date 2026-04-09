@@ -22,6 +22,58 @@ use crate::{
     TableStore, TableStores, ViewClassRegistry,
 };
 
+// ---
+
+/// Per-frame usage tracking for an [`EntityDb`].
+///
+/// Tracks two states giving context to how it's used:
+/// - `was_preview`: If the entity db was used the render a preview last frame.
+/// - `opened`: If the entity db was explicitly opened by the user and should be
+///   shown in the recording list. This is not tracked per frame.
+pub struct EntityDbUsages {
+    /// Whether this store was rendered as a preview cell in the previous frame.
+    prev_preview: bool,
+
+    /// Whether this store is being rendered as a preview cell this frame.
+    new_preview: std::sync::atomic::AtomicBool,
+
+    /// True if the user has explicitly opened this store.
+    ///
+    /// Unlike the frame-based preview flag, this persists across frames
+    /// and is not reset by [`Self::update`].
+    pub opened: bool,
+}
+
+impl EntityDbUsages {
+    fn new() -> Self {
+        Self {
+            prev_preview: false,
+            new_preview: std::sync::atomic::AtomicBool::new(false),
+            opened: false,
+        }
+    }
+
+    /// Returns whether this store was rendered as a preview in the previous frame.
+    pub fn was_preview(&self) -> bool {
+        self.prev_preview
+    }
+
+    /// Mark this store as being rendered as a preview this frame.
+    pub fn mark_preview(&self) {
+        self.new_preview
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    /// Call once per frame, before any rendering.
+    pub fn update(&mut self) {
+        self.prev_preview = self
+            .new_preview
+            .swap(false, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+// ---
+
 /// Interface for accessing all blueprints and recordings.
 ///
 /// The [`StoreHub`] provides access to the [`EntityDb`] instances that are used
@@ -64,6 +116,9 @@ pub struct StoreHub {
 
     /// The [`ChunkStoreGeneration`] from when the [`EntityDb`] was last garbage collected
     blueprint_last_gc: HashMap<StoreId, ChunkStoreGeneration>,
+
+    /// Per-frame usage tracking for each store, and whether the user opened it.
+    store_usages: HashMap<StoreId, EntityDbUsages>,
 }
 
 #[derive(Default)]
@@ -191,8 +246,45 @@ impl StoreHub {
             blueprint_last_save: Default::default(),
             blueprint_last_gc: Default::default(),
 
+            store_usages: Default::default(),
+
             table_stores: TableStores::default(),
         }
+    }
+
+    // ---------------------
+    // Usage tracking
+
+    /// Mark a store as being rendered as a preview this frame.
+    ///
+    /// Safe to call with a shared reference — uses atomics internally.
+    /// Has no effect if the store is not (yet) tracked.
+    pub fn mark_preview(&self, store_id: &StoreId) {
+        if let Some(usages) = self.store_usages.get(store_id) {
+            usages.mark_preview();
+        }
+    }
+
+    /// Whether a store was rendered as a preview in the previous frame.
+    ///
+    /// This is true regardless of whether the store is also opened.
+    pub fn was_preview(&self, store_id: &StoreId) -> bool {
+        self.store_usages
+            .get(store_id)
+            .is_some_and(|u| u.was_preview())
+    }
+
+    /// Set or clear the [`EntityDbUsages::opened`] flag for a store.
+    pub fn set_opened(&mut self, store_id: &StoreId, opened: bool) {
+        self.store_usages
+            .entry(store_id.clone())
+            .or_insert_with(EntityDbUsages::new)
+            .opened = opened;
+    }
+
+    /// Whether the user has explicitly opened this store.
+    pub fn is_opened(&self, store_id: &StoreId) -> bool {
+        self.store_usages.get(store_id).is_some_and(|u| u.opened)
     }
 
     // ---------------------
@@ -980,10 +1072,43 @@ impl StoreHub {
     }
 
     /// See [`crate::StoreCache::begin_frame`].
-    pub fn begin_frame_caches(&mut self) {
+    pub fn begin_frame_caches(&mut self, active_recording: Option<&StoreId>) {
+        // Sync usage entries: remove entries for stores that no longer exist,
+        // and ensure entries exist for all current stores.
+        self.store_usages
+            .retain(|id, _| self.store_bundle.contains(id));
+        for db in self.store_bundle.entity_dbs() {
+            self.store_usages
+                .entry(db.store_id().clone())
+                .or_insert_with(EntityDbUsages::new);
+        }
+
+        // Rotate: move new → prev for the previous frame's usage.
+        // Order doesn't matter — each entry is independent.
+        #[expect(clippy::iter_over_hash_type)]
+        for usages in self.store_usages.values_mut() {
+            usages.update();
+        }
+
+        // Pre-compute which stores were rendered last frame to avoid borrow conflicts in retain.
+        // Always include the active recording so its cache is fresh on the first frame
+        // after switching.
+        let mut used_last_frame: HashSet<StoreId> = self
+            .store_usages
+            .iter()
+            .filter(|(_, u)| u.was_preview())
+            .map(|(id, _)| id.clone())
+            .collect();
+        if let Some(active) = active_recording {
+            used_last_frame.insert(active.clone());
+        }
+
         self.store_caches.retain(|store_id, cache| {
             if self.store_bundle.contains(store_id) {
-                cache.begin_frame();
+                // Only refresh the cache for stores that were actually rendered last frame.
+                if used_last_frame.contains(store_id) {
+                    cache.begin_frame();
+                }
                 true // keep cache for existing recordings
             } else {
                 false // remove cache for recordings that no longer exist
@@ -1095,6 +1220,7 @@ impl StoreHub {
             store_caches,
             blueprint_last_save: _,
             blueprint_last_gc: _,
+            store_usages: _,
         } = self;
 
         let mut store_stats = BTreeMap::new();
@@ -1150,6 +1276,7 @@ impl MemUsageTreeCapture for StoreHub {
 
             blueprint_last_save: _,
             blueprint_last_gc: _,
+            store_usages: _,
         } = self;
 
         let mut node = MemUsageNode::new();

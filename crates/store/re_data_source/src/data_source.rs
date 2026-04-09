@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
-use re_log_channel::{LogReceiver, LogSource};
+use re_log_channel::{LogReceiver, LogSource, RecordingOpenBehavior};
 use re_log_types::RecordingId;
 use re_redap_client::ConnectionRegistryHandle;
 
@@ -53,8 +53,7 @@ pub enum LogDataSource {
     RedapDatasetSegment {
         uri: re_uri::DatasetSegmentUri,
 
-        /// Switch to this recording once it has been loaded?
-        select_when_loaded: bool,
+        open_behavior: RecordingOpenBehavior,
     },
 
     /// A `rerun+http://` URI pointing to a proxy.
@@ -164,7 +163,7 @@ impl LogDataSource {
         if let Ok(uri) = url.parse::<re_uri::DatasetSegmentUri>() {
             Some(Self::RedapDatasetSegment {
                 uri,
-                select_when_loaded: true,
+                open_behavior: RecordingOpenBehavior::OpenAndSelect,
             })
         } else if let Ok(uri) = url.parse::<re_uri::ProxyUri>() {
             Some(Self::RedapProxy(uri))
@@ -213,7 +212,7 @@ impl LogDataSource {
                 if let Ok(uri) = value.parse::<re_uri::DatasetSegmentUri>() {
                     Some(Self::RedapDatasetSegment {
                         uri,
-                        select_when_loaded: true,
+                        open_behavior: RecordingOpenBehavior::OpenAndSelect,
                     })
                 } else if let Ok(uri) = value.parse::<re_uri::ProxyUri>() {
                     Some(Self::RedapProxy(uri))
@@ -328,14 +327,11 @@ impl LogDataSource {
                 Ok(rx)
             }
 
-            Self::RedapDatasetSegment {
-                uri,
-                select_when_loaded,
-            } => {
+            Self::RedapDatasetSegment { uri, open_behavior } => {
                 let (tx, rx) =
                     re_log_channel::log_channel(re_log_channel::LogSource::RedapGrpcStream {
                         uri: uri.clone(),
-                        select_when_loaded,
+                        open_behavior,
                     });
 
                 let connection_registry = connection_registry.clone();
@@ -656,7 +652,7 @@ mod tests {
                     segment_id: "the_segment_name".to_owned(),
                     fragment: Default::default(),
                 },
-                select_when_loaded: true
+                open_behavior: RecordingOpenBehavior::OpenAndSelect,
             })
         );
     }

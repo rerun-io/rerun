@@ -69,12 +69,14 @@ impl<'a> RecordingPanelData<'a> {
                 }
 
                 LogSource::RedapGrpcStream { uri, .. } => {
-                    loading_segments
-                        .entry(uri.origin.clone())
-                        .or_default()
-                        .entry(EntryId::from(uri.dataset_id))
-                        .or_default()
-                        .push(source);
+                    if ctx.store_hub().is_opened(&uri.store_id()) {
+                        loading_segments
+                            .entry(uri.origin.clone())
+                            .or_default()
+                            .entry(EntryId::from(uri.dataset_id))
+                            .or_default()
+                            .push(source);
+                    }
                 }
 
                 // We only show things we know are very-soon-to-be recordings, which these are not.
@@ -359,6 +361,7 @@ impl<'a> ServerEntriesData<'a> {
                                     {
                                         if &uri.origin == origin
                                             && EntryId::from(uri.dataset_id) == entry.id()
+                                            && ctx.store_hub().is_opened(entity_db.store_id())
                                         {
                                             Some(SegmentData::Loaded { entity_db })
                                         } else {
