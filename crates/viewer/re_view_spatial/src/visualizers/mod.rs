@@ -79,6 +79,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<encoded_depth_image::EncodedDepthImageVisualizer>()?;
+    system_registry.register_visualizer::<video::EncodedImageVisualizer>()?;
     system_registry.register_visualizer::<grid_map::GridMapVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
@@ -107,6 +108,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<encoded_depth_image::EncodedDepthImageVisualizer>()?;
+    system_registry.register_visualizer::<video::EncodedImageVisualizer>()?;
     system_registry.register_visualizer::<grid_map::GridMapVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
