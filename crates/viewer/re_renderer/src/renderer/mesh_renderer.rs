@@ -310,10 +310,10 @@ impl MeshDrawData {
                     // However, at this point it's really hard to bail out!
                     // Also, by skipping drawing here, we'd make the result worse as there would be no mesh draw calls that could be debugged.
                     let world_from_mesh_normal =
-                        if instance.world_from_mesh.matrix3.determinant() != 0.0 {
-                            instance.world_from_mesh.matrix3.inverse().transpose()
-                        } else {
+                        if instance.world_from_mesh.matrix3.determinant() == 0.0 {
                             glam::Mat3A::ZERO
+                        } else {
+                            instance.world_from_mesh.matrix3.inverse().transpose()
                         };
                     instance_buffer_staging.push(gpu_data::InstanceData {
                         world_from_mesh_row_0: world_from_mesh_mat3
@@ -794,16 +794,16 @@ fn instance_draw_phases(
         phases.insert(DrawPhase::OutlineMask);
     }
 
-    if !instance.additive_tint.is_opaque() {
-        // Everything is transparently tinted.
-        phases.insert(DrawPhase::Transparent);
-    } else {
+    if instance.additive_tint.is_opaque() {
         if any_material_transparent {
             phases.insert(DrawPhase::Transparent);
         }
         if !all_materials_transparent {
             phases.insert(DrawPhase::Opaque);
         }
+    } else {
+        // Everything is transparently tinted.
+        phases.insert(DrawPhase::Transparent);
     }
 
     phases

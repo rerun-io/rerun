@@ -118,16 +118,16 @@ impl DeviceCapabilityTier {
                 required: required_downlevel_caps_webgpu.shader_model,
                 actual: downlevel_caps.shader_model,
             })
-        } else if !downlevel_caps
+        } else if downlevel_caps
             .flags
             .contains(required_downlevel_caps_webgpu.flags)
         {
+            Ok(())
+        } else {
             Err(InsufficientDeviceCapabilities::MissingCapabilitiesFlags {
                 required: required_downlevel_caps_webgpu.flags,
                 actual: downlevel_caps.flags,
             })
-        } else {
-            Ok(())
         }
     }
 }

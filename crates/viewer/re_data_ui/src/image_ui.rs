@@ -233,10 +233,10 @@ fn show_image_preview(
         let visuals = ui.style().interact(response);
         let hovered_visuals = &ui.style().visuals.widgets.hovered;
 
-        let color = if !download_response.contains_pointer() {
-            visuals.weak_bg_fill.linear_multiply(0.7)
-        } else {
+        let color = if download_response.contains_pointer() {
             hovered_visuals.weak_bg_fill
+        } else {
+            visuals.weak_bg_fill.linear_multiply(0.7)
         };
 
         ui.painter().set(

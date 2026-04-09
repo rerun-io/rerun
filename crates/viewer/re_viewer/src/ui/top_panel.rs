@@ -74,10 +74,10 @@ pub fn top_panel(
 
     // On MacOS, we show the close/minimize/maximize buttons in the top panel.
     // We _always_ want to show the top panel in that case, and only hide its content.
-    if !re_ui::native_window_bar(ui.os()) {
-        panel.show_inside(ui, |ui| content(ui, is_expanded));
-    } else {
+    if re_ui::native_window_bar(ui.os()) {
         panel.show_animated_inside(ui, is_expanded, |ui| content(ui, is_expanded));
+    } else {
+        panel.show_inside(ui, |ui| content(ui, is_expanded));
     }
 }
 

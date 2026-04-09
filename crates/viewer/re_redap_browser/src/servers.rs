@@ -727,7 +727,14 @@ impl RedapServers {
                 if let Some(credentials) = credentials {
                     connection_registry.set_credentials(&origin, credentials);
                 }
-                if !self.servers.contains_key(&origin) {
+                if self.servers.contains_key(&origin) {
+                    // Since we persist the server list on disk this happens quite often.
+                    // E.g. run `pixi run rerun "rerun+http://localhost"` more than once.
+                    re_log::debug!(
+                        "Tried to add pre-existing server at {:?}",
+                        origin.to_string()
+                    );
+                } else {
                     self.servers.insert(
                         origin.clone(),
                         Server::new(
@@ -736,13 +743,6 @@ impl RedapServers {
                             egui_ctx,
                             origin.clone(),
                         ),
-                    );
-                } else {
-                    // Since we persist the server list on disk this happens quite often.
-                    // E.g. run `pixi run rerun "rerun+http://localhost"` more than once.
-                    re_log::debug!(
-                        "Tried to add pre-existing server at {:?}",
-                        origin.to_string()
                     );
                 }
                 if let Some(on_add) = on_add {

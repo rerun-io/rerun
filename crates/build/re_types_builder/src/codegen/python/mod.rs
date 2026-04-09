@@ -2304,21 +2304,19 @@ fn quote_arrow_serialization(
                         "##,
                     ));
                 } else if let Some(np_dtype) = np_dtype_from_type(&obj.fields[0].typ) {
-                    if !obj.is_attr_set(ATTR_PYTHON_ALIASES) {
-                        if !obj.is_testing() {
-                            reporter.warn(
-                                &obj.virtpath,
-                                &obj.fqname,
-                                format!("Expected this to have {ATTR_PYTHON_ALIASES} set"),
-                            );
-                        }
-                    } else {
+                    if obj.is_attr_set(ATTR_PYTHON_ALIASES) {
                         return Ok(unindent(&format!(
                             r##"
                                 array = np.asarray(data, dtype={np_dtype}).flatten()
                                 return pa.array(array, type=data_type)
                             "##
                         )));
+                    } else if !obj.is_testing() {
+                        reporter.warn(
+                            &obj.virtpath,
+                            &obj.fqname,
+                            format!("Expected this to have {ATTR_PYTHON_ALIASES} set"),
+                        );
                     }
                 }
             }

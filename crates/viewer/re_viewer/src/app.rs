@@ -732,9 +732,7 @@ impl App {
     ///
     /// Otherwise this updates the viewer tracked history.
     fn update_history(&mut self, store_hub: &StoreHub) {
-        if !self.startup_options().web_history_enabled() {
-            self.update_viewer_history(store_hub);
-        } else {
+        if self.startup_options().web_history_enabled() {
             // We don't want to spam the web history API with changes, because
             // otherwise it will start complaining about it being an insecure
             // operation.
@@ -751,6 +749,8 @@ impl App {
             {
                 self.update_web_history(store_hub);
             }
+        } else {
+            self.update_viewer_history(store_hub);
         }
     }
 

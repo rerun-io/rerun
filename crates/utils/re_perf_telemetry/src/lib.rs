@@ -280,11 +280,11 @@ impl EnvFilterExt for tracing_subscriber::EnvFilter {
         target: &str,
         default: &str,
     ) -> anyhow::Result<Self> {
-        if !base.contains(&format!("{target}=")) {
+        if base.contains(&format!("{target}=")) {
+            Ok(self)
+        } else {
             let filter = self.add_directive(format!("{target}={default}").parse()?);
             Ok(filter)
-        } else {
-            Ok(self)
         }
     }
 }

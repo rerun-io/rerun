@@ -266,10 +266,10 @@ impl AppState {
                 {
                     self.navigation.replace(Route::ChunkStoreBrowser {
                         store_id: result_store_id.clone(),
-                        selected_chunk: if result_store_id != store_id {
-                            None
-                        } else {
+                        selected_chunk: if result_store_id == store_id {
                             result.selected_chunk
+                        } else {
+                            None
                         },
                         previous,
                     });

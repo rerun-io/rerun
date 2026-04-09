@@ -116,11 +116,11 @@ fn default_excluded_entities_for_visualizer_affinity(
         .new_visualizer_collection(opposite_view)
         .iter_with_identifiers()
         .filter_map(|(id, visualizer)| {
-            if visualizer.affinity()? != view_class_identifier {
+            if visualizer.affinity()? == view_class_identifier {
+                None
+            } else {
                 let indicator_matching = ctx.indicated_entities_per_visualizer.get(&id)?;
                 Some(indicator_matching.iter())
-            } else {
-                None
             }
         })
         .flatten()

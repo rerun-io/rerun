@@ -541,15 +541,15 @@ impl TimeControl {
 
             let bp_loop_section = blueprint_ctx.time_selection();
             // If we've switched timeline, use the new timeline's cached time selection.
-            if old_timeline != timeline {
+            if old_timeline == timeline {
+                state.time_selection = bp_loop_section.map(|r| r.into());
+            } else {
                 match state.time_selection {
                     Some(selection) => blueprint_ctx.set_time_selection(selection.to_int()),
                     None => {
                         blueprint_ctx.clear_time_selection();
                     }
                 }
-            } else {
-                state.time_selection = bp_loop_section.map(|r| r.into());
             }
 
             match play_state {
@@ -873,7 +873,9 @@ impl TimeControl {
                 NeedsRepaint::Yes
             }
             TimeControlCommand::SetLoopMode(loop_mode) => {
-                if self.loop_mode != *loop_mode {
+                if self.loop_mode == *loop_mode {
+                    NeedsRepaint::No
+                } else {
                     if let Some(blueprint_ctx) = blueprint_ctx {
                         blueprint_ctx.set_loop_mode(*loop_mode);
                     }
@@ -888,12 +890,12 @@ impl TimeControl {
                     }
 
                     NeedsRepaint::Yes
-                } else {
-                    NeedsRepaint::No
                 }
             }
             TimeControlCommand::SetPlayState(play_state) => {
-                if self.play_state() != *play_state {
+                if self.play_state() == *play_state {
+                    NeedsRepaint::No
+                } else {
                     self.set_play_state(Some(entity_db), *play_state, blueprint_ctx);
 
                     if self.following {
@@ -904,8 +906,6 @@ impl TimeControl {
                     }
 
                     NeedsRepaint::Yes
-                } else {
-                    NeedsRepaint::No
                 }
             }
             TimeControlCommand::Pause => {
@@ -973,7 +973,9 @@ impl TimeControl {
                 }
             }
             TimeControlCommand::SetSpeed(speed) => {
-                if *speed != self.speed {
+                if *speed == self.speed {
+                    NeedsRepaint::No
+                } else {
                     self.speed = *speed;
 
                     if let Some(blueprint_ctx) = blueprint_ctx {
@@ -981,8 +983,6 @@ impl TimeControl {
                     }
 
                     NeedsRepaint::Yes
-                } else {
-                    NeedsRepaint::No
                 }
             }
             TimeControlCommand::SetFps(fps) => {

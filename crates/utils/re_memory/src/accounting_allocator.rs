@@ -352,7 +352,10 @@ fn note_alloc(ptr: *mut u8, size: usize) {
             // track the allocations made by the allocation tracker:
 
             IS_THREAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
-                if !is_thread_in_allocation_tracker.get() {
+                if is_thread_in_allocation_tracker.get() {
+                    // This is the ALLOCATION_TRACKER allocating memory.
+                    GLOBAL.overhead.add(size);
+                } else {
                     is_thread_in_allocation_tracker.set(true);
 
                     let ptr_hash = PtrHash::new(ptr);
@@ -365,9 +368,6 @@ fn note_alloc(ptr: *mut u8, size: usize) {
                     }
 
                     is_thread_in_allocation_tracker.set(false);
-                } else {
-                    // This is the ALLOCATION_TRACKER allocating memory.
-                    GLOBAL.overhead.add(size);
                 }
             });
         }
@@ -386,7 +386,10 @@ fn note_dealloc(ptr: *mut u8, size: usize) {
             // Big enough to track - but make sure we don't create a deadlock by trying to
             // track the allocations made by the allocation tracker:
             IS_THREAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
-                if !is_thread_in_allocation_tracker.get() {
+                if is_thread_in_allocation_tracker.get() {
+                    // This is the ALLOCATION_TRACKER freeing memory.
+                    GLOBAL.overhead.sub(size);
+                } else {
                     is_thread_in_allocation_tracker.set(true);
 
                     let ptr_hash = PtrHash::new(ptr);
@@ -399,9 +402,6 @@ fn note_dealloc(ptr: *mut u8, size: usize) {
                     }
 
                     is_thread_in_allocation_tracker.set(false);
-                } else {
-                    // This is the ALLOCATION_TRACKER freeing memory.
-                    GLOBAL.overhead.sub(size);
                 }
             });
         }

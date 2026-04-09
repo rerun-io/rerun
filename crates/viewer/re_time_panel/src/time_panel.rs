@@ -1345,10 +1345,10 @@ impl TimePanel {
                 }
             });
 
-        if !found_last_clicked_items {
-            vec![]
-        } else {
+        if found_last_clicked_items {
             items_in_range
+        } else {
+            vec![]
         }
     }
 

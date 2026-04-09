@@ -839,10 +839,10 @@ pub trait UiExt {
 
                 let copy_visuals = ui.style().interact(&copy_response);
 
-                let color = if !copy_response.contains_pointer() {
-                    visuals.weak_bg_fill
-                } else {
+                let color = if copy_response.contains_pointer() {
                     copy_visuals.weak_bg_fill
+                } else {
+                    visuals.weak_bg_fill
                 };
 
                 ui.painter().set(
@@ -1376,11 +1376,11 @@ pub trait UiExt {
         let content_changed = ui.data_mut(|data| {
             let stored_show_extras = data
                 .get_temp_mut_or_insert_with(ui.id().with("__stored_show_extra__"), || show_extras);
-            if *stored_show_extras != show_extras {
+            if *stored_show_extras == show_extras {
+                false
+            } else {
                 *stored_show_extras = show_extras;
                 true
-            } else {
-                false
             }
         });
 

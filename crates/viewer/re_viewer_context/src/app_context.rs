@@ -265,10 +265,10 @@ impl AppContext<'_> {
                 self.command_sender
                     .send_system(SystemCommand::set_selection(selected_items.clone()));
                 selected_items
-            } else if !is_already_selected {
-                interacted_items
-            } else {
+            } else if is_already_selected {
                 selected_items
+            } else {
+                interacted_items
             };
 
             let items_may_be_dragged = self

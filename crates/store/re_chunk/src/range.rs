@@ -220,15 +220,15 @@ impl Chunk {
         // Pre-slice the data if the caller allowed us: this will make further slicing
         // (e.g. the range query itself) much cheaper to compute.
         use std::borrow::Cow;
-        let chunk = if !keep_extra_timelines {
-            Cow::Owned(self.timeline_sliced(*query.timeline()))
-        } else {
+        let chunk = if keep_extra_timelines {
             Cow::Borrowed(self)
-        };
-        let chunk = if !keep_extra_components {
-            Cow::Owned(chunk.component_sliced(component))
         } else {
+            Cow::Owned(self.timeline_sliced(*query.timeline()))
+        };
+        let chunk = if keep_extra_components {
             chunk
+        } else {
+            Cow::Owned(chunk.component_sliced(component))
         };
 
         if chunk.is_static() {

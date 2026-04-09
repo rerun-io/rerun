@@ -204,10 +204,10 @@ fn send_output(
     output_sender: &OutputSender,
     result: FrameResult,
 ) -> Result<(), SendError<FrameResult>> {
-    if !output_sender.stop_signal.load(Ordering::Acquire) {
-        output_sender.sender.send(result)
-    } else {
+    if output_sender.stop_signal.load(Ordering::Acquire) {
         Err(SendError(result))
+    } else {
+        output_sender.sender.send(result)
     }
 }
 
