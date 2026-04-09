@@ -1470,11 +1470,11 @@ class ParquetLoaderInternal:
         entity_path_prefix: str | None = None,
         column_grouping: str = "prefix",
         delimiter: str = "_",
+        prefixes: list[str] | None = None,
+        use_structs: bool = True,
         static_columns: list[str] | None = None,
         index_columns: list[tuple[str, str, str | None]] | None = None,
-        pos_suffixes: list[list[str]] | None = None,
-        quat_suffixes: list[list[str]] | None = None,
-        scalar_suffixes: list[tuple[list[str], list[str]]] | None = None,
+        column_rules: list[Any] | None = None,
     ) -> None: ...
     def stream(self) -> LazyChunkStreamInternal: ...
     @property

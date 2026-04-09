@@ -18,78 +18,133 @@ pub enum ColumnGrouping {
     /// `camera_depth` are grouped under entity `/camera` with components
     /// `rgb` and `depth`. Columns without the delimiter are placed in
     /// their own single-column group.
-    Prefix { delimiter: char },
+    Prefix { delimiter: char, use_structs: bool },
+
+    /// Group columns by explicit prefix strings.
+    ///
+    /// Each column is checked against the prefixes in longest-first order.
+    /// The first matching prefix is stripped, and the column is added to that
+    /// prefix's group. One leading underscore is also stripped from the
+    /// remainder (so prefix `"cat"` on column `"cat_foo"` gives component `"foo"`).
+    ///
+    /// Columns that don't match any prefix become individual groups.
+    ///
+    /// **Note:** Matching uses simple `str::starts_with`, not delimiter-aware
+    /// boundaries. Prefix `"cat"` will match column `"catdog"` (remainder
+    /// `"dog"`). To avoid unintended matches, choose prefixes that are
+    /// unambiguous in your column namespace, or include the delimiter in the
+    /// prefix (e.g., `"cat_"` — though the leading-underscore strip then
+    /// becomes a no-op since there is no underscore to strip).
+    ExplicitPrefixes {
+        prefixes: Vec<String>,
+        use_structs: bool,
+    },
 }
 
 impl Default for ColumnGrouping {
     fn default() -> Self {
-        Self::Prefix { delimiter: '_' }
+        Self::Prefix {
+            delimiter: '_',
+            use_structs: true,
+        }
     }
 }
 
-// TODO(parquet): Will be replaced by lenses in py-chunk. Remove once available.
-/// Rule for combining columns with matching suffixes into a typed archetype component.
+/// What to produce from a group of matched columns.
+/// Highly experimental and will definitely change as
+/// we add tools to support this more generically
+#[derive(Debug, Clone)]
+pub enum ColumnMapping {
+    /// N columns → a Rerun component. Interleaved into `FixedSizeList(N, Float32)`.
+    Component {
+        /// Archetype + component descriptor used for the output chunk.
+        descriptor: ComponentDescriptor,
+    },
+
+    /// N columns → multi-instance Scalars with named series.
+    /// Interleaved into `FixedSizeList(N, Float64)` + companion names field.
+    Scalars {
+        /// Display name for each series, in the same order as `suffixes`.
+        names: Vec<String>,
+    },
+
+    /// Translation + rotation columns → a `Transform3D` archetype.
+    ///
+    /// The translation suffixes come from the parent [`ColumnRule::suffixes`] field.
+    /// When both suffix sets match with the same sub-prefix, the columns are
+    /// combined into a `Transform3D` with translation and quaternion components.
+    ///
+    /// In struct mode this produces a nested struct with `translation` and
+    /// `quaternion` fields. In flat mode, two components at the same entity path.
+    Transform {
+        /// Ordered suffixes that identify the rotation columns
+        /// (e.g., `["_quat_x", "_quat_y", "_quat_z", "_quat_w"]`).
+        rotation_suffixes: Vec<String>,
+    },
+}
+
+impl ColumnMapping {
+    /// `Translation3D` component mapping.
+    pub fn translation3d() -> Self {
+        use re_sdk_types::archetypes::Transform3D;
+        Self::Component {
+            descriptor: Transform3D::descriptor_translation(),
+        }
+    }
+
+    /// `RotationQuat` component mapping.
+    pub fn rotation_quat() -> Self {
+        use re_sdk_types::archetypes::Transform3D;
+        Self::Component {
+            descriptor: Transform3D::descriptor_quaternion(),
+        }
+    }
+
+    /// `RotationAxisAngle` component mapping.
+    pub fn rotation_axis_angle() -> Self {
+        use re_sdk_types::archetypes::Transform3D;
+        Self::Component {
+            descriptor: Transform3D::descriptor_rotation_axis_angle(),
+        }
+    }
+
+    /// `Scale3D` component mapping.
+    pub fn scale3d() -> Self {
+        use re_sdk_types::archetypes::Transform3D;
+        Self::Component {
+            descriptor: Transform3D::descriptor_scale(),
+        }
+    }
+
+    /// `Transform3D` mapping (translation + rotation quaternion).
+    pub fn transform(rotation_suffixes: Vec<String>) -> Self {
+        Self::Transform { rotation_suffixes }
+    }
+}
+
+/// Rule for combining columns with matching suffixes into a typed component.
 ///
 /// When a set of columns whose names end with the specified `suffixes` (in order)
-/// share a common prefix, they are combined into the target Rerun component.
+/// share a common prefix, they are combined according to `mapping`.
+///
+/// Rules are processed in list order; the first rule whose suffixes match a set
+/// of columns wins. Put specific rules before broad catch-all rules.
 ///
 /// Experimental: this API may change or be removed.
 #[derive(Debug, Clone)]
-pub struct ComponentRule {
-    /// Ordered suffixes that identify columns for this component
-    /// (e.g., `["_pos_x", "_pos_y", "_pos_z"]`).
+pub struct ColumnRule {
+    /// Ordered suffixes that identify columns (e.g., `["_pos_x", "_pos_y", "_pos_z"]`).
     pub suffixes: Vec<String>,
 
-    /// The Rerun component to construct from the matched columns.
-    pub target: MappedComponent,
-}
+    /// What to produce from the matched columns.
+    pub mapping: ColumnMapping,
 
-// TODO(parquet): Will be replaced by lenses in py-chunk. Remove once available.
-/// A Rerun component that can be constructed from multiple scalar columns.
-///
-/// Experimental: this API may change or be removed.
-#[derive(Debug, Clone, Copy)]
-pub enum MappedComponent {
-    /// 3 columns → `Translation3D` (`FixedSizeList(3, Float32)`).
-    Translation3D,
-
-    /// 4 columns → `RotationQuat` (`FixedSizeList(4, Float32)`).
-    RotationQuat,
-}
-
-impl MappedComponent {
-    pub(crate) fn descriptor(self) -> ComponentDescriptor {
-        use re_sdk_types::archetypes::Transform3D;
-        match self {
-            Self::Translation3D => Transform3D::descriptor_translation(),
-            Self::RotationQuat => Transform3D::descriptor_quaternion(),
-        }
-    }
-
-    pub(crate) fn element_count(self) -> usize {
-        match self {
-            Self::Translation3D => 3,
-            Self::RotationQuat => 4,
-        }
-    }
-}
-
-// TODO(parquet): Will be replaced by lenses in py-chunk. Remove once available.
-/// Rule for combining columns with matching suffixes into named `Scalar` series.
-///
-/// Each group of matched columns becomes a multi-instance `Scalars` component
-/// at the derived entity path, with a static `Name` component for the series
-/// labels.
-///
-/// Experimental: this API may change or be removed.
-#[derive(Debug, Clone)]
-pub struct ScalarSuffixGroup {
-    /// Ordered suffixes that identify columns (e.g., `["_x", "_y", "_z"]`).
-    pub suffixes: Vec<String>,
-
-    /// Display name for each series, in the same order as `suffixes`
-    /// (e.g., `["x", "y", "z"]`).
-    pub names: Vec<String>,
+    /// Optional override appended to the sub-prefix to form the struct field name.
+    ///
+    /// When present and `sub_prefix` is non-empty: `field_name = "{sub_prefix}{override}"`.
+    /// When present and `sub_prefix` is empty: `field_name = override` (leading `_` stripped).
+    /// The `suffix_fallback` is ignored when override is set.
+    pub field_name_override: Option<String>,
 }
 
 /// Configuration for parquet loading.
@@ -110,12 +165,8 @@ pub struct ParquetConfig {
     pub static_columns: Vec<String>,
 
     // TODO(parquet): Ad-hoc; will be replaced by lenses in py-chunk.
-    /// Experimental: suffix-to-archetype mapping rules.
-    pub archetype_rules: Vec<ComponentRule>,
-
-    // TODO(parquet): Ad-hoc; will be replaced by lenses in py-chunk.
-    /// Experimental: suffix-to-Scalars grouping with named series.
-    pub scalar_suffixes: Vec<ScalarSuffixGroup>,
+    /// Experimental: suffix-based column combination rules.
+    pub column_rules: Vec<ColumnRule>,
 }
 
 impl ParquetConfig {

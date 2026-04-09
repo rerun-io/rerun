@@ -6,8 +6,7 @@ use pyo3::prelude::*;
 
 use re_chunk::{Chunk, EntityPath};
 use re_parquet::{
-    ColumnGrouping, ComponentRule, IndexColumn, IndexType, MappedComponent, ParquetConfig,
-    ScalarSuffixGroup, TimeUnit,
+    ColumnGrouping, ColumnMapping, ColumnRule, IndexColumn, IndexType, ParquetConfig, TimeUnit,
 };
 
 use super::error::ChunkPipelineError;
@@ -37,24 +36,24 @@ impl PyParquetLoaderInternal {
             entity_path_prefix = None,
             column_grouping = "prefix",
             delimiter = '_',
+            prefixes = None,
+            use_structs = true,
             static_columns = None,
             index_columns = None,
-            pos_suffixes = None,
-            quat_suffixes = None,
-            scalar_suffixes = None,
+            column_rules = None,
         ),
-        text_signature = "(self, path, entity_path_prefix=None, column_grouping='prefix', delimiter='_', static_columns=None, index_columns=None, pos_suffixes=None, quat_suffixes=None, scalar_suffixes=None)"
+        text_signature = "(self, path, entity_path_prefix=None, column_grouping='prefix', delimiter='_', prefixes=None, use_structs=True, static_columns=None, index_columns=None, column_rules=None)"
     )]
     fn new(
         path: &str,
         entity_path_prefix: Option<String>,
         column_grouping: &str,
         delimiter: char,
+        prefixes: Option<Vec<String>>,
+        use_structs: bool,
         static_columns: Option<Vec<String>>,
         index_columns: Option<Vec<(String, String, Option<String>)>>,
-        pos_suffixes: Option<Vec<Vec<String>>>,
-        quat_suffixes: Option<Vec<Vec<String>>>,
-        scalar_suffixes: Option<Vec<(Vec<String>, Vec<String>)>>,
+        column_rules: Option<Vec<Bound<'_, pyo3::types::PyAny>>>,
     ) -> PyResult<Self> {
         let path = PathBuf::from(path);
         if !path.exists() {
@@ -65,38 +64,52 @@ impl PyParquetLoaderInternal {
         }
 
         let grouping = match column_grouping {
-            "individual" => ColumnGrouping::Individual,
-            "prefix" => ColumnGrouping::Prefix { delimiter },
+            "individual" => {
+                if prefixes.is_some() {
+                    return Err(PyValueError::new_err(
+                        "'prefixes' is only valid with column_grouping='explicit_prefixes'",
+                    ));
+                }
+                ColumnGrouping::Individual
+            }
+            "prefix" => {
+                if prefixes.is_some() {
+                    return Err(PyValueError::new_err(
+                        "'prefixes' is only valid with column_grouping='explicit_prefixes'",
+                    ));
+                }
+                ColumnGrouping::Prefix {
+                    delimiter,
+                    use_structs,
+                }
+            }
+            "explicit_prefixes" => {
+                let pfx = prefixes.ok_or_else(|| {
+                    PyValueError::new_err("'explicit_prefixes' requires the 'prefixes' parameter")
+                })?;
+                if pfx.is_empty() {
+                    return Err(PyValueError::new_err(
+                        "'prefixes' must not be empty for 'explicit_prefixes' grouping",
+                    ));
+                }
+                ColumnGrouping::ExplicitPrefixes {
+                    prefixes: pfx,
+                    use_structs,
+                }
+            }
             other => {
                 return Err(PyValueError::new_err(format!(
-                    "Unknown column_grouping: '{other}'. Expected 'prefix' or 'individual'."
+                    "Unknown column_grouping: '{other}'. \
+                     Expected 'prefix', 'individual', or 'explicit_prefixes'."
                 )));
             }
         };
 
-        let mut archetype_rules = Vec::new();
-        if let Some(pos_groups) = pos_suffixes {
-            for suffixes in pos_groups {
-                archetype_rules.push(ComponentRule {
-                    suffixes,
-                    target: MappedComponent::Translation3D,
-                });
-            }
-        }
-        if let Some(quat_groups) = quat_suffixes {
-            for suffixes in quat_groups {
-                archetype_rules.push(ComponentRule {
-                    suffixes,
-                    target: MappedComponent::RotationQuat,
-                });
-            }
-        }
-
-        let scalar_groups: Vec<ScalarSuffixGroup> = scalar_suffixes
-            .unwrap_or_default()
-            .into_iter()
-            .map(|(suffixes, names)| ScalarSuffixGroup { suffixes, names })
-            .collect();
+        let rules: Vec<ColumnRule> = if let Some(rules) = column_rules {
+            parse_column_rules(rules)?
+        } else {
+            Vec::new()
+        };
 
         let index_cols: Vec<IndexColumn> = index_columns
             .unwrap_or_default()
@@ -131,8 +144,7 @@ impl PyParquetLoaderInternal {
             column_grouping: grouping,
             index_columns: index_cols,
             static_columns: static_columns.unwrap_or_default(),
-            archetype_rules,
-            scalar_suffixes: scalar_groups,
+            column_rules: rules,
         };
 
         let prefix = entity_path_prefix
@@ -224,4 +236,47 @@ impl ChunkStream for ParquetStream {
             Err(_) => Ok(None), // channel closed — loading finished
         }
     }
+}
+
+/// Parse `column_rules` from Python `ColumnRule` dataclass instances.
+fn parse_column_rules(rules: Vec<Bound<'_, pyo3::types::PyAny>>) -> PyResult<Vec<ColumnRule>> {
+    rules
+        .into_iter()
+        .map(|item| {
+            let suffixes: Vec<String> = item.getattr("suffixes")?.extract()?;
+            let target: String = item.getattr("target")?.extract()?;
+            let names: Option<Vec<String>> = item.getattr("names")?.extract()?;
+            let field_name_override: Option<String> =
+                item.getattr("field_name_override")?.extract()?;
+
+            let rotation_suffixes: Option<Vec<String>> =
+                item.getattr("rotation_suffixes")?.extract()?;
+
+            let mapping = match target.as_str() {
+                "Translation3D" => ColumnMapping::translation3d(),
+                "RotationQuat" => ColumnMapping::rotation_quat(),
+                "RotationAxisAngle" => ColumnMapping::rotation_axis_angle(),
+                "Scale3D" => ColumnMapping::scale3d(),
+                "Scalars" => ColumnMapping::Scalars {
+                    names: names
+                        .ok_or_else(|| PyValueError::new_err("Scalars target requires 'names'"))?,
+                },
+                "Transform" => ColumnMapping::transform(rotation_suffixes.ok_or_else(|| {
+                    PyValueError::new_err("Transform target requires 'rotation_suffixes'")
+                })?),
+                other => {
+                    return Err(PyValueError::new_err(format!(
+                        "Unknown target: '{other}'. Valid targets: Translation3D, RotationQuat, \
+                         RotationAxisAngle, Scale3D, Scalars, Transform."
+                    )));
+                }
+            };
+
+            Ok(ColumnRule {
+                suffixes,
+                mapping,
+                field_name_override,
+            })
+        })
+        .collect()
 }

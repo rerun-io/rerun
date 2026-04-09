@@ -10,8 +10,7 @@ mod streaming;
 mod timeline;
 
 pub use config::{
-    ColumnGrouping, ComponentRule, IndexColumn, IndexType, MappedComponent, ParquetConfig,
-    ScalarSuffixGroup, TimeUnit,
+    ColumnGrouping, ColumnMapping, ColumnRule, IndexColumn, IndexType, ParquetConfig, TimeUnit,
 };
 pub use streaming::ParquetError;
 

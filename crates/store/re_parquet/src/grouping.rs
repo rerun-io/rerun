@@ -1,8 +1,9 @@
 //! Column grouping algorithm for mapping parquet columns to Rerun entities.
 
 use re_chunk::EntityPath;
+use re_sdk_types::ComponentDescriptor;
 
-use crate::config::{ColumnGrouping, ComponentRule, MappedComponent, ScalarSuffixGroup};
+use crate::config::{ColumnGrouping, ColumnMapping, ColumnRule};
 
 /// An entry inside a [`ColumnGroup`].
 pub(crate) enum ColumnGroupEntry {
@@ -10,15 +11,35 @@ pub(crate) enum ColumnGroupEntry {
     Raw { col_idx: usize, comp_name: String },
 
     /// Multiple columns combined into a typed archetype component.
-    Archetype {
+    Component {
         col_indices: Vec<usize>,
-        target: MappedComponent,
+        descriptor: ComponentDescriptor,
+
+        /// Struct field name when this entry is part of a multi-entry prefix group.
+        field_name: String,
     },
 
     /// Multiple columns combined into N-instance `Scalars` with named series.
     ScalarGroup {
         col_indices: Vec<usize>,
         names: Vec<String>,
+
+        /// Struct field name when this entry is part of a multi-entry prefix group.
+        field_name: String,
+    },
+
+    /// Translation + rotation columns combined into a `Transform3D`.
+    ///
+    /// In struct mode, emitted as a nested struct with `translation` and
+    /// `quaternion` fields. In flat mode, emitted as two separate components.
+    Transform {
+        translation_col_indices: Vec<usize>,
+        rotation_col_indices: Vec<usize>,
+        translation_descriptor: ComponentDescriptor,
+        rotation_descriptor: ComponentDescriptor,
+
+        /// Struct field name when this entry is part of a multi-entry prefix group.
+        field_name: String,
     },
 }
 
@@ -28,19 +49,20 @@ pub(crate) struct ColumnGroup {
     pub entries: Vec<ColumnGroupEntry>,
 }
 
-/// Compute column groups: prefix-split first, then apply archetype suffix rules within each group.
+/// Compute column groups: prefix-split first, then apply column rules within each group.
 pub(crate) fn compute_column_groups(
     schema: &arrow::datatypes::Schema,
     excluded: &std::collections::HashSet<usize>,
     entity_path_prefix: &EntityPath,
     grouping: &ColumnGrouping,
-    archetype_rules: &[ComponentRule],
-    scalar_suffixes: &[ScalarSuffixGroup],
+    column_rules: &[ColumnRule],
 ) -> Vec<ColumnGroup> {
+    warn_shadowed_rules(column_rules);
+
     match grouping {
         ColumnGrouping::Individual => {
             let (mut groups, consumed) =
-                match_archetype_rules_raw(schema, excluded, entity_path_prefix, archetype_rules);
+                match_rules_raw(schema, excluded, entity_path_prefix, column_rules);
             for (i, field) in schema.fields().iter().enumerate() {
                 if excluded.contains(&i) || consumed.contains(&i) {
                     continue;
@@ -56,7 +78,10 @@ pub(crate) fn compute_column_groups(
             groups
         }
 
-        ColumnGrouping::Prefix { delimiter } => {
+        ColumnGrouping::Prefix {
+            delimiter,
+            use_structs: _,
+        } => {
             let mut prefix_groups: std::collections::BTreeMap<String, Vec<(usize, String)>> =
                 std::collections::BTreeMap::new();
 
@@ -80,46 +105,94 @@ pub(crate) fn compute_column_groups(
             let mut groups = Vec::new();
             for (prefix, comp_entries) in prefix_groups {
                 let base_path = entity_path_prefix.join(&EntityPath::from(prefix.as_str()));
-
-                let (arch_sub_groups, raw_entries) =
-                    match_suffix_rules_in_group(&comp_entries, archetype_rules, scalar_suffixes);
-
-                for (sub_prefix, entries) in arch_sub_groups {
-                    let entity_path = if sub_prefix.is_empty() {
-                        base_path.clone()
-                    } else {
-                        base_path.join(&EntityPath::from(sub_prefix.as_str()))
-                    };
-                    groups.push(ColumnGroup {
-                        entity_path,
-                        entries,
-                    });
-                }
-
-                if !raw_entries.is_empty() {
+                let all_entries = match_rules_in_group(&comp_entries, column_rules);
+                if !all_entries.is_empty() {
                     groups.push(ColumnGroup {
                         entity_path: base_path,
-                        entries: raw_entries,
+                        entries: all_entries,
                     });
                 }
             }
             groups
         }
+
+        ColumnGrouping::ExplicitPrefixes {
+            prefixes,
+            use_structs: _,
+        } => {
+            // Sort prefixes longest-first so "catalog" is tried before "cat".
+            let mut sorted_prefixes = prefixes.clone();
+            sorted_prefixes.sort_by_key(|b| std::cmp::Reverse(b.len()));
+
+            let mut prefix_groups: std::collections::BTreeMap<String, Vec<(usize, String)>> =
+                std::collections::BTreeMap::new();
+            let mut unmatched: Vec<(usize, String)> = Vec::new();
+
+            for (i, field) in schema.fields().iter().enumerate() {
+                if excluded.contains(&i) {
+                    continue;
+                }
+                let name = field.name().as_str();
+                let mut matched = false;
+                for prefix in &sorted_prefixes {
+                    if let Some(remainder) = name.strip_prefix(prefix.as_str()) {
+                        if remainder.is_empty() {
+                            // Exact match (column name == prefix): treat as individual.
+                            break;
+                        }
+                        // Strip one leading underscore so prefix "cat" on "cat_foo" → "foo".
+                        let comp_name = remainder.strip_prefix('_').unwrap_or(remainder);
+                        prefix_groups
+                            .entry(prefix.clone())
+                            .or_default()
+                            .push((i, comp_name.to_owned()));
+                        matched = true;
+                        break;
+                    }
+                }
+                if !matched {
+                    unmatched.push((i, name.to_owned()));
+                }
+            }
+
+            let mut groups = Vec::new();
+
+            for (prefix, comp_entries) in prefix_groups {
+                let base_path = entity_path_prefix.join(&EntityPath::from(prefix.as_str()));
+                let all_entries = match_rules_in_group(&comp_entries, column_rules);
+                if !all_entries.is_empty() {
+                    groups.push(ColumnGroup {
+                        entity_path: base_path,
+                        entries: all_entries,
+                    });
+                }
+            }
+
+            // Unmatched columns: each gets its own individual group.
+            for (i, name) in unmatched {
+                groups.push(ColumnGroup {
+                    entity_path: entity_path_prefix.join(&EntityPath::from(name.as_str())),
+                    entries: vec![ColumnGroupEntry::Raw {
+                        col_idx: i,
+                        comp_name: name,
+                    }],
+                });
+            }
+
+            groups
+        }
     }
 }
 
-/// Apply archetype and scalar suffix rules within a prefix group.
-fn match_suffix_rules_in_group(
+/// Apply column rules within a prefix group.
+///
+/// Returns a flat list of all entries (component + scalar + raw).
+fn match_rules_in_group(
     entries: &[(usize, String)],
-    archetype_rules: &[ComponentRule],
-    scalar_rules: &[ScalarSuffixGroup],
-) -> (
-    std::collections::BTreeMap<String, Vec<ColumnGroupEntry>>,
-    Vec<ColumnGroupEntry>,
-) {
+    column_rules: &[ColumnRule],
+) -> Vec<ColumnGroupEntry> {
     let mut consumed = std::collections::HashSet::new();
-    let mut sub_groups: std::collections::BTreeMap<String, Vec<ColumnGroupEntry>> =
-        std::collections::BTreeMap::new();
+    let mut all_entries = Vec::new();
 
     let name_to_idx: std::collections::HashMap<&str, usize> = entries
         .iter()
@@ -133,6 +206,15 @@ fn match_suffix_rules_in_group(
             return vec![];
         }
 
+        // Strip the leading `_` from suffixes (it corresponds to the delimiter
+        // already consumed by prefix splitting), but require that `raw_sub`
+        // is either empty or ends with `_`. This enforces that the suffix
+        // matched at an underscore boundary within the comp_name.
+        //
+        // Example: suffix `_x`, stripped to `x`.
+        //   - comp_name `accel_x` → raw_sub `accel_` → ends with `_` ✓
+        //   - comp_name `accel_ax` → raw_sub `accel_a` → NOT ending with `_` ✗
+        //   - comp_name `x` → raw_sub `` → empty ✓ (matched at start)
         let stripped: Vec<&str> = suffixes
             .iter()
             .map(|s| s.strip_prefix('_').unwrap_or(s.as_str()))
@@ -147,6 +229,11 @@ fn match_suffix_rules_in_group(
             let Some(raw_sub) = comp_name.strip_suffix(first) else {
                 continue;
             };
+
+            // Enforce underscore boundary: raw_sub must be empty or end with '_'.
+            if !raw_sub.is_empty() && !raw_sub.ends_with('_') {
+                continue;
+            }
 
             let mut col_indices = vec![idx];
             let mut all_found = true;
@@ -175,51 +262,112 @@ fn match_suffix_rules_in_group(
         matches
     };
 
-    for rule in archetype_rules {
-        for (sub_prefix, col_indices) in try_match_suffixes(&rule.suffixes, &mut consumed) {
-            sub_groups
-                .entry(sub_prefix)
-                .or_default()
-                .push(ColumnGroupEntry::Archetype {
-                    col_indices,
-                    target: rule.target,
-                });
+    for rule in column_rules {
+        match &rule.mapping {
+            ColumnMapping::Transform { rotation_suffixes } => {
+                // Match translation and rotation suffix sets independently,
+                // then join on sub_prefix to form Transform entries.
+                use re_sdk_types::archetypes::Transform3D;
+
+                let translation_matches = try_match_suffixes(&rule.suffixes, &mut consumed);
+                let rotation_matches = try_match_suffixes(rotation_suffixes, &mut consumed);
+
+                // Index rotation matches by sub_prefix for joining.
+                let mut rot_by_prefix: std::collections::HashMap<String, Vec<usize>> =
+                    std::collections::HashMap::new();
+                for (sub_prefix, col_indices) in &rotation_matches {
+                    rot_by_prefix.insert(sub_prefix.clone(), col_indices.clone());
+                }
+
+                let mut unmatched_translations: Vec<(String, Vec<usize>)> = Vec::new();
+                for (sub_prefix, trans_indices) in translation_matches {
+                    if let Some(rot_indices) = rot_by_prefix.remove(&sub_prefix) {
+                        let field_name = derive_field_name(
+                            &sub_prefix,
+                            &suffix_common_prefix(&rule.suffixes),
+                            rule.field_name_override.as_deref(),
+                        );
+                        all_entries.push(ColumnGroupEntry::Transform {
+                            translation_col_indices: trans_indices,
+                            rotation_col_indices: rot_indices,
+                            translation_descriptor: Transform3D::descriptor_translation(),
+                            rotation_descriptor: Transform3D::descriptor_quaternion(),
+                            field_name,
+                        });
+                    } else {
+                        unmatched_translations.push((sub_prefix, trans_indices));
+                    }
+                }
+
+                // Unconsume columns from unmatched translation/rotation sets
+                // so they can be picked up by later rules.
+                for (_prefix, indices) in &unmatched_translations {
+                    for &ci in indices {
+                        consumed.remove(&ci);
+                    }
+                }
+                for indices in rot_by_prefix.values() {
+                    for &ci in indices {
+                        consumed.remove(&ci);
+                    }
+                }
+            }
+            mapping => {
+                let suffix_fallback = suffix_common_prefix(&rule.suffixes);
+                for (sub_prefix, col_indices) in try_match_suffixes(&rule.suffixes, &mut consumed) {
+                    let field_name = derive_field_name(
+                        &sub_prefix,
+                        &suffix_fallback,
+                        rule.field_name_override.as_deref(),
+                    );
+                    match mapping {
+                        ColumnMapping::Component { descriptor } => {
+                            all_entries.push(ColumnGroupEntry::Component {
+                                col_indices,
+                                descriptor: descriptor.clone(),
+                                field_name,
+                            });
+                        }
+                        ColumnMapping::Scalars { names } => {
+                            let mut field_name = field_name;
+                            if field_name.is_empty() {
+                                field_name = "scalars".to_owned();
+                            }
+                            all_entries.push(ColumnGroupEntry::ScalarGroup {
+                                col_indices,
+                                names: names.clone(),
+                                field_name,
+                            });
+                        }
+                        ColumnMapping::Transform { .. } => unreachable!(),
+                    }
+                }
+            }
         }
     }
 
-    for rule in scalar_rules {
-        for (sub_prefix, col_indices) in try_match_suffixes(&rule.suffixes, &mut consumed) {
-            sub_groups
-                .entry(sub_prefix)
-                .or_default()
-                .push(ColumnGroupEntry::ScalarGroup {
-                    col_indices,
-                    names: rule.names.clone(),
-                });
-        }
-    }
+    all_entries.extend(
+        entries
+            .iter()
+            .filter(|(idx, _)| !consumed.contains(idx))
+            .map(|(idx, name)| ColumnGroupEntry::Raw {
+                col_idx: *idx,
+                comp_name: name.clone(),
+            }),
+    );
 
-    let raw = entries
-        .iter()
-        .filter(|(idx, _)| !consumed.contains(idx))
-        .map(|(idx, name)| ColumnGroupEntry::Raw {
-            col_idx: *idx,
-            comp_name: name.clone(),
-        })
-        .collect();
-
-    (sub_groups, raw)
+    all_entries
 }
 
 /// Scan raw column names for suffix-pattern matches (used by [`ColumnGrouping::Individual`]).
-fn match_archetype_rules_raw(
+fn match_rules_raw(
     schema: &arrow::datatypes::Schema,
     excluded: &std::collections::HashSet<usize>,
     entity_path_prefix: &EntityPath,
-    rules: &[ComponentRule],
+    rules: &[ColumnRule],
 ) -> (Vec<ColumnGroup>, std::collections::HashSet<usize>) {
     let mut consumed = std::collections::HashSet::new();
-    let mut archetype_entries: std::collections::BTreeMap<String, Vec<ColumnGroupEntry>> =
+    let mut grouped_entries: std::collections::BTreeMap<String, Vec<ColumnGroupEntry>> =
         std::collections::BTreeMap::new();
 
     let name_to_idx: std::collections::HashMap<&str, usize> = schema
@@ -230,24 +378,27 @@ fn match_archetype_rules_raw(
         .map(|(i, f)| (f.name().as_str(), i))
         .collect();
 
-    for rule in rules {
-        if rule.suffixes.is_empty() {
-            continue;
+    /// Try to match all suffixes against raw column names, returning `(prefix, col_indices)` pairs.
+    fn try_match_raw(
+        suffixes: &[String],
+        name_to_idx: &std::collections::HashMap<&str, usize>,
+        consumed: &std::collections::HashSet<usize>,
+    ) -> Vec<(String, Vec<usize>)> {
+        if suffixes.is_empty() {
+            return vec![];
         }
-        let first_suffix = &rule.suffixes[0];
-
-        for (&name, &idx) in &name_to_idx {
+        let first_suffix = &suffixes[0];
+        let mut matches = vec![];
+        for (&name, &idx) in name_to_idx {
             if consumed.contains(&idx) {
                 continue;
             }
             let Some(prefix) = name.strip_suffix(first_suffix.as_str()) else {
                 continue;
             };
-
             let mut col_indices = vec![idx];
             let mut all_found = true;
-
-            for suffix in &rule.suffixes[1..] {
+            for suffix in &suffixes[1..] {
                 let expected = format!("{prefix}{suffix}");
                 match name_to_idx.get(expected.as_str()) {
                     Some(&other_idx) if !consumed.contains(&other_idx) => {
@@ -259,23 +410,117 @@ fn match_archetype_rules_raw(
                     }
                 }
             }
-
             if all_found {
-                for &ci in &col_indices {
+                matches.push((prefix.to_owned(), col_indices));
+            }
+        }
+        matches
+    }
+
+    for rule in rules {
+        if let ColumnMapping::Transform { rotation_suffixes } = &rule.mapping {
+            use re_sdk_types::archetypes::Transform3D;
+
+            let trans_matches = try_match_raw(&rule.suffixes, &name_to_idx, &consumed);
+            // Consume translation columns first.
+            for (_, indices) in &trans_matches {
+                for &ci in indices {
                     consumed.insert(ci);
                 }
-                archetype_entries
-                    .entry(prefix.to_owned())
-                    .or_default()
-                    .push(ColumnGroupEntry::Archetype {
-                        col_indices,
-                        target: rule.target,
-                    });
+            }
+            let rot_matches = try_match_raw(rotation_suffixes, &name_to_idx, &consumed);
+            for (_, indices) in &rot_matches {
+                for &ci in indices {
+                    consumed.insert(ci);
+                }
+            }
+
+            // Join on prefix.
+            let mut rot_by_prefix: std::collections::HashMap<String, Vec<usize>> =
+                rot_matches.into_iter().collect();
+
+            for (prefix, trans_indices) in trans_matches {
+                if let Some(rot_indices) = rot_by_prefix.remove(&prefix) {
+                    grouped_entries
+                        .entry(prefix)
+                        .or_default()
+                        .push(ColumnGroupEntry::Transform {
+                            translation_col_indices: trans_indices,
+                            rotation_col_indices: rot_indices,
+                            translation_descriptor: Transform3D::descriptor_translation(),
+                            rotation_descriptor: Transform3D::descriptor_quaternion(),
+                            field_name: String::new(),
+                        });
+                } else {
+                    // Unconsume unmatched translation columns.
+                    for &ci in &trans_indices {
+                        consumed.remove(&ci);
+                    }
+                }
+            }
+            // Unconsume unmatched rotation columns.
+            for indices in rot_by_prefix.values() {
+                for &ci in indices {
+                    consumed.remove(&ci);
+                }
+            }
+        } else {
+            if rule.suffixes.is_empty() {
+                continue;
+            }
+            let first_suffix = &rule.suffixes[0];
+
+            for (&name, &idx) in &name_to_idx {
+                if consumed.contains(&idx) {
+                    continue;
+                }
+                let Some(prefix) = name.strip_suffix(first_suffix.as_str()) else {
+                    continue;
+                };
+
+                let mut col_indices = vec![idx];
+                let mut all_found = true;
+
+                for suffix in &rule.suffixes[1..] {
+                    let expected = format!("{prefix}{suffix}");
+                    match name_to_idx.get(expected.as_str()) {
+                        Some(&other_idx) if !consumed.contains(&other_idx) => {
+                            col_indices.push(other_idx);
+                        }
+                        _ => {
+                            all_found = false;
+                            break;
+                        }
+                    }
+                }
+
+                if all_found {
+                    for &ci in &col_indices {
+                        consumed.insert(ci);
+                    }
+                    let entry = match &rule.mapping {
+                        ColumnMapping::Component { descriptor } => ColumnGroupEntry::Component {
+                            col_indices,
+                            descriptor: descriptor.clone(),
+                            field_name: prefix.to_owned(),
+                        },
+                        ColumnMapping::Scalars { names } => ColumnGroupEntry::ScalarGroup {
+                            col_indices,
+                            names: names.clone(),
+                            field_name: prefix.to_owned(),
+                        },
+                        ColumnMapping::Transform { .. } => unreachable!(),
+                    };
+                    grouped_entries
+                        .entry(prefix.to_owned())
+                        .or_default()
+                        .push(entry);
+                }
             }
         }
     }
 
-    let groups = archetype_entries
+    let groups = grouped_entries
         .into_iter()
         .map(|(prefix, entries)| {
             let entity_path = if prefix.is_empty() {
@@ -291,4 +536,94 @@ fn match_archetype_rules_raw(
         .collect();
 
     (groups, consumed)
+}
+
+/// Derive the struct field name from sub-prefix and optional override.
+///
+/// When `field_name_override` is `Some`, `suffix_fallback` is ignored entirely —
+/// the override replaces whatever the `suffix_fallback` would have contributed.
+fn derive_field_name(
+    sub_prefix: &str,
+    suffix_fallback: &str,
+    field_name_override: Option<&str>,
+) -> String {
+    // Treat empty override as no override.
+    let field_name_override = field_name_override.filter(|s| !s.is_empty());
+
+    match field_name_override {
+        Some(ovr) => {
+            let clean_ovr = ovr.strip_prefix('_').unwrap_or(ovr);
+            if sub_prefix.is_empty() {
+                clean_ovr.to_owned()
+            } else {
+                format!("{sub_prefix}{ovr}")
+            }
+        }
+        None => {
+            if sub_prefix.is_empty() {
+                if suffix_fallback.is_empty() {
+                    String::new()
+                } else {
+                    suffix_fallback.to_owned()
+                }
+            } else {
+                sub_prefix.to_owned()
+            }
+        }
+    }
+}
+
+/// Derive a field name from the common prefix of suffix patterns.
+///
+/// For suffixes like `["_pos_x", "_pos_y", "_pos_z"]`, returns `"pos"`.
+/// For suffixes like `["_x", "_y", "_z"]`, returns `""`.
+fn suffix_common_prefix(suffixes: &[String]) -> String {
+    let stripped: Vec<&str> = suffixes
+        .iter()
+        .map(|s| s.strip_prefix('_').unwrap_or(s.as_str()))
+        .collect();
+    if stripped.is_empty() {
+        return String::new();
+    }
+    let first = stripped[0].as_bytes();
+    let mut len = first.len();
+    for s in &stripped[1..] {
+        let b = s.as_bytes();
+        len = len.min(b.len());
+        for i in 0..len {
+            if first[i] != b[i] {
+                len = i;
+                break;
+            }
+        }
+    }
+    let prefix = &stripped[0][..len];
+    prefix.strip_suffix('_').unwrap_or(prefix).to_owned()
+}
+
+/// Log a warning if an earlier rule may shadow a later, more specific rule.
+fn warn_shadowed_rules(rules: &[ColumnRule]) {
+    for i in 0..rules.len() {
+        for j in (i + 1)..rules.len() {
+            let a = &rules[i].suffixes;
+            let b = &rules[j].suffixes;
+            if a.len() == b.len() {
+                let shadows = a.iter().zip(b.iter()).all(|(sa, sb)| {
+                    let sa = sa.strip_prefix('_').unwrap_or(sa.as_str());
+                    let sb = sb.strip_prefix('_').unwrap_or(sb.as_str());
+                    sb.ends_with(sa)
+                });
+                if shadows {
+                    re_log::warn_once!(
+                        "Column rule {} (suffixes {:?}) may shadow rule {} (suffixes {:?}). \
+                         Consider reordering so more specific rules come first.",
+                        i,
+                        a,
+                        j,
+                        b
+                    );
+                }
+            }
+        }
+    }
 }
