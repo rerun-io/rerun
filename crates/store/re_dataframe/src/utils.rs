@@ -3,7 +3,7 @@ use arrow::datatypes::{DataType, Schema};
 use arrow::error::ArrowError;
 use std::sync::Arc;
 
-#[tracing::instrument(level = "info", skip_all)]
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn align_record_batch_to_schema(
     batch: &RecordBatch,
     target_schema: &Arc<Schema>,

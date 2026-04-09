@@ -77,7 +77,7 @@ static CHUNK_STRATEGY: LazyLock<String> = LazyLock::new(|| {
 /// parented by a single trace.
 #[cfg(not(target_arch = "wasm32"))]
 #[inline]
-fn attach_trace_context(
+pub(crate) fn attach_trace_context(
     trace_headers: Option<&crate::TraceHeaders>,
 ) -> Option<re_perf_telemetry::external::opentelemetry::ContextGuard> {
     let headers = trace_headers?;
@@ -172,7 +172,6 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
 
         #[cfg(not(target_arch = "wasm32"))]
         let _trace_guard = attach_trace_context(this.trace_headers.as_ref());
-        let _span = tracing::info_span!("poll_next").entered();
 
         // If we have any errors on the worker thread, we want to ensure we pass them up
         // through the stream.
@@ -208,14 +207,15 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
             let client = this.client.clone();
             let chunk_infos = this.chunk_infos.clone();
             let pending_analytics = this.pending_analytics.clone();
-            let current_span = tracing::Span::current();
+
+            let io_span = tracing::info_span!("chunk_io_pipeline");
 
             this.io_join_handle = Some(
                 io_handle.spawn(
                     async move {
                         chunk_stream_io_loop(client, chunk_infos, chunk_tx, pending_analytics).await
                     }
-                    .instrument(current_span.clone()),
+                    .instrument(io_span),
                 ),
             );
         }
@@ -447,7 +447,6 @@ async fn send_next_row(
 }
 
 // TODO(#10781) - support for sending intermediate results/chunks
-#[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_store_cpu_worker_thread(
     mut input_channel: Receiver<ApiResult<SortedChunksWithSegment>>,
     output_channel: Sender<RecordBatch>,
@@ -759,13 +758,21 @@ async fn send_sorted_chunks(
     global_segment_order: &[String],
     output_channel: &Sender<ApiResult<SortedChunksWithSegment>>,
 ) -> bool {
-    let sorted = sort_chunks_by_segment_order(chunks, global_segment_order);
-    for chunk in sorted {
-        if output_channel.send(Ok(chunk)).await.is_err() {
-            return false;
+    let sorted = {
+        let _span = tracing::info_span!("sort_chunks").entered();
+        sort_chunks_by_segment_order(chunks, global_segment_order)
+    };
+    let n_sorted = sorted.len();
+    async {
+        for chunk in sorted {
+            if output_channel.send(Ok(chunk)).await.is_err() {
+                return false;
+            }
         }
+        true
     }
-    true
+    .instrument(tracing::info_span!("send_chunks", n = n_sorted))
+    .await
 }
 
 /// Fetch remaining batches via batched gRPC (groups of `GRPC_BATCH_SIZE`),
@@ -806,7 +813,11 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
 /// In order to improve performance, while maintaining ordering, we batch requests to the server
 /// and process them concurrently in groups. After data for each group is collected, it is sorted
 /// by the input segment order before being sent to the CPU worker thread.
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(n_chunks, n_batches, n_segments, fetch_strategy,)
+)]
 async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     client: T,
     chunk_infos: Vec<RecordBatch>,
@@ -819,6 +830,11 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     let (request_batches, global_segment_order) =
         create_request_batches(chunk_infos, target_size_bytes)?;
 
+    let span = tracing::Span::current();
+    span.record("n_chunks", n_chunks);
+    span.record("n_batches", request_batches.len());
+    span.record("n_segments", global_segment_order.len());
+
     re_log::debug!(
         "Fetching {n_chunks} chunks in {} batches ({} segments)",
         request_batches.len(),
@@ -830,13 +846,14 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
 
     // Fast path: if no batches contain direct URLs (or gRPC is forced), fetch everything via gRPC.
     if force_grpc || !request_batches.iter().any(batch_has_any_direct_urls) {
+        let reason = if force_grpc {
+            "grpc_forced"
+        } else {
+            "no_direct_urls"
+        };
+        span.record("fetch_strategy", reason);
         re_log::debug!(
-            "{}, fetching all {} chunks via FetchChunks gRPC",
-            if force_grpc {
-                "RERUN_CHUNK_STRATEGY=grpc"
-            } else {
-                "No direct URLs"
-            },
+            "{reason}, fetching all {} chunks via FetchChunks gRPC",
             request_batches.len()
         );
         let result = fetch_remaining_via_grpc(
@@ -864,15 +881,29 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     }
 
     let mut work_items: Vec<FetchTask> = Vec::new();
+    let mut n_direct = 0usize;
+    let mut n_grpc = 0usize;
     for batch in &request_batches {
         let (direct_batch, grpc_batch) = split_batch_by_direct_url(batch);
         if let Some(b) = direct_batch {
+            n_direct += 1;
             work_items.push(FetchTask::Direct(b));
         }
         if let Some(b) = grpc_batch {
+            n_grpc += 1;
             work_items.push(FetchTask::Grpc(b));
         }
     }
+
+    if n_grpc == 0 {
+        span.record("fetch_strategy", "direct");
+    } else {
+        span.record(
+            "fetch_strategy",
+            format!("hybrid(direct={n_direct},grpc={n_grpc})"),
+        );
+    }
+    re_log::debug!("Fetch tasks: {n_direct} direct, {n_grpc} gRPC fallback");
 
     let http_client = reqwest::Client::new();
 
@@ -972,7 +1003,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
     ) -> datafusion::common::Result<SendableRecordBatchStream> {
         #[cfg(not(target_arch = "wasm32"))]
         let _trace_guard = attach_trace_context(self.trace_headers.as_ref());
-        let _span = tracing::info_span!("execute").entered();
+        let _span = tracing::debug_span!("execute", partition).entered();
 
         let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
 
@@ -1002,16 +1033,19 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         let query_expression = self.query_expression.clone();
         let projected_schema = self.projected_schema.clone();
         let limit = self.limit;
-        let cpu_join_handle = Some(self.worker_runtime.handle().spawn(
-            chunk_store_cpu_worker_thread(
-                chunk_rx,
-                batches_tx,
-                query_expression,
-                projected_schema,
-                self.index_values.clone(),
-                limit,
+        let cpu_join_handle = Some(
+            self.worker_runtime.handle().spawn(
+                chunk_store_cpu_worker_thread(
+                    chunk_rx,
+                    batches_tx,
+                    query_expression,
+                    projected_schema,
+                    self.index_values.clone(),
+                    limit,
+                )
+                .instrument(tracing::info_span!("cpu_worker")),
             ),
-        ));
+        );
 
         let stream = DataframeSegmentStreamInner {
             projected_schema: self.projected_schema.clone(),

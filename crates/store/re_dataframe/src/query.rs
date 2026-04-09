@@ -365,7 +365,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         }
     }
 
-    #[tracing::instrument(level = "info", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     #[expect(clippy::unused_self)]
     fn compute_user_selection(
         &self,

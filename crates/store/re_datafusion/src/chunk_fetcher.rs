@@ -192,13 +192,18 @@ pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
 /// Fetch a batch of chunks via direct URLs with retries.
 ///
 /// Returns a hard error if all retry attempts are exhausted.
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "info", skip_all, fields(num_chunks, byte_size))]
 pub async fn fetch_batch_direct(
     batch: &RecordBatch,
     http_client: &reqwest::Client,
 ) -> Result<Vec<ChunksWithSegment>, DataFusionError> {
     #[cfg(not(target_arch = "wasm32"))]
     let byte_size = batch_byte_size(batch);
+
+    let span = tracing::Span::current();
+    span.record("num_chunks", batch.num_rows());
+    #[cfg(not(target_arch = "wasm32"))]
+    span.record("byte_size", byte_size);
 
     // Backoff matching gRPC retry settings: base 100ms, max 3s, 50% jitter.
     let mut backoff_gen = re_backoff::BackoffGenerator::new(
@@ -472,7 +477,11 @@ fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<String>), Dire
 /// to reduce round-trips. Concurrency is adapted based on range sizes and total data volume.
 /// The bytes at those offsets are protobuf-encoded `ArrowMsg` payloads
 /// (the 16-byte `MessageHeader` has already been excluded from the manifest offsets).
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(num_chunks, num_merged_requests, concurrency)
+)]
 async fn fetch_batch_via_direct_urls(
     http_client: &reqwest::Client,
     batch: &RecordBatch,
@@ -538,6 +547,12 @@ async fn fetch_batch_via_direct_urls(
 
     // Step 3: Calculate adaptive concurrency from original (un-merged) ranges.
     let concurrency = calculate_adaptive_concurrency(&all_ranges);
+
+    let span = tracing::Span::current();
+    span.record("num_chunks", num_rows);
+    span.record("num_merged_requests", merged_requests.len());
+    span.record("concurrency", concurrency);
+
     re_log::debug!(
         "Range merging: {num_rows} chunks → {} merged requests, concurrency={concurrency}",
         merged_requests.len()
@@ -579,6 +594,8 @@ async fn fetch_batch_via_direct_urls(
                     .await
                     .map_err(|err| DirectFetchError(format!("failed to read body: {err}")))?;
 
+                tracing::Span::current().record("bytes", merged_bytes.len());
+
                 // Extract individual chunks from the merged response.
                 // Deep copy each chunk to avoid holding the entire merged buffer alive.
                 let chunk_results = chunks
@@ -599,13 +616,17 @@ async fn fetch_batch_via_direct_urls(
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(chunk_results)
             }
-            .instrument(tracing::debug_span!("merged_fetch", req = req_idx))
+            .instrument(tracing::info_span!(
+                "direct_fetch_request",
+                req = req_idx,
+                bytes = tracing::field::Empty
+            ))
         });
 
     let results: Vec<Result<Vec<_>, DirectFetchError>> = futures::stream::iter(fetches)
         .buffer_unordered(concurrency)
         .collect()
-        .instrument(tracing::trace_span!("url_direct_fetch"))
+        .instrument(tracing::info_span!("direct_fetch_all"))
         .await;
 
     // Any merged range failure fails the whole batch.
