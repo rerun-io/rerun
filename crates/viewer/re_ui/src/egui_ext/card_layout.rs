@@ -1,80 +1,184 @@
-use egui::{Frame, Id, NumExt as _, Ui};
+use egui::{Frame, NumExt as _, Ui};
 
+/// Per-item configuration for [`CardLayout`].
 pub struct CardLayoutItem {
-    pub frame: Frame,
+    /// Frame drawn around this card. If `None`, uses the [`CardLayout`]'s default frame.
+    pub frame: Option<Frame>,
     pub min_width: f32,
 }
 
+/// A virtualized card layout that arranges items in a responsive grid.
+///
+/// Items are laid out left-to-right, wrapping into rows. Each row is as wide as the
+/// available space, with items growing proportionally from their `min_width`.
+/// Only rows that intersect the visible (clip) rectangle are rendered;
+/// row heights are measured each frame and cached for the next frame's layout.
 pub struct CardLayout {
     items: Vec<CardLayoutItem>,
+    default_frame: Frame,
+}
+
+/// Pre-computed assignment of items to a single row.
+struct RowAssignment {
+    first_item: usize,
+    num_items: usize,
+    total_width: f32,
 }
 
 #[derive(Default, Debug, Clone)]
-struct IntroSectionLayoutStats {
-    max_inner_height: f32,
+struct RowStats {
+    max_height: f32,
 }
 
 impl CardLayout {
-    pub fn new(items: Vec<CardLayoutItem>) -> Self {
-        Self { items }
+    /// Create a layout where every card has the same minimum width and frame.
+    pub fn uniform(num_items: usize, min_width: f32, frame: Frame) -> Self {
+        Self {
+            items: (0..num_items)
+                .map(|_| CardLayoutItem {
+                    min_width,
+                    frame: None,
+                })
+                .collect(),
+            default_frame: frame,
+        }
+    }
+
+    /// Create a layout with per-item configuration and a shared default frame.
+    pub fn new(items: Vec<CardLayoutItem>, default_frame: Frame) -> Self {
+        Self {
+            items,
+            default_frame,
+        }
     }
 
     pub fn show(self, ui: &mut Ui, mut show_item: impl FnMut(&mut Ui, usize)) {
-        let Self { mut items } = self;
-        // We pop from the end, so reverse to make it easier to read
-        items.reverse();
+        let Self {
+            items,
+            default_frame,
+        } = self;
+
+        if items.is_empty() {
+            return;
+        }
+
+        re_tracing::profile_function!();
 
         let available_width = ui.available_width();
+        let item_spacing = ui.spacing().item_spacing;
 
-        let mut row = 0;
-        let mut index = 0;
+        // Assign items to rows based on available width.
+        let rows = Self::assign_items_to_rows(&items, available_width, item_spacing.x);
 
-        while !items.is_empty() {
-            let mut row_width = 0.0;
-            let mut row_items = vec![];
-            while let Some(item) = items.pop_if(|item| {
-                row_width + item.min_width <= available_width || row_items.is_empty()
-            }) {
-                row_width += item.min_width;
-                row_items.push(item);
+        // Read cached row heights from previous frame.
+        // For rows without cached data, use the nearest known row height (or 100 as a last resort).
+        let stats_id = ui.id().with("card_layout_row");
+        let mut last_known_height = 100.0;
+        let row_heights: Vec<f32> = (0..rows.len())
+            .map(|i| {
+                let h = ui
+                    .data(|d| d.get_temp::<RowStats>(stats_id.with(i)))
+                    .map_or(last_known_height, |s| s.max_height);
+                last_known_height = h;
+                h
+            })
+            .collect();
+
+        // Reserve full content height so the scrollbar is correct.
+        let total_height =
+            row_heights.iter().sum::<f32>() + item_spacing.y * rows.len().saturating_sub(1) as f32;
+        let (full_rect, _) = ui.allocate_exact_size(
+            egui::vec2(available_width, total_height.at_least(0.0)),
+            egui::Sense::hover(),
+        );
+
+        let visible = ui.clip_rect();
+        let mut row_y = full_rect.min.y;
+
+        for (row_idx, (row, row_height)) in rows.iter().zip(row_heights.iter()).enumerate() {
+            // Skip rows outside the visible area.
+            if row_y > visible.max.y {
+                break; // Done!
+            }
+            if row_y + row_height < visible.min.y {
+                row_y += row_height + item_spacing.y;
+                ui.skip_ahead_auto_ids(row.num_items);
+                continue;
             }
 
-            let gap_space = ui.spacing().item_spacing.x * (row_items.len() - 1) as f32;
-            let gap_space_item = gap_space / row_items.len() as f32;
-            let item_growth = available_width / row_width;
+            let gap_space = item_spacing.x * (row.num_items - 1) as f32;
+            let gap_space_item = gap_space / row.num_items as f32;
+            let item_growth = available_width / row.total_width;
 
-            let row_stats_id = Id::new(row);
-            let row_stats = ui.data_mut(|data| {
-                data.get_temp_mut_or_default::<IntroSectionLayoutStats>(row_stats_id)
-                    .clone()
-            });
-            let mut new_row_stats = IntroSectionLayoutStats::default();
+            let mut card_x = full_rect.min.x;
+            let mut new_row_stats = RowStats::default();
 
-            ui.horizontal(|ui| {
-                for item in row_items {
-                    let frame = item.frame;
-                    let frame_margin_x = frame.inner_margin.sum().x;
-                    frame.show(ui, |ui| {
-                        ui.set_width(
-                            ((item_growth * item.min_width) - frame_margin_x - gap_space_item)
-                                .at_most(ui.available_width()),
-                        );
-                        show_item(&mut *ui, index);
+            for i in 0..row.num_items {
+                let item = &items[row.first_item + i];
+                let frame = item.frame.unwrap_or(default_frame);
+                let frame_margin = frame.inner_margin.sum();
+                let card_width =
+                    (item_growth * item.min_width - gap_space_item).at_most(available_width);
 
-                        let height = ui.min_size().y;
-                        new_row_stats.max_inner_height =
-                            f32::max(new_row_stats.max_inner_height, height);
+                let mut child_ui = ui.new_child(
+                    egui::UiBuilder::new()
+                        .max_rect(egui::Rect::from_min_size(
+                            egui::pos2(card_x, row_y),
+                            egui::vec2(card_width, *row_height),
+                        ))
+                        .layout(egui::Layout::left_to_right(egui::Align::Min)),
+                );
 
-                        ui.set_height(row_stats.max_inner_height);
-                    });
-                    index += 1;
-                }
-            });
+                let mut content_height = 0.0;
+                frame.show(&mut child_ui, |ui| {
+                    ui.set_width((card_width - frame_margin.x).at_most(ui.available_width()));
+                    show_item(ui, row.first_item + i);
 
-            row += 1;
-            ui.data_mut(|data| {
-                data.insert_temp(row_stats_id, new_row_stats);
-            });
+                    content_height = ui.min_size().y;
+                    ui.set_height((row_height - frame_margin.y).at_least(0.0));
+                });
+
+                new_row_stats.max_height = new_row_stats
+                    .max_height
+                    .max(content_height + frame_margin.y);
+                card_x += card_width + item_spacing.x;
+            }
+
+            ui.data_mut(|d| d.insert_temp(stats_id.with(row_idx), new_row_stats));
+
+            row_y += row_height + item_spacing.y;
         }
+    }
+
+    fn assign_items_to_rows(
+        items: &[CardLayoutItem],
+        available_width: f32,
+        item_spacing: f32,
+    ) -> Vec<RowAssignment> {
+        let mut idx = 0;
+        std::iter::from_fn(|| {
+            if idx >= items.len() {
+                return None;
+            }
+            let first_item = idx;
+            let mut total_width = 0.0;
+            let mut count = 0;
+            while idx < items.len() {
+                let spacing = item_spacing * (count + 1) as f32; // +1 to account for spacing to the right of the card.
+                let needed = total_width + items[idx].min_width + spacing;
+                if needed > available_width && count > 0 {
+                    break;
+                }
+                total_width += items[idx].min_width;
+                count += 1;
+                idx += 1;
+            }
+            Some(RowAssignment {
+                first_item,
+                num_items: idx - first_item,
+                total_width,
+            })
+        })
+        .collect()
     }
 }

@@ -80,12 +80,14 @@ impl IntroItem {
     }
 
     fn card_item(&self, ui: &Ui) -> CardLayoutItem {
-        let frame = self.frame(ui);
         let min_width = match &self {
             Self::DocItem { .. } => 200.0,
             Self::CloudLoginItem => 400.0,
         };
-        CardLayoutItem { frame, min_width }
+        CardLayoutItem {
+            frame: Some(self.frame(ui)),
+            min_width,
+        }
     }
 
     fn show(&self, ui: &mut Ui, ctx: &AppContext<'_>, cloud_state: &CloudState) {
@@ -216,7 +218,11 @@ pub fn intro_section(ui: &mut egui::Ui, ctx: &AppContext<'_>, cloud_state: &Clou
         ui.add_space(32.0);
     }
 
-    CardLayout::new(items.iter().map(|item| item.card_item(ui)).collect()).show(ui, |ui, index| {
+    CardLayout::new(
+        items.iter().map(|item| item.card_item(ui)).collect(),
+        Frame::NONE,
+    )
+    .show(ui, |ui, index| {
         let item = &items[index];
         item.show(ui, ctx, cloud_state);
     });
