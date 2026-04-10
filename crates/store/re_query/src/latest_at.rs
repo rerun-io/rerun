@@ -724,7 +724,7 @@ impl LatestAtCache {
         if let Some(cached) = per_query_time.get(&query.at()) {
             // Report to the store that we used this chunk to signal that
             // it should stay in memory.
-            store.report_used_physical_chunk_id(cached.unit.id());
+            store.report_used_physical_chunk_id(cached.unit.original_chunk_id());
             return (Some(cached.unit.clone()), vec![]);
         }
 
@@ -745,8 +745,8 @@ impl LatestAtCache {
             .chunks
             .into_iter()
             .filter_map(|chunk| {
-                let chunk = chunk.latest_at(query, component).into_unit()?;
-                chunk.index(&query.timeline()).map(|index| (index, chunk))
+                let unit = chunk.latest_at(query, component)?;
+                unit.index(&query.timeline()).map(|index| (index, unit))
             })
             .max_by_key(|(index, _chunk)| *index)
         else {

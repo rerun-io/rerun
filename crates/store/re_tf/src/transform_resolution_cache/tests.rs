@@ -11,7 +11,6 @@ use re_log_types::{
     example_components::{MyPoint, MyPoints},
 };
 use re_sdk_types::{
-    ChunkId,
     archetypes::{self, InstancePoses3D, Pinhole, Transform3D},
     components::{self, PinholeProjection},
 };
@@ -1194,17 +1193,13 @@ fn test_single_child_and_parent_over_time(
         }
         ChildParentFrameChangesOverTimeTestMode::MultipleChunksInOrder => {
             for row_idx in 0..chunk.num_rows() {
-                entity_db.add_chunk(&Arc::new(
-                    chunk.row_sliced_shallow(row_idx, 1).with_id(ChunkId::new()),
-                ))?;
+                entity_db.add_chunk(&Arc::new(chunk.row_sliced_shallow(row_idx, 1)))?;
                 apply_store_subscriber_events(&mut cache, &entity_db);
             }
         }
         ChildParentFrameChangesOverTimeTestMode::MultipleChunksReverseOrder => {
             for row_idx in (0..chunk.num_rows()).rev() {
-                entity_db.add_chunk(&Arc::new(
-                    chunk.row_sliced_shallow(row_idx, 1).with_id(ChunkId::new()),
-                ))?;
+                entity_db.add_chunk(&Arc::new(chunk.row_sliced_shallow(row_idx, 1)))?;
                 apply_store_subscriber_events(&mut cache, &entity_db);
             }
         }

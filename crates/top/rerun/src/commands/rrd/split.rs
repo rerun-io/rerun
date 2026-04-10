@@ -898,8 +898,7 @@ fn extract_chunks_for_single_split(
                     )
                     .chunks
                     .into_iter()
-                    .map(|chunk| chunk.latest_at(&query_bootstrap, *component))
-                    .filter(|chunk| !chunk.is_empty());
+                    .filter_map(|chunk| chunk.latest_at(&query_bootstrap, *component));
 
                 // Due to the overlap heuristics, the bootstrap query might return an arbitrary amount of
                 // chunks: we need to find the most relevant in those, which in this case is whichever has
@@ -1014,16 +1013,7 @@ fn extract_chunks_for_single_split(
                     chunk.id(),
                     chunk
                         // Reminder: always perform deep copies if the intent is to write back to disk.
-                        .row_sliced_deep(start_idx, slice_len)
-                        // We must generate a new chunk ID due to the persistent slicing.
-                        // The row IDs are safe from duplicates, since we slice the same way for all components.
-                        // The special cases have non-overlapping time spans, and thus are safe too.
-                        //
-                        // This might lead to duplicated data if all the splits are loaded into the same viewer,
-                        // but that's certainly better than missing data.
-                        // TODO(cmc): shared recording IDs have been forbidden for now because they caused too many
-                        // problems with the video decoder, so that last statement doesn't apply anymore, for now.
-                        .with_id(ChunkId::new()),
+                        .row_sliced_deep(start_idx, slice_len),
                 )
             };
 

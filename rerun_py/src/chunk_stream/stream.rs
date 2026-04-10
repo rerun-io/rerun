@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use pyo3::{Py, PyAny};
 
-use re_chunk::{Chunk, ChunkId};
+use re_chunk::Chunk;
 use re_types_core::ComponentIdentifier;
 
 use super::{ChunkStream, ChunkStreamFactory};
@@ -89,9 +89,7 @@ impl StructuredFilter {
             if !has_any {
                 return None;
             }
-            Some(Arc::new(
-                chunk.components_sliced(components).with_id(ChunkId::new()),
-            ))
+            Some(Arc::new(chunk.components_sliced(components)))
         } else {
             Some(chunk)
         }
@@ -107,7 +105,7 @@ impl StructuredFilter {
         }
 
         if let Some(ref components) = self.components {
-            let dropped = chunk.components_dropped(components).with_id(ChunkId::new());
+            let dropped = chunk.components_dropped(components);
             if dropped.num_components() == 0 {
                 None
             } else {
@@ -132,12 +130,12 @@ impl StructuredFilter {
             let dropped = chunk.components_dropped(components);
 
             let matching = if selected.num_components() > 0 {
-                Some(Arc::new(selected.with_id(ChunkId::new())))
+                Some(Arc::new(selected))
             } else {
                 None
             };
             let non_matching = if dropped.num_components() > 0 {
-                Some(Arc::new(dropped.with_id(ChunkId::new())))
+                Some(Arc::new(dropped))
             } else {
                 None
             };

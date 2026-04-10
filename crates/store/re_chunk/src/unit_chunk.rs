@@ -5,7 +5,7 @@ use re_log::debug_assert;
 use re_log_types::{TimeInt, TimelineName};
 use re_types_core::{Component, ComponentIdentifier};
 
-use crate::{Chunk, ChunkResult, RowId};
+use crate::{Chunk, ChunkId, ChunkResult, RowId};
 
 // --- Helpers ---
 
@@ -169,22 +169,46 @@ impl Chunk {
 pub type ChunkShared = Arc<Chunk>;
 
 /// A [`ChunkShared`] that is guaranteed to always contain a single row's worth of data.
-#[derive(Debug, Clone, PartialEq)]
-pub struct UnitChunkShared(ChunkShared);
+#[derive(Debug, Clone)]
+pub struct UnitChunkShared {
+    chunk: ChunkShared,
+
+    /// The [`ChunkId`] of the original chunk this unit was derived from.
+    ///
+    /// If the original chunk was just a single row to begin with, then this is the same as `chunk.id()`.
+    ///
+    /// This is the ID that the `ChunkStore` knows about,
+    /// as opposed to [`Chunk::id`] which is always unique per derived chunk.
+    original_chunk_id: ChunkId, // TODO(emilk): consider adding this to `Chunk` directly, perhaps as a `Vec`.
+}
+
+impl PartialEq for UnitChunkShared {
+    /// NOTE: the [`Self::original_chunk_id`] is _not_ compared, only the data.
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.chunk == other.chunk
+    }
+}
 
 impl std::ops::Deref for UnitChunkShared {
     type Target = Chunk;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.chunk
+    }
+}
+
+impl std::fmt::Display for UnitChunkShared {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.chunk.fmt(f)
     }
 }
 
 impl re_byte_size::SizeBytes for UnitChunkShared {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        Chunk::heap_size_bytes(&self.0)
+        Chunk::heap_size_bytes(&self.chunk)
     }
 }
 
@@ -192,13 +216,34 @@ impl Chunk {
     /// Turns the chunk into a [`UnitChunkShared`], if possible.
     #[inline]
     pub fn to_unit(self: &ChunkShared) -> Option<UnitChunkShared> {
-        (self.num_rows() == 1).then(|| UnitChunkShared(Arc::clone(self)))
+        (self.num_rows() == 1).then(|| UnitChunkShared {
+            original_chunk_id: self.id(),
+            chunk: Arc::clone(self),
+        })
     }
 
     /// Turns the chunk into a [`UnitChunkShared`], if possible.
     #[inline]
     pub fn into_unit(self) -> Option<UnitChunkShared> {
-        (self.num_rows() == 1).then(|| UnitChunkShared(Arc::new(self)))
+        (self.num_rows() == 1).then(|| UnitChunkShared {
+            original_chunk_id: self.id(),
+            chunk: Arc::new(self),
+        })
+    }
+
+    /// Turns the chunk into a [`UnitChunkShared`], if possible.
+    ///
+    /// `original_chunk_id` is the [`ChunkId`] of the chunk this was derived from,
+    /// i.e. the id that the `ChunkStore` knows about.
+    #[inline]
+    pub fn into_unit_with_original_chunk_id(
+        self,
+        original_chunk_id: ChunkId,
+    ) -> Option<UnitChunkShared> {
+        (self.num_rows() == 1).then(|| UnitChunkShared {
+            original_chunk_id,
+            chunk: Arc::new(self),
+        })
     }
 }
 
@@ -206,7 +251,16 @@ impl UnitChunkShared {
     /// Turns the unit chunk back into a standard [`Chunk`].
     #[inline]
     pub fn into_chunk(self) -> ChunkShared {
-        self.0
+        self.chunk
+    }
+
+    /// The [`ChunkId`] of the original chunk this unit was derived from.
+    ///
+    /// This is the ID that the `ChunkStore` knows about,
+    /// as opposed to [`Chunk::id`] which is always unique per derived chunk.
+    #[inline]
+    pub fn original_chunk_id(&self) -> ChunkId {
+        self.original_chunk_id
     }
 }
 

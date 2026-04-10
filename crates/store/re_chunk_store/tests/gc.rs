@@ -32,7 +32,7 @@ fn query_latest_array(
         .chunks
         .into_iter()
         .filter_map(|chunk| {
-            let chunk = chunk.latest_at(query, component).into_unit()?;
+            let chunk = chunk.latest_at(query, component)?;
             chunk.index(&query.timeline()).map(|index| (index, chunk))
         })
         .max_by_key(|(index, _chunk)| *index)?;

@@ -1059,7 +1059,7 @@ pub struct SampleMetadata {
     /// May be unknown if this is the last sample in an ongoing video stream.
     pub duration: Option<Time>,
 
-    /// The chunk this sample comes from.
+    /// The Rerun chunk this sample comes from.
     pub source_id: Tuid,
 
     /// Offset and length within a data buffer indicated by [`SampleMetadata::source_id`].

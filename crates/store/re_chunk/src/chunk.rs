@@ -215,6 +215,9 @@ impl FromIterator<SerializedComponentColumn> for ChunkComponents {
 ///
 /// This is the in-memory representation of a chunk, optimized for efficient manipulation of the
 /// data within. For transport, see [`re_sorbet::ChunkBatch`] instead.
+///
+/// Each [`Chunk`] has a globally unique [`ChunkId`].
+/// Each time a new [`Chunk`] is created or modified, it should be assigned a new [`ChunkId`].
 pub struct Chunk {
     pub(crate) id: ChunkId,
 
@@ -279,10 +282,11 @@ impl std::fmt::Debug for Chunk {
 }
 
 impl PartialEq for Chunk {
+    /// NOTE: the [`ChunkId`] is _not_ compared, only the data.
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         let Self {
-            id,
+            id: _,
             entity_path,
             heap_size_bytes: _,
             is_sorted,
@@ -291,8 +295,7 @@ impl PartialEq for Chunk {
             components,
         } = self;
 
-        *id == other.id
-            && *entity_path == other.entity_path
+        *entity_path == other.entity_path
             && *is_sorted == other.is_sorted
             && *row_ids == other.row_ids
             && *timelines == other.timelines
@@ -408,6 +411,8 @@ impl Chunk {
 
     /// Clones the chunk and renames a component.
     ///
+    /// The returned chunk always gets a new unique [`ChunkId`].
+    ///
     /// Note: archetype information and component type information is lost.
     pub fn with_mapped_component<E>(
         &self,
@@ -415,7 +420,7 @@ impl Chunk {
         target: ComponentIdentifier,
         f: impl FnOnce(ArrowListArray) -> Result<ArrowListArray, E>,
     ) -> Result<Self, E> {
-        let mut new_chunk = self.clone();
+        let mut new_chunk = self.clone_with_new_id();
         if let Some(old_entry) = new_chunk.components.remove(&source) {
             new_chunk.components.insert(SerializedComponentColumn {
                 descriptor: ComponentDescriptor {
@@ -434,8 +439,15 @@ impl Chunk {
 impl Clone for Chunk {
     #[inline]
     fn clone(&self) -> Self {
+        self.clone_with_same_id()
+    }
+}
+
+impl Chunk {
+    #[inline]
+    pub fn clone_with_id(&self, id: ChunkId) -> Self {
         Self {
-            id: self.id,
+            id,
             entity_path: self.entity_path.clone(),
             heap_size_bytes: AtomicU64::new(self.heap_size_bytes.load(Ordering::Relaxed)),
             is_sorted: self.is_sorted,
@@ -443,6 +455,16 @@ impl Clone for Chunk {
             timelines: self.timelines.clone(),
             components: self.components.clone(),
         }
+    }
+
+    #[inline]
+    pub fn clone_with_same_id(&self) -> Self {
+        self.clone_with_id(self.id)
+    }
+
+    #[inline]
+    pub fn clone_with_new_id(&self) -> Self {
+        self.clone_with_id(ChunkId::new())
     }
 }
 
@@ -469,9 +491,8 @@ impl Chunk {
         .collect_vec();
 
         let new_chunk = Self {
-            id,
             row_ids: RowId::arrow_from_slice(&row_ids),
-            ..self.clone()
+            ..self.clone_with_id(id)
         };
 
         // Need to reset the cache size here as `row_ids`'s capacity could have
@@ -490,12 +511,18 @@ impl Chunk {
     }
 
     /// Clones the chunk into a new chunk where all [`RowId`]s are [`RowId::ZERO`].
+    ///
+    /// The returned chunk always gets a new unique [`ChunkId`].
     pub fn zeroed(self) -> Self {
         let row_ids = vec![RowId::ZERO; self.row_ids.len()];
 
         let row_ids = RowId::arrow_from_slice(&row_ids);
 
-        let new_chunk = Self { row_ids, ..self };
+        let new_chunk = Self {
+            id: ChunkId::new(),
+            row_ids,
+            ..self
+        };
 
         // Need to reset the cache size here as `row_ids`'s capacity could have
         // changed here.
@@ -924,6 +951,7 @@ impl Chunk {
         &mut self,
         component_column: SerializedComponentColumn,
     ) -> ChunkResult<()> {
+        self.id = ChunkId::new();
         self.components.insert(component_column);
         self.reset_cached_heap_size_bytes();
         self.sanity_check()
@@ -936,6 +964,8 @@ impl Chunk {
     /// This will fail if the end result is malformed in any way -- see [`Self::sanity_check`].
     #[inline]
     pub fn add_timeline(&mut self, chunk_timeline: TimeColumn) -> ChunkResult<()> {
+        self.id = ChunkId::new();
+
         self.timelines
             .insert(*chunk_timeline.timeline.name(), chunk_timeline);
         self.reset_cached_heap_size_bytes();

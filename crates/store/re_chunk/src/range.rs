@@ -204,6 +204,9 @@ impl Chunk {
     /// extra data.
     //
     // TODO(RR-3865): Use arrow's `ListView` to avoid cloning data when the chunk requires sorting.
+    //
+    /// The returned [`Chunk`] always gets a new [`crate::ChunkId`], unless the input chunk
+    /// is empty (in which case it's cloned as-is with the original ID).
     pub fn range(&self, query: &RangeQuery, component: ComponentIdentifier) -> Self {
         if self.is_empty() {
             return self.clone();
@@ -235,10 +238,14 @@ impl Chunk {
             // NOTE: A given component for a given entity can only have one static entry associated
             // with it, and this entry overrides everything else, which means it is functionally
             // equivalent to just running a latest-at query.
-            chunk.latest_at(
+            if let Some(unit) = chunk.latest_at(
                 &crate::LatestAtQuery::new(*query.timeline(), TimeInt::MAX),
                 component,
-            )
+            ) {
+                std::sync::Arc::unwrap_or_clone(unit.into_chunk())
+            } else {
+                chunk.emptied()
+            }
         } else {
             let Some(is_sorted_by_time) = chunk
                 .timelines

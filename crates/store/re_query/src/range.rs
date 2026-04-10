@@ -19,6 +19,9 @@ impl QueryCache {
     /// See [`RangeResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
+    /// The returned chunks preserve the original [`ChunkId`]s from the source [`ChunkStore`],
+    /// even though [`re_chunk::Chunk::range`] internally creates new IDs when slicing.
+    /// This is important so that `VideoStreamCache` can track which physical chunks are in use.
     pub fn range(
         &self,
         query: &RangeQuery,
@@ -98,6 +101,9 @@ pub struct RangeResults {
     pub missing_virtual: Vec<ChunkId>,
 
     /// Results for each individual component.
+    ///
+    /// The chunks preserve the original [`ChunkId`]s from the [`ChunkStore`],
+    /// so that `VideoStreamCache` can track which physical chunks are in use.
     pub components: IntMap<ComponentIdentifier, Vec<Chunk>>,
 }
 
@@ -292,6 +298,10 @@ impl RangeCache {
     /// them, load them, and then try the query again.
     ///
     /// Returns `(cached_chunks, missing_chunk_ids)`.
+    ///
+    /// The returned chunks preserve the original [`ChunkId`]s from the [`ChunkStore`],
+    /// even though [`Chunk::range`] internally creates new IDs when slicing.
+    /// This is done by calling [`Chunk::with_id`] to restore the original ID after slicing.
     fn range(
         &mut self,
         store: &ChunkStore,
@@ -318,6 +328,9 @@ impl RangeCache {
         // Therefore, we do not even check for partial results here.
         for raw_chunk in &results.chunks {
             self.chunks.entry(raw_chunk.id()).or_insert_with(|| {
+                // Preserve the original chunk ID so the store can track which physical chunks are in use.
+                let original_chunk_id = raw_chunk.id();
+
                 // Densify the cached chunk according to the cache key's component, which
                 // will speed up future arrow operations on this chunk.
                 let (chunk, densified) = raw_chunk.densified(component);
@@ -325,7 +338,9 @@ impl RangeCache {
                 // Pre-sort the cached chunk according to the cache key's timeline.
                 //
                 // TODO(#7008): avoid unnecessary sorting on the unhappy path
-                let chunk = chunk.sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name);
+                let chunk = chunk
+                    .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name)
+                    .with_id(original_chunk_id);
 
                 let reallocated =
                     densified || !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name);
@@ -355,7 +370,8 @@ impl RangeCache {
 
                 let chunk = &cached_sorted_chunk.chunk;
 
-                chunk.range(query, component)
+                let original_chunk_id = chunk.id();
+                chunk.range(query, component).with_id(original_chunk_id)
             })
             .filter(|chunk| !chunk.is_empty())
             .collect();
@@ -525,6 +541,60 @@ mod tests {
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
         }
+    }
+
+    /// The cache must preserve original `ChunkId`s so that `VideoStreamCache` can track physical chunk usage.
+    #[test]
+    fn range_preserves_chunk_ids() {
+        let store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::ALL_DISABLED,
+        );
+        let store = ChunkStoreHandle::new(store);
+
+        let entity_path: EntityPath = "some_entity".into();
+        let timeline_frame = Timeline::new_sequence("frame");
+        let component = MyPoints::descriptor_points().component;
+
+        let mut next_chunk_id = next_chunk_id_generator(0x42);
+
+        let chunk1 = create_chunk_with_point(
+            next_chunk_id(),
+            entity_path.clone(),
+            TimePoint::from_iter([(timeline_frame, 1)]),
+            MyPoint::new(1.0, 1.0),
+        );
+        let chunk2 = create_chunk_with_point(
+            next_chunk_id(),
+            entity_path.clone(),
+            TimePoint::from_iter([(timeline_frame, 2)]),
+            MyPoint::new(2.0, 2.0),
+        );
+
+        let chunk1_id = chunk1.id();
+        let chunk2_id = chunk2.id();
+
+        store.write().insert_chunk(&Arc::new(chunk1)).unwrap();
+        store.write().insert_chunk(&Arc::new(chunk2)).unwrap();
+
+        let cache = QueryCache::new(store);
+
+        let query = RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3));
+        let results = cache.range(&query, &entity_path, [component]);
+
+        let result_chunks = results.get(component).expect("should have results");
+        assert_eq!(result_chunks.len(), 2);
+
+        let result_ids: std::collections::BTreeSet<_> =
+            result_chunks.iter().map(|c| c.id()).collect();
+        assert!(
+            result_ids.contains(&chunk1_id),
+            "result should preserve chunk1's original ID"
+        );
+        assert!(
+            result_ids.contains(&chunk2_id),
+            "result should preserve chunk2's original ID"
+        );
     }
 
     fn next_chunk_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::ChunkId {

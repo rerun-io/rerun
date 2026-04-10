@@ -3,7 +3,7 @@ use arrow::buffer::{OffsetBuffer as ArrowOffsets, ScalarBuffer as ArrowScalarBuf
 use itertools::Itertools as _;
 use re_log_types::TimelineName;
 
-use crate::{Chunk, TimeColumn};
+use crate::{Chunk, ChunkId, TimeColumn};
 
 // ---
 
@@ -67,6 +67,8 @@ impl Chunk {
     /// Sort the chunk, if needed.
     ///
     /// The underlying arrow data will be copied and shuffled in memory in order to make it contiguous.
+    ///
+    /// If the chunk changes, it is given a new unique [`ChunkId`].
     #[inline]
     pub fn sort_if_unsorted(&mut self) {
         if self.is_sorted() {
@@ -74,6 +76,8 @@ impl Chunk {
         }
 
         re_tracing::profile_function!();
+
+        self.id = ChunkId::new();
 
         #[cfg(not(target_arch = "wasm32"))]
         let now = std::time::Instant::now();
@@ -107,18 +111,19 @@ impl Chunk {
     ///
     /// This is a no-op if the underlying timeline is already sorted appropriately (happy path).
     ///
-    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    /// If the chunk is already sorted, the original [`crate::ChunkId`] is preserved.
+    /// Otherwise, the returned chunk gets a new unique [`crate::ChunkId`].
     #[must_use]
     pub fn sorted_by_timeline_if_unsorted(&self, timeline: &TimelineName) -> Self {
-        let mut chunk = self.clone();
-
-        let Some(time_column) = chunk.timelines.get(timeline) else {
-            return chunk;
+        let Some(time_column) = self.timelines.get(timeline) else {
+            return self.clone_with_same_id();
         };
 
         if time_column.is_sorted() {
-            return chunk;
+            return self.clone_with_same_id();
         }
+
+        let mut chunk = self.clone_with_new_id();
 
         re_tracing::profile_function!();
 
@@ -155,6 +160,7 @@ impl Chunk {
     ///
     /// The underlying arrow data will be copied and shuffled in memory in order to make it contiguous.
     #[inline]
+    #[cfg(debug_assertions)] // only for tests
     pub fn shuffle_random(&mut self, seed: u64) {
         re_tracing::profile_function!();
 
@@ -193,6 +199,8 @@ impl Chunk {
     // TODO(RR-3865): Use arrow's `ListView` to only shuffle offsets instead of the data itself.
     pub(crate) fn shuffle_with(&mut self, swaps: &[usize]) {
         re_tracing::profile_function!();
+
+        self.id = ChunkId::new();
 
         // Row IDs
         {

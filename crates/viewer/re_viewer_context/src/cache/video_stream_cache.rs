@@ -280,7 +280,10 @@ impl VideoStreamCache {
 
                 let requires_sorting = !chunk.is_timeline_sorted(&timeline_name);
                 let chunk = if requires_sorting {
-                    &chunk.sorted_by_timeline_if_unsorted(&timeline_name)
+                    let original_chunk_id = chunk.id(); // Because this is stored and then used for prefetching
+                    &chunk
+                        .sorted_by_timeline_if_unsorted(&timeline_name)
+                        .with_id(original_chunk_id)
                 } else {
                     chunk
                 };
@@ -879,7 +882,12 @@ fn load_video_data_from_chunks(
 
     let sorted_chunks = sample_chunks
         .iter()
-        .map(|c| c.sorted_by_timeline_if_unsorted(&timeline))
+        .map(|chunk| {
+            let original_chunk_id = chunk.id(); // Because this is stored and then used for prefetching
+            chunk
+                .sorted_by_timeline_if_unsorted(&timeline)
+                .with_id(original_chunk_id)
+        })
         .collect::<Vec<_>>();
 
     load_known_chunk_ranges(
