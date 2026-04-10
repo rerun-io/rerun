@@ -75,19 +75,25 @@ export default class WebViewer extends React.Component {
 
       const prev = toArray(prevProps.rrd);
       const current = toArray(this.props.rrd);
-      if (prevProps.follow_if_http !== this.props.follow_if_http) {
-        this.#handle.close(prev);
-        this.#handle.open(current, {
-          follow_if_http: this.props.follow_if_http,
-        });
+      const { added, removed } = diff(prev, current);
+      const reopened =
+        prevProps.follow_if_http !== this.props.follow_if_http
+          ? intersection(prev, current).filter(isFollowIfHttpSource)
+          : [];
+
+      // While the viewer is still starting there is nothing to diff yet.
+      // `startViewer` will open the latest `rrd` props once startup completes.
+      if (!this.#handle.ready) {
         return;
       }
 
-      const { added, removed } = diff(prev, current);
+      this.#handle.close([...removed, ...reopened]);
       this.#handle.open(added, {
         follow_if_http: this.props.follow_if_http,
       });
-      this.#handle.close(removed);
+      this.#handle.open(reopened, {
+        follow_if_http: this.props.follow_if_http,
+      });
     }
   }
 
@@ -180,6 +186,32 @@ function diff(prev, current) {
     added: current.filter((v) => !prevSet.has(v)),
     removed: prev.filter((v) => !currentSet.has(v)),
   };
+}
+
+/**
+ * Return the values present in both arrays.
+ *
+ * @param {string[]} prev
+ * @param {string[]} current
+ * @returns {string[]}
+ */
+function intersection(prev, current) {
+  const prevSet = new Set(prev);
+  return current.filter((v) => prevSet.has(v));
+}
+
+/**
+ * Returns `true` if the recording source is affected by `follow_if_http`.
+ *
+ * @param {string} url
+ */
+function isFollowIfHttpSource(url) {
+  try {
+    const protocol = new URL(url, document.baseURI).protocol;
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 /**
