@@ -213,7 +213,7 @@ impl<'a> ChunkRequestBatcher<'a> {
         }
 
         let rb = re_arrow_util::take_record_batch(
-            self.manifest.data(),
+            self.manifest.chunk_fetcher_rb(),
             &std::mem::take(&mut self.current_batch.row_indices),
         )?;
         self.to_load.push((

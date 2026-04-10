@@ -529,7 +529,7 @@ async fn stream_segment_from_server(
                     start_time.elapsed().as_secs_f32(),
                 );
 
-                let rrd_manifest = re_log_encoding::RrdManifest::try_new(raw_rrd_manifest_part)
+                let rrd_manifest = re_log_encoding::RrdManifest::try_new(&raw_rrd_manifest_part)
                     .map_err(|err| {
                         ApiError::invalid_arguments_with_source(
                             trace_id,
@@ -592,7 +592,7 @@ async fn stream_segment_from_server(
                             "Failed to concatenate RRD manifest parts",
                         )
                     })?;
-                    let batch = sort_batch(combined.data()).map_err(|err| {
+                    let batch = sort_batch(combined.chunk_fetcher_rb()).map_err(|err| {
                         ApiError::invalid_arguments_with_source(
                             trace_id,
                             err,
@@ -736,10 +736,10 @@ async fn stream_segment_from_server(
 }
 
 fn chunk_id_column(batch: &RecordBatch) -> Option<&[ChunkId]> {
-    batch
-        .column_by_name("chunk_id")
-        .and_then(|array| array.as_fixed_size_binary_opt())
-        .and_then(|array| ChunkId::try_slice_from_arrow(array).ok())
+    let array = batch
+        .column_by_name(re_log_encoding::RawRrdManifest::FIELD_CHUNK_ID)
+        .and_then(|array| array.as_fixed_size_binary_opt())?;
+    ChunkId::try_slice_from_arrow(array).ok()
 }
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
@@ -808,7 +808,7 @@ async fn load_chunks(
 
 /// Try to extract total deflated size from the batch's `chunk_byte_size` column.
 fn total_size_bytes_from_batch(batch: &RecordBatch) -> Option<u64> {
-    let col = batch.column_by_name("chunk_byte_size")?;
+    let col = batch.column_by_name(re_log_encoding::RawRrdManifest::FIELD_CHUNK_BYTE_SIZE)?;
     let array = col.as_primitive_opt::<arrow::datatypes::UInt64Type>()?;
     Some(array.iter().map(|v| v.unwrap_or(0)).sum())
 }
@@ -862,9 +862,9 @@ fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {
 
     let schema = batch.schema();
 
-    // Get column indices:
-    let chunk_is_static = schema.index_of("chunk_is_static")?;
-    let chunk_id = schema.index_of("chunk_id")?;
+    // Get column indices (these are guaranteed to exist in the pruned batch):
+    let chunk_is_static = schema.index_of(re_log_encoding::RrdManifest::FIELD_CHUNK_IS_STATIC)?;
+    let chunk_id = schema.index_of(re_log_encoding::RrdManifest::FIELD_CHUNK_ID)?;
 
     let sort_keys = vec![
         // Static first:

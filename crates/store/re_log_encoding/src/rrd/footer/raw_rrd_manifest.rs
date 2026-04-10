@@ -754,6 +754,33 @@ impl RawRrdManifest {
         // Remove leading underscore if present
         sanitized.trim_start_matches('_').to_owned()
     }
+
+    // Prune the RecordBatch to keep only columns needed for chunk fetching.
+    //
+    // The full manifest may have 1000+ sparse columns (one per timeline×component pair),
+    // which Arrow inflates because it allocates full-length buffers even for
+    // mostly-null columns. The maps above already captured all indexing data from these
+    // sparse columns; the RecordBatch is only used for `take_record_batch` → `FetchChunks`,
+    // which needs exactly: chunk_id, chunk_key, chunk_partition_id, rerun_partition_layer.
+    //
+    // By dropping the sparse columns here, we reduce memory ~10-20x
+    // and make `take_record_batch` 100x faster.
+    pub(super) fn chunk_fetcher_record_batch(&self) -> RecordBatch {
+        let columns_to_keep = super::RrdManifest::CHUNK_FETCHER_COLUMNS;
+
+        let schema = self.data.schema_ref();
+        let indices: Vec<usize> = schema
+            .fields()
+            .iter()
+            .enumerate()
+            .filter(|(_, field)| columns_to_keep.contains(&field.name().as_str()))
+            .map(|(i, _)| i)
+            .collect();
+
+        self.data
+            .project(&indices)
+            .unwrap_or_else(|_| self.data.clone())
+    }
 }
 
 // Sanity checks

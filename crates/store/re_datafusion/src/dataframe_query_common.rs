@@ -791,7 +791,7 @@ mod tests {
         let group_a = grouped.get("A").unwrap();
         assert_eq!(group_a.len(), 1);
         let chunk_ids_a = group_a[0]
-            .column_by_name("chunk_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
             .unwrap()
             .as_any()
             .downcast_ref::<FixedSizeBinaryArray>()
@@ -803,7 +803,7 @@ mod tests {
         let group_b = grouped.get("B").unwrap();
         assert_eq!(group_b.len(), 2);
         let chunk_ids_b1 = group_b[0]
-            .column_by_name("chunk_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
             .unwrap()
             .as_any()
             .downcast_ref::<FixedSizeBinaryArray>()
@@ -811,7 +811,7 @@ mod tests {
         assert_eq!(chunk_ids_b1.len(), 1);
         assert_eq!(chunk_ids_b1.value(0), [1u8; 16]);
         let chunk_ids_b2 = group_b[1]
-            .column_by_name("chunk_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
             .unwrap()
             .as_any()
             .downcast_ref::<FixedSizeBinaryArray>()
@@ -822,7 +822,7 @@ mod tests {
         let group_c = grouped.get("C").unwrap();
         assert_eq!(group_c.len(), 2);
         let chunk_ids_c1 = group_c[0]
-            .column_by_name("chunk_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
             .unwrap()
             .as_any()
             .downcast_ref::<FixedSizeBinaryArray>()
@@ -830,7 +830,7 @@ mod tests {
         assert_eq!(chunk_ids_c1.len(), 1);
         assert_eq!(chunk_ids_c1.value(0), [3u8; 16]);
         let chunk_ids_c2 = group_c[1]
-            .column_by_name("chunk_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
             .unwrap()
             .as_any()
             .downcast_ref::<FixedSizeBinaryArray>()
@@ -841,7 +841,7 @@ mod tests {
         let group_d = grouped.get("D").unwrap();
         assert_eq!(group_d.len(), 1);
         let chunk_ids_d = group_d[0]
-            .column_by_name("chunk_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
             .unwrap()
             .as_any()
             .downcast_ref::<FixedSizeBinaryArray>()
