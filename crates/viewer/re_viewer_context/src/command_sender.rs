@@ -138,7 +138,7 @@ pub enum SystemCommand {
     /// or a frame may be highlighted for a few frames.
     ///
     /// Just like selection highlighting, the exact behavior of focusing is up to the receiving views.
-    SetFocus(crate::Item),
+    SetFocus(crate::FocusTarget),
 
     /// Show a notification to the user
     ShowNotification(re_ui::notifications::Notification),

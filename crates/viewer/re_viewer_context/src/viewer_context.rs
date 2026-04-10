@@ -12,9 +12,10 @@ use crate::query_context::DataQueryResult;
 use crate::time_control::TimeControlCommand;
 use crate::{
     ActiveStoreContext, AppContext, AppOptions, ApplicationSelectionState, CommandSender,
-    ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, IndicatedEntities, Item,
-    ItemCollection, PerVisualizerType, StoreHub, StoreViewContext, SystemCommand,
-    SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
+    ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, FocusTarget,
+    IndicatedEntities, Item, ItemCollection, PerVisualizerType, StoreHub, StoreViewContext,
+    SystemCommand, SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
+    VisualizableEntities,
 };
 
 /// The most powerful context, when you need to know the active blueprint and views.
@@ -225,7 +226,7 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Item that got focused on the last frame if any.
-    pub fn focused_item(&self) -> Option<&crate::Item> {
+    pub fn focused_item(&self) -> &Option<crate::Item> {
         self.app_ctx.focused_item()
     }
 
