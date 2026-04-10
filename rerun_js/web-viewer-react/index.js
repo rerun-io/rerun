@@ -9,6 +9,8 @@ import * as rerun from "@rerun-io/web-viewer";
  * @property {string | string[]} rrd URL(s) of the `.rrd` file(s) to load.
  *                                   Changing this prop will open any new unique URLs as recordings,
  *                                   and close any URLs which are not present.
+ * @property {boolean} [follow_if_http] Whether to open HTTP `.rrd` sources in following mode.
+ *                                      Defaults to `false`. Ignored for non-HTTP sources.
  * @property {string} [width] CSS width of the viewer's parent div
  * @property {string} [height] CSS height of the viewer's parent div
  *
@@ -73,8 +75,18 @@ export default class WebViewer extends React.Component {
 
       const prev = toArray(prevProps.rrd);
       const current = toArray(this.props.rrd);
+      if (prevProps.follow_if_http !== this.props.follow_if_http) {
+        this.#handle.close(prev);
+        this.#handle.open(current, {
+          follow_if_http: this.props.follow_if_http,
+        });
+        return;
+      }
+
       const { added, removed } = diff(prev, current);
-      this.#handle.open(added);
+      this.#handle.open(added, {
+        follow_if_http: this.props.follow_if_http,
+      });
       this.#handle.close(removed);
     }
   }
@@ -120,7 +132,7 @@ function pascalToSnake(str) {
  */
 function startViewer(handle, parent, getProps) {
   const props = getProps();
-  handle.start(toArray(props.rrd), parent, {
+  const start = handle.start(null, parent, {
     manifest_url: props.manifest_url,
     render_backend: props.render_backend,
     hide_welcome_screen: props.hide_welcome_screen,
@@ -131,6 +143,17 @@ function startViewer(handle, parent, getProps) {
     width: "100%",
     height: "100%",
   });
+
+  void start
+    .then(() => {
+      const { rrd, follow_if_http } = getProps();
+      if (rrd == null || !handle.ready) {
+        return;
+      }
+
+      handle.open(toArray(rrd), { follow_if_http });
+    })
+    .catch(() => {});
 
   for (const key of Object.keys(props)) {
     if (key.startsWith("on")) {
