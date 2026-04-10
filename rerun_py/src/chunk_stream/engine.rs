@@ -485,7 +485,7 @@ impl ChunkStream for ChannelStream {
         match self.rx.recv() {
             Ok(Ok(chunk)) => Ok(Some(chunk)),
             Ok(Err(err)) => Err(err),
-            Err(_) => Ok(None), // channel closed — stream exhausted
+            Err(crossbeam::channel::RecvError) => Ok(None), // channel closed — stream exhausted
         }
     }
 }

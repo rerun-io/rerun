@@ -444,12 +444,7 @@ async fn message_proxy_client(
             TonicStatusError::from(err.clone())
         );
 
-        // Ignore status code "Unknown" since this was observed to happen on regular Viewer shutdowns.
-        if err.code() != tonic::Code::Ok && err.code() != tonic::Code::Unknown {
-            Err(ClientConnectionFailure::FailedToSendMessages(err.code()))
-        } else {
-            Ok(())
-        }
+        Err(ClientConnectionFailure::FailedToSendMessages(err.code()))
     } else {
         Ok(())
     };

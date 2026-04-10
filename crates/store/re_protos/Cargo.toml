@@ -36,6 +36,7 @@ arrow.workspace = true
 http.workspace = true
 jiff.workspace = true
 lz4_flex.workspace = true
+opentelemetry.workspace = true
 pin-project-lite.workspace = true
 prost-types.workspace = true
 prost.workspace = true

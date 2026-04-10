@@ -10,6 +10,7 @@ pub mod external {
 }
 
 pub mod headers;
+pub mod trace_id_layer;
 
 pub use re_log_types::{EntryName, InvalidEntryNameError};
 

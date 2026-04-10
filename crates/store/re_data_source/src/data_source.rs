@@ -336,6 +336,7 @@ impl LogDataSource {
 
                 let connection_registry = connection_registry.clone();
                 let uri_clone = uri.clone();
+                let tx_err = tx.clone();
                 let stream_segment = async move {
                     let client = connection_registry.client(uri_clone.origin.clone()).await?;
                     re_redap_client::stream_blueprint_and_segment_from_server(
@@ -352,7 +353,7 @@ impl LogDataSource {
                         if let Some(err) = err.as_client_credentials_error() {
                             on_auth_err(uri, err);
                         } else {
-                            re_log::error!("Error while streaming: {}", err);
+                            tx_err.quit(Some(Box::new(err))).ok();
                         }
                     }
                 });

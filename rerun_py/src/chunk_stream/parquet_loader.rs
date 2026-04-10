@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use pyo3::exceptions::{PyFileNotFoundError, PyValueError};
 use pyo3::prelude::*;
-
 use re_chunk::{Chunk, EntityPath};
 use re_parquet::{
     ColumnGrouping, ColumnMapping, ColumnRule, IndexColumn, IndexType, ParquetConfig, TimeUnit,
@@ -233,7 +232,7 @@ impl ChunkStream for ParquetStream {
         match self.rx.recv() {
             Ok(Ok(chunk)) => Ok(Some(chunk)),
             Ok(Err(err)) => Err(err),
-            Err(_) => Ok(None), // channel closed — loading finished
+            Err(crossbeam::channel::RecvError) => Ok(None), // channel closed — loading finished
         }
     }
 }

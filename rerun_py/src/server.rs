@@ -59,7 +59,7 @@ impl PyServerInternal {
         let url = format!("rerun+http://{connect_address}");
 
         crate::utils::wait_for_future(py, async {
-            let (handle, _) = args.create_server_handle().await.map_err(|err| {
+            let handle = args.create_server_handle().await.map_err(|err| {
                 PyValueError::new_err(format!("Failed to start Rerun server: {err:#}"))
             })?;
 
@@ -96,6 +96,26 @@ impl PyServerInternal {
 
     pub fn is_running(&self) -> bool {
         self.handle.is_some()
+    }
+
+    /// Test hook: make the given gRPC method fail with a `NotFound` error.
+    ///
+    /// The `method` is the gRPC method name, e.g. `"FetchChunks"`.
+    pub fn inject_error(&self, method: &str) -> PyResult<()> {
+        let handle = self.handle.as_ref().ok_or_else(|| {
+            PyValueError::new_err("Server is not running or has already been shut down")
+        })?;
+        handle.injected_errors().inject(method);
+        Ok(())
+    }
+
+    /// Stop failing a previously injected endpoint.
+    pub fn clear_injected_error(&self, method: &str) -> PyResult<()> {
+        let handle = self.handle.as_ref().ok_or_else(|| {
+            PyValueError::new_err("Server is not running or has already been shut down")
+        })?;
+        handle.injected_errors().clear(method);
+        Ok(())
     }
 }
 

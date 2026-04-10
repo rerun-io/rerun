@@ -266,7 +266,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                             return self.try_read();
                         }
 
-                        err @ Err(_) => err?,
+                        Err(err) => Err(err)?,
                     };
 
                     self.byte_chunks

@@ -173,21 +173,11 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
         #[cfg(not(target_arch = "wasm32"))]
         let _trace_guard = attach_trace_context(this.trace_headers.as_ref());
 
-        // If we have any errors on the worker thread, we want to ensure we pass them up
+        // If we have any errors on the worker threads, we want to ensure we pass them up
         // through the stream.
-        if this
-            .cpu_join_handle
-            .as_ref()
-            .map(|h| h.is_finished())
-            .unwrap_or(false)
+        if let Some(join_handle) = this.cpu_join_handle.take_if(|h| h.is_finished())
+            && let Some(cpu_join_result) = join_handle.now_or_never()
         {
-            let Some(join_handle) = this.cpu_join_handle.take() else {
-                return Poll::Ready(Some(exec_err!("CPU join handle is None")));
-            };
-
-            // Below is safe because we have already checked is_finished
-            let cpu_join_result = join_handle.now_or_never().expect("is_finished is true");
-
             match cpu_join_result {
                 Err(err) => return Poll::Ready(Some(exec_err!("{err}"))),
                 Ok(Err(err)) => return Poll::Ready(Some(Err(err))),
@@ -195,14 +185,26 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
             }
         }
 
-        // If this is the first call, we are uninitialized so create the io worker
-        if this.io_join_handle.is_none() {
-            let io_handle = Handle::current();
+        // Also check the IO task — if it failed (e.g. gRPC 500 from FetchChunks),
+        // the error would otherwise be silently lost because the CPU task sees a
+        // closed channel and exits with Ok(()).
+        if let Some(join_handle) = this.io_join_handle.take_if(|h| h.is_finished())
+            && let Some(io_join_result) = join_handle.now_or_never()
+        {
+            match io_join_result {
+                Err(err) => return Poll::Ready(Some(exec_err!("{err}"))),
+                Ok(Err(err)) => return Poll::Ready(Some(Err(err))),
+                Ok(Ok(())) => {}
+            }
+        }
 
-            // In order to properly drop the tx so the channel closes, do not clone it.
-            let Some(chunk_tx) = this.chunk_tx.take() else {
-                return Poll::Ready(Some(exec_err!("No tx for chunks from CPU thread")));
-            };
+        // If this is the first call, we are uninitialized so create the io worker.
+        // We check both `io_join_handle` (not yet spawned) and `chunk_tx` (not yet taken)
+        // because the IO check above can consume `io_join_handle` after it finishes.
+        if this.io_join_handle.is_none()
+            && let Some(chunk_tx) = this.chunk_tx.take()
+        {
+            let io_handle = Handle::current();
 
             let client = this.client.clone();
             let chunk_infos = this.chunk_infos.clone();

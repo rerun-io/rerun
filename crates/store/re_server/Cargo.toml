@@ -63,6 +63,7 @@ http-body.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 nohash-hasher.workspace = true
+opentelemetry.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 tempfile.workspace = true

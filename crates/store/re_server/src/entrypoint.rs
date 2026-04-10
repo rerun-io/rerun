@@ -116,10 +116,10 @@ impl FromStr for NamedPath {
 }
 
 impl Args {
-    /// Waits for the server to start, and return a handle to it together with its address.
+    /// Waits for the server to start, and return a handle to it.
     ///
-    /// The returned address is one you can connect to, e.g. 127.0.0.1 instead of 0.0.0.0.
-    pub async fn create_server_handle(self) -> anyhow::Result<(ServerHandle, SocketAddr)> {
+    /// Use [`ServerHandle::connect_addr`] for the address to connect to.
+    pub async fn create_server_handle(self) -> anyhow::Result<ServerHandle> {
         let Self {
             host: ip,
             port,
@@ -131,9 +131,7 @@ impl Args {
             cors_allow_origin,
         } = self;
 
-        let rerun_cloud_server = {
-            use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer;
-
+        let handler = {
             let mut builder = crate::RerunCloudHandlerBuilder::new();
 
             for NamedPathCollection { name, paths } in datasets {
@@ -174,10 +172,15 @@ impl Args {
                 }
             }
 
-            RerunCloudServiceServer::new(builder.build())
-                .max_decoding_message_size(re_grpc_server::MAX_DECODING_MESSAGE_SIZE)
-                .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE)
+            builder.build()
         };
+
+        let rerun_cloud_server =
+            re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer::new(
+                handler,
+            )
+            .max_decoding_message_size(re_grpc_server::MAX_DECODING_MESSAGE_SIZE)
+            .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE);
 
         let ip = ip.parse().with_context(|| format!("IP: {ip:?}"))?;
         let ip_port = SocketAddr::new(ip, port);
@@ -195,15 +198,13 @@ impl Args {
 
         let server = server_builder.build();
 
-        let mut server_handle = server.start();
+        let server_handle = server.start().await?;
 
-        let addr = server_handle.wait_for_ready().await?;
-
-        Ok((server_handle, addr))
+        Ok(server_handle)
     }
 
     pub async fn run_async(self) -> anyhow::Result<()> {
-        let (mut server_handle, _) = self.create_server_handle().await?;
+        let mut server_handle = self.create_server_handle().await?;
 
         #[cfg(unix)]
         let mut term_signal = signal(SignalKind::terminate())?;

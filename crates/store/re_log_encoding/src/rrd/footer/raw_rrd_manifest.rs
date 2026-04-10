@@ -305,7 +305,7 @@ impl RawRrdManifest {
             // That was in fact _not_ a footer.
             Err(CodecError::FrameDecoding(_)) => return Ok(vec![]),
 
-            err @ Err(_) => err?,
+            Err(err) => Err(err)?,
         };
 
         let mut manifests = Vec::new();
