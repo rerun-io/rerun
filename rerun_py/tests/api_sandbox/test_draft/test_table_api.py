@@ -35,7 +35,12 @@ sorbet:version: '0.1.3'\
             operator=["alice", "bob"],
         )
 
-        assert str(reader.sort("rerun_segment_id")) == inline_snapshot("""\
+        df = reader.sort("rerun_segment_id")
+        df_schema = df.schema()
+        for batch in df.collect():
+            assert batch.schema.equals(df_schema, check_metadata=True)
+
+        assert str(df) == inline_snapshot("""\
 ┌───────────────────────────────────┐
 │ METADATA:                         │
 │ * version: 0.1.3                  │

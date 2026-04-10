@@ -16,9 +16,12 @@ def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_met
 
     assert sorted(simple_filt.segment_ids()) == inline_snapshot(["complex_recording_2"])
 
-    assert segment_stable_snapshot(
-        simple_filt.segment_table(join_meta=complex_metadata).drop("property:RecordingInfo:start_time")
-    ) == inline_snapshot("""\
+    df = simple_filt.segment_table(join_meta=complex_metadata).drop("property:RecordingInfo:start_time")
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
+
+    assert segment_stable_snapshot(df) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                                                │
 │ * version: 0.1.3                                                                                                                                                                                         │
@@ -43,9 +46,12 @@ def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_met
 
     assert sorted(good_ds.segment_ids()) == inline_snapshot(["complex_recording_1", "complex_recording_3"])
 
-    assert segment_stable_snapshot(
-        good_ds.segment_table().drop("property:RecordingInfo:start_time")
-    ) == inline_snapshot("""\
+    df = good_ds.segment_table().drop("property:RecordingInfo:start_time")
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
+
+    assert segment_stable_snapshot(df) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                                │
 │ * version: 0.1.3                                                                                                                                                                         │
@@ -126,6 +132,9 @@ timeline: timestamp[ns]\
 """)
 
     df = filtered.reader(index="timeline").sort("rerun_segment_id")
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
 
     assert str(df) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────┐

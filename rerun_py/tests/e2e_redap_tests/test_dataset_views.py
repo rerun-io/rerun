@@ -160,6 +160,9 @@ def test_dataset_view_reader(readonly_test_dataset: DatasetEntry, snapshot: Snap
     df = view.reader(index="time_1")
 
     df = sorted_df(df)
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
 
     assert str(df) == snapshot()
 
@@ -184,6 +187,9 @@ def test_dataframe_api_using_index_values(readonly_test_dataset: DatasetEntry, s
         .sort("rerun_segment_id", "time_1")
     )
 
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
     assert str(df) == snapshot
 
     # Create a view with all partitions
@@ -212,6 +218,9 @@ def test_dataframe_api_using_index_values(readonly_test_dataset: DatasetEntry, s
         .sort("rerun_segment_id", "time_1")
     )
 
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
     assert str(df) == snapshot
 
     assert str(pa.table(df)) == snapshot
@@ -243,6 +252,9 @@ def test_dataframe_api_using_index_values_same_indices_on_all_segments(
         .sort("rerun_segment_id", "time_1")
     )
 
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
     assert str(df) == snapshot
 
     assert str(pa.table(df)) == snapshot
@@ -309,6 +321,9 @@ def test_dataframe_api_using_index_values_dataframe(
         .sort("rerun_segment_id", "time_1")
     )
 
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
     assert str(df) == snapshot
 
 

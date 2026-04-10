@@ -29,6 +29,10 @@ def test_index_ranges(readonly_test_dataset: DatasetEntry) -> None:
         .limit(10)
     )
 
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
+
     assert str(df) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                                                                                                                                                │
@@ -88,6 +92,9 @@ def test_index_ranges_dataset_view(readonly_test_dataset: DatasetEntry) -> None:
     ]
 
     df = view.get_index_ranges().sort("rerun_segment_id").select(*column_orders)
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
 
     assert str(df) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
