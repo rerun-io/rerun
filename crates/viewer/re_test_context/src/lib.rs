@@ -62,7 +62,7 @@ pub struct TestContext {
 
     // Mutex is needed, so we can update these from the `run` method
     pub selection_state: Mutex<ApplicationSelectionState>,
-    pub focused_item: Mutex<Option<re_viewer_context::Item>>,
+    pub focused_item: Mutex<Option<re_viewer_context::FocusTarget>>,
 
     // RwLock so we can have `handle_system_commands` take an immutable reference to self.
     pub time_ctrl: RwLock<TimeControl>,

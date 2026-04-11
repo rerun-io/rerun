@@ -183,8 +183,8 @@ impl AppContext<'_> {
     }
 
     /// Item that got focused on the last frame if any.
-    pub fn focused_item(&self) -> &Option<crate::Item> {
-        self.focused_item
+    pub fn focused_item(&self) -> Option<&FocusTarget> {
+        self.focused_item.as_ref()
     }
 
     /// Helper object to manage drag-and-drop operations.
@@ -302,7 +302,7 @@ impl AppContext<'_> {
                 self.command_sender
                     .send_system(SystemCommand::SetFocus(FocusTarget {
                         item: item.clone(),
-                        context: context,
+                        context,
                     }));
             }
 

@@ -1,3 +1,5 @@
+use re_log_types::EntityPath;
+
 use crate::{Item, ItemContext};
 
 /// One-shot focus payload.
@@ -18,5 +20,12 @@ impl From<Item> for FocusTarget {
             item,
             context: None,
         }
+    }
+}
+
+impl From<EntityPath> for FocusTarget {
+    #[inline]
+    fn from(entity_path: EntityPath) -> Self {
+        Self::from(Item::from(entity_path))
     }
 }
