@@ -146,7 +146,7 @@ impl BlueprintTree {
                 re_tracing::profile_scope!("blueprint_tree_scroll_area");
                 ui.panel_content(|ui| {
                     self.blueprint_tree_scroll_to_item = ctx.focused_item().and_then(|item| {
-                        self.handle_focused_item(ctx, viewport_blueprint, ui, item)
+                        self.handle_focused_item(ctx, viewport_blueprint, ui, &item.item)
                     });
 
                     list_item::list_item_scope(ui, "blueprint tree", |ui| {
@@ -1132,7 +1132,7 @@ impl BlueprintTree {
             }
             Item::View(view_id) => {
                 self.expand_all_contents_until(viewport, ui.ctx(), &Contents::View(*view_id));
-                ctx.focused_item().cloned()
+                ctx.focused_item().map(|focus| focus.item.clone())
             }
             Item::DataResult(data_result) => {
                 self.expand_all_contents_until(
@@ -1147,7 +1147,7 @@ impl BlueprintTree {
                     &data_result.instance_path.entity_path,
                 );
 
-                ctx.focused_item().cloned()
+                ctx.focused_item().map(|focus| focus.item.clone())
             }
             Item::InstancePath(instance_path) => {
                 let view_ids =
