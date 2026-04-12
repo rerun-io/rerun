@@ -115,6 +115,71 @@ end_header
 }
 
 #[test]
+fn ply_parses_xy_mesh_as_z0_mesh3d() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+element face 1
+property list uchar int vertex_indices
+end_header
+0 0 255 0 0
+1 0 0 255 0
+1 1 0 0 255
+0 1 255 255 0
+4 0 1 2 3
+"#;
+
+    let parsed = Mesh3D::from_file_contents(contents).unwrap();
+    let expected = Mesh3D::new([
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ])
+    .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF])
+    .with_triangle_indices([[0, 1, 2], [0, 2, 3]]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_parses_zero_face_mesh() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+element face 0
+property list uchar int vertex_indices
+end_header
+0 0 255 0 0
+1 0 0 255 0
+1 1 0 0 255
+0 1 255 255 0
+"#;
+
+    let parsed = Mesh3D::from_file_contents(contents).unwrap();
+    let expected = Mesh3D::new([
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ])
+    .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF])
+    .with_triangle_indices(Vec::<[u32; 3]>::new());
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
 fn ply_rejects_missing_face_element() {
     let contents = br#"ply
 format ascii 1.0

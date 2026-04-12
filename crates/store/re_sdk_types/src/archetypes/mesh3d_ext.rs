@@ -111,7 +111,8 @@ impl Mesh3D {
     /// ## Supported properties
     ///
     /// This expects:
-    /// - a `"vertex"` element with required `"x"`, `"y"` and `"z"` properties
+    /// - a `"vertex"` element with required `"x"` and `"y"` properties
+    /// - an optional `"z"` vertex property, defaulting to `0.0` when omitted
     /// - a `"face"` element with `"vertex_indices"` or `"vertex_index"` list properties
     ///
     /// Optional vertex properties:
@@ -254,15 +255,25 @@ impl ParsedMeshVertex {
         mut props: indexmap::IndexMap<String, ply_rs_bw::ply::Property>,
         ignored_props: &mut BTreeSet<String>,
     ) -> std::io::Result<Self> {
-        let (Some(x), Some(y), Some(z)) = (
+        let (Some(x), Some(y)) = (
             props.get(PROP_X).and_then(property_to_f32),
             props.get(PROP_Y).and_then(property_to_f32),
-            props.get(PROP_Z).and_then(property_to_f32),
         ) else {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                "PLY mesh vertices require \"x\", \"y\" and \"z\" properties",
+                "PLY mesh vertices require \"x\" and \"y\" properties",
             ));
+        };
+
+        let z = if props.contains_key(PROP_Z) {
+            props.get(PROP_Z).and_then(property_to_f32).ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "PLY mesh vertex property \"z\" has an unsupported type",
+                )
+            })?
+        } else {
+            0.0
         };
 
         props.swap_remove(PROP_X);
