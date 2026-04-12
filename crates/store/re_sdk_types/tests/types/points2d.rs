@@ -100,6 +100,44 @@ end_header
     similar_asserts::assert_eq!(parsed, expected);
 }
 
+#[test]
+fn ply_ignores_unsupported_optional_vertex_property_types() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property int label
+end_header
+1 2 42
+"#;
+
+    let parsed = Points2D::from_file_contents(contents).unwrap();
+    let expected = Points2D::new([(1.0, 2.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_ignores_non_vertex_elements_even_when_they_reuse_known_property_names() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+element edge 1
+property int label
+end_header
+1 2
+42
+"#;
+
+    let parsed = Points2D::from_file_contents(contents).unwrap();
+    let expected = Points2D::new([(1.0, 2.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn ply_from_path_matches_contents_for_two_dimensional_file() {

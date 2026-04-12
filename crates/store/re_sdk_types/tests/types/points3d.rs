@@ -107,6 +107,46 @@ end_header
 }
 
 #[test]
+fn ply_ignores_unsupported_optional_vertex_property_types() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property float z
+property int label
+end_header
+1 2 3 42
+"#;
+
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected = Points3D::new([(1.0, 2.0, 3.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_ignores_non_vertex_elements_even_when_they_reuse_known_property_names() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property float z
+element face 1
+property int label
+end_header
+1 2 3
+42
+"#;
+
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected = Points3D::new([(1.0, 2.0, 3.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
 fn ply_skips_vertices_missing_required_positions() {
     let contents = br#"ply
 format ascii 1.0

@@ -212,57 +212,63 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
                 }
             }
             PROP_RED => {
+                self.seen_props |= SEEN_RED;
+
                 if let Some(value) = property.to_u8_color_lossy() {
-                    self.seen_props |= SEEN_RED;
                     self.red = Some(value);
                     PropertyAccessResult::Set
                 } else {
-                    PropertyAccessResult::UnsupportedType
+                    PropertyAccessResult::Ignored
                 }
             }
             PROP_GREEN => {
+                self.seen_props |= SEEN_GREEN;
+
                 if let Some(value) = property.to_u8_color_lossy() {
-                    self.seen_props |= SEEN_GREEN;
                     self.green = Some(value);
                     PropertyAccessResult::Set
                 } else {
-                    PropertyAccessResult::UnsupportedType
+                    PropertyAccessResult::Ignored
                 }
             }
             PROP_BLUE => {
+                self.seen_props |= SEEN_BLUE;
+
                 if let Some(value) = property.to_u8_color_lossy() {
-                    self.seen_props |= SEEN_BLUE;
                     self.blue = Some(value);
                     PropertyAccessResult::Set
                 } else {
-                    PropertyAccessResult::UnsupportedType
+                    PropertyAccessResult::Ignored
                 }
             }
             PROP_ALPHA => {
+                self.seen_props |= SEEN_ALPHA;
+
                 if let Some(value) = property.to_u8_color_lossy() {
-                    self.seen_props |= SEEN_ALPHA;
                     self.alpha = Some(value);
                     PropertyAccessResult::Set
                 } else {
-                    PropertyAccessResult::UnsupportedType
+                    PropertyAccessResult::Ignored
                 }
             }
             PROP_RADIUS => {
+                self.seen_props |= SEEN_RADIUS;
+
                 if let Some(value) = property.to_f32_lossy() {
-                    self.seen_props |= SEEN_RADIUS;
                     self.radius = Some(value);
                     PropertyAccessResult::Set
                 } else {
-                    PropertyAccessResult::UnsupportedType
+                    PropertyAccessResult::Ignored
                 }
             }
             PROP_LABEL => {
+                self.seen_props |= SEEN_LABEL;
+
                 if let Some(value) = property_to_text(&property) {
-                    self.seen_props |= SEEN_LABEL;
                     self.label = Some(value);
                     PropertyAccessResult::Set
                 } else {
-                    PropertyAccessResult::UnsupportedType
+                    PropertyAccessResult::Ignored
                 }
             }
             _ => PropertyAccessResult::Ignored,
@@ -355,28 +361,25 @@ fn classify_vertex_layout(element_def: &ply_rs_bw::ply::ElementDef) -> PlyVertex
 fn parse_ply_vertices<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<ParsedPly> {
     re_tracing::profile_function!();
 
-    let parser = ply_rs_bw::parser::Parser::<ParsedVertex>::new();
+    let default_element_parser = ply_rs_bw::parser::Parser::<ply_rs_bw::ply::DefaultElement>::new();
+    let vertex_parser = ply_rs_bw::parser::Parser::<ParsedVertex>::new();
 
-    let mut ply = ParsedPly {
-        vertex_layout: PlyVertexLayout::Other,
-        vertices: Vec::new(),
-        ignored_props: BTreeSet::new(),
-    };
+    let (vertex_layout, vertex_unknown_props, header, mut payload_reader) = {
+        re_tracing::profile_scope!("read_ply_header");
 
-    let vertex_unknown_props;
-
-    {
-        re_tracing::profile_scope!("read_ply");
-
-        let parsed_ply = parser.read_ply(reader).map_err(std::io::Error::from)?;
-        let header = &parsed_ply.header;
-
-        vertex_unknown_props = header
+        let mut payload_reader = ply_rs_bw::parser::Reader::new(reader);
+        let header = default_element_parser
+            .read_header(&mut payload_reader)
+            .map_err(std::io::Error::from)?;
+        let vertex_layout = header
+            .elements
+            .get("vertex")
+            .map(classify_vertex_layout)
+            .unwrap_or(PlyVertexLayout::Other);
+        let vertex_unknown_props = header
             .elements
             .get("vertex")
             .map(|element_def| {
-                ply.vertex_layout = classify_vertex_layout(element_def);
-
                 element_def
                     .properties
                     .keys()
@@ -399,17 +402,34 @@ fn parse_ply_vertices<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Pa
             })
             .unwrap_or_default();
 
-        for (key, all_props) in parsed_ply.payload {
-            if key == "vertex" {
-                if !all_props.is_empty() {
-                    ply.ignored_props
-                        .extend(vertex_unknown_props.iter().cloned());
-                }
+        (vertex_layout, vertex_unknown_props, header, payload_reader)
+    };
 
-                ply.vertices = all_props;
-            } else {
-                re_log::warn!("Ignoring {key:?} in .ply file");
+    let mut ply = ParsedPly {
+        vertex_layout,
+        vertices: Vec::new(),
+        ignored_props: BTreeSet::new(),
+    };
+
+    re_tracing::profile_scope!("read_ply_payload");
+
+    for (_key, element_def) in &header.elements {
+        if element_def.name == "vertex" {
+            let vertices = vertex_parser
+                .read_payload_for_element(&mut payload_reader, element_def, &header)
+                .map_err(std::io::Error::from)?;
+
+            if !vertices.is_empty() {
+                ply.ignored_props
+                    .extend(vertex_unknown_props.iter().cloned());
             }
+
+            ply.vertices = vertices;
+        } else {
+            re_log::warn!("Ignoring {:?} in .ply file", element_def.name);
+            let _ignored = default_element_parser
+                .read_payload_for_element(&mut payload_reader, element_def, &header)
+                .map_err(std::io::Error::from)?;
         }
     }
 
