@@ -1,5 +1,7 @@
+use std::path::{Path, PathBuf};
+
 use re_sdk_types::archetypes::Points3D;
-use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _, components};
+use re_sdk_types::{components, Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]
 fn roundtrip() {
@@ -55,4 +57,72 @@ fn roundtrip() {
 
     let deserialized = Points3D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
+}
+
+fn example_ply_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../examples/assets/example.ply")
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn ply_from_path_matches_contents_for_example_fixture() {
+    let path = example_ply_path();
+    let contents = std::fs::read(&path).unwrap();
+
+    let from_path = Points3D::from_file_path(&path).unwrap();
+    let from_contents = Points3D::from_file_contents(&contents).unwrap();
+
+    similar_asserts::assert_eq!(from_path, from_contents);
+}
+
+#[test]
+fn ply_parses_optional_properties_and_ignores_extra_data() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+property float radius
+property list uchar uchar label
+property float temperature
+element face 1
+property list uchar int vertex_index
+end_header
+1 2 3 10 20 30 0.5 2 72 105 42
+4 5 6 11 21 31 1.5 3 66 121 101 43
+3 0 1 1
+"#;
+
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected = Points3D::new([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])
+        .with_colors([0x0A141EFF, 0x0B151FFF])
+        .with_radii([0.5, 1.5])
+        .with_labels(["Hi", "Bye"]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_skips_vertices_missing_required_positions() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+end_header
+1 2 10 20 30
+4 5 40 50 60
+"#;
+
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected = Points3D::new([] as [(f32, f32, f32); 0]);
+
+    similar_asserts::assert_eq!(parsed, expected);
 }
