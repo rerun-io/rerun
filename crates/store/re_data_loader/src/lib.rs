@@ -543,7 +543,7 @@ pub const SUPPORTED_DEPTH_IMAGE_EXTENSIONS: &[&str] = &["rvl", "png"];
 
 pub const SUPPORTED_VIDEO_EXTENSIONS: &[&str] = &["mp4"];
 
-pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl", "dae"];
+pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl", "dae", "ply"];
 
 pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 

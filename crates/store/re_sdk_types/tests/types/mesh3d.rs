@@ -197,7 +197,7 @@ end_header
 }
 
 #[test]
-fn ply_parses_zero_face_mesh() {
+fn ply_rejects_zero_face_mesh() {
     let contents = br#"ply
 format ascii 1.0
 element vertex 4
@@ -215,17 +215,41 @@ end_header
 0 1 255 255 0
 "#;
 
-    let parsed = Mesh3D::from_file_contents(contents).unwrap();
-    let expected = Mesh3D::new([
-        [0.0, 0.0, 0.0],
-        [1.0, 0.0, 0.0],
-        [1.0, 1.0, 0.0],
-        [0.0, 1.0, 0.0],
-    ])
-    .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF])
-    .with_triangle_indices(Vec::<[u32; 3]>::new());
+    let err = Mesh3D::from_file_contents(contents).unwrap_err();
 
-    similar_asserts::assert_eq!(parsed, expected);
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+    assert!(
+        err.to_string()
+            .contains("at least one face with 3 or more vertex indices")
+    );
+}
+
+#[test]
+fn ply_rejects_zero_face_mesh_without_face_indices() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+element face 0
+property int material_index
+end_header
+0 0 255 0 0
+1 0 0 255 0
+1 1 0 0 255
+0 1 255 255 0
+"#;
+
+    let err = Mesh3D::from_file_contents(contents).unwrap_err();
+
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+    assert!(
+        err.to_string()
+            .contains("require \"vertex_indices\" or \"vertex_index\"")
+    );
 }
 
 #[test]

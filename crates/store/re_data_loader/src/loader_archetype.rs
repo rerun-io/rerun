@@ -352,6 +352,16 @@ fn load_ply(
         Mesh3D,
     }
 
+    const PLY_FACE_VERTEX_INDEX: &str = "vertex_index";
+    const PLY_FACE_VERTEX_INDICES: &str = "vertex_indices";
+
+    fn has_mesh_topology(element_def: &ply_rs_bw::ply::ElementDef) -> bool {
+        // `load_ply` should only route to `Mesh3D` when the face section declares usable topology.
+        element_def.count > 0
+            && (element_def.properties.contains_key(PLY_FACE_VERTEX_INDICES)
+                || element_def.properties.contains_key(PLY_FACE_VERTEX_INDEX))
+    }
+
     fn detect_ply_kind(contents: &[u8]) -> Result<PlyKind, DataLoaderError> {
         let parser = ply_rs_bw::parser::Parser::<ply_rs_bw::ply::DefaultElement>::new();
         let mut reader =
@@ -367,9 +377,9 @@ fn load_ply(
         let has_x = vertex_element.properties.contains_key("x");
         let has_y = vertex_element.properties.contains_key("y");
         let has_z = vertex_element.properties.contains_key("z");
-        let has_faces = header.elements.contains_key("face");
+        let has_mesh_topology = header.elements.get("face").is_some_and(has_mesh_topology);
 
-        Ok(if has_faces && has_x && has_y {
+        Ok(if has_mesh_topology && has_x && has_y {
             PlyKind::Mesh3D
         } else if has_x && has_y && !has_z {
             PlyKind::Points2D
@@ -601,7 +611,53 @@ end_header
     }
 
     #[test]
-    fn ply_xy_zero_faces_load_as_mesh3d() {
+    fn ply_xy_auxiliary_faces_load_as_points2d() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+element face 1
+property int material_index
+end_header
+0 0 255 0 0
+1 0 0 255 0
+1 1 0 0 255
+0 1 255 255 0
+7
+"#;
+
+        let chunk = load_single_chunk(contents);
+
+        assert!(
+            chunk
+                .components()
+                .contains_component(Points2D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Mesh3D::descriptor_vertex_positions().component)
+        );
+
+        let expected = Chunk::builder(EntityPath::from("points"))
+            .with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &Points2D::new([(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)])
+                    .with_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF]),
+            )
+            .build()
+            .unwrap();
+
+        ChunkComponents::ensure_similar(expected.components(), chunk.components()).unwrap();
+    }
+
+    #[test]
+    fn ply_xy_zero_faces_load_as_points2d() {
         let contents = br#"ply
 format ascii 1.0
 element vertex 4
@@ -624,26 +680,20 @@ end_header
         assert!(
             chunk
                 .components()
-                .contains_component(Mesh3D::descriptor_vertex_positions().component)
+                .contains_component(Points2D::descriptor_positions().component)
         );
         assert!(
             !chunk
                 .components()
-                .contains_component(Points2D::descriptor_positions().component)
+                .contains_component(Mesh3D::descriptor_vertex_positions().component)
         );
 
         let expected = Chunk::builder(EntityPath::from("points"))
             .with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &Mesh3D::new([
-                    [0.0, 0.0, 0.0],
-                    [1.0, 0.0, 0.0],
-                    [1.0, 1.0, 0.0],
-                    [0.0, 1.0, 0.0],
-                ])
-                .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF])
-                .with_triangle_indices(Vec::<[u32; 3]>::new()),
+                &Points2D::new([(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)])
+                    .with_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF]),
             )
             .build()
             .unwrap();

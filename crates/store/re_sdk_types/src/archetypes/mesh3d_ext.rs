@@ -114,6 +114,7 @@ impl Mesh3D {
     /// - a `"vertex"` element with required `"x"` and `"y"` properties
     /// - an optional `"z"` vertex property, defaulting to `0.0` when omitted
     /// - a `"face"` element with `"vertex_indices"` or `"vertex_index"` list properties
+    ///   that yield at least one triangulable face
     ///
     /// Optional vertex properties:
     /// - normals: `"nx"`, `"ny"` & `"nz"`
@@ -344,6 +345,13 @@ fn missing_face_indices_error() -> std::io::Error {
     )
 }
 
+fn missing_face_topology_error() -> std::io::Error {
+    std::io::Error::new(
+        std::io::ErrorKind::InvalidData,
+        "PLY mesh requires at least one face with 3 or more vertex indices",
+    )
+}
+
 fn from_ply_reader<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Mesh3D> {
     re_tracing::profile_function!();
 
@@ -429,13 +437,7 @@ fn from_ply_reader<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Mesh3
                         }
                     }
                     None => {
-                        let faces = default_element_parser
-                            .read_payload_for_element(&mut payload_reader, element_def, &header)
-                            .map_err(std::io::Error::from)?;
-
-                        if !faces.is_empty() {
-                            return Err(missing_face_indices_error());
-                        }
+                        return Err(missing_face_indices_error());
                     }
                 }
             }
@@ -453,6 +455,10 @@ fn from_ply_reader<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Mesh3
             std::io::ErrorKind::InvalidData,
             "PLY mesh requires a \"face\" element",
         ));
+    }
+
+    if triangle_indices.is_empty() {
+        return Err(missing_face_topology_error());
     }
 
     if !ignored_props.is_empty() {
