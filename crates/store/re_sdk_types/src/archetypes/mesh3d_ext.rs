@@ -148,102 +148,6 @@ const PROP_ALPHA: &str = "alpha";
 const PROP_VERTEX_INDEX: &str = "vertex_index";
 const PROP_VERTEX_INDICES: &str = "vertex_indices";
 
-fn property_to_f32(prop: &ply_rs_bw::ply::Property) -> Option<f32> {
-    use ply_rs_bw::ply::Property;
-
-    match prop {
-        Property::Short(v) => Some(*v as f32),
-        Property::UShort(v) => Some(*v as f32),
-        Property::Int(v) => Some(*v as f32),
-        Property::UInt(v) => Some(*v as f32),
-        Property::Float(v) => Some(*v),
-        Property::Double(v) => Some(*v as f32),
-        Property::Char(_)
-        | Property::UChar(_)
-        | Property::ListChar(_)
-        | Property::ListUChar(_)
-        | Property::ListShort(_)
-        | Property::ListUShort(_)
-        | Property::ListInt(_)
-        | Property::ListUInt(_)
-        | Property::ListFloat(_)
-        | Property::ListDouble(_) => None,
-    }
-}
-
-fn property_to_u8(prop: &ply_rs_bw::ply::Property) -> Option<u8> {
-    use ply_rs_bw::ply::Property;
-
-    match prop {
-        Property::Short(v) => Some(*v as u8),
-        Property::UShort(v) => Some(*v as u8),
-        Property::Int(v) => Some(*v as u8),
-        Property::UInt(v) => Some(*v as u8),
-        Property::Float(v) => Some((*v * 255.0) as u8),
-        Property::Double(v) => Some((*v * 255.0) as u8),
-        Property::Char(v) => Some(*v as u8),
-        Property::UChar(v) => Some(*v),
-        Property::ListChar(_)
-        | Property::ListUChar(_)
-        | Property::ListShort(_)
-        | Property::ListUShort(_)
-        | Property::ListInt(_)
-        | Property::ListUInt(_)
-        | Property::ListFloat(_)
-        | Property::ListDouble(_) => None,
-    }
-}
-
-fn property_to_indices(prop: &ply_rs_bw::ply::Property) -> Option<Vec<u32>> {
-    use ply_rs_bw::ply::Property;
-
-    let collect_signed = |values: &[i32]| {
-        values
-            .iter()
-            .copied()
-            .map(u32::try_from)
-            .collect::<Result<Vec<_>, _>>()
-            .ok()
-    };
-
-    let collect_short = |values: &[i16]| {
-        values
-            .iter()
-            .copied()
-            .map(u32::try_from)
-            .collect::<Result<Vec<_>, _>>()
-            .ok()
-    };
-
-    let collect_char = |values: &[i8]| {
-        values
-            .iter()
-            .copied()
-            .map(u32::try_from)
-            .collect::<Result<Vec<_>, _>>()
-            .ok()
-    };
-
-    match prop {
-        Property::ListChar(values) => collect_char(values),
-        Property::ListUChar(values) => Some(values.iter().copied().map(u32::from).collect()),
-        Property::ListShort(values) => collect_short(values),
-        Property::ListUShort(values) => Some(values.iter().copied().map(u32::from).collect()),
-        Property::ListInt(values) => collect_signed(values),
-        Property::ListUInt(values) => Some(values.clone()),
-        Property::Char(_)
-        | Property::UChar(_)
-        | Property::Short(_)
-        | Property::UShort(_)
-        | Property::Int(_)
-        | Property::UInt(_)
-        | Property::Float(_)
-        | Property::Double(_)
-        | Property::ListFloat(_)
-        | Property::ListDouble(_) => None,
-    }
-}
-
 struct ParsedMeshVertex {
     position: components::Position3D,
     normal: Option<components::Vector3D>,
@@ -256,8 +160,12 @@ impl ParsedMeshVertex {
         ignored_props: &mut BTreeSet<String>,
     ) -> std::io::Result<Self> {
         let (Some(x), Some(y)) = (
-            props.get(PROP_X).and_then(property_to_f32),
-            props.get(PROP_Y).and_then(property_to_f32),
+            props
+                .get(PROP_X)
+                .and_then(ply_rs_bw::ply::Property::to_f32_lossy),
+            props
+                .get(PROP_Y)
+                .and_then(ply_rs_bw::ply::Property::to_f32_lossy),
         ) else {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
@@ -266,12 +174,15 @@ impl ParsedMeshVertex {
         };
 
         let z = if props.contains_key(PROP_Z) {
-            props.get(PROP_Z).and_then(property_to_f32).ok_or_else(|| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "PLY mesh vertex property \"z\" has an unsupported type",
-                )
-            })?
+            props
+                .get(PROP_Z)
+                .and_then(ply_rs_bw::ply::Property::to_f32_lossy)
+                .ok_or_else(|| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "PLY mesh vertex property \"z\" has an unsupported type",
+                    )
+                })?
         } else {
             0.0
         };
@@ -281,9 +192,15 @@ impl ParsedMeshVertex {
         props.swap_remove(PROP_Z);
 
         let normal = if let (Some(nx), Some(ny), Some(nz)) = (
-            props.get(PROP_NX).and_then(property_to_f32),
-            props.get(PROP_NY).and_then(property_to_f32),
-            props.get(PROP_NZ).and_then(property_to_f32),
+            props
+                .get(PROP_NX)
+                .and_then(ply_rs_bw::ply::Property::to_f32_lossy),
+            props
+                .get(PROP_NY)
+                .and_then(ply_rs_bw::ply::Property::to_f32_lossy),
+            props
+                .get(PROP_NZ)
+                .and_then(ply_rs_bw::ply::Property::to_f32_lossy),
         ) {
             props.swap_remove(PROP_NX);
             props.swap_remove(PROP_NY);
@@ -294,13 +211,19 @@ impl ParsedMeshVertex {
         };
 
         let color = if let (Some(r), Some(g), Some(b)) = (
-            props.get(PROP_RED).and_then(property_to_u8),
-            props.get(PROP_GREEN).and_then(property_to_u8),
-            props.get(PROP_BLUE).and_then(property_to_u8),
+            props
+                .get(PROP_RED)
+                .and_then(ply_rs_bw::ply::Property::to_u8_color_lossy),
+            props
+                .get(PROP_GREEN)
+                .and_then(ply_rs_bw::ply::Property::to_u8_color_lossy),
+            props
+                .get(PROP_BLUE)
+                .and_then(ply_rs_bw::ply::Property::to_u8_color_lossy),
         ) {
             let a = props
                 .get(PROP_ALPHA)
-                .and_then(property_to_u8)
+                .and_then(ply_rs_bw::ply::Property::to_u8_color_lossy)
                 .unwrap_or(255);
             props.swap_remove(PROP_RED);
             props.swap_remove(PROP_GREEN);
@@ -335,8 +258,12 @@ fn parse_face(
 ) -> std::io::Result<Vec<components::TriangleIndices>> {
     let indices = props
         .get(PROP_VERTEX_INDICES)
-        .and_then(property_to_indices)
-        .or_else(|| props.get(PROP_VERTEX_INDEX).and_then(property_to_indices))
+        .and_then(ply_rs_bw::ply::Property::to_u32_list)
+        .or_else(|| {
+            props
+                .get(PROP_VERTEX_INDEX)
+                .and_then(ply_rs_bw::ply::Property::to_u32_list)
+        })
         .ok_or_else(|| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,

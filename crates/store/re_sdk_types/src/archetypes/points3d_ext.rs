@@ -176,45 +176,96 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
         Self::default()
     }
 
-    fn set_property(&mut self, property_name: &str, property: ply_rs_bw::ply::Property) {
+    fn set_property(
+        &mut self,
+        property_name: &str,
+        property: ply_rs_bw::ply::Property,
+    ) -> ply_rs_bw::ply::PropertyAccessResult {
+        use ply_rs_bw::ply::PropertyAccessResult;
+
         match property_name {
             PROP_X => {
-                self.seen_props |= SEEN_X;
-                self.x = property_to_f32(&property);
+                if let Some(value) = property.to_f32_lossy() {
+                    self.seen_props |= SEEN_X;
+                    self.x = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::UnsupportedType
+                }
             }
             PROP_Y => {
-                self.seen_props |= SEEN_Y;
-                self.y = property_to_f32(&property);
+                if let Some(value) = property.to_f32_lossy() {
+                    self.seen_props |= SEEN_Y;
+                    self.y = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::UnsupportedType
+                }
             }
             PROP_Z => {
-                self.seen_props |= SEEN_Z;
-                self.z = property_to_f32(&property);
+                if let Some(value) = property.to_f32_lossy() {
+                    self.seen_props |= SEEN_Z;
+                    self.z = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::UnsupportedType
+                }
             }
             PROP_RED => {
-                self.seen_props |= SEEN_RED;
-                self.red = property_to_u8(&property);
+                if let Some(value) = property.to_u8_color_lossy() {
+                    self.seen_props |= SEEN_RED;
+                    self.red = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::UnsupportedType
+                }
             }
             PROP_GREEN => {
-                self.seen_props |= SEEN_GREEN;
-                self.green = property_to_u8(&property);
+                if let Some(value) = property.to_u8_color_lossy() {
+                    self.seen_props |= SEEN_GREEN;
+                    self.green = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::UnsupportedType
+                }
             }
             PROP_BLUE => {
-                self.seen_props |= SEEN_BLUE;
-                self.blue = property_to_u8(&property);
+                if let Some(value) = property.to_u8_color_lossy() {
+                    self.seen_props |= SEEN_BLUE;
+                    self.blue = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::UnsupportedType
+                }
             }
             PROP_ALPHA => {
-                self.seen_props |= SEEN_ALPHA;
-                self.alpha = property_to_u8(&property);
+                if let Some(value) = property.to_u8_color_lossy() {
+                    self.seen_props |= SEEN_ALPHA;
+                    self.alpha = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::UnsupportedType
+                }
             }
             PROP_RADIUS => {
-                self.seen_props |= SEEN_RADIUS;
-                self.radius = property_to_f32(&property);
+                if let Some(value) = property.to_f32_lossy() {
+                    self.seen_props |= SEEN_RADIUS;
+                    self.radius = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::UnsupportedType
+                }
             }
             PROP_LABEL => {
-                self.seen_props |= SEEN_LABEL;
-                self.label = property_to_text(property);
+                if let Some(value) = property_to_text(&property) {
+                    self.seen_props |= SEEN_LABEL;
+                    self.label = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::UnsupportedType
+                }
             }
-            _ => {}
+            _ => PropertyAccessResult::Ignored,
         }
     }
 }
@@ -277,73 +328,10 @@ impl Points3D {
     }
 }
 
-fn property_to_f32(property: &ply_rs_bw::ply::Property) -> Option<f32> {
-    use ply_rs_bw::ply::Property;
-
-    match property {
-        Property::Short(v) => Some(*v as f32),
-        Property::UShort(v) => Some(*v as f32),
-        Property::Int(v) => Some(*v as f32),
-        Property::UInt(v) => Some(*v as f32),
-        Property::Float(v) => Some(*v),
-        Property::Double(v) => Some(*v as f32),
-        Property::Char(_)
-        | Property::UChar(_)
-        | Property::ListChar(_)
-        | Property::ListUChar(_)
-        | Property::ListShort(_)
-        | Property::ListUShort(_)
-        | Property::ListInt(_)
-        | Property::ListUInt(_)
-        | Property::ListFloat(_)
-        | Property::ListDouble(_) => None,
-    }
-}
-
-fn property_to_u8(property: &ply_rs_bw::ply::Property) -> Option<u8> {
-    use ply_rs_bw::ply::Property;
-
-    match property {
-        Property::Short(v) => Some(*v as u8),
-        Property::UShort(v) => Some(*v as u8),
-        Property::Int(v) => Some(*v as u8),
-        Property::UInt(v) => Some(*v as u8),
-        Property::Float(v) => Some((*v * 255.0) as u8),
-        Property::Double(v) => Some((*v * 255.0) as u8),
-        Property::Char(v) => Some(*v as u8),
-        Property::UChar(v) => Some(*v),
-        Property::ListChar(_)
-        | Property::ListUChar(_)
-        | Property::ListShort(_)
-        | Property::ListUShort(_)
-        | Property::ListInt(_)
-        | Property::ListUInt(_)
-        | Property::ListFloat(_)
-        | Property::ListDouble(_) => None,
-    }
-}
-
-fn property_to_text(property: ply_rs_bw::ply::Property) -> Option<Text> {
-    match property {
-        ply_rs_bw::ply::Property::ListUChar(chars) => {
-            Some(Text(String::from_utf8_lossy(&chars).to_string().into()))
-        }
-        ply_rs_bw::ply::Property::ListChar(_)
-        | ply_rs_bw::ply::Property::ListShort(_)
-        | ply_rs_bw::ply::Property::ListUShort(_)
-        | ply_rs_bw::ply::Property::ListInt(_)
-        | ply_rs_bw::ply::Property::ListUInt(_)
-        | ply_rs_bw::ply::Property::ListFloat(_)
-        | ply_rs_bw::ply::Property::ListDouble(_)
-        | ply_rs_bw::ply::Property::Char(_)
-        | ply_rs_bw::ply::Property::UChar(_)
-        | ply_rs_bw::ply::Property::Short(_)
-        | ply_rs_bw::ply::Property::UShort(_)
-        | ply_rs_bw::ply::Property::Int(_)
-        | ply_rs_bw::ply::Property::UInt(_)
-        | ply_rs_bw::ply::Property::Float(_)
-        | ply_rs_bw::ply::Property::Double(_) => None,
-    }
+fn property_to_text(property: &ply_rs_bw::ply::Property) -> Option<Text> {
+    property
+        .as_list_uchar()
+        .map(|chars| Text(String::from_utf8_lossy(chars).to_string().into()))
 }
 
 struct ParsedPly {

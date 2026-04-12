@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use re_sdk_types::archetypes::Points3D;
-use re_sdk_types::{components, Archetype as _, AsComponents as _, ComponentBatch as _};
+use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _, components};
 
 #[test]
 fn roundtrip() {
@@ -144,4 +144,22 @@ end_header
 
     assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
     assert!(err.to_string().contains("Line 9:"));
+}
+
+#[test]
+fn ply_rejects_supported_vertex_properties_with_unsupported_types() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property list uchar uchar z
+end_header
+1 2 1 255
+"#;
+
+    let err = Points3D::from_file_contents(contents).unwrap_err();
+
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+    assert!(err.to_string().contains("PLY property 'z'"));
 }

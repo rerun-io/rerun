@@ -324,7 +324,7 @@ pathdiff = "0.2.3"
 percent-encoding = "2.3"
 pico-args = "0.5.0"
 pin-project-lite = "0.2.17"
-ply-rs-bw = { version = "=3.0.0", default-features = false } # ply-rs-bw has released semver breaking changes in patch releases before. Fool me once, shame on you…
+ply-rs-bw = { path = "../ply-rs", default-features = false } # Temporary local fork override while iterating on ply-rs-bw v4.
 poll-promise = "0.3.0"
 pollster = "0.4.0"
 prettyplease = "0.2.37"
