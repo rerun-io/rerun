@@ -148,6 +148,24 @@ const PROP_ALPHA: &str = "alpha";
 const PROP_VERTEX_INDEX: &str = "vertex_index";
 const PROP_VERTEX_INDICES: &str = "vertex_indices";
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PlyFaceIndexProperty {
+    VertexIndices,
+    VertexIndex,
+}
+
+fn classify_face_index_property(
+    element_def: &ply_rs_bw::ply::ElementDef,
+) -> Option<PlyFaceIndexProperty> {
+    if element_def.properties.contains_key(PROP_VERTEX_INDICES) {
+        Some(PlyFaceIndexProperty::VertexIndices)
+    } else if element_def.properties.contains_key(PROP_VERTEX_INDEX) {
+        Some(PlyFaceIndexProperty::VertexIndex)
+    } else {
+        None
+    }
+}
+
 struct ParsedMeshVertex {
     position: components::Position3D,
     normal: Option<components::Vector3D>,
@@ -252,46 +270,110 @@ fn triangulate_face(indices: &[u32]) -> impl Iterator<Item = components::Triangl
         .map(|pair| [indices[0], pair[0], pair[1]].into())
 }
 
-fn parse_face(
-    mut props: indexmap::IndexMap<String, ply_rs_bw::ply::Property>,
-    ignored_props: &mut BTreeSet<String>,
-) -> std::io::Result<Vec<components::TriangleIndices>> {
-    let indices = props
-        .get(PROP_VERTEX_INDICES)
-        .and_then(ply_rs_bw::ply::Property::to_u32_list)
-        .or_else(|| {
-            props
-                .get(PROP_VERTEX_INDEX)
-                .and_then(ply_rs_bw::ply::Property::to_u32_list)
-        })
-        .ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "PLY mesh faces require \"vertex_indices\" or \"vertex_index\" list properties",
-            )
-        })?;
+#[derive(Default)]
+struct ParsedMeshFace<const USE_VERTEX_INDICES: bool> {
+    indices: Vec<u32>,
+}
 
-    props.swap_remove(PROP_VERTEX_INDICES);
-    props.swap_remove(PROP_VERTEX_INDEX);
-
-    for (key, _value) in props {
-        ignored_props.insert(key);
+impl<const USE_VERTEX_INDICES: bool> ParsedMeshFace<USE_VERTEX_INDICES> {
+    const fn property_name() -> &'static str {
+        if USE_VERTEX_INDICES {
+            PROP_VERTEX_INDICES
+        } else {
+            PROP_VERTEX_INDEX
+        }
     }
 
-    if indices.len() < 3 {
-        return Ok(Vec::new());
+    fn into_triangle_indices(self) -> Vec<components::TriangleIndices> {
+        if self.indices.len() < 3 {
+            return Vec::new();
+        }
+
+        triangulate_face(&self.indices).collect()
+    }
+}
+
+impl<const USE_VERTEX_INDICES: bool> ply_rs_bw::ply::PropertyAccess
+    for ParsedMeshFace<USE_VERTEX_INDICES>
+{
+    fn new() -> Self {
+        Self::default()
     }
 
-    Ok(triangulate_face(&indices).collect())
+    fn set_property(
+        &mut self,
+        property_name: &str,
+        property: ply_rs_bw::ply::Property,
+    ) -> ply_rs_bw::ply::PropertyAccessResult {
+        use ply_rs_bw::ply::PropertyAccessResult;
+
+        if property_name != Self::property_name() {
+            return PropertyAccessResult::Ignored;
+        }
+
+        if let Some(indices) = property.to_u32_list() {
+            self.indices = indices;
+            PropertyAccessResult::Set
+        } else {
+            PropertyAccessResult::UnsupportedType
+        }
+    }
+}
+
+fn parse_face(face: ParsedMeshFace<true>) -> Vec<components::TriangleIndices> {
+    face.into_triangle_indices()
+}
+
+fn parse_face_alias(face: ParsedMeshFace<false>) -> Vec<components::TriangleIndices> {
+    face.into_triangle_indices()
+}
+
+fn face_unknown_props(element_def: &ply_rs_bw::ply::ElementDef) -> BTreeSet<String> {
+    element_def
+        .properties
+        .keys()
+        .filter(|name| !matches!(name.as_str(), PROP_VERTEX_INDICES | PROP_VERTEX_INDEX))
+        .cloned()
+        .collect()
+}
+
+fn missing_face_indices_error() -> std::io::Error {
+    std::io::Error::new(
+        std::io::ErrorKind::InvalidData,
+        "PLY mesh faces require \"vertex_indices\" or \"vertex_index\" list properties",
+    )
 }
 
 fn from_ply_reader<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Mesh3D> {
     re_tracing::profile_function!();
 
-    let parser = ply_rs_bw::parser::Parser::<ply_rs_bw::ply::DefaultElement>::new();
-    let ply = {
-        re_tracing::profile_scope!("read_ply");
-        parser.read_ply(reader).map_err(std::io::Error::from)?
+    let default_element_parser = ply_rs_bw::parser::Parser::<ply_rs_bw::ply::DefaultElement>::new();
+    let face_indices_parser = ply_rs_bw::parser::Parser::<ParsedMeshFace<true>>::new();
+    let face_index_parser = ply_rs_bw::parser::Parser::<ParsedMeshFace<false>>::new();
+
+    let (header, face_index_property, face_ignored_props, mut payload_reader) = {
+        re_tracing::profile_scope!("read_ply_header");
+
+        let mut payload_reader = ply_rs_bw::parser::Reader::new(reader);
+        let header = default_element_parser
+            .read_header(&mut payload_reader)
+            .map_err(std::io::Error::from)?;
+        let face_index_property = header
+            .elements
+            .get("face")
+            .and_then(classify_face_index_property);
+        let face_ignored_props = header
+            .elements
+            .get("face")
+            .map(face_unknown_props)
+            .unwrap_or_default();
+
+        (
+            header,
+            face_index_property,
+            face_ignored_props,
+            payload_reader,
+        )
     };
 
     let mut positions = Vec::new();
@@ -302,10 +384,14 @@ fn from_ply_reader<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Mesh3
 
     let mut saw_faces = false;
 
-    for (key, all_props) in ply.payload {
-        match key.as_str() {
+    for (_key, element_def) in &header.elements {
+        match element_def.name.as_str() {
             "vertex" => {
-                for props in all_props {
+                let vertices = default_element_parser
+                    .read_payload_for_element(&mut payload_reader, element_def, &header)
+                    .map_err(std::io::Error::from)?;
+
+                for props in vertices {
                     let vertex = ParsedMeshVertex::from_props(props, &mut ignored_props)?;
                     positions.push(vertex.position);
                     normals.push(vertex.normal);
@@ -314,12 +400,50 @@ fn from_ply_reader<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Mesh3
             }
             "face" => {
                 saw_faces = true;
-                for props in all_props {
-                    triangle_indices.extend(parse_face(props, &mut ignored_props)?);
+
+                match face_index_property {
+                    Some(PlyFaceIndexProperty::VertexIndices) => {
+                        let faces = face_indices_parser
+                            .read_payload_for_element(&mut payload_reader, element_def, &header)
+                            .map_err(std::io::Error::from)?;
+
+                        if !faces.is_empty() {
+                            ignored_props.extend(face_ignored_props.iter().cloned());
+                        }
+
+                        for face in faces {
+                            triangle_indices.extend(parse_face(face));
+                        }
+                    }
+                    Some(PlyFaceIndexProperty::VertexIndex) => {
+                        let faces = face_index_parser
+                            .read_payload_for_element(&mut payload_reader, element_def, &header)
+                            .map_err(std::io::Error::from)?;
+
+                        if !faces.is_empty() {
+                            ignored_props.extend(face_ignored_props.iter().cloned());
+                        }
+
+                        for face in faces {
+                            triangle_indices.extend(parse_face_alias(face));
+                        }
+                    }
+                    None => {
+                        let faces = default_element_parser
+                            .read_payload_for_element(&mut payload_reader, element_def, &header)
+                            .map_err(std::io::Error::from)?;
+
+                        if !faces.is_empty() {
+                            return Err(missing_face_indices_error());
+                        }
+                    }
                 }
             }
             _ => {
-                re_log::warn!("Ignoring {key:?} in .ply file");
+                re_log::warn!("Ignoring {:?} in .ply file", element_def.name);
+                let _ignored = default_element_parser
+                    .read_payload_for_element(&mut payload_reader, element_def, &header)
+                    .map_err(std::io::Error::from)?;
             }
         }
     }

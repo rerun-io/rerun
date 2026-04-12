@@ -148,6 +148,55 @@ end_header
 }
 
 #[test]
+fn ply_parses_mesh_with_vertex_index_alias() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 3
+property float x
+property float y
+property float z
+element face 1
+property list uchar int vertex_index
+end_header
+0 0 0
+1 0 0
+0 1 0
+3 0 1 2
+"#;
+
+    let parsed = Mesh3D::from_file_contents(contents).unwrap();
+    let expected = Mesh3D::new([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+        .with_triangle_indices([[0, 1, 2]]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_prefers_vertex_indices_over_vertex_index_when_both_are_present() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 3
+property float x
+property float y
+property float z
+element face 1
+property list uchar float vertex_index
+property list uchar int vertex_indices
+end_header
+0 0 0
+1 0 0
+0 1 0
+3 9 8 7 3 0 1 2
+"#;
+
+    let parsed = Mesh3D::from_file_contents(contents).unwrap();
+    let expected = Mesh3D::new([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+        .with_triangle_indices([[0, 1, 2]]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
 fn ply_parses_zero_face_mesh() {
     let contents = br#"ply
 format ascii 1.0
@@ -177,6 +226,29 @@ end_header
     .with_triangle_indices(Vec::<[u32; 3]>::new());
 
     similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_rejects_supported_face_properties_with_unsupported_types() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 3
+property float x
+property float y
+property float z
+element face 1
+property list uchar float vertex_indices
+end_header
+0 0 0
+1 0 0
+0 1 0
+3 0 1 2
+"#;
+
+    let err = Mesh3D::from_file_contents(contents).unwrap_err();
+
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+    assert!(err.to_string().contains("PLY property 'vertex_indices'"));
 }
 
 #[test]
