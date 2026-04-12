@@ -100,3 +100,4 @@ itertools.workspace = true
 mint.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 similar-asserts.workspace = true
+tempfile.workspace = true

@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use re_sdk_types::archetypes::Points3D;
-use re_sdk_types::{components, Archetype as _, AsComponents as _, ComponentBatch as _};
+use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _, components};
 
 #[test]
 fn roundtrip() {
@@ -107,6 +107,46 @@ end_header
 }
 
 #[test]
+fn ply_ignores_unsupported_optional_vertex_property_types() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property float z
+property int label
+end_header
+1 2 3 42
+"#;
+
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected = Points3D::new([(1.0, 2.0, 3.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_ignores_non_vertex_elements_even_when_they_reuse_known_property_names() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property float z
+element face 1
+property int label
+end_header
+1 2 3
+42
+"#;
+
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected = Points3D::new([(1.0, 2.0, 3.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
 fn ply_skips_vertices_missing_required_positions() {
     let contents = br#"ply
 format ascii 1.0
@@ -125,4 +165,41 @@ end_header
     let expected = Points3D::new([] as [(f32, f32, f32); 0]);
 
     similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_reports_absolute_payload_line_numbers() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property float z
+end_header
+1 2 3
+4 5
+"#;
+
+    let err = Points3D::from_file_contents(contents).unwrap_err();
+
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+    assert!(err.to_string().contains("Line 9:"));
+}
+
+#[test]
+fn ply_rejects_supported_vertex_properties_with_unsupported_types() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property list uchar uchar z
+end_header
+1 2 1 255
+"#;
+
+    let err = Points3D::from_file_contents(contents).unwrap_err();
+
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+    assert!(err.to_string().contains("PLY property 'z'"));
 }
