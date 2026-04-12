@@ -126,3 +126,22 @@ end_header
 
     similar_asserts::assert_eq!(parsed, expected);
 }
+
+#[test]
+fn ply_reports_absolute_payload_line_numbers() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property float z
+end_header
+1 2 3
+4 5
+"#;
+
+    let err = Points3D::from_file_contents(contents).unwrap_err();
+
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+    assert!(err.to_string().contains("Line 9:"));
+}

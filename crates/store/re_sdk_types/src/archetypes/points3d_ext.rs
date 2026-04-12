@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
-use super::Points3D;
-use crate::components::{Color, Position3D, Radius, Text};
+use super::{Points2D, Points3D};
+use crate::components::{Color, Position2D, Position3D, Radius, Text};
 
 const PROP_X: &str = "x";
 const PROP_Y: &str = "y";
@@ -26,7 +26,21 @@ const SEEN_LABEL: u16 = 1 << 8;
 const SEEN_COLORS: u16 = SEEN_RED | SEEN_GREEN | SEEN_BLUE | SEEN_ALPHA;
 const SEEN_ALL_KNOWN_PROPS: u16 = SEEN_X | SEEN_Y | SEEN_Z | SEEN_COLORS | SEEN_RADIUS | SEEN_LABEL;
 
-struct Vertex {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PlyVertexLayout {
+    Xy,
+    Xyz,
+    Other,
+}
+
+struct Vertex2D {
+    position: Position2D,
+    color: Option<Color>,
+    radius: Option<Radius>,
+    label: Option<Text>,
+}
+
+struct Vertex3D {
     position: Position3D,
     color: Option<Color>,
     radius: Option<Radius>,
@@ -48,7 +62,7 @@ struct ParsedVertex {
 }
 
 impl ParsedVertex {
-    fn note_ignored_props(&self, ignored_props: &mut BTreeSet<String>, mask: u16) {
+    fn note_ignored_props_for(seen_props: u16, ignored_props: &mut BTreeSet<String>, mask: u16) {
         for (name, bit) in [
             (PROP_X, SEEN_X),
             (PROP_Y, SEEN_Y),
@@ -60,39 +74,99 @@ impl ParsedVertex {
             (PROP_RADIUS, SEEN_RADIUS),
             (PROP_LABEL, SEEN_LABEL),
         ] {
-            if self.seen_props & mask & bit != 0 {
+            if seen_props & mask & bit != 0 {
                 ignored_props.insert(name.to_owned());
             }
         }
     }
 
-    fn into_vertex(self, ignored_props: &mut BTreeSet<String>) -> Option<Vertex> {
-        let (Some(x), Some(y), Some(z)) = (self.x, self.y, self.z) else {
+    fn into_vertex2d(self, ignored_props: &mut BTreeSet<String>) -> Option<Vertex2D> {
+        let Self {
+            x,
+            y,
+            z,
+            red,
+            green,
+            blue,
+            alpha,
+            radius,
+            label,
+            seen_props,
+        } = self;
+
+        let (Some(x), Some(y)) = (x, y) else {
             // All points must have positions.
-            self.note_ignored_props(ignored_props, SEEN_ALL_KNOWN_PROPS);
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_ALL_KNOWN_PROPS);
             return None;
         };
 
-        let color = if let (Some(r), Some(g), Some(b)) = (self.red, self.green, self.blue) {
-            Some(Color::new((r, g, b, self.alpha.unwrap_or(255))))
+        if z.is_some() {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_Z);
+        }
+
+        let color = if let (Some(r), Some(g), Some(b)) = (red, green, blue) {
+            Some(Color::new((r, g, b, alpha.unwrap_or(255))))
         } else {
-            self.note_ignored_props(ignored_props, SEEN_COLORS);
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_COLORS);
             None
         };
 
-        if self.radius.is_none() {
-            self.note_ignored_props(ignored_props, SEEN_RADIUS);
+        if radius.is_none() {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_RADIUS);
         }
 
-        if self.label.is_none() {
-            self.note_ignored_props(ignored_props, SEEN_LABEL);
+        if label.is_none() {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_LABEL);
         }
 
-        Some(Vertex {
+        Some(Vertex2D {
+            position: Position2D::new(x, y),
+            color,
+            radius: radius.map(Radius::from),
+            label,
+        })
+    }
+
+    fn into_vertex3d(self, ignored_props: &mut BTreeSet<String>) -> Option<Vertex3D> {
+        let Self {
+            x,
+            y,
+            z,
+            red,
+            green,
+            blue,
+            alpha,
+            radius,
+            label,
+            seen_props,
+        } = self;
+
+        let (Some(x), Some(y), Some(z)) = (x, y, z) else {
+            // All points must have positions.
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_ALL_KNOWN_PROPS);
+            return None;
+        };
+
+        let color = if let (Some(r), Some(g), Some(b)) = (red, green, blue) {
+            Some(Color::new((r, g, b, alpha.unwrap_or(255))))
+        } else {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_COLORS);
+            None
+        };
+
+        if radius.is_none() {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_RADIUS);
+        }
+
+        if label.is_none() {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_LABEL);
+        }
+
+        Some(Vertex3D {
             position: Position3D::new(x, y, z),
             color,
-            radius: self.radius.map(Radius::from),
-            label: self.label,
+            radius: radius.map(Radius::from),
+            label,
         })
     }
 }
@@ -145,12 +219,30 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
     }
 }
 
-#[derive(Default)]
-struct IgnoredElement;
+impl Points2D {
+    /// Creates a new [`Points2D`] from a `.ply` file.
+    ///
+    /// ## Supported properties
+    ///
+    /// This expects the following property names:
+    /// - (Required) Positions of the points: `"x"` & `"y"` with no `"z"` property.
+    /// - (Optional) Colors of the points: `"red"`, `"green"` & `"blue"`.
+    /// - (Optional) Radii of the points: `"radius"`.
+    /// - (Optional) Labels of the points: `"label"`.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn from_file_path(filepath: &std::path::Path) -> std::io::Result<Self> {
+        re_tracing::profile_function!(filepath.to_string_lossy());
 
-impl ply_rs_bw::ply::PropertyAccess for IgnoredElement {
-    fn new() -> Self {
-        Self
+        let file = std::fs::File::open(filepath)?;
+        let mut file = std::io::BufReader::new(file);
+        from_ply_reader_2d(&mut file)
+    }
+
+    /// Creates a new [`Points2D`] from the contents of a `.ply` file.
+    pub fn from_file_contents(contents: &[u8]) -> std::io::Result<Self> {
+        re_tracing::profile_function!();
+        let mut contents = std::io::Cursor::new(contents);
+        from_ply_reader_2d(&mut contents)
     }
 }
 
@@ -172,7 +264,7 @@ impl Points3D {
 
         let file = std::fs::File::open(filepath)?;
         let mut file = std::io::BufReader::new(file);
-        from_ply_reader(&mut file)
+        from_ply_reader_3d(&mut file)
     }
 
     /// Creates a new [`Points3D`] from the contents of a `.ply` file.
@@ -181,7 +273,7 @@ impl Points3D {
     pub fn from_file_contents(contents: &[u8]) -> std::io::Result<Self> {
         re_tracing::profile_function!();
         let mut contents = std::io::Cursor::new(contents);
-        from_ply_reader(&mut contents)
+        from_ply_reader_3d(&mut contents)
     }
 }
 
@@ -254,71 +346,183 @@ fn property_to_text(property: ply_rs_bw::ply::Property) -> Option<Text> {
     }
 }
 
-fn from_ply_reader<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points3D> {
+struct ParsedPly {
+    vertex_layout: PlyVertexLayout,
+    vertices: Vec<ParsedVertex>,
+    ignored_props: BTreeSet<String>,
+}
+
+fn classify_vertex_layout(element_def: &ply_rs_bw::ply::ElementDef) -> PlyVertexLayout {
+    let has_x = element_def.properties.contains_key(PROP_X);
+    let has_y = element_def.properties.contains_key(PROP_Y);
+    let has_z = element_def.properties.contains_key(PROP_Z);
+
+    match (has_x, has_y, has_z) {
+        (true, true, false) => PlyVertexLayout::Xy,
+        (true, true, true) => PlyVertexLayout::Xyz,
+        _ => PlyVertexLayout::Other,
+    }
+}
+
+fn parse_ply_vertices<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<ParsedPly> {
     re_tracing::profile_function!();
 
-    let vertex_parser = ply_rs_bw::parser::Parser::<ParsedVertex>::new();
-    let ignored_parser = ply_rs_bw::parser::Parser::<IgnoredElement>::new();
+    let parser = ply_rs_bw::parser::Parser::<ParsedVertex>::new();
+
+    let mut ply = ParsedPly {
+        vertex_layout: PlyVertexLayout::Other,
+        vertices: Vec::new(),
+        ignored_props: BTreeSet::new(),
+    };
+
+    let vertex_unknown_props;
+
+    {
+        re_tracing::profile_scope!("read_ply");
+
+        let parsed_ply = parser.read_ply(reader).map_err(std::io::Error::from)?;
+        let header = &parsed_ply.header;
+
+        vertex_unknown_props = header
+            .elements
+            .get("vertex")
+            .map(|element_def| {
+                ply.vertex_layout = classify_vertex_layout(element_def);
+
+                element_def
+                    .properties
+                    .keys()
+                    .filter(|name| {
+                        !matches!(
+                            name.as_str(),
+                            PROP_X
+                                | PROP_Y
+                                | PROP_Z
+                                | PROP_RED
+                                | PROP_GREEN
+                                | PROP_BLUE
+                                | PROP_ALPHA
+                                | PROP_RADIUS
+                                | PROP_LABEL
+                        )
+                    })
+                    .cloned()
+                    .collect::<BTreeSet<_>>()
+            })
+            .unwrap_or_default();
+
+        for (key, all_props) in parsed_ply.payload {
+            if key == "vertex" {
+                if !all_props.is_empty() {
+                    ply.ignored_props
+                        .extend(vertex_unknown_props.iter().cloned());
+                }
+
+                ply.vertices = all_props;
+            } else {
+                re_log::warn!("Ignoring {key:?} in .ply file");
+            }
+        }
+    }
+
+    Ok(ply)
+}
+
+fn from_ply_reader_2d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points2D> {
+    re_tracing::profile_function!();
+
+    let ParsedPly {
+        vertex_layout,
+        vertices,
+        mut ignored_props,
+    } = parse_ply_vertices(reader)?;
+
+    if vertex_layout != PlyVertexLayout::Xy {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "expected .ply vertex properties \"x\" and \"y\" without \"z\"",
+        ));
+    }
 
     let mut positions = Vec::new();
     let mut colors = Vec::new();
     let mut radii = Vec::new();
     let mut labels = Vec::new();
 
-    let mut ignored_props = BTreeSet::new();
+    for parsed in vertices {
+        if let Some(vertex) = parsed.into_vertex2d(&mut ignored_props) {
+            let Vertex2D {
+                position,
+                color,
+                radius,
+                label,
+            } = vertex;
+            positions.push(position);
+            colors.push(color); // opt
+            radii.push(radius); // opt
+            labels.push(label); // opt
+        }
+    }
 
-    {
-        re_tracing::profile_scope!("read_ply");
+    if !ignored_props.is_empty() {
+        re_log::warn!("Ignored properties of .ply file: {ignored_props:?}");
+    }
 
-        let header = vertex_parser.read_header(reader)?;
+    re_tracing::profile_scope!("fill-in");
 
-        for (key, element_def) in &header.elements {
-            if key == "vertex" {
-                let parsed_vertices =
-                    vertex_parser.read_payload_for_element(reader, element_def, &header)?;
+    colors.truncate(positions.len());
+    radii.truncate(positions.len());
+    labels.truncate(positions.len());
 
-                if !parsed_vertices.is_empty() {
-                    ignored_props.extend(
-                        element_def
-                            .properties
-                            .keys()
-                            .filter(|name| {
-                                !matches!(
-                                    name.as_str(),
-                                    PROP_X
-                                        | PROP_Y
-                                        | PROP_Z
-                                        | PROP_RED
-                                        | PROP_GREEN
-                                        | PROP_BLUE
-                                        | PROP_ALPHA
-                                        | PROP_RADIUS
-                                        | PROP_LABEL
-                                )
-                            })
-                            .cloned(),
-                    );
-                }
+    let mut arch = crate::archetypes::Points2D::new(positions);
+    if colors.iter().any(|opt| opt.is_some()) {
+        let colors = colors
+            .into_iter()
+            .map(|opt| opt.unwrap_or_else(|| Color::from_rgb(255, 255, 255)));
+        arch = arch.with_colors(colors);
+    }
+    if radii.iter().any(|opt| opt.is_some()) {
+        let radii = radii
+            .into_iter()
+            .map(|opt| opt.unwrap_or_else(|| Radius::from(1.0)));
+        arch = arch.with_radii(radii);
+    }
+    if labels.iter().any(|opt| opt.is_some()) {
+        let labels = labels
+            .into_iter()
+            .map(|opt| opt.unwrap_or(Text("undef".into())));
+        arch = arch.with_labels(labels);
+    }
 
-                for parsed in parsed_vertices {
-                    if let Some(vertex) = parsed.into_vertex(&mut ignored_props) {
-                        let Vertex {
-                            position,
-                            color,
-                            radius,
-                            label,
-                        } = vertex;
-                        positions.push(position);
-                        colors.push(color); // opt
-                        radii.push(radius); // opt
-                        labels.push(label); // opt
-                    }
-                }
-            } else {
-                re_log::warn!("Ignoring {key:?} in .ply file");
-                let _ignored_elements =
-                    ignored_parser.read_payload_for_element(reader, element_def, &header)?;
-            }
+    Ok(arch)
+}
+
+fn from_ply_reader_3d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points3D> {
+    re_tracing::profile_function!();
+
+    let ParsedPly {
+        vertex_layout: _,
+        vertices,
+        mut ignored_props,
+    } = parse_ply_vertices(reader)?;
+
+    let mut positions = Vec::new();
+    let mut colors = Vec::new();
+    let mut radii = Vec::new();
+    let mut labels = Vec::new();
+
+    for parsed in vertices {
+        if let Some(vertex) = parsed.into_vertex3d(&mut ignored_props) {
+            let Vertex3D {
+                position,
+                color,
+                radius,
+                label,
+            } = vertex;
+            positions.push(position);
+            colors.push(color); // opt
+            radii.push(radius); // opt
+            labels.push(label); // opt
         }
     }
 

@@ -72,3 +72,63 @@ fn roundtrip() {
     let deserialized = Mesh3D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
+
+#[test]
+fn ply_parses_mesh_with_normals_colors_and_triangulates_faces() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property float z
+property float nx
+property float ny
+property float nz
+property uchar red
+property uchar green
+property uchar blue
+property float temperature
+element face 2
+property list uchar int vertex_indices
+property uchar material_index
+end_header
+0 0 0 0 0 1 255 0 0 10
+1 0 0 0 0 1 0 255 0 11
+1 1 0 0 0 1 0 0 255 12
+0 1 0 0 0 1 255 255 0 13
+3 0 1 2 7
+4 0 2 3 1 8
+"#;
+
+    let parsed = Mesh3D::from_file_contents(contents).unwrap();
+    let expected = Mesh3D::new([
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ])
+    .with_vertex_normals([[0.0, 0.0, 1.0]; 4])
+    .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF])
+    .with_triangle_indices([[0, 1, 2], [0, 2, 3], [0, 3, 1]]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_rejects_missing_face_element() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 3
+property float x
+property float y
+property float z
+end_header
+0 0 0
+1 0 0
+0 1 0
+"#;
+
+    let err = Mesh3D::from_file_contents(contents).unwrap_err();
+
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+}
