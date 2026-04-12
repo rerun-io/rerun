@@ -68,6 +68,7 @@ document-features.workspace = true
 emath.workspace = true
 half = { workspace = true, features = ["bytemuck"] }
 infer.workspace = true
+indexmap.workspace = true
 itertools.workspace = true
 mime_guess2.workspace = true
 ndarray.workspace = true
@@ -96,3 +97,4 @@ itertools.workspace = true
 mint.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 similar-asserts.workspace = true
+tempfile.workspace = true

@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use re_sdk_types::archetypes::Points2D;
 use re_sdk_types::components::{self, ShowLabels};
 use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
@@ -61,4 +63,130 @@ fn roundtrip() {
 
     let deserialized = Points2D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
+}
+
+fn example_ply_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../examples/assets/example.ply")
+}
+
+#[test]
+fn ply_parses_optional_properties_and_ignores_extra_data() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+property float radius
+property list uchar uchar label
+property float temperature
+element edge 1
+property int vertex1
+property int vertex2
+end_header
+1 2 10 20 30 0.5 2 72 105 42
+4 5 11 21 31 1.5 3 66 121 101 43
+0 1
+"#;
+
+    let parsed = Points2D::from_file_contents(contents).unwrap();
+    let expected = Points2D::new([(1.0, 2.0), (4.0, 5.0)])
+        .with_colors([0x0A141EFF, 0x0B151FFF])
+        .with_radii([0.5, 1.5])
+        .with_labels(["Hi", "Bye"]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_ignores_unsupported_optional_vertex_property_types() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property int label
+end_header
+1 2 42
+"#;
+
+    let parsed = Points2D::from_file_contents(contents).unwrap();
+    let expected = Points2D::new([(1.0, 2.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_ignores_non_vertex_elements_even_when_they_reuse_known_property_names() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+element edge 1
+property int label
+end_header
+1 2
+42
+"#;
+
+    let parsed = Points2D::from_file_contents(contents).unwrap();
+    let expected = Points2D::new([(1.0, 2.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn ply_from_path_matches_contents_for_two_dimensional_file() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+end_header
+1 2 10 20 30
+4 5 11 21 31
+"#;
+
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(&mut file, contents).unwrap();
+
+    let from_path = Points2D::from_file_path(file.path()).unwrap();
+    let from_contents = Points2D::from_file_contents(contents).unwrap();
+
+    similar_asserts::assert_eq!(from_path, from_contents);
+}
+
+#[test]
+fn ply_rejects_three_dimensional_headers() {
+    let path = example_ply_path();
+    let contents = std::fs::read(path).unwrap();
+
+    let err = Points2D::from_file_contents(&contents).unwrap_err();
+
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+}
+
+#[test]
+fn ply_reports_absolute_payload_line_numbers() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+end_header
+1 2
+3
+"#;
+
+    let err = Points2D::from_file_contents(contents).unwrap_err();
+
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+    assert!(err.to_string().contains("Line 8:"));
 }

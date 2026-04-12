@@ -7808,9 +7808,9 @@ dependencies = [
 
 [[package]]
 name = "ply-rs-bw"
-version = "3.0.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe55bbee2b70d1c1e58d8340eda9a80c5ce11fb9b1bc10b5fc1575c490d38fa9"
+checksum = "9a6c47c293ded3c12941ce14314c60f75d5728b663cf6ddafd7ed621ed77cc96"
 dependencies = [
  "byteorder",
  "indexmap 2.14.0",
@@ -9181,6 +9181,7 @@ dependencies = [
  "memmap2 0.9.11",
  "parking_lot",
  "parquet",
+ "ply-rs-bw",
  "rayon",
  "re_arrow_util",
  "re_chunk",
@@ -9961,6 +9962,7 @@ dependencies = [
  "glam",
  "half",
  "image",
+ "indexmap 2.14.0",
  "infer",
  "itertools 0.14.0",
  "macaw",
@@ -9983,6 +9985,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "smallvec",
+ "tempfile",
  "thiserror 2.0.18",
  "tiff",
  "uuid",

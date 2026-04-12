@@ -51,6 +51,7 @@ indexmap.workspace = true
 itertools.workspace = true
 mcap.workspace = true
 parking_lot.workspace = true
+ply-rs-bw.workspace = true
 rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
