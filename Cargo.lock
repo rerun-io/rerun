@@ -7552,6 +7552,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ply_stl_tetrahedrons"
+version = "0.32.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "rerun",
+]
+
+[[package]]
 name = "png"
 version = "0.17.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
