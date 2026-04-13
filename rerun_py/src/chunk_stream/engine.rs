@@ -447,14 +447,12 @@ impl ChunkStream for LensesStream {
                 match result {
                     Ok(out) => self.buffer.push_back(Arc::new(out)),
                     Err(partial) => {
-                        //TODO(ab, grtlr): is this correct? Should we be strict and return an error
-                        //  instead (aka kill the stream and raise an exception)?
-                        for error in partial.errors() {
-                            re_log::error_once!("Error encountered for lens: {error}");
-                        }
-                        if let Some(out) = partial.take() {
-                            self.buffer.push_back(Arc::new(out));
-                        }
+                        let reason = partial
+                            .errors()
+                            .map(|e| e.to_string())
+                            .collect::<Vec<_>>()
+                            .join("; ");
+                        return Err(ChunkPipelineError::Lenses { reason });
                     }
                 }
             }

@@ -64,6 +64,9 @@ pub enum ChunkPipelineError {
     #[error("Failed to add chunk to store: {reason}")]
     ChunkStoreInsert { reason: String },
 
+    #[error("Lenses error: {reason}")]
+    Lenses { reason: String },
+
     #[error("{0}")]
     PythonIterator(PythonException),
 }
@@ -77,9 +80,8 @@ impl From<ChunkPipelineError> for pyo3::PyErr {
             | ChunkPipelineError::RrdRead { .. }
             | ChunkPipelineError::Mcap { .. }
             | ChunkPipelineError::Parquet { .. }
-            | ChunkPipelineError::ChunkStoreInsert { .. } => {
-                PyRuntimeError::new_err(err.to_string())
-            }
+            | ChunkPipelineError::ChunkStoreInsert { .. }
+            | ChunkPipelineError::Lenses { .. } => PyRuntimeError::new_err(err.to_string()),
         }
     }
 }
