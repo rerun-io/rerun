@@ -7543,6 +7543,8 @@ dependencies = [
 [[package]]
 name = "ply-rs-bw"
 version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a6c47c293ded3c12941ce14314c60f75d5728b663cf6ddafd7ed621ed77cc96"
 dependencies = [
  "byteorder",
  "indexmap 2.13.0",
