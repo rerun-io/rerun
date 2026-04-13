@@ -371,7 +371,7 @@ fn load_ply(
             .map_err(std::io::Error::from)?;
 
         let Some(vertex_element) = header.elements.get("vertex") else {
-            return Ok(PlyKind::Points3D);
+            return Err(anyhow::anyhow!("PLY file is missing required \"vertex\" element").into());
         };
 
         let has_x = vertex_element.properties.contains_key("x");
@@ -379,12 +379,19 @@ fn load_ply(
         let has_z = vertex_element.properties.contains_key("z");
         let has_mesh_topology = header.elements.get("face").is_some_and(has_mesh_topology);
 
-        Ok(if has_mesh_topology && has_x && has_y {
+        if !has_x || !has_y {
+            return Err(anyhow::anyhow!(
+                "PLY vertex element must contain at least \"x\" and \"y\""
+            )
+            .into());
+        }
+
+        Ok(if has_mesh_topology {
             PlyKind::Mesh3D
-        } else if has_x && has_y && !has_z {
-            PlyKind::Points2D
-        } else {
+        } else if has_z {
             PlyKind::Points3D
+        } else {
+            PlyKind::Points2D
         })
     }
 
@@ -447,14 +454,36 @@ fn load_text_document(
 
 #[cfg(test)]
 mod tests {
-    use super::load_ply;
+    use std::borrow::Cow;
+
+    use super::{ArchetypeLoader, load_ply};
     use re_chunk::{Chunk, ChunkComponents, RowId};
     use re_log_types::{EntityPath, TimePoint};
     use re_sdk_types::archetypes::{Mesh3D, Points2D, Points3D};
 
+    use crate::{DataLoader, DataLoaderSettings, LoadedData};
+
     fn load_single_chunk(contents: &[u8]) -> Chunk {
         let chunks = load_ply(TimePoint::default(), EntityPath::from("points"), contents)
             .unwrap()
+            .collect::<Vec<_>>();
+
+        assert_eq!(chunks.len(), 1);
+        chunks.into_iter().next().unwrap()
+    }
+
+    fn load_single_chunk_via_archetype_loader(filepath: &str, contents: &[u8]) -> Chunk {
+        let loader = ArchetypeLoader;
+        let (tx, rx) = crossbeam::channel::bounded(8);
+        let settings = DataLoaderSettings::recommended("test");
+
+        loader
+            .load_from_file_contents(&settings, filepath.into(), Cow::Borrowed(contents), tx)
+            .unwrap();
+
+        let chunks = rx
+            .into_iter()
+            .filter_map(LoadedData::into_chunk)
             .collect::<Vec<_>>();
 
         assert_eq!(chunks.len(), 1);
@@ -499,6 +528,115 @@ end_header
             .unwrap();
 
         ChunkComponents::ensure_similar(expected.components(), chunk.components()).unwrap();
+    }
+
+    #[test]
+    fn archetype_loader_routes_ply_xy_to_points2d() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+end_header
+1 2 10 20 30
+4 5 11 21 31
+"#;
+
+        let chunk = load_single_chunk_via_archetype_loader("points_xy.ply", contents);
+
+        assert!(
+            chunk
+                .components()
+                .contains_component(Points2D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Points3D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Mesh3D::descriptor_vertex_positions().component)
+        );
+    }
+
+    #[test]
+    fn archetype_loader_routes_ply_xyz_to_points3d() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+end_header
+1 2 3 10 20 30
+4 5 6 11 21 31
+"#;
+
+        let chunk = load_single_chunk_via_archetype_loader("points_xyz.ply", contents);
+
+        assert!(
+            chunk
+                .components()
+                .contains_component(Points3D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Points2D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Mesh3D::descriptor_vertex_positions().component)
+        );
+    }
+
+    #[test]
+    fn archetype_loader_routes_ply_mesh_to_mesh3d() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+element face 1
+property list uchar int vertex_indices
+end_header
+0 0 0 255 0 0
+1 0 0 0 255 0
+1 1 0 0 0 255
+0 1 0 255 255 0
+4 0 1 2 3
+"#;
+
+        let chunk = load_single_chunk_via_archetype_loader("mesh.ply", contents);
+
+        assert!(
+            chunk
+                .components()
+                .contains_component(Mesh3D::descriptor_vertex_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Points3D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Points2D::descriptor_positions().component)
+        );
     }
 
     #[test]
@@ -699,5 +837,43 @@ end_header
             .unwrap();
 
         ChunkComponents::ensure_similar(expected.components(), chunk.components()).unwrap();
+    }
+
+    #[test]
+    fn ply_without_vertex_element_is_rejected() {
+        let contents = br#"ply
+format ascii 1.0
+element face 1
+property list uchar int vertex_indices
+end_header
+3 0 1 2
+"#;
+
+        let err = load_ply(TimePoint::default(), EntityPath::from("points"), contents).unwrap_err();
+
+        assert!(
+            err.to_string()
+                .contains("PLY file is missing required \"vertex\" element")
+        );
+    }
+
+    #[test]
+    fn ply_without_y_coordinate_is_rejected() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float z
+end_header
+1 2
+4 5
+"#;
+
+        let err = load_ply(TimePoint::default(), EntityPath::from("points"), contents).unwrap_err();
+
+        assert!(
+            err.to_string()
+                .contains("PLY vertex element must contain at least \"x\" and \"y\"")
+        );
     }
 }
