@@ -1550,11 +1550,7 @@ def lint_file(filepath: str, args: Any) -> int:
         elif 0 < num_errors:
             print(f"Run with --fix to automatically fix {num_errors} errors.")
 
-    if (
-        filepath.endswith("Cargo.toml")
-        and not filepath.startswith(f"{rerun_prefix}examples/rust")
-        and filepath != "./dataplatform/crates/redap_protos/Cargo.toml"
-    ):
+    if filepath.endswith("Cargo.toml") and not filepath.startswith(f"{rerun_prefix}examples/rust"):
         is_workspace = "[workspace]" in source.content
         if not is_workspace:
             error = lint_workspace_lints(source.content)
@@ -1725,7 +1721,6 @@ def main() -> None:
         rerun("tests/assets/lerobot/apple_storage/README.md"),  # not ours
         rerun("tests/python/gil_stress/main.py"),
         rerun("tests/python/release_checklist/main.py"),
-        "./dataplatform/crates/redap_protos/src/v1alpha1",  # auto-generated protobuf files
     )
 
     should_ignore = parse_gitignore(".gitignore")  # TODO(#6730): parse all .gitignore files, not just top-level
@@ -1744,6 +1739,14 @@ def main() -> None:
         for filepath in tracked_files:
             filepath = "./" + filepath
             filepath = filepath.replace("\\", "/")
+
+            # Only lint files inside the rerun directory.
+            # In the standalone rerun repo rerun_prefix is "./" so everything matches.
+            # In the monorepo (reality) rerun_prefix is "./rerun/" which keeps us
+            # from accidentally linting dataplatform/ or other top-level directories.
+            if not filepath.startswith(rerun_prefix):
+                continue
+
             extension = filepath.split(".")[-1]
             if extension in extensions:
                 if filepath.startswith(exclude_paths):
