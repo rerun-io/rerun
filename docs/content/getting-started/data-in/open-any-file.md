@@ -26,7 +26,7 @@ The following data types have built-in support in the Rerun Viewer and SDK:
 
 PLY files are auto-detected based on their contents:
 
--   if the file contains usable face topology, it is loaded as a `Mesh3D`
+-   if the header declares a non-empty `face` element with `vertex_indices` or `vertex_index`, we attempt to load it as a `Mesh3D`
 -   otherwise, if the vertices contain `x`, `y`, and `z`, it is loaded as a `Points3D`
 -   otherwise, if the vertices contain `x` and `y`, it is loaded as a `Points2D`
 
