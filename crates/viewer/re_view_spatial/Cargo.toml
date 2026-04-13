@@ -34,7 +34,6 @@ re_error.workspace = true
 re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
-re_mp4.workspace = true
 re_query.workspace = true
 re_renderer = { workspace = true, features = [
   "import-gltf",
@@ -83,6 +82,7 @@ re_viewport.workspace = true
 half.workspace = true
 insta.workspace = true
 ndarray.workspace = true
+re_mp4.workspace = true
 
 [lib]
 bench = false

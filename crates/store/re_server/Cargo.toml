@@ -54,7 +54,6 @@ axum.workspace = true
 bincode.workspace = true
 bytes.workspace = true
 cfg-if.workspace = true
-chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["derive", "env"] }
 datafusion.workspace = true
 futures.workspace = true

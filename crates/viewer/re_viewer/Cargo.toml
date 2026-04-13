@@ -30,6 +30,8 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[package.metadata.cargo-shear]
+ignored-paths = ["data/quick_start_guides/*.rs"]
 
 [features]
 default = ["analytics", "map_view"]

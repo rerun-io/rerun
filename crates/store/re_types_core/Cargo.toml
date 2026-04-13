@@ -19,12 +19,6 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-[package.metadata.cargo-shear]
-ignored = [
-  "serde", # Needed to make `ComponentType` (an interned string) serializable.
-]
-
-
 [features]
 default = []
 
