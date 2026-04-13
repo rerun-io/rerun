@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use egui::emath::{GuiRounding as _, Rot2};
+use egui::emath::GuiRounding as _;
 use egui::{
     CollapsingResponse, Color32, IntoAtoms, NumExt as _, Rangef, Rect, StrokeKind, Widget as _,
     WidgetInfo, WidgetText, pos2,
@@ -540,36 +540,22 @@ pub trait UiExt {
         }
     }
 
-    /// Paint a collapsing triangle in the Rerun's style.
+    /// Paint a collapsing chevron icon.
     ///
-    /// Alternative to [`egui::collapsing_header::paint_default_icon`]. Note that the triangle is
-    /// painted with a fixed size.
+    /// Alternative to [`egui::collapsing_header::paint_default_icon`]. The chevron points right
+    /// when closed and rotates 90° clockwise when open, with smooth animation.
     fn paint_collapsing_triangle(&self, openness: f32, center: egui::Pos2, color: Color32) {
-        // This value is hard coded because, from a UI perspective, the size of the triangle is
-        // given and fixed, and shouldn't vary based on the area it's in.
-        static TRIANGLE_SIZE: f32 = 8.0;
-
-        // Normalized in [0, 1]^2 space.
-        //
-        // Note on how these coords were originally computed: https://github.com/rerun-io/rerun/pull/2920
-        // Since then, the coordinates have been manually updated to Look Good(tm).
-        //
-        // Discussion on the future of icons: https://github.com/rerun-io/rerun/issues/2960
-        let mut points = vec![
-            pos2(0.306248, -0.017085), // top left end
-            pos2(0.79387, 0.470537),   // ┐
-            pos2(0.806074, 0.5),       // ├ "rounded" corner
-            pos2(0.79387, 0.529463),   // ┘
-            pos2(0.306248, 1.017085),  // bottom left end
-        ];
-
         use std::f32::consts::TAU;
-        let rotation = Rot2::from_angle(egui::remap(openness, 0.0..=1.0, 0.0..=TAU / 4.0));
-        for p in &mut points {
-            *p = center + rotation * (*p - pos2(0.5, 0.5)) * TRIANGLE_SIZE;
-        }
 
-        self.ui().painter().line(points, (1.0, color));
+        let angle = egui::remap(openness, 0.0..=1.0, 0.0..=TAU / 4.0);
+        let size = egui::vec2(8.0, 8.0);
+        let rect = egui::Rect::from_center_size(center, size);
+
+        crate::icons::CHEVRON
+            .as_image()
+            .tint(color)
+            .rotate(angle, egui::vec2(0.5, 0.5))
+            .paint_at(self.ui(), rect);
     }
 
     /// Workaround for putting a label into a grid at the top left of its row.
