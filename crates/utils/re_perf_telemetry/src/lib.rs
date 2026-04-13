@@ -49,6 +49,8 @@ mod grpc;
 mod memory_telemetry;
 mod metrics_server;
 mod prometheus;
+#[cfg(feature = "pyo3")]
+mod python_bridge;
 mod shared_reader;
 mod telemetry;
 mod trace_id_format;
@@ -68,6 +70,11 @@ pub use self::grpc::{
 };
 pub use self::telemetry::{Telemetry, TelemetryDropBehavior};
 pub use self::utils::to_short_str;
+
+#[cfg(feature = "pyo3")]
+pub use self::python_bridge::{
+    TRACE_CONTEXT_VAR_NAME, extract_trace_context_from_contextvar, get_trace_context_var,
+};
 
 pub mod external {
     #[cfg(feature = "tracy")]
@@ -132,7 +139,7 @@ impl TraceHeaders {
     pub const TRACEPARENT_KEY: &'static str = "traceparent";
     pub const TRACESTATE_KEY: &'static str = "tracestate";
 
-    fn empty() -> Self {
+    pub(crate) fn empty() -> Self {
         Self {
             traceparent: String::new(),
             tracestate: None,
@@ -144,6 +151,26 @@ impl TraceHeaders {
             .as_ref()
             .map(|s| crate::tracestate::parse_pairs(s))
             .unwrap_or_default()
+    }
+}
+
+impl TraceHeaders {
+    /// Attach these trace headers as the current `OpenTelemetry` context.
+    ///
+    /// Returns a guard that must be kept alive for the duration of the traced scope.
+    /// Any [`tracing::Span`] created while the guard is alive will be parented under
+    /// the trace described by these headers.
+    ///
+    /// Returns `None` if the headers are empty (no `traceparent`).
+    #[must_use]
+    pub fn attach(&self) -> Option<opentelemetry::ContextGuard> {
+        if self.traceparent.is_empty() {
+            None
+        } else {
+            let parent_ctx =
+                opentelemetry::global::get_text_map_propagator(|prop| prop.extract(self));
+            Some(parent_ctx.attach())
+        }
     }
 }
 
@@ -182,80 +209,6 @@ impl From<&TraceHeaders> for opentelemetry::Context {
 }
 
 // ---
-
-/// The name of the `ContextVar` used for trace context propagation
-pub const TRACE_CONTEXT_VAR_NAME: &str = "TRACE_CONTEXT";
-
-#[cfg(feature = "pyo3")]
-/// Get the trace context `ContextVar` object.
-///
-/// This returns the same Python `ContextVar` instance every time, ensuring that
-/// values set on it can be read back later. It is up to the caller to ensure trace context
-/// is reset and cleared as needed.
-pub fn get_trace_context_var(py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::Bound<'_, pyo3::PyAny>> {
-    use pyo3::prelude::*;
-
-    static CONTEXT_VAR: parking_lot::Mutex<Option<pyo3::Py<pyo3::PyAny>>> =
-        parking_lot::Mutex::new(None);
-
-    let mut guard = CONTEXT_VAR.lock();
-
-    if let Some(var) = guard.as_ref() {
-        return Ok(var.bind(py).clone());
-    }
-
-    // Create the trace context ContextVar
-    let module = py.import("contextvars")?;
-    let contextvar_class = module.getattr("ContextVar")?;
-    let trace_ctx_var = contextvar_class.call1((TRACE_CONTEXT_VAR_NAME,))?;
-    let trace_ctx_unbound = trace_ctx_var.clone().unbind();
-
-    *guard = Some(trace_ctx_unbound);
-
-    Ok(trace_ctx_var)
-}
-
-#[cfg(feature = "pyo3")]
-/// Extract trace context from Python `ContextVar` for cross-boundary propagation.
-pub fn extract_trace_context_from_contextvar(py: pyo3::Python<'_>) -> TraceHeaders {
-    use pyo3::prelude::*;
-    use pyo3::types::PyDict;
-
-    fn try_extract(py: pyo3::Python<'_>) -> PyResult<TraceHeaders> {
-        let context_var = get_trace_context_var(py)?;
-
-        match context_var.call_method0("get") {
-            Ok(trace_data) => {
-                if let Ok(dict) = trace_data.downcast::<PyDict>() {
-                    let traceparent = dict
-                        .get_item(TraceHeaders::TRACEPARENT_KEY)?
-                        .and_then(|v| v.extract::<String>().ok())
-                        .unwrap_or_default();
-
-                    let tracestate = dict
-                        .get_item(TraceHeaders::TRACESTATE_KEY)?
-                        .and_then(|v| v.extract::<String>().ok());
-
-                    let headers = TraceHeaders {
-                        traceparent,
-                        tracestate,
-                    };
-
-                    tracing::debug!("Trace headers: {:?}", headers);
-                    Ok(headers)
-                } else {
-                    Ok(TraceHeaders::empty())
-                }
-            }
-            Err(_) => Ok(TraceHeaders::empty()),
-        }
-    }
-
-    try_extract(py).unwrap_or_else(|err| {
-        tracing::debug!("Failed to extract trace context: {err}");
-        TraceHeaders::empty()
-    })
-}
 
 // ---
 

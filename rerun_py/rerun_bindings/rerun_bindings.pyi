@@ -1432,8 +1432,16 @@ def logout() -> str | None:
 
     """
 
-def rerun_trace_context() -> Any:
-    """Get the trace context ContextVar for distributed tracing propagation."""
+def get_trace_context_var() -> Any:
+    """
+    Return the `ContextVar` that Python uses to pass trace headers to Rust.
+
+    This is the **write side** of the bridge — Python's `with_tracing` decorator
+    calls this to get the `ContextVar`, then writes W3C trace headers into it.
+    Rust later reads them back via [`read_trace_context_from_python`].
+
+    Returns `None` when `perf_telemetry` is disabled.
+    """
 
 #####################################################################################################################
 ## PIPELINE APIS                                                                                                   ##

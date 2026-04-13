@@ -15,8 +15,7 @@ use re_perf_telemetry::extract_trace_context_from_contextvar;
 use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
 use tracing::instrument;
 
-#[cfg(feature = "perf_telemetry")]
-use crate::catalog::trace_context::with_trace_span;
+use crate::catalog::trace_context::read_trace_context_from_python;
 use crate::catalog::{
     IndexValuesLike, PyDatasetEntryInternal, PySchemaInternal, PyTableProviderAdapterInternal,
     to_py_err,
@@ -261,34 +260,17 @@ impl PyDatasetViewInternal {
 
         let table = PyTableProviderAdapterInternal::new(provider, true);
 
-        #[cfg(feature = "perf_telemetry")]
-        {
-            with_trace_span!(py, "reader", {
-                // Get context and call read_table with the reader
-                let dataset = self_.dataset.borrow(py);
-                let client = dataset.client().borrow(py);
-                let ctx = client.ctx(py)?;
-                let ctx = ctx.bind(py);
+        let _span = read_trace_context_from_python(py, "reader").entered();
 
-                drop(client);
-                drop(dataset);
+        let dataset = self_.dataset.borrow(py);
+        let client = dataset.client().borrow(py);
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
 
-                ctx.call_method1("read_table", (table,))
-            })
-        }
-        #[cfg(not(feature = "perf_telemetry"))]
-        {
-            // Get context and call read_table with the reader
-            let dataset = self_.dataset.borrow(py);
-            let client = dataset.client().borrow(py);
-            let ctx = client.ctx(py)?;
-            let ctx = ctx.bind(py);
+        drop(client);
+        drop(dataset);
 
-            drop(client);
-            drop(dataset);
-
-            ctx.call_method1("read_table", (table,))
-        }
+        ctx.call_method1("read_table", (table,))
     }
 }
 

@@ -25,6 +25,7 @@ use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
 use super::registration_handle::PyRegistrationHandleInternal;
+use super::trace_context::read_trace_context_from_python;
 use super::{
     PyCatalogClientInternal, PyEntryDetails, PyIndexConfig, PyIndexingResult,
     PyTableProviderAdapterInternal, VectorDistanceMetricLike, VectorLike, to_py_err,
@@ -330,11 +331,13 @@ impl PyDatasetEntryInternal {
         recording_layers: Vec<String>,
         on_duplicate: &str,
     ) -> PyResult<PyRegistrationHandleInternal> {
-        let connection = self_.client.borrow(self_.py()).connection().clone();
+        let py = self_.py();
+        let connection = self_.client.borrow(py).connection().clone();
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
+        let _span = read_trace_context_from_python(py, "register").entered();
 
         let results = connection.register_with_dataset(
-            self_.py(),
+            py,
             self_.entry_details.id,
             recording_uris,
             recording_layers,
@@ -342,7 +345,7 @@ impl PyDatasetEntryInternal {
         )?;
 
         Ok(PyRegistrationHandleInternal::new(
-            self_.client.clone_ref(self_.py()),
+            self_.client.clone_ref(py),
             results,
         ))
     }
@@ -422,11 +425,14 @@ impl PyDatasetEntryInternal {
         layer_name: String,
         on_duplicate: &str,
     ) -> PyResult<PyRegistrationHandleInternal> {
-        let connection = self_.client.borrow(self_.py()).connection().clone();
+        let py = self_.py();
+        let connection = self_.client.borrow(py).connection().clone();
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
 
+        let _span = read_trace_context_from_python(py, "register_prefix").entered();
+
         let results = connection.register_with_dataset_prefix(
-            self_.py(),
+            py,
             self_.entry_details.id,
             recordings_prefix,
             layer_name,
@@ -434,7 +440,7 @@ impl PyDatasetEntryInternal {
         )?;
 
         Ok(PyRegistrationHandleInternal::new(
-            self_.client.clone_ref(self_.py()),
+            self_.client.clone_ref(py),
             results,
         ))
     }
@@ -445,6 +451,7 @@ impl PyDatasetEntryInternal {
         self_: PyRef<'_, Self>,
         segment_id: String,
     ) -> PyResult<PyRecordingInternal> {
+        let _span = read_trace_context_from_python(self_.py(), "download_segment").entered();
         let catalog_client = self_.client.borrow(self_.py());
         let connection = catalog_client.connection();
         let dataset_id = self_.entry_details.id;
@@ -861,6 +868,7 @@ impl PyDatasetEntryInternal {
         cleanup_before: Option<Bound<'_, PyAny>>,
         unsafe_allow_recent_cleanup: bool,
     ) -> PyResult<()> {
+        let _span = read_trace_context_from_python(py, "do_maintenance").entered();
         let connection = self_.client.borrow(self_.py()).connection().clone();
 
         let cleanup_before_nanos = cleanup_before

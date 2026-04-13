@@ -77,19 +77,11 @@ static CHUNK_STRATEGY: LazyLock<String> = LazyLock::new(|| {
 /// parented by a single trace.
 #[cfg(not(target_arch = "wasm32"))]
 #[inline]
+#[must_use]
 pub(crate) fn attach_trace_context(
     trace_headers: Option<&crate::TraceHeaders>,
 ) -> Option<re_perf_telemetry::external::opentelemetry::ContextGuard> {
-    let headers = trace_headers?;
-    if !headers.traceparent.is_empty() {
-        let parent_ctx =
-            re_perf_telemetry::external::opentelemetry::global::get_text_map_propagator(|prop| {
-                prop.extract(headers)
-            });
-        Some(parent_ctx.attach())
-    } else {
-        None
-    }
+    trace_headers?.attach()
 }
 
 #[derive(Debug)]

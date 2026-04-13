@@ -14,6 +14,7 @@ use re_log_types::EntryName;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
+use crate::catalog::trace_context::read_trace_context_from_python;
 use crate::catalog::{
     ConnectionHandle, PyDatasetEntryInternal, PyEntryId, PyRerunHtmlTable, PyTableEntryInternal,
     to_py_err,
@@ -313,6 +314,7 @@ impl PyCatalogClientInternal {
 
     /// Perform global maintenance tasks on the server.
     fn do_global_maintenance(self_: Py<Self>, py: Python<'_>) -> PyResult<()> {
+        let _span = read_trace_context_from_python(py, "do_global_maintenance").entered();
         let connection = self_.borrow_mut(py).connection.clone();
 
         connection.do_global_maintenance(py)

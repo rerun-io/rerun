@@ -432,7 +432,9 @@ py-bench = { cmd = "uvpy -m pytest --benchmark-only --benchmark-group-by=func --
 
 snapshots = "uvpy scripts/snapshots.py"
 
-py-check-signatures = "uvpy scripts/ci/python_check_signatures.py"
+py-check-signatures = { cmd = "uvpy scripts/ci/python_check_signatures.py", depends-on = [
+  "py-build",
+] }
 
 # Build the JS parts of `rerun-notebook` without rebuilding re_viewer Wasm in the process
 py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-on = [
