@@ -221,9 +221,11 @@ def lint_line(
                 return "Use … instead of ... (on Mac it's option+;)"
 
     if "http" not in line:
-        if re.search(r"\b2d\b", line):
+        # Strip markdown link/image destinations to avoid false positives on file paths (e.g. `/3d-camera.png`)
+        line_without_link_targets = re.sub(r"\]\([^)]*\)", "]()", line)
+        if re.search(r"\b2d\b", line_without_link_targets):
             return "we prefer '2D' over '2d'"
-        if re.search(r"\b3d\b", line):
+        if re.search(r"\b3d\b", line_without_link_targets):
             return "we prefer '3D' over '3d'"
 
     if (
