@@ -99,7 +99,7 @@ async fn decode_image(chunk: Chunk, mime_type: &str) -> Result<Frame> {
     // Create a VideoFrame from the ImageBitmap.
     // The timestamp is required by the VideoFrame constructor.
     let init = web_sys::VideoFrameInit::new();
-    init.set_timestamp(0.0);
+    init.set_timestamp(0);
     let video_frame = web_sys::VideoFrame::new_with_image_bitmap_and_video_frame_init(
         &bitmap, &init,
     )

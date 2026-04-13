@@ -253,7 +253,7 @@ impl AsyncDecoder for WebVideoDecoder {
         // Given that we err on the side of providing too much than too little information.
         if let Some(duration) = video_chunk.duration {
             let duration_micros = 1e-3 * duration.duration(self.timescale).as_nanos() as f64;
-            web_chunk.set_duration(duration_micros);
+            web_chunk.set_duration_f64(duration_micros);
         }
 
         let web_chunk = EncodedVideoChunk::new(&web_chunk)
@@ -422,14 +422,9 @@ fn init_video_decoder(
                 }
             }
 
-            let Some(web_timestamp_us_raw) = frame.timestamp() else {
-                // Spec says this should never happen.
-                re_log::warn_once!("WebCodec decoded video frame without any timestamp data.");
-                return;
-            };
             // WebCodec timestamps are internally represented as i64 according to the spec.
             // Any floating point part would be a violation of the spec.
-            let web_timestamp_us = web_timestamp_us_raw as u64;
+            let web_timestamp_us = frame.timestamp() as u64;
 
             match pending_frame_infos.entry(web_timestamp_us) {
                 Entry::Occupied(mut entry) => {
@@ -459,7 +454,7 @@ fn init_video_decoder(
 
                 Entry::Vacant(_) => {
                     re_log::warn!(
-                        "Decoder produced a frame at timestamp {web_timestamp_us_raw}us for which we don't have a valid frame info."
+                        "Decoder produced a frame at timestamp {web_timestamp_us}us for which we don't have a valid frame info."
                     );
                 }
             }
