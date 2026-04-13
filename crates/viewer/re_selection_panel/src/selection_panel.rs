@@ -789,7 +789,13 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
                     .map(|(_, id)| id.to_string())
                     .collect::<Vec<String>>()
             };
-            autocomplete_text_edit(ui, &mut frame_id, &suggestions, Some(&frame_id_before));
+            autocomplete_text_edit(
+                ui,
+                &mut frame_id,
+                &suggestions,
+                Some(&frame_id_before),
+                None::<&str>,
+            );
         })
         .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
             crate::visualizer_ui::reset_override_button(

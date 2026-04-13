@@ -488,6 +488,7 @@ impl DatastoreUi {
                 &mut self.entity_path_filter,
                 self.filter_suggestion_cache.entity_suggestions(),
                 None::<&str>,
+                None::<&str>,
             );
 
             ui.label("Component:");
@@ -495,6 +496,7 @@ impl DatastoreUi {
                 ui,
                 &mut self.component_filter,
                 self.filter_suggestion_cache.component_suggestions(),
+                None::<&str>,
                 None::<&str>,
             );
 
