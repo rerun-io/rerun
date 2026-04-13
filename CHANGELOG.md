@@ -1,5 +1,22 @@
 # Rerun changelog
 
+## [0.31.3](https://github.com/rerun-io/rerun/compare/0.31.2...0.31.3) - 2026-04-13
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Fix plot view time range ui [3922bea](https://github.com/rerun-io/rerun/commit/3922bea85919bc3ad1570a74a21ae8580e36ea66)
+
+#### 📚 Docs
+- Clearer behavior for `CoordinateFrame("")` [4b5c2f0](https://github.com/rerun-io/rerun/commit/4b5c2f084fbe015ba30a33534fbfa2e48cad8eab)
+
+#### 🖼 UI improvements
+- Spacebar toggles play/pause, never enables following [#12722](https://github.com/rerun-io/rerun/pull/12722) (thanks [@wolfd](https://github.com/wolfd)!)
+
+#### 📦 Dependencies
+- Update datafusion to 52.5.0 [87af7a9](https://github.com/rerun-io/rerun/commit/87af7a93bb031330679e7ecdca956b65a668ffbb)
+
+
 ## [0.31.2](https://github.com/rerun-io/rerun/compare/0.31.1...0.31.2) - 2026-04-08
 
 ### 🔎 Details
