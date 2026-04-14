@@ -16,23 +16,23 @@ use super::py_stream::PyLazyChunkStreamInternal;
 use super::stream::LazyChunkStream;
 use super::{ChunkStream, ChunkStreamFactory};
 
-/// Internal RRD loader binding.
+/// Internal RRD reader binding.
 ///
 /// Opens an RRD file and extracts header metadata.
 /// Each call to `stream()` produces an independent lazy chunk stream.
 #[pyclass(
     frozen,
-    name = "RrdLoaderInternal",
+    name = "RrdReaderInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
-pub struct PyRrdLoaderInternal {
+pub struct PyRrdReaderInternal {
     path: PathBuf,
     application_id: Option<String>,
     recording_id: Option<String>,
 }
 
 #[pymethods]
-impl PyRrdLoaderInternal {
+impl PyRrdReaderInternal {
     #[new]
     #[pyo3(text_signature = "(self, path)")]
     fn new(path: &str) -> PyResult<Self> {

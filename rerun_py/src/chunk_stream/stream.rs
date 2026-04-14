@@ -157,7 +157,7 @@ pub enum PipelineStep {
 
 /// The source of chunks for a pipeline.
 pub enum StreamSource {
-    /// A stream factory, e.g. a loader that produces chunks from a file.
+    /// A stream factory, e.g. a reader that produces chunks from a file.
     StreamFactory(Box<dyn ChunkStreamFactory>),
 
     /// Wrap a Python iterable of Chunks.
@@ -216,7 +216,7 @@ pub struct LazyChunkStream {
 }
 
 impl LazyChunkStream {
-    /// Create a lazy stream backed by a factory (e.g. a loader).
+    /// Create a lazy stream backed by a factory (e.g. a reader).
     pub fn from_factory(factory: impl ChunkStreamFactory + 'static) -> Self {
         Self {
             source: StreamSource::StreamFactory(Box::new(factory)),

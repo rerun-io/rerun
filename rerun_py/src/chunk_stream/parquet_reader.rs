@@ -13,20 +13,20 @@ use super::py_stream::PyLazyChunkStreamInternal;
 use super::stream::LazyChunkStream;
 use super::{ChunkStream, ChunkStreamFactory};
 
-/// Internal Parquet loader binding.
+/// Internal Parquet reader binding.
 #[pyclass(
     frozen,
-    name = "ParquetLoaderInternal",
+    name = "ParquetReaderInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
-pub struct PyParquetLoaderInternal {
+pub struct PyParquetReaderInternal {
     path: PathBuf,
     config: ParquetConfig,
     entity_path_prefix: EntityPath,
 }
 
 #[pymethods]
-impl PyParquetLoaderInternal {
+impl PyParquetReaderInternal {
     #[new]
     #[expect(clippy::too_many_arguments)]
     #[pyo3(
@@ -166,14 +166,14 @@ impl PyParquetLoaderInternal {
         }))
     }
 
-    /// The file path this loader was constructed with.
+    /// The file path this reader was constructed with.
     #[getter]
     fn path(&self) -> PathBuf {
         self.path.clone()
     }
 }
 
-impl ChunkStreamFactory for PyParquetLoaderInternal {
+impl ChunkStreamFactory for PyParquetReaderInternal {
     fn create(&self) -> Result<Box<dyn ChunkStream>, ChunkPipelineError> {
         let (tx, rx) = crossbeam::channel::bounded::<Result<Arc<Chunk>, ChunkPipelineError>>(
             super::CHUNK_CHANNEL_CAPACITY,

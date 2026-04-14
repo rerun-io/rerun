@@ -1457,8 +1457,8 @@ class ChunkStoreInternal:
     def summary(self) -> str: ...
     def stream(self) -> LazyChunkStreamInternal: ...
 
-class RrdLoaderInternal:
-    """Internal implementation. Use RrdLoader from rerun.experimental instead."""
+class RrdReaderInternal:
+    """Internal implementation. Use RrdReader from rerun.experimental instead."""
 
     def __init__(self, path: str) -> None: ...
     def stream(self) -> LazyChunkStreamInternal: ...
@@ -1470,8 +1470,8 @@ class RrdLoaderInternal:
     @property
     def path(self) -> Path: ...
 
-class McapLoaderInternal:
-    """Internal implementation. Use McapLoader from rerun.experimental instead."""
+class McapReaderInternal:
+    """Internal implementation. Use McapReader from rerun.experimental instead."""
 
     def __init__(
         self,
@@ -1486,8 +1486,8 @@ class McapLoaderInternal:
     @staticmethod
     def available_decoders() -> list[str]: ...
 
-class ParquetLoaderInternal:
-    """Internal implementation. Use ParquetLoader from rerun.experimental instead."""
+class ParquetReaderInternal:
+    """Internal implementation. Use ParquetReader from rerun.experimental instead."""
 
     def __init__(
         self,

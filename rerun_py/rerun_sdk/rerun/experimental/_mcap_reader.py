@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from rerun_bindings import McapLoaderInternal
+from rerun_bindings import McapReaderInternal
 
 from ._lazy_chunk_stream import LazyChunkStream
 
@@ -11,13 +11,13 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class McapLoader:
-    """Load chunks from an MCAP file."""
+class McapReader:
+    """Read chunks from an MCAP file."""
 
-    _internal: McapLoaderInternal
+    _internal: McapReaderInternal
 
-    # TODO(ab): this API is a reflection of the current state of the MCAP loader and mirrors `rerun mcap convert`. It's
-    #  far from perfect and should be improved as the MCAP loader stabilizes.
+    # TODO(ab): this API is a reflection of the current state of the MCAP reader and mirrors `rerun mcap convert`. It's
+    #  far from perfect and should be improved as the MCAP reader stabilizes.
     def __init__(
         self,
         path: str | Path,
@@ -26,7 +26,7 @@ class McapLoader:
         timestamp_offset_ns: int | None = None,
         decoders: Sequence[str] | None = None,
     ) -> None:
-        self._internal = McapLoaderInternal(
+        self._internal = McapReaderInternal(
             str(path),
             timeline_type=timeline_type,
             timestamp_offset_ns=timestamp_offset_ns,
@@ -43,9 +43,9 @@ class McapLoader:
         return self._internal.path
 
     def __repr__(self) -> str:
-        return f"McapLoader({self._internal.path})"
+        return f"McapReader({self._internal.path})"
 
     @staticmethod
     def available_decoders() -> list[str]:
         """Return the list of all supported MCAP decoder identifiers."""
-        return McapLoaderInternal.available_decoders()
+        return McapReaderInternal.available_decoders()

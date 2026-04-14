@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from ._streaming_loader import StreamingLoader
+from ._streaming_reader import StreamingReader
 
 if TYPE_CHECKING:
     from ._chunk_store import ChunkStore
 
 
 @runtime_checkable
-class IndexedLoader(StreamingLoader, Protocol):
+class IndexedReader(StreamingReader, Protocol):
     """
-    Protocol for loaders that can produce a fully materialized ChunkStore.
+    Protocol for readers that can produce a fully materialized ChunkStore.
 
-    Extends ``StreamingLoader``: every ``IndexedLoader`` also supports
+    Extends ``StreamingReader``: every ``IndexedReader`` also supports
     ``stream() -> LazyChunkStream`` for pure-streaming processing.
     """
 

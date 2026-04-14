@@ -14,16 +14,16 @@
 //!   may be replaced wholesale (e.g. with a DataFusion-backed optimizer) without
 //!   affecting the public API.
 //!
-//! - The PyO3 bindings ([`rrd_loader`], [`py_stream`]) translate between
+//! - The PyO3 bindings ([`rrd_reader`], [`py_stream`]) translate between
 //!   Python objects and the Rust pipeline types.
 
 mod chunk_store;
 mod engine;
 pub mod error;
-mod mcap_loader;
-mod parquet_loader;
+mod mcap_reader;
+mod parquet_reader;
 mod py_stream;
-pub(crate) mod rrd_loader;
+pub(crate) mod rrd_reader;
 pub mod stream;
 
 use std::sync::Arc;
@@ -33,9 +33,9 @@ use pyo3::{Bound, PyResult};
 
 /// Register chunk pipeline classes into the module.
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<rrd_loader::PyRrdLoaderInternal>()?;
-    m.add_class::<mcap_loader::PyMcapLoaderInternal>()?;
-    m.add_class::<parquet_loader::PyParquetLoaderInternal>()?;
+    m.add_class::<rrd_reader::PyRrdReaderInternal>()?;
+    m.add_class::<mcap_reader::PyMcapReaderInternal>()?;
+    m.add_class::<parquet_reader::PyParquetReaderInternal>()?;
     m.add_class::<py_stream::PyLazyChunkStreamInternal>()?;
     m.add_class::<py_stream::PyLazyChunkStreamIterator>()?;
     m.add_class::<chunk_store::PyChunkStoreInternal>()?;

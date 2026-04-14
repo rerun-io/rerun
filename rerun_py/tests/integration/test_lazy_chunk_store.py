@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 import rerun as rr
 from rerun.experimental import (
-    RrdLoader,
+    RrdReader,
 )
 
 if TYPE_CHECKING:
@@ -38,17 +38,17 @@ def lazy_rrd_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 def test_lazy_store_has_schema(lazy_rrd_path: Path) -> None:
     """Lazy store should have a schema even before loading chunk data."""
-    store = RrdLoader(lazy_rrd_path).store()
+    store = RrdReader(lazy_rrd_path).store()
     schema = store.schema()
     assert schema is not None
 
 
 def test_lazy_store_stream_to_chunks(lazy_rrd_path: Path) -> None:
     """Lazy store's stream should produce the same chunks as direct streaming."""
-    loader = RrdLoader(lazy_rrd_path)
+    reader = RrdReader(lazy_rrd_path)
 
-    store_chunks = loader.store().stream().to_chunks()
-    stream_chunks = loader.stream().to_chunks()
+    store_chunks = reader.store().stream().to_chunks()
+    stream_chunks = reader.stream().to_chunks()
 
     # Same number of chunks.
     assert len(store_chunks) == len(stream_chunks)
@@ -61,7 +61,7 @@ def test_lazy_store_stream_to_chunks(lazy_rrd_path: Path) -> None:
 
 def test_lazy_store_roundtrip(lazy_rrd_path: Path, tmp_path: Path) -> None:
     """Write a lazily-loaded store to a new RRD and reload it."""
-    store = RrdLoader(lazy_rrd_path).store()
+    store = RrdReader(lazy_rrd_path).store()
     original_chunks = store.stream().to_chunks()
 
     out_path = tmp_path / "roundtrip.rrd"
@@ -71,13 +71,13 @@ def test_lazy_store_roundtrip(lazy_rrd_path: Path, tmp_path: Path) -> None:
         recording_id="roundtrip-id",
     )
 
-    reloaded_chunks = RrdLoader(str(out_path)).store().stream().to_chunks()
+    reloaded_chunks = RrdReader(str(out_path)).store().stream().to_chunks()
     assert len(reloaded_chunks) == len(original_chunks)
 
 
 def test_lazy_store_filter(lazy_rrd_path: Path) -> None:
     """Filtering on a lazy store's stream should work."""
-    store = RrdLoader(lazy_rrd_path).store()
+    store = RrdReader(lazy_rrd_path).store()
     filtered = store.stream().filter(content="/entity_0").to_chunks()
 
     assert len(filtered) > 0
@@ -87,7 +87,7 @@ def test_lazy_store_filter(lazy_rrd_path: Path) -> None:
 
 def test_lazy_store_compact(lazy_rrd_path: Path) -> None:
     """Compacting a lazy store should produce a materialized store."""
-    store = RrdLoader(lazy_rrd_path).store()
+    store = RrdReader(lazy_rrd_path).store()
     compacted = store.compact()
 
     # Compacted store should be usable.
@@ -97,9 +97,9 @@ def test_lazy_store_compact(lazy_rrd_path: Path) -> None:
 
 def test_multiple_store_calls(lazy_rrd_path: Path) -> None:
     """Multiple .store() calls should return independent stores."""
-    loader = RrdLoader(lazy_rrd_path)
-    store1 = loader.store()
-    store2 = loader.store()
+    reader = RrdReader(lazy_rrd_path)
+    store1 = reader.store()
+    store2 = reader.store()
 
     chunks1 = store1.stream().to_chunks()
     chunks2 = store2.stream().to_chunks()
@@ -109,10 +109,10 @@ def test_multiple_store_calls(lazy_rrd_path: Path) -> None:
 
 def test_store_properties(lazy_rrd_path: Path) -> None:
     """Application and recording IDs should be accessible."""
-    loader = RrdLoader(lazy_rrd_path)
-    assert loader.application_id == LAZY_RRD_APPLICATION_ID
-    assert loader.recording_id == LAZY_RRD_RECORDING_ID
+    reader = RrdReader(lazy_rrd_path)
+    assert reader.application_id == LAZY_RRD_APPLICATION_ID
+    assert reader.recording_id == LAZY_RRD_RECORDING_ID
 
     # Store should also work.
-    store = loader.store()
+    store = reader.store()
     assert store is not None

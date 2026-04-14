@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rerun_bindings import RrdLoaderInternal
+from rerun_bindings import RrdReaderInternal
 
 from ._chunk_store import ChunkStore
 from ._lazy_chunk_stream import LazyChunkStream
@@ -11,19 +11,19 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class RrdLoader:
+class RrdReader:
     """
-    Load chunks from an RRD file (streaming, sequential).
+    Read chunks from an RRD file (streaming, sequential).
 
     Currently, the first Recording store is streamed. Blueprint stores and subsequent recording stores are ignored
     """
 
     # TODO(RR-4263): we eventually need to address the above limitation and provide better control to the user.
 
-    _internal: RrdLoaderInternal
+    _internal: RrdReaderInternal
 
     def __init__(self, path: str | Path) -> None:
-        self._internal = RrdLoaderInternal(str(path))
+        self._internal = RrdReaderInternal(str(path))
 
     def stream(self) -> LazyChunkStream:
         """Return a lazy stream over all chunks in the RRD file."""
@@ -50,4 +50,4 @@ class RrdLoader:
         return self._internal.path
 
     def __repr__(self) -> str:
-        return f"RrdLoader({self._internal.path})"
+        return f"RrdReader({self._internal.path})"
