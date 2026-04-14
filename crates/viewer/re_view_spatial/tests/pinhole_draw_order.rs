@@ -1,13 +1,14 @@
 //! Tests that coplanar pinhole images are rendered in the correct order based on their draw order property.
 
 use re_chunk_store::RowId;
+use re_entity_db::InstancePath;
 use re_log_types::TimePoint;
 use re_sdk_types::archetypes::{Image, Pinhole, Transform3D};
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, Item, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 /// Helper struct to specify the properties of a pinhole image to be rendered in the test scene.
@@ -39,6 +40,7 @@ fn test_pinhole_draw_order_black_above_white() {
                 draw_order: 0.0,
             },
         ],
+        None,
     );
 }
 
@@ -62,6 +64,7 @@ fn test_pinhole_draw_order_white_above_black() {
                 draw_order: 1.0,
             },
         ],
+        None,
     );
 }
 
@@ -85,6 +88,7 @@ fn test_pinhole_draw_order_black_above_white_transparent() {
                 draw_order: 0.0,
             },
         ],
+        None,
     );
 }
 
@@ -108,6 +112,7 @@ fn test_pinhole_draw_order_white_above_black_transparent() {
                 draw_order: 1.0,
             },
         ],
+        None,
     );
 }
 
@@ -138,10 +143,40 @@ fn test_pinhole_draw_order_sandwiched_opaque_red() {
                 draw_order: 1.0,
             },
         ],
+        None,
     );
 }
 
-fn run_pinhole_snapshot(name: &str, image_planes: &[PinholeImageSpec<'_>]) {
+/// Tests that outline mask render properly if one of the overlapping entities is selected.
+#[test]
+fn test_pinhole_draw_order_selection_outline_single_entity() {
+    run_pinhole_snapshot(
+        "pinhole_draw_order_selection_outline_single_entity",
+        &[
+            PinholeImageSpec {
+                entity_path: "world/black_cam",
+                translation: [0.0, 0.0, 0.0],
+                image_color: [0, 0, 0],
+                opacity: 1.0,
+                draw_order: 1.0,
+            },
+            PinholeImageSpec {
+                entity_path: "world/white_cam",
+                translation: [0.5, 0.5, 0.0],
+                image_color: [255, 255, 255],
+                opacity: 1.0,
+                draw_order: 0.0,
+            },
+        ],
+        Some(&InstancePath::entity_all("world/white_cam")),
+    );
+}
+
+fn run_pinhole_snapshot(
+    name: &str,
+    image_planes: &[PinholeImageSpec<'_>],
+    selected_entity: Option<&InstancePath>,
+) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
     setup_scene(&mut test_context, image_planes);
 
@@ -151,7 +186,13 @@ fn run_pinhole_snapshot(name: &str, image_planes: &[PinholeImageSpec<'_>]) {
         blueprint.add_view_at_root(view)
     });
 
-    run_view_ui_and_save_snapshot(&test_context, view_id, name, egui::vec2(300.0, 300.0));
+    run_view_ui_and_save_snapshot(
+        &test_context,
+        view_id,
+        name,
+        egui::vec2(300.0, 300.0),
+        selected_entity,
+    );
 }
 
 fn setup_scene(test_context: &mut TestContext, image_planes: &[PinholeImageSpec<'_>]) {
@@ -198,10 +239,18 @@ fn run_view_ui_and_save_snapshot(
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
+    selected_entity: Option<&InstancePath>,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering_3d(size)
+        .with_pixels_per_point(1.0)
+        .with_options(re_ui::testing::default_snapshot_options_for_3d(size))
         .build_ui(|ui| {
+            if let Some(selected_entity) = selected_entity {
+                test_context.edit_selection(|selection_state| {
+                    selection_state.set_selection(Item::InstancePath(selected_entity.clone()));
+                });
+            }
             test_context.run_with_single_view(ui, view_id);
         });
 

@@ -392,7 +392,7 @@ fn remove_rows_containing_chunk_id(
     chunk_ids: &[re_types_core::ChunkId],
 ) -> RecordBatch {
     let chunk_id_col = rb
-        .column_by_name("chunk_id")
+        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
         .expect("Missing column chunk_id");
 
     let chunk_id_array = chunk_id_col

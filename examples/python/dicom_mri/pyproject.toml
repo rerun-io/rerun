@@ -6,7 +6,7 @@ readme = "README.md"
 dependencies = [
   "dicom_numpy==0.6.2",
   "numpy",
-  "pydicom==2.3.0",
+  "pydicom==2.4.5",
   "requests>=2.31,<3",
   "rerun-sdk",
   "types-requests>=2.31,<3",

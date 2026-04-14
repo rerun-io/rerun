@@ -789,7 +789,13 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
                     .map(|(_, id)| id.to_string())
                     .collect::<Vec<String>>()
             };
-            autocomplete_text_edit(ui, &mut frame_id, &suggestions, Some(&frame_id_before));
+            autocomplete_text_edit(
+                ui,
+                &mut frame_id,
+                &suggestions,
+                Some(&frame_id_before),
+                None::<&str>,
+            );
         })
         .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
             crate::visualizer_ui::reset_override_button(
@@ -808,6 +814,12 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
 To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/concepts/logging-and-ingestion/transforms) in the manual.",
             );
         });
+
+    if frame_id_before.is_empty() {
+        ui.warning_label(
+            "Transform relation can't be resolved due to empty coordinate frame name.",
+        );
+    }
 
     if frame_id_before != frame_id {
         // Save as blueprint override.
@@ -1211,7 +1223,7 @@ fn container_top_level_properties(
 
     if container.container_kind == ContainerKind::Grid {
         ui.list_item_flat_noninteractive(PropertyContent::new("Columns").value_fn(|ui, _| {
-            fn columns_to_string(columns: &Option<u32>) -> String {
+            fn columns_to_string(columns: Option<u32>) -> String {
                 match columns {
                     None => "Auto".to_owned(),
                     Some(cols) => cols.to_string(),
@@ -1221,9 +1233,9 @@ fn container_top_level_properties(
             let mut new_columns = container.grid_columns;
 
             egui::ComboBox::from_id_salt("container_grid_columns")
-                .selected_text(columns_to_string(&new_columns))
+                .selected_text(columns_to_string(new_columns))
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut new_columns, None, columns_to_string(&None));
+                    ui.selectable_value(&mut new_columns, None, columns_to_string(None));
 
                     ui.separator();
 
@@ -1231,7 +1243,7 @@ fn container_top_level_properties(
                         ui.selectable_value(
                             &mut new_columns,
                             Some(columns),
-                            columns_to_string(&Some(columns)),
+                            columns_to_string(Some(columns)),
                         );
                     }
                 });

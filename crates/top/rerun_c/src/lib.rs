@@ -816,10 +816,15 @@ fn rr_recording_stream_serve_grpc_impl(
     port: u16,
     server_memory_limit: CStringView,
     newest_first: bool,
+    cors_allow_origins: &[CStringView],
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
     let bind_ip = bind_ip.as_nonempty_str("bind_ip")?;
+    let cors_allowed_origins: Vec<String> = cors_allow_origins
+        .iter()
+        .map(|s| Ok(s.as_nonempty_str("cors_allow_origin")?.to_owned()))
+        .collect::<Result<Vec<_>, CError>>()?;
     let server_options = re_sdk::ServerOptions {
         playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(newest_first),
 
@@ -827,6 +832,8 @@ fn rr_recording_stream_serve_grpc_impl(
             .as_maybe_empty_str("server_memory_limit")?
             .parse::<re_sdk::MemoryLimit>()
             .map_err(|err| CError::new(CErrorCode::InvalidMemoryLimit, &err))?,
+
+        cors_allowed_origins,
     };
 
     stream
@@ -843,17 +850,31 @@ fn rr_recording_stream_serve_grpc_impl(
 
 #[expect(unsafe_code)]
 #[unsafe(no_mangle)]
-pub extern "C" fn rr_recording_stream_serve_grpc(
+pub unsafe extern "C" fn rr_recording_stream_serve_grpc(
     id: CRecordingStream,
     bind_ip: CStringView,
     port: u16,
     server_memory_limit: CStringView,
     newest_first: bool,
+    cors_allow_origins: *const CStringView,
+    num_cors_allow_origins: u32,
     error: *mut CError,
 ) {
-    if let Err(err) =
-        rr_recording_stream_serve_grpc_impl(id, bind_ip, port, server_memory_limit, newest_first)
-    {
+    // SAFETY: the caller must ensure `cors_allow_origins` points to at least
+    // `num_cors_allow_origins` valid `CStringView` elements (or is null / count is 0).
+    let cors_allow_origins = if cors_allow_origins.is_null() || num_cors_allow_origins == 0 {
+        &[]
+    } else {
+        unsafe { std::slice::from_raw_parts(cors_allow_origins, num_cors_allow_origins as usize) }
+    };
+    if let Err(err) = rr_recording_stream_serve_grpc_impl(
+        id,
+        bind_ip,
+        port,
+        server_memory_limit,
+        newest_first,
+        cors_allow_origins,
+    ) {
         err.write_error(error);
     }
 }

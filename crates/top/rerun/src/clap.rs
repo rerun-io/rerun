@@ -202,6 +202,8 @@ impl RerunArgs {
 
                     memory_limit: re_sdk::MemoryLimit::parse(&self.server_memory_limit)
                         .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?,
+
+                    cors_allowed_origins: vec![],
                 };
 
                 let rec = builder.serve_grpc_opts(

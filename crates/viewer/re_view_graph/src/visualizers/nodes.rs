@@ -69,7 +69,7 @@ impl VisualizerSystem for NodeVisualizer {
 
     /// Populates the visualizer with data from the store.
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,

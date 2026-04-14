@@ -33,7 +33,7 @@ The Rerun command-line interface:
 > - A path to a Rerun .rrd recording
 > - A path to a Rerun .rbl blueprint
 > - An HTTP(S) URL to an .rrd or .rbl file to load
-> - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview)
+> - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link)
 >
 > If no arguments are given, a server will be hosted which a Rerun SDK can connect to.
 
@@ -65,6 +65,13 @@ The Rerun command-line interface:
 > If true, play back the most recent data first when new clients connect.
 >
 > [Default: `false`]
+
+* `--cors-allow-origin <CORS_ALLOW_ORIGIN>`
+> Additional origin patterns allowed to make CORS requests to the gRPC server.
+>
+> Use this when hosting a custom viewer on a different domain. Patterns are matched against the full Origin header (e.g. `https://example.com:8080`), using glob-style matching where `*` matches any sequence of characters. Can be specified multiple times.
+>
+> Examples: `--cors-allow-origin "https://*.example.com"` `--cors-allow-origin "https://example.com:8080"` `--cors-allow-origin "https://example.com:*"`
 
 * `--persist-state <PERSIST_STATE>`
 > Whether the Rerun Viewer should persist the state of the viewer to disk.
@@ -812,6 +819,11 @@ In-memory Rerun data server.
 
 * `--bandwidth-limit <BANDWIDTH_LIMIT>`
 > Artificial bandwidth limit for responses (e.g. '10MB' for 10 megabytes per second).
+
+* `--cors-allow-origin <CORS_ALLOW_ORIGIN>`
+> Additional origin patterns allowed to make cross-origin requests to the server (can be specified multiple times).
+>
+> By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed. Patterns are matched against the full `Origin` header value, using glob-style matching where `*` matches any sequence of characters.
 
 * `-V, --version `
 > Print version.

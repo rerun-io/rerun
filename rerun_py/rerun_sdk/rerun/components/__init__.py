@@ -17,6 +17,7 @@ from .annotation_context import (
 )
 from .axis_length import AxisLength, AxisLengthBatch
 from .blob import Blob, BlobBatch
+from .cell_size import CellSize, CellSizeBatch
 from .channel_id import ChannelId, ChannelIdBatch
 from .channel_message_counts import (
     ChannelMessageCounts,
@@ -131,6 +132,8 @@ __all__ = [
     "AxisLengthBatch",
     "Blob",
     "BlobBatch",
+    "CellSize",
+    "CellSizeBatch",
     "ChannelId",
     "ChannelIdBatch",
     "ChannelMessageCounts",

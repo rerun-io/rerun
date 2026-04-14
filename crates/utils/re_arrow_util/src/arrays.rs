@@ -558,6 +558,7 @@ mod tests {
     use arrow::buffer::{OffsetBuffer, ScalarBuffer};
     use arrow::datatypes::{Field, UnionFields};
     use arrow::ipc::writer::StreamWriter;
+    use std::fmt::Write as _;
     use std::sync::Arc;
 
     use super::*;
@@ -945,22 +946,28 @@ mod tests {
         let deep_sliced = deep_slice_array_erased(&array, offset, len);
         assert_eq!(&deep_sliced, &sliced);
 
-        output += &format!("{descr}:\n");
-        output += &format!(
-            "array[0..]:          {} / IPC={:6}\n",
+        writeln!(output, "{descr}:").ok();
+        writeln!(
+            output,
+            "array[0..]:          {} / IPC={:6}",
             dump_array_stats(&array),
             dump_array_to_ipc(array.clone()),
-        );
-        output += &format!(
-            "slice[{from:5}..{to:5}]: {} / IPC={:6}\n",
+        )
+        .ok();
+        writeln!(
+            output,
+            "slice[{from:5}..{to:5}]: {} / IPC={:6}",
             dump_array_stats(&sliced),
             dump_array_to_ipc(sliced.clone())
-        );
-        output += &format!(
-            " deep[{from:5}..{to:5}]: {} / IPC={:6}\n",
+        )
+        .ok();
+        writeln!(
+            output,
+            " deep[{from:5}..{to:5}]: {} / IPC={:6}",
             dump_array_stats(&deep_sliced),
             dump_array_to_ipc(deep_sliced.clone())
-        );
+        )
+        .ok();
         output += "\n";
 
         output

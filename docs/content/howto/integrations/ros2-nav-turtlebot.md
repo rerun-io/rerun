@@ -117,7 +117,7 @@ def tf_callback(self, tf_msg: TFMessage) -> None:
 
 ### `robot_description` (URDF)
 
-Rerun features a built-in data loader for URDF, so we can just forward the string received on the `/robot_description` topic to it.
+Rerun features a built-in importer for URDF, so we can just forward the string received on the `/robot_description` topic to it.
 
 More information about how to use URDF with Rerun can be found [here](../../howto/logging-and-ingestion/urdf.md).
 

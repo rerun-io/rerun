@@ -185,7 +185,8 @@ namespace rerun {
         Result<std::string> serve_grpc(
             std::string_view bind_ip = "0.0.0.0", uint16_t port = 9876,
             std::string_view server_memory_limit = "1GiB",
-            PlaybackBehavior playback_behavior = PlaybackBehavior::OldestFirst
+            PlaybackBehavior playback_behavior = PlaybackBehavior::OldestFirst,
+            std::vector<std::string> cors_allow_origins = {}
         ) const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
@@ -656,14 +657,14 @@ namespace rerun {
             bool inject_time
         ) const;
 
-        /// Logs the file at the given `path` using all `DataLoader`s available.
+        /// Logs the file at the given `path` using all `Importer`s available.
         ///
-        /// A single `path` might be handled by more than one loader.
+        /// A single `path` might be handled by more than one importer.
         ///
-        /// This method blocks until either at least one `DataLoader` starts streaming data in
+        /// This method blocks until either at least one `Importer` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
+        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
@@ -681,14 +682,14 @@ namespace rerun {
             try_log_file_from_path(filepath, entity_path_prefix, static_).handle();
         }
 
-        /// Logs the file at the given `path` using all `DataLoader`s available.
+        /// Logs the file at the given `path` using all `Importer`s available.
         ///
-        /// A single `path` might be handled by more than one loader.
+        /// A single `path` might be handled by more than one importer.
         ///
-        /// This method blocks until either at least one `DataLoader` starts streaming data in
+        /// This method blocks until either at least one `Importer` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
+        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
@@ -704,14 +705,14 @@ namespace rerun {
             std::string_view entity_path_prefix = std::string_view(), bool static_ = false
         ) const;
 
-        /// Logs the given `contents` using all `DataLoader`s available.
+        /// Logs the given `contents` using all `Importer`s available.
         ///
-        /// A single `path` might be handled by more than one loader.
+        /// A single `path` might be handled by more than one importer.
         ///
-        /// This method blocks until either at least one `DataLoader` starts streaming data in
+        /// This method blocks until either at least one `Importer` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
+        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
         ///
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.
@@ -738,14 +739,14 @@ namespace rerun {
                 .handle();
         }
 
-        /// Logs the given `contents` using all `DataLoader`s available.
+        /// Logs the given `contents` using all `Importer`s available.
         ///
-        /// A single `path` might be handled by more than one loader.
+        /// A single `path` might be handled by more than one importer.
         ///
-        /// This method blocks until either at least one `DataLoader` starts streaming data in
+        /// This method blocks until either at least one `Importer` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
+        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
         ///
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.

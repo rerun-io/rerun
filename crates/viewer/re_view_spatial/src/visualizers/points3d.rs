@@ -20,17 +20,15 @@ use re_viewer_context::{
 use super::utilities::LabeledBatch;
 use super::{Keypoints, SpatialViewVisualizerData, process_labels_3d};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::{load_keypoint_connections, process_radius_slice};
 
 // ---
 
 #[derive(Default)]
-pub struct Points3DVisualizer {
-    pub data: SpatialViewVisualizerData,
-}
+pub struct Points3DVisualizer;
 
 struct Points3DComponentData<'a> {
+    index: (re_log_types::TimeInt, re_chunk_store::RowId),
     query_result_hash: Hash64,
 
     // Point of views
@@ -241,7 +239,7 @@ impl re_byte_size::MemUsageTreeCapture for Points3DCache {
 // timestamps within a time range -- it's _a lot_.
 impl Points3DVisualizer {
     fn process_data<'a>(
-        &mut self,
+        view_data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         point_builder: &mut PointCloudBuilder<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
@@ -259,7 +257,7 @@ impl Points3DVisualizer {
             }
 
             let cache_key = Points3DCacheKey {
-                query_result_hash: data.query_result_hash,
+                query_result_hash: Hash64::hash((data.query_result_hash, data.index)),
                 annotation_row_id: ent_context.annotations.row_id(),
             };
 
@@ -307,7 +305,7 @@ impl Points3DVisualizer {
                     }
                 }
 
-                self.data.add_bounding_box_and_region_of_interest(
+                view_data.add_bounding_box_and_region_of_interest(
                     entity_path.hash(),
                     cpu.point_cloud_bounds.bbox,
                     cpu.point_cloud_bounds.region_of_interest,
@@ -322,7 +320,7 @@ impl Points3DVisualizer {
                     &cpu.keypoints,
                 )?;
 
-                self.data.ui_labels.extend(process_labels_3d(
+                view_data.ui_labels.extend(process_labels_3d(
                     LabeledBatch {
                         entity_path,
                         visualizer_instruction: ent_context.visualizer_instruction,
@@ -367,12 +365,13 @@ impl VisualizerSystem for Points3DVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
+        let mut view_data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
 
         let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx());
@@ -388,12 +387,12 @@ impl VisualizerSystem for Points3DVisualizer {
         );
 
         use super::entity_iterator::process_archetype;
-        process_archetype::<Self, Points3D, _>(
+        process_archetype::<Points3D, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            Some(SpatialViewKind::ThreeD),
+            self,
             |ctx, spatial_ctx, results| {
                 re_tracing::profile_scope!("Point3D");
 
@@ -430,7 +429,7 @@ impl VisualizerSystem for Points3DVisualizer {
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query::range_zip_1x6(
+                let results_iter = re_query::range_zip_1x6(
                     all_positions.slice::<[f32; 3]>(), // RowId 5
                     all_colors.slice::<u32>(),         // RowId 7
                     all_radii.slice::<f32>(),
@@ -441,7 +440,7 @@ impl VisualizerSystem for Points3DVisualizer {
                 )
                 .map(
                     |(
-                        _index,
+                        index,
                         positions,
                         colors,
                         radii,
@@ -451,6 +450,7 @@ impl VisualizerSystem for Points3DVisualizer {
                         show_labels,
                     )| {
                         Points3DComponentData {
+                            index,
                             query_result_hash,
                             positions: bytemuck::cast_slice(positions),
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
@@ -467,13 +467,14 @@ impl VisualizerSystem for Points3DVisualizer {
                     },
                 );
 
-                self.process_data(
+                Self::process_data(
+                    &mut view_data,
                     ctx,
                     &mut point_builder,
                     &mut line_builder,
                     view_query,
                     spatial_ctx,
-                    data,
+                    results_iter,
                 )
             },
         )?;
@@ -483,6 +484,6 @@ impl VisualizerSystem for Points3DVisualizer {
                 point_builder.into_draw_data()?.into(),
                 line_builder.into_draw_data()?.into(),
             ])
-            .with_visualizer_data(std::mem::take(&mut self.data)))
+            .with_visualizer_data(view_data))
     }
 }

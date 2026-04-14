@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use re_byte_size::SizeBytes;
-use re_types_core::ChunkId;
 
 use crate::Chunk;
 
@@ -79,9 +78,7 @@ impl Chunk {
             let remaining_rows = chunk.num_rows() - start_idx;
             let chunk_size = remaining_rows.min(target_rows);
 
-            let split_chunk = chunk
-                .row_sliced_deep(start_idx, chunk_size)
-                .with_id(ChunkId::new());
+            let split_chunk = chunk.row_sliced_deep(start_idx, chunk_size);
 
             result.push(Arc::new(split_chunk));
 

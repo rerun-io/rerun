@@ -54,6 +54,6 @@ pub fn try_char_ptr_as_str(
     // The byte slice is
     match std::str::from_utf8(byte_slice) {
         Ok(str) => Ok(str),
-        Err(utf8_error) => Err(CError::invalid_str_argument(argument_name, utf8_error)),
+        Err(utf8_err) => Err(CError::invalid_str_argument(argument_name, utf8_err)),
     }
 }

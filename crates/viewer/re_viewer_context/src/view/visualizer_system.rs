@@ -361,7 +361,7 @@ pub trait VisualizerSystem: Send + Sync + std::any::Any {
     /// Mustn't query any data outside of the archetype.
     /// All output data should be placed in the returned [`VisualizerExecutionOutput`].
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,

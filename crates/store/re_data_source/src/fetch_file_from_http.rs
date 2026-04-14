@@ -4,12 +4,12 @@ use re_log::ResultExt as _;
 use re_log_channel::{LogReceiver, LogSource};
 use re_log_types::{FileSource, RecordingId};
 
-/// Fetch a file from an HTTP URL and load it using all available data loaders.
+/// Fetch a file from an HTTP URL and load it using all available importers.
 ///
 /// Unlike RRD streaming which decodes incrementally, this downloads the entire file
-/// first, then passes the bytes through [`re_data_loader::load_from_file_contents`].
+/// first, then passes the bytes through [`re_importer::import_from_file_contents`].
 ///
-/// This works for all file types supported by the data loaders (MCAP, images, 3D models, etc.).
+/// This works for all file types supported by the importers (MCAP, images, 3D models, etc.).
 pub fn fetch_and_load(url: &url::Url) -> LogReceiver {
     let url_string = url.to_string();
 
@@ -58,12 +58,12 @@ pub fn fetch_and_load(url: &url::Url) -> LogReceiver {
                     let bytes: Arc<[u8]> = response.bytes.into();
 
                     let shared_recording_id = RecordingId::random();
-                    let settings = re_data_loader::DataLoaderSettings {
+                    let settings = re_importer::ImporterSettings {
                         force_store_info: true,
-                        ..re_data_loader::DataLoaderSettings::recommended(shared_recording_id)
+                        ..re_importer::ImporterSettings::recommended(shared_recording_id)
                     };
 
-                    if let Err(err) = re_data_loader::load_from_file_contents(
+                    if let Err(err) = re_importer::import_from_file_contents(
                         &settings,
                         FileSource::Uri,
                         &std::path::PathBuf::from(&filename),
@@ -75,7 +75,7 @@ pub fn fetch_and_load(url: &url::Url) -> LogReceiver {
                             .warn_on_err_once("Failed to send quit marker");
                     }
 
-                    // `load_from_file_contents` internally calls `send()` which calls `tx.quit(None)`
+                    // `import_from_file_contents` internally calls `send()` which calls `tx.quit(None)`
                     // when all data has been forwarded, so we don't need to call it here on success.
                 }
                 Err(err) => {
@@ -98,7 +98,7 @@ fn detect_filename(url_filename: &str, response: &ehttp::Response, bytes: &[u8])
     let has_known_extension = std::path::Path::new(url_filename)
         .extension()
         .and_then(|e| e.to_str())
-        .is_some_and(re_data_loader::is_supported_file_extension);
+        .is_some_and(re_importer::is_supported_file_extension);
 
     if has_known_extension {
         return url_filename.to_owned();
@@ -106,13 +106,13 @@ fn detect_filename(url_filename: &str, response: &ehttp::Response, bytes: &[u8])
 
     // Try Content-Type header
     if let Some(content_type) = response.content_type()
-        && let Some(ext) = re_data_loader::content_type_to_extension(content_type)
+        && let Some(ext) = re_importer::content_type_to_extension(content_type)
     {
         return format!("{url_filename}.{ext}");
     }
 
     // Try magic bytes
-    if let Some(ext) = re_data_loader::detect_format_from_bytes(bytes) {
+    if let Some(ext) = re_importer::detect_format_from_bytes(bytes) {
         return format!("{url_filename}.{ext}");
     }
 

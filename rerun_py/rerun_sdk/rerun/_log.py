@@ -227,11 +227,11 @@ def log_file_from_path(
     recording: RecordingStream | None = None,
 ) -> None:
     r"""
-    Logs the file at the given `path` using all `DataLoader`s available.
+    Logs the file at the given `path` using all `Importer`s available.
 
-    A single `path` might be handled by more than one loader.
+    A single `path` might be handled by more than one importer.
 
-    This method blocks until either at least one `DataLoader` starts
+    This method blocks until either at least one `Importer` starts
     streaming data in or all of them fail.
 
     See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.
@@ -278,11 +278,11 @@ def log_file_from_contents(
     recording: RecordingStream | None = None,
 ) -> None:
     r"""
-    Logs the given `file_contents` using all `DataLoader`s available.
+    Logs the given `file_contents` using all `Importer`s available.
 
-    A single `path` might be handled by more than one loader.
+    A single `path` might be handled by more than one importer.
 
-    This method blocks until either at least one `DataLoader` starts
+    This method blocks until either at least one `Importer` starts
     streaming data in or all of them fail.
 
     See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.

@@ -56,7 +56,7 @@ impl Authenticator {
 }
 
 impl Interceptor for Authenticator {
-    fn call(&mut self, req: Request<()>) -> Result<Request<()>, Status> {
+    fn call(&mut self, req: Request<()>) -> tonic::Result<Request<()>> {
         let mut req = req;
 
         if let Some(token_metadata) = req.metadata().get(AUTHORIZATION_KEY) {

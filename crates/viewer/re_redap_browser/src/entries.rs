@@ -257,7 +257,8 @@ fn fetch_entry_details(
             let err = TypeConversionError::from(prost::UnknownEnumValue(kind as i32));
             Some(Right(future::ready((
                 entry,
-                Err(ApiError::serialization_with_source(
+                Err(ApiError::deserialization_with_source(
+                    None,
                     err,
                     "unknown entry kind",
                 )),
@@ -283,7 +284,7 @@ async fn fetch_dataset_details(
         .into_provider()
         .await
         .map_err(|err| {
-            ApiError::internal_with_source(err, "failed creating segment table provider")
+            ApiError::internal_with_source(None, err, "failed creating segment table provider")
         })?;
 
     Ok((result, table_provider))
@@ -310,7 +311,7 @@ async fn fetch_table_details(
         .into_provider()
         .await
         .map_err(|err| {
-            ApiError::internal_with_source(err, "failed creating table-entry table provider")
+            ApiError::internal_with_source(None, err, "failed creating table-entry table provider")
         })?;
 
     Ok((result, table_provider))

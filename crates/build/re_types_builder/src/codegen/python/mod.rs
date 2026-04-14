@@ -3,6 +3,7 @@
 mod views;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::fmt::Write as _;
 use std::iter;
 use std::ops::Deref;
 
@@ -636,11 +637,11 @@ impl PythonCodeGenerator {
             let import_clauses: HashSet<_> = obj
                 .fields
                 .iter()
-                .filter_map(|field| quote_import_clauses_from_field(&obj.scope(), field))
+                .filter_map(|field| quote_import_clauses_from_field(obj.scope().as_ref(), field))
                 .chain(obj.fields.iter().filter_map(|field| {
                     let fqname = field.typ.fqname()?;
                     objects[fqname].delegate_datatype(objects).map(|delegate| {
-                        quote_import_clauses_from_fqname(&obj.scope(), &delegate.fqname)
+                        quote_import_clauses_from_fqname(obj.scope().as_ref(), &delegate.fqname)
                     })
                 }))
                 .collect();
@@ -1098,7 +1099,7 @@ fn code_for_enum(
         superclasses.push("Enum".to_owned());
         superclasses.join(",")
     };
-    code.push_str(&format!("class {enum_name}({superclasses}):\n"));
+    writeln!(code, "class {enum_name}({superclasses}):").ok();
     code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     for variant in &obj.fields {
@@ -1801,7 +1802,7 @@ fn quote_union_aliases_from_object<'a>(
 }
 
 fn quote_import_clauses_from_field(
-    obj_scope: &Option<String>,
+    obj_scope: Option<&String>,
     field: &ObjectField,
 ) -> Option<String> {
     let fqname = match &field.typ {
@@ -1823,7 +1824,7 @@ fn quote_import_clauses_from_field(
     fqname.map(|fqname| quote_import_clauses_from_fqname(obj_scope, fqname))
 }
 
-fn quote_import_clauses_from_fqname(obj_scope: &Option<String>, fqname: &str) -> String {
+fn quote_import_clauses_from_fqname(obj_scope: Option<&String>, fqname: &str) -> String {
     // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
     // nasty lazy circular dependencies in weird edge cases…
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
@@ -2303,21 +2304,19 @@ fn quote_arrow_serialization(
                         "##,
                     ));
                 } else if let Some(np_dtype) = np_dtype_from_type(&obj.fields[0].typ) {
-                    if !obj.is_attr_set(ATTR_PYTHON_ALIASES) {
-                        if !obj.is_testing() {
-                            reporter.warn(
-                                &obj.virtpath,
-                                &obj.fqname,
-                                format!("Expected this to have {ATTR_PYTHON_ALIASES} set"),
-                            );
-                        }
-                    } else {
+                    if obj.is_attr_set(ATTR_PYTHON_ALIASES) {
                         return Ok(unindent(&format!(
                             r##"
                                 array = np.asarray(data, dtype={np_dtype}).flatten()
                                 return pa.array(array, type=data_type)
                             "##
                         )));
+                    } else if !obj.is_testing() {
+                        reporter.warn(
+                            &obj.virtpath,
+                            &obj.fqname,
+                            format!("Expected this to have {ATTR_PYTHON_ALIASES} set"),
+                        );
                     }
                 }
             }

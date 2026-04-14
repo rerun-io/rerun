@@ -293,7 +293,13 @@ def compare_signatures(stub_signatures: TotalSignature, runtime_signatures: Tota
                     print(f"Function {name} not found in runtime")
                     result += 1
 
-    if result == 0:
+    if result > 0:
+        print()
+        print(
+            f"{result} error(s) found. Please update rerun_py/rerun_bindings/rerun_bindings.pyi to match the runtime."
+        )
+
+    else:
         print("All stub signatures match!")
 
     return result

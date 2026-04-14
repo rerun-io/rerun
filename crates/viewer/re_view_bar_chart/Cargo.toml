@@ -20,8 +20,9 @@ all-features = true
 
 [dependencies]
 re_chunk_store.workspace = true
-re_entity_db.workspace = true
+re_format.workspace = true
 re_log_types.workspace = true
+re_plot.workspace = true
 re_view.workspace = true
 re_tracing.workspace = true
 re_sdk_types = { workspace = true, features = ["egui_plot"] }

@@ -11,14 +11,11 @@ use re_viewer_context::{
 use super::SpatialViewVisualizerData;
 use super::entity_iterator::process_archetype;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::{first_copied, textured_rect_from_image};
 use crate::{PickableRectSourceData, PickableTexturedRect};
 
 #[derive(Default)]
-pub struct ImageVisualizer {
-    pub data: SpatialViewVisualizerData,
-}
+pub struct ImageVisualizer;
 
 struct ImageComponentData {
     image: ImageInfo,
@@ -49,23 +46,24 @@ impl VisualizerSystem for ImageVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let mut data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
 
-        process_archetype::<Self, Image, _>(
+        process_archetype::<Image, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            Some(SpatialViewKind::TwoD),
+            self,
             |ctx, spatial_ctx, results| {
-                self.process_image(ctx, results, spatial_ctx);
+                Self::process_image(&mut data, ctx, results, spatial_ctx);
                 Ok(())
             },
         )?;
@@ -73,15 +71,15 @@ impl VisualizerSystem for ImageVisualizer {
         Ok(output
             .with_draw_data([PickableTexturedRect::to_draw_data(
                 ctx.viewer_ctx.render_ctx(),
-                &self.data.pickable_rects,
+                &data.pickable_rects,
             )?])
-            .with_visualizer_data(std::mem::take(&mut self.data)))
+            .with_visualizer_data(data))
     }
 }
 
 impl ImageVisualizer {
     fn process_image(
-        &mut self,
+        data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         results: &re_view::VisualizerInstructionQueryResults<'_>,
         spatial_ctx: &SpatialSceneVisualizerInstructionContext<'_>,
@@ -102,7 +100,7 @@ impl ImageVisualizer {
         let all_magnification_filters =
             results.iter_optional(Image::descriptor_magnification_filter().component);
 
-        let data = re_query::range_zip_1x3(
+        let image_data = re_query::range_zip_1x3(
             all_buffers.slice::<&[u8]>(),
             all_formats.component_slow::<ImageFormat>(),
             all_opacities.slice::<f32>(),
@@ -132,7 +130,7 @@ impl ImageVisualizer {
             image,
             opacity,
             magnification_filter,
-        } in data
+        } in image_data
         {
             let opacity = opacity
                 .unwrap_or_else(|| typed_fallback_for(ctx, Image::descriptor_opacity().component));
@@ -152,7 +150,7 @@ impl ImageVisualizer {
                 Image::name(),
             ) {
                 Ok(textured_rect) => {
-                    self.data.add_pickable_rect(
+                    data.add_pickable_rect(
                         PickableTexturedRect {
                             ent_path: entity_path.clone(),
                             textured_rect,

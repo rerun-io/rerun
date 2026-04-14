@@ -29,7 +29,7 @@ impl TestServer {
             port,
             ..Default::default()
         };
-        let (server_handle, _) = args
+        let server_handle = args
             .create_server_handle()
             .await
             .expect("Can't create server");

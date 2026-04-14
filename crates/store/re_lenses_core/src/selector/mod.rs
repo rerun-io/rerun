@@ -41,8 +41,7 @@
 //! # Anonymous functions
 //!
 //! Using [`Selector::pipe`] it is possible to chain anonymous functions to selectors. The result will be a
-//! [`Selector<DynExpr>`], which can be executed just like a regular selector. The difference is that the
-//! dynamic variant does not implement [`std::fmt::Display`], i.e. it is not serializable.
+//! [`Selector<DynExpr>`], which can be executed just like a regular selector.
 
 mod dyn_expr;
 mod eval;
@@ -134,7 +133,7 @@ impl<
 > IntoDynExpr for F
 {
     fn into_dyn_expr(self) -> DynExpr {
-        DynExpr::Function(Box::new(self))
+        DynExpr::Function(std::sync::Arc::new(self))
     }
 }
 
@@ -169,6 +168,8 @@ impl<E: eval::Eval + Into<DynExpr>> Selector<E> {
     ///
     /// `map(.poses[].x)` is the actual query, we only require writing the `.poses[].x` portion.
     ///
+    /// The output is guaranteed to have the same number of rows as the input.
+    ///
     /// Returns `None` if the expression's error was suppressed (e.g. `.field?`).
     ///
     /// To execute with a custom runtime, use [`Runtime::execute_per_row`] directly.
@@ -190,16 +191,11 @@ impl<E: eval::Eval + Into<DynExpr>> Selector<E> {
     }
 }
 
-// TODO(RR-3967): Remove!
-impl<E: eval::Eval + Into<DynExpr>> crate::combinators::Transform for Selector<E> {
-    type Source = ListArray;
-    type Target = ListArray;
-
-    fn transform(
-        &self,
-        source: &Self::Source,
-    ) -> Result<Option<Self::Target>, crate::combinators::Error> {
-        self.execute_per_row(source).map_err(Into::into)
+impl From<Selector> for Selector<DynExpr> {
+    fn from(selector: Selector) -> Self {
+        Self {
+            expr: DynExpr::from(selector.expr),
+        }
     }
 }
 

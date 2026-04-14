@@ -1,30 +1,18 @@
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::VideoStream;
-use re_sdk_types::components::{Opacity, VideoCodec};
+use re_sdk_types::components::VideoCodec;
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
-    IdentifiedViewSystem, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
-    video_stream_time_from_query,
+    IdentifiedViewSystem, VideoStreamProcessingError, ViewClass as _, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::contexts::{EntityDepthOffsets, TransformTreeContext};
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::SpatialViewVisualizerData;
-use crate::visualizers::utilities::{
-    spatial_view_kind_from_view_class, transform_info_for_archetype_or_report_error,
-};
-use crate::visualizers::video::{
-    AT_TIME_CURSOR_SALT, VideoFrameRenderInfo, VideoPlaybackIssue, VideoPlaybackIssueSeverity,
-    show_video_frame, video_stream_id,
-};
-use crate::{PickableTexturedRect, SpatialView2D};
+use crate::visualizers::video::execute_video_stream_like;
 
 #[derive(Default)]
-pub struct VideoStreamVisualizer {
-    pub data: SpatialViewVisualizerData,
-}
+pub struct VideoStreamVisualizer;
 
 impl IdentifiedViewSystem for VideoStreamVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -48,223 +36,52 @@ impl VisualizerSystem for VideoStreamVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let output = VisualizerExecutionOutput::default();
+        let mut data = SpatialViewVisualizerData::default();
 
-        let viewer_ctx = ctx.viewer_ctx;
-        let view_kind = spatial_view_kind_from_view_class(ctx.view_class_identifier);
-        let transforms = context_systems.get::<TransformTreeContext>(&output)?;
-        let depth_offsets = context_systems.get::<EntityDepthOffsets>(&output)?;
-        let latest_at = view_query.latest_at_query();
-
-        for (data_result, instruction) in
-            view_query.iter_visualizer_instruction_for(Self::identifier())
-        {
-            let entity_path = &data_result.entity_path;
-            re_tracing::profile_scope!("Entity", entity_path.to_string().as_str());
-
-            let Some(transform_info) = transform_info_for_archetype_or_report_error(
-                entity_path,
-                transforms,
-                Some(SpatialViewKind::TwoD),
-                view_kind,
-                &instruction.id,
-                &output,
-            ) else {
-                continue;
-            };
-
-            let world_from_entity = transform_info
-                .single_transform_required_for_entity(entity_path, VideoStream::name())
-                .as_affine3a();
-            let query_context = ctx.query_context(data_result, latest_at.clone(), instruction.id);
-            let highlight = view_query
-                .highlights
-                .entity_outline_mask(entity_path.hash());
-
-            // Note that we may or may not know the video size independently of error occurrence.
-            // (if it's just a decoding error we may still know the size from the container!)
-            // In case we haven error we want to center the message in the middle, so we need some area.
-            // Note that this area is also used for the bounding box which is important for the 2D view to determine default bounds.
-            let mut video_resolution = glam::vec2(1280.0, 720.0);
-
-            let opacity_result_wrapped = re_view::BlueprintResolvedResults::LatestAt(
-                latest_at.clone(),
-                data_result.latest_at_with_blueprint_resolved_data_for_component(
-                    ctx,
-                    &latest_at,
-                    VideoStream::descriptor_opacity().component,
-                    Some(instruction),
-                ),
-            );
-            let opacity_result = re_view::VisualizerInstructionQueryResults::new(
-                instruction,
-                &opacity_result_wrapped,
-                &output,
-            );
-
-            let all_opacities =
-                opacity_result.iter_optional(VideoStream::descriptor_opacity().component);
-            let opacity = all_opacities
-                .slice::<f32>()
-                .next()
-                .and_then(|((_time, _row_id), opacity)| opacity.first())
-                .copied()
-                .map(Opacity::from);
-
-            let video = match viewer_ctx
-                .store_context
-                .memoizer(|c: &mut VideoStreamCache| {
-                    c.entry(
-                        viewer_ctx.recording(),
-                        entity_path,
-                        view_query.timeline,
-                        viewer_ctx.app_options().video_decoder_settings(),
-                    )
-                }) {
-                Ok(video) => video,
-
-                Err(err) => {
-                    let (description, severity) = match err {
-                        VideoStreamProcessingError::NoVideoSamplesFound => (
-                            format!("No video samples available for {entity_path:?}"),
-                            VideoPlaybackIssueSeverity::Informational,
-                        ),
-                        VideoStreamProcessingError::UnloadedCodec => (
-                            "Codec not loaded yet".to_owned(),
-                            VideoPlaybackIssueSeverity::Loading,
-                        ),
-                        VideoStreamProcessingError::InvalidVideoSampleType(_)
-                        | VideoStreamProcessingError::MissingCodec
-                        | VideoStreamProcessingError::FailedReadingCodec(_)
-                        | VideoStreamProcessingError::OutOfOrderSamples
-                        | VideoStreamProcessingError::UnexpectedChunkChanges => (
-                            format!("Failed to play video at {entity_path:?}: {err}"),
-                            VideoPlaybackIssueSeverity::Error,
-                        ),
-                    };
-
-                    show_video_frame(
+        execute_video_stream_like(
+            ctx,
+            view_query,
+            context_systems,
+            &mut data,
+            Self::identifier(),
+            VideoStream::name(),
+            VideoStream::descriptor_sample().component,
+            VideoStream::descriptor_opacity().component,
+            &|ctx, latest_at, data_result, instruction, output| {
+                let codec_component = VideoStream::descriptor_codec().component;
+                let codec_result_wrapped = re_view::BlueprintResolvedResults::LatestAt(
+                    latest_at.clone(),
+                    data_result.latest_at_with_blueprint_resolved_data_for_component(
                         ctx,
-                        &mut self.data,
-                        entity_path,
-                        world_from_entity,
-                        highlight,
-                        video_resolution,
-                        instruction.id,
-                        None,
-                        Some(VideoPlaybackIssue::custom(description, severity)),
-                    );
-                    continue;
-                }
-            };
-
-            let video_time = video_stream_time_from_query(&query_context.query);
-            if video_time.0 < 0 {
-                // The frame is from before the video starts, so nothing to draw here!
-                continue;
-            }
-
-            let frame_output = {
-                let video = video.read();
-
-                if let Some([w, h]) = video.video_renderer.dimensions() {
-                    video_resolution = glam::vec2(w as _, h as _);
-                }
-
-                let storage_engine = ctx.viewer_ctx.store_context.recording.storage_engine();
-                let get_chunk_array = |id| {
-                    let chunk = storage_engine
-                        .store()
-                        .use_physical_chunk_or_report_missing(&id);
-
-                    let Some(chunk) = chunk else {
-                        output.set_missing_chunks(); // Make sure we show a view-wide loading indicator
-                        return None;
-                    };
-
-                    let sample_component = VideoStream::descriptor_sample().component;
-
-                    let (_, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
-                        chunk.raw_component_array(sample_component)?,
-                    )?;
-
-                    Some(buffer)
-                };
-
-                video.video_renderer.frame_at(
-                    ctx.viewer_ctx.render_ctx(),
-                    video_stream_id(
-                        entity_path,
-                        VideoStream::descriptor_sample().component,
-                        AT_TIME_CURSOR_SALT,
+                        latest_at,
+                        codec_component,
+                        Some(instruction),
                     ),
-                    video_stream_time_from_query(&query_context.query),
-                    &|id| {
-                        let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
-
-                        buffer.map(|b| b.as_slice()).unwrap_or(&[])
-                    },
-                )
-            };
-
-            let depth_offset = depth_offsets
-                .per_entity_and_visualizer
-                .get(&(Self::identifier(), entity_path.hash()))
-                .copied()
-                .unwrap_or_default();
-            let opacity = opacity.unwrap_or_else(|| {
-                typed_fallback_for(
-                    &re_viewer_context::QueryContext {
-                        view_ctx: ctx,
-                        target_entity_path: entity_path,
-                        instruction_id: Some(instruction.id),
-                        archetype_name: Some(VideoStream::name()),
-                        query: latest_at.clone(),
-                    },
-                    VideoStream::descriptor_opacity().component,
-                )
-            });
-            #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
-            let multiplicative_tint = egui::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
-
-            show_video_frame(
-                ctx,
-                &mut self.data,
-                entity_path,
-                world_from_entity,
-                highlight,
-                video_resolution,
-                instruction.id,
-                frame_output.output.map(|texture| VideoFrameRenderInfo {
-                    texture,
-                    depth_offset,
-                    multiplicative_tint,
-                }),
-                frame_output.error.map(VideoPlaybackIssue::from),
-            );
-
-            if context_systems.view_class_identifier == SpatialView2D::identifier() {
-                let bounding_box = macaw::BoundingBox::from_min_size(
-                    world_from_entity.transform_point3(glam::Vec3::ZERO),
-                    video_resolution.extend(0.0),
                 );
-                self.data
-                    .add_bounding_box(entity_path.hash(), bounding_box, world_from_entity);
-            }
-        }
+                let codec_result = re_view::VisualizerInstructionQueryResults::new(
+                    instruction,
+                    &codec_result_wrapped,
+                    output,
+                );
 
-        Ok(output
-            .with_draw_data([PickableTexturedRect::to_draw_data(
-                viewer_ctx.render_ctx(),
-                &self.data.pickable_rects,
-            )?])
-            .with_visualizer_data(std::mem::take(&mut self.data)))
+                let all_codecs = codec_result.iter_optional(codec_component);
+                let codec = all_codecs
+                    .slice::<u32>()
+                    .next()
+                    .and_then(|((_time, _row_id), codec)| {
+                        re_sdk_types::components::VideoCodec::try_from_u32(*codec.first()?)
+                    })
+                    .ok_or(VideoStreamProcessingError::MissingCodec)?;
+
+                Ok(codec.into())
+            },
+        )
     }
 }

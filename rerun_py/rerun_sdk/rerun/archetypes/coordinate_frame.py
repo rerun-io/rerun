@@ -83,6 +83,8 @@ class CoordinateFrame(Archetype):
         frame:
             The coordinate frame to use for the current entity.
 
+            Note that empty strings are not valid transform frame IDs.
+
         """
 
         # You can define your own __init__ function as a member of CoordinateFrameExt in coordinate_frame_ext.py
@@ -120,6 +122,8 @@ class CoordinateFrame(Archetype):
             If true, all unspecified fields will be explicitly cleared.
         frame:
             The coordinate frame to use for the current entity.
+
+            Note that empty strings are not valid transform frame IDs.
 
         """
 
@@ -169,6 +173,8 @@ class CoordinateFrame(Archetype):
         ----------
         frame:
             The coordinate frame to use for the current entity.
+
+            Note that empty strings are not valid transform frame IDs.
 
         """
 
@@ -222,6 +228,8 @@ class CoordinateFrame(Archetype):
         converter=components.TransformFrameIdBatch._converter,  # type: ignore[misc]
     )
     # The coordinate frame to use for the current entity.
+    #
+    # Note that empty strings are not valid transform frame IDs.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -24,11 +24,11 @@ all-features = true
 [features]
 default = []
 
-## Support for using Rerun's data-loaders directly from the SDK.
+## Support for using Rerun's importers directly from the SDK.
 ##
-## See our `log_file` example and <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview>
+## See our `log_file` example and <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link>
 ## for more information.
-data_loaders = ["dep:re_data_loader", "dep:re_log_channel"]
+importers = ["dep:re_importer", "dep:re_log_channel"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -60,7 +60,6 @@ re_tracing.workspace = true
 re_uri.workspace = true
 
 ahash.workspace = true
-arrow.workspace = true
 const_format.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true
@@ -73,7 +72,7 @@ uuid = { workspace = true, features = ["v4"] }
 
 # Optional dependencies
 
-re_data_loader = { workspace = true, optional = true }
+re_importer = { workspace = true, optional = true }
 re_grpc_server = { workspace = true, optional = true }
 re_log_channel = { workspace = true, optional = true }
 re_memory = { workspace = true, optional = true }

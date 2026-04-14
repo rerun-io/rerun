@@ -537,6 +537,12 @@ impl TransformTreeContext {
             .or_else(|| self.additional_frame_id_hash_mapping.get(&frame_id_hash))
     }
 
+    #[inline]
+    pub fn is_empty_frame_name(&self, frame_id_hash: TransformFrameIdHash) -> bool {
+        self.lookup_frame_id(frame_id_hash)
+            .is_some_and(|frame_id| frame_id.as_str().is_empty())
+    }
+
     /// Formats a frame ID hash as a human-readable string.
     ///
     /// Returns the frame name if known, otherwise logs a warning in debug builds and returns `None`.

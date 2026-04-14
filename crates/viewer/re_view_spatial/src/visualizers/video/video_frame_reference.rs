@@ -14,7 +14,6 @@ use re_viewer_context::{
 
 use crate::PickableTexturedRect;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::SpatialViewVisualizerData;
 use crate::visualizers::entity_iterator::process_archetype;
 use crate::visualizers::video::{
@@ -23,9 +22,7 @@ use crate::visualizers::video::{
 };
 
 #[derive(Default)]
-pub struct VideoFrameReferenceVisualizer {
-    pub data: SpatialViewVisualizerData,
-}
+pub struct VideoFrameReferenceVisualizer;
 
 impl IdentifiedViewSystem for VideoFrameReferenceVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -49,21 +46,22 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let mut data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
 
-        process_archetype::<Self, VideoFrameReference, _>(
+        process_archetype::<VideoFrameReference, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            Some(SpatialViewKind::TwoD),
+            self,
             |ctx, spatial_ctx, results| {
                 // TODO(andreas): Should ignore range queries here and only do latest-at.
                 // Not only would this simplify the code here quite a bit, it would also avoid lots of overhead.
@@ -92,7 +90,8 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                         continue;
                     };
 
-                    self.process_video_frame(
+                    Self::process_video_frame(
+                        &mut data,
                         ctx,
                         spatial_ctx,
                         video_timestamp,
@@ -118,15 +117,15 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         Ok(output
             .with_draw_data([PickableTexturedRect::to_draw_data(
                 ctx.viewer_ctx.render_ctx(),
-                &self.data.pickable_rects,
+                &data.pickable_rects,
             )?])
-            .with_visualizer_data(std::mem::take(&mut self.data)))
+            .with_visualizer_data(data))
     }
 }
 
 impl VideoFrameReferenceVisualizer {
     fn process_video_frame(
-        &mut self,
+        data: &mut SpatialViewVisualizerData,
         ctx: &re_viewer_context::QueryContext<'_>,
         spatial_ctx: &SpatialSceneVisualizerInstructionContext<'_>,
         video_timestamp: &VideoTimestamp,
@@ -166,7 +165,7 @@ impl VideoFrameReferenceVisualizer {
             None => {
                 show_video_frame(
                     ctx.view_ctx,
-                    &mut self.data,
+                    data,
                     entity_path,
                     world_from_entity,
                     spatial_ctx.highlight,
@@ -203,7 +202,7 @@ impl VideoFrameReferenceVisualizer {
 
                     show_video_frame(
                         ctx.view_ctx,
-                        &mut self.data,
+                        data,
                         entity_path,
                         world_from_entity,
                         spatial_ctx.highlight,
@@ -220,7 +219,7 @@ impl VideoFrameReferenceVisualizer {
                 Err(err) => {
                     show_video_frame(
                         ctx.view_ctx,
-                        &mut self.data,
+                        data,
                         entity_path,
                         world_from_entity,
                         spatial_ctx.highlight,

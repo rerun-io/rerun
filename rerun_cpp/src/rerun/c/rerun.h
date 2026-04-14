@@ -157,14 +157,14 @@ typedef struct rr_spawn_options {
     rr_string executable_path;
 } rr_spawn_options;
 
-/// Recommended settings for the [`DataLoader`].
+/// Recommended settings for the [`Importer`].
 ///
-/// The loader is free to ignore some or all of these.
+/// The importer is free to ignore some or all of these.
 ///
 /// Refer to the field-level documentation for more information about each individual options.
 //
 // TODO(#3841): expose timepoint settings once we implement stateless APIs
-typedef struct rr_data_loader_settings {
+typedef struct rr_importer_settings {
     /// The recommended `RecordingId` to log the data to.
     ///
     /// Unspecified by default.
@@ -179,7 +179,10 @@ typedef struct rr_data_loader_settings {
     ///
     /// Defaults to `false` if not set.
     bool static_;
-} rr_data_loader_settings;
+} rr_importer_settings;
+
+/* Deprecated since 0.32.0: use rr_importer_settings instead. */
+typedef rr_importer_settings rr_data_loader_settings;
 
 typedef struct rr_store_info {
     /// The user-chosen name of the application doing the logging.
@@ -521,9 +524,16 @@ extern void rr_recording_stream_connect_grpc(
 /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
 ///
 /// `newest_first` controls whether or not to play back the newest data first to clients.
+///
+/// `cors_allow_origins` is an optional array of origin patterns allowed to make cross-origin requests
+/// to the gRPC server. By default only localhost and rerun.io are allowed.
+/// Patterns are matched against the full Origin header (e.g. "https://example.com:8080"),
+/// using glob-style matching where `*` matches any sequence of characters.
+/// Examples: "https://*.example.com", "https://example.com:8080", "https://example.com:*".
 extern void rr_recording_stream_serve_grpc(
     rr_recording_stream stream, rr_string bind_ip, uint16_t port, rr_string server_memory_limit,
-    bool newest_first, rr_error* error
+    bool newest_first, const rr_string* cors_allow_origins, uint32_t num_cors_allow_origins,
+    rr_error* error
 );
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
@@ -606,27 +616,27 @@ extern void rr_recording_stream_log(
     rr_recording_stream stream, rr_data_row data_row, bool inject_time, rr_error* error
 );
 
-/// Logs the file at the given `path` using all `DataLoader`s available.
+/// Logs the file at the given `path` using all `Importer`s available.
 ///
-/// A single `path` might be handled by more than one loader.
+/// A single `path` might be handled by more than one importer.
 ///
-/// This method blocks until either at least one `DataLoader` starts streaming data in
+/// This method blocks until either at least one `Importer` starts streaming data in
 /// or all of them fail.
 ///
-/// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
+/// See <https://www.rerun.io/docs/reference/importers/overview?speculative-link> for more information.
 extern void rr_recording_stream_log_file_from_path(
     rr_recording_stream stream, rr_string path, rr_string entity_path_prefix, bool static_,
     rr_error* error
 );
 
-/// Logs the given `contents` using all `DataLoader`s available.
+/// Logs the given `contents` using all `Importer`s available.
 ///
-/// A single `path` might be handled by more than one loader.
+/// A single `path` might be handled by more than one importer.
 ///
-/// This method blocks until either at least one `DataLoader` starts streaming data in
+/// This method blocks until either at least one `Importer` starts streaming data in
 /// or all of them fail.
 ///
-/// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
+/// See <https://www.rerun.io/docs/reference/importers/overview?speculative-link> for more information.
 extern void rr_recording_stream_log_file_from_contents(
     rr_recording_stream stream, rr_string path, rr_bytes contents, rr_string entity_path_prefix,
     bool static_, rr_error* error

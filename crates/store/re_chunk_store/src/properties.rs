@@ -67,11 +67,13 @@ impl ChunkStore {
                     let component = component_desc.component;
 
                     // it's possible to have multiple values for the same component, hence we take the latest value
-                    let chunk_comp_latest = chunk.latest_at(
+                    let Some(chunk_comp_latest) = chunk.latest_at(
                         /* same as above, timeline is irrelevant as these are static chunks */
                         &LatestAtQuery::new(TimelineName::log_tick(), TimeInt::MIN),
                         component,
-                    );
+                    ) else {
+                        continue;
+                    };
                     let (_, column) = chunk_comp_latest
                         .components()
                         .iter()

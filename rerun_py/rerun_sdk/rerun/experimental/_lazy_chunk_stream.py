@@ -1,17 +1,20 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from rerun.catalog import ContentFilter
 from rerun_bindings import LazyChunkStreamInternal
 
 from ._chunk import Chunk
+from ._lens import Lens
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Sequence
     from pathlib import Path
 
     from rerun_bindings import ComponentDescriptor
+
+    from ._chunk_store import ChunkStore
 
 
 class LazyChunkStream:
@@ -118,6 +121,41 @@ class LazyChunkStream:
             )
         )
 
+    # --- Lenses ---
+
+    def lenses(
+        self,
+        lenses: Sequence[Lens] | Lens,
+        *,
+        output_mode: Literal["drop_unmatched", "forward_unmatched", "forward_all"] = "drop_unmatched",
+    ) -> LazyChunkStream:
+        """
+        Apply lenses to transform chunk data. Consumes this stream.
+
+        Each lens matches chunks by entity path and input component,
+        then transforms the data according to its output specifications.
+
+        Parameters
+        ----------
+        lenses:
+            One or more :class:`Lens` objects describing the transformations.
+        output_mode:
+            How to handle unmatched chunks:
+
+            - ``"forward_all"``: forward both transformed and original data
+            - ``"forward_unmatched"``: forward transformed if matched, otherwise original
+            - ``"drop_unmatched"``: only forward transformed data (default)
+
+        """
+        if isinstance(lenses, Lens):
+            lenses = [lenses]
+        return LazyChunkStream(
+            self._internal.lenses(
+                [lens._internal for lens in lenses],
+                output_mode,
+            )
+        )
+
     # --- Routing ---
 
     def split(
@@ -195,9 +233,15 @@ class LazyChunkStream:
             recording_id,
         )
 
-    def collect(self) -> list[Chunk]:
+    def collect(self) -> ChunkStore:
+        """Consume the stream and materialize all chunks into a ChunkStore."""
+        from ._chunk_store import ChunkStore
+
+        return ChunkStore(self._internal.collect())
+
+    def to_chunks(self) -> list[Chunk]:
         """Consume the stream and return all chunks as a list."""
-        return [Chunk(internal) for internal in self._internal.collect()]
+        return [Chunk(internal) for internal in self._internal.to_chunks()]
 
     def __iter__(self) -> Iterator[Chunk]:
         """Iterate over chunks one at a time (triggers execution)."""

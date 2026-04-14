@@ -795,8 +795,7 @@ impl TimePanel {
         // Expand if one of the children is focused
         let focused_entity_path = store_ctx
             .focused_item()
-            .as_ref()
-            .and_then(|item| item.entity_path());
+            .and_then(|item| item.item.entity_path());
 
         if focused_entity_path
             .is_some_and(|focused_entity_path| focused_entity_path.is_descendant_of(entity_path))
@@ -1232,7 +1231,7 @@ impl TimePanel {
                     store.collect_physical_descendents_of(&info.id, &mut descendents_scratch);
 
                     for chunk in descendents_scratch.drain(..) {
-                        store.use_physical_chunk_or_report_missing(&chunk);
+                        store.use_chunk_or_report_missing(&chunk);
                     }
                 }
             }
@@ -1348,10 +1347,10 @@ impl TimePanel {
                 }
             });
 
-        if !found_last_clicked_items {
-            vec![]
-        } else {
+        if found_last_clicked_items {
             items_in_range
+        } else {
+            vec![]
         }
     }
 

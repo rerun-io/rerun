@@ -62,7 +62,7 @@ pub struct TestContext {
 
     // Mutex is needed, so we can update these from the `run` method
     pub selection_state: Mutex<ApplicationSelectionState>,
-    pub focused_item: Mutex<Option<re_viewer_context::Item>>,
+    pub focused_item: Mutex<Option<re_viewer_context::FocusTarget>>,
 
     // RwLock so we can have `handle_system_commands` take an immutable reference to self.
     pub time_ctrl: RwLock<TimeControl>,
@@ -567,7 +567,7 @@ impl TestContext {
         // Pretend like we are connected to a real redap server:
         active_recording.data_source = Some(re_log_channel::LogSource::RedapGrpcStream {
             uri: "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
-            select_when_loaded: true,
+            open_behavior: re_log_channel::RecordingOpenBehavior::OpenAndSelect,
         });
     }
 
@@ -605,7 +605,7 @@ impl TestContext {
         re_ui::apply_style_and_install_loaders(egui_ctx);
 
         let mut store_hub = self.store_hub.lock();
-        store_hub.begin_frame_caches();
+        store_hub.begin_frame_caches(Some(&self.recording_store_id));
 
         let db = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         if db.can_fetch_chunks_from_redap()
@@ -685,6 +685,8 @@ impl TestContext {
                 active_time_ctrl: Some(&self.time_ctrl.read()),
                 connected_receivers: &Default::default(),
                 auth_context: None,
+                login_enabled: false,
+                login_signed_in_url: None,
             },
             connected_receivers: &Default::default(),
             store_context: &store_context,

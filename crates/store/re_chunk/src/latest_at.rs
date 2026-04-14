@@ -3,7 +3,7 @@ use re_byte_size::SizeBytes;
 use re_log_types::{TimeInt, TimelineName};
 use re_types_core::ComponentIdentifier;
 
-use crate::{Chunk, RowId};
+use crate::{Chunk, RowId, UnitChunkShared};
 
 // ---
 
@@ -67,28 +67,30 @@ impl LatestAtQuery {
 impl Chunk {
     /// Runs a [`LatestAtQuery`] filter on a [`Chunk`].
     ///
-    /// This behaves as a row-based filter: the result is a new [`Chunk`] that is vertically
+    /// This behaves as a row-based filter: the result is a [`UnitChunkShared`] that is vertically
     /// sliced to only contain the row relevant for the specified `query`.
     ///
-    /// The resulting [`Chunk`] is guaranteed to contain all the same columns has the queried
+    /// The resulting chunk is guaranteed to contain all the same columns as the queried
     /// chunk: there is no horizontal slicing going on.
     ///
-    /// An empty [`Chunk`] (i.e. 0 rows, but N columns) is returned if the `query` yields nothing.
+    /// Returns `None` if the `query` yields nothing.
     ///
     /// Because the resulting chunk doesn't discard any column information, you can find extra relevant
     /// information by inspecting the data, for examples timestamps on other timelines.
     /// See [`Self::timeline_sliced`] and [`Self::component_sliced`] if you do want to filter this
     /// extra data.
-    pub fn latest_at(&self, query: &LatestAtQuery, component: ComponentIdentifier) -> Self {
+    pub fn latest_at(
+        &self,
+        query: &LatestAtQuery,
+        component: ComponentIdentifier,
+    ) -> Option<UnitChunkShared> {
         if self.is_empty() {
-            return self.clone();
+            return None;
         }
 
         re_tracing::profile_function!(format!("{query:?}"));
 
-        let Some(component_list_array) = self.components.get_array(component) else {
-            return self.emptied();
-        };
+        let component_list_array = self.components.get_array(component)?;
 
         let mut index = None;
 
@@ -126,9 +128,7 @@ impl Chunk {
                 }
             }
         } else {
-            let Some(time_column) = self.timelines.get(&query.timeline()) else {
-                return self.emptied();
-            };
+            let time_column = self.timelines.get(&query.timeline())?;
 
             let is_sorted_by_time = time_column.is_sorted();
             let times = time_column.times_raw();
@@ -174,6 +174,6 @@ impl Chunk {
             }
         }
 
-        index.map_or_else(|| self.emptied(), |i| self.row_sliced_shallow(i, 1))
+        index.map(|i| self.row_sliced_unit_shallow(i))
     }
 }

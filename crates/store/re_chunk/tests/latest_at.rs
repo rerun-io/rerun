@@ -542,20 +542,24 @@ fn query_and_compare(
 
     eprintln!("Query: {component_desc} @ {query:?}");
     eprintln!("Data:\n{chunk}");
-    eprintln!("Expected:\n{expected}");
-    eprintln!("Results:\n{results}");
 
-    assert_eq!(
-        *expected,
-        results,
-        "{}",
-        similar_asserts::SimpleDiff::from_str(
-            &format!("{results}"),
-            &format!("{expected}"),
-            // &format!("{results:#?}"),
-            // &format!("{expected:#?}"),
-            "got",
-            "expected",
-        ),
-    );
+    if expected.is_empty() {
+        assert!(results.is_none(), "Expected no results, but got some");
+    } else {
+        let results = results.expect("Expected latest_at to return a result");
+        eprintln!("Expected:\n{expected}");
+        eprintln!("Results:\n{results}");
+
+        assert_eq!(
+            expected,
+            &*results,
+            "{}",
+            similar_asserts::SimpleDiff::from_str(
+                &format!("{results}"),
+                &format!("{expected}"),
+                "got",
+                "expected",
+            ),
+        );
+    }
 }

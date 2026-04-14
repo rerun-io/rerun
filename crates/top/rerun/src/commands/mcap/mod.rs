@@ -7,8 +7,8 @@ use clap::builder::TypedValueParser as _;
 use re_log_encoding::Encoder;
 use re_log_types::{LogMsg, RecordingId, TimeType};
 use re_mcap::{DecoderIdentifier, SelectedDecoders};
-use re_sdk::external::re_data_loader::{McapLoader, supported_mcap_decoder_identifiers};
-use re_sdk::{ApplicationId, DataLoader, DataLoaderSettings, LoadedData};
+use re_sdk::external::re_importer::{McapImporter, supported_mcap_decoder_identifiers};
+use re_sdk::{ApplicationId, ImportedData, Importer, ImporterSettings};
 
 fn possible_timeline_types() -> impl clap::builder::TypedValueParser {
     clap::builder::PossibleValuesParser::new(["timestamp", "duration"]).map(|value: String| {
@@ -117,17 +117,17 @@ impl ConvertCommand {
             )
         };
 
-        let loader: &dyn DataLoader =
-            &McapLoader::new(&selected_decoders).with_raw_fallback(!*disable_raw_fallback);
+        let importer: &dyn Importer =
+            &McapImporter::new(&selected_decoders).with_raw_fallback(!*disable_raw_fallback);
 
         // TODO(#10862): This currently loads the entire file into memory.
-        let (tx, rx) = crossbeam::channel::bounded::<LoadedData>(1024);
-        loader.load_from_path(
-            &DataLoaderSettings {
+        let (tx, rx) = crossbeam::channel::bounded::<ImportedData>(1024);
+        importer.import_from_path(
+            &ImporterSettings {
                 application_id: Some(application_id),
                 timestamp_offset_ns: *timestamp_offset_ns,
                 timeline_type: *timeline_type,
-                ..DataLoaderSettings::recommended(recording_id)
+                ..ImporterSettings::recommended(recording_id)
             },
             path_to_input_mcap.into(),
             tx,
@@ -166,7 +166,7 @@ impl McapCommands {
 
 fn process_mcap<W: std::io::Write>(
     writer: W,
-    receiver: &crossbeam::channel::Receiver<LoadedData>,
+    receiver: &crossbeam::channel::Receiver<ImportedData>,
 ) -> anyhow::Result<()> {
     let mut num_total_msgs = 0;
     let mut topics = BTreeSet::new();
@@ -178,13 +178,13 @@ fn process_mcap<W: std::io::Write>(
         num_total_msgs += 1;
 
         let log_msg = match res {
-            LoadedData::LogMsg(_, log_msg) => log_msg,
-            LoadedData::Chunk(_, store_id, chunk) => {
+            ImportedData::LogMsg(_, log_msg) => log_msg,
+            ImportedData::Chunk(_, store_id, chunk) => {
                 topics.insert(chunk.entity_path().clone());
                 let arrow_msg = chunk.to_arrow_msg()?;
                 LogMsg::ArrowMsg(store_id, arrow_msg)
             }
-            LoadedData::ArrowMsg(_, store_id, arrow_msg) => LogMsg::ArrowMsg(store_id, arrow_msg),
+            ImportedData::ArrowMsg(_, store_id, arrow_msg) => LogMsg::ArrowMsg(store_id, arrow_msg),
         };
         encoder.append(&log_msg)?;
     }

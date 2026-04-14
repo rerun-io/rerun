@@ -37,5 +37,3 @@ getrandom = { workspace = true, features = ["wasm_js"] }
 js-sys.workspace = true
 wasm-bindgen-futures.workspace = true
 web-sys = { workspace = true, features = ["Window"] }
-
-[dev-dependencies]

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::error::Error as _;
+use std::fmt::Write as _;
 use std::sync::Arc;
 
 use re_auth::Jwt;
@@ -348,6 +349,7 @@ impl ConnectionRegistryHandle {
                 Some(Credentials::Token(token)) => {
                     token.for_host(&host).map_err(|err| {
                         ApiError::credentials_with_source(
+                            None,
                             ClientCredentialsError::HostMismatch(err),
                             format!("token not allowed for host '{host}'"),
                         )
@@ -362,6 +364,7 @@ impl ConnectionRegistryHandle {
                     if let Ok(Some(c)) = re_auth::oauth::load_credentials() {
                         c.access_token().jwt().for_host(&host).map_err(|err| {
                             ApiError::credentials_with_source(
+                                None,
                                 ClientCredentialsError::HostMismatch(err),
                                 format!("stored token not allowed for host '{host}'"),
                             )
@@ -387,7 +390,7 @@ impl ConnectionRegistryHandle {
                     Err(err) => {
                         let mut msg = format!("failed to connect to server '{origin}': {err}");
                         if let Some(suggested) = suggest_api_prefix(&origin) {
-                            msg.push_str(&format!(". Did you mean '{suggested}'?"));
+                            write!(msg, ". Did you mean '{suggested}'?").ok();
                         }
                         Err(ApiError::connection(msg))
                     }
@@ -430,6 +433,7 @@ impl ConnectionRegistryHandle {
                     .map(drop)
             }
             Ok(resp) => {
+                let trace_id = crate::extract_trace_id(resp.metadata());
                 let re_protos::cloud::v1alpha1::WhoAmIResponse {
                     user_id,
                     can_read,
@@ -445,11 +449,13 @@ impl ConnectionRegistryHandle {
                         // Anonymous user without read access — treat as a credentials error
                         // so the auth flow is triggered.
                         return Err(ApiError::credentials_with_source(
+                            trace_id,
                             ClientCredentialsError::NotAuthorized,
                             "the server requires authentication for read access",
                         ));
                     }
                     return Err(ApiError::permission_denied(
+                        trace_id,
                         "the server reports that you do not have read access",
                     ));
                 }
@@ -459,12 +465,14 @@ impl ConnectionRegistryHandle {
         };
 
         match request_result {
-            Ok(_) => Ok(raw_client),
+            Ok(()) => Ok(raw_client),
 
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {
+                let trace_id = crate::extract_trace_id(err.metadata());
                 if let Some(credentials) = credentials {
                     Err(ApiError::credentials_with_source(
+                        trace_id,
                         ClientCredentialsError::UnauthenticatedBadToken {
                             status: err.into(),
                             credentials,
@@ -473,6 +481,7 @@ impl ConnectionRegistryHandle {
                     ))
                 } else {
                     Err(ApiError::credentials_with_source(
+                        trace_id,
                         ClientCredentialsError::UnauthenticatedMissingToken(err.into()),
                         "unauthenticated: missing token",
                     ))
@@ -486,12 +495,14 @@ impl ConnectionRegistryHandle {
                     match cred_error {
                         CredentialsProviderError::SessionExpired => {
                             Err(ApiError::credentials_with_source(
+                                None,
                                 ClientCredentialsError::SessionExpired,
                                 "session expired",
                             ))
                         }
                         CredentialsProviderError::Custom(_) => {
                             Err(ApiError::credentials_with_source(
+                                None,
                                 ClientCredentialsError::RefreshError(err.into()),
                                 "refreshing credentials",
                             ))

@@ -4,6 +4,7 @@ import os
 from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 import datafusion as dfn
@@ -711,6 +712,7 @@ def serve_grpc(
     newest_first: bool = False,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    cors_allow_origin: list[str] = ...,  # type: ignore[assignment]
 ) -> str:
     """
     Spawn a gRPC server which an SDK or Viewer can connect to.
@@ -732,6 +734,7 @@ def serve_web(
     server_memory_limit: str,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    cors_allow_origin: list[str] = ...,  # type: ignore[assignment]
 ) -> None:
     """Serve a web-viewer AND host a gRPC server."""
 
@@ -1307,6 +1310,28 @@ class NotFoundError(Exception):
 class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
 
+class SelectorInternal:
+    def __init__(self, query: str) -> None: ...
+    def execute(self, source: pa.Array) -> pa.Array | None: ...
+    def execute_per_row(self, source: pa.Array) -> pa.Array | None: ...
+    def pipe(self, func: Any) -> SelectorInternal: ...
+    def __repr__(self) -> str: ...
+    def __str__(self) -> str: ...
+
+class LensOutputInternal:
+    def __init__(self, *, scatter: bool = False, target_entity: str | None = None) -> None: ...
+    def component(self, component: ComponentDescriptor, selector: SelectorInternal) -> LensOutputInternal: ...
+    def time(self, timeline_name: str, timeline_type: str, selector: SelectorInternal) -> LensOutputInternal: ...
+
+class LensInternal:
+    def __init__(
+        self,
+        content: list[str],
+        input_component: str,
+        *,
+        outputs: list[LensOutputInternal],
+    ) -> None: ...
+
 class _ServerInternal:
     def __init__(
         self,
@@ -1340,6 +1365,8 @@ class _ServerInternal:
     def host(self) -> str: ...
     def shutdown(self) -> None: ...
     def is_running(self) -> bool: ...
+    def inject_error(self, method: str) -> None: ...
+    def clear_injected_error(self, method: str) -> None: ...
 
 #####################################################################################################################
 ## AUTH                                                                                                            ##
@@ -1405,22 +1432,79 @@ def logout() -> str | None:
 
     """
 
-def rerun_trace_context() -> Any:
-    """Get the trace context ContextVar for distributed tracing propagation."""
+def get_trace_context_var() -> Any:
+    """
+    Return the `ContextVar` that Python uses to pass trace headers to Rust.
+
+    This is the **write side** of the bridge — Python's `with_tracing` decorator
+    calls this to get the `ContextVar`, then writes W3C trace headers into it.
+    Rust later reads them back via [`read_trace_context_from_python`].
+
+    Returns `None` when `perf_telemetry` is disabled.
+    """
 
 #####################################################################################################################
 ## PIPELINE APIS                                                                                                   ##
 #####################################################################################################################
+
+class ChunkStoreInternal:
+    """Internal implementation. Use ChunkStore from rerun.experimental instead."""
+
+    @staticmethod
+    def from_chunks(chunks: list[ChunkInternal]) -> ChunkStoreInternal: ...
+    def schema(self) -> SchemaInternal: ...
+    def compact(self) -> ChunkStoreInternal: ...
+    def num_chunks(self) -> int: ...
+    def summary(self) -> str: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
 
 class RrdLoaderInternal:
     """Internal implementation. Use RrdLoader from rerun.experimental instead."""
 
     def __init__(self, path: str) -> None: ...
     def stream(self) -> LazyChunkStreamInternal: ...
+    def store(self) -> ChunkStoreInternal: ...
     @property
     def application_id(self) -> str | None: ...
     @property
     def recording_id(self) -> str | None: ...
+    @property
+    def path(self) -> Path: ...
+
+class McapLoaderInternal:
+    """Internal implementation. Use McapLoader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: str,
+        timeline_type: str,
+        timestamp_offset_ns: int | None,
+        decoders: list[str] | None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> Path: ...
+    @staticmethod
+    def available_decoders() -> list[str]: ...
+
+class ParquetLoaderInternal:
+    """Internal implementation. Use ParquetLoader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: str,
+        entity_path_prefix: str | None = None,
+        column_grouping: str = "prefix",
+        delimiter: str = "_",
+        prefixes: list[str] | None = None,
+        use_structs: bool = True,
+        static_columns: list[str] | None = None,
+        index_columns: list[tuple[str, str, str | None]] | None = None,
+        column_rules: list[Any] | None = None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> Path: ...
 
 class LazyChunkStreamInternal:
     """Internal implementation. Use LazyChunkStream from rerun.experimental instead."""
@@ -1449,10 +1533,12 @@ class LazyChunkStreamInternal:
         is_static: bool | None = None,
         components: list[str] | None = None,
     ) -> tuple[LazyChunkStreamInternal, LazyChunkStreamInternal]: ...
+    def lenses(self, lenses: list[LensInternal], output_mode: str) -> LazyChunkStreamInternal: ...
     @staticmethod
     def merge(streams: list[LazyChunkStreamInternal]) -> LazyChunkStreamInternal: ...
     def write_rrd(self, path: str, application_id: str, recording_id: str) -> None: ...
-    def collect(self) -> list[ChunkInternal]: ...
+    def collect(self) -> ChunkStoreInternal: ...
+    def to_chunks(self) -> list[ChunkInternal]: ...
     def __iter__(self) -> LazyChunkStreamIterator: ...
     @staticmethod
     def from_iter(iterable: Any) -> LazyChunkStreamInternal: ...

@@ -10,6 +10,9 @@ if TYPE_CHECKING:
 
 def test_index_ranges(complex_dataset: DatasetEntry) -> None:
     df = complex_dataset.get_index_ranges().sort("rerun_segment_id")
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
 
     assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -43,6 +46,9 @@ def test_index_ranges_dataset_view(complex_dataset: DatasetEntry) -> None:
     view = complex_dataset.filter_segments(["complex_recording_0", "complex_recording_1"])
 
     df = view.get_index_ranges().sort("rerun_segment_id")
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
 
     assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -69,6 +75,9 @@ def test_index_ranges_dataset_view(complex_dataset: DatasetEntry) -> None:
 
     view = view.filter_contents(["/points"])
     df = view.get_index_ranges().sort("rerun_segment_id")
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
 
     assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────┐

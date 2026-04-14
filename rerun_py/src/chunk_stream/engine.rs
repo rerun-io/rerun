@@ -14,21 +14,14 @@ use std::sync::Arc;
 
 use pyo3::exceptions::PyStopIteration;
 use pyo3::prelude::*;
+
 use re_chunk::Chunk;
 
+use super::ChunkStream;
 use super::error::{ChunkPipelineError, PythonException};
-use super::rrd_loader::RrdSource;
 use super::stream::{
     LazyChunkStream, PipelineStep, SplitOrigin, SplitSide, StreamSource, StructuredFilter,
 };
-
-/// Pull-based chunk stream. Terminals call `next()` in a loop.
-///
-/// `Ok(None)` indicates successful termination of the stream.
-/// `Err(err)` indicates a fatal error that should terminate the pipeline.
-pub trait ChunkStream: Send {
-    fn next(&mut self) -> Result<Option<Arc<Chunk>>, ChunkPipelineError>;
-}
 
 /// Compile a [`LazyChunkStream`] into a runnable [`ChunkStream`] chain.
 pub fn compile(stream: &LazyChunkStream) -> Box<dyn ChunkStream> {
@@ -114,8 +107,10 @@ impl CompileContext {
             // the upstream cannot contain this split (that would be a cycle).
             let upstream = compile_inner(&desc.upstream, self);
 
-            let (tx_match, rx_match) = crossbeam::channel::bounded::<ChannelItem>(16);
-            let (tx_nomatch, rx_nomatch) = crossbeam::channel::bounded::<ChannelItem>(16);
+            let (tx_match, rx_match) =
+                crossbeam::channel::bounded::<ChannelItem>(super::CHUNK_CHANNEL_CAPACITY);
+            let (tx_nomatch, rx_nomatch) =
+                crossbeam::channel::bounded::<ChannelItem>(super::CHUNK_CHANNEL_CAPACITY);
 
             let filter = desc.filter.clone();
 
@@ -224,19 +219,24 @@ fn scan_inner(stream: &LazyChunkStream, usage: &mut HashMap<SplitOriginId, Split
                 scan_inner(&origin.upstream, usage);
             }
         }
+
         StreamSource::Merged(streams) => {
             for s in streams {
                 scan_inner(s, usage);
             }
         }
-        StreamSource::RrdFile(_) | StreamSource::PyIterable(_) => {}
+
+        StreamSource::StreamFactory(_) | StreamSource::PyIterable(_) => {}
     }
 }
 
 /// Recursive compilation with a shared context.
 fn compile_inner(stream: &LazyChunkStream, ctx: &mut CompileContext) -> Box<dyn ChunkStream> {
     let mut compiled: Box<dyn ChunkStream> = match stream.source() {
-        StreamSource::RrdFile(path) => Box::new(RrdSource::new(path)),
+        StreamSource::StreamFactory(factory) => match factory.create() {
+            Ok(source) => source,
+            Err(err) => Box::new(FailedSource(Some(err))),
+        },
 
         StreamSource::PyIterable(obj) => {
             let cloned = Python::attach(|py| obj.clone_ref(py));
@@ -247,7 +247,8 @@ fn compile_inner(stream: &LazyChunkStream, ctx: &mut CompileContext) -> Box<dyn 
             let compiled: Vec<Box<dyn ChunkStream>> =
                 streams.iter().map(|s| compile_inner(s, ctx)).collect();
 
-            let (tx, rx) = crossbeam::channel::bounded::<ChannelItem>(16);
+            let (tx, rx) =
+                crossbeam::channel::bounded::<ChannelItem>(super::CHUNK_CHANNEL_CAPACITY);
             for upstream in compiled {
                 let tx = tx.clone();
                 std::thread::Builder::new()
@@ -306,6 +307,7 @@ fn compile_inner(stream: &LazyChunkStream, ctx: &mut CompileContext) -> Box<dyn 
         compiled = match step {
             PipelineStep::Filter(f) => Box::new(FilterStream::new(compiled, f.clone())),
             PipelineStep::Drop(f) => Box::new(DropStream::new(compiled, f.clone())),
+            PipelineStep::Lenses(l) => Box::new(LensesStream::new(compiled, l.clone())),
         };
     }
 
@@ -316,7 +318,7 @@ fn compile_inner(stream: &LazyChunkStream, ctx: &mut CompileContext) -> Box<dyn 
 // PyIteratorSource
 // ---------------------------------------------------------------------------
 
-pub struct PyIteratorSource {
+struct PyIteratorSource {
     iter_obj: Py<PyAny>,
 }
 
@@ -353,7 +355,7 @@ impl ChunkStream for PyIteratorSource {
 // FilterStream
 // ---------------------------------------------------------------------------
 
-pub struct FilterStream {
+struct FilterStream {
     inner: Box<dyn ChunkStream>,
     filter: StructuredFilter,
 }
@@ -382,7 +384,7 @@ impl ChunkStream for FilterStream {
 // DropStream
 // ---------------------------------------------------------------------------
 
-pub struct DropStream {
+struct DropStream {
     inner: Box<dyn ChunkStream>,
     filter: StructuredFilter,
 }
@@ -408,10 +410,65 @@ impl ChunkStream for DropStream {
 }
 
 // ---------------------------------------------------------------------------
+// LensesStream
+// ---------------------------------------------------------------------------
+
+struct LensesStream {
+    inner: Box<dyn ChunkStream>,
+    lenses: re_lenses_core::Lenses,
+    buffer: std::collections::VecDeque<Arc<Chunk>>,
+}
+
+impl LensesStream {
+    pub fn new(inner: Box<dyn ChunkStream>, lenses: re_lenses_core::Lenses) -> Self {
+        Self {
+            inner,
+            lenses,
+            buffer: std::collections::VecDeque::new(),
+        }
+    }
+}
+
+impl ChunkStream for LensesStream {
+    fn next(&mut self) -> Result<Option<Arc<Chunk>>, ChunkPipelineError> {
+        loop {
+            // Drain buffer first.
+            if let Some(chunk) = self.buffer.pop_front() {
+                return Ok(Some(chunk));
+            }
+
+            // Pull next chunk from upstream.
+            let Some(chunk) = self.inner.next()? else {
+                return Ok(None);
+            };
+
+            // Apply lenses — may produce 0..N output chunks.
+            for result in self.lenses.apply(&chunk) {
+                match result {
+                    Ok(out) => self.buffer.push_back(Arc::new(out)),
+                    Err(partial) => {
+                        let reason = partial
+                            .errors()
+                            .map(|e| e.to_string())
+                            .collect::<Vec<_>>()
+                            .join("; ");
+                        return Err(ChunkPipelineError::Lenses { reason });
+                    }
+                }
+            }
+
+            // If lenses produced output, the next iteration will drain the buffer.
+            // If they produced nothing (e.g. DropUnmatched with no match), loop to
+            // pull the next upstream chunk.
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // ChannelStream
 // ---------------------------------------------------------------------------
 
-pub struct ChannelStream {
+struct ChannelStream {
     rx: crossbeam::channel::Receiver<ChannelItem>,
 }
 
@@ -426,7 +483,24 @@ impl ChunkStream for ChannelStream {
         match self.rx.recv() {
             Ok(Ok(chunk)) => Ok(Some(chunk)),
             Ok(Err(err)) => Err(err),
-            Err(_) => Ok(None), // channel closed — stream exhausted
+            Err(crossbeam::channel::RecvError) => Ok(None), // channel closed — stream exhausted
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// FailedSource
+// ---------------------------------------------------------------------------
+
+/// A stream that yields a single error, then terminates.
+/// Used to defer factory creation errors to the pipeline consumer.
+struct FailedSource(Option<ChunkPipelineError>);
+
+impl ChunkStream for FailedSource {
+    fn next(&mut self) -> Result<Option<Arc<Chunk>>, ChunkPipelineError> {
+        match self.0.take() {
+            Some(err) => Err(err),
+            None => Ok(None),
         }
     }
 }

@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/557a0aac8ea1409ea4b47e06522a6bcfdf0f90be/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/557a0aac8ea1409ea4b47e06522a6bcfdf0f90be/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/557a0aac8ea1409ea4b47e06522a6bcfdf0f90be/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/557a0aac8ea1409ea4b47e06522a6bcfdf0f90be/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/557a0aac8ea1409ea4b47e06522a6bcfdf0f90be/1200w.png">
+  <img src="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -142,6 +142,7 @@ Update instructions:
 | re_component_ui        | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_dataframe_ui        | Rich table widget over DataFusion.                                                                         |
 | re_memory_view         | Flamegraph visualization for memory usage trees                                                            |
+| re_plot                | Plot ui components shared between time series and bar chart view.                                          |
 | re_recording_panel     | The UI for the recording panel.                                                                            |
 | re_redap_browser       | The UI and communication to implement the in-viewer redap server browser.                                  |
 | re_selection_panel     | The UI for the selection panel.                                                                            |
@@ -152,6 +153,7 @@ Update instructions:
 | re_view_graph          | A View that shows a graph (node-link diagram).                                                             |
 | re_view_map            | A View that shows geospatial data on a map.                                                                |
 | re_view_spatial        | Views that show entities in a 2D or 3D spatial relationship.                                               |
+| re_view_states         | A view that shows state transitions as horizontal lanes over time.                                         |
 | re_view_tensor         | A View dedicated to visualizing tensors with arbitrary dimensionality.                                     |
 | re_view_text_document  | A simple View that shows a single text box.                                                                |
 | re_view_text_log       | A View that shows text entries in a table and scrolls with the active time.                                |
@@ -201,7 +203,8 @@ Update instructions:
 | -------------------- | ----------------------------------------------------------------- |
 | re_redap_client      | Official client for the Rerun Data Protocol                       |
 | re_redap_tests       | Official test suite for the Rerun Data Protocol                   |
-| re_data_loader       | Handles loading of Rerun data from file using data loader plugins |
+| re_importer          | Handles importing of Rerun data from file using importer plugins  |
+| re_parquet           | Parquet file loading with configurable column grouping            |
 | re_data_source       | Handles loading of Rerun data from different sources              |
 | re_grpc_client       | Client for the legacy StoreHub API                                |
 | re_grpc_server       | Server for the legacy StoreHub API                                |

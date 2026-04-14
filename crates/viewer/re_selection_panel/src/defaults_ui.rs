@@ -142,7 +142,7 @@ fn active_default_ui(
                 // `active_defaults` is sorted by descriptor which in turn sorts by archetype name,
                 // so we can just check if the previous archetype name is different from the current one.
                 if let Some(archetype_name) = component_descr.archetype {
-                    archetype_label_list_item_ui(ui, &Some(archetype_name));
+                    archetype_label_list_item_ui(ui, Some(&archetype_name));
                     previous_archetype_name = Some(archetype_name);
                 }
             }

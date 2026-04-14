@@ -28,7 +28,7 @@ oauth = ["dep:directories", "dep:ehttp", "dep:getrandom", "dep:ring", "dep:tiny_
 
 [package.metadata.cargo-shear]
 ignored = [
-  "getrandom", # transitive dependency
+  "getrandom02", # transitive dependency
 ]
 
 

@@ -205,7 +205,7 @@ impl RrdManifestIndex {
         let row_offset = self
             .manifest
             .as_ref()
-            .map_or(0, |manifest| manifest.data().num_rows());
+            .map_or(0, |manifest| manifest.chunk_fetcher_rb().num_rows());
 
         for (delta_row_idx, (&root_chunk_id, entity_path)) in
             izip!(delta.col_chunk_ids(), delta.col_chunk_entity_path()).enumerate()

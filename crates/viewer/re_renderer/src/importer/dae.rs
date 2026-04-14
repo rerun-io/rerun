@@ -406,7 +406,7 @@ struct Vertex {
 }
 
 impl<'a> VertexLoad<'a> for Vertex {
-    fn position(_: &(), reader: &SourceReader<'a, XYZ>, i: u32) -> Self {
+    fn position((): &(), reader: &SourceReader<'a, XYZ>, i: u32) -> Self {
         Self {
             position: reader.get(i as usize),
             normal: [0.0; 3],
@@ -414,11 +414,11 @@ impl<'a> VertexLoad<'a> for Vertex {
         }
     }
 
-    fn add_normal(&mut self, _: &(), reader: &SourceReader<'a, XYZ>, i: u32) {
+    fn add_normal(&mut self, (): &(), reader: &SourceReader<'a, XYZ>, i: u32) {
         self.normal = reader.get(i as usize);
     }
 
-    fn add_texcoord(&mut self, _: &(), r: &SourceReader<'a, ST>, i: u32, _set: Option<u32>) {
+    fn add_texcoord(&mut self, (): &(), r: &SourceReader<'a, ST>, i: u32, _set: Option<u32>) {
         self.texcoord = r.get(i as usize);
     }
 }

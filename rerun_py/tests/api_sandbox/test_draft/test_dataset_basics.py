@@ -48,6 +48,9 @@ timeline:start: timestamp[ns]
 sorbet:version: '0.1.3'\
 """)
 
+        df_schema = segment_df.schema()
+        for batch in segment_df.collect():
+            assert batch.schema.equals(df_schema, check_metadata=True)
         assert str(
             segment_df.drop("rerun_storage_urls", "rerun_last_updated_at", "property:RecordingInfo:start_time").sort(
                 "rerun_segment_id"
@@ -101,9 +104,12 @@ def test_dataset_register(rrd_paths: list[Path]) -> None:
         with pytest.raises(ValueError):
             ds.register([p.as_uri() for p in rrd_paths], layer_name=["not", "enough"]).wait()
 
-        assert str(
-            ds.manifest().select("rerun_layer_name", "rerun_segment_id").sort("rerun_layer_name", "rerun_segment_id")
-        ) == inline_snapshot(
+        df = ds.manifest().select("rerun_layer_name", "rerun_segment_id").sort("rerun_layer_name", "rerun_segment_id")
+        df_schema = df.schema()
+        for batch in df.collect():
+            assert batch.schema.equals(df_schema, check_metadata=True)
+
+        assert str(df) == inline_snapshot(
             """\
 ┌───────────────────────────────────────────────┐
 │ METADATA:                                     │
@@ -234,7 +240,12 @@ def test_dataset_metadata(complex_dataset_prefix: Path) -> None:
             success=[True, False, True],
         )
 
-        assert (str(meta.reader())) == inline_snapshot("""\
+        df = meta.reader()
+        df_schema = df.schema()
+        for batch in df.collect():
+            assert batch.schema.equals(df_schema, check_metadata=True)
+
+        assert (str(df)) == inline_snapshot("""\
 ┌─────────────────────────────────────────┐
 │ METADATA:                               │
 │ * version: 0.1.3                        │

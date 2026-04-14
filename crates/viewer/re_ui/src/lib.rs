@@ -21,7 +21,6 @@ mod markdown_utils;
 pub mod menu;
 pub mod modal;
 pub mod notifications;
-pub mod plot_legend;
 mod relative_time_range;
 mod section_collapsing_header;
 pub mod syntax_highlighting;

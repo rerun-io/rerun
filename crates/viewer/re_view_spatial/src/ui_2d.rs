@@ -277,7 +277,7 @@ impl SpatialView2D {
             near_clip_plane,
             &query.space_origin.to_string(),
             query.highlights.any_outlines(),
-            &state.pinhole_at_origin,
+            state.pinhole_at_origin.as_ref(),
             picking_config,
         ) else {
             return Ok(());
@@ -349,7 +349,7 @@ fn setup_target_config(
     near_clip_plane: f32,
     space_name: &str,
     any_outlines: bool,
-    scene_pinhole: &Option<Pinhole>,
+    scene_pinhole: Option<&Pinhole>,
     picking_config: Option<ViewPickingConfiguration>,
 ) -> anyhow::Result<TargetConfiguration> {
     // ⚠️ When changing this code, make sure to run `tests/rust/test_pinhole_projection`.

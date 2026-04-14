@@ -47,6 +47,12 @@ pub enum DrawPhase {
     /// Render mask for things that should get outlines.
     OutlineMask,
 
+    /// Outline masks for special cases that should follow draw order
+    /// instead of the regular [`DrawPhase::OutlineMask`] pass depth buffer.
+    ///
+    /// For example outlines for coplanar geometries that would otherwise have z-fighting.
+    OutlineMaskNoDepth,
+
     /// Drawn when compositing with the main target.
     Compositing,
 

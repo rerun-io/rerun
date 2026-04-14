@@ -1,10 +1,14 @@
+use std::sync::Arc;
+
 use arrow::array::ArrayRef;
 
 use super::Literal;
 
-/// A boxed, type-erased function operating on Arrow arrays.
+/// A shared, type-erased function operating on Arrow arrays.
+///
+/// Uses `Arc` so that `DynExpr` can derive `Clone`, which is needed by language bindings like `PyO3`.
 pub type BoxedFunction =
-    Box<dyn Fn(&ArrayRef) -> Result<Option<ArrayRef>, crate::combinators::Error> + Send + Sync>;
+    Arc<dyn Fn(&ArrayRef) -> Result<Option<ArrayRef>, crate::combinators::Error> + Send + Sync>;
 
 /// A constructor that creates a [`BoxedFunction`] from a list of arguments.
 type BoxedFunctionConstructor = Box<dyn Fn(&[Literal]) -> Option<BoxedFunction> + Send + Sync>;
@@ -134,7 +138,7 @@ macro_rules! impl_function_constructors {
                     )*
                 );
 
-                Some(Box::new(t))
+                Some(Arc::new(t))
             }
         }
     };

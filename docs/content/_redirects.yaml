@@ -55,11 +55,16 @@ concepts/visualization/visualizers-and-overrides: concepts/visualization/customi
 # Reference section
 reference/dataframes: concepts/query-and-transform/dataframe-queries
 concepts/query-and-transform/dataframes: concepts/query-and-transform/dataframe-queries
-reference/data-loaders: concepts/logging-and-ingestion/data-loaders/overview
-reference/data-loaders/cpp: concepts/logging-and-ingestion/data-loaders/cpp
-reference/data-loaders/overview: concepts/logging-and-ingestion/data-loaders/overview
-reference/data-loaders/python: concepts/logging-and-ingestion/data-loaders/python
-reference/data-loaders/rust: concepts/logging-and-ingestion/data-loaders/rust
+reference/data-loaders: concepts/logging-and-ingestion/importers/overview
+reference/data-loaders/cpp: concepts/logging-and-ingestion/importers/cpp
+reference/data-loaders/overview: concepts/logging-and-ingestion/importers/overview
+reference/data-loaders/python: concepts/logging-and-ingestion/importers/python
+reference/data-loaders/rust: concepts/logging-and-ingestion/importers/rust
+concepts/logging-and-ingestion/data-loaders: concepts/logging-and-ingestion/importers
+concepts/logging-and-ingestion/data-loaders/overview: concepts/logging-and-ingestion/importers/overview
+concepts/logging-and-ingestion/data-loaders/python: concepts/logging-and-ingestion/importers/python
+concepts/logging-and-ingestion/data-loaders/rust: concepts/logging-and-ingestion/importers/rust
+concepts/logging-and-ingestion/data-loaders/cpp: concepts/logging-and-ingestion/importers/cpp
 reference/entity-queries: concepts/visualization/entity-queries
 reference/mcap: concepts/logging-and-ingestion/mcap/message-formats
 reference/mcap/cli-reference: concepts/logging-and-ingestion/mcap/cli-reference

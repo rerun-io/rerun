@@ -171,13 +171,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         allow_none=True,
     ).tag(sync=True)
 
-    _ready = False
-    _event_queue: list[_Event] = []
-
     _fallback_token = traitlets.Unicode(allow_none=True).tag(sync=True)
     _theme = traitlets.Unicode(allow_none=True).tag(sync=True)
-
-    _raw_event_callbacks: list[Callable[[str], None]] = []
 
     def __init__(
         self,
@@ -191,6 +186,10 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
+
+        self._ready = False
+        self._event_queue: list[_Event] = []
+        self._raw_event_callbacks: list[Callable[[str], None]] = []
 
         self._width = width
         self._height = height

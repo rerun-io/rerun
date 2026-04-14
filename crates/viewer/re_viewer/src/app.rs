@@ -15,6 +15,7 @@ use re_entity_db::entity_db::EntityDb;
 use re_log::debug_assert;
 use re_log_channel::{
     DataSourceMessage, DataSourceUiCommand, LogReceiver, LogReceiverSet, LogSource,
+    RecordingOpenBehavior,
 };
 use re_log_types::{
     ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg, TimelinePoint,
@@ -521,7 +522,7 @@ impl App {
                     &self.egui_ctx,
                     &OpenUrlOptions {
                         follow: false,
-                        select_redap_source_when_loaded: true,
+                        recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                         show_loader: true,
                     },
                     &self.command_sender,
@@ -731,9 +732,7 @@ impl App {
     ///
     /// Otherwise this updates the viewer tracked history.
     fn update_history(&mut self, store_hub: &StoreHub) {
-        if !self.startup_options().web_history_enabled() {
-            self.update_viewer_history(store_hub);
-        } else {
+        if self.startup_options().web_history_enabled() {
             // We don't want to spam the web history API with changes, because
             // otherwise it will start complaining about it being an insecure
             // operation.
@@ -750,6 +749,8 @@ impl App {
             {
                 self.update_web_history(store_hub);
             }
+        } else {
+            self.update_viewer_history(store_hub);
         }
     }
 
@@ -948,6 +949,10 @@ impl App {
             SystemCommand::CloseRecordingOrTable(entry) => {
                 // TODO(#9464): Find a better successor here.
 
+                if let RecordingOrTable::Recording { store_id } = &entry {
+                    store_hub.set_opened(store_id, false);
+                }
+
                 let data_source = match &entry {
                     RecordingOrTable::Recording { store_id } => {
                         store_hub.entity_db_entry(store_id).data_source.clone()
@@ -1027,6 +1032,7 @@ impl App {
                 }
 
                 if let Some(recording_id) = new_route.recording_id() {
+                    store_hub.set_opened(recording_id, true);
                     store_hub.load_blueprint_and_caches(recording_id, &self.view_class_registry);
                 }
 
@@ -1295,7 +1301,12 @@ impl App {
                 }
             }
             SystemCommand::Logout => {
-                match re_auth::oauth::clear_credentials() {
+                let signed_out_url = self
+                    .startup_options
+                    .login
+                    .as_ref()
+                    .map(|l| l.signed_out_url.as_str());
+                match re_auth::oauth::clear_credentials(signed_out_url) {
                     Ok(Some(outcome)) => {
                         // Open the WorkOS logout URL to also end the browser session.
                         // This opens in a new tab/window so the viewer state is preserved.
@@ -1486,27 +1497,34 @@ impl App {
                 }
             }
 
-            LogDataSource::RedapDatasetSegment {
-                uri,
-                select_when_loaded,
-            } => {
+            LogDataSource::RedapDatasetSegment { uri, open_behavior } => {
                 let new_source = LogSource::RedapGrpcStream {
                     uri: uri.clone(),
-                    select_when_loaded: *select_when_loaded,
+                    open_behavior: *open_behavior,
                 };
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     // We're already receiving from the exact same data source!
-                    // But we still should select if requested according to the fragments if any.
-                    if *select_when_loaded {
-                        // First make the recording itself active.
-                        // `go_to_dataset_data` may override the selection again, but this is important regardless,
-                        // since `go_to_dataset_data` does not change the active recording.
-                        drop(all_sources);
-                        self.make_store_active_and_highlight(store_hub, egui_ctx, &uri.store_id());
+                    // But we still should navigate if requested according to the fragments if any.
+                    drop(all_sources);
+                    match *open_behavior {
+                        RecordingOpenBehavior::Background => {}
+                        RecordingOpenBehavior::Open => {
+                            store_hub.set_opened(&uri.store_id(), true);
+                        }
+                        RecordingOpenBehavior::OpenAndSelect => {
+                            // First make the recording itself active.
+                            // `go_to_dataset_data` may override the selection again, but this is important regardless,
+                            // since `go_to_dataset_data` does not change the active recording.
+                            self.make_store_active_and_highlight(
+                                store_hub,
+                                egui_ctx,
+                                &uri.store_id(),
+                            );
+                        }
                     }
 
                     // Note that applying the fragment changes the per-recording settings like the active time cursor.
-                    // Therefore, we apply it even when `select_when_loaded` is false.
+                    // Therefore, we apply it even when open_behavior is Background.
                     self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
 
                     return;
@@ -1797,7 +1815,7 @@ impl App {
                         egui_ctx,
                         &OpenUrlOptions {
                             follow: true,
-                            select_redap_source_when_loaded: true,
+                            recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                             show_loader: true,
                         },
                         &self.command_sender,
@@ -1810,7 +1828,7 @@ impl App {
                         egui_ctx,
                         &OpenUrlOptions {
                             follow: true,
-                            select_redap_source_when_loaded: true,
+                            recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                             show_loader: true,
                         },
                         &self.command_sender,
@@ -2280,14 +2298,18 @@ impl App {
             return;
         };
 
+        use std::fmt::Write as _;
+
         let mut hierarchy_text = String::new();
 
         // Add application ID and recording ID header
-        hierarchy_text.push_str(&format!(
+        write!(
+            hierarchy_text,
             "Application ID: {}\nRecording ID: {}\n\n",
             entity_db.application_id(),
             entity_db.recording_id()
-        ));
+        )
+        .ok();
 
         hierarchy_text.push_str(&entity_db.format_with_components());
 
@@ -2422,6 +2444,7 @@ impl App {
                             &self.connection_registry,
                             &self.async_runtime,
                             &self.egui_ctx,
+                            self.startup_options.login_enabled(),
                         );
                     }
 
@@ -2750,20 +2773,30 @@ impl App {
         channel_source: &LogSource,
         store_hub: &mut StoreHub,
     ) {
-        if channel_source.select_when_loaded() {
-            // Set the recording-id after potentially creating the store in the hub.
-            // This ordering is important because the `StoreHub` internally
-            // updates the app-id when changing the recording.
-            match store_id.kind() {
-                StoreKind::Recording => {
-                    re_log::trace!("Opening a new recording: '{store_id:?}'");
-                    self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
+        match channel_source.open_behavior() {
+            RecordingOpenBehavior::Background => {}
+
+            RecordingOpenBehavior::Open => {
+                if store_id.kind() == StoreKind::Recording {
+                    store_hub.set_opened(store_id, true);
                 }
-                StoreKind::Blueprint => {
-                    // We wait with activating blueprints until they are fully loaded,
-                    // so that we don't run heuristics on half-loaded blueprints.
-                    // Otherwise on a mixed connection (SDK sending both blueprint and recording)
-                    // the blueprint won't be activated until the whole _recording_ has finished loading.
+            }
+
+            RecordingOpenBehavior::OpenAndSelect => {
+                // Set the recording-id after potentially creating the store in the hub.
+                // This ordering is important because the `StoreHub` internally
+                // updates the app-id when changing the recording.
+                match store_id.kind() {
+                    StoreKind::Recording => {
+                        re_log::trace!("Opening a new recording: '{store_id:?}'");
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
+                    }
+                    StoreKind::Blueprint => {
+                        // We wait with activating blueprints until they are fully loaded,
+                        // so that we don't run heuristics on half-loaded blueprints.
+                        // Otherwise on a mixed connection (SDK sending both blueprint and recording)
+                        // the blueprint won't be activated until the whole _recording_ has finished loading.
+                    }
                 }
             }
         }
@@ -2878,6 +2911,7 @@ impl App {
             return;
         }
 
+        store_hub.set_opened(store_id, true);
         store_hub.load_blueprint_and_caches(store_id, &self.view_class_registry);
         self.state.navigation.replace(Route::LocalRecording {
             recording_id: store_id.clone(),
@@ -3506,11 +3540,31 @@ impl App {
             }
 
             if memory_limit != re_memory::MemoryLimit::ZERO {
+                // Pre-compute which recordings should be prefetched to avoid borrow conflicts below.
+                let should_prefetch: ahash::HashSet<StoreId> = store_hub
+                    .store_bundle()
+                    .recordings()
+                    .filter_map(|rec| {
+                        if store_hub.was_preview(rec.store_id())
+                            || store_hub.is_opened(rec.store_id())
+                        {
+                            Some(rec.store_id().clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
                 for recording in store_hub.store_bundle_mut().recordings_mut() {
                     // This means we skip the active recording, since we're only
                     // in this block to begin with if there is no active recording
                     // or the active recording cannot load more.
                     if !recording.can_load_more() {
+                        continue;
+                    }
+
+                    if !should_prefetch.contains(recording.store_id()) {
+                        // Not currently displayed anywhere — skip.
                         continue;
                     }
 
@@ -3835,7 +3889,7 @@ impl eframe::App for App {
         if is_start_of_new_frame {
             // IMPORTANT: only call this once per FRAME even if we run multiple passes.
             // Otherwise we might incorrectly evict something that was invisible in the first (discarded) pass.
-            store_hub.begin_frame_caches(); // Call AFTER `purge_memory_if_needed`
+            store_hub.begin_frame_caches(self.active_recording_id()); // Call AFTER `purge_memory_if_needed`
         }
 
         file_saver_progress_ui(ui, &mut self.background_tasks); // toasts for background file saver
@@ -3955,7 +4009,8 @@ impl eframe::App for App {
                                     ui,
                                     &OpenUrlOptions {
                                         follow: false,
-                                        select_redap_source_when_loaded: true,
+                                        recording_open_behavior:
+                                            RecordingOpenBehavior::OpenAndSelect,
                                         show_loader: true,
                                     },
                                     &self.command_sender,
@@ -4136,8 +4191,8 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 fn open_file_dialog_native(_: crate::MainThreadToken) -> Vec<std::path::PathBuf> {
     re_tracing::profile_function!();
 
-    let supported: Vec<_> = if re_data_loader::iter_external_loaders().len() == 0 {
-        re_data_loader::supported_extensions().collect()
+    let supported: Vec<_> = if re_importer::iter_external_importers().len() == 0 {
+        re_importer::supported_extensions().collect()
     } else {
         vec![]
     };
@@ -4154,7 +4209,7 @@ fn open_file_dialog_native(_: crate::MainThreadToken) -> Vec<std::path::PathBuf>
 
 #[cfg(target_arch = "wasm32")]
 async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
-    let supported: Vec<_> = re_data_loader::supported_extensions().collect();
+    let supported: Vec<_> = re_importer::supported_extensions().collect();
 
     let files = rfd::AsyncFileDialog::new()
         .add_filter("Supported files", &supported)

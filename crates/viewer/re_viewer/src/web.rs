@@ -8,7 +8,7 @@ use std::str::FromStr as _;
 use ahash::HashMap;
 use arrow::array::RecordBatch;
 use re_log::ResultExt as _;
-use re_log_channel::LogSender;
+use re_log_channel::{LogSender, RecordingOpenBehavior};
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
 use re_sdk_types::blueprint::components::PlayState;
@@ -211,7 +211,7 @@ impl WebHandle {
                     &open_url::OpenUrlOptions {
                         // TODO(andreas): should follow be part of the fragments?
                         follow: follow.unwrap_or(false),
-                        select_redap_source_when_loaded: true,
+                        recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                         show_loader: true,
                     },
                     &app.command_sender,
@@ -374,7 +374,7 @@ impl WebHandle {
             let egui_ctx = app.egui_ctx.clone();
 
             match log_tx.send(msg.into()) {
-                Ok(_) => egui_ctx.request_repaint_after(std::time::Duration::from_millis(10)),
+                Ok(()) => egui_ctx.request_repaint_after(std::time::Duration::from_millis(10)),
                 Err(err) => {
                     re_log::info_once!("Failed to dispatch log message to viewer: {err}");
                 }
@@ -669,6 +669,7 @@ pub struct AppOptions {
     // height: Option<String>,
     fallback_token: Option<String>,
     theme: Option<String>,
+    login: Option<crate::LoginOptions>,
 
     // Hidden `WebViewerOptions`
     // ------------
@@ -737,6 +738,7 @@ fn create_app(
 
         fallback_token,
         theme,
+        login,
     } = app_options;
 
     if let Some(fallback_token) = fallback_token {
@@ -785,6 +787,7 @@ fn create_app(
 
         enable_history,
         viewer_base_url,
+        login,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
@@ -831,7 +834,7 @@ fn create_app(
                         &app.egui_ctx,
                         &open_url::OpenUrlOptions {
                             follow: false,
-                            select_redap_source_when_loaded: true,
+                            recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                             show_loader: true,
                         },
                         &app.command_sender,

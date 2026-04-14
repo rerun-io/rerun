@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -105,22 +106,26 @@ impl CompareCommand {
                 let mut error_msg = String::from("Unordered comparison failed:\n");
 
                 if !unmatched_chunks1.is_empty() {
-                    error_msg.push_str(&format!(
-                        "\n{} chunk(s) from {path_to_rrd1:?} could not be matched:\n",
+                    writeln!(
+                        error_msg,
+                        "\n{} chunk(s) from {path_to_rrd1:?} could not be matched:",
                         unmatched_chunks1.len()
-                    ));
+                    )
+                    .ok();
                     for chunk in &unmatched_chunks1 {
-                        error_msg.push_str(&format!("{}\n", format_chunk(chunk)));
+                        writeln!(error_msg, "{}", format_chunk(chunk)).ok();
                     }
                 }
 
                 if !chunks2_remaining.is_empty() {
-                    error_msg.push_str(&format!(
-                        "\n{} chunk(s) from {path_to_rrd2:?} could not be matched:\n",
+                    writeln!(
+                        error_msg,
+                        "\n{} chunk(s) from {path_to_rrd2:?} could not be matched:",
                         chunks2_remaining.len()
-                    ));
+                    )
+                    .ok();
                     for chunk in &chunks2_remaining {
-                        error_msg.push_str(&format!("{}\n", format_chunk(chunk)));
+                        writeln!(error_msg, "{}", format_chunk(chunk)).ok();
                     }
                 }
 

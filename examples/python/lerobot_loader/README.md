@@ -15,7 +15,7 @@ thumbnail_dimensions = [480, 275]
 
 ## Overview
 
-Rerun has a built in data-loader to visualize [LeRobot](https://github.com/huggingface/lerobot) datasets.
+Rerun has a built in importer to visualize [LeRobot](https://github.com/huggingface/lerobot) datasets.
 
 ## Try it out
 
@@ -34,4 +34,4 @@ rerun mixer_on_off_new_1
 
 ### SDK support
 
-Since this dataloader is included other SDK functionalities should work similar to loading a rerun file but pointing at the directory instead.
+Since this importer is included other SDK functionalities should work similar to loading a rerun file but pointing at the directory instead.

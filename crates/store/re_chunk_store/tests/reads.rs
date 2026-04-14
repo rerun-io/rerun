@@ -33,9 +33,7 @@ fn query_latest_array(
         .to_iter()
         .unwrap()
         .filter_map(|chunk| {
-            let chunk = chunk
-                .latest_at(query, component_descr.component)
-                .into_unit()?;
+            let chunk = chunk.latest_at(query, component_descr.component)?;
             chunk.index(&query.timeline()).map(|index| (index, chunk))
         })
         .max_by_key(|(index, _chunk)| *index)?;

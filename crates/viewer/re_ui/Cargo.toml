@@ -49,10 +49,8 @@ anyhow.workspace = true
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
-egui_tiles.workspace = true
 egui.workspace = true
 getrandom.workspace = true
-indexmap.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 num-traits.workspace = true
@@ -81,6 +79,7 @@ raw-window-handle.workspace = true
 [dev-dependencies]
 crossbeam.workspace = true
 egui_kittest.workspace = true
+egui_tiles.workspace = true
 re_quota_channel.workspace = true
 rand = { workspace = true, features = ["std", "thread_rng"] }
 

@@ -35,6 +35,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr as _;
 use std::sync::Arc;
+use tracing::Instrument as _;
 use web_time::Instant;
 
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
@@ -304,7 +305,6 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
         TableType::Base
     }
 
-    #[tracing::instrument(level = "info", skip_all)]
     async fn scan(
         &self,
         state: &dyn Session,
@@ -312,137 +312,152 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> datafusion::common::Result<Arc<dyn ExecutionPlan>> {
-        let scan_start_wall = web_time::SystemTime::now();
-        let scan_start = Instant::now();
+        let scan_span = {
+            // Attach trace context BEFORE creating the span so the span is
+            // parented under the propagated trace
+            #[cfg(not(target_arch = "wasm32"))]
+            let _trace_guard =
+                crate::dataframe_query_provider::attach_trace_context(self.trace_headers.as_ref());
 
-        let mut dataset_queries = vec![self.query_dataset_request.clone()];
-        for filter in filters {
-            if let Some(updated_queries) =
-                apply_filter_expr_to_queries(dataset_queries.clone(), filter, &self.schema)?
-            {
-                dataset_queries = updated_queries;
-            }
-        }
+            tracing::info_span!("scan")
+        };
 
-        let mut query_expression = self.query_expression.clone();
+        async {
+            let scan_start_wall = web_time::SystemTime::now();
+            let scan_start = Instant::now();
 
-        let mut chunk_info_batches = Vec::with_capacity(dataset_queries.len());
-        let mut time_to_first_chunk_info: Option<std::time::Duration> = None;
-
-        let mut trace_id: Option<opentelemetry::TraceId> = None;
-
-        for dataset_query in dataset_queries {
-            let query_start = Instant::now();
-
-            let response = self
-                .client
-                .clone()
-                .query_dataset(
-                    tonic::Request::new(dataset_query.into())
-                        .with_entry_id(self.dataset_id)
-                        .map_err(|err| exec_datafusion_err!("{err}"))?,
-                )
-                .await
-                .map_err(|err| exec_datafusion_err!("{err}"))?;
-
-            // Capture the server-side trace-id from response metadata.
-            if trace_id.is_none() {
-                trace_id = response
-                    .metadata()
-                    .get("x-request-trace-id")
-                    .and_then(|v| v.to_str().ok())
-                    .and_then(|s| opentelemetry::TraceId::from_hex(s).ok());
-            }
-
-            let mut response_stream = response.into_inner();
-
-            while let Some(response) = response_stream.next().await {
-                if time_to_first_chunk_info.is_none() {
-                    time_to_first_chunk_info = Some(query_start.elapsed());
+            let mut dataset_queries = vec![self.query_dataset_request.clone()];
+            for filter in filters {
+                if let Some(updated_queries) =
+                    apply_filter_expr_to_queries(dataset_queries.clone(), filter, &self.schema)?
+                {
+                    dataset_queries = updated_queries;
                 }
+            }
 
-                let response = response.map_err(|err| exec_datafusion_err!("{err}"))?;
-                let Some(dataframe_part) = response.data else {
-                    continue;
-                };
-                let batch: RecordBatch = dataframe_part
-                    .try_into()
+            let mut query_expression = self.query_expression.clone();
+
+            let mut chunk_info_batches = Vec::with_capacity(dataset_queries.len());
+            let mut time_to_first_chunk_info: Option<std::time::Duration> = None;
+
+            let mut trace_id: Option<opentelemetry::TraceId> = None;
+
+            for dataset_query in dataset_queries {
+                let query_start = Instant::now();
+
+                let response = self
+                    .client
+                    .clone()
+                    .query_dataset(
+                        tonic::Request::new(dataset_query.into())
+                            .with_entry_id(self.dataset_id)
+                            .map_err(|err| exec_datafusion_err!("{err}"))?,
+                    )
+                    .await
                     .map_err(|err| exec_datafusion_err!("{err}"))?;
 
-                chunk_info_batches.push(batch);
+                // Capture the server-side trace-id from response metadata.
+                if trace_id.is_none() {
+                    trace_id = response
+                        .metadata()
+                        .get("x-request-trace-id")
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(|s| opentelemetry::TraceId::from_hex(s).ok());
+                }
+
+                let mut response_stream = response.into_inner();
+
+                while let Some(response) = response_stream.next().await {
+                    if time_to_first_chunk_info.is_none() {
+                        time_to_first_chunk_info = Some(query_start.elapsed());
+                    }
+
+                    let response = response.map_err(|err| exec_datafusion_err!("{err}"))?;
+                    let Some(dataframe_part) = response.data else {
+                        continue;
+                    };
+                    let batch: RecordBatch = dataframe_part
+                        .try_into()
+                        .map_err(|err| exec_datafusion_err!("{err}"))?;
+
+                    chunk_info_batches.push(batch);
+                }
             }
-        }
-        let chunk_info_batches = compute_unique_chunk_info_ids(vec![chunk_info_batches])?;
+            let chunk_info_batches = compute_unique_chunk_info_ids(vec![chunk_info_batches])?;
 
-        // Begin per-connection analytics tracking.
-        // Fetch stats will be accumulated by the IO loops; the event is sent on drop.
-        let pending_analytics = self.analytics.as_ref().map(|analytics| {
-            let query_chunks = chunk_info_batches.as_ref().map_or(0, |b| b.num_rows());
+            // Begin per-connection analytics tracking.
+            // Fetch stats will be accumulated by the IO loops; the event is sent on drop.
+            let pending_analytics = self.analytics.as_ref().map(|analytics| {
+                let query_chunks = chunk_info_batches.as_ref().map_or(0, |b| b.num_rows());
 
-            let query_segments = chunk_info_batches.as_ref().map_or(0, |batch| {
-                batch
-                    .column_by_name(QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
-                    .and_then(|col| col.as_any().downcast_ref::<StringArray>())
-                    .map_or(0, |arr| arr.iter().flatten().collect::<BTreeSet<_>>().len())
+                let query_segments = chunk_info_batches.as_ref().map_or(0, |batch| {
+                    batch
+                        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
+                        .and_then(|col| col.as_any().downcast_ref::<StringArray>())
+                        .map_or(0, |arr| arr.iter().flatten().collect::<BTreeSet<_>>().len())
+                });
+
+                let total_chunk_bytes: u64 = chunk_info_batches.as_ref().map_or(0, |batch| {
+                    batch
+                        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
+                        .and_then(|col| col.as_any().downcast_ref::<arrow::array::UInt64Array>())
+                        .map_or(0, |arr| arr.iter().flatten().sum())
+                });
+
+                analytics.begin_query(
+                    crate::analytics::QueryInfo {
+                        dataset_id: self.dataset_id.to_string(),
+                        query_chunks,
+                        query_segments,
+                        query_columns: self.schema.fields().len(),
+                        query_entities: self.query_dataset_request.entity_paths.len(),
+                        query_bytes: total_chunk_bytes,
+                        time_range: scan_start_wall..web_time::SystemTime::now(),
+                        time_to_first_chunk_info,
+                        trace_id,
+                    },
+                    scan_start,
+                )
             });
 
-            let total_chunk_bytes: u64 = chunk_info_batches.as_ref().map_or(0, |batch| {
-                batch
-                    .column_by_name(QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
-                    .and_then(|col| col.as_any().downcast_ref::<arrow::array::UInt64Array>())
-                    .map_or(0, |arr| arr.iter().flatten().sum())
-            });
+            // Find the first column selection that is a component
+            if query_expression.filtered_is_not_null.is_none() {
+                let filters = filters.iter().collect::<Vec<_>>();
+                query_expression.filtered_is_not_null =
+                    Self::compute_column_is_neq_null_filter(&filters)
+                        .into_iter()
+                        .flatten()
+                        .next();
+            }
 
-            analytics.begin_query(
-                crate::analytics::QueryInfo {
-                    dataset_id: self.dataset_id.to_string(),
-                    query_chunks,
-                    query_segments,
-                    query_columns: self.schema.fields().len(),
-                    query_entities: self.query_dataset_request.entity_paths.len(),
-                    query_bytes: total_chunk_bytes,
-                    time_range: scan_start_wall..web_time::SystemTime::now(),
-                    time_to_first_chunk_info,
-                    trace_id,
-                },
-                scan_start,
+            crate::SegmentStreamExec::try_new(
+                &self.schema,
+                self.sort_index,
+                projection,
+                state.config().target_partitions(),
+                chunk_info_batches,
+                query_expression,
+                self.index_values.clone(),
+                self.client.clone(),
+                limit,
+                #[cfg(not(target_arch = "wasm32"))]
+                self.trace_headers.clone(),
+                pending_analytics,
             )
-        });
-
-        // Find the first column selection that is a component
-        if query_expression.filtered_is_not_null.is_none() {
-            let filters = filters.iter().collect::<Vec<_>>();
-            query_expression.filtered_is_not_null =
-                Self::compute_column_is_neq_null_filter(&filters)
-                    .into_iter()
-                    .flatten()
-                    .next();
+            .map(Arc::new)
+            .map(|exec| {
+                Arc::new(SizedCoalesceBatchesExec::new(
+                    exec,
+                    CoalescerOptions {
+                        target_batch_rows: DEFAULT_BATCH_ROWS,
+                        target_batch_bytes: DEFAULT_BATCH_BYTES,
+                        max_rows: limit,
+                    },
+                )) as Arc<dyn ExecutionPlan>
+            })
         }
-
-        crate::SegmentStreamExec::try_new(
-            &self.schema,
-            self.sort_index,
-            projection,
-            state.config().target_partitions(),
-            chunk_info_batches,
-            query_expression,
-            self.index_values.clone(),
-            self.client.clone(),
-            #[cfg(not(target_arch = "wasm32"))]
-            self.trace_headers.clone(),
-            pending_analytics,
-        )
-        .map(Arc::new)
-        .map(|exec| {
-            Arc::new(SizedCoalesceBatchesExec::new(
-                exec,
-                CoalescerOptions {
-                    target_batch_rows: DEFAULT_BATCH_ROWS,
-                    target_batch_bytes: DEFAULT_BATCH_BYTES,
-                    max_rows: limit,
-                },
-            )) as Arc<dyn ExecutionPlan>
-        })
+        .instrument(scan_span)
+        .await
     }
 
     fn supports_filters_pushdown(
@@ -539,7 +554,7 @@ fn compute_schema_for_query(
     )))
 }
 
-#[tracing::instrument(level = "info", skip_all)]
+#[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn prepend_string_column_schema(schema: &Schema, column_name: &str) -> Schema {
     let mut fields = vec![Field::new(column_name, DataType::Utf8, false)];
     fields.extend(schema.fields().iter().map(|f| (**f).clone()));
@@ -776,7 +791,7 @@ mod tests {
         let group_a = grouped.get("A").unwrap();
         assert_eq!(group_a.len(), 1);
         let chunk_ids_a = group_a[0]
-            .column_by_name("chunk_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
             .unwrap()
             .as_any()
             .downcast_ref::<FixedSizeBinaryArray>()
@@ -788,7 +803,7 @@ mod tests {
         let group_b = grouped.get("B").unwrap();
         assert_eq!(group_b.len(), 2);
         let chunk_ids_b1 = group_b[0]
-            .column_by_name("chunk_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
             .unwrap()
             .as_any()
             .downcast_ref::<FixedSizeBinaryArray>()
@@ -796,7 +811,7 @@ mod tests {
         assert_eq!(chunk_ids_b1.len(), 1);
         assert_eq!(chunk_ids_b1.value(0), [1u8; 16]);
         let chunk_ids_b2 = group_b[1]
-            .column_by_name("chunk_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
             .unwrap()
             .as_any()
             .downcast_ref::<FixedSizeBinaryArray>()
@@ -807,7 +822,7 @@ mod tests {
         let group_c = grouped.get("C").unwrap();
         assert_eq!(group_c.len(), 2);
         let chunk_ids_c1 = group_c[0]
-            .column_by_name("chunk_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
             .unwrap()
             .as_any()
             .downcast_ref::<FixedSizeBinaryArray>()
@@ -815,7 +830,7 @@ mod tests {
         assert_eq!(chunk_ids_c1.len(), 1);
         assert_eq!(chunk_ids_c1.value(0), [3u8; 16]);
         let chunk_ids_c2 = group_c[1]
-            .column_by_name("chunk_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
             .unwrap()
             .as_any()
             .downcast_ref::<FixedSizeBinaryArray>()
@@ -826,7 +841,7 @@ mod tests {
         let group_d = grouped.get("D").unwrap();
         assert_eq!(group_d.len(), 1);
         let chunk_ids_d = group_d[0]
-            .column_by_name("chunk_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
             .unwrap()
             .as_any()
             .downcast_ref::<FixedSizeBinaryArray>()

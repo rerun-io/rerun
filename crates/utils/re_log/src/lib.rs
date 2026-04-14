@@ -195,6 +195,8 @@ pub fn log_filter_from_env_or_default(default_base_log_filter: &str) -> String {
 /// Adds builtin log level filters for crates that are too verbose.
 #[cfg(not(target_arch = "wasm32"))]
 fn add_builtin_log_filter(base_log_filter: &str) -> String {
+    use std::fmt::Write as _;
+
     let mut rust_log = base_log_filter.to_lowercase();
 
     if base_log_filter != "off" {
@@ -202,7 +204,7 @@ fn add_builtin_log_filter(base_log_filter: &str) -> String {
 
         for crate_name in crate::CRATES_AT_ERROR_LEVEL {
             if !rust_log.contains(&format!("{crate_name}=")) {
-                rust_log += &format!(",{crate_name}=error");
+                write!(rust_log, ",{crate_name}=error").ok();
             }
         }
 
@@ -211,7 +213,7 @@ fn add_builtin_log_filter(base_log_filter: &str) -> String {
 
             for crate_name in crate::CRATES_AT_WARN_LEVEL {
                 if !rust_log.contains(&format!("{crate_name}=")) {
-                    rust_log += &format!(",{crate_name}=warn");
+                    write!(rust_log, ",{crate_name}=warn").ok();
                 }
             }
 
@@ -220,7 +222,7 @@ fn add_builtin_log_filter(base_log_filter: &str) -> String {
 
                 for crate_name in crate::CRATES_AT_INFO_LEVEL {
                     if !rust_log.contains(&format!("{crate_name}=")) {
-                        rust_log += &format!(",{crate_name}=info");
+                        write!(rust_log, ",{crate_name}=info").ok();
                     }
                 }
             }

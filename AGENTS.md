@@ -1,14 +1,14 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) and other LLMs when working with code in this repository.
+Guidance for LLMs working in this repo.
 
 ## Project overview
 
-Rerun is a time-aware multimodal data stack and visualizations tool used in robotics, spatial AI, computer vision, and similar domains. It provides SDKs (Python, Rust, C++) for logging rich data (images, point clouds, tensors, etc.) and a Viewer for visualization.
+Rerun: time-aware multimodal data stack + visualization for robotics, spatial AI, computer vision. SDKs (Python, Rust, C++) log rich data (images, point clouds, tensors, etc.). Viewer for visualization.
 
 ## Build system
 
-We use `pixi` for task management and dependency installation. Check `pixi.toml` for a full list of tasks.
+`pixi` for task management + deps. See `pixi.toml` for full task list.
 
 ### Essential commands
 
@@ -19,7 +19,7 @@ We use `pixi` for task management and dependency installation. Check `pixi.toml`
 - `pixi run cpp-build-all` - Build all C++ artifacts
 
 **Running:**
-- `pixi run rerun` - Run the viewer
+- `pixi run rerun` - Run viewer
 - `pixi run uvpy script.py` - Run Python scripts with rerun SDK
 - `cargo run -p <package_name>` - Run specific Rust example (e.g., `cargo run -p dna`)
 
@@ -27,22 +27,30 @@ We use `pixi` for task management and dependency installation. Check `pixi.toml`
 - `pixi run codegen` - Generate Rust/Python/C++ code from .fbs type definitions
 
 **Formatting:**
-- `pixi run rs-fmt` - Format Rust files. **Always run this after editing Rust files, before committing.**
+- `pixi run rs-fmt` - Format Rust files. **Always run after editing Rust files, before committing.**
 - `pixi run py-fmt` - Format Python files
 - `pixi run cpp-fmt` - Format C++ files
 - `pixi run toml-fmt` - Format TOML files
 
 **Testing:**
-- Use `cargo clippy -p <crate_name>` to run general rust checks before building things
-- `cargo nextest run --all-features --no-fail-fast -p <crate_name>` - Run tests for a specific crate
+- `cargo clippy -p <crate_name>` - Run rust checks before building
+- `cargo nextest run --all-features --no-fail-fast -p <crate_name>` - Run tests for specific crate
   - Example: `cargo nextest run --all-features --no-fail-fast -p re_view_spatial`
-- Use `cargo nextest` (not `cargo test`) for better output and parallelism
-- Always use `--all-features` unless you have a specific reason not to
-- Use `--no-fail-fast` to gather all test failures in a single run
+- Use `cargo nextest` (not `cargo test`) for better output + parallelism
+- Always use `--all-features` unless specific reason not to
+- Use `--no-fail-fast` to gather all failures in single run
+
+**Snapshots:**
+- **`insta` snapshots**: Text-based, run with regular Rust tests. On failure: `cargo insta review` (install: `cargo install cargo-insta`)
+- **Image comparison tests**: Render image vs checked-in reference. Uses `egui_kittest`'s `Harness::snapshot` + `TestContext` for mocking viewer.
+  - Results saved to `tests/snapshots/`, failures produce `diff.png`
+  - Update refs: `UPDATE_SNAPSHOTS=1`
+  - Update from failed CI run: `./scripts/update_snapshots_from_ci.sh`
+  - Best practices: see [egui_kittest README](https://github.com/emilk/egui/tree/master/crates/egui_kittest#snapshot-testing)
 
 ## Code generation system
 
-**Critical: Never edit generated files directly.** All generated files are marked "DO NOT EDIT" at the top.
+**Critical: Never edit generated files directly.** All generated files marked "DO NOT EDIT" at top.
 
 ### Type definition flow
 
@@ -50,27 +58,27 @@ We use `pixi` for task management and dependency installation. Check `pixi.toml`
 .fbs files (definitions/) → pixi run codegen → Generated code (Rust/Python/C++) + docs (docs/content/reference/types/)
 ```
 
-- Type definitions live in `crates/store/re_sdk_types/definitions/rerun/`
+- Type definitions in `crates/store/re_sdk_types/definitions/rerun/`
   - `datatypes/*.fbs` - Low-level types (Vec3D, Mat4x4, etc.)
   - `components/*.fbs` - Component types (Position3D, Color, etc.)
   - `archetypes/*.fbs` - Archetypes (Points3D, Image, etc.)
   - `blueprint/*.fbs` - Blueprint system types
-- Codegen implementation is in `crates/build/re_types_builder/`
-- After modifying .fbs files, run `pixi run codegen` to regenerate code
+- Codegen implementation in `crates/build/re_types_builder/`
+- After modifying .fbs files, run `pixi run codegen` to regenerate
 
 ### Extension pattern
 
-To add custom functionality to generated types, create `_ext` files:
-- Rust: `filename_ext.rs` (automatically imported by codegen)
-- Python: `filename_ext.py` (mixed in with generated class)
-- C++: `filename_ext.cpp` (compiled and included automatically, parts of it may be marked for copy into the header by codegen)
+Add custom functionality to generated types via `_ext` files:
+- Rust: `filename_ext.rs` (auto-imported by codegen)
+- Python: `filename_ext.py` (mixed into generated class)
+- C++: `filename_ext.cpp` (compiled + included auto, parts may be marked for copy into header by codegen)
 
 ## Code conventions
 
 ### General
 
 - use `…` instead of `...` <!-- NOLINT -->
-- validate various custom conventions via `pixi run lint-rerun <file>` (not passing any file will check everything)
+- Validate conventions via `pixi run lint-rerun <file>` (no file = check everything)
 
 ## Architecture overview
 
@@ -84,22 +92,22 @@ crates/
 └── viewer/    # Viewer UI and rendering
 ```
 
-For more details about the architecture see `ARCHITECTURE.md`.
+More details in `ARCHITECTURE.md`.
 
 ### Type system hierarchy
 
-The type system has three levels (generated from .fbs files):
+Three levels (generated from .fbs files):
 
 1. **Datatypes** (`rerun.datatypes.*`) - Basic types like Vec3D, Color
 2. **Components** (`rerun.components.*`) - Named semantic wrappers (Position3D, Radius)
 3. **Archetypes** (`rerun.archetypes.*`) - Collections of components (Points3D, Image)
 
 Each archetype specifies:
-- Required components (must be provided)
-- Recommended components (have good defaults)
-- Optional components (purely optional)
+- Required components (must provide)
+- Recommended components (good defaults)
+- Optional components
 
-Example: `Points3D` archetype requires `positions`, recommends `colors` and `radii`, allows optional `labels`.
+Example: `Points3D` requires `positions`, recommends `colors` and `radii`, optional `labels`.
 
 ### Data flow
 
@@ -115,11 +123,11 @@ Viewer (immediate mode rendering)
 
 ### Blueprint system
 
-The blueprint is the viewer's configuration layer:
-- Stored as a separate store (`re_entity_db`) with "blueprint" timeline
+Viewer's configuration layer:
+- Stored as separate store (`re_entity_db`) with "blueprint" timeline
 - Defines: view layout, visibility, per-entity overrides, view properties
-- Uses the same type system as logged data
-- Basic blueprint path hierarchy: `/viewport/`, `/view/{uuid}/`, `/container/{uuid}/`
+- Uses same type system as logged data
+- Path hierarchy: `/viewport/`, `/view/{uuid}/`, `/container/{uuid}/`
 
 ### Visualizers
 
@@ -128,15 +136,15 @@ Each view type (Spatial3D, TimeSeries, etc.) has registered visualizers:
 - Execute per-frame: query data → process → generate render commands
 - Examples: Points3DVisualizer, LineStripsVisualizer, MeshVisualizer
 
-The viewer uses **immediate mode**: every frame, query the store and re-render from scratch.
+Viewer uses **immediate mode**: every frame, query store + re-render from scratch.
 
 ## Documentation snippets
 
-See [`docs/snippets/README.md`](docs/snippets/README.md) for how to run, build, and find snippets. Configuration for testing and indexing is in [`docs/snippets/snippets.toml`](docs/snippets/snippets.toml).
+See [`docs/snippets/README.md`](docs/snippets/README.md) for running, building, finding snippets. Config in [`docs/snippets/snippets.toml`](docs/snippets/snippets.toml).
 
 ## Python development workflow
 
-Python uses a separate uv-managed .venv (not pixi's conda env):
+Python uses separate uv-managed .venv (not pixi's conda env):
 
 ```bash
 pixi run py-build              # Build rerun-sdk into .venv
@@ -144,35 +152,35 @@ pixi run uvpy script.py        # Run Python scripts via uv
 pixi run uv run script.py      # Explicit uv run
 ```
 
-The `uv` wrapper script unsets `CONDA_PREFIX` to ensure isolation from pixi's environment.
+`uv` wrapper unsets `CONDA_PREFIX` for isolation from pixi's env.
 
 ## Important notes
 
-- **PyO3 Configuration**: If you see PyO3 config errors, run `pixi run ensure-pyo3-build-cfg`
-- **git-lfs**: Required for test snapshots. Install with your package manager and run `git lfs install`
-- **Immediate Mode**: The entire viewer is rendered from scratch each frame (no state management callbacks)
-- **Arrow Native**: Data is stored, transmitted, and queried as Apache Arrow arrays
-- **Multi-language**: Changes to .fbs files affect Rust, Python, and C++ simultaneously
+- **PyO3 Configuration**: PyO3 config errors → run `pixi run ensure-pyo3-build-cfg`
+- **git-lfs**: Required for test snapshots. Install + run `git lfs install`
+- **Immediate Mode**: Entire viewer rendered from scratch each frame (no state management callbacks)
+- **Arrow Native**: Data stored, transmitted, queried as Apache Arrow arrays
+- **Multi-language**: .fbs changes affect Rust, Python, C++ simultaneously
 
 ## Documentation system
 
-See [`docs/README.md`](docs/README.md) for the full documentation architecture.
+See [`docs/README.md`](docs/README.md) for full docs architecture.
 
-The docs span multiple sites: the main docs at `rerun.io/docs` (built from `docs/content/`), plus API reference sites for Python (MkDocs), C++ (Doxygen), and JS (TypeDoc) at `ref.rerun.io/docs/{python,cpp,js}/`.
+Docs span multiple sites: main docs at `rerun.io/docs` (from `docs/content/`), API refs for Python (MkDocs), C++ (Doxygen), JS (TypeDoc) at `ref.rerun.io/docs/{python,cpp,js}/`.
 
-Key things to know:
-- **`docs/content/reference/types/`** is auto-generated by `pixi run codegen` from `.fbs` files - do not edit directly
-- **`docs/content/reference/cli.md`** is auto-generated by `pixi run man` - do not edit directly
-- **Code snippets** live in `docs/snippets/all/` with implementations in Python, Rust, and C++
+Key points:
+- **`docs/content/reference/types/`** auto-generated by `pixi run codegen` from `.fbs` files - don't edit
+- **`docs/content/reference/cli.md`** auto-generated by `pixi run man` - don't edit
+- **Code snippets** in `docs/snippets/all/` with Python, Rust, C++ implementations
 - `pixi run py-docs-serve` previews Python API docs locally
 - `pixi run -e cpp cpp-docs` builds C++ docs
 
 ## Development references
 
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) - Detailed architecture documentation
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) - Detailed architecture docs
 - [`BUILD.md`](BUILD.md) - Full build instructions
 - [`CODE_STYLE.md`](CODE_STYLE.md) - Code style guidelines
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) - Contribution guidelines
-- [`DESIGN.md`](DESIGN.md) - Guidelines for UI design, covering GUI, CLI, documentation, log messages, etc
+- [`DESIGN.md`](DESIGN.md) - UI design guidelines (GUI, CLI, docs, log messages)
 - [`docs/README.md`](docs/README.md) - Documentation system (sites, builds, deployment)
-- [`rerun_py/README.md`](rerun_py/README.md) - Python SDK specific instructions
+- [`rerun_py/README.md`](rerun_py/README.md) - Python SDK instructions

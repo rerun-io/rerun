@@ -1,56 +1,16 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayBuilder, Float32Array, Float64Array, Int64Builder, ListArray, ListBuilder,
-    StringArray, StringBuilder, StructArray,
+    ArrayBuilder, Float32Array, Float64Array, Int64Builder, ListBuilder, StringBuilder, StructArray,
 };
 use arrow::datatypes::{DataType, Field};
 use rerun::external::re_log;
-use rerun::lenses::{Lens, LensesSink, Selector, Transform as _, op};
+use rerun::lenses::{Lens, LensesSink, Selector, op};
 use rerun::sink::GrpcSink;
 use rerun::{
     ComponentDescriptor, DynamicArchetype, RecordingStream, Scalars, SerializedComponentColumn,
     TextDocument, TimeCell,
 };
-
-fn lens_flag() -> anyhow::Result<Lens> {
-    let step_fn = |list_array: &ListArray| {
-        let (_, offsets, values, nulls) = list_array.clone().into_parts();
-        let flag_array = values.as_any().downcast_ref::<StringArray>().unwrap();
-
-        let scalar_array: Float64Array = flag_array
-            .iter()
-            .map(|s| {
-                s.map(|v| match v {
-                    "ACTIVE" => 1.0,
-                    "INACTIVE" => 2.0,
-                    _ => 0.0,
-                })
-            })
-            .collect();
-
-        Ok(Some(ListArray::new(
-            Arc::new(Field::new_list_field(
-                scalar_array.data_type().clone(),
-                true,
-            )),
-            offsets,
-            Arc::new(scalar_array),
-            nulls,
-        )))
-    };
-
-    let lens = Lens::for_input_column("/flag".parse()?, "example:Flag:flag")
-        .output_columns(|out| {
-            out.component(
-                Scalars::descriptor_scalars(),
-                Selector::parse(".")?.then(step_fn),
-            )
-        })?
-        .build();
-
-    Ok(lens)
-}
 
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
@@ -62,14 +22,15 @@ fn main() -> anyhow::Result<()> {
         .build();
 
     let destructure = Lens::for_input_column("/nested".parse()?, "example:Nested:payload")
-        .output_columns_at("nested/a", |out| {
-            out.component(
+        .output_columns(|out| {
+            out.at_entity("nested/a").component(
                 Scalars::descriptor_scalars(),
-                Selector::parse(".a")?.then(op::cast(DataType::Float64)),
+                Selector::parse(".a")?.pipe(op::cast(DataType::Float64)),
             )
         })?
-        .output_columns_at("nested/b", |out| {
-            out.component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
+        .output_columns(|out| {
+            out.at_entity("nested/b")
+                .component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
         })?
         .build();
 
@@ -87,7 +48,6 @@ fn main() -> anyhow::Result<()> {
     let lenses_sink = LensesSink::new(GrpcSink::default())
         .with_lens(instruction)
         .with_lens(destructure)
-        .with_lens(lens_flag()?)
         .with_lens(time);
 
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_lenses").spawn()?;
@@ -95,27 +55,12 @@ fn main() -> anyhow::Result<()> {
 
     log_instructions(&rec)?;
     log_structs_with_scalars(&rec)?;
-    log_flag(&rec)?;
     log_timestamps(&rec)?;
 
     Ok(())
 }
 
 // Logging helpers
-
-fn log_flag(rec: &RecordingStream) -> anyhow::Result<()> {
-    let flags = ["ACTIVE", "ACTIVE", "INACTIVE", "UNKNOWN"];
-    for x in 0..10i64 {
-        let flag = StringArray::from(vec![flags[x as usize % flags.len()]]);
-        rec.set_time("tick", TimeCell::from_sequence(x));
-        rec.log(
-            "flag",
-            &DynamicArchetype::new("example:Flag").with_component_from_data("flag", Arc::new(flag)),
-        )?
-    }
-
-    Ok(())
-}
 
 fn log_instructions(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.set_time("tick", TimeCell::from_sequence(1));

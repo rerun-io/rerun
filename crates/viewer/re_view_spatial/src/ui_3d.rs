@@ -290,7 +290,7 @@ impl SpatialView3D {
 
         // Track focused entity if any.
         if let Some(focused_item) = ctx.focused_item() {
-            let focused_entity = match focused_item {
+            let focused_entity = match &focused_item.item {
                 Item::AppId(_)
                 | Item::DataSource(_)
                 | Item::StoreId(_)
@@ -331,6 +331,20 @@ impl SpatialView3D {
                         );
                         state.state_3d.eye_state.last_interaction_time = Some(ui.time());
                     }
+                } else if let (
+                    Item::DataResult(data_result),
+                    Some(ItemContext::ThreeD { pos: Some(pos), .. }),
+                ) = (&focused_item.item, &focused_item.context)
+                    && data_result.view_id == query.view_id
+                {
+                    state.state_3d.eye_state.start_interpolation();
+                    state.state_3d.eye_state.focus_point(
+                        &self.view_context(ctx, query.view_id, state, query.space_origin),
+                        &state.bounding_boxes,
+                        &eye_property,
+                        entity_path,
+                        *pos,
+                    )?;
                 } else {
                     state.state_3d.eye_state.start_interpolation();
                     state.state_3d.eye_state.focus_entity(

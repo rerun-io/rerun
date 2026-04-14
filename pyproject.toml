@@ -67,7 +67,7 @@ dev = [
   "pyyaml>=6.0",
   "types-pyyaml>=6.0",
   "wheel>=0.46",
-  # Needed by lerobot dataloader example
+  # Needed by lerobot importer example
   "huggingface-hub<1.0",
   # Typed packages for dataframe/arrow operations (needed for linting examples/tests)
   "polars>=1.0",

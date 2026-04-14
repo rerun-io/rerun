@@ -5,7 +5,7 @@ use re_log_types::{Timestamp, TimestampFormat};
 use re_memory::MemoryLimit;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::{AppOptions, ExperimentalAppOptions, VideoOptions};
+use re_viewer_context::{AppOptions, VideoOptions};
 
 use crate::StartupOptions;
 
@@ -106,6 +106,7 @@ fn settings_screen_ui_impl(
         show_picking_debug_overlay: _, // not yet exposed
         inspect_blueprint_timeline: _, // not yet exposed
         blueprint_gc: _,               // not yet exposed
+        visualizer_limits_enabled,
         timestamp_format,
         video,
         mapbox_access_token,
@@ -127,6 +128,17 @@ fn settings_screen_ui_impl(
     ui.re_checkbox(show_notification_toasts, "Show notification toasts")
         .on_hover_text("Show toasts for log messages and other notifications");
 
+    ui.re_checkbox(
+        visualizer_limits_enabled,
+        "Limit number of primitives in a view",
+    )
+    .on_hover_text(
+        "Caps the number of elements individual visualizers process \
+             (e.g. instance caps for 3D shapes, line limits for time series). \
+             Disabling this may cause the viewer to become unresponsive \
+             with very large data sets.",
+    );
+
     separator_with_some_space(ui);
     ui.collapsing_header("Timestamp format", false, |ui| {
         time_format_section_ui(ui, timestamp_format);
@@ -140,12 +152,16 @@ fn settings_screen_ui_impl(
     ui.strong("Video");
     video_section_ui(ui, video);
 
-    if false {
-        // There are currently no experimental features
-        let ExperimentalAppOptions {} = experimental;
+    {
         separator_with_some_space(ui);
         ui.strong("Experimental");
-        // experimental_section_ui(ui, experimental);
+        ui.re_checkbox(
+            &mut experimental.enable_states_view,
+            "Enable States view (requires restart)",
+        )
+        .on_hover_text(
+            "Show the experimental States view for visualizing state transitions over time.",
+        );
     }
 }
 

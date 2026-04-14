@@ -16,11 +16,10 @@ use super::SpatialViewVisualizerData;
 use super::utilities::{ProcMeshBatch, ProcMeshDrawableBuilder};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::proc_mesh;
-use crate::view_kind::SpatialViewKind;
 
 // ---
 #[derive(Default)]
-pub struct Ellipsoids3DVisualizer(SpatialViewVisualizerData);
+pub struct Ellipsoids3DVisualizer;
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
@@ -113,27 +112,28 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let preferred_view_kind = Some(SpatialViewKind::ThreeD);
         let output = VisualizerExecutionOutput::default();
+        let mut data = SpatialViewVisualizerData::default();
         let mut builder = ProcMeshDrawableBuilder::new(
-            &mut self.0,
+            &mut data,
             ctx.viewer_ctx.render_ctx(),
             view_query,
+            &output,
             "ellipsoids",
         );
 
         use super::entity_iterator::process_archetype;
-        process_archetype::<Self, Ellipsoids3D, _>(
+        process_archetype::<Ellipsoids3D, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            preferred_view_kind,
+            self,
             |ctx, spatial_ctx, results| {
                 let all_half_sizes =
                     results.iter_required(Ellipsoids3D::descriptor_half_sizes().component);
@@ -227,8 +227,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
             },
         )?;
 
-        Ok(output
-            .with_draw_data(builder.into_draw_data()?)
-            .with_visualizer_data(std::mem::take(&mut self.0)))
+        let draw_data = builder.into_draw_data()?;
+        Ok(output.with_draw_data(draw_data).with_visualizer_data(data))
     }
 }

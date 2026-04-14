@@ -32,6 +32,7 @@ Float32
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
 * [`EncodedImage`](../archetypes/encoded_image.md)
+* [`GridMap`](../archetypes/grid_map.md?speculative-link)
 * [`Image`](../archetypes/image.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`Points2D`](../archetypes/points2d.md)

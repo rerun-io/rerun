@@ -43,6 +43,7 @@ parking_lot.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport", "router"] }
 tonic-web.workspace = true
 tower-http = { workspace = true, features = ["cors"] }
+wildmatch.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

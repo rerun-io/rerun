@@ -4,12 +4,8 @@ pub mod basic;
 pub mod semantic;
 pub mod string;
 
-// TODO(grtlr): We expose these functions here in the same format as we would call
-// them in a future selector runtime. This might help with creating better convenience
-// functions/macros around selector parsing in the future.
-
 pub use self::{
-    basic::cast,
+    basic::{cast, struct_to_fixed_size_list_f32},
     semantic::{
         binary_to_list_uint8, rgba_struct_to_uint32, string_to_video_codec, timespec_to_nanos,
     },

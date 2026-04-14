@@ -18,8 +18,5 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-
-[dependencies]
-
 [dev-dependencies]
 anyhow.workspace = true

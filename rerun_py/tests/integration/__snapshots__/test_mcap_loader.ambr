@@ -1,0 +1,25 @@
+# serializer version: 1
+# name: test_decoders_protobuf_only
+  '''
+  /point_cloud  rows=1  static=False  timelines=['message_log_time', 'message_publish_time']  cols=['foxglove.PointCloud:message', 'message_log_time', 'message_publish_time']
+  /point_cloud_with_pose  rows=1  static=False  timelines=['message_log_time', 'message_publish_time']  cols=['foxglove.PointCloud:message', 'message_log_time', 'message_publish_time']
+  '''
+# ---
+# name: test_load_log
+  '''
+  /__properties  rows=1  static=True  timelines=[]  cols=['RecordingInfo:start_time']
+  /__properties  rows=1  static=True  timelines=[]  cols=['McapStatistics:attachment_count', 'McapStatistics:channel_count', 'McapStatistics:channel_message_counts', 'McapStatistics:chunk_count', 'McapStatistics:message_count', 'McapStatistics:message_end_time', 'McapStatistics:message_start_time', 'McapStatistics:metadata_count', 'McapStatistics:schema_count']
+  /text_log  rows=1  static=True  timelines=[]  cols=['McapChannel:id', 'McapChannel:message_encoding', 'McapChannel:metadata', 'McapChannel:topic', 'McapSchema:data', 'McapSchema:encoding', 'McapSchema:id', 'McapSchema:name']
+  /text_log  rows=6  static=False  timelines=['message_log_time', 'message_publish_time', 'timestamp']  cols=['TextLog:level', 'TextLog:text', 'message_log_time', 'message_publish_time', 'timestamp']
+  '''
+# ---
+# name: test_load_point_cloud
+  '''
+  /__properties  rows=1  static=True  timelines=[]  cols=['RecordingInfo:start_time']
+  /__properties  rows=1  static=True  timelines=[]  cols=['McapStatistics:attachment_count', 'McapStatistics:channel_count', 'McapStatistics:channel_message_counts', 'McapStatistics:chunk_count', 'McapStatistics:message_count', 'McapStatistics:message_end_time', 'McapStatistics:message_start_time', 'McapStatistics:metadata_count', 'McapStatistics:schema_count']
+  /point_cloud  rows=1  static=True  timelines=[]  cols=['McapChannel:id', 'McapChannel:message_encoding', 'McapChannel:metadata', 'McapChannel:topic', 'McapSchema:data', 'McapSchema:encoding', 'McapSchema:id', 'McapSchema:name']
+  /point_cloud  rows=1  static=False  timelines=['message_log_time', 'message_publish_time', 'timestamp']  cols=['CoordinateFrame:frame', 'InstancePoses3D:quaternions', 'InstancePoses3D:translations', 'Points3D:colors', 'Points3D:positions', 'message_log_time', 'message_publish_time', 'timestamp']
+  /point_cloud_with_pose  rows=1  static=True  timelines=[]  cols=['McapChannel:id', 'McapChannel:message_encoding', 'McapChannel:metadata', 'McapChannel:topic', 'McapSchema:data', 'McapSchema:encoding', 'McapSchema:id', 'McapSchema:name']
+  /point_cloud_with_pose  rows=1  static=False  timelines=['message_log_time', 'message_publish_time', 'timestamp']  cols=['CoordinateFrame:frame', 'InstancePoses3D:quaternions', 'InstancePoses3D:translations', 'Points3D:colors', 'Points3D:positions', 'message_log_time', 'message_publish_time', 'timestamp']
+  '''
+# ---

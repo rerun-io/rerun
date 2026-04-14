@@ -183,6 +183,8 @@ pub struct DesignTokens {
 
     pub floating_color: Color32,
     pub faint_bg_color: Color32,
+    pub plot_grid_color: Color32,
+    pub plot_grid_fade: f32,
     pub extreme_bg_color: Color32,
     pub extreme_fg_color: Color32,
     pub widget_inactive_bg_fill: Color32,
@@ -368,6 +370,8 @@ impl DesignTokens {
 
             floating_color: get_color("floating_color"),
             faint_bg_color: get_color("faint_bg_color"),
+            plot_grid_color: get_color("plot_grid_color"),
+            plot_grid_fade: get_scalar("plot_grid_fade")?,
             extreme_bg_color: get_color("extreme_bg_color"),
             extreme_fg_color: get_color("extreme_fg_color"),
             widget_inactive_bg_fill: get_color("widget_inactive_bg_fill"),
@@ -941,7 +945,7 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
 
     let mut color = if color.starts_with('#') {
         Color32::from_hex(color)
-            .map_err(|color_error| anyhow::anyhow!("Invalid hex color: {color_error:?}"))?
+            .map_err(|color_err| anyhow::anyhow!("Invalid hex color: {color_err:?}"))? // NOLINT: error doesn't implement Display
     } else if color.starts_with('{') {
         let color = color
             .strip_prefix('{')

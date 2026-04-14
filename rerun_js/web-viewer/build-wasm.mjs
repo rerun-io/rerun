@@ -96,12 +96,12 @@ return Object.assign(__wbg_init, { initSync, deinit }, exports);
   // so we need to check that wasm is still alive before calling the destructor.
   const closure_dtors_original = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
         ? { register: () => {}, unregister: () => {} }
-        : new FinalizationRegistry(state => state.dtor(state.a, state.b));`;
+        : new FinalizationRegistry(state => wasm.__wbindgen_destroy_closure(state.a, state.b));`;
 
   const closure_dtors_patch = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
         ? { register: () => {}, unregister: () => {} }
         : new FinalizationRegistry(state => {
-        if (wasm) state.dtor(state.a, state.b);
+        if (wasm) wasm.__wbindgen_destroy_closure(state.a, state.b);
     });`;
 
   if (code.indexOf(closure_dtors_original) === -1) {
@@ -109,6 +109,69 @@ return Object.assign(__wbg_init, { initSync, deinit }, exports);
   }
 
   code = code.replace(closure_dtors_original, closure_dtors_patch);
+
+  // Patch makeMutClosure to guard against null `wasm` during deinit.
+  // After deinit, pending async callbacks (requestAnimationFrame, setTimeout, etc.)
+  // may still fire and try to invoke closures that call into the now-null `wasm`.
+  // We guard both the closure invocation and the destructor call.
+  const make_mut_closure_original = `function makeMutClosure(arg0, arg1, f) {
+        const state = { a: arg0, b: arg1, cnt: 1 };
+        const real = (...args) => {
+
+            // First up with a closure we increment the internal reference
+            // count. This ensures that the Rust closure environment won't
+            // be deallocated while we're invoking it.
+            state.cnt++;
+            const a = state.a;
+            state.a = 0;
+            try {
+                return f(a, state.b, ...args);
+            } finally {
+                state.a = a;
+                real._wbg_cb_unref();
+            }
+        };
+        real._wbg_cb_unref = () => {
+            if (--state.cnt === 0) {
+                wasm.__wbindgen_destroy_closure(state.a, state.b);
+                state.a = 0;
+                CLOSURE_DTORS.unregister(state);
+            }
+        };
+        CLOSURE_DTORS.register(real, state, state);
+        return real;
+    }`;
+
+  const make_mut_closure_patch = `function makeMutClosure(arg0, arg1, f) {
+        const state = { a: arg0, b: arg1, cnt: 1 };
+        const real = (...args) => {
+            state.cnt++;
+            const a = state.a;
+            state.a = 0;
+            try {
+                if (!wasm) return;
+                return f(a, state.b, ...args);
+            } finally {
+                state.a = a;
+                real._wbg_cb_unref();
+            }
+        };
+        real._wbg_cb_unref = () => {
+            if (--state.cnt === 0) {
+                if (wasm) wasm.__wbindgen_destroy_closure(state.a, state.b);
+                state.a = 0;
+                CLOSURE_DTORS.unregister(state);
+            }
+        };
+        CLOSURE_DTORS.register(real, state, state);
+        return real;
+    }`;
+
+  if (code.indexOf(make_mut_closure_original) === -1) {
+    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find makeMutClosure block");
+  }
+
+  code = code.replace(make_mut_closure_original, make_mut_closure_patch);
 
   fs.writeFileSync(path.join(__dirname, "re_viewer.js"), code);
 }

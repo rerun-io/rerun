@@ -100,7 +100,7 @@ pub type SortedChunksWithSegment = (String, Vec<Chunk>);
 const MAX_MERGED_RANGE_SIZE: usize = 16 * 1024 * 1024;
 
 /// Number of times to retry direct fetch on transient errors before returning a hard error.
-const DIRECT_FETCH_MAX_RETRIES: usize = 4;
+const DIRECT_FETCH_MAX_RETRIES: usize = 10;
 
 // --- Range merging types ---
 
@@ -133,11 +133,20 @@ struct MergedRangeRequest {
 
 /// Error from a direct URL fetch attempt. Retried up to [`DIRECT_FETCH_MAX_RETRIES`] times.
 #[derive(Debug)]
-pub struct DirectFetchError(String);
+pub struct DirectFetchError {
+    msg: String,
+    retryable: bool,
+}
+
+impl DirectFetchError {
+    fn new(msg: String, retryable: bool) -> Self {
+        Self { msg, retryable }
+    }
+}
 
 impl std::fmt::Display for DirectFetchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(&self.msg)
     }
 }
 
@@ -189,10 +198,10 @@ pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
         .unwrap_or(0)
 }
 
-/// Fetch a batch of chunks via direct URLs with retries.
+/// Fetch a batch of chunks via direct URLs.
 ///
-/// Returns a hard error if all retry attempts are exhausted.
-#[tracing::instrument(level = "trace", skip_all)]
+/// Individual requests are retried up to [`DIRECT_FETCH_MAX_RETRIES`] times on transient errors.
+#[tracing::instrument(level = "info", skip_all, fields(num_chunks, byte_size))]
 pub async fn fetch_batch_direct(
     batch: &RecordBatch,
     http_client: &reqwest::Client,
@@ -200,54 +209,29 @@ pub async fn fetch_batch_direct(
     #[cfg(not(target_arch = "wasm32"))]
     let byte_size = batch_byte_size(batch);
 
-    // Backoff matching gRPC retry settings: base 100ms, max 3s, 50% jitter.
-    let mut backoff_gen = re_backoff::BackoffGenerator::new(
-        std::time::Duration::from_millis(100),
-        std::time::Duration::from_secs(3),
-    )
-    .expect("base is less than max");
+    let span = tracing::Span::current();
+    span.record("num_chunks", batch.num_rows());
+    #[cfg(not(target_arch = "wasm32"))]
+    span.record("byte_size", byte_size);
 
-    let mut last_err: Option<DirectFetchError> = None;
-    for attempt in 1..=DIRECT_FETCH_MAX_RETRIES {
-        if last_err.is_some() {
-            let backoff = backoff_gen.gen_next();
-            re_log::debug!(
-                "Direct fetch retry attempt {attempt}/{DIRECT_FETCH_MAX_RETRIES} after {:?}",
-                backoff.jittered()
-            );
-            backoff.sleep().await;
+    match fetch_batch_via_direct_urls(http_client, batch).await {
+        Ok(chunks) => {
+            #[cfg(not(target_arch = "wasm32"))]
+            metrics::record_direct_success(byte_size);
+            Ok(chunks)
         }
-
-        match fetch_batch_via_direct_urls(http_client, batch).await {
-            Ok(chunks) => {
-                if attempt > 1 {
-                    re_log::debug!("Direct fetch succeeded on attempt {attempt}");
-                }
-                #[cfg(not(target_arch = "wasm32"))]
-                metrics::record_direct_success(byte_size);
-                return Ok(chunks);
-            }
-            Err(err) => {
-                re_log::debug!(
-                    "Direct fetch failure (attempt {attempt}/{DIRECT_FETCH_MAX_RETRIES}): {err}"
-                );
-                last_err = Some(err);
-            }
+        Err(err) => {
+            let reason = classify_failure_reason(&err);
+            #[cfg(not(target_arch = "wasm32"))]
+            metrics::record_direct_failure(reason);
+            Err(exec_datafusion_err!("Direct fetch failed: {err}"))
         }
     }
-
-    let err = last_err.expect("at least one attempt was made");
-    let reason = classify_failure_reason(&err);
-    #[cfg(not(target_arch = "wasm32"))]
-    metrics::record_direct_failure(reason);
-    Err(exec_datafusion_err!(
-        "Direct fetch failed after {DIRECT_FETCH_MAX_RETRIES} attempts: {err}"
-    ))
 }
 
 /// Classify a `DirectFetchError` into a bounded metric reason tag.
 fn classify_failure_reason(err: &DirectFetchError) -> &'static str {
-    let msg = &err.0;
+    let msg = &err.msg;
     if msg.contains("timed out") || msg.contains("Timeout") {
         "timeout"
     } else if msg.contains("status 4") {
@@ -281,16 +265,17 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
             chunk_infos: vec![chunk_info],
         };
 
-        let fetch_chunks_response_stream = client
+        let response = client
             .fetch_chunks(fetch_chunks_request.into_request())
             .instrument(tracing::trace_span!("batched_fetch_chunks"))
             .await
-            .map_err(|err| re_redap_client::ApiError::tonic(err, "FetchChunks request failed"))?
-            .into_inner();
+            .map_err(|err| re_redap_client::ApiError::tonic(err, "FetchChunks request failed"))?;
 
-        let chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
-            fetch_chunks_response_stream,
-        );
+        let response_stream =
+            re_redap_client::ApiResponseStream::from_tonic_response(response, "/FetchChunks");
+
+        let chunk_stream =
+            re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(response_stream);
 
         let batch_chunks: Vec<ApiResult<ChunksWithSegment>> = chunk_stream.collect().await;
         for chunk_result in batch_chunks {
@@ -302,7 +287,20 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
 }
 
 fn classify_http_status(status: reqwest::StatusCode) -> DirectFetchError {
-    DirectFetchError(format!("HTTP request returned status {status}"))
+    DirectFetchError {
+        msg: format!("HTTP request returned status {status}"),
+        retryable: status_retryable(status),
+    }
+}
+
+fn status_retryable(status: reqwest::StatusCode) -> bool {
+    !matches!(
+        status,
+        reqwest::StatusCode::BAD_REQUEST
+            | reqwest::StatusCode::UNAUTHORIZED
+            | reqwest::StatusCode::FORBIDDEN
+            | reqwest::StatusCode::METHOD_NOT_ALLOWED
+    )
 }
 
 impl From<reqwest::Error> for DirectFetchError {
@@ -314,11 +312,13 @@ impl From<reqwest::Error> for DirectFetchError {
             None => format!("HTTP request failed: {err}"),
         };
 
+        let retryable = err.status().is_none_or(status_retryable);
+
         if let Some(source) = err.source() {
             write!(msg, " ({source})").expect("Can append");
         }
 
-        Self(msg)
+        Self { msg, retryable }
     }
 }
 
@@ -446,21 +446,24 @@ fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<String>), Dire
     use re_log_encoding::Decodable;
     let raw_msg =
         <Option<re_protos::log_msg::v1alpha1::log_msg::Msg> as Decodable>::from_rrd_bytes(bytes)
-            .map_err(|err| DirectFetchError(format!("Msg::from_rrd_bytes failed: {err}")))?
-            .ok_or_else(|| DirectFetchError("empty msg".to_owned()))?;
+            .map_err(|err| {
+                DirectFetchError::new(format!("Msg::from_rrd_bytes failed: {err}"), false)
+            })?
+            .ok_or_else(|| DirectFetchError::new("empty msg".to_owned(), false))?;
     let re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(arrow_msg) = raw_msg else {
-        return Err(DirectFetchError("invalid msg type".to_owned()));
+        return Err(DirectFetchError::new("invalid msg type".to_owned(), false));
     };
 
     let segment_id_opt = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
     use re_log_encoding::ToApplication as _;
-    let app_msg = arrow_msg
-        .to_application(())
-        .map_err(|err| DirectFetchError(format!("ArrowMsg::to_application() failed: {err}")))?;
+    let app_msg = arrow_msg.to_application(()).map_err(|err| {
+        DirectFetchError::new(format!("ArrowMsg::to_application() failed: {err}"), false)
+    })?;
 
-    let chunk = Chunk::from_record_batch(&app_msg.batch)
-        .map_err(|err| DirectFetchError(format!("Chunk::from_record_batch failed: {err}")))?;
+    let chunk = Chunk::from_record_batch(&app_msg.batch).map_err(|err| {
+        DirectFetchError::new(format!("Chunk::from_record_batch failed: {err}"), false)
+    })?;
 
     Ok((chunk, segment_id_opt))
 }
@@ -471,7 +474,11 @@ fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<String>), Dire
 /// to reduce round-trips. Concurrency is adapted based on range sizes and total data volume.
 /// The bytes at those offsets are protobuf-encoded `ArrowMsg` payloads
 /// (the 16-byte `MessageHeader` has already been excluded from the manifest offsets).
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(num_chunks, num_merged_requests, concurrency)
+)]
 async fn fetch_batch_via_direct_urls(
     http_client: &reqwest::Client,
     batch: &RecordBatch,
@@ -482,11 +489,11 @@ async fn fetch_batch_via_direct_urls(
     ) -> Result<&'a T, DirectFetchError> {
         let column = batch
             .column_by_name(column_name)
-            .ok_or_else(|| DirectFetchError(format!("missing column {column_name}")))?;
+            .ok_or_else(|| DirectFetchError::new(format!("missing column {column_name}"), false))?;
         column
             .as_any()
             .downcast_ref::<T>()
-            .ok_or_else(|| DirectFetchError(format!("invalid column {column_name}")))
+            .ok_or_else(|| DirectFetchError::new(format!("invalid column {column_name}"), false))
     }
 
     let byte_offsets: &UInt64Array =
@@ -517,9 +524,10 @@ async fn fetch_batch_via_direct_urls(
             "split_batch_by_direct_url should have filtered null URLs"
         );
         if direct_urls.is_null(i) {
-            return Err(DirectFetchError(format!(
-                "no direct URL for chunk at row {i}"
-            )));
+            return Err(DirectFetchError::new(
+                format!("no direct URL for chunk at row {i}"),
+                false,
+            ));
         }
         let key = direct_urls.keys().value(i);
         let url = url_values.value(key as usize).to_owned();
@@ -537,6 +545,12 @@ async fn fetch_batch_via_direct_urls(
 
     // Step 3: Calculate adaptive concurrency from original (un-merged) ranges.
     let concurrency = calculate_adaptive_concurrency(&all_ranges);
+
+    let span = tracing::Span::current();
+    span.record("num_chunks", num_rows);
+    span.record("num_merged_requests", merged_requests.len());
+    span.record("concurrency", concurrency);
+
     re_log::debug!(
         "Range merging: {num_rows} chunks → {} merged requests, concurrency={concurrency}",
         merged_requests.len()
@@ -563,48 +577,73 @@ async fn fetch_batch_via_direct_urls(
                     chunks.len()
                 );
 
-                let response = http_client
-                    .get(url)
-                    .header("Range", format!("bytes={file_range_start}-{range_end}"))
-                    .send()
-                    .await?;
+                // Backoff matching gRPC retry settings: base 100ms, max 3s, 50% jitter.
+                let mut backoff_gen = re_backoff::BackoffGenerator::new(
+                    std::time::Duration::from_millis(100),
+                    std::time::Duration::from_secs(3),
+                )
+                .expect("base is less than max");
 
-                if !response.status().is_success() {
-                    return Err(classify_http_status(response.status()));
+                let mut last_err: Option<DirectFetchError> = None;
+                for attempt in 1..=DIRECT_FETCH_MAX_RETRIES {
+                    if last_err.is_some() {
+                        let backoff = backoff_gen.gen_next();
+                        re_log::debug!(
+                            "Direct fetch [{req_idx}] retry attempt {attempt}/{DIRECT_FETCH_MAX_RETRIES} after {:?}",
+                            backoff.jittered()
+                        );
+                        backoff.sleep().await;
+                    }
+
+                    let fetch_result = fetch_merged_range(
+                        &http_client,
+                        &url,
+                        file_range_start,
+                        range_end,
+                        &chunks,
+                    )
+                    .await;
+
+                    match fetch_result {
+                        Ok(results) => {
+                            if attempt > 1 {
+                                re_log::debug!(
+                                    "Direct fetch [{req_idx}] succeeded on attempt {attempt}"
+                                );
+                            }
+                            return Ok(results);
+                        }
+                        Err(err) if err.retryable => {
+                            re_log::debug!(
+                                "Direct fetch [{req_idx}] failure (attempt {attempt}/{DIRECT_FETCH_MAX_RETRIES}): {err}"
+                            );
+                            last_err = Some(err);
+                        }
+                        Err(err) => {
+                            re_log::error!(
+                                "Non-retryable direct fetch failure on attempt {attempt}: {err}"
+                            );
+                            return Err(err);
+                        }
+                    }
                 }
 
-                let merged_bytes = response
-                    .bytes()
-                    .await
-                    .map_err(|err| DirectFetchError(format!("failed to read body: {err}")))?;
-
-                // Extract individual chunks from the merged response.
-                // Deep copy each chunk to avoid holding the entire merged buffer alive.
-                let chunk_results = chunks
-                    .into_iter()
-                    .map(|info| {
-                        let start = info.offset_in_merged;
-                        let end = start + info.length;
-                        // Deep copy: prevents holding entire 16MB merged buffer in memory
-                        let chunk_bytes = merged_bytes.get(start..end).ok_or_else(|| {
-                            DirectFetchError(format!(
-                                "merged range shorter than expected: need {end} bytes, got {}",
-                                merged_bytes.len()
-                            ))
-                        })?;
-                        decode_chunk_from_bytes(chunk_bytes)
-                            .map(|chunk_with_segment| (info.original_row_index, chunk_with_segment))
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(chunk_results)
+                let err = last_err.expect("at least one attempt was made");
+                Err(DirectFetchError::new(format!(
+                    "request [{req_idx}] failed after {DIRECT_FETCH_MAX_RETRIES} attempts: {err}"
+                ), false))
             }
-            .instrument(tracing::debug_span!("merged_fetch", req = req_idx))
+            .instrument(tracing::info_span!(
+                "direct_fetch_request",
+                req = req_idx,
+                bytes = tracing::field::Empty
+            ))
         });
 
     let results: Vec<Result<Vec<_>, DirectFetchError>> = futures::stream::iter(fetches)
         .buffer_unordered(concurrency)
         .collect()
-        .instrument(tracing::trace_span!("url_direct_fetch"))
+        .instrument(tracing::info_span!("direct_fetch_all"))
         .await;
 
     // Any merged range failure fails the whole batch.
@@ -621,4 +660,53 @@ async fn fetch_batch_via_direct_urls(
         .collect();
 
     Ok(vec![ordered])
+}
+
+type DecodedChunk = (usize, (Chunk, Option<String>));
+
+async fn fetch_merged_range(
+    http_client: &reqwest::Client,
+    url: &str,
+    range_start: usize,
+    range_end: usize,
+    chunks: &[ChunkInMergedRange],
+) -> Result<Vec<DecodedChunk>, DirectFetchError> {
+    let response = http_client
+        .get(url)
+        .header("Range", format!("bytes={range_start}-{range_end}"))
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        return Err(classify_http_status(response.status()));
+    }
+
+    let merged_bytes = response
+        .bytes()
+        .await
+        .map_err(|err| DirectFetchError::new(format!("failed to read body: {err}"), true))?;
+
+    tracing::Span::current().record("bytes", merged_bytes.len());
+
+    // Extract individual chunks from the merged response.
+    // Deep copy each chunk to avoid holding the entire merged buffer alive.
+    chunks
+        .iter()
+        .map(|info| {
+            let start = info.offset_in_merged;
+            let end = start + info.length;
+            // Deep copy: prevents holding entire 16MB merged buffer in memory
+            let chunk_bytes = merged_bytes.get(start..end).ok_or_else(|| {
+                DirectFetchError::new(
+                    format!(
+                        "merged range shorter than expected: need {end} bytes, got {}",
+                        merged_bytes.len()
+                    ),
+                    false,
+                )
+            })?;
+            decode_chunk_from_bytes(chunk_bytes)
+                .map(|chunk_with_segment| (info.original_row_index, chunk_with_segment))
+        })
+        .collect::<Result<Vec<_>, _>>()
 }

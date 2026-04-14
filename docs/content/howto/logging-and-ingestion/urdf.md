@@ -3,7 +3,7 @@ title: Loading URDF models
 order: 900
 ---
 
-Rerun features a built-in [data-loader](https://rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview) for [URDF](https://en.wikipedia.org/wiki/URDF) files.
+Rerun features a built-in [importer](https://rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link) for [URDF](https://en.wikipedia.org/wiki/URDF) files.
 
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/urdf-viewer/ebdefa158ab6f26f9dc1cb1924fce4b846fe8db2/full.png" alt="A robot model loaded from an URDF file visualized in Rerun.">
@@ -15,7 +15,7 @@ Rerun features a built-in [data-loader](https://rerun.io/docs/concepts/logging-a
 ## Overview
 
 Using a `URDF` in Rerun only requires you to load the file with the logging API.
-This will automatically invoke the data-loader, which will take care of:
+This will automatically invoke the importer, which will take care of:
 * resolving paths to meshes
 * loading meshes and shapes as Rerun entities
 * loading the joint transforms and associated frame IDs of links

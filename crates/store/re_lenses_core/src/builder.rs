@@ -1,13 +1,12 @@
 //! Builder API for constructing lenses.
 
-use crate::combinators::Transform;
-use arrow::array::ListArray;
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::ComponentDescriptor;
 
 use crate::ast::{OneToMany, OneToOne};
-use crate::{LensError, ast};
+use crate::selector::DynExpr;
+use crate::{LensError, Selector, ast};
 
 /// Builder for lenses with support for multiple output modes.
 #[must_use]
@@ -30,9 +29,24 @@ impl LensBuilder {
         }
     }
 
-    // TODO(RR-3962): Remove the `Result` return values from the closures again, by
-    // introducing a proxy object to `Selector` that holds a string internally and
-    // therefore is infallible.
+    /// Adds an output group configured via the builder closure.
+    ///
+    /// When `scatter` is `false` (1:1), each input row produces exactly one output row.
+    /// When `scatter` is `true` (1:N), each input row produces multiple output rows by
+    /// exploding list arrays.
+    ///
+    /// Outputs inherit time columns from the input, plus any additional time columns
+    /// specified via `.time()`.
+    pub fn output(
+        mut self,
+        scatter: bool,
+        builder: impl FnOnce(OutputBuilder) -> Result<OutputBuilder, LensError>,
+    ) -> Result<Self, LensError> {
+        let output_builder = OutputBuilder::new(scatter);
+        let output = builder(output_builder)?.build(&self.input)?;
+        self.outputs.push(output);
+        Ok(self)
+    }
 
     /// Adds a temporal output with 1:1 row mapping.
     ///
@@ -41,28 +55,10 @@ impl LensBuilder {
     ///
     /// The output will use the same entity path as the input.
     pub fn output_columns(
-        mut self,
-        builder: impl FnOnce(ColumnsBuilder) -> Result<ColumnsBuilder, LensError>,
+        self,
+        builder: impl FnOnce(OutputBuilder) -> Result<OutputBuilder, LensError>,
     ) -> Result<Self, LensError> {
-        let output_builder = ColumnsBuilder::new(ast::TargetEntity::SameAsInput);
-        let output = builder(output_builder)?.build(&self.input)?;
-        self.outputs.push(output);
-        Ok(self)
-    }
-
-    /// Adds a temporal output with 1:1 row mapping at a specific entity path.
-    ///
-    /// Each input row produces exactly one output row. Outputs inherit time columns from
-    /// the input, plus any additional time columns specified via `.time()`.
-    pub fn output_columns_at(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        builder: impl FnOnce(ColumnsBuilder) -> Result<ColumnsBuilder, LensError>,
-    ) -> Result<Self, LensError> {
-        let output_builder = ColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
-        let output = builder(output_builder)?.build(&self.input)?;
-        self.outputs.push(output);
-        Ok(self)
+        self.output(false, builder)
     }
 
     /// Adds a temporal output with 1:N row mapping (scatter).
@@ -73,30 +69,10 @@ impl LensBuilder {
     ///
     /// The output will use the same entity path as the input.
     pub fn output_scatter_columns(
-        mut self,
-        builder: impl FnOnce(ScatterColumnsBuilder) -> Result<ScatterColumnsBuilder, LensError>,
+        self,
+        builder: impl FnOnce(OutputBuilder) -> Result<OutputBuilder, LensError>,
     ) -> Result<Self, LensError> {
-        let output_builder = ScatterColumnsBuilder::new(ast::TargetEntity::SameAsInput);
-        let output = builder(output_builder)?.build(&self.input)?;
-        self.outputs.push(output);
-        Ok(self)
-    }
-
-    /// Adds a temporal output with 1:N row mapping (scatter) at a specific entity path.
-    ///
-    /// Each input row produces multiple output rows at the same timepoint. The timepoint
-    /// is replicated/scattered across the output rows. Useful for flattening lists or
-    /// exploding batches.
-    pub fn output_scatter_columns_at(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        builder: impl FnOnce(ScatterColumnsBuilder) -> Result<ScatterColumnsBuilder, LensError>,
-    ) -> Result<Self, LensError> {
-        let output_builder =
-            ScatterColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
-        let output = builder(output_builder)?.build(&self.input)?;
-        self.outputs.push(output);
-        Ok(self)
+        self.output(true, builder)
     }
 
     /// Finalizes this builder and returns the corresponding lens.
@@ -108,14 +84,19 @@ impl LensBuilder {
     }
 }
 
-// ==================== Output Builders ====================
+// ==================== Output Builder ====================
 
-/// Builder for temporal outputs with 1:1 row mapping.
+/// Builder for lens output groups.
 ///
-/// Each input row produces exactly one output row. Outputs inherit time columns
-/// from the input, plus any additional time columns specified.
+/// When `scatter` is `false` (1:1), each input row produces exactly one output row.
+/// Outputs inherit time columns from the input, plus any additional time columns specified.
+///
+/// When `scatter` is `true` (1:N), each input row produces multiple output rows at the
+/// same timepoint. The timepoint is replicated/scattered across all output rows. This is
+/// useful for flattening lists or exploding batches while maintaining temporal alignment.
 #[must_use]
-pub struct ColumnsBuilder {
+pub struct OutputBuilder {
+    scatter: bool,
     target_entity: ast::TargetEntity,
     components: Vec<ast::ComponentOutput>,
     time_outputs: Vec<ast::TimeOutput>,
@@ -126,10 +107,11 @@ pub struct ColumnsBuilder {
     clippy::unnecessary_wraps,
     reason = "Result return enables `?` chaining in builder closures"
 )]
-impl ColumnsBuilder {
-    fn new(target_entity: ast::TargetEntity) -> Self {
+impl OutputBuilder {
+    fn new(scatter: bool) -> Self {
         Self {
-            target_entity,
+            scatter,
+            target_entity: ast::TargetEntity::SameAsInput,
             components: vec![],
             time_outputs: vec![],
         }
@@ -143,11 +125,11 @@ impl ColumnsBuilder {
     pub fn component(
         mut self,
         component_descr: ComponentDescriptor,
-        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+        selector: impl Into<Selector<DynExpr>>,
     ) -> Result<Self, LensError> {
         self.components.push(ast::ComponentOutput {
             component_descr,
-            selector: Box::new(selector),
+            selector: selector.into(),
         });
         Ok(self)
     }
@@ -164,107 +146,44 @@ impl ColumnsBuilder {
         mut self,
         timeline_name: impl Into<TimelineName>,
         timeline_type: TimeType,
-        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+        selector: impl Into<Selector<DynExpr>>,
     ) -> Result<Self, LensError> {
         self.time_outputs.push(ast::TimeOutput {
             timeline_name: timeline_name.into(),
             timeline_type,
-            selector: Box::new(selector),
+            selector: selector.into(),
         });
         Ok(self)
     }
 
+    /// Specify the target entity path for the outputs.
+    pub fn at_entity(mut self, entity_path: impl Into<EntityPath>) -> Self {
+        self.target_entity = ast::TargetEntity::Explicit(entity_path.into());
+        self
+    }
+
     /// Builds a [`ast::LensKind`], the `input` is passed for providing contextualized errors.
     fn build(self, input: &ast::InputColumn) -> Result<ast::LensKind, LensError> {
-        Ok(ast::LensKind::Columns(OneToOne {
-            target_entity: self.target_entity,
-            components: self.components.try_into().map_err(|_err| {
-                LensError::MissingOutputComponent {
+        let components =
+            self.components
+                .try_into()
+                .map_err(|_err| LensError::MissingOutputComponent {
                     input_filter: input.entity_path_filter.clone(),
                     input_component: input.component,
-                }
-            })?,
-            times: self.time_outputs,
-        }))
-    }
-}
+                })?;
 
-/// Builder for temporal outputs with 1:N row mapping (scatter).
-///
-/// Each input row produces multiple output rows at the same timepoint. The timepoint
-/// is replicated/scattered across all output rows. This is useful for flattening lists
-/// or exploding batches while maintaining temporal alignment.
-#[must_use]
-pub struct ScatterColumnsBuilder {
-    target_entity: ast::TargetEntity,
-    components: Vec<ast::ComponentOutput>,
-    time_outputs: Vec<ast::TimeOutput>,
-}
-
-// TODO(RR-3962): Get rid of the `unnecessary_wraps`.
-#[expect(
-    clippy::unnecessary_wraps,
-    reason = "Result return enables `?` chaining in builder closures"
-)]
-impl ScatterColumnsBuilder {
-    fn new(target_entity: ast::TargetEntity) -> Self {
-        Self {
-            target_entity,
-            components: vec![],
-            time_outputs: vec![],
+        if self.scatter {
+            Ok(ast::LensKind::ScatterColumns(OneToMany {
+                target_entity: self.target_entity,
+                components,
+                times: self.time_outputs,
+            }))
+        } else {
+            Ok(ast::LensKind::Columns(OneToOne {
+                target_entity: self.target_entity,
+                components,
+                times: self.time_outputs,
+            }))
         }
-    }
-
-    /// Adds a component output column.
-    ///
-    /// # Arguments
-    /// * `component_descr` - The descriptor for the output component
-    /// * `selector` - Selector to apply to the input column
-    pub fn component(
-        mut self,
-        component_descr: ComponentDescriptor,
-        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
-    ) -> Result<Self, LensError> {
-        self.components.push(ast::ComponentOutput {
-            component_descr,
-            selector: Box::new(selector),
-        });
-        Ok(self)
-    }
-
-    /// Adds a time extraction.
-    ///
-    /// Extracts data from the input column to create a new time column for the output rows.
-    ///
-    /// # Arguments
-    /// * `timeline_name` - Name of the timeline to create
-    /// * `timeline_type` - Type of timeline (Sequence or Time)
-    /// * `selector` - Selector to extract time values (must produce [`arrow::array::Int64Array`])
-    pub fn time(
-        mut self,
-        timeline_name: impl Into<TimelineName>,
-        timeline_type: TimeType,
-        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
-    ) -> Result<Self, LensError> {
-        self.time_outputs.push(ast::TimeOutput {
-            timeline_name: timeline_name.into(),
-            timeline_type,
-            selector: Box::new(selector),
-        });
-        Ok(self)
-    }
-
-    /// Builds a [`ast::LensKind`], the `input` is passed for providing contextualized errors.
-    fn build(self, input: &ast::InputColumn) -> Result<ast::LensKind, LensError> {
-        Ok(ast::LensKind::ScatterColumns(OneToMany {
-            target_entity: self.target_entity,
-            components: self.components.try_into().map_err(|_err| {
-                LensError::MissingOutputComponent {
-                    input_filter: input.entity_path_filter.clone(),
-                    input_component: input.component,
-                }
-            })?,
-            times: self.time_outputs,
-        }))
     }
 }

@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use re_chunk::{EntityPath, TimelineName};
 use re_entity_db::EntityDb;
+use re_log_channel::LogSource;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeCell, TimeInt, TimeReal, TimeType,
     Timeline,
@@ -9,8 +10,8 @@ use re_log_types::{
 use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 
-use crate::NeedsRepaint;
 use crate::blueprint_helpers::BlueprintContext;
+use crate::{NeedsRepaint, heuristics};
 
 pub const TIME_PANEL_PATH: &str = "time_panel";
 
@@ -407,7 +408,7 @@ pub struct TimeControl {
 impl Default for TimeControl {
     fn default() -> Self {
         Self {
-            timeline: ActiveTimeline::Auto(default_timeline([], |_| 0)),
+            timeline: ActiveTimeline::Auto(default_timeline_heuristic(None, [], |_| 0)),
             states: Default::default(),
             playing: true,
             following: true,
@@ -540,15 +541,15 @@ impl TimeControl {
 
             let bp_loop_section = blueprint_ctx.time_selection();
             // If we've switched timeline, use the new timeline's cached time selection.
-            if old_timeline != timeline {
+            if old_timeline == timeline {
+                state.time_selection = bp_loop_section.map(|r| r.into());
+            } else {
                 match state.time_selection {
                     Some(selection) => blueprint_ctx.set_time_selection(selection.to_int()),
                     None => {
                         blueprint_ctx.clear_time_selection();
                     }
                 }
-            } else {
-                state.time_selection = bp_loop_section.map(|r| r.into());
             }
 
             match play_state {
@@ -872,7 +873,9 @@ impl TimeControl {
                 NeedsRepaint::Yes
             }
             TimeControlCommand::SetLoopMode(loop_mode) => {
-                if self.loop_mode != *loop_mode {
+                if self.loop_mode == *loop_mode {
+                    NeedsRepaint::No
+                } else {
                     if let Some(blueprint_ctx) = blueprint_ctx {
                         blueprint_ctx.set_loop_mode(*loop_mode);
                     }
@@ -887,12 +890,12 @@ impl TimeControl {
                     }
 
                     NeedsRepaint::Yes
-                } else {
-                    NeedsRepaint::No
                 }
             }
             TimeControlCommand::SetPlayState(play_state) => {
-                if self.play_state() != *play_state {
+                if self.play_state() == *play_state {
+                    NeedsRepaint::No
+                } else {
                     self.set_play_state(Some(entity_db), *play_state, blueprint_ctx);
 
                     if self.following {
@@ -903,8 +906,6 @@ impl TimeControl {
                     }
 
                     NeedsRepaint::Yes
-                } else {
-                    NeedsRepaint::No
                 }
             }
             TimeControlCommand::Pause => {
@@ -972,7 +973,9 @@ impl TimeControl {
                 }
             }
             TimeControlCommand::SetSpeed(speed) => {
-                if *speed != self.speed {
+                if *speed == self.speed {
+                    NeedsRepaint::No
+                } else {
                     self.speed = *speed;
 
                     if let Some(blueprint_ctx) = blueprint_ctx {
@@ -980,8 +983,6 @@ impl TimeControl {
                     }
 
                     NeedsRepaint::Yes
-                } else {
-                    NeedsRepaint::No
                 }
             }
             TimeControlCommand::SetFps(fps) => {
@@ -1047,14 +1048,7 @@ impl TimeControl {
                     .or_insert_with(|| TimeState::new(*time));
                 state.time = *time;
 
-                // If we were following, pause so we stay at the scrubbed time
-                // instead of advancing. This also persists to the blueprint so
-                // `update_from_blueprint` doesn't re-enable following on the next frame.
-                if self.play_state() == PlayState::Following {
-                    self.pause(blueprint_ctx);
-                }
-
-                self.following = false;
+                self.exit_follow_mode(entity_db, blueprint_ctx);
                 self.wait_for_data = true;
 
                 if repaint {
@@ -1147,7 +1141,20 @@ impl TimeControl {
     ) {
         re_tracing::profile_function!();
         self.pause(blueprint_ctx);
+        self.step_time_back_no_pause(entity_db);
+    }
 
+    fn step_time_fwd(
+        &mut self,
+        entity_db: &EntityDb,
+        blueprint_ctx: Option<&impl BlueprintContext>,
+    ) {
+        re_tracing::profile_function!();
+        self.pause(blueprint_ctx);
+        self.step_time_fwd_no_pause(entity_db);
+    }
+
+    fn step_time_back_no_pause(&mut self, entity_db: &EntityDb) {
         if let Some(time) = self.time() {
             let timeline = self.timeline_name();
             let prev = entity_db.prev_time_on_timeline(timeline, time.ceil());
@@ -1184,14 +1191,7 @@ impl TimeControl {
         }
     }
 
-    fn step_time_fwd(
-        &mut self,
-        entity_db: &EntityDb,
-        blueprint_ctx: Option<&impl BlueprintContext>,
-    ) {
-        re_tracing::profile_function!();
-        self.pause(blueprint_ctx);
-
+    fn step_time_fwd_no_pause(&mut self, entity_db: &EntityDb) {
         if let Some(time) = self.time() {
             let timeline = self.timeline_name();
             let next = entity_db.next_time_on_timeline(timeline, time.floor());
@@ -1228,6 +1228,7 @@ impl TimeControl {
         }
     }
 
+    /// Move time by arrow keys. Preserves play/pause state, but exits follow mode.
     fn move_time(
         &mut self,
         entity_db: &EntityDb,
@@ -1235,6 +1236,8 @@ impl TimeControl {
         direction: MoveDirection,
         speed: MoveSpeed,
     ) {
+        self.exit_follow_mode(entity_db, blueprint_ctx);
+
         match self.time_type() {
             Some(TimeType::Sequence) => {
                 let steps = match speed {
@@ -1244,10 +1247,10 @@ impl TimeControl {
                 for _ in 0..steps {
                     match direction {
                         MoveDirection::Back => {
-                            self.step_time_back(entity_db, blueprint_ctx);
+                            self.step_time_back_no_pause(entity_db);
                         }
                         MoveDirection::Forward => {
-                            self.step_time_fwd(entity_db, blueprint_ctx);
+                            self.step_time_fwd_no_pause(entity_db);
                         }
                     }
                 }
@@ -1296,6 +1299,17 @@ impl TimeControl {
         }
     }
 
+    /// If following, switch to playing. Otherwise keep the current play state.
+    fn exit_follow_mode(
+        &mut self,
+        entity_db: &EntityDb,
+        blueprint_ctx: Option<&impl BlueprintContext>,
+    ) {
+        if self.following {
+            self.set_play_state(Some(entity_db), PlayState::Playing, blueprint_ctx);
+        }
+    }
+
     fn pause(&mut self, blueprint_ctx: Option<&impl BlueprintContext>) {
         self.playing = false;
         if let Some(blueprint_ctx) = blueprint_ctx {
@@ -1314,28 +1328,6 @@ impl TimeControl {
         if self.playing {
             self.pause(blueprint_ctx);
         } else {
-            // If we are in follow-mode (but paused), what should toggling play/pause do?
-            //
-            // There are two cases to consider:
-            // * We are looking at a file
-            // * We are following a stream
-            //
-            // If we are watching a stream, it makes sense to keep following:
-            // you paused to look at something, now you're done, so keep following.
-            //
-            // If you are watching a file: if the file has finished loading, then
-            // it can still make sense to go to the end of it.
-            // But if you're already at the end, then staying at "follow" makes little sense,
-            // as repeated toggling will just go between paused and follow at the latest data.
-            // This is made worse by Follow being our default mode (even for files).
-            //
-            // As of writing (2023-02) we don't know if we are watching a file or a stream
-            // (after all, files are also streamed).
-            //
-            // So we use a heuristic:
-            // If we are at the end of the file and unpause, we always start from
-            // the beginning in play mode.
-
             // Start from beginning if we are at the end:
             if let Some(range) = entity_db.time_range_for(self.timeline_name())
                 && let Some(state) = self.states.get_mut(self.timeline.name())
@@ -1347,11 +1339,7 @@ impl TimeControl {
                 return;
             }
 
-            if self.following {
-                self.set_play_state(Some(entity_db), PlayState::Following, blueprint_ctx);
-            } else {
-                self.set_play_state(Some(entity_db), PlayState::Playing, blueprint_ctx);
-            }
+            self.set_play_state(Some(entity_db), PlayState::Playing, blueprint_ctx);
         }
     }
 
@@ -1386,9 +1374,11 @@ impl TimeControl {
         };
 
         if reset_timeline || matches!(self.timeline, ActiveTimeline::Auto(_)) {
-            self.timeline = ActiveTimeline::Auto(default_timeline(timelines.values(), |t| {
-                entity_db.num_temporal_rows_on_timeline(t.name())
-            }));
+            self.timeline = ActiveTimeline::Auto(default_timeline_heuristic(
+                entity_db.data_source.as_ref(),
+                timelines.values(),
+                |t| entity_db.num_temporal_rows_on_timeline(t.name()),
+            ));
         }
     }
 
@@ -1497,12 +1487,21 @@ impl TimeControl {
     }
 }
 
-/// Pick the timeline that should be the default, by row count and prioritizing user-defined ones.
-fn default_timeline<'a>(
+/// Pick the timeline that should be the default, by row count and prioritizing user-defined ones
+/// with potential preferences for specific log sources.
+fn default_timeline_heuristic<'a>(
+    log_source: Option<&LogSource>,
     timelines: impl IntoIterator<Item = &'a Timeline>,
     row_count: impl Fn(&Timeline) -> u64,
 ) -> Timeline {
     re_tracing::profile_function!();
+
+    let timelines = timelines.into_iter().collect::<Vec<_>>();
+    if let Some(preferred_timeline) =
+        heuristics::preferred_timeline_for_log_source(log_source, &timelines)
+    {
+        return preferred_timeline;
+    }
 
     fn timeline_priority(timeline: &Timeline) -> u8 {
         match timeline {
@@ -1528,7 +1527,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_default_timeline() {
+    fn test_default_timeline_heuristic() {
         let log_time = Timeline::log_time();
         let log_tick = Timeline::log_tick();
         let custom_timeline0 = Timeline::new("my_timeline0", TimeType::DurationNs);
@@ -1537,40 +1536,49 @@ mod tests {
         // With equal row counts, priority alone decides.
         let equal = |_: &Timeline| 42_u64;
 
-        assert_eq!(default_timeline([], equal), log_time);
-        assert_eq!(default_timeline([&log_tick], equal), log_tick);
-        assert_eq!(default_timeline([&log_time], equal), log_time);
-        assert_eq!(default_timeline([&log_time, &log_tick], equal), log_time);
+        assert_eq!(default_timeline_heuristic(None, [], equal), log_time);
         assert_eq!(
-            default_timeline([&log_time, &log_tick, &custom_timeline0], equal),
+            default_timeline_heuristic(None, [&log_tick], equal),
+            log_tick
+        );
+        assert_eq!(
+            default_timeline_heuristic(None, [&log_time], equal),
+            log_time
+        );
+        assert_eq!(
+            default_timeline_heuristic(None, [&log_time, &log_tick], equal),
+            log_time
+        );
+        assert_eq!(
+            default_timeline_heuristic(None, [&log_time, &log_tick, &custom_timeline0], equal,),
             custom_timeline0
         );
         assert_eq!(
-            default_timeline([&custom_timeline0, &log_time, &log_tick], equal),
+            default_timeline_heuristic(None, [&custom_timeline0, &log_time, &log_tick], equal,),
             custom_timeline0
         );
         assert_eq!(
-            default_timeline([&log_time, &custom_timeline0, &log_tick], equal),
+            default_timeline_heuristic(None, [&log_time, &custom_timeline0, &log_tick], equal,),
             custom_timeline0
         );
         assert_eq!(
-            default_timeline([&custom_timeline0, &log_time], equal),
+            default_timeline_heuristic(None, [&custom_timeline0, &log_time], equal),
             custom_timeline0
         );
         assert_eq!(
-            default_timeline([&custom_timeline0, &log_tick], equal),
+            default_timeline_heuristic(None, [&custom_timeline0, &log_tick], equal),
             custom_timeline0
         );
         assert_eq!(
-            default_timeline([&log_time, &custom_timeline0], equal),
+            default_timeline_heuristic(None, [&log_time, &custom_timeline0], equal),
             custom_timeline0
         );
         assert_eq!(
-            default_timeline([&log_tick, &custom_timeline0], equal),
+            default_timeline_heuristic(None, [&log_tick, &custom_timeline0], equal),
             custom_timeline0
         );
         assert_eq!(
-            default_timeline([&custom_timeline0], equal),
+            default_timeline_heuristic(None, [&custom_timeline0], equal),
             custom_timeline0
         );
 
@@ -1579,11 +1587,19 @@ mod tests {
             if *t == custom_timeline1 { 100 } else { 10 }
         };
         assert_eq!(
-            default_timeline([&custom_timeline0, &custom_timeline1], more_rows_on_1),
+            default_timeline_heuristic(
+                None,
+                [&custom_timeline0, &custom_timeline1],
+                more_rows_on_1
+            ),
             custom_timeline1
         );
         assert_eq!(
-            default_timeline([&custom_timeline1, &custom_timeline0], more_rows_on_1),
+            default_timeline_heuristic(
+                None,
+                [&custom_timeline1, &custom_timeline0],
+                more_rows_on_1
+            ),
             custom_timeline1
         );
     }

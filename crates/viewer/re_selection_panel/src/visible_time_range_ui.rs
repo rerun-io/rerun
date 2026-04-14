@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use egui::{NumExt as _, Ui};
 use re_chunk::Timeline;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeType, TimelineName};
@@ -383,22 +385,26 @@ fn resolved_visible_history_boundary_ui(
                             ("ns", 1.)
                         };
 
-                        label += &format!(" with {} {} offset", offset as f64 / factor, unit);
+                        write!(label, " with {} {} offset", offset as f64 / factor, unit).ok();
                     }
                     TimeType::Sequence => {
-                        label += &format!(
+                        write!(
+                            label,
                             " with {} offset",
                             re_format::format_plural_signed_s(offset, "frame")
-                        );
+                        )
+                        .ok();
                     }
                 }
             }
         }
         TimeRangeBoundary::Absolute(time) => {
-            label += &format!(
+            write!(
+                label,
                 " {}",
                 time_type.format(*time, ctx.app_options().timestamp_format)
-            );
+            )
+            .ok();
         }
         TimeRangeBoundary::Infinite => {}
     }

@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::net::IpAddr;
 use std::time::Duration;
 
@@ -15,7 +16,7 @@ use crate::CallSource;
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
 use crate::commands::DownloadCommand;
-#[cfg(feature = "data_loaders")]
+#[cfg(feature = "importers")]
 use crate::commands::McapCommands;
 use crate::commands::RrdCommands;
 
@@ -164,6 +165,20 @@ Example: `16GB` or `50%` (of system total)."
     #[clap(long)]
     newest_first: bool,
 
+    /// Additional origin patterns allowed to make CORS requests to the gRPC server.
+    ///
+    /// Use this when hosting a custom viewer on a different domain.
+    /// Patterns are matched against the full Origin header (e.g. `https://example.com:8080`),
+    /// using glob-style matching where `*` matches any sequence of characters.
+    /// Can be specified multiple times.
+    ///
+    /// Examples:
+    ///   `--cors-allow-origin "https://*.example.com"`
+    ///   `--cors-allow-origin "https://example.com:8080"`
+    ///   `--cors-allow-origin "https://example.com:*"`
+    #[clap(long)]
+    cors_allow_origin: Vec<String>,
+
     #[clap(
         long,
         default_value_t = true,
@@ -268,7 +283,7 @@ When persisted, the state will be stored at the following locations:
 - A path to a Rerun .rrd recording
 - A path to a Rerun .rbl blueprint
 - An HTTP(S) URL to an .rrd or .rbl file to load
-- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview)
+- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link)
 
 If no arguments are given, a server will be hosted which a Rerun SDK can connect to.")]
     url_or_paths: Vec<String>,
@@ -469,9 +484,9 @@ impl Args {
 
                 let mut rendered = String::new();
                 if let Some(about) = cmd.get_long_about() {
-                    rendered += &format!("{about}\n\n");
+                    write!(rendered, "{about}\n\n").ok();
                 } else if let Some(about) = cmd.get_about() {
-                    rendered += &format!("{about}.\n\n");
+                    write!(rendered, "{about}.\n\n").ok();
                 }
                 rendered += format!("**Usage**: `{} {usage}`", full_name.join(" ")).trim();
 
@@ -513,7 +528,7 @@ impl Args {
             // > - A path to a Rerun .rrd recording
             // > - A path to a Rerun .rbl blueprint
             // > - An HTTP(S) URL to an .rrd or .rbl file to load
-            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview)
+            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link)
             // >
             // > If no arguments are given, a server will be hosted which a Rerun SDK can connect to.
             // """
@@ -593,7 +608,7 @@ enum Command {
     #[command(name = "man")]
     Manual,
 
-    #[cfg(feature = "data_loaders")]
+    #[cfg(feature = "importers")]
     #[command(subcommand)]
     Mcap(McapCommands),
 
@@ -715,7 +730,7 @@ where
                 Ok(())
             }
 
-            #[cfg(feature = "data_loaders")]
+            #[cfg(feature = "importers")]
             Command::Mcap(mcap) => mcap.run(),
 
             #[cfg(feature = "native_viewer")]
@@ -772,7 +787,7 @@ where
 
     match res {
         // Clean success
-        Ok(_) => Ok(0),
+        Ok(()) => Ok(0),
 
         // Clean failure -- known error AddrInUse
         Err(err)
@@ -827,6 +842,8 @@ fn run_impl(
             re_memory::MemoryLimit::parse(limit)
                 .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
         },
+
+        cors_allowed_origins: args.cors_allow_origin.clone(),
     };
 
     // All URLs that we want to process.
@@ -1721,6 +1738,7 @@ fn record_cli_command_analytics(args: &Args) {
         bind: _,
         memory_limit: _,
         server_memory_limit: _,
+        cors_allow_origin: _,
         port: _,
         new: _,
     } = args;
@@ -1752,7 +1770,7 @@ fn record_cli_command_analytics(args: &Args) {
 
         Some(Command::Manual) => ("man", None),
 
-        #[cfg(feature = "data_loaders")]
+        #[cfg(feature = "importers")]
         Some(Command::Mcap(_cmd)) => {
             // TODO(RR-4073): Re-enable analytics for MCAP commands.
             return;

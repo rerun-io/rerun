@@ -10,9 +10,7 @@ use rerun::external::re_viewer_context::{
 
 /// Our view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
-pub struct Points3DColorVisualizer {
-    pub colors: Vec<(EntityPath, VisualizerInstructionId, Vec<ColorWithInstance>)>,
-}
+pub struct Points3DColorVisualizer;
 
 pub struct ColorWithInstance {
     pub color: egui::Color32,
@@ -42,12 +40,13 @@ impl VisualizerSystem for Points3DColorVisualizer {
 
     /// Populates the visualizer with data from the store.
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let output = VisualizerExecutionOutput::default();
+        let mut colors = Vec::new();
 
         // For each entity in the view that should be displayed with the `InstanceColorSystem`…
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
@@ -83,7 +82,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
             }
 
             if !colors_for_entity.is_empty() {
-                self.colors.push((
+                colors.push((
                     data_result.entity_path.clone(),
                     instruction.id,
                     colors_for_entity,
@@ -94,7 +93,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
         // We're not using `re_renderer` here, so return an empty vector.
         // If you want to draw additional primitives here, you can emit re_renderer draw data here directly,
         // but your custom view's `ui` implementation has to set up an re_renderer output for this.
-        Ok(output.with_visualizer_data(std::mem::take(&mut self.colors)))
+        Ok(output.with_visualizer_data(colors))
     }
 }
 

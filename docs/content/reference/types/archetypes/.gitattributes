@@ -21,6 +21,7 @@ geo_line_strings.md linguist-generated=true
 geo_points.md linguist-generated=true
 graph_edges.md linguist-generated=true
 graph_nodes.md linguist-generated=true
+grid_map.md linguist-generated=true
 image.md linguist-generated=true
 instance_poses3d.md linguist-generated=true
 line_strips2d.md linguist-generated=true

@@ -13,6 +13,8 @@ mod stream_rrd_from_http;
 #[cfg(not(target_arch = "wasm32"))]
 mod load_stdin;
 
+pub use re_log_channel::RecordingOpenBehavior;
+
 pub use self::data_source::{
     AuthErrorHandler, FromUriOptions, LogDataSource, LogDataSourceAnalytics,
 };

@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fmt::Write as _;
 use std::str::FromStr as _;
 
 use anyhow::Context as _;
@@ -147,9 +148,9 @@ fn generate_object_file(
     target_file: &Utf8Path,
 ) -> String {
     let mut code = String::new();
-    code.push_str(&format!("// {}\n", autogen_warning!()));
+    writeln!(code, "// {}", autogen_warning!()).ok();
     if let Some(source_path) = obj.relative_filepath() {
-        code.push_str(&format!("// Based on {:?}.\n\n", format_path(source_path)));
+        writeln!(code, "// Based on {:?}.\n", format_path(source_path)).ok();
     }
 
     code.push_str("#![allow(unused_braces)]\n");
@@ -204,18 +205,18 @@ fn generate_mod_file(
 
     let mut code = String::new();
 
-    code.push_str(&format!("// {}\n\n", autogen_warning!()));
+    writeln!(code, "// {}\n", autogen_warning!()).ok();
 
     for obj in objects {
         let module_name = obj.snake_case_name();
-        code.push_str(&format!("mod {module_name};\n"));
+        writeln!(code, "mod {module_name};").ok();
 
         // Detect if someone manually created an extension file, and automatically
         // import it if so.
         let mut ext_path = dirpath.join(format!("{module_name}_ext"));
         ext_path.set_extension("rs");
         if ext_path.exists() {
-            code.push_str(&format!("mod {module_name}_ext;\n"));
+            writeln!(code, "mod {module_name}_ext;").ok();
         }
     }
 
@@ -226,7 +227,7 @@ fn generate_mod_file(
         let module_name = obj.snake_case_name();
         let type_name = &obj.name;
 
-        code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
+        writeln!(code, "pub use self::{module_name}::{type_name};").ok();
     }
     // And then deprecated.
     if objects.iter().any(|obj| obj.is_deprecated()) {
@@ -240,7 +241,7 @@ fn generate_mod_file(
             code.push_str("#[expect(deprecated)]\n");
         }
 
-        code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
+        writeln!(code, "pub use self::{module_name}::{type_name};").ok();
     }
 
     files_to_write.insert(path, code);

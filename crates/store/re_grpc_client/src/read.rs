@@ -90,9 +90,8 @@ async fn stream_async(
                 break;
             }
 
-            Err(_) => {
-                re_log::debug!("gRPC stream timed out");
-                break;
+            Err(err) => {
+                return Err(err.into());
             }
         }
     }

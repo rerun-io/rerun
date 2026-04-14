@@ -190,7 +190,7 @@ impl Client {
             }
         } else {
             self.cmd_tx.blocking_send(cmd)
-        }.map_err(|_ignored_details| ())
+        }.map_err(|_ignored_err| ())
     }
 
     /// Whether the client is connected to a remote server.
@@ -365,7 +365,7 @@ async fn message_proxy_client(
                         re_log::debug!("Shutting down client without flush");
                         return;
                     }
-                    _ = tokio::time::sleep(Duration::from_millis(100)) => {
+                    () = tokio::time::sleep(Duration::from_millis(100)) => {
                     }
                 }
             }
@@ -438,18 +438,13 @@ async fn message_proxy_client(
         }
     };
 
-    let disconnect_result = if let Err(status) = client.write_messages(stream).await {
+    let disconnect_result = if let Err(err) = client.write_messages(stream).await {
         re_log::error!(
             "Write messages call failed: {}",
-            TonicStatusError::from(status.clone())
+            TonicStatusError::from(err.clone())
         );
 
-        // Ignore status code "Unknown" since this was observed to happen on regular Viewer shutdowns.
-        if status.code() != tonic::Code::Ok && status.code() != tonic::Code::Unknown {
-            Err(ClientConnectionFailure::FailedToSendMessages(status.code()))
-        } else {
-            Ok(())
-        }
+        Err(ClientConnectionFailure::FailedToSendMessages(err.code()))
     } else {
         Ok(())
     };

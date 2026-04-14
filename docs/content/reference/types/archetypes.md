@@ -58,6 +58,7 @@ This page lists all built-in archetypes.
 * [`Capsules3D`](archetypes/capsules3d.md): 3D capsules; cylinders with hemispherical caps.
 * [`Cylinders3D`](archetypes/cylinders3d.md): 3D cylinders with flat caps.
 * [`Ellipsoids3D`](archetypes/ellipsoids3d.md): 3D ellipsoids or spheres.
+* [`GridMap`](archetypes/grid_map.md): A 2D grid map stored as raster data in an image buffer, with a cell size in scene units and pose.
 * [`InstancePoses3D`](archetypes/instance_poses3d.md): One or more transforms applied on the current entity's transform frame.
 * [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
 * [`Mesh3D`](archetypes/mesh3d.md): A 3D triangle mesh as specified by its per-mesh and per-vertex properties.

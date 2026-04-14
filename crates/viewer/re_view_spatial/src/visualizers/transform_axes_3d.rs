@@ -17,7 +17,7 @@ use crate::contexts::TransformTreeContext;
 use crate::visualizers::utilities::format_transform_info_result;
 
 #[derive(Default)]
-pub struct TransformAxes3DVisualizer(SpatialViewVisualizerData);
+pub struct TransformAxes3DVisualizer;
 
 impl IdentifiedViewSystem for TransformAxes3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -50,7 +50,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
@@ -58,6 +58,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         re_tracing::profile_function!();
 
         let output = VisualizerExecutionOutput::default();
+        let mut data = SpatialViewVisualizerData::default();
 
         let transforms = context_systems.get::<TransformTreeContext>(&output)?;
 
@@ -197,7 +198,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             {
                 if show_frame_label {
                     if let Some(frame_id) = transforms.lookup_frame_id(*label_id_hash) {
-                        self.0.ui_labels.push(UiLabel {
+                        data.ui_labels.push(UiLabel {
                             text: frame_id.to_string(),
                             style: UiLabelStyle::Default,
                             target: UiLabelTarget::Position3D(
@@ -221,7 +222,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 }
 
                 // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
-                self.0.add_bounding_box(
+                data.add_bounding_box(
                     data_result.entity_path.hash(),
                     macaw::BoundingBox::ZERO,
                     *world_from_obj,
@@ -255,7 +256,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
 
         Ok(output
             .with_draw_data([line_builder.into_draw_data()?.into()])
-            .with_visualizer_data(std::mem::take(&mut self.0)))
+            .with_visualizer_data(data))
     }
 }
 

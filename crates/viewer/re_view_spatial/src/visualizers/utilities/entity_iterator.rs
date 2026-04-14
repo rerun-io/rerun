@@ -2,14 +2,15 @@ use re_sdk_types::Archetype;
 use re_view::{AnnotationSceneContext, DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerSystem,
 };
 
 use crate::contexts::{
     EntityDepthOffsets, SpatialSceneVisualizerInstructionContext, TransformTreeContext,
 };
-use crate::view_kind::SpatialViewKind;
-use crate::visualizers::utilities::transform_info_for_archetype_or_report_error;
+use crate::visualizers::utilities::{
+    spatial_view_kind_from_affinity, transform_info_for_archetype_or_report_error,
+};
 
 // --- Chunk-based APIs ---
 
@@ -18,14 +19,14 @@ use crate::visualizers::utilities::transform_info_for_archetype_or_report_error;
 /// The callback passed in gets passed along a [`SpatialSceneVisualizerInstructionContext`] which contains
 /// various useful information about an entity in the context of the current scene.
 ///
-/// `archetype_space_kind` determines the expected space kind of the archetype, if any.
-/// If it is not `None`, 2D entities require a pinhole parent in 3D views, and 3D entities require a pinhole at the root of 2D views.
-pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
+/// The visualizer's [`VisualizerSystem::affinity`] is used to determine its preferred spatial view kind (2D or 3D).
+/// Based on this, 2D entities require a pinhole parent in 3D views, and 3D entities require a pinhole at the root of 2D views.
+pub fn process_archetype<A, F, V: VisualizerSystem + IdentifiedViewSystem>(
     ctx: &ViewContext<'_>,
     query: &ViewQuery<'_>,
     context_systems: &ViewContextCollection,
     output: &VisualizerExecutionOutput,
-    archetype_space_kind: Option<SpatialViewKind>,
+    visualizer: &V,
     mut fun: F,
 ) -> Result<(), ViewSystemExecutionError>
 where
@@ -36,7 +37,7 @@ where
         &VisualizerInstructionQueryResults<'_>,
     ) -> Result<(), ViewSystemExecutionError>,
 {
-    re_tracing::profile_function!(A::name());
+    re_tracing::profile_function!(V::identifier());
 
     let view_kind = super::spatial_view_kind_from_view_class(ctx.view_class_identifier);
     let transforms = context_systems.get::<TransformTreeContext>(output)?;
@@ -45,7 +46,8 @@ where
 
     let latest_at = query.latest_at_query();
 
-    let system_identifier = System::identifier();
+    let system_identifier = V::identifier();
+    let archetype_kind = spatial_view_kind_from_affinity(visualizer.affinity());
 
     for (data_result, visualizer_instruction) in
         query.iter_visualizer_instruction_for(system_identifier)
@@ -55,7 +57,7 @@ where
         let Some(transform_info) = transform_info_for_archetype_or_report_error(
             entity_path,
             transforms,
-            archetype_space_kind,
+            archetype_kind,
             view_kind,
             &visualizer_instruction.id,
             output,

@@ -27,6 +27,9 @@ def test_create_table_and_append() -> None:
 
         # Read the table back
         df = table.reader()
+        df_schema = df.schema()
+        for batch in df.collect():
+            assert batch.schema.equals(df_schema, check_metadata=True)
 
         assert str(df.sort("id")) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────┐
@@ -77,6 +80,9 @@ def test_write_table_with_record_batches() -> None:
 
         # Query the table
         df = client.get_table(name="scores_table").reader()
+        df_schema = df.schema()
+        for batch in df.collect():
+            assert batch.schema.equals(df_schema, check_metadata=True)
 
         assert str(df.sort("id")) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────┐

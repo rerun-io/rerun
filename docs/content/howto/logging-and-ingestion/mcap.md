@@ -7,7 +7,7 @@ The Rerun Viewer has built-in support for opening [MCAP](https://mcap.dev/) file
 
 ## Supported message formats
 
-Here's a quick summary of Rerun's MCAP data loader:
+Here's a quick summary of Rerun's MCAP importer:
 
 * Automatic conversion to Rerun archetypes is supported for common ROS 2 & Foxglove messages.
 * Other ROS 2 & Foxglove messages are decoded into queryable components via [reflection](../../concepts/logging-and-ingestion/mcap/message-formats.md#schema-reflection).

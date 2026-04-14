@@ -44,11 +44,12 @@ ignored = [
   "re_renderer_examples",
 
   # used for specific targets or features
-  "chrono", # TODO(#11368)
   "home",
   "profiling",
-  "wayland-sys",
   "windows-core",
+]
+ignored-paths = [
+  "docs/snippets/all/**/*.rs", # complains about unlinked files for our codegen input.
 ]
 
 [workspace.dependencies]
@@ -68,7 +69,7 @@ re_types_builder = { path = "crates/build/re_types_builder", version = "=0.32.0-
 re_lenses_core = { path = "crates/store/re_lenses_core", version = "=0.32.0-alpha.1", default-features = false }
 re_chunk = { path = "crates/store/re_chunk", version = "=0.32.0-alpha.1", default-features = false }
 re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.32.0-alpha.1", default-features = false }
-re_data_loader = { path = "crates/store/re_data_loader", version = "=0.32.0-alpha.1", default-features = false }
+re_importer = { path = "crates/store/re_importer", version = "=0.32.0-alpha.1", default-features = false }
 re_data_source = { path = "crates/store/re_data_source", version = "=0.32.0-alpha.1", default-features = false }
 re_dataframe = { path = "crates/store/re_dataframe", version = "=0.32.0-alpha.1", default-features = false }
 re_datafusion = { path = "crates/store/re_datafusion", version = "=0.32.0-alpha.1", default-features = false }
@@ -80,6 +81,7 @@ re_log_channel = { path = "crates/store/re_log_channel", version = "=0.32.0-alph
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.32.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.32.0-alpha.1", default-features = false }
 re_mcap = { path = "crates/store/re_mcap", version = "=0.32.0-alpha.1", default-features = false }
+re_parquet = { path = "crates/store/re_parquet", version = "=0.32.0-alpha.1", default-features = false }
 re_protos = { path = "crates/store/re_protos", version = "=0.32.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.32.0-alpha.1", default-features = false }
 re_redap_client = { path = "crates/store/re_redap_client", version = "=0.32.0-alpha.1", default-features = false }
@@ -131,6 +133,7 @@ re_context_menu = { path = "crates/viewer/re_context_menu", version = "=0.32.0-a
 re_data_ui = { path = "crates/viewer/re_data_ui", version = "=0.32.0-alpha.1", default-features = false }
 re_dataframe_ui = { path = "crates/viewer/re_dataframe_ui", version = "=0.32.0-alpha.1", default-features = false }
 re_memory_view = { path = "crates/viewer/re_memory_view", version = "=0.32.0-alpha.1", default-features = false }
+re_plot = { path = "crates/viewer/re_plot", version = "=0.32.0-alpha.1", default-features = false }
 re_recording_panel = { path = "crates/viewer/re_recording_panel", version = "=0.32.0-alpha.1", default-features = false }
 re_redap_browser = { path = "crates/viewer/re_redap_browser", version = "=0.32.0-alpha.1", default-features = false }
 re_renderer = { path = "crates/viewer/re_renderer", version = "=0.32.0-alpha.1", default-features = false }
@@ -146,6 +149,7 @@ re_view_dataframe = { path = "crates/viewer/re_view_dataframe", version = "=0.32
 re_view_graph = { path = "crates/viewer/re_view_graph", version = "=0.32.0-alpha.1", default-features = false }
 re_view_map = { path = "crates/viewer/re_view_map", version = "=0.32.0-alpha.1", default-features = false }
 re_view_spatial = { path = "crates/viewer/re_view_spatial", version = "=0.32.0-alpha.1", default-features = false }
+re_view_states = { path = "crates/viewer/re_view_states", version = "=0.32.0-alpha.1", default-features = false }
 re_view_tensor = { path = "crates/viewer/re_view_tensor", version = "=0.32.0-alpha.1", default-features = false }
 re_view_text_document = { path = "crates/viewer/re_view_text_document", version = "=0.32.0-alpha.1", default-features = false }
 re_view_text_log = { path = "crates/viewer/re_view_text_log", version = "=0.32.0-alpha.1", default-features = false }
@@ -230,7 +234,7 @@ criterion = "0.5.1"
 cros-codecs = "0.0.6"
 crossbeam = "0.8.4"
 dae-parser = "0.11.0"
-datafusion = { version = "=52.3.0", default-features = false, features = [
+datafusion = { version = "52.5.0", default-features = false, features = [
   # NOTE: we enable the same features everywhere
   # because otherwise we will recompile datafusion all the time based on our current compile target.
   # The features here are the same as in https://github.com/lance-format/lance/blob/v3.0.0/Cargo.toml#L116-L123
@@ -244,7 +248,7 @@ datafusion = { version = "=52.3.0", default-features = false, features = [
   "string_expressions",
   "unicode_expressions",
 ] }
-datafusion-ffi = "=52.3.0"
+datafusion-ffi = "52.5.0"
 directories = "6.0"
 document-features = "0.2.12"
 econtext = "0.2.0" # Prints error contexts on crashes
@@ -282,7 +286,7 @@ infer = "0.16.0" # infer MIME type by checking the magic number signaturefer MIM
 insta = "1.46"
 itertools = "0.14.0"
 jiff = { version = "0.2.23", features = ["js"] }
-js-sys = "0.3.77"
+js-sys = "0.3.94"
 jsonwebtoken = { version = "10.3", default-features = false }
 lance = { version = "3.0.0", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
 lance-index = { version = "3.0.0", default-features = false }
@@ -414,6 +418,7 @@ url = "2.5.8"
 uuid = { version = "1.21", features = ["serde", "v4", "js"] }
 vec1 = { version = "1.12", features = ["serde", "smallvec-v1"] }
 walkdir = "2.5"
+wildmatch = "2.6.1"
 # TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
 #     Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
 #     `crates/viewer/re_viewer/Cargo.toml`, and make sure that notebooks still work:
@@ -423,10 +428,10 @@ walkdir = "2.5"
 #     Do not make this an `=` dependency, because that may break Rust users’ builds when a newer
 #     version is released, even if they are not building the web viewer.
 #     For details see https://github.com/rerun-io/rerun/issues/8766
-wasm-bindgen = "=0.2.108" # ⚠️ read above notice before touching this!
-wasm-bindgen-cli-support = "=0.2.108" # ⚠️ read above notice before touching this!
-wasm-bindgen-futures = "0.4.50"
-web-sys = "0.3.77"
+wasm-bindgen = "=0.2.117" # ⚠️ read above notice before touching this!
+wasm-bindgen-cli-support = "=0.2.117" # ⚠️ read above notice before touching this!
+wasm-bindgen-futures = "0.4.67"
+web-sys = "0.3.94"
 wayland-sys = "0.31.9"
 web-time = "1.1.0"
 webbrowser = "1.1"
@@ -493,7 +498,7 @@ debug = false
 "re_component_ui".debug = true
 "re_context_menu".debug = true
 "re_crash_handler".debug = true
-"re_data_loader".debug = true
+"re_importer".debug = true
 "re_data_source".debug = true
 "re_data_ui".debug = true
 "re_dataframe_ui".debug = true
@@ -544,6 +549,7 @@ debug = false
 "re_view_graph".debug = true
 "re_view_map".debug = true
 "re_view_spatial".debug = true
+"re_view_states".debug = true
 "re_view_tensor".debug = true
 "re_view_text_document".debug = true
 "re_view_text_log".debug = true
@@ -704,10 +710,12 @@ flat_map_option = "warn"
 float_cmp_const = "warn"
 fn_params_excessive_bools = "warn"
 fn_to_numeric_cast_any = "warn"
+format_push_string = "warn"
 from_iter_instead_of_collect = "warn"
 get_unwrap = "warn"
 if_let_mutex = "warn"
 ignore_without_reason = "warn"
+ignored_unit_patterns = "warn"
 implicit_clone = "warn"
 implied_bounds_in_impls = "warn"
 imprecise_flops = "warn"
@@ -754,6 +762,7 @@ match_wildcard_for_single_variants = "warn"
 mem_forget = "warn"
 mismatching_type_param_order = "warn"
 missing_enforced_import_renames = "warn"
+missing_fields_in_debug = "warn"
 missing_safety_doc = "warn"
 mixed_attributes_style = "warn"
 mut_mut = "warn"
@@ -849,38 +858,11 @@ iter_over_hash_type = "allow"
 let_underscore_untyped = "allow"
 missing_assert_message = "allow"
 missing_errors_doc = "allow"
-ref_option = "allow"
+ref_option = "warn"
 significant_drop_tightening = "allow" # An update of parking_lot made this trigger in a lot of places. TODO(emilk): fix those places
 unnecessary_debug_formatting = "allow"
 
 [patch.crates-io]
-# https://github.com/rerun-io/arrow-datafusion/pull/1 - workaround for https://github.com/rerun-io/rerun/issues/9440 :
-datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-catalog-listing = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-common-runtime = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-datasource = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-doc = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-execution = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-functions = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-ffi = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-functions-aggregate = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-functions-aggregate-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-functions-nested = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-functions-table = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-functions-window = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-functions-window-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-macros = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-physical-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-physical-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-physical-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-physical-plan = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
-
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
 # If you do patch always prefer to patch to the trunk branch of the upstream repo (i.e. `main`, `master`, …).
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
@@ -888,6 +870,32 @@ datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", bra
 #
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
+
+# datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-catalog-listing = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-common-runtime = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-datasource = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-doc = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-execution = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-functions = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-ffi = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-functions-aggregate = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-functions-aggregate-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-functions-nested = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-functions-table = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-functions-window = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-functions-window-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-macros = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-physical-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-physical-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-physical-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-physical-plan = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
+# datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
 
 # ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
 # eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
@@ -909,8 +917,8 @@ datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", bra
 # emath = { path = "../../egui/crates/emath" }
 # wgpu = { path = "../../wgpu/wgpu" }
 
-#egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "legend-id-keying" }
-#egui_plot = { path = "../../../egui_plot/egui_plot" }
+# egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "legend-id-keying" }
+# egui_plot = { path = "../../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "main" }
 # egui_tiles = { path = "../egui_tiles" }
@@ -921,7 +929,6 @@ datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", bra
 # egui_dnd = { git = "https://github.com/rerun-io/hello_egui.git", branch = "emilk/egui-0.33.0" }
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "lucas/update-egui-main" }
-
 # egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
 
 # walkers = { git = "https://github.com/rerun-io/walkers", branch = "emilk/egui-0.34" }

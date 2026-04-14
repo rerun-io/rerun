@@ -6,17 +6,32 @@ use crate::UiExt as _;
 /// as selectable options in a popup below the text edit.
 ///
 /// `hint_text` is an optional placeholder text shown when the buffer is empty.
+///
+/// `invalid_hint_text` can be used to highlight invalid input and show an info
+/// label with the text on top of the suggestion list. Input validation itself
+/// has to be done outside of this function.
 pub fn autocomplete_text_edit(
     ui: &mut egui::Ui,
     text_buffer: &mut dyn egui::TextBuffer,
     suggestions: &[String],
-    hint_text: Option<impl Into<egui::WidgetText>>,
+    empty_hint_text: Option<impl Into<egui::WidgetText>>,
+    invalid_hint_text: Option<impl Into<String>>,
 ) -> egui::Response {
     let mut text_edit = egui::TextEdit::singleline(text_buffer);
-    if let Some(hint) = hint_text {
+    if let Some(hint) = empty_hint_text {
         text_edit = text_edit.hint_text(hint);
     }
-    let mut response = ui.add(text_edit);
+
+    let mut response = ui
+        .scope(|ui| {
+            if invalid_hint_text.is_some() {
+                ui.style_invalid_field();
+                text_edit = text_edit.text_color(ui.visuals().error_fg_color);
+            }
+
+            ui.add(text_edit)
+        })
+        .inner;
 
     // Filter suggestions based on current text input.
     let filtered_suggestions: Vec<_> = suggestions
@@ -35,13 +50,15 @@ pub fn autocomplete_text_edit(
         (delta, i.key_pressed(egui::Key::Enter))
     });
 
-    let suggestions_open =
-        (response.has_focus() || response.lost_focus() || index_delta != 0) && num_suggestions > 0;
+    let suggestions_open = (response.has_focus() || response.lost_focus() || index_delta != 0)
+        && (num_suggestions > 0 || invalid_hint_text.is_some());
 
     // Persist the selected index using egui's temporary data storage if the suggestions popup is open.
     let selected_index: Option<usize> = if suggestions_open {
         let previous_index = ui.data(|d| d.get_temp::<usize>(response.id));
-        let index = if index_delta != 0 {
+        let index = if index_delta == 0 {
+            previous_index
+        } else {
             // (prev + n + delta) % n handles both directions correctly.
             let base = previous_index.map_or(if index_delta > 0 { usize::MAX } else { 0 }, |i| i);
             Some(
@@ -50,8 +67,6 @@ pub fn autocomplete_text_edit(
                     .wrapping_add_signed(index_delta as isize))
                     % num_suggestions,
             )
-        } else {
-            previous_index
         };
         if let Some(i) = index {
             ui.data_mut(|d| d.insert_temp(response.id, i));
@@ -120,6 +135,14 @@ pub fn autocomplete_text_edit(
         .open(suggestions_open)
         .show(|ui: &mut egui::Ui| {
             ui.set_width(width);
+
+            // Show hint for invalid input always on top of the suggestions.
+            if let Some(invalid_hint_text) = invalid_hint_text.map(Into::into) {
+                ui.info_label(invalid_hint_text);
+                if num_suggestions > 0 {
+                    ui.add_space(ui.spacing().item_spacing.y);
+                }
+            }
 
             egui::ScrollArea::vertical()
                 .min_scrolled_height(350.0)

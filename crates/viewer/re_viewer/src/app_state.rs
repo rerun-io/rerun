@@ -7,7 +7,7 @@ use egui::text_selection::LabelSelectionState;
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_channel::{LogReceiverSet, LogSource};
+use re_log_channel::{LogReceiverSet, LogSource, RecordingOpenBehavior};
 use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
@@ -17,7 +17,7 @@ use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, AppContext, AppOptions, ApplicationSelectionState,
     AsyncRuntimeHandle, AuthContext, BlueprintContext, BlueprintUndoState, CommandSender,
-    ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, Item, Route,
+    ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, FocusTarget, Item, Route,
     SelectionChange, StorageContext, StoreHub, StoreViewContext, SystemCommand,
     SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
     ViewStates, ViewerContext, blueprint_timeline,
@@ -116,7 +116,7 @@ pub struct AppState {
     /// The focused item is cleared every frame, but views may react with side-effects
     /// that last several frames.
     #[serde(skip)]
-    pub(crate) focused_item: Option<Item>,
+    pub(crate) focused_item: Option<FocusTarget>,
 
     /// Are we logged in?
     #[serde(skip)]
@@ -266,10 +266,10 @@ impl AppState {
                 {
                     self.navigation.replace(Route::ChunkStoreBrowser {
                         store_id: result_store_id.clone(),
-                        selected_chunk: if result_store_id != store_id {
-                            None
-                        } else {
+                        selected_chunk: if result_store_id == store_id {
                             result.selected_chunk
+                        } else {
+                            None
                         },
                         previous,
                     });
@@ -450,6 +450,11 @@ impl AppState {
                         active_time_ctrl: Some(time_ctrl),
                         connected_receivers: rx_log,
                         auth_context: auth_state.as_ref(),
+                        login_enabled: startup_options.login_enabled(),
+                        login_signed_in_url: startup_options
+                            .login
+                            .as_ref()
+                            .map(|l| l.signed_in_url.as_str()),
                     },
                     connected_receivers: rx_log,
                     store_context,
@@ -960,7 +965,11 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
                         egui_ctx,
                         &open_url::OpenUrlOptions {
                             follow: false,
-                            select_redap_source_when_loaded: !open_url.new_tab,
+                            recording_open_behavior: if open_url.new_tab {
+                                RecordingOpenBehavior::Open
+                            } else {
+                                RecordingOpenBehavior::OpenAndSelect
+                            },
                             show_loader: !open_url.new_tab,
                         },
                         command_sender,

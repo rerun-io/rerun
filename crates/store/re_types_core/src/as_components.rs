@@ -11,22 +11,22 @@ use crate::{SerializationResult, SerializedComponentBatch};
 /// [`AsComponents::as_serialized_batches`], which describes how the bundle can be interpreted
 /// as a set of [`SerializedComponentBatch`]es: serialized component data.
 ///
-/// Have a look at our [Custom Data Loader] example to learn more about handwritten bundles.
+/// Have a look at our [Custom Data Importer] example to learn more about handwritten bundles.
 ///
 /// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/store/re_sdk_types/definitions/rerun
-/// [Custom Data Loader]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data_loader
+/// [Custom Data Importer]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_importer
 /// [`Component`]: [crate::Component]
 pub trait AsComponents {
     /// Exposes the object's contents as a set of [`SerializedComponentBatch`]es.
     ///
     /// This is the main mechanism for easily extending builtin archetypes or even writing
     /// fully custom ones.
-    /// Have a look at our [Custom Data Loader] example to learn more about extending archetypes.
+    /// Have a look at our [Custom Data Importer] example to learn more about extending archetypes.
     ///
     /// Implementers of [`AsComponents`] get one last chance to override the tags in the
     /// [`ComponentDescriptor`], see [`SerializedComponentBatch::with_descriptor_override`].
     ///
-    /// [Custom Data Loader]: https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/tutorials/custom_data.rs
+    /// [Custom Data Importer]: https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/tutorials/custom_data.rs
     /// [`ComponentDescriptor`]: [crate::ComponentDescriptor]
     //
     // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components

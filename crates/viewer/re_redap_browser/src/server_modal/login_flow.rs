@@ -23,8 +23,23 @@ pub enum LoginFlowResult {
 }
 
 impl LoginFlow {
-    pub fn open(egui_ctx: &egui::Context) -> Result<Self, String> {
-        State::open(egui_ctx).map(|state| Self {
+    /// Open a new login flow.
+    ///
+    /// `signed_in_url` is only used on web as the `OAuth` redirect URI.
+    /// On native, it is ignored (the callback server handles redirects).
+    pub fn open(egui_ctx: &egui::Context, signed_in_url: Option<&str>) -> Result<Self, String> {
+        let _ = &signed_in_url; // only used on web
+
+        #[cfg(target_arch = "wasm32")]
+        let state = State::open(
+            egui_ctx,
+            signed_in_url
+                .ok_or("signed_in_url is required for web login")?
+                .to_owned(),
+        )?;
+        #[cfg(not(target_arch = "wasm32"))]
+        let state = State::open(egui_ctx)?;
+        Ok(Self {
             state,
             #[cfg(target_arch = "wasm32")]
             started: false,
@@ -32,8 +47,14 @@ impl LoginFlow {
     }
 
     /// Create and immediately start the login flow (opens popup on web, opens browser on native).
-    pub fn open_and_start(egui_ctx: &egui::Context) -> Result<Self, String> {
-        let mut flow = Self::open(egui_ctx)?;
+    ///
+    /// `signed_in_url` is only used on web as the `OAuth` redirect URI.
+    /// On native, it is ignored (the callback server handles redirects).
+    pub fn open_and_start(
+        egui_ctx: &egui::Context,
+        signed_in_url: Option<&str>,
+    ) -> Result<Self, String> {
+        let mut flow = Self::open(egui_ctx, signed_in_url)?;
         flow.state.start()?;
         #[cfg(target_arch = "wasm32")]
         {

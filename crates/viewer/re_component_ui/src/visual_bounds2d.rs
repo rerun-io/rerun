@@ -117,10 +117,10 @@ pub fn singleline_edit_visual_bounds2d(
         if response.changed() {
             let aspect_ratio = width / height;
 
-            if width != width_edit {
-                height_edit = width_edit / aspect_ratio;
-            } else {
+            if width == width_edit {
                 width_edit = height_edit * aspect_ratio;
+            } else {
+                height_edit = width_edit / aspect_ratio;
             }
 
             let d_width = width_edit - width;

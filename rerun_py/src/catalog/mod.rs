@@ -80,7 +80,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add("NotFoundError", _py.get_type::<NotFoundError>())?;
     m.add("AlreadyExistsError", _py.get_type::<AlreadyExistsError>())?;
 
-    m.add_function(wrap_pyfunction!(trace_context::rerun_trace_context, m)?)?;
+    m.add_function(wrap_pyfunction!(trace_context::get_trace_context_var, m)?)?;
 
     Ok(())
 }

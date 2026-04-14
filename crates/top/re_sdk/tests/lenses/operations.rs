@@ -1,4 +1,3 @@
-#![expect(clippy::cast_possible_wrap)]
 #![expect(clippy::unwrap_used)]
 
 use std::sync::Arc;
@@ -6,7 +5,6 @@ use std::sync::Arc;
 use arrow::array::{AsArray as _, Int32Builder, ListArray, ListBuilder};
 use arrow::datatypes::{DataType, Field};
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, TimeColumn, TimelineName};
-use re_lenses_core::combinators::Transform as _;
 use re_sdk::lenses::{Lens, Lenses, OutputMode, Selector, op};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::archetypes::Scalars;
@@ -136,10 +134,10 @@ fn test_destructure_cast() {
         re_log_types::EntityPathFilter::parse_forgiving("nullability"),
         "structs",
     )
-    .output_columns_at("nullability/a", |out| {
-        out.component(
+    .output_columns(|out| {
+        out.at_entity("nullability/a").component(
             Scalars::descriptor_scalars(),
-            Selector::parse(".a")?.then(op::cast(DataType::Float64)),
+            Selector::parse(".a")?.pipe(op::cast(DataType::Float64)),
         )
     })
     .unwrap()
@@ -168,8 +166,9 @@ fn test_destructure() {
         re_log_types::EntityPathFilter::parse_forgiving("nullability"),
         "structs",
     )
-    .output_columns_at("nullability/b", |out| {
-        out.component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
+    .output_columns(|out| {
+        out.at_entity("nullability/b")
+            .component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
     })
     .unwrap()
     .build();
@@ -185,60 +184,6 @@ fn test_destructure() {
 
     let chunk = &res[0];
     insta::assert_snapshot!("destructure_only", format!("{chunk:-240}"));
-}
-
-#[test]
-fn test_inner_count() {
-    let original_chunk = nullability_chunk();
-    println!("{original_chunk}");
-
-    let count_fn =
-        |list_array: &ListArray| -> Result<Option<ListArray>, re_lenses_core::combinators::Error> {
-            let mut builder = ListBuilder::new(Int32Builder::new());
-
-            for maybe_array in list_array.iter() {
-                match maybe_array {
-                    None => builder.append_null(),
-                    Some(component_batch_array) => {
-                        builder
-                            .values()
-                            .append_value(component_batch_array.len() as i32);
-                        builder.append(true);
-                    }
-                }
-            }
-
-            Ok(Some(builder.finish()))
-        };
-
-    let count = Lens::for_input_column(
-        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
-        "strings",
-    )
-    .output_columns(|out| {
-        out.component(
-            ComponentDescriptor::partial("counts"),
-            Selector::parse(".")?.then(count_fn),
-        )?
-        .component(
-            ComponentDescriptor::partial("original"),
-            Selector::parse(".")?,
-        )
-    })
-    .unwrap()
-    .build();
-
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(count);
-
-    let res: Vec<re_chunk::Chunk> = lenses
-        .apply(&original_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
-    assert_eq!(res.len(), 1);
-
-    let chunk = &res[0];
-    insta::assert_snapshot!("inner_count", format!("{chunk:-240}"));
 }
 
 #[test]
@@ -404,16 +349,17 @@ fn test_scatter_columns() {
 
     // Create a scatter lens that explodes the nested lists
     let scatter_lens = Lens::for_input_column(re_log_types::EntityPathFilter::all(), "nested_data")
-        .output_scatter_columns_at("scatter_test/exploded", |out| {
-            out.component(
-                ComponentDescriptor::partial("exploded_strings"),
-                Selector::parse(".value")?,
-            )?
-            .time(
-                "my_timestamp",
-                TimeType::Sequence,
-                Selector::parse(".timestamp")?,
-            )
+        .output_scatter_columns(|out| {
+            out.at_entity("scatter_test/exploded")
+                .component(
+                    ComponentDescriptor::partial("exploded_strings"),
+                    Selector::parse(".value")?,
+                )?
+                .time(
+                    "my_timestamp",
+                    TimeType::Sequence,
+                    Selector::parse(".timestamp")?,
+                )
         })
         .unwrap()
         .build();
@@ -490,16 +436,17 @@ fn test_scatter_columns_static() {
 
     // Create a scatter lens that explodes the nested lists
     let scatter_lens = Lens::for_input_column(re_log_types::EntityPathFilter::all(), "nested_data")
-        .output_scatter_columns_at("scatter_test/exploded", |out| {
-            out.component(
-                ComponentDescriptor::partial("exploded_strings"),
-                Selector::parse(".value")?,
-            )?
-            .time(
-                "my_timestamp",
-                TimeType::Sequence,
-                Selector::parse(".timestamp")?,
-            )
+        .output_scatter_columns(|out| {
+            out.at_entity("scatter_test/exploded")
+                .component(
+                    ComponentDescriptor::partial("exploded_strings"),
+                    Selector::parse(".value")?,
+                )?
+                .time(
+                    "my_timestamp",
+                    TimeType::Sequence,
+                    Selector::parse(".timestamp")?,
+                )
         })
         .unwrap()
         .build();

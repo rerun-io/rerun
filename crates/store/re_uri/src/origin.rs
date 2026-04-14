@@ -60,14 +60,21 @@ impl Origin {
         input: &str,
         default_localhost_port: Option<u16>,
     ) -> Result<(Self, url::Url), Error> {
-        let (scheme, rewritten) = if !input.contains("://")
-            && (input.contains("localhost") || input.contains("127.0.0.1"))
-        {
-            // Assume `rerun+http://`, because that is the default for localhost
-            (Scheme::RerunHttp, format!("http://{input}"))
-        } else {
+        let has_scheme = input.contains("://");
+        let (scheme, rewritten) = if has_scheme {
             let scheme: Scheme = input.parse()?;
             (scheme, scheme.canonical_url(input))
+        } else {
+            // No scheme - make a guess:
+            if input.contains("localhost") || input.contains("127.0.0.1") {
+                // Assume `rerun+http://`, because that is the default for localhost
+                (Scheme::RerunHttp, format!("http://{input}"))
+            } else if input.contains("rerun.io") {
+                // Default to `rerun://` (gRPC over TLS)
+                (Scheme::Rerun, format!("https://{input}"))
+            } else {
+                return Err(Error::InvalidScheme);
+            }
         };
 
         // We have to first rewrite the endpoint, because `Url` does not allow

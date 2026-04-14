@@ -38,8 +38,8 @@ fn test_output_mode_forward_all() {
         re_log_types::EntityPathFilter::parse_forgiving("matched/**"),
         "test_component",
     )
-    .output_columns_at("matched/output", |out| {
-        out.component(
+    .output_columns(|out| {
+        out.at_entity("matched/output").component(
             ComponentDescriptor::partial("transformed"),
             Selector::parse(".")?,
         )
@@ -89,8 +89,8 @@ fn test_output_mode_forward_unmatched() {
         re_log_types::EntityPathFilter::parse_forgiving("matched/**"),
         "test_component",
     )
-    .output_columns_at("matched/output", |out| {
-        out.component(
+    .output_columns(|out| {
+        out.at_entity("matched/output").component(
             ComponentDescriptor::partial("transformed"),
             Selector::parse(".")?,
         )
@@ -136,8 +136,8 @@ fn test_output_mode_drop_unmatched() {
         re_log_types::EntityPathFilter::parse_forgiving("matched/**"),
         "test_component",
     )
-    .output_columns_at("matched/output", |out| {
-        out.component(
+    .output_columns(|out| {
+        out.at_entity("matched/output").component(
             ComponentDescriptor::partial("transformed"),
             Selector::parse(".")?,
         )

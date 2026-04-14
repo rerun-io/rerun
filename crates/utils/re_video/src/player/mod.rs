@@ -69,7 +69,7 @@ pub enum VideoPlayerError {
     DecodeChunk(String),
 
     /// Various errors that can occur during video decoding.
-    #[error("Failed to decode video: {0}")]
+    #[error("Failed to decode: {0}")]
     Decoding(#[from] crate::DecodeError),
 
     #[error("The timestamp passed was negative.")]
@@ -79,7 +79,7 @@ pub enum VideoPlayerError {
     #[error("Bad data.")]
     BadData,
 
-    #[error("Failed to create gpu texture from decoded video data: {0}")]
+    #[error("Failed to create gpu texture from decoded data: {0}")]
     TextureUploadError(String),
 
     #[error("Decoder unexpectedly exited")]
@@ -352,12 +352,28 @@ pub fn request_keyframe_before<'a>(
             // to be loaded.
             crate::SampleMetadataState::Unloaded { .. } => true,
         })
+        && let Some(from_sample) = video_description.samples.get(from_idx)
     {
+        let from_idx = if from_sample.is_unloaded() {
+            let gop_size = video_description.samples_statistics.gop_sizes;
+
+            let with_gop_size = idx.saturating_sub(gop_size.smallest);
+
+            if from_idx < with_gop_size {
+                from_idx.min(idx.saturating_sub(gop_size.largest))
+            } else {
+                with_gop_size
+            }
+        } else {
+            from_idx
+        };
+
         // Request all the sources from the unloaded/keyframe up until the current index to
         // indicate that they should stay loaded.
         for (_, sample) in video_description
             .samples
             .iter_index_range_clamped(&(from_idx..idx + 1))
+            .rev()
         {
             get_buffer(sample.source_id());
         }
@@ -382,75 +398,6 @@ pub fn request_keyframe_before<'a>(
         // If we went through all samples and didn't find any that are either unloaded or keyframes,
         // there is a keyframe missing at the start of this video.
         Err(InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp.into())
-    }
-}
-
-/// Called if `latest_sample_index_at_presentation_timestamp` fails.
-///
-/// Tries to find a sample from which we can start looking for unloaded samples
-/// to eventually load a keyframe before the requested pts, given that this is a
-/// valid video.
-fn try_request_missing_samples_at_presentation_timestamp<'a>(
-    requested_pts: Time,
-    video_description: &crate::VideoDataDescription,
-    get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
-) -> VideoPlayerError {
-    // Find a sample we can hook onto to start looking for keyframes.
-    //
-    // We always load backwards looking for a keyframe, so prefer
-    // looking for samples that are after the requested timestamp. Otherwise,
-    // we use the highest presentation timestamp before our given one.
-    let mut best_sample_idx_before_timestamp = None;
-    let sample_idx_after_timestamp =
-        video_description
-            .samples
-            .iter_indexed()
-            .find_map(|(idx, s)| {
-                let s = s.sample()?;
-
-                if s.presentation_timestamp >= requested_pts {
-                    Some(idx)
-                } else if best_sample_idx_before_timestamp
-                    .is_none_or(|(timestamp, _)| timestamp > s.presentation_timestamp)
-                {
-                    best_sample_idx_before_timestamp = Some((s.presentation_timestamp, idx));
-                    None
-                } else {
-                    None
-                }
-            });
-
-    let Some(found_loaded_sample_idx) =
-        sample_idx_after_timestamp.or_else(|| best_sample_idx_before_timestamp.map(|(_, idx)| idx))
-    else {
-        return if let Some(sample) = video_description.samples.front() {
-            // If we're missing samples, request the first one so we at least get something.
-            get_video_buffer(sample.source_id());
-
-            UnloadedSampleDataError::NoLoadedSamples.into()
-        } else {
-            InsufficientSampleDataError::NoSamples.into()
-        };
-    };
-
-    match request_keyframe_before(
-        video_description,
-        // Subtract 1 because the found sample idx could be a keyframe,
-        // since the found sample is always loaded we don't have to request that.
-        found_loaded_sample_idx.saturating_sub(1),
-        get_video_buffer,
-    ) {
-        // Can end up here if the player requests a timestamp before the first sample in the video…
-        Ok(_) => {
-            // … which could also mean no keyframes at all, so check
-            // that for a more accurate error.
-            if video_description.keyframe_indices.is_empty() {
-                InsufficientSampleDataError::NoKeyFrames.into()
-            } else {
-                InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp.into()
-            }
-        }
-        Err(err) => err,
     }
 }
 
@@ -527,24 +474,30 @@ impl<T: Default> VideoPlayer<T> {
         update_output: &mut dyn FnMut(&mut T, &crate::Frame) -> Result<(), VideoPlayerError>,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<PlayerFrameStatus, VideoPlayerError> {
-        if video_description.samples.is_empty() {
-            return Err(InsufficientSampleDataError::NoSamples.into());
-        }
         if requested_pts.0 < 0 {
             return Err(VideoPlayerError::NegativeTimestamp);
         }
 
         // Find which sample best represents the requested PTS.
-        let Some(requested_sample_idx) =
-            video_description.latest_sample_index_at_presentation_timestamp(requested_pts)
-        else {
-            self.reset(video_description)?;
-            return Err(try_request_missing_samples_at_presentation_timestamp(
-                requested_pts,
-                video_description,
-                get_video_buffer,
-            ));
-        };
+        let requested_sample_idx =
+            match video_description.latest_sample_index_at_presentation_timestamp(requested_pts) {
+                Ok(sample_idx) => sample_idx,
+                Err(sample_idx) => {
+                    if let Some(sample_idx) = sample_idx {
+                        request_keyframe_before(video_description, sample_idx, get_video_buffer)?;
+                    }
+
+                    self.reset(video_description)?;
+
+                    return Err(if video_description.samples.is_empty() {
+                        InsufficientSampleDataError::NoSamples.into()
+                    } else if sample_idx.is_some() {
+                        UnloadedSampleDataError::NoLoadedSamples.into()
+                    } else {
+                        InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp.into()
+                    });
+                }
+            };
 
         let requested_sample = video_description
             .samples

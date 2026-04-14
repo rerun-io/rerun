@@ -460,12 +460,14 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
 
         if let Some(enum_or_union_variant_value) = field.enum_or_union_variant_value {
             if let Some(enum_integer_type) = object.enum_integer_type() {
-                field_string.push_str(&format!(
+                write!(
+                    field_string,
                     " = {}",
                     enum_integer_type.format_value(enum_or_union_variant_value)
-                ));
+                )
+                .ok();
             } else {
-                field_string.push_str(&format!(" = {enum_or_union_variant_value}"));
+                write!(field_string, " = {enum_or_union_variant_value}").ok();
             }
         }
         field_string.push('\n');
@@ -610,12 +612,14 @@ fn write_archetype_fields(
             explanation,
         } in view_types
         {
-            page.push_str(&format!(
+            write!(
+                page,
                 "* [{view_name}](../views/{}.md)",
                 re_case::to_snake_case(view_name)
-            ));
+            )
+            .ok();
             if let Some(explanation) = explanation {
-                page.push_str(&format!(" ({explanation})"));
+                write!(page, " ({explanation})").ok();
             }
             putln!(page);
         }
@@ -662,14 +666,16 @@ fn write_visualized_archetypes(
     } else {
         for (fqname, explanation) in archetype_fqnames {
             let object = &objects[&fqname];
-            page.push_str(&format!(
+            write!(
+                page,
                 "* [`{}`](../{}/{}.md)",
                 object.name,
                 object.kind.plural_snake_case(),
                 object.snake_case_name()
-            ));
+            )
+            .ok();
             if let Some(explanation) = explanation {
-                page.push_str(&format!(" ({explanation})"));
+                write!(page, " ({explanation})").ok();
             }
             putln!(page);
         }

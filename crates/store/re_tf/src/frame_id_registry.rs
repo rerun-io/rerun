@@ -82,9 +82,15 @@ impl FrameIdRegistry {
             archetypes::CoordinateFrame::descriptor_frame().component,
         ];
 
+        // Warn on empty frame IDs, but collect the affected components first.
+        // Avoids warning multiple times for entities with multiple frame names, e.g. pinhole.
         for component in frame_components {
             for frame_id_strings in chunk.iter_slices::<String>(component) {
                 for frame_id_string in frame_id_strings {
+                    if frame_id_string.is_empty() {
+                        continue;
+                    }
+
                     let (frame_id_hash, entity_path) =
                         TransformFrameIdHash::from_str_with_optional_derived_path(
                             frame_id_string.as_str(),

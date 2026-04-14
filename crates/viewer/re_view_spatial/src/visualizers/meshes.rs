@@ -16,12 +16,11 @@ use super::SpatialViewVisualizerData;
 use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::mesh_loader::NativeMesh3D;
-use crate::view_kind::SpatialViewKind;
 
 // ---
 
 #[derive(Default)]
-pub struct Mesh3DVisualizer(SpatialViewVisualizerData);
+pub struct Mesh3DVisualizer;
 
 struct Mesh3DComponentData<'a> {
     index: (TimeInt, RowId),
@@ -34,31 +33,31 @@ struct Mesh3DComponentData<'a> {
 // timestamps within a time range -- it's _a lot_.
 impl Mesh3DVisualizer {
     fn process_data<'a>(
-        &mut self,
+        data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<GpuMeshInstance>,
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
-        data: impl Iterator<Item = Mesh3DComponentData<'a>>,
+        mesh_data: impl Iterator<Item = Mesh3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
 
-        for data in data {
-            let primary_row_id = data.index.1;
+        for mesh_entry in mesh_data {
+            let primary_row_id = mesh_entry.index.1;
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
             let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
 
             // Skip over empty meshes.
             // Note that we can deal with zero normals/colors/texcoords/indices just fine (we generate them),
             // but re_renderer insists on having at a non-zero vertex list.
-            if data.native_mesh.vertex_positions.is_empty() {
+            if mesh_entry.native_mesh.vertex_positions.is_empty() {
                 continue;
             }
 
             let mesh = ctx.store_ctx().memoizer(|c: &mut MeshCache| {
                 let key = MeshCacheKey {
                     versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
-                    query_result_hash: data.query_result_hash,
+                    query_result_hash: mesh_entry.query_result_hash,
                     media_type: None,
                 };
 
@@ -66,7 +65,7 @@ impl Mesh3DVisualizer {
                     &entity_path.to_string(),
                     key.clone(),
                     AnyMesh::Mesh {
-                        mesh: data.native_mesh,
+                        mesh: mesh_entry.native_mesh,
                         texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
                     },
                     render_ctx,
@@ -90,12 +89,11 @@ impl Mesh3DVisualizer {
                                 picking_instance_hash,
                             ),
                             additive_tint: re_renderer::Color32::BLACK,
-                            cull_mode: data.cull_mode,
+                            cull_mode: mesh_entry.cull_mode,
                         }
                     }));
 
-                    self.0
-                        .add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_instance);
+                    data.add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_instance);
                 }
             }
         }
@@ -124,23 +122,24 @@ impl VisualizerSystem for Mesh3DVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let mut data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
         let mut instances = Vec::new();
 
         use super::entity_iterator::process_archetype;
-        process_archetype::<Self, Mesh3D, _>(
+        process_archetype::<Mesh3D, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            Some(SpatialViewKind::ThreeD),
+            self,
             |ctx, spatial_ctx, results| {
                 let all_vertex_positions =
                     results.iter_required(Mesh3D::descriptor_vertex_positions().component);
@@ -166,7 +165,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query::range_zip_1x8(
+                let mesh_data = re_query::range_zip_1x8(
                     all_vertex_positions.slice::<[f32; 3]>(),
                     all_vertex_normals.slice::<[f32; 3]>(),
                     all_vertex_colors.slice::<u32>(),
@@ -223,7 +222,14 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     },
                 );
 
-                self.process_data(ctx, ctx.render_ctx(), &mut instances, spatial_ctx, data);
+                Self::process_data(
+                    &mut data,
+                    ctx,
+                    ctx.render_ctx(),
+                    &mut instances,
+                    spatial_ctx,
+                    mesh_data,
+                );
 
                 Ok(())
             },
@@ -235,7 +241,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 &instances,
             )?
             .into()])
-            .with_visualizer_data(std::mem::take(&mut self.0)))
+            .with_visualizer_data(data))
     }
 }
 

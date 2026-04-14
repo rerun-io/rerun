@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError};
 use pyo3::prelude::*;
-use re_sdk::external::re_data_loader::{UrdfTree, urdf_joint_transform};
+use re_sdk::external::re_importer::{UrdfTree, urdf_joint_transform};
 use re_sdk::external::urdf_rs::{Joint, JointType, Link};
 use re_sdk::{EntityPath, TimePoint};
 
@@ -247,11 +247,11 @@ impl PyUrdfJoint {
                 )?;
                 dict.set_item(
                     "parent_frame",
-                    Self::apply_prefix(&self.frame_prefix, &result.parent_frame),
+                    Self::apply_prefix(self.frame_prefix.as_ref(), &result.parent_frame),
                 )?;
                 dict.set_item(
                     "child_frame",
-                    Self::apply_prefix(&self.frame_prefix, &result.child_frame),
+                    Self::apply_prefix(self.frame_prefix.as_ref(), &result.child_frame),
                 )?;
                 dict.set_item("warning", result.warning)?;
 
@@ -304,8 +304,10 @@ impl PyUrdfJoint {
                         warnings.push(warning);
                     }
                     if i == 0 {
-                        parent_frame = Self::apply_prefix(&self.frame_prefix, &result.parent_frame);
-                        child_frame = Self::apply_prefix(&self.frame_prefix, &result.child_frame);
+                        parent_frame =
+                            Self::apply_prefix(self.frame_prefix.as_ref(), &result.parent_frame);
+                        child_frame =
+                            Self::apply_prefix(self.frame_prefix.as_ref(), &result.child_frame);
                     }
                 }
                 Err(e @ urdf_joint_transform::Error::UnsupportedJointType(_)) => {
@@ -336,7 +338,7 @@ impl PyUrdfJoint {
 }
 
 impl PyUrdfJoint {
-    fn apply_prefix(prefix: &Option<String>, frame_id: &str) -> String {
+    fn apply_prefix(prefix: Option<&String>, frame_id: &str) -> String {
         match prefix {
             Some(prefix) => format!("{prefix}{frame_id}"),
             None => frame_id.to_owned(),

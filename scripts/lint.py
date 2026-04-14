@@ -27,7 +27,7 @@ from gitignore_parser import parse_gitignore
 # Set in main().
 rerun_prefix = "./"
 
-debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
+debug_format_of_err = re.compile(r"\{\:#?\?\}.*, \w*err")
 error_match_name = re.compile(r"Err\((\w+)\)")
 error_map_err_name = re.compile(r"map_err\(\|(\w+)\|")
 
@@ -221,9 +221,11 @@ def lint_line(
                 return "Use … instead of ... (on Mac it's option+;)"
 
     if "http" not in line:
-        if re.search(r"\b2d\b", line):
+        # Strip markdown link/image destinations to avoid false positives on file paths (e.g. `/3d-camera.png`)
+        line_without_link_targets = re.sub(r"\]\([^)]*\)", "]()", line)
+        if re.search(r"\b2d\b", line_without_link_targets):
             return "we prefer '2D' over '2d'"
-        if re.search(r"\b3d\b", line):
+        if re.search(r"\b3d\b", line_without_link_targets):
             return "we prefer '3D' over '3d'"
 
     if (
@@ -254,10 +256,10 @@ def lint_line(
     if re.search(r'TODO([^_"(]|$)', line):
         return "TODO:s should be written as `TODO(yourname): what to do`"
 
-    if "{err:?}" in line or "{err:#?}" in line or debug_format_of_err.search(line):
+    if re.search(r"\{\w*err:#?\?\}", line) or debug_format_of_err.search(line):
         return "Format errors with re_error::format or using Display - NOT Debug formatting!"
 
-    if re.search(r"\?err\b", line):
+    if re.search(r"\?\w*err\b", line):
         return "Use `%err` (Display) instead of `?err` (Debug) in tracing macros"
 
     if log_with_inline_sensitive_data.search(line):
@@ -274,9 +276,9 @@ def lint_line(
 
     if m := re.search(error_map_err_name, line) or re.search(error_match_name, line):
         name = m.group(1)
-        # if name not in ("err", "_err", "_"):
-        if name in ("e", "error"):
-            return "Errors should be called 'err', '_err' or '_'"
+        # if name not in ("_", "_ignored") and not re.fullmatch(r"_?\w*err", name):
+        if name == "e" or name.endswith(("error", "status", "res")):
+            return f"Errors should be called `err` or have a `_err` suffix. Found: '{name}'"
 
     if m := re.search(else_return, line):
         match = m.group(0)
@@ -482,7 +484,17 @@ def test_lint_line() -> None:
         'eprintln!("{err:#?}")',
         'eprintln!("{:?}", err)',
         'eprintln!("{:#?}", err)',
+        'eprintln!("{js_err:?}")',
+        'eprintln!("{js_err:#?}")',
+        'eprintln!("{:?}", js_err)',
+        'eprintln!("{:#?}", js_err)',
+        # ?err (Debug) in tracing macros (bad - use %err for Display):
+        'tracing::warn!(?err, "something failed");',
+        're_log::error!(?err, "something failed");',
+        'tracing::warn!(?js_err, "something failed");',
+        're_log::error!(?js_err, "something failed");',
         "if let Err(error) = foo",
+        "Ok(Err(status))",
         "map_err(|e| …)",
         "We use WASM in Rerun",
         "nb_instances",
@@ -533,9 +545,6 @@ def test_lint_line() -> None:
         # thiserror with multiple unnamed fields (bad)
         '#[error("Failed to do {0}: {1}")]',
         '#[error("{0} failed with {1} at {2}")]',
-        # ?err (Debug) in tracing macros (bad - use %err for Display)
-        'tracing::warn!(?err, "something failed");',
-        're_log::error!(?err, "something failed");',
     ]
 
     for test in should_pass:
@@ -1352,7 +1361,7 @@ class SourceFile:
     """Wrapper over a source file with some utility functions."""
 
     def __init__(self, path: str) -> None:
-        self.path = os.path.realpath(path)
+        self.path = path
         self.ext = path.split(".")[-1]
         with open(path, encoding="utf8") as f:
             self.lines = f.readlines()
@@ -1541,11 +1550,7 @@ def lint_file(filepath: str, args: Any) -> int:
         elif 0 < num_errors:
             print(f"Run with --fix to automatically fix {num_errors} errors.")
 
-    if (
-        filepath.endswith("Cargo.toml")
-        and not filepath.startswith(f"{rerun_prefix}examples/rust")
-        and filepath != "./dataplatform/crates/redap_protos/Cargo.toml"
-    ):
+    if filepath.endswith("Cargo.toml") and not filepath.startswith(f"{rerun_prefix}examples/rust"):
         is_workspace = "[workspace]" in source.content
         if not is_workspace:
             error = lint_workspace_lints(source.content)
@@ -1716,7 +1721,6 @@ def main() -> None:
         rerun("tests/assets/lerobot/apple_storage/README.md"),  # not ours
         rerun("tests/python/gil_stress/main.py"),
         rerun("tests/python/release_checklist/main.py"),
-        "./dataplatform/crates/redap_protos/src/v1alpha1",  # auto-generated protobuf files
     )
 
     should_ignore = parse_gitignore(".gitignore")  # TODO(#6730): parse all .gitignore files, not just top-level
@@ -1735,6 +1739,14 @@ def main() -> None:
         for filepath in tracked_files:
             filepath = "./" + filepath
             filepath = filepath.replace("\\", "/")
+
+            # Only lint files inside the rerun directory.
+            # In the standalone rerun repo rerun_prefix is "./" so everything matches.
+            # In the monorepo (reality) rerun_prefix is "./rerun/" which keeps us
+            # from accidentally linting dataplatform/ or other top-level directories.
+            if not filepath.startswith(rerun_prefix):
+                continue
+
             extension = filepath.split(".")[-1]
             if extension in extensions:
                 if filepath.startswith(exclude_paths):

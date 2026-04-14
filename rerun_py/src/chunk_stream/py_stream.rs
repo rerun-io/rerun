@@ -9,8 +9,12 @@ use re_log_types::{
 };
 use re_types_core::ComponentIdentifier;
 
+use re_chunk_store::{ChunkStore, ChunkStoreConfig};
+
+use super::ChunkStream;
+use super::chunk_store::PyChunkStoreInternal;
 use super::error::ChunkPipelineError;
-use super::stream::{ChunkStream, LazyChunkStream, StructuredFilter};
+use super::stream::{LazyChunkStream, StructuredFilter};
 use crate::chunk::PyChunkInternal;
 
 /// Internal lazy chunk stream binding.
@@ -106,6 +110,22 @@ impl PyLazyChunkStreamInternal {
         Ok((Self::new(a), Self::new(b)))
     }
 
+    /// Apply lenses to transform chunk data. Consumes this stream.
+    #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned Vec
+    fn lenses(
+        &self,
+        lenses: Vec<PyRef<'_, crate::lenses::PyLensInternal>>,
+        output_mode: &str,
+    ) -> PyResult<Self> {
+        let stream = self.take_inner()?;
+        let mode = crate::lenses::parse_output_mode(output_mode)?;
+        let mut collection = re_lenses_core::Lenses::new(mode);
+        for lens in &lenses {
+            collection.add_lens(lens.inner().clone());
+        }
+        Ok(Self::new(stream.lenses(collection)))
+    }
+
     /// Concatenate chunks from multiple streams into one.
     #[staticmethod]
     #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned Vec for #[staticmethod]
@@ -134,8 +154,26 @@ impl PyLazyChunkStreamInternal {
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 
+    /// Consume the stream and materialize all chunks into a ChunkStore.
+    fn collect(&self, py: Python<'_>) -> PyResult<PyChunkStoreInternal> {
+        let mut compiled = self.compile_inner()?;
+        py.detach(move || -> Result<_, ChunkPipelineError> {
+            let store_id = StoreId::random(StoreKind::Recording, "chunk-store");
+            let mut store = ChunkStore::new(store_id, ChunkStoreConfig::ALL_DISABLED);
+            while let Some(chunk) = compiled.next()? {
+                store
+                    .insert_chunk(&chunk)
+                    .map_err(|err| ChunkPipelineError::ChunkStoreInsert {
+                        reason: err.to_string(),
+                    })?;
+            }
+            Ok(PyChunkStoreInternal::in_memory(store))
+        })
+        .map_err(PyErr::from)
+    }
+
     /// Consume the stream and return all chunks as a list.
-    fn collect(&self, py: Python<'_>) -> PyResult<Vec<PyChunkInternal>> {
+    fn to_chunks(&self, py: Python<'_>) -> PyResult<Vec<PyChunkInternal>> {
         let mut compiled = self.compile_inner()?;
         let chunks: Vec<Arc<re_chunk::Chunk>> = py
             .detach(move || -> Result<_, ChunkPipelineError> {

@@ -14,6 +14,7 @@
 use std::sync::{Arc, OnceLock};
 
 use js_sys::wasm_bindgen;
+use re_log_channel::RecordingOpenBehavior;
 use re_mutex::Mutex;
 use re_viewer_context::{CommandSender, open_url};
 use wasm_bindgen::closure::Closure;
@@ -163,7 +164,7 @@ fn handle_popstate(
                 egui_ctx,
                 &open_url::OpenUrlOptions {
                     follow: false,
-                    select_redap_source_when_loaded: true,
+                    recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                     show_loader: true,
                 },
                 command_sender,

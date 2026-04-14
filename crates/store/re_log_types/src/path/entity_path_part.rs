@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use re_string_interner::InternedString;
 
 use crate::PathParseError;
@@ -203,7 +205,7 @@ impl EntityPathPart {
                     }
                     c => {
                         // Rust-style unicode escape, e.g. `\u{262E}`.
-                        s.push_str(&format!("\\u{{{:04X}}}", c as u32));
+                        write!(s, "\\u{{{:04X}}}", c as u32).ok();
                     }
                 }
             }

@@ -27,6 +27,7 @@ mod component_ui_registry;
 mod contents;
 mod drag_and_drop;
 mod file_dialog;
+mod focus_target;
 mod heuristics;
 mod image_info;
 mod item;
@@ -89,6 +90,7 @@ pub use self::component_ui_registry::{
 pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
 pub use self::drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload};
 pub use self::file_dialog::sanitize_file_name;
+pub use self::focus_target::FocusTarget;
 pub use self::heuristics::suggest_view_for_each_entity;
 pub use self::image_info::{
     ColormapWithRange, ImageInfo, StoredBlobCacheKey, resolution_of_image_at,
@@ -109,7 +111,7 @@ pub use self::selection_state::{
     SelectionHighlight,
 };
 pub use self::storage_context::StorageContext;
-pub use self::store_hub::StoreHub;
+pub use self::store_hub::{EntityDbUsages, StoreHub};
 pub use self::store_view_context::StoreViewContext;
 pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};

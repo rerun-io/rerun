@@ -23,7 +23,7 @@ fn run_view_systems(
         ViewContextSystemOncePerFrameResult,
     >,
     context_systems: &mut ViewContextCollection,
-    view_systems: &mut VisualizerCollection,
+    view_systems: &VisualizerCollection,
 ) -> PerVisualizerTypeInViewClass<Result<VisualizerExecutionOutput, ViewSystemExecutionError>> {
     re_tracing::profile_function!(view.class_identifier().as_str());
 
@@ -55,7 +55,7 @@ fn run_view_systems(
     re_tracing::profile_wait!("VisualizerSystem::execute");
     let per_visualizer_type_results = view_systems
         .systems
-        .par_iter_mut()
+        .par_iter()
         .map(|(name, vis_system)| {
             re_tracing::profile_scope!("VisualizerSystem::execute", name.as_str());
             let affinity = vis_system.affinity();
@@ -126,7 +126,7 @@ pub fn execute_systems_for_view<'a>(
     let mut context_systems = ctx
         .view_class_registry()
         .new_context_collection(view.class_identifier());
-    let mut view_systems = ctx
+    let view_systems = ctx
         .view_class_registry()
         .new_visualizer_collection(view.class_identifier());
 
@@ -137,7 +137,7 @@ pub fn execute_systems_for_view<'a>(
         view_state,
         context_system_once_per_frame_results,
         &mut context_systems,
-        &mut view_systems,
+        &view_systems,
     );
 
     (

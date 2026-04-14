@@ -225,7 +225,7 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Item that got focused on the last frame if any.
-    pub fn focused_item(&self) -> &Option<crate::Item> {
+    pub fn focused_item(&self) -> Option<&crate::FocusTarget> {
         self.app_ctx.focused_item()
     }
 
@@ -319,9 +319,13 @@ impl<'a> ViewerContext<'a> {
 
         #[cfg(target_arch = "wasm32")]
         fn is_safari_browser_inner() -> Option<bool> {
+            use web_sys::wasm_bindgen::JsCast as _;
             use web_sys::wasm_bindgen::JsValue;
             let window = web_sys::window()?;
-            Some(window.has_own_property(&JsValue::from("safari")))
+            Some(web_sys::js_sys::Object::has_own(
+                window.unchecked_ref::<web_sys::js_sys::Object>(),
+                &JsValue::from("safari"),
+            ))
         }
 
         #[cfg(not(target_arch = "wasm32"))]

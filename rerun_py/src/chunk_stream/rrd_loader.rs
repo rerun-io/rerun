@@ -1,16 +1,20 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use re_chunk::Chunk;
+use re_chunk_store::{ChunkStore, ChunkStoreConfig, LazyRrdStore};
+use re_log_encoding::RrdManifest;
 use re_log_types::{LogMsg, StoreId, StoreInfo, StoreKind};
 
-use super::engine::ChunkStream;
+use super::chunk_store::PyChunkStoreInternal;
+
 use super::error::ChunkPipelineError;
 use super::py_stream::PyLazyChunkStreamInternal;
 use super::stream::LazyChunkStream;
+use super::{ChunkStream, ChunkStreamFactory};
 
 /// Internal RRD loader binding.
 ///
@@ -42,8 +46,7 @@ impl PyRrdLoaderInternal {
         }
 
         // Read the header to extract StoreInfo
-        let store_info = read_rrd_store_info(&path)
-            .map_err(|err| PyRuntimeError::new_err(format!("Failed to read RRD header: {err}")))?;
+        let store_info = read_rrd_store_info(&path).map_err(PyErr::from)?;
 
         let (application_id, recording_id) = if let Some(info) = store_info {
             (
@@ -63,7 +66,42 @@ impl PyRrdLoaderInternal {
 
     /// Return a new lazy stream over all chunks in the RRD file.
     fn stream(&self) -> PyLazyChunkStreamInternal {
-        PyLazyChunkStreamInternal::new(LazyChunkStream::from_rrd(self.path.clone()))
+        PyLazyChunkStreamInternal::new(LazyChunkStream::from_factory(RrdStreamFactory::new(
+            self.path.clone(),
+        )))
+    }
+
+    /// Load a ChunkStore from the RRD file.
+    ///
+    /// If the file has a footer/manifest, this uses lazy loading: only the index is read
+    /// immediately, and chunk data is loaded on demand (e.g., when streaming or compacting).
+    /// For legacy RRD files without a footer, falls back to eager full loading.
+    fn store(&self, py: Python<'_>) -> PyResult<PyChunkStoreInternal> {
+        let path = self.path.clone();
+        py.detach(move || -> Result<_, ChunkPipelineError> {
+            let mut file =
+                std::fs::File::open(&path).map_err(|err| ChunkPipelineError::RrdRead {
+                    path: path.clone(),
+                    reason: err.to_string(),
+                })?;
+
+            match re_log_encoding::read_rrd_footer(&mut file) {
+                Ok(Some(rrd_footer)) => {
+                    let manifest = pick_first_recording_manifest(&rrd_footer, &path)?;
+                    let lazy = LazyRrdStore::new(file, path, Arc::new(manifest));
+                    Ok(PyChunkStoreInternal::indexed_rrd(lazy))
+                }
+                Ok(None) => {
+                    // No footer (legacy RRD) — eager fallback.
+                    load_rrd_to_chunk_store(&path)
+                }
+                Err(err) => Err(ChunkPipelineError::RrdRead {
+                    path,
+                    reason: err.to_string(),
+                }),
+            }
+        })
+        .map_err(PyErr::from)
     }
 
     /// Application ID from the RRD's StoreInfo, if present.
@@ -77,11 +115,30 @@ impl PyRrdLoaderInternal {
     fn recording_id(&self) -> Option<&str> {
         self.recording_id.as_deref()
     }
+
+    /// The file path of the RRD file.
+    #[getter]
+    fn path(&self) -> PathBuf {
+        self.path.clone()
+    }
 }
 
-// ---------------------------------------------------------------------------
-// RrdSource — pull-based chunk stream from an RRD file
-// ---------------------------------------------------------------------------
+/// Factory for creating RRD chunk streams.
+pub struct RrdStreamFactory {
+    path: PathBuf,
+}
+
+impl RrdStreamFactory {
+    pub fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+}
+
+impl ChunkStreamFactory for RrdStreamFactory {
+    fn create(&self) -> Result<Box<dyn ChunkStream>, ChunkPipelineError> {
+        Ok(Box::new(RrdStream::new(&self.path)))
+    }
+}
 
 /// Chunk stream that lazily decodes an RRD file.
 ///
@@ -92,13 +149,10 @@ impl PyRrdLoaderInternal {
 ///
 /// Construction is fallible: I/O errors (missing file, permission denied) are
 /// captured and surfaced on the first `next()` call rather than panicking.
-pub struct RrdSource {
-    inner: RrdSourceInner,
-}
-
-enum RrdSourceInner {
+enum RrdStream {
     /// Normal operation: lazily decode messages from the file.
     Live {
+        path: PathBuf,
         decoder: Box<dyn Iterator<Item = Result<LogMsg, re_log_encoding::DecodeError>> + Send>,
 
         /// The `StoreId` of the first recording store we encounter. Only chunks
@@ -110,38 +164,37 @@ enum RrdSourceInner {
     Failed(Option<ChunkPipelineError>),
 }
 
-impl RrdSource {
-    pub fn new(path: &Path) -> Self {
+impl RrdStream {
+    fn new(path: &Path) -> Self {
         match std::fs::File::open(path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
                 let decoder = re_log_encoding::Decoder::<LogMsg>::decode_lazy(reader);
-                Self {
-                    inner: RrdSourceInner::Live {
-                        decoder: Box::new(decoder),
-                        target_store_id: None,
-                    },
+                Self::Live {
+                    path: path.to_path_buf(),
+                    decoder: Box::new(decoder),
+                    target_store_id: None,
                 }
             }
 
-            Err(err) => Self {
-                inner: RrdSourceInner::Failed(Some(ChunkPipelineError::RrdRead {
-                    reason: format!("{}: {err}", path.display()),
-                })),
-            },
+            Err(err) => Self::Failed(Some(ChunkPipelineError::RrdRead {
+                path: path.to_path_buf(),
+                reason: err.to_string(),
+            })),
         }
     }
 }
 
-impl ChunkStream for RrdSource {
+impl ChunkStream for RrdStream {
     fn next(&mut self) -> Result<Option<Arc<Chunk>>, ChunkPipelineError> {
-        match &mut self.inner {
-            RrdSourceInner::Failed(stored_err) => match stored_err.take() {
+        match self {
+            Self::Failed(stored_err) => match stored_err.take() {
                 Some(err) => Err(err),
                 None => Ok(None),
             },
 
-            RrdSourceInner::Live {
+            Self::Live {
+                path,
                 decoder,
                 target_store_id,
             } => loop {
@@ -150,6 +203,7 @@ impl ChunkStream for RrdSource {
                 };
 
                 let msg = msg_result.map_err(|err| ChunkPipelineError::RrdRead {
+                    path: path.clone(),
                     reason: err.to_string(),
                 })?;
 
@@ -197,18 +251,99 @@ impl ChunkStream for RrdSource {
     }
 }
 
-// ---------------------------------------------------------------------------
-// RRD I/O helpers
-// ---------------------------------------------------------------------------
+/// Load an RRD file into a fully materialized [`ChunkStore`].
+///
+/// Reads the first recording store from the file -- matching the same behavior as the
+/// streaming [`RrdStream`].
+//TODO(RR-4263): we should deal better with multi-store RRDs.
+fn load_rrd_to_chunk_store(path: &Path) -> Result<PyChunkStoreInternal, ChunkPipelineError> {
+    let path_buf = path.to_path_buf();
+    let file = std::fs::File::open(path).map_err(|err| ChunkPipelineError::RrdRead {
+        path: path_buf.clone(),
+        reason: format!("Failed to open file: {err}"),
+    })?;
+    let decoder =
+        re_log_encoding::Decoder::decode_eager(std::io::BufReader::new(file)).map_err(|err| {
+            ChunkPipelineError::RrdRead {
+                path: path_buf.clone(),
+                reason: format!("Failed to start decoding: {err}"),
+            }
+        })?;
+    let mut store: Option<ChunkStore> = None;
+
+    for msg in decoder {
+        let msg = msg.map_err(|err| ChunkPipelineError::RrdRead {
+            path: path_buf.clone(),
+            reason: format!("Failed to read message: {err}"),
+        })?;
+        match &msg {
+            LogMsg::SetStoreInfo(set_store_info) => {
+                if set_store_info.info.store_id.kind() == StoreKind::Recording && store.is_none() {
+                    store = Some(ChunkStore::new(
+                        set_store_info.info.store_id.clone(),
+                        ChunkStoreConfig::ALL_DISABLED,
+                    ));
+                }
+            }
+
+            LogMsg::ArrowMsg(msg_store_id, arrow_msg) => {
+                if let Some(s) = &mut store
+                    && s.id() == *msg_store_id
+                {
+                    let chunk = Chunk::from_arrow_msg(arrow_msg).map_err(|err| {
+                        ChunkPipelineError::RrdChunkDecode {
+                            reason: err.to_string(),
+                        }
+                    })?;
+                    s.insert_chunk(&Arc::new(chunk)).map_err(|err| {
+                        ChunkPipelineError::ChunkStoreInsert {
+                            reason: err.to_string(),
+                        }
+                    })?;
+                }
+            }
+
+            LogMsg::BlueprintActivationCommand(_) => {}
+        }
+    }
+
+    let store = store.ok_or_else(|| ChunkPipelineError::RrdRead {
+        path: path_buf,
+        reason: "No recording store found in file".to_owned(),
+    })?;
+    Ok(PyChunkStoreInternal::in_memory(store))
+}
+
+/// Pick the first recording manifest from an RRD footer.
+fn pick_first_recording_manifest(
+    rrd_footer: &re_log_encoding::RrdFooter,
+    path: &Path,
+) -> Result<RrdManifest, ChunkPipelineError> {
+    let (_, raw_manifest) = rrd_footer
+        .manifests
+        .iter()
+        .find(|(store_id, _)| store_id.kind() == StoreKind::Recording)
+        .ok_or_else(|| ChunkPipelineError::RrdRead {
+            path: path.to_path_buf(),
+            reason: "No recording store found in RRD footer".to_owned(),
+        })?;
+    RrdManifest::try_new(raw_manifest).map_err(|err| ChunkPipelineError::RrdRead {
+        path: path.to_path_buf(),
+        reason: format!("Invalid RRD manifest: {err}"),
+    })
+}
 
 /// Open an RRD file and extract the [`StoreInfo`] from the first recording store.
 ///
 /// Blueprint stores are skipped. Returns `None` if no recording store is found
 /// before the first `ArrowMsg` or end of file.
-fn read_rrd_store_info(
-    path: &Path,
-) -> Result<Option<StoreInfo>, Box<dyn std::error::Error + Send + Sync>> {
-    let file = std::fs::File::open(path)?;
+//TODO(RR-4263): we should deal better with multi-store RRDs.
+fn read_rrd_store_info(path: &Path) -> Result<Option<StoreInfo>, ChunkPipelineError> {
+    let path_buf = path.to_path_buf();
+    let file = std::fs::File::open(path).map_err(|err| ChunkPipelineError::RrdRead {
+        path: path_buf.clone(),
+        reason: format!("Failed to open file: {err}"),
+    })?;
     let reader = std::io::BufReader::new(file);
     let decoder = re_log_encoding::Decoder::<LogMsg>::decode_lazy(reader);
 
@@ -223,6 +358,14 @@ fn read_rrd_store_info(
             Ok(LogMsg::ArrowMsg(..)) => {
                 return Ok(None);
             }
+
+            Err(err) => {
+                return Err(ChunkPipelineError::RrdRead {
+                    path: path_buf,
+                    reason: format!("Failed to read header: {err}"),
+                });
+            }
+
             _ => {}
         }
     }

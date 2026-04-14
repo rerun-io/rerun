@@ -130,10 +130,10 @@ async fn test_column_projections<T>(
         .await;
 
     match result {
-        Err(status) => {
-            assert_eq!(status.code(), tonic::Code::InvalidArgument);
-            assert!(status.message().contains("unknown_column"));
-            assert!(status.message().contains("not found"));
+        Err(err) => {
+            assert_eq!(err.code(), tonic::Code::InvalidArgument);
+            assert!(err.message().contains("unknown_column"));
+            assert!(err.message().contains("not found"));
         }
         Ok(_) => panic!("expected InvalidArgument error for unknown column"),
     }
@@ -156,14 +156,13 @@ async fn test_column_projections<T>(
         .await;
 
     match result {
-        Err(status) => {
-            assert_eq!(status.code(), tonic::Code::InvalidArgument);
+        Err(err) => {
+            assert_eq!(err.code(), tonic::Code::InvalidArgument);
             assert!(
-                status
-                    .message()
+                err.message()
                     .contains(ScanSegmentTableResponse::FIELD_SEGMENT_ID)
             );
-            assert!(status.message().contains("twice") || status.message().contains("duplicate"));
+            assert!(err.message().contains("twice") || err.message().contains("duplicate"));
         }
         Ok(_) => panic!("expected InvalidArgument error for duplicate column"),
     }

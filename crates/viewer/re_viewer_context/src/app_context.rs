@@ -11,8 +11,9 @@ use crate::drag_and_drop::DragAndDropPayload;
 use crate::time_control::TimeControlCommand;
 use crate::{
     ActiveStoreContext, AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, FallbackProviderRegistry, Item, ItemCollection, Route, StorageContext,
-    StoreHub, SystemCommand, SystemCommandSender as _, TableStores, TimeControl, ViewClassRegistry,
+    DragAndDropManager, FallbackProviderRegistry, FocusTarget, Item, ItemCollection, Route,
+    StorageContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStores, TimeControl,
+    ViewClassRegistry,
 };
 
 /// Application context that is shared across all parts of the viewer.
@@ -73,7 +74,7 @@ pub struct AppContext<'a> {
     ///
     /// The focused item is cleared every frame, but views may react with side-effects
     /// that last several frames.
-    pub focused_item: &'a Option<crate::Item>,
+    pub focused_item: &'a Option<FocusTarget>,
 
     /// Helper object to manage drag-and-drop operations.
     pub drag_and_drop_manager: &'a DragAndDropManager,
@@ -86,6 +87,14 @@ pub struct AppContext<'a> {
 
     /// Are we logged in to rerun cloud?
     pub auth_context: Option<&'a AuthContext>,
+
+    /// Whether `OAuth` login is enabled in this viewer instance.
+    pub login_enabled: bool,
+
+    /// The signed-in redirect URL for `OAuth` login.
+    ///
+    /// Only used on web. On native, this is always `None`.
+    pub login_signed_in_url: Option<&'a str>,
 }
 
 pub struct AuthContext {
@@ -174,8 +183,8 @@ impl AppContext<'_> {
     }
 
     /// Item that got focused on the last frame if any.
-    pub fn focused_item(&self) -> &Option<crate::Item> {
-        self.focused_item
+    pub fn focused_item(&self) -> Option<&FocusTarget> {
+        self.focused_item.as_ref()
     }
 
     /// Helper object to manage drag-and-drop operations.
@@ -257,10 +266,10 @@ impl AppContext<'_> {
                 self.command_sender
                     .send_system(SystemCommand::set_selection(selected_items.clone()));
                 selected_items
-            } else if !is_already_selected {
-                interacted_items
-            } else {
+            } else if is_already_selected {
                 selected_items
+            } else {
+                interacted_items
             };
 
             let items_may_be_dragged = self
@@ -278,6 +287,9 @@ impl AppContext<'_> {
             if response.double_clicked()
                 && let Some(item) = interacted_items.first_item()
             {
+                // Use context of original interacted item
+                let context = interacted_items.context_for_item(item).cloned();
+
                 let item = if let Item::DataResult(data_result) = item {
                     interacted_items = Item::DataResult(data_result.as_entity_all()).into();
                     interacted_items
@@ -288,7 +300,10 @@ impl AppContext<'_> {
                 };
 
                 self.command_sender
-                    .send_system(SystemCommand::SetFocus(item.clone()));
+                    .send_system(SystemCommand::SetFocus(FocusTarget {
+                        item: item.clone(),
+                        context,
+                    }));
             }
 
             let modifiers = response.ctx.input(|i| i.modifiers);

@@ -59,7 +59,9 @@ re_arrow_util.workspace = true
 re_auth.workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true
+re_lenses_core.workspace = true
 re_chunk_store.workspace = true
+re_importer.workspace = true
 re_datafusion.workspace = true
 re_redap_client.workspace = true
 re_grpc_client.workspace = true
@@ -67,9 +69,11 @@ re_grpc_server = { workspace = true, optional = true }
 re_log = { workspace = true, features = ["setup"] }
 re_log_encoding.workspace = true
 re_log_types.workspace = true
+re_mcap.workspace = true
+re_parquet.workspace = true
 re_memory.workspace = true
 re_quota_channel.workspace = true
-re_sdk = { workspace = true, features = ["data_loaders"] }
+re_sdk = { workspace = true, features = ["importers"] }
 re_sorbet.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true
@@ -89,6 +93,7 @@ document-features.workspace = true
 futures.workspace = true
 itertools.workspace = true
 jiff.workspace = true
+memmap2.workspace = true
 infer.workspace = true
 mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
 numpy.workspace = true

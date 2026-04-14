@@ -13,21 +13,18 @@ use re_viewer_context::{
 use super::SpatialViewVisualizerData;
 use super::utilities::{LabeledBatch, process_labels_2d};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::{load_keypoint_connections, process_radius_slice};
 
 // ---
 
 #[derive(Default)]
-pub struct Points2DVisualizer {
-    pub data: SpatialViewVisualizerData,
-}
+pub struct Points2DVisualizer;
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Points2DVisualizer {
     fn process_data<'a>(
-        &mut self,
+        view_data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         point_builder: &mut PointCloudBuilder<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
@@ -114,7 +111,7 @@ impl Points2DVisualizer {
             }
 
             let point_cloud_bounds = re_renderer::util::point_cloud_bounds(&positions);
-            self.data.add_bounding_box_and_region_of_interest(
+            view_data.add_bounding_box_and_region_of_interest(
                 entity_path.hash(),
                 point_cloud_bounds.bbox,
                 point_cloud_bounds.region_of_interest,
@@ -129,7 +126,7 @@ impl Points2DVisualizer {
                 &keypoints,
             )?;
 
-            self.data.ui_labels.extend(process_labels_2d(
+            view_data.ui_labels.extend(process_labels_2d(
                 LabeledBatch {
                     entity_path,
                     visualizer_instruction: ent_context.visualizer_instruction,
@@ -191,11 +188,12 @@ impl VisualizerSystem for Points2DVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut view_data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
 
         let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx());
@@ -211,12 +209,12 @@ impl VisualizerSystem for Points2DVisualizer {
         );
 
         use super::entity_iterator::process_archetype;
-        process_archetype::<Self, Points2D, _>(
+        process_archetype::<Points2D, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            Some(SpatialViewKind::TwoD),
+            self,
             |ctx, spatial_ctx, results| {
                 let all_positions =
                     results.iter_required(Points2D::descriptor_positions().component);
@@ -246,7 +244,7 @@ impl VisualizerSystem for Points2DVisualizer {
                 let all_show_labels =
                     results.iter_optional(Points2D::descriptor_show_labels().component);
 
-                let data = re_query::range_zip_1x6(
+                let results_iter = re_query::range_zip_1x6(
                     all_positions.slice::<[f32; 2]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
@@ -282,13 +280,14 @@ impl VisualizerSystem for Points2DVisualizer {
                     },
                 );
 
-                self.process_data(
+                Self::process_data(
+                    &mut view_data,
                     ctx,
                     &mut point_builder,
                     &mut line_builder,
                     view_query,
                     spatial_ctx,
-                    data,
+                    results_iter,
                 )
             },
         )?;
@@ -298,6 +297,6 @@ impl VisualizerSystem for Points2DVisualizer {
                 point_builder.into_draw_data()?.into(),
                 line_builder.into_draw_data()?.into(),
             ])
-            .with_visualizer_data(std::mem::take(&mut self.data)))
+            .with_visualizer_data(view_data))
     }
 }

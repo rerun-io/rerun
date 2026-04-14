@@ -17,6 +17,9 @@ def test_dataframe_api_filter_segment_id(basic_dataset: DatasetEntry) -> None:
     # Get dataframe from the unfiltered view and apply DataFrame-level filtering for multiple segments
     df = view.sort("rerun_segment_id")
 
+    df_schema = df.schema()
+    for batch in df.collect():
+        assert batch.schema.equals(df_schema, check_metadata=True)
     assert str(df) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                     │

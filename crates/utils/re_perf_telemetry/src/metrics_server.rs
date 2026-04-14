@@ -70,7 +70,7 @@ async fn manual_metrics_handler(State(reader): State<Arc<ManualReader>>) -> impl
 
     // Collect metrics from ManualReader
     match reader.collect(&mut resource_metrics) {
-        Ok(_) => {
+        Ok(()) => {
             let metrics = Arc::new(Mutex::new(MetricContainer::new()));
 
             // Convert ResourceMetrics to Prometheus metrics and get the registry

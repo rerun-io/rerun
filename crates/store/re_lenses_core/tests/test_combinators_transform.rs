@@ -4,7 +4,8 @@ use std::str::FromStr as _;
 use std::sync::Arc;
 
 use arrow::array::{
-    Float32Array, Float64Array, Int32Builder, ListArray, ListBuilder, StructArray, UInt8Array,
+    Array as _, ArrayRef, Float32Array, Float64Array, Int32Builder, ListArray, ListBuilder,
+    StructArray, UInt8Array,
 };
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Fields};
@@ -22,10 +23,23 @@ fn simple() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline =
-        Selector::from_str(".poses[]")?.then(MapList::new(StructToFixedList::new(["x", "y"])));
+    let pipeline = Selector::from_str(".poses[]")?.pipe(
+        |source: &ArrayRef| -> Result<Option<ArrayRef>, re_lenses_core::combinators::Error> {
+            let struct_array = source
+                .as_any()
+                .downcast_ref::<StructArray>()
+                .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
+                    expected: "StructArray".to_owned(),
+                    actual: source.data_type().clone(),
+                    context: "struct_to_fixed_list pipe".to_owned(),
+                })?;
+            Ok(StructToFixedList::new(["x", "y"])
+                .transform(struct_array)?
+                .map(|arr| Arc::new(arr) as ArrayRef))
+        },
+    );
 
-    let result: ListArray = pipeline.transform(&array)?.unwrap();
+    let result: ListArray = pipeline.execute_per_row(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
     ┌────────────────────────────────────────┐
@@ -55,16 +69,30 @@ fn add_one_to_leaves() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")?
-        .then(MapList::new(StructToFixedList::new(["x", "y"])))
-        .then(MapList::new(MapFixedSizeList::new(MapPrimitive::<
-            arrow::datatypes::Float64Type,
-            _,
-        >::new(|x| {
-            x + 1.0
-        }))));
+    let pipeline = Selector::from_str(".poses[]")?.pipe(
+        |source: &ArrayRef| -> Result<Option<ArrayRef>, re_lenses_core::combinators::Error> {
+            let struct_array = source
+                .as_any()
+                .downcast_ref::<StructArray>()
+                .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
+                    expected: "StructArray".to_owned(),
+                    actual: source.data_type().clone(),
+                    context: "struct_to_fixed_list pipe".to_owned(),
+                })?;
+            let fixed = StructToFixedList::new(["x", "y"]).transform(struct_array)?;
+            let Some(fixed) = fixed else {
+                return Ok(None);
+            };
+            let mapped =
+                MapFixedSizeList::new(MapPrimitive::<arrow::datatypes::Float64Type, _>::new(|x| {
+                    x + 1.0
+                }))
+                .transform(&fixed)?;
+            Ok(mapped.map(|arr| Arc::new(arr) as ArrayRef))
+        },
+    );
 
-    let result = pipeline.transform(&array)?.unwrap();
+    let result = pipeline.execute_per_row(&array)?.unwrap();
 
     insta::assert_snapshot!(
         format!("{}", DisplayRB(result.clone()))
@@ -97,14 +125,27 @@ fn convert_to_f32() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")?
-        .then(MapList::new(StructToFixedList::new(["x", "y"])))
-        .then(MapList::new(MapFixedSizeList::new(PrimitiveCast::<
-            Float64Array,
-            Float32Array,
-        >::new())));
+    let pipeline = Selector::from_str(".poses[]")?.pipe(
+        |source: &ArrayRef| -> Result<Option<ArrayRef>, re_lenses_core::combinators::Error> {
+            let struct_array = source
+                .as_any()
+                .downcast_ref::<StructArray>()
+                .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
+                    expected: "StructArray".to_owned(),
+                    actual: source.data_type().clone(),
+                    context: "struct_to_fixed_list pipe".to_owned(),
+                })?;
+            let fixed = StructToFixedList::new(["x", "y"]).transform(struct_array)?;
+            let Some(fixed) = fixed else {
+                return Ok(None);
+            };
+            let casted = MapFixedSizeList::new(PrimitiveCast::<Float64Array, Float32Array>::new())
+                .transform(&fixed)?;
+            Ok(casted.map(|arr| Arc::new(arr) as ArrayRef))
+        },
+    );
 
-    let result = pipeline.transform(&array)?.unwrap();
+    let result = pipeline.execute_per_row(&array)?.unwrap();
 
     insta::assert_snapshot!(DisplayRB(result.clone()), @r"
     ┌────────────────────────────────────────┐
@@ -134,13 +175,28 @@ fn replace_nulls() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")?
-        .then(MapList::new(StructToFixedList::new(["x", "y"])))
-        .then(MapList::new(MapFixedSizeList::new(ReplaceNull::<
-            arrow::datatypes::Float64Type,
-        >::new(1337.0))));
+    let pipeline = Selector::from_str(".poses[]")?.pipe(
+        |source: &ArrayRef| -> Result<Option<ArrayRef>, re_lenses_core::combinators::Error> {
+            let struct_array = source
+                .as_any()
+                .downcast_ref::<StructArray>()
+                .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
+                    expected: "StructArray".to_owned(),
+                    actual: source.data_type().clone(),
+                    context: "struct_to_fixed_list pipe".to_owned(),
+                })?;
+            let fixed = StructToFixedList::new(["x", "y"]).transform(struct_array)?;
+            let Some(fixed) = fixed else {
+                return Ok(None);
+            };
+            let replaced =
+                MapFixedSizeList::new(ReplaceNull::<arrow::datatypes::Float64Type>::new(1337.0))
+                    .transform(&fixed)?;
+            Ok(replaced.map(|arr| Arc::new(arr) as ArrayRef))
+        },
+    );
 
-    let result = pipeline.transform(&array)?.unwrap();
+    let result = pipeline.execute_per_row(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
     ┌─────────────────────────────────────────────────┐
@@ -172,7 +228,7 @@ fn test_flatten_single_element() -> Result<(), Box<dyn std::error::Error>> {
 
     let pipeline = Selector::from_str(".poses[]")?;
 
-    let result = pipeline.transform(&array)?.unwrap();
+    let result = pipeline.execute_per_row(&array)?.unwrap();
 
     insta::assert_snapshot!(
         format!("{}", DisplayRB(result.clone())), @r#"
@@ -257,7 +313,7 @@ fn test_flatten_multiple_elements() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", DisplayRB(list_of_lists.clone()));
 
     let result = Selector::from_str(".[]")?
-        .transform(&list_of_lists)?
+        .execute_per_row(&list_of_lists)?
         .unwrap();
 
     insta::assert_snapshot!(
@@ -372,10 +428,23 @@ fn test_map_list_nullability() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline =
-        Selector::from_str(".poses[]")?.then(MapList::new(StructToFixedList::new(["x", "y"])));
+    let pipeline = Selector::from_str(".poses[]")?.pipe(
+        |source: &ArrayRef| -> Result<Option<ArrayRef>, re_lenses_core::combinators::Error> {
+            let struct_array = source
+                .as_any()
+                .downcast_ref::<StructArray>()
+                .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
+                    expected: "StructArray".to_owned(),
+                    actual: source.data_type().clone(),
+                    context: "struct_to_fixed_list pipe".to_owned(),
+                })?;
+            Ok(StructToFixedList::new(["x", "y"])
+                .transform(struct_array)?
+                .map(|arr| Arc::new(arr) as ArrayRef))
+        },
+    );
 
-    let result: ListArray = pipeline.transform(&array)?.unwrap();
+    let result: ListArray = pipeline.execute_per_row(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
     ┌────────────────────────────────────────┐
@@ -514,8 +583,23 @@ fn test_flatten_fixed_size_list() -> Result<(), Box<dyn std::error::Error>> {
 
     // Produces List(FixedSizeList(2 x Float64)) instead of creating a new test case from scratch.
     let source: ListArray = Selector::from_str(".poses[]")?
-        .then(MapList::new(StructToFixedList::new(["x", "y"])))
-        .transform(&array)?
+        .pipe(
+            |source: &ArrayRef| -> Result<Option<ArrayRef>, re_lenses_core::combinators::Error> {
+                let struct_array =
+                    source
+                        .as_any()
+                        .downcast_ref::<StructArray>()
+                        .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
+                            expected: "StructArray".to_owned(),
+                            actual: source.data_type().clone(),
+                            context: "struct_to_fixed_list pipe".to_owned(),
+                        })?;
+                Ok(StructToFixedList::new(["x", "y"])
+                    .transform(struct_array)?
+                    .map(|arr| Arc::new(arr) as ArrayRef))
+            },
+        )
+        .execute_per_row(&array)?
         .unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(source.clone())), @"

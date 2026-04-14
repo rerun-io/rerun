@@ -2,7 +2,7 @@
 //!
 //! ⚠️Make sure to familiarize yourself with the [crate-level docs](crate) first. ⚠️
 //!
-//! RRD streams are used everywhere gRPC isn't: files, standard I/O, HTTP fetches, data-loaders, etc.
+//! RRD streams are used everywhere gRPC isn't: files, standard I/O, HTTP fetches, importers, etc.
 //! This module is completely unrelated to the Rerun Data Protocol (Redap) gRPC API.
 //! This module is also completely unrelated to the legacy SDK comms gRPC API.
 //!
@@ -26,6 +26,18 @@ mod decoder;
 #[cfg(feature = "encoder")]
 mod encoder;
 
+#[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) mod test_util;
+
+#[cfg(feature = "decoder")]
+#[cfg(not(target_arch = "wasm32"))]
+mod chunk_reader;
+
+#[cfg(feature = "decoder")]
+#[cfg(not(target_arch = "wasm32"))]
+mod footer_reader;
+
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
 mod file_sink;
@@ -33,6 +45,9 @@ mod file_sink;
 #[cfg(feature = "stream_from_http")]
 pub mod stream_from_http;
 
+#[cfg(feature = "decoder")]
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::chunk_reader::read_chunks;
 #[cfg(feature = "decoder")]
 pub use self::decoder::{
     DecodeError, Decoder, DecoderApp, DecoderEntrypoint, DecoderIterator, DecoderStream,
@@ -48,6 +63,9 @@ pub use self::footer::{
     RawRrdManifest, RrdFooter, RrdManifest, RrdManifestBuilder, RrdManifestSha256,
     RrdManifestStaticMap, RrdManifestTemporalMap, RrdManifestTemporalMapEntry,
 };
+#[cfg(feature = "decoder")]
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::footer_reader::read_rrd_footer;
 pub use self::frames::{
     Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
     StreamFooter, StreamFooterEntry, StreamHeader,

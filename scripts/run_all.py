@@ -52,7 +52,7 @@ SKIP_LIST = [
     # ros requires complex system dependencies to be installed
     "examples/python/ros_node",
     # this needs special treatment to run
-    "examples/python/external_data_loader",
+    "examples/python/external_importer",
 ]
 
 MAC_SKIP_LIST: list[str] = []

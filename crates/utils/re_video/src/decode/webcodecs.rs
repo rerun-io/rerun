@@ -20,7 +20,7 @@ use crate::{
 
 #[derive(Clone)]
 #[repr(transparent)]
-pub struct WebVideoFrame(web_sys::VideoFrame);
+pub struct WebVideoFrame(pub(super) web_sys::VideoFrame);
 
 impl re_byte_size::SizeBytes for WebVideoFrame {
     fn heap_size_bytes(&self) -> u64 {
@@ -155,7 +155,7 @@ impl Drop for WebVideoDecoder {
 
             re_log::warn!(
                 "Error when closing video decoder: {}",
-                js_error_to_string(&err)
+                string_from_js_value(&err)
             );
         }
     }
@@ -182,7 +182,7 @@ impl WebVideoDecoder {
             .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
         Ok(Self {
-            codec: video_descr.codec,
+            codec: video_descr.codec.clone(),
 
             timescale,
             first_frame_pts,
@@ -253,14 +253,14 @@ impl AsyncDecoder for WebVideoDecoder {
         // Given that we err on the side of providing too much than too little information.
         if let Some(duration) = video_chunk.duration {
             let duration_micros = 1e-3 * duration.duration(self.timescale).as_nanos() as f64;
-            web_chunk.set_duration(duration_micros);
+            web_chunk.set_duration_f64(duration_micros);
         }
 
         let web_chunk = EncodedVideoChunk::new(&web_chunk)
-            .map_err(|err| WebError::CreateChunk(js_error_to_string(&err)))?;
+            .map_err(|err| WebError::CreateChunk(string_from_js_value(&err)))?;
         self.decoder
             .decode(&web_chunk)
-            .map_err(|err| WebError::DecodeChunk(js_error_to_string(&err)))?;
+            .map_err(|err| WebError::DecodeChunk(string_from_js_value(&err)))?;
 
         Ok(())
     }
@@ -307,7 +307,7 @@ impl AsyncDecoder for WebVideoDecoder {
                 encoding_details,
                 self.hw_acceleration,
             ))
-            .map_err(|err| WebError::ConfigureFailure(js_error_to_string(&err)).into())
+            .map_err(|err| WebError::ConfigureFailure(string_from_js_value(&err)).into())
     }
 
     /// Called after submitting the last chunk.
@@ -335,18 +335,15 @@ impl AsyncDecoder for WebVideoDecoder {
         // If we don't handle potential flush errors, we'll get a lot of spam in the console.
         wasm_bindgen_futures::spawn_local(async move {
             let flush_result = wasm_bindgen_futures::JsFuture::from(flush_promise).await;
-            if let Err(flush_error) = flush_result {
-                if let Some(dom_exception) = flush_error.dyn_ref::<web_sys::DomException>()
+            if let Err(err) = flush_result {
+                if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>()
                     && dom_exception.code() == web_sys::DomException::ABORT_ERR
                 {
                     // Video decoder got closed, that's fine.
                     return;
                 }
 
-                re_log::debug!(
-                    "Failed to flush video: {}",
-                    js_error_to_string(&flush_error)
-                );
+                re_log::debug!("Failed to flush video: {}", string_from_js_value(&err));
             }
         });
 
@@ -425,14 +422,9 @@ fn init_video_decoder(
                 }
             }
 
-            let Some(web_timestamp_us_raw) = frame.timestamp() else {
-                // Spec says this should never happen.
-                re_log::warn_once!("WebCodec decoded video frame without any timestamp data.");
-                return;
-            };
             // WebCodec timestamps are internally represented as i64 according to the spec.
             // Any floating point part would be a violation of the spec.
-            let web_timestamp_us = web_timestamp_us_raw as u64;
+            let web_timestamp_us = frame.timestamp() as u64;
 
             match pending_frame_infos.entry(web_timestamp_us) {
                 Entry::Occupied(mut entry) => {
@@ -462,7 +454,7 @@ fn init_video_decoder(
 
                 Entry::Vacant(_) => {
                     re_log::warn!(
-                        "Decoder produced a frame at timestamp {web_timestamp_us_raw}us for which we don't have a valid frame info."
+                        "Decoder produced a frame at timestamp {web_timestamp_us}us for which we don't have a valid frame info."
                     );
                 }
             }
@@ -472,7 +464,7 @@ fn init_video_decoder(
     let on_error = Closure::wrap(Box::new(move |err: js_sys::Error| {
         output_sender
             .send(Err(super::DecodeError::WebDecoder(WebError::Decoding(
-                js_error_to_string(&err),
+                string_from_js_value(&err),
             ))))
             .ok();
     }) as Box<dyn FnMut(js_sys::Error)>);
@@ -485,7 +477,7 @@ fn init_video_decoder(
     };
 
     let decoder = web_sys::VideoDecoder::new(&VideoDecoderInit::new(&on_error, &on_output))
-        .map_err(|err| WebError::DecoderSetupFailure(js_error_to_string(&err)))?;
+        .map_err(|err| WebError::DecoderSetupFailure(string_from_js_value(&err)))?;
 
     Ok((decoder, output_callback_tx))
 }
@@ -546,7 +538,7 @@ fn js_video_decoder_config(
     js
 }
 
-fn js_error_to_string(v: &wasm_bindgen::JsValue) -> String {
+pub fn string_from_js_value(v: &wasm_bindgen::JsValue) -> String {
     if let Some(v) = v.as_string() {
         return v;
     }

@@ -14,30 +14,26 @@ use re_viewer_context::{
 use super::utilities::{LabeledBatch, process_labels_2d};
 use super::{SpatialViewVisualizerData, process_radius_slice};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
-use crate::view_kind::SpatialViewKind;
-
 // ---
 
 #[derive(Default)]
-pub struct Lines2DVisualizer {
-    pub data: SpatialViewVisualizerData,
-}
+pub struct Lines2DVisualizer;
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Lines2DVisualizer {
     fn process_data<'a>(
-        &mut self,
+        data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
-        data: impl Iterator<Item = Lines2DComponentData<'a>>,
+        results_iter: impl Iterator<Item = Lines2DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
 
-        for data in data {
-            let num_instances = data.strips.len();
+        for ent_data in results_iter {
+            let num_instances = ent_data.strips.len();
             if num_instances == 0 {
                 continue;
             }
@@ -45,7 +41,7 @@ impl Lines2DVisualizer {
             let annotation_infos = process_annotation_slices(
                 query.latest_at,
                 num_instances,
-                data.class_ids,
+                ent_data.class_ids,
                 &ent_context.annotations,
             );
 
@@ -53,7 +49,7 @@ impl Lines2DVisualizer {
                 ctx,
                 entity_path,
                 num_instances,
-                data.radii,
+                ent_data.radii,
                 LineStrips2D::descriptor_radii().component,
             );
             let colors = process_color_slice(
@@ -61,7 +57,7 @@ impl Lines2DVisualizer {
                 LineStrips2D::descriptor_colors().component,
                 num_instances,
                 &annotation_infos,
-                data.colors,
+                ent_data.colors,
             );
 
             let world_from_obj = ent_context
@@ -78,7 +74,7 @@ impl Lines2DVisualizer {
 
             let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
             for (i, (strip, radius, &color)) in
-                itertools::izip!(data.strips.iter(), radii, &colors).enumerate()
+                itertools::izip!(ent_data.strips.iter(), radii, &colors).enumerate()
             {
                 let lines = line_batch
                     .add_strip_2d(strip.iter().copied().map(Into::into))
@@ -101,16 +97,15 @@ impl Lines2DVisualizer {
                 }
             }
 
-            self.data
-                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
+            data.add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
-            self.data.ui_labels.extend(process_labels_2d(
+            data.ui_labels.extend(process_labels_2d(
                 LabeledBatch {
                     entity_path,
                     visualizer_instruction: ent_context.visualizer_instruction,
                     num_instances,
                     overall_position: obj_space_bounding_box.center().truncate(),
-                    instance_positions: data.strips.iter().map(|strip| {
+                    instance_positions: ent_data.strips.iter().map(|strip| {
                         strip
                             .iter()
                             .copied()
@@ -118,9 +113,9 @@ impl Lines2DVisualizer {
                             .sum::<glam::Vec2>()
                             / (strip.len() as f32)
                     }),
-                    labels: &data.labels,
+                    labels: &ent_data.labels,
                     colors: &colors,
-                    show_labels: data.show_labels.unwrap_or_else(|| {
+                    show_labels: ent_data.show_labels.unwrap_or_else(|| {
                         typed_fallback_for(ctx, LineStrips2D::descriptor_show_labels().component)
                     }),
                     annotation_infos: &annotation_infos,
@@ -169,11 +164,12 @@ impl VisualizerSystem for Lines2DVisualizer {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
 
         let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
@@ -182,12 +178,12 @@ impl VisualizerSystem for Lines2DVisualizer {
         );
 
         use super::entity_iterator::process_archetype;
-        process_archetype::<Self, LineStrips2D, _>(
+        process_archetype::<LineStrips2D, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            Some(SpatialViewKind::TwoD),
+            self,
             |ctx, spatial_ctx, results| {
                 let all_strips = results.iter_required(LineStrips2D::descriptor_strips().component);
                 if all_strips.is_empty() {
@@ -221,7 +217,7 @@ impl VisualizerSystem for Lines2DVisualizer {
                 let all_show_labels =
                     results.iter_optional(LineStrips2D::descriptor_show_labels().component);
 
-                let data = re_query::range_zip_1x5(
+                let results_iter = re_query::range_zip_1x5(
                     all_strips.slice::<&[[f32; 2]]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
@@ -245,7 +241,14 @@ impl VisualizerSystem for Lines2DVisualizer {
                     },
                 );
 
-                self.process_data(ctx, &mut line_builder, view_query, spatial_ctx, data);
+                Self::process_data(
+                    &mut data,
+                    ctx,
+                    &mut line_builder,
+                    view_query,
+                    spatial_ctx,
+                    results_iter,
+                );
 
                 Ok(())
             },
@@ -253,6 +256,6 @@ impl VisualizerSystem for Lines2DVisualizer {
 
         Ok(output
             .with_draw_data([(line_builder.into_draw_data()?.into())])
-            .with_visualizer_data(std::mem::take(&mut self.data)))
+            .with_visualizer_data(data))
     }
 }

@@ -471,10 +471,17 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
 
             // NOTE: repeat all these attributes so services such as CloudWatch, which don't really
             // support OTLP, can actually see them.
-            if grpc_status == "Ok" {
-                tracing::info!(%endpoint, %grpc_status, %http_status, %client_version, %server_version, %email, %dataset_id, ?latency, "grpc_on_response");
-            } else {
-                tracing::error!(%endpoint, %grpc_status, %http_status, %client_version, %server_version, %email, %dataset_id, ?latency, "grpc_on_response");
+            match grpc_status.as_str() {
+                "Ok" => {
+                    tracing::info!(%endpoint, %grpc_status, %http_status, %client_version, %server_version, %email, %dataset_id, ?latency, "grpc_on_response");
+                }
+                "<pending>" => {
+                    // Streaming response — final gRPC status will be logged by `GrpcOnEos`.
+                    tracing::debug!(%endpoint, %grpc_status, %http_status, %client_version, %server_version, %email, %dataset_id, ?latency, "grpc_on_response");
+                }
+                _ => {
+                    tracing::error!(%endpoint, %grpc_status, %http_status, %client_version, %server_version, %email, %dataset_id, ?latency, "grpc_on_response");
+                }
             }
 
             self.histogram.record(
@@ -524,7 +531,7 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
                 SpanMetadata::remove_opt(span.id().as_ref());
             }
 
-            tower_http::classify::ClassifiedResponse::Ready(Ok(_)) => {
+            tower_http::classify::ClassifiedResponse::Ready(Ok(())) => {
                 record(span, Some(tonic::Code::Ok));
             }
 

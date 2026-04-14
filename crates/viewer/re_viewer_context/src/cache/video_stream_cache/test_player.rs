@@ -133,7 +133,7 @@ impl TestVideoPlayer {
         self.video.frame_at(
             Time::from_secs(time, re_video::Timescale::NANOSECOND),
             &self.video_descr,
-            &mut |_, _| Ok(()),
+            &mut |(), _| Ok(()),
             get_buffer,
         )?;
 
@@ -482,7 +482,10 @@ fn player_fetching_unloaded() {
 
         &[]
     }));
-    assert_eq!(fetched.read().as_slice(), &[samples[1].source_id()]);
+    assert_eq!(
+        fetched.read().as_slice(),
+        &[samples[2].source_id(), samples[1].source_id()]
+    );
 
     video.expect_decoded_samples(None);
 
@@ -515,11 +518,11 @@ fn player_fetching_unloaded() {
     assert_eq!(
         fetched.read().as_slice(),
         &[
-            // in `request_keyframe_before`
-            samples[7].source_id(),
-            samples[8].source_id(),
-            samples[9].source_id(),
+            // in `request_keyframe_before` (reversed)
             samples[10].source_id(),
+            samples[9].source_id(),
+            samples[8].source_id(),
+            samples[7].source_id(),
             // in `enqueue_sample_range`
             samples[7].source_id(),
             samples[8].source_id(),
@@ -553,8 +556,8 @@ fn player_fetching_unloaded() {
     }));
     assert_eq!(
         fetched.read().as_slice(),
-        // Both in `request_keyframe_before`.
-        &[samples[11].source_id(), samples[12].source_id()]
+        // Both in `request_keyframe_before` (reversed).
+        &[samples[12].source_id(), samples[11].source_id()]
     );
 
     video.expect_decoded_samples(None);
@@ -672,7 +675,7 @@ fn video_chunk(start_time: f64, dt: f64, gop_count: u64, samples_per_gop: u64) -
 
 fn playable_stream(cache: &mut VideoStreamCache, store: &EntityDb) -> SharablePlayableVideoStream {
     cache
-        .entry(
+        .video_entry(
             store,
             &re_chunk::EntityPath::from(STREAM_ENTITY),
             TIMELINE_NAME.into(),
@@ -819,7 +822,7 @@ fn cache_with_manifest_and_streaming() {
     // Load some chunks.
     load_chunks(&mut store, &mut cache, &chunks[3..5]);
 
-    assert_loading(player.play_store(0.0..3.0, 0.25, &store));
+    assert_loading(player.play_store(1.0..3.0, 0.25, &store));
     player.expect_decoded_samples(None);
 
     player.play_store(3.0..5.0, 0.25, &store).unwrap();
@@ -1143,10 +1146,11 @@ fn cache_with_out_of_order_chunk_arrival() {
     // The cache entry should still exist (delta re-merge, not removal).
     assert!(
         cache
-            .0
+            .entries
             .contains_key(&crate::cache::video_stream_cache::VideoStreamKey {
                 entity_path: re_chunk::EntityPath::from(STREAM_ENTITY).hash(),
-                timeline: re_chunk::TimelineName::new(TIMELINE_NAME)
+                timeline: re_chunk::TimelineName::new(TIMELINE_NAME),
+                sample_component: VideoStream::descriptor_sample().component,
             }),
         "Cache entry should survive delta re-merge"
     );
@@ -1264,10 +1268,11 @@ fn cache_out_of_order_arrival_with_compaction() {
     // The cache entry should still exist (delta re-merge instead of removal).
     assert!(
         cache
-            .0
+            .entries
             .contains_key(&crate::cache::video_stream_cache::VideoStreamKey {
                 entity_path: re_chunk::EntityPath::from(STREAM_ENTITY).hash(),
-                timeline: re_chunk::TimelineName::new(TIMELINE_NAME)
+                timeline: re_chunk::TimelineName::new(TIMELINE_NAME),
+                sample_component: VideoStream::descriptor_sample().component,
             }),
         "The video stream cache entry should still exist after delta re-merge"
     );
@@ -1370,10 +1375,11 @@ fn cache_with_manifest_load_resulting_in_incomplete_gop() {
     // The cache entry should survive the delta re-merge.
     assert!(
         cache
-            .0
+            .entries
             .contains_key(&crate::cache::video_stream_cache::VideoStreamKey {
                 entity_path: re_chunk::EntityPath::from(STREAM_ENTITY).hash(),
-                timeline: re_chunk::TimelineName::new(TIMELINE_NAME)
+                timeline: re_chunk::TimelineName::new(TIMELINE_NAME),
+                sample_component: VideoStream::descriptor_sample().component,
             }),
         "Cache entry should survive delta re-merge"
     );
@@ -1447,10 +1453,11 @@ fn cache_with_manifest_skips_conflicting_chunk_keyframe() {
     // The cache entry should survive the delta re-merge.
     assert!(
         cache
-            .0
+            .entries
             .contains_key(&crate::cache::video_stream_cache::VideoStreamKey {
                 entity_path: re_chunk::EntityPath::from(STREAM_ENTITY).hash(),
-                timeline: re_chunk::TimelineName::new(TIMELINE_NAME)
+                timeline: re_chunk::TimelineName::new(TIMELINE_NAME),
+                sample_component: VideoStream::descriptor_sample().component,
             }),
         "Cache entry should survive delta re-merge"
     );
@@ -1458,4 +1465,40 @@ fn cache_with_manifest_skips_conflicting_chunk_keyframe() {
     // After re-merge, all 6 samples should be in the correct time order.
     player.play_store(1.0..7.0, 1.0, &store).unwrap();
     player.expect_decoded_samples(0..6);
+}
+
+/// A chunk loaded second has timestamps that interleave with an already-loaded chunk,
+/// triggering a sample reorder. After GC removes the interleaving chunk, the remaining
+/// chunk's samples must all be decodable from its own keyframe.
+#[test]
+fn cache_with_gc_after_interleaved_arrival() {
+    let mut cache = VideoStreamCache::default();
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    let codec = Arc::new(codec_chunk());
+    let chunk_y = Arc::new(video_chunk(1.0, 1.0, 1, 4));
+    // Starts before Y but loaded second, triggering out-of-order handling.
+    let chunk_x = Arc::new(video_chunk(0.5, 1.0, 2, 1));
+
+    load_chunks(&mut store, &mut cache, std::slice::from_ref(&codec));
+    load_chunks(&mut store, &mut cache, std::slice::from_ref(&chunk_y));
+
+    // Create a live entry before chunk_x arrives, so handle_deletion runs on it later.
+    let _ = playable_stream(&mut cache, &store);
+
+    // Loading X after Y triggers handle_out_of_order_chunk, interleaving the deques.
+    load_chunks(&mut store, &mut cache, std::slice::from_ref(&chunk_x));
+
+    // Evict X and the codec while keeping Y.
+    unload_chunks(&store, &mut cache, 2.0..5.0);
+
+    // Reload the codec.
+    load_chunks(&mut store, &mut cache, std::slice::from_ref(&codec));
+
+    // The entry was either correctly rebuilt (correct path) or corrupted (buggy path).
+    let video_stream = playable_stream(&mut cache, &store);
+    let mut player = TestVideoPlayer::from_stream(video_stream);
+
+    player.play_store(2.0..5.0, 0.25, &store).unwrap();
+    player.expect_decoded_samples(0..4);
 }

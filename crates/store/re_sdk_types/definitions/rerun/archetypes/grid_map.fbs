@@ -1,0 +1,68 @@
+namespace rerun.archetypes;
+
+
+/// A 2D grid map stored as raster data in an image buffer, with a cell size in scene units and pose.
+///
+/// This archetype is intended for robotics applications like occupancy maps or navigation costmaps.
+///
+/// \example archetypes/grid_map_simple title="Simple occupancy grid map"
+table GridMap (
+  "attr.cpp.no_field_ctors",
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.unreleased",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "PartialEq"
+) {
+  // --- Required ---
+
+  /// The raw grid data.
+  data: rerun.components.ImageBuffer ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
+
+  /// The format of the grid's image data.
+  format: rerun.components.ImageFormat ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1100);
+
+  /// The scene unit size of a single grid cell (e.g. m / pixel).
+  cell_size: rerun.components.CellSize ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1150);
+
+  // --- Optional ---
+
+  /// Translation of the lower-left corner of the grid map in space.
+  ///
+  /// Together with [components.RotationAxisAngle] or [components.RotationQuat], this defines the pose of the
+  /// lower-left image corner relative to the map's parent coordinate frame.
+  ///
+  /// If not set, the lower-left image corner is placed at origin of the map's parent coordinate frame.
+  translation: rerun.components.Translation3D ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit", nullable, order: 1200);
+
+  /// Rotation of the lower-left corner of the grid map in space via axis + angle.
+  ///
+  /// Together with [components.Translation3D], this defines the pose of the
+  /// lower-left image corner relative to the map's parent coordinate frame.
+  ///
+  /// Note: either this or [components.RotationQuat] can be set to specify the grid map's rotation, but not both.
+  /// If both this and [components.RotationQuat] are set, this is ignored in favor of the quaternion.
+  rotation_axis_angle: rerun.components.RotationAxisAngle ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit", nullable, order: 1300);
+
+  /// Rotation of the lower-left corner of the grid map in space via quaternion.
+  ///
+  /// Together with [components.Translation3D], this defines the pose of the
+  /// lower-left image corner relative to the map's parent coordinate frame.
+  quaternion: rerun.components.RotationQuat ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit", nullable, order: 1400);
+
+  /// Opacity of the grid map texture after all image decoding and colormap application.
+  ///
+  /// Defaults to 1.0 (fully opaque).
+  opacity: rerun.components.Opacity ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Optional draw order for layering multiple grid maps that overlap in space.
+  ///
+  /// Higher values are drawn on top of lower values.
+  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3050);
+
+  /// Colormap to use for rendering single-channel grid maps.
+  ///
+  /// If not set, the grid map is shown using the underlying [components.ImageFormat]
+  /// interpretation.
+  colormap: rerun.components.Colormap ("attr.rerun.component_optional", nullable, order: 3100);
+}

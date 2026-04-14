@@ -1,6 +1,6 @@
-//! Demonstrates how to log any file from the SDK using the `DataLoader` machinery.
+//! Demonstrates how to log any file from the SDK using the `Importer` machinery.
 //!
-//! See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
+//! See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
 //!
 //! Usage:
 //! ```
@@ -41,10 +41,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     for filepath in &args.filepaths {
         let filepath = filepath.as_path();
 
-        if !args.from_contents {
-            // Either log the file using its path…
-            rec.log_file_from_path(filepath, prefix.clone(), true /* static */)?;
-        } else {
+        if args.from_contents {
             // …or using its contents if you already have them loaded for some reason.
             if filepath.is_file() {
                 let contents = std::fs::read(filepath)?;
@@ -55,6 +52,9 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
                     true, /* static */
                 )?;
             }
+        } else {
+            // Either log the file using its path…
+            rec.log_file_from_path(filepath, prefix.clone(), true /* static */)?;
         }
     }
 

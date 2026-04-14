@@ -77,8 +77,11 @@
 //! supporting HDR content at which point more properties will be important!
 //!
 
-#[cfg(with_dav1d)]
+#[cfg(not(target_arch = "wasm32"))]
 mod async_decoder_wrapper;
+#[cfg(not(target_arch = "wasm32"))]
+mod image_decoder;
+
 #[cfg(with_dav1d)]
 mod av1;
 
@@ -93,12 +96,17 @@ pub use ffmpeg_cli::{
 };
 
 #[cfg(target_arch = "wasm32")]
+mod web_image_decoder;
+#[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
 use crate::{SampleIndex, Time, VideoDataDescription, player::VideoPlaybackIssueSeverity};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum DecodeError {
+    #[error("Waiting for encoding details")]
+    WaitingForCodecDetails,
+
     #[error("Unsupported codec: {0}")]
     UnsupportedCodec(String),
 
@@ -113,6 +121,10 @@ pub enum DecodeError {
         "Rerun does not yet support native AV1 decoding on Linux ARM64. See https://github.com/rerun-io/rerun/issues/7755"
     )]
     NoDav1dOnLinuxArm64,
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Image decode error: {0}")]
+    ImageDecoder(String),
 
     #[cfg(target_arch = "wasm32")]
     #[error(transparent)]
@@ -138,11 +150,17 @@ impl DecodeError {
         // Gotta keep trying!
         match self {
             // Unsupported codec / decoder not available:
-            Self::UnsupportedCodec(_) | Self::Dav1dWithoutNasm | Self::NoDav1dOnLinuxArm64 => false,
+            Self::WaitingForCodecDetails
+            | Self::UnsupportedCodec(_)
+            | Self::Dav1dWithoutNasm
+            | Self::NoDav1dOnLinuxArm64 => false,
 
             // Issue with AV1 decoding.
             #[cfg(with_dav1d)]
             Self::Dav1d(_) => true,
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::ImageDecoder(_) => false,
 
             // Issue with WebCodecs decoding.
             #[cfg(target_arch = "wasm32")]
@@ -159,11 +177,14 @@ impl DecodeError {
 
     pub fn severity(&self) -> VideoPlaybackIssueSeverity {
         match self {
+            Self::WaitingForCodecDetails => VideoPlaybackIssueSeverity::Loading,
             #[cfg(with_dav1d)]
             Self::Dav1d(err) => match err {
                 dav1d::Error::Again => VideoPlaybackIssueSeverity::Loading,
                 _ => VideoPlaybackIssueSeverity::Error,
             },
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::ImageDecoder(_) => VideoPlaybackIssueSeverity::Error,
             #[cfg(target_arch = "wasm32")]
             Self::WebDecoder(err) => err.severity(),
             #[cfg(with_ffmpeg)]
@@ -243,14 +264,27 @@ pub fn new_decoder(
     );
 
     #[cfg(target_arch = "wasm32")]
-    return Ok(Box::new(webcodecs::WebVideoDecoder::new(
-        video,
-        decode_settings.hw_acceleration,
-        output_sender,
-    )?));
+    {
+        return match video.codec {
+            crate::VideoCodec::ImageSequence(_) => {
+                if let Some(decoder) =
+                    web_image_decoder::WebImageDecoder::try_new(video, output_sender.clone())
+                {
+                    Ok(Box::new(decoder))
+                } else {
+                    Err(DecodeError::WaitingForCodecDetails)
+                }
+            }
+            _ => Ok(Box::new(webcodecs::WebVideoDecoder::new(
+                video,
+                decode_settings.hw_acceleration,
+                output_sender,
+            )?)),
+        };
+    }
 
     #[cfg(not(target_arch = "wasm32"))]
-    match video.codec {
+    match &video.codec {
         #[cfg(feature = "av1")]
         crate::VideoCodec::AV1 => {
             #[cfg(linux_arm64)]
@@ -272,11 +306,23 @@ pub fn new_decoder(
         #[cfg(with_ffmpeg)]
         crate::VideoCodec::H264 | crate::VideoCodec::H265 => Ok(Box::new(FFmpegCliDecoder::new(
             debug_name.to_owned(),
-            &video.encoding_details,
+            video.encoding_details.as_ref(),
             output_sender,
             decode_settings.ffmpeg_path.clone(),
             &video.codec,
         )?)),
+
+        crate::VideoCodec::ImageSequence(codec) => {
+            if let Some(decoder) = image_decoder::SyncImageDecoder::try_new(video) {
+                Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
+                    format!("image decoder ({})", decoder.mime_type()),
+                    Box::new(decoder),
+                    output_sender,
+                )))
+            } else {
+                Err(DecodeError::WaitingForCodecDetails)
+            }
+        }
 
         _ => Err(DecodeError::UnsupportedCodec(
             video.human_readable_codec_string(),
@@ -483,6 +529,8 @@ impl re_byte_size::SizeBytes for Frame {
 /// Pixel format/layout used by [`FrameContent::data`].
 #[derive(Debug, Clone)]
 pub enum PixelFormat {
+    L8,
+    L16,
     Rgb8Unorm,
     Rgba8Unorm,
 
@@ -499,6 +547,8 @@ pub enum PixelFormat {
 impl PixelFormat {
     pub fn bits_per_pixel(&self) -> u32 {
         match self {
+            Self::L8 => 8,
+            Self::L16 => 16,
             Self::Rgb8Unorm { .. } => 24,
             Self::Rgba8Unorm { .. } => 32,
             Self::Yuv { layout, .. } => match layout {

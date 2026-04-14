@@ -356,10 +356,10 @@ fn selection_context_menu(
         )
         .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
             format!("Can't share links to the current recording: {err}")
-        } else if !has_time_range {
-            "The current recording doesn't support time selection links".to_owned()
-        } else {
+        } else if has_time_range {
             "Open the context menu on selected time to copy link".to_owned()
+        } else {
+            "The current recording doesn't support time selection links".to_owned()
         })
         .clicked()
         && let Ok(copy_command) = copy_command

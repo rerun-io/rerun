@@ -52,6 +52,15 @@ pub struct Args {
     /// Artificial bandwidth limit for responses (e.g. '10MB' for 10 megabytes per second).
     #[clap(long, value_parser = parse_bandwidth_limit)]
     pub bandwidth_limit: Option<u64>,
+
+    /// Additional origin patterns allowed to make cross-origin requests to the server
+    /// (can be specified multiple times).
+    ///
+    /// By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed.
+    /// Patterns are matched against the full `Origin` header value,
+    /// using glob-style matching where `*` matches any sequence of characters.
+    #[clap(long = "cors-allow-origin")]
+    pub cors_allow_origin: Vec<String>,
 }
 
 fn parse_bandwidth_limit(s: &str) -> Result<u64, String> {
@@ -70,6 +79,7 @@ impl Default for Args {
             tables: vec![],
             latency_ms: 0,
             bandwidth_limit: None,
+            cors_allow_origin: Vec::new(),
         }
     }
 }
@@ -106,10 +116,10 @@ impl FromStr for NamedPath {
 }
 
 impl Args {
-    /// Waits for the server to start, and return a handle to it together with its address.
+    /// Waits for the server to start, and return a handle to it.
     ///
-    /// The returned address is one you can connect to, e.g. 127.0.0.1 instead of 0.0.0.0.
-    pub async fn create_server_handle(self) -> anyhow::Result<(ServerHandle, SocketAddr)> {
+    /// Use [`ServerHandle::connect_addr`] for the address to connect to.
+    pub async fn create_server_handle(self) -> anyhow::Result<ServerHandle> {
         let Self {
             host: ip,
             port,
@@ -118,11 +128,10 @@ impl Args {
             tables,
             latency_ms,
             bandwidth_limit,
+            cors_allow_origin,
         } = self;
 
-        let rerun_cloud_server = {
-            use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer;
-
+        let handler = {
             let mut builder = crate::RerunCloudHandlerBuilder::new();
 
             for NamedPathCollection { name, paths } in datasets {
@@ -163,10 +172,15 @@ impl Args {
                 }
             }
 
-            RerunCloudServiceServer::new(builder.build())
-                .max_decoding_message_size(re_grpc_server::MAX_DECODING_MESSAGE_SIZE)
-                .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE)
+            builder.build()
         };
+
+        let rerun_cloud_server =
+            re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer::new(
+                handler,
+            )
+            .max_decoding_message_size(re_grpc_server::MAX_DECODING_MESSAGE_SIZE)
+            .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE);
 
         let ip = ip.parse().with_context(|| format!("IP: {ip:?}"))?;
         let ip_port = SocketAddr::new(ip, port);
@@ -179,19 +193,18 @@ impl Args {
                 axum::routing::get(async move || re_build_info::build_info!().to_string()),
             )
             .with_artificial_latency(std::time::Duration::from_millis(latency_ms as _))
-            .with_bandwidth_limit(bandwidth_limit);
+            .with_bandwidth_limit(bandwidth_limit)
+            .with_cors_allowed_origins(cors_allow_origin);
 
         let server = server_builder.build();
 
-        let mut server_handle = server.start();
+        let server_handle = server.start().await?;
 
-        let addr = server_handle.wait_for_ready().await?;
-
-        Ok((server_handle, addr))
+        Ok(server_handle)
     }
 
     pub async fn run_async(self) -> anyhow::Result<()> {
-        let (mut server_handle, _) = self.create_server_handle().await?;
+        let mut server_handle = self.create_server_handle().await?;
 
         #[cfg(unix)]
         let mut term_signal = signal(SignalKind::terminate())?;
@@ -212,7 +225,7 @@ impl Args {
                 info!("received SIGINT, gracefully shutting down");
             }
 
-            _ = server_handle.wait_for_shutdown() => {
+            () = server_handle.wait_for_shutdown() => {
                 warn!("gRPC endpoint shut down on its own, terminating redap-server");
             }
         }

@@ -308,6 +308,7 @@ def serve_grpc(
     recording: RecordingStream | None = None,
     server_memory_limit: str = "1GiB",
     newest_first: bool = False,
+    cors_allow_origin: list[str] | None = None,
 ) -> str:
     """
     Serve log-data over gRPC.
@@ -347,6 +348,13 @@ def serve_grpc(
     newest_first:
         If `True`, the server will start sending back the newest messages _first_.
         If `False`, the messages will be played back in the order they arrived.
+    cors_allow_origin:
+        Additional origin patterns allowed to make CORS requests to the gRPC server.
+        By default, only localhost and rerun.io are allowed.
+        Patterns are matched against the full `Origin` header (e.g. `"https://example.com:8080"`),
+        using glob-style matching where `*` matches any sequence of characters.
+        Examples: `"https://*.example.com"`, `"https://example.com:8080"`,
+        `"https://example.com:*"`.
 
     """
     if not is_recording_enabled(recording):
@@ -375,6 +383,7 @@ def serve_grpc(
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
         newest_first=newest_first,
+        cors_allow_origin=cors_allow_origin or [],
     )
 
 
