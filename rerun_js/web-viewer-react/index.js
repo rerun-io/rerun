@@ -130,26 +130,25 @@ function startViewer(handle, parent, getProps) {
   const props = getProps();
   const initial = toArray(props.rrd);
   const initialFollowIfHttp = props.follow_if_http;
-  const start = handle.start(
-    initial,
-    parent,
-    {
-      manifest_url: props.manifest_url,
-      render_backend: props.render_backend,
-      hide_welcome_screen: props.hide_welcome_screen,
-      theme: props.theme,
+  handle
+    .start(
+      initial,
+      parent,
+      {
+        manifest_url: props.manifest_url,
+        render_backend: props.render_backend,
+        hide_welcome_screen: props.hide_welcome_screen,
+        theme: props.theme,
 
-      // NOTE: `width`, `height` intentionally ignored, they will
-      //       instead be used on the parent `div` element
-      width: "100%",
-      height: "100%",
-    },
-    {
-      follow_if_http: initialFollowIfHttp,
-    },
-  );
-
-  void start
+        // NOTE: `width`, `height` intentionally ignored, they will
+        //       instead be used on the parent `div` element
+        width: "100%",
+        height: "100%",
+      },
+      {
+        follow_if_http: initialFollowIfHttp,
+      },
+    )
     .then(() => {
       if (!handle.ready) {
         return;
