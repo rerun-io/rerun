@@ -543,9 +543,9 @@ pub const SUPPORTED_DEPTH_IMAGE_EXTENSIONS: &[&str] = &["rvl", "png"];
 
 pub const SUPPORTED_VIDEO_EXTENSIONS: &[&str] = &["mp4"];
 
+// .ply is both point cloud and mesh and should not be in this list for detection to work.
 pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl", "dae"];
 
-// TODO(#4532): `.ply` data loader should support 2D point cloud & meshes
 pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];

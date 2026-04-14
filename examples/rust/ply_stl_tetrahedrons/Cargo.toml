@@ -1,0 +1,12 @@
+[package]
+name = "ply_stl_tetrahedrons"
+version = "0.32.0-alpha.1+dev"
+edition = "2024"
+rust-version = "1.92"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+rerun = { path = "../../../crates/top/rerun" }
+
+anyhow.workspace = true
