@@ -744,9 +744,6 @@ export class WebViewer {
    * The viewer must have been started via {@link WebViewer.start}.
    *
    * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
-   * @param options
-   *        - follow_if_http: Whether Rerun should open the resource in "Following" mode when streaming
-   *        from an HTTP url. Defaults to `false`. Ignored for non-HTTP URLs.
    */
   open(rrd: string | string[], options: WebViewerOpenOptions = {}) {
     if (!this.#handle) {
