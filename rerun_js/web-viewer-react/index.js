@@ -73,27 +73,17 @@ export default class WebViewer extends React.Component {
     } else {
       // We only need to diff the recordings.
 
-      const prev = toArray(prevProps.rrd);
-      const current = toArray(this.props.rrd);
-      const { added, removed } = diff(prev, current);
-      const reopened =
-        prevProps.follow_if_http !== this.props.follow_if_http
-          ? intersection(prev, current).filter(isFollowIfHttpSource)
-          : [];
-
-      // While the viewer is still starting there is nothing to diff yet.
-      // `startViewer` will open the latest `rrd` props once startup completes.
       if (!this.#handle.ready) {
         return;
       }
 
-      this.#handle.close([...removed, ...reopened]);
-      this.#handle.open(added, {
-        follow_if_http: this.props.follow_if_http,
-      });
-      this.#handle.open(reopened, {
-        follow_if_http: this.props.follow_if_http,
-      });
+      syncRecordings(
+        this.#handle,
+        toArray(prevProps.rrd),
+        toArray(this.props.rrd),
+        prevProps.follow_if_http,
+        this.props.follow_if_http,
+      );
     }
   }
 
@@ -138,26 +128,41 @@ function pascalToSnake(str) {
  */
 function startViewer(handle, parent, getProps) {
   const props = getProps();
-  const start = handle.start(null, parent, {
-    manifest_url: props.manifest_url,
-    render_backend: props.render_backend,
-    hide_welcome_screen: props.hide_welcome_screen,
-    theme: props.theme,
+  const initial = toArray(props.rrd);
+  const initialFollowIfHttp = props.follow_if_http;
+  const start = handle.start(
+    initial,
+    parent,
+    {
+      manifest_url: props.manifest_url,
+      render_backend: props.render_backend,
+      hide_welcome_screen: props.hide_welcome_screen,
+      theme: props.theme,
 
-    // NOTE: `width`, `height` intentionally ignored, they will
-    //       instead be used on the parent `div` element
-    width: "100%",
-    height: "100%",
-  });
+      // NOTE: `width`, `height` intentionally ignored, they will
+      //       instead be used on the parent `div` element
+      width: "100%",
+      height: "100%",
+    },
+    {
+      follow_if_http: initialFollowIfHttp,
+    },
+  );
 
   void start
     .then(() => {
-      const { rrd, follow_if_http } = getProps();
-      if (rrd == null || !handle.ready) {
+      if (!handle.ready) {
         return;
       }
 
-      handle.open(toArray(rrd), { follow_if_http });
+      const { rrd, follow_if_http } = getProps();
+      syncRecordings(
+        handle,
+        initial,
+        toArray(rrd),
+        initialFollowIfHttp,
+        follow_if_http,
+      );
     })
     .catch(() => {});
 
@@ -186,6 +191,33 @@ function diff(prev, current) {
     added: current.filter((v) => !prevSet.has(v)),
     removed: prev.filter((v) => !currentSet.has(v)),
   };
+}
+
+/**
+ * Reconcile the currently open recordings with the latest props.
+ *
+ * @param {rerun.WebViewer} handle
+ * @param {string[]} prev
+ * @param {string[]} current
+ * @param {boolean | undefined} prevFollowIfHttp
+ * @param {boolean | undefined} followIfHttp
+ */
+function syncRecordings(handle, prev, current, prevFollowIfHttp, followIfHttp) {
+  const { added, removed } = diff(prev, current);
+  const reopened =
+    prevFollowIfHttp !== followIfHttp
+      ? intersection(prev, current).filter(isFollowIfHttpSource)
+      : [];
+
+  if (removed.length > 0 || reopened.length > 0) {
+    handle.close([...removed, ...reopened]);
+  }
+  if (added.length > 0) {
+    handle.open(added, { follow_if_http: followIfHttp });
+  }
+  if (reopened.length > 0) {
+    handle.open(reopened, { follow_if_http: followIfHttp });
+  }
 }
 
 /**

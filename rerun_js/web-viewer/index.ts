@@ -210,6 +210,15 @@ export interface WebViewerOptions {
   login?: LoginOptions;
 }
 
+export interface WebViewerOpenOptions {
+  /**
+   * Whether Rerun should open an HTTP resource in "Following" mode when streaming.
+   *
+   * Defaults to `false`. Ignored for non-HTTP URLs.
+   */
+  follow_if_http?: boolean;
+}
+
 // `AppOptions` and `WebViewerOptions` must be compatible
 // otherwise we need to restructure how we pass options to the viewer
 
@@ -455,11 +464,13 @@ export class WebViewer {
    * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
    * @param parent The element to attach the canvas onto.
    * @param options Web Viewer configuration.
+   * @param open_options Open options forwarded to the initial {@link WebViewer.open} call.
    */
   async start(
     rrd: string | string[] | null,
     parent: HTMLElement | null,
     options: WebViewerOptions | null,
+    open_options: WebViewerOpenOptions | null = null,
   ): Promise<void> {
     parent ??= document.body;
     options ??= {};
@@ -581,7 +592,7 @@ export class WebViewer {
     this.#dispatch_event("ready");
 
     if (rrd) {
-      this.open(rrd);
+      this.open(rrd, open_options ?? undefined);
     }
 
     let self = this;
@@ -737,7 +748,7 @@ export class WebViewer {
    *        - follow_if_http: Whether Rerun should open the resource in "Following" mode when streaming
    *        from an HTTP url. Defaults to `false`. Ignored for non-HTTP URLs.
    */
-  open(rrd: string | string[], options: { follow_if_http?: boolean } = {}) {
+  open(rrd: string | string[], options: WebViewerOpenOptions = {}) {
     if (!this.#handle) {
       throw new Error(`attempted to open \`${rrd}\` in a stopped viewer`);
     }
