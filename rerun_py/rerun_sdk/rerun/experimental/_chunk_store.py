@@ -55,6 +55,8 @@ class ChunkStore:
             {entity_path}  rows={n}  static={True|False}  timelines=[…]  cols=[…]
 
         Useful for snapshot testing.
+
+        **Important**: For lazily-loaded stores, this forces loading all chunk data from disk.
         """
         return self._internal.summary()
 
@@ -86,5 +88,9 @@ class ChunkStore:
             recording_id=recording_id,
         )
 
+    def __len__(self) -> int:
+        """Return the number of chunks in this store."""
+        return self._internal.num_chunks()
+
     def __repr__(self) -> str:
-        return "ChunkStore()"
+        return f"ChunkStore({len(self)} chunks)"

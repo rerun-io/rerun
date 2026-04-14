@@ -8428,6 +8428,7 @@ dependencies = [
  "re_types_core",
  "saturating_cast",
  "similar-asserts",
+ "tempfile",
  "thiserror 2.0.18",
  "web-time",
 ]
@@ -8991,6 +8992,7 @@ dependencies = [
  "re_types_core",
  "sha2",
  "similar-asserts",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tokio-stream",

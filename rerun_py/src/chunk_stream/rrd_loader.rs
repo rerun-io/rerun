@@ -5,7 +5,8 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use re_chunk::Chunk;
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+use re_chunk_store::{ChunkStore, ChunkStoreConfig, LazyRrdStore};
+use re_log_encoding::RrdManifest;
 use re_log_types::{LogMsg, StoreId, StoreInfo, StoreKind};
 
 use super::chunk_store::PyChunkStoreInternal;
@@ -70,11 +71,37 @@ impl PyRrdLoaderInternal {
         )))
     }
 
-    /// Load the entire RRD into a fully materialized ChunkStore.
+    /// Load a ChunkStore from the RRD file.
+    ///
+    /// If the file has a footer/manifest, this uses lazy loading: only the index is read
+    /// immediately, and chunk data is loaded on demand (e.g., when streaming or compacting).
+    /// For legacy RRD files without a footer, falls back to eager full loading.
     fn store(&self, py: Python<'_>) -> PyResult<PyChunkStoreInternal> {
         let path = self.path.clone();
-        py.detach(move || load_rrd_to_chunk_store(&path))
-            .map_err(PyErr::from)
+        py.detach(move || -> Result<_, ChunkPipelineError> {
+            let mut file =
+                std::fs::File::open(&path).map_err(|err| ChunkPipelineError::RrdRead {
+                    path: path.clone(),
+                    reason: err.to_string(),
+                })?;
+
+            match re_log_encoding::read_rrd_footer(&mut file) {
+                Ok(Some(rrd_footer)) => {
+                    let manifest = pick_first_recording_manifest(&rrd_footer, &path)?;
+                    let lazy = LazyRrdStore::new(file, path, Arc::new(manifest));
+                    Ok(PyChunkStoreInternal::indexed_rrd(lazy))
+                }
+                Ok(None) => {
+                    // No footer (legacy RRD) — eager fallback.
+                    load_rrd_to_chunk_store(&path)
+                }
+                Err(err) => Err(ChunkPipelineError::RrdRead {
+                    path,
+                    reason: err.to_string(),
+                }),
+            }
+        })
+        .map_err(PyErr::from)
     }
 
     /// Application ID from the RRD's StoreInfo, if present.
@@ -284,8 +311,25 @@ fn load_rrd_to_chunk_store(path: &Path) -> Result<PyChunkStoreInternal, ChunkPip
         path: path_buf,
         reason: "No recording store found in file".to_owned(),
     })?;
-    Ok(PyChunkStoreInternal {
-        store: ChunkStoreHandle::new(store),
+    Ok(PyChunkStoreInternal::in_memory(store))
+}
+
+/// Pick the first recording manifest from an RRD footer.
+fn pick_first_recording_manifest(
+    rrd_footer: &re_log_encoding::RrdFooter,
+    path: &Path,
+) -> Result<RrdManifest, ChunkPipelineError> {
+    let (_, raw_manifest) = rrd_footer
+        .manifests
+        .iter()
+        .find(|(store_id, _)| store_id.kind() == StoreKind::Recording)
+        .ok_or_else(|| ChunkPipelineError::RrdRead {
+            path: path.to_path_buf(),
+            reason: "No recording store found in RRD footer".to_owned(),
+        })?;
+    RrdManifest::try_new(raw_manifest).map_err(|err| ChunkPipelineError::RrdRead {
+        path: path.to_path_buf(),
+        reason: format!("Invalid RRD manifest: {err}"),
     })
 }
 

@@ -16,10 +16,13 @@
 
 mod compact;
 mod dataframe;
+
 mod drop_time_range;
 pub mod entity_tree;
 mod events;
 mod gc;
+#[cfg(not(target_arch = "wasm32"))]
+mod lazy_rrd_store;
 mod lineage;
 mod missing_chunk_reporter;
 mod properties;
@@ -64,6 +67,9 @@ pub use self::store_schema::StoreSchema;
 pub use self::subscribers::{
     ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::lazy_rrd_store::LazyRrdStore;
 
 pub(crate) use self::store::ColumnMetadataState;
 

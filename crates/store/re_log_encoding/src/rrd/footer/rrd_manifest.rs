@@ -29,6 +29,7 @@ pub struct RrdManifest {
     // into the typed fields below (or into the static/temporal maps).
     chunk_fetcher_rb: RecordBatch,
 
+    store_id: StoreId,
     recording_schema: SorbetSchema,
     sorbet_schema: arrow::datatypes::Schema,
 
@@ -51,6 +52,7 @@ impl PartialEq for RrdManifest {
         // ensuring we consciously decide whether to include them.
         let Self {
             chunk_fetcher_rb,
+            store_id,
             recording_schema,
             // We skip `sorbet_schema` (the raw `arrow::datatypes::Schema`) because it is
             // redundant with `recording_schema` for semantic equality, and its field order
@@ -69,6 +71,7 @@ impl PartialEq for RrdManifest {
         } = self;
 
         *chunk_fetcher_rb == other.chunk_fetcher_rb
+            && *store_id == other.store_id
             && *recording_schema == other.recording_schema
             && *chunk_ids == other.chunk_ids
             && *chunk_entity_paths == other.chunk_entity_paths
@@ -248,6 +251,7 @@ impl RrdManifest {
 
         Ok(Self {
             chunk_fetcher_rb: pruned_batch,
+            store_id: manifest.store_id.clone(),
             recording_schema,
             sorbet_schema: manifest.sorbet_schema.clone(),
             chunk_ids,
@@ -430,6 +434,7 @@ impl RrdManifest {
 
         Ok(Self {
             chunk_fetcher_rb: combined_batches,
+            store_id: first.store_id.clone(),
             recording_schema: first.recording_schema.clone(),
             sorbet_schema: first.sorbet_schema.clone(),
             chunk_ids,
@@ -457,6 +462,12 @@ impl RrdManifest {
     ) -> CodecResult<Arc<Self>> {
         let raw = RawRrdManifest::build_in_memory_from_chunks(store_id, chunks)?;
         Ok(Arc::new(Self::try_new(&raw)?))
+    }
+
+    /// Returns the store ID this manifest belongs to.
+    #[inline]
+    pub fn store_id(&self) -> &StoreId {
+        &self.store_id
     }
 
     /// Returns the number of chunks (rows) in this manifest.

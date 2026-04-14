@@ -9,7 +9,7 @@ use re_log_types::{
 };
 use re_types_core::ComponentIdentifier;
 
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+use re_chunk_store::{ChunkStore, ChunkStoreConfig};
 
 use super::ChunkStream;
 use super::chunk_store::PyChunkStoreInternal;
@@ -167,9 +167,7 @@ impl PyLazyChunkStreamInternal {
                         reason: err.to_string(),
                     })?;
             }
-            Ok(PyChunkStoreInternal {
-                store: ChunkStoreHandle::new(store),
-            })
+            Ok(PyChunkStoreInternal::in_memory(store))
         })
         .map_err(PyErr::from)
     }
