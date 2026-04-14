@@ -194,7 +194,10 @@ impl LogDataSource {
             let contains_viewer_query_url_param = url.query_pairs().any(|(key, _)| key == "url");
 
             if re_importer::is_supported_file_extension(extension) {
-                Some(Self::HttpUrl { url, follow: false })
+                Some(Self::HttpUrl {
+                    url,
+                    follow: options.follow,
+                })
             } else if options.accept_extensionless_http
                 && extension.is_empty()
                 && was_proper_http_url
