@@ -134,8 +134,8 @@ fn test_destructure_cast() {
         re_log_types::EntityPathFilter::parse_forgiving("nullability"),
         "structs",
     )
-    .output_columns_at("nullability/a", |out| {
-        out.component(
+    .output_columns(|out| {
+        out.at_entity("nullability/a").component(
             Scalars::descriptor_scalars(),
             Selector::parse(".a")?.pipe(op::cast(DataType::Float64)),
         )
@@ -166,8 +166,9 @@ fn test_destructure() {
         re_log_types::EntityPathFilter::parse_forgiving("nullability"),
         "structs",
     )
-    .output_columns_at("nullability/b", |out| {
-        out.component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
+    .output_columns(|out| {
+        out.at_entity("nullability/b")
+            .component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
     })
     .unwrap()
     .build();
@@ -348,16 +349,17 @@ fn test_scatter_columns() {
 
     // Create a scatter lens that explodes the nested lists
     let scatter_lens = Lens::for_input_column(re_log_types::EntityPathFilter::all(), "nested_data")
-        .output_scatter_columns_at("scatter_test/exploded", |out| {
-            out.component(
-                ComponentDescriptor::partial("exploded_strings"),
-                Selector::parse(".value")?,
-            )?
-            .time(
-                "my_timestamp",
-                TimeType::Sequence,
-                Selector::parse(".timestamp")?,
-            )
+        .output_scatter_columns(|out| {
+            out.at_entity("scatter_test/exploded")
+                .component(
+                    ComponentDescriptor::partial("exploded_strings"),
+                    Selector::parse(".value")?,
+                )?
+                .time(
+                    "my_timestamp",
+                    TimeType::Sequence,
+                    Selector::parse(".timestamp")?,
+                )
         })
         .unwrap()
         .build();
@@ -434,16 +436,17 @@ fn test_scatter_columns_static() {
 
     // Create a scatter lens that explodes the nested lists
     let scatter_lens = Lens::for_input_column(re_log_types::EntityPathFilter::all(), "nested_data")
-        .output_scatter_columns_at("scatter_test/exploded", |out| {
-            out.component(
-                ComponentDescriptor::partial("exploded_strings"),
-                Selector::parse(".value")?,
-            )?
-            .time(
-                "my_timestamp",
-                TimeType::Sequence,
-                Selector::parse(".timestamp")?,
-            )
+        .output_scatter_columns(|out| {
+            out.at_entity("scatter_test/exploded")
+                .component(
+                    ComponentDescriptor::partial("exploded_strings"),
+                    Selector::parse(".value")?,
+                )?
+                .time(
+                    "my_timestamp",
+                    TimeType::Sequence,
+                    Selector::parse(".timestamp")?,
+                )
         })
         .unwrap()
         .build();

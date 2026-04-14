@@ -23,6 +23,6 @@ mod lens_error;
 
 pub use self::{
     ast::{Lens, Lenses, OutputMode, PartialChunk},
-    builder::{ColumnsBuilder, LensBuilder, ScatterColumnsBuilder},
+    builder::{LensBuilder, OutputBuilder},
     lens_error::LensError,
 };

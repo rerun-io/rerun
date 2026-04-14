@@ -22,14 +22,15 @@ fn main() -> anyhow::Result<()> {
         .build();
 
     let destructure = Lens::for_input_column("/nested".parse()?, "example:Nested:payload")
-        .output_columns_at("nested/a", |out| {
-            out.component(
+        .output_columns(|out| {
+            out.at_entity("nested/a").component(
                 Scalars::descriptor_scalars(),
                 Selector::parse(".a")?.pipe(op::cast(DataType::Float64)),
             )
         })?
-        .output_columns_at("nested/b", |out| {
-            out.component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
+        .output_columns(|out| {
+            out.at_entity("nested/b")
+                .component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
         })?
         .build();
 

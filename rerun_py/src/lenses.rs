@@ -2,10 +2,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
 
-use re_lenses_core::{
-    ColumnsBuilder, DynExpr, Lens, LensBuilder, LensError, OutputMode, ScatterColumnsBuilder,
-    Selector,
-};
+use re_lenses_core::{DynExpr, Lens, LensBuilder, OutputMode, Selector};
 use re_log_types::EntityPathFilter;
 use re_types_core::{ComponentDescriptor, ComponentIdentifier};
 
@@ -138,53 +135,20 @@ impl PyLensInternal {
 
 /// Build one output group from its description, appending it to the lens builder.
 fn build_output(builder: LensBuilder, desc: &PyLensOutputInternal) -> PyResult<LensBuilder> {
-    if desc.scatter {
-        if let Some(ref target) = desc.target_entity {
-            let entity_path: re_chunk::EntityPath = target.as_str().into();
-            builder
-                .output_scatter_columns_at(entity_path, |out| build_scatter_columns(out, desc))
-                .map_err(|err| PyValueError::new_err(err.to_string()))
-        } else {
-            builder
-                .output_scatter_columns(|out| build_scatter_columns(out, desc))
-                .map_err(|err| PyValueError::new_err(err.to_string()))
-        }
-    } else if let Some(ref target) = desc.target_entity {
-        let entity_path: re_chunk::EntityPath = target.as_str().into();
-        builder
-            .output_columns_at(entity_path, |out| build_columns(out, desc))
-            .map_err(|err| PyValueError::new_err(err.to_string()))
-    } else {
-        builder
-            .output_columns(|out| build_columns(out, desc))
-            .map_err(|err| PyValueError::new_err(err.to_string()))
-    }
-}
-
-fn build_columns(
-    mut out: ColumnsBuilder,
-    desc: &PyLensOutputInternal,
-) -> Result<ColumnsBuilder, LensError> {
-    for (descr, selector) in &desc.components {
-        out = out.component(descr.clone(), selector.clone())?;
-    }
-    for (name, timeline_type, selector) in &desc.times {
-        out = out.time(name.as_str(), *timeline_type, selector.clone())?;
-    }
-    Ok(out)
-}
-
-fn build_scatter_columns(
-    mut out: ScatterColumnsBuilder,
-    desc: &PyLensOutputInternal,
-) -> Result<ScatterColumnsBuilder, LensError> {
-    for (descr, selector) in &desc.components {
-        out = out.component(descr.clone(), selector.clone())?;
-    }
-    for (name, timeline_type, selector) in &desc.times {
-        out = out.time(name.as_str(), *timeline_type, selector.clone())?;
-    }
-    Ok(out)
+    builder
+        .output(desc.scatter, |mut out| {
+            if let Some(ref target) = desc.target_entity {
+                out = out.at_entity(target.as_str());
+            }
+            for (descr, selector) in &desc.components {
+                out = out.component(descr.clone(), selector.clone())?;
+            }
+            for (name, timeline_type, selector) in &desc.times {
+                out = out.time(name.as_str(), *timeline_type, selector.clone())?;
+            }
+            Ok(out)
+        })
+        .map_err(|err| PyValueError::new_err(err.to_string()))
 }
 
 fn parse_timeline_type(s: &str) -> PyResult<re_log_types::TimeType> {
