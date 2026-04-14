@@ -24,7 +24,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 [features]
 default = [
   "analytics",
-  "data_loaders",
+  "importers",
   "dataframe",
   "demo",
   "glam",
@@ -49,11 +49,11 @@ analytics = [
 ## Integration with `clap`.
 clap = ["dep:clap"]
 
-## Support for using Rerun's data-loaders directly from the SDK.
+## Support for using Rerun's importers directly from the SDK.
 ##
-## See our `log_file` example and <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview>
+## See our `log_file` example and <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link>
 ## for more information.
-data_loaders = ["dep:re_mcap", "re_sdk?/data_loaders"]
+importers = ["dep:re_mcap", "re_sdk?/importers"]
 
 ## Access to Rerun's dataframe API and related types.
 dataframe = ["dep:re_dataframe"]

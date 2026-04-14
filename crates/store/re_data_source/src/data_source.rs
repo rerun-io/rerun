@@ -103,7 +103,7 @@ impl LogDataSource {
                 let Some(file_extension) = uri.split('.').next_back() else {
                     return false;
                 };
-                if !re_data_loader::is_supported_file_extension(file_extension) {
+                if !re_importer::is_supported_file_extension(file_extension) {
                     return false;
                 }
 
@@ -193,7 +193,7 @@ impl LogDataSource {
             // so don't try loading it as a `HttpUrl` if it doesn't have a file extension we know.
             let contains_viewer_query_url_param = url.query_pairs().any(|(key, _)| key == "url");
 
-            if re_data_loader::is_supported_file_extension(extension) {
+            if re_importer::is_supported_file_extension(extension) {
                 Some(Self::HttpUrl { url, follow: false })
             } else if options.accept_extensionless_http
                 && extension.is_empty()
@@ -274,17 +274,17 @@ impl LogDataSource {
                     follow,
                 });
 
-                // This recording will be communicated to all `DataLoader`s, which may or may not
+                // This recording will be communicated to all `Importer`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
                 // or not.
                 let shared_recording_id = RecordingId::random();
-                let settings = re_data_loader::DataLoaderSettings {
+                let settings = re_importer::ImporterSettings {
                     opened_store_id: file_source.recommended_store_id().cloned(),
                     force_store_info: file_source.force_store_info(),
                     follow,
-                    ..re_data_loader::DataLoaderSettings::recommended(shared_recording_id)
+                    ..re_importer::ImporterSettings::recommended(shared_recording_id)
                 };
-                re_data_loader::load_from_path(&settings, file_source, &path, &tx)
+                re_importer::import_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
 
                 Ok(rx)
@@ -298,16 +298,16 @@ impl LogDataSource {
                     follow: false,
                 });
 
-                // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
+                // This `StoreId` will be communicated to all `Importer`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
                 // or not.
                 let shared_recording_id = RecordingId::random();
-                let settings = re_data_loader::DataLoaderSettings {
+                let settings = re_importer::ImporterSettings {
                     opened_store_id: file_source.recommended_store_id().cloned(),
                     force_store_info: file_source.force_store_info(),
-                    ..re_data_loader::DataLoaderSettings::recommended(shared_recording_id)
+                    ..re_importer::ImporterSettings::recommended(shared_recording_id)
                 };
-                re_data_loader::load_from_file_contents(
+                re_importer::import_from_file_contents(
                     &settings,
                     file_source,
                     &std::path::PathBuf::from(file_contents.name),

@@ -69,7 +69,7 @@ re_types_builder = { path = "crates/build/re_types_builder", version = "=0.32.0-
 re_lenses_core = { path = "crates/store/re_lenses_core", version = "=0.32.0-alpha.1", default-features = false }
 re_chunk = { path = "crates/store/re_chunk", version = "=0.32.0-alpha.1", default-features = false }
 re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.32.0-alpha.1", default-features = false }
-re_data_loader = { path = "crates/store/re_data_loader", version = "=0.32.0-alpha.1", default-features = false }
+re_importer = { path = "crates/store/re_importer", version = "=0.32.0-alpha.1", default-features = false }
 re_data_source = { path = "crates/store/re_data_source", version = "=0.32.0-alpha.1", default-features = false }
 re_dataframe = { path = "crates/store/re_dataframe", version = "=0.32.0-alpha.1", default-features = false }
 re_datafusion = { path = "crates/store/re_datafusion", version = "=0.32.0-alpha.1", default-features = false }
@@ -498,7 +498,7 @@ debug = false
 "re_component_ui".debug = true
 "re_context_menu".debug = true
 "re_crash_handler".debug = true
-"re_data_loader".debug = true
+"re_importer".debug = true
 "re_data_source".debug = true
 "re_data_ui".debug = true
 "re_dataframe_ui".debug = true

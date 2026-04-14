@@ -231,11 +231,26 @@ if TYPE_CHECKING:
 
 
 # NOTE: Always keep in sync with other languages.
-EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE = 66
+EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE = 66
 """
-When an external `DataLoader` is asked to load some data that it doesn't know how to load, it
+When an external `Importer` is asked to import some data that it doesn't know how to handle, it
 should exit with this exit code.
 """
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy module-level attribute lookup for deprecated aliases (see PEP 562)."""
+    if name == "EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE":
+        import warnings
+
+        warnings.warn(
+            "EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE is deprecated since 0.32.0. "
+            "Use EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in

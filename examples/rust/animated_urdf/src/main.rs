@@ -12,7 +12,7 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-use rerun::external::re_data_loader::UrdfTree;
+use rerun::external::re_importer::UrdfTree;
 use rerun::external::{re_log, urdf_rs};
 
 fn main() -> anyhow::Result<()> {

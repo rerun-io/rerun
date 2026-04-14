@@ -2162,7 +2162,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "custom_data_loader"
+name = "custom_importer"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
@@ -8521,51 +8521,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_data_loader"
-version = "0.32.0-alpha.1+dev"
-dependencies = [
- "ahash",
- "anyhow",
- "arrow",
- "cfg-if",
- "crossbeam",
- "image",
- "indexmap",
- "insta",
- "itertools 0.14.0",
- "mcap",
- "memmap2 0.9.10",
- "notify",
- "parking_lot",
- "parquet",
- "rayon",
- "re_arrow_util",
- "re_build_info",
- "re_chunk",
- "re_chunk_store",
- "re_crash_handler",
- "re_error",
- "re_format",
- "re_lenses",
- "re_lenses_core",
- "re_log",
- "re_log_channel",
- "re_log_encoding",
- "re_log_types",
- "re_mcap",
- "re_parquet",
- "re_quota_channel",
- "re_sdk_types",
- "re_tracing",
- "re_video",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "urdf-rs",
- "walkdir",
-]
-
-[[package]]
 name = "re_data_source"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
@@ -8573,9 +8528,9 @@ dependencies = [
  "ehttp",
  "itertools 0.14.0",
  "rayon",
- "re_data_loader",
  "re_format",
  "re_grpc_client",
+ "re_importer",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -8868,6 +8823,51 @@ dependencies = [
  "tonic-web",
  "tower-http",
  "wildmatch",
+]
+
+[[package]]
+name = "re_importer"
+version = "0.32.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "arrow",
+ "cfg-if",
+ "crossbeam",
+ "image",
+ "indexmap",
+ "insta",
+ "itertools 0.14.0",
+ "mcap",
+ "memmap2 0.9.10",
+ "notify",
+ "parking_lot",
+ "parquet",
+ "rayon",
+ "re_arrow_util",
+ "re_build_info",
+ "re_chunk",
+ "re_chunk_store",
+ "re_crash_handler",
+ "re_error",
+ "re_format",
+ "re_lenses",
+ "re_lenses_core",
+ "re_log",
+ "re_log_channel",
+ "re_log_encoding",
+ "re_log_types",
+ "re_mcap",
+ "re_parquet",
+ "re_quota_channel",
+ "re_sdk_types",
+ "re_tracing",
+ "re_video",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "urdf-rs",
+ "walkdir",
 ]
 
 [[package]]
@@ -9526,9 +9526,9 @@ dependencies = [
  "re_build_tools",
  "re_byte_size",
  "re_chunk",
- "re_data_loader",
  "re_grpc_client",
  "re_grpc_server",
+ "re_importer",
  "re_lenses",
  "re_lenses_core",
  "re_log",
@@ -10343,13 +10343,13 @@ dependencies = [
  "re_chunk_store_ui",
  "re_component_fallbacks",
  "re_component_ui",
- "re_data_loader",
  "re_data_source",
  "re_data_ui",
  "re_dataframe_ui",
  "re_entity_db",
  "re_error",
  "re_format",
+ "re_importer",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -10811,7 +10811,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rerun-loader-rust-file"
+name = "rerun-importer-rust-file"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
  "anyhow",
@@ -10865,10 +10865,10 @@ dependencies = [
  "re_build_tools",
  "re_chunk",
  "re_chunk_store",
- "re_data_loader",
  "re_datafusion",
  "re_grpc_client",
  "re_grpc_server",
+ "re_importer",
  "re_lenses_core",
  "re_log",
  "re_log_encoding",

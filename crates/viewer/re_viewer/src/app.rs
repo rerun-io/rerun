@@ -4191,8 +4191,8 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 fn open_file_dialog_native(_: crate::MainThreadToken) -> Vec<std::path::PathBuf> {
     re_tracing::profile_function!();
 
-    let supported: Vec<_> = if re_data_loader::iter_external_loaders().len() == 0 {
-        re_data_loader::supported_extensions().collect()
+    let supported: Vec<_> = if re_importer::iter_external_importers().len() == 0 {
+        re_importer::supported_extensions().collect()
     } else {
         vec![]
     };
@@ -4209,7 +4209,7 @@ fn open_file_dialog_native(_: crate::MainThreadToken) -> Vec<std::path::PathBuf>
 
 #[cfg(target_arch = "wasm32")]
 async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
-    let supported: Vec<_> = re_data_loader::supported_extensions().collect();
+    let supported: Vec<_> = re_importer::supported_extensions().collect();
 
     let files = rfd::AsyncFileDialog::new()
         .add_filter("Supported files", &supported)

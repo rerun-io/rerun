@@ -116,7 +116,7 @@ re_log = { workspace = true, features = ["setup"] }
 re_memory.workspace = true
 rerun = { workspace = true, default-features = false, features = [
   "analytics",
-  "data_loaders",
+  "importers",
   "glam",
   "image",
   "log",

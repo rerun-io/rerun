@@ -32,7 +32,7 @@ We are continually adding support for more standard message types.
 
 ### Timelines
 
-The MCAP data loader adds [timelines](../../../concepts/logging-and-ingestion/timelines.md) based on the message timestamps.
+The MCAP importer adds [timelines](../../../concepts/logging-and-ingestion/timelines.md) based on the message timestamps.
 
 In addition to the `message_log_time` and `message_publish_time` timestamps that are part of every MCAP message, we also add timelines with the application-specific timestamps from ROS and Foxglove schemas.
 
@@ -73,7 +73,7 @@ For data that can be visualized in 3D views (e.g. point clouds), this means that
 
 MCAP files allow for arbitrary custom message payloads, so you might have other message types in your files than the set of ROS 2 or Foxglove messages that Rerun automatically converts to archetypes.
 
-Rerun's MCAP data loader automatically decodes unknown Protobuf or ROS 2 messages using schema reflection.
+Rerun's MCAP importer automatically decodes unknown Protobuf or ROS 2 messages using schema reflection.
 This means that you won't get Rerun archetypes out of the box, but the message fields become queryable components (e.g. for training data curation via the Rerun SDK, see [here](decoders-explained.md#accessing-decoder-data)).
 Depending on the contents of your data, you can still manually add visualizers for certain fields to your blueprint, e.g. a time-series view for scalars or a dataframe view.
 

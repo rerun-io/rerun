@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError};
 use pyo3::prelude::*;
-use re_sdk::external::re_data_loader::{UrdfTree, urdf_joint_transform};
+use re_sdk::external::re_importer::{UrdfTree, urdf_joint_transform};
 use re_sdk::external::urdf_rs::{Joint, JointType, Link};
 use re_sdk::{EntityPath, TimePoint};
 

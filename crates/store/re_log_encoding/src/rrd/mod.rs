@@ -2,7 +2,7 @@
 //!
 //! ⚠️Make sure to familiarize yourself with the [crate-level docs](crate) first. ⚠️
 //!
-//! RRD streams are used everywhere gRPC isn't: files, standard I/O, HTTP fetches, data-loaders, etc.
+//! RRD streams are used everywhere gRPC isn't: files, standard I/O, HTTP fetches, importers, etc.
 //! This module is completely unrelated to the Rerun Data Protocol (Redap) gRPC API.
 //! This module is also completely unrelated to the legacy SDK comms gRPC API.
 //!

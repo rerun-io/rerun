@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Demonstrates how to log any file from the SDK using the `DataLoader` machinery.
+Demonstrates how to log any file from the SDK using the `Importer` machinery.
 
-See <https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview> for more information.
+See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import rerun as rr  # pip install rerun-sdk
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Demonstrates how to log any file from the SDK using the `DataLoader` machinery.",
+        description="Demonstrates how to log any file from the SDK using the `Importer` machinery.",
     )
     rr.script_add_args(parser)
     parser.add_argument(

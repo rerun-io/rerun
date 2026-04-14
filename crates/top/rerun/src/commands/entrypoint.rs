@@ -16,7 +16,7 @@ use crate::CallSource;
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
 use crate::commands::DownloadCommand;
-#[cfg(feature = "data_loaders")]
+#[cfg(feature = "importers")]
 use crate::commands::McapCommands;
 use crate::commands::RrdCommands;
 
@@ -283,7 +283,7 @@ When persisted, the state will be stored at the following locations:
 - A path to a Rerun .rrd recording
 - A path to a Rerun .rbl blueprint
 - An HTTP(S) URL to an .rrd or .rbl file to load
-- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview)
+- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link)
 
 If no arguments are given, a server will be hosted which a Rerun SDK can connect to.")]
     url_or_paths: Vec<String>,
@@ -528,7 +528,7 @@ impl Args {
             // > - A path to a Rerun .rrd recording
             // > - A path to a Rerun .rbl blueprint
             // > - An HTTP(S) URL to an .rrd or .rbl file to load
-            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview)
+            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link)
             // >
             // > If no arguments are given, a server will be hosted which a Rerun SDK can connect to.
             // """
@@ -608,7 +608,7 @@ enum Command {
     #[command(name = "man")]
     Manual,
 
-    #[cfg(feature = "data_loaders")]
+    #[cfg(feature = "importers")]
     #[command(subcommand)]
     Mcap(McapCommands),
 
@@ -730,7 +730,7 @@ where
                 Ok(())
             }
 
-            #[cfg(feature = "data_loaders")]
+            #[cfg(feature = "importers")]
             Command::Mcap(mcap) => mcap.run(),
 
             #[cfg(feature = "native_viewer")]
@@ -1770,7 +1770,7 @@ fn record_cli_command_analytics(args: &Args) {
 
         Some(Command::Manual) => ("man", None),
 
-        #[cfg(feature = "data_loaders")]
+        #[cfg(feature = "importers")]
         Some(Command::Mcap(_cmd)) => {
             // TODO(RR-4073): Re-enable analytics for MCAP commands.
             return;

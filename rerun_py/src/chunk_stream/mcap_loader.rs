@@ -21,7 +21,7 @@ use super::{ChunkStream, ChunkStreamFactory};
 )]
 pub struct PyMcapLoaderInternal {
     path: PathBuf,
-    loader: re_data_loader::loader_mcap::McapLoader,
+    loader: re_importer::importer_mcap::McapImporter,
     timeline_type: TimeType,
     timestamp_offset_ns: Option<i64>,
 }
@@ -59,7 +59,7 @@ impl PyMcapLoaderInternal {
 
             Some(ids) => {
                 // Validate decoder names against the registry.
-                let valid = re_data_loader::supported_mcap_decoder_identifiers(true);
+                let valid = re_importer::supported_mcap_decoder_identifiers(true);
                 for id in &ids {
                     let as_id = DecoderIdentifier::from(id.clone());
                     if !valid.contains(&as_id) {
@@ -75,7 +75,7 @@ impl PyMcapLoaderInternal {
             }
         };
 
-        let loader = re_data_loader::loader_mcap::McapLoader::new(&selected_decoders)
+        let loader = re_importer::importer_mcap::McapImporter::new(&selected_decoders)
             .with_raw_fallback(true);
 
         Ok(Self {
@@ -105,7 +105,7 @@ impl PyMcapLoaderInternal {
     /// Return the list of all supported decoder identifiers.
     #[staticmethod]
     fn available_decoders() -> Vec<String> {
-        re_data_loader::supported_mcap_decoder_identifiers(true)
+        re_importer::supported_mcap_decoder_identifiers(true)
             .into_iter()
             .map(|id| id.to_string())
             .collect()
@@ -114,11 +114,11 @@ impl PyMcapLoaderInternal {
 
 /// Factory for creating chunk streams from MCAP files.
 ///
-/// Wraps a [`re_data_loader::loader_mcap::McapLoader`] (which holds decoder config
+/// Wraps a [`re_importer::importer_mcap::McapImporter`] (which holds decoder config
 /// and pre-built lenses) plus the file path and timeline settings.
 pub struct McapStreamFactory {
     path: PathBuf,
-    loader: re_data_loader::loader_mcap::McapLoader,
+    loader: re_importer::importer_mcap::McapImporter,
     timeline_type: TimeType,
     timestamp_offset_ns: Option<i64>,
 }
@@ -126,7 +126,7 @@ pub struct McapStreamFactory {
 impl McapStreamFactory {
     pub fn new(
         path: PathBuf,
-        loader: re_data_loader::loader_mcap::McapLoader,
+        loader: re_importer::importer_mcap::McapImporter,
         timeline_type: TimeType,
         timestamp_offset_ns: Option<i64>,
     ) -> Self {

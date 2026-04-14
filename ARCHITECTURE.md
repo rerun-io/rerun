@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/ad23cd0fb4d422968af8a41a6f29d867468df1a2/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/ad23cd0fb4d422968af8a41a6f29d867468df1a2/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/ad23cd0fb4d422968af8a41a6f29d867468df1a2/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/ad23cd0fb4d422968af8a41a6f29d867468df1a2/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/ad23cd0fb4d422968af8a41a6f29d867468df1a2/1200w.png">
+  <img src="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -203,7 +203,7 @@ Update instructions:
 | -------------------- | ----------------------------------------------------------------- |
 | re_redap_client      | Official client for the Rerun Data Protocol                       |
 | re_redap_tests       | Official test suite for the Rerun Data Protocol                   |
-| re_data_loader       | Handles loading of Rerun data from file using data loader plugins |
+| re_importer          | Handles importing of Rerun data from file using importer plugins  |
 | re_parquet           | Parquet file loading with configurable column grouping            |
 | re_data_source       | Handles loading of Rerun data from different sources              |
 | re_grpc_client       | Client for the legacy StoreHub API                                |

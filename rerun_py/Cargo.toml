@@ -61,7 +61,7 @@ re_build_info.workspace = true
 re_chunk.workspace = true
 re_lenses_core.workspace = true
 re_chunk_store.workspace = true
-re_data_loader.workspace = true
+re_importer.workspace = true
 re_datafusion.workspace = true
 re_redap_client.workspace = true
 re_grpc_client.workspace = true
@@ -73,7 +73,7 @@ re_mcap.workspace = true
 re_parquet.workspace = true
 re_memory.workspace = true
 re_quota_channel.workspace = true
-re_sdk = { workspace = true, features = ["data_loaders"] }
+re_sdk = { workspace = true, features = ["importers"] }
 re_sorbet.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true

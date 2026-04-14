@@ -6,7 +6,7 @@ from rerun import RecordingStream
 with RecordingStream("rerun_example_load_urdf") as rec:
     rec.spawn()
 
-    # `log_file_from_path` automatically uses the built-in URDF data-loader.
+    # `log_file_from_path` automatically uses the built-in URDF importer.
     urdf_path = Path(__file__).parent / "minimal.urdf"
     rec.log_file_from_path(urdf_path, static=True)
 

@@ -2,7 +2,7 @@
 title = "Log file example"
 -->
 
-Demonstrates how to log any file from the SDK using the [`DataLoader`](https://www.rerun.io/docs/concepts/logging-and-ingestion/data-loaders/overview) machinery.
+Demonstrates how to log any file from the SDK using the [`Importer`](https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link) machinery.
 
 Usage:
 ```bash

@@ -1,0 +1,15 @@
+[package]
+name = "custom_importer"
+version = "0.32.0-alpha.1+dev"
+edition = "2024"
+rust-version = "1.92"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+crossbeam = "0.8"
+re_quota_channel = { path = "../../../crates/utils/re_quota_channel" }
+rerun = { path = "../../../crates/top/rerun", features = ["native_viewer", "run"] }
+
+[build-dependencies]
+re_build_tools = { path = "../../../crates/build/re_build_tools" }
