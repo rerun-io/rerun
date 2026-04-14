@@ -4674,6 +4674,9 @@ dev = [
     { name = "jupyterlab" },
     { name = "watchfiles" },
 ]
+test = [
+    { name = "pytest" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -4682,9 +4685,10 @@ requires-dist = [
     { name = "ipykernel", specifier = "<7.0.0" },
     { name = "jupyter-ui-poll" },
     { name = "jupyterlab", marker = "extra == 'dev'" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0" },
     { name = "watchfiles", marker = "extra == 'dev'" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["dev", "test"]
 
 [[package]]
 name = "rerun-sdk"

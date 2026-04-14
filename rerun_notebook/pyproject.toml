@@ -25,6 +25,7 @@ text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
 dev = ["watchfiles", "jupyterlab", "hatch"]
+test = ["pytest>=8.0"]
 
 # automatically add the dev feature to the default env (e.g., hatch shell)
 [tool.hatch.envs.default]
