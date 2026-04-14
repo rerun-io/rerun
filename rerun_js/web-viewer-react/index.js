@@ -205,7 +205,7 @@ function syncRecordings(handle, prev, current, prevFollowIfHttp, followIfHttp) {
   const { added, removed } = diff(prev, current);
   const reopened =
     prevFollowIfHttp !== followIfHttp
-      ? intersection(prev, current).filter(isFollowIfHttpSource)
+      ? intersection(prev, current).filter(isHttpSource)
       : [];
 
   if (removed.length > 0 || reopened.length > 0) {
@@ -236,7 +236,7 @@ function intersection(prev, current) {
  *
  * @param {string} url
  */
-function isFollowIfHttpSource(url) {
+function isHttpSource(url) {
   try {
     const protocol = new URL(url, document.baseURI).protocol;
     return protocol === "http:" || protocol === "https:";
