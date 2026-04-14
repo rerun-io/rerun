@@ -121,7 +121,7 @@ impl PyLazyChunkStreamInternal {
         let mode = crate::lenses::parse_output_mode(output_mode)?;
         let mut collection = re_lenses_core::Lenses::new(mode);
         for lens in &lenses {
-            collection.add_lens(lens.inner().clone());
+            collection = collection.add_lens(lens.inner().clone());
         }
         Ok(Self::new(stream.lenses(collection)))
     }

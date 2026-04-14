@@ -14,15 +14,15 @@ use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, ComponentIdentifier, EntityPath, TimeColumn, Timeline,
     TimelineName,
 };
-use re_log_types::{EntityPathFilter, TimeType};
+use re_log_types::{ResolvedEntityPathFilter, TimeType};
 use re_sdk_types::{ComponentDescriptor, SerializedComponentColumn};
 use vec1::Vec1;
 
 use crate::builder::LensBuilder;
 
+/// Describes which input component column a lens operates on.
 #[derive(Clone)]
 pub struct InputColumn {
-    pub entity_path_filter: EntityPathFilter,
     pub component: ComponentIdentifier,
 }
 
@@ -108,15 +108,12 @@ pub struct Lens {
 }
 
 impl Lens {
-    /// Returns a new [`LensBuilder`] with the given input column.
+    /// Returns a new [`LensBuilder`] for the given input component column.
     ///
     /// By default, creates a one-to-one (temporal) lens. Call `.with_static()` or `.with_to_many()`
     /// on the builder to switch to a different mode.
-    pub fn for_input_column(
-        entity_path_filter: EntityPathFilter,
-        component: impl Into<ComponentIdentifier>,
-    ) -> LensBuilder {
-        LensBuilder::new(entity_path_filter, component)
+    pub fn for_input_column(component: impl Into<ComponentIdentifier>) -> LensBuilder {
+        LensBuilder::new(component)
     }
 
     /// Applies this lens and creates one or more chunks.
@@ -530,12 +527,14 @@ pub enum OutputMode {
 
 /// A collection that holds multiple lenses and applies them to chunks.
 ///
-/// This can hold multiple lenses that match different entity paths and components.
-/// When a chunk is processed, all relevant lenses (those whose entity path filters match
-/// the chunk's entity path) are applied.
+/// When a chunk is processed, all relevant lenses (those whose input component
+/// matches a component in the chunk) are applied.
+///
+/// Each lens is paired with a [`ResolvedEntityPathFilter`] to control which
+/// entity paths it applies to.
 #[derive(Clone)]
 pub struct Lenses {
-    lenses: Vec<Lens>,
+    lenses: Vec<(ResolvedEntityPathFilter, Lens)>,
     mode: OutputMode,
 }
 
@@ -548,25 +547,42 @@ impl Lenses {
         }
     }
 
-    /// Adds a lens to this collection.
-    pub fn add_lens(&mut self, lens: Lens) {
-        self.lenses.push(lens);
+    /// Adds a lens that applies to all entity paths.
+    pub fn add_lens(mut self, lens: Lens) -> Self {
+        self.lenses.push((
+            re_log_types::EntityPathFilter::all().resolve_without_substitutions(),
+            lens,
+        ));
+        self
     }
 
-    /// Adds a lens to this collection.
+    /// Adds a lens with an entity path filter.
+    ///
+    /// The lens will only be applied to chunks whose entity path matches the filter.
+    pub fn add_lens_with_filter(
+        mut self,
+        filter: re_log_types::EntityPathFilter,
+        lens: Lens,
+    ) -> Self {
+        self.lenses
+            .push((filter.resolve_without_substitutions(), lens));
+        self
+    }
+
+    /// Sets the output mode for this collection.
     pub fn set_output_mode(&mut self, mode: OutputMode) {
         self.mode = mode;
     }
 
     fn relevant(&self, chunk: &Chunk) -> impl Iterator<Item = &Lens> {
-        self.lenses.iter().filter(|lens| {
-            lens.input
-                .entity_path_filter
-                .clone()
-                .resolve_without_substitutions()
-                .matches(chunk.entity_path())
-                && chunk.components().contains_component(lens.input.component)
-        })
+        let entity_path = chunk.entity_path();
+        self.lenses
+            .iter()
+            .filter(|(filter, lens)| {
+                filter.matches(entity_path)
+                    && chunk.components().contains_component(lens.input.component)
+            })
+            .map(|(_, lens)| lens)
     }
 
     /// Applies all relevant lenses and returns the results.

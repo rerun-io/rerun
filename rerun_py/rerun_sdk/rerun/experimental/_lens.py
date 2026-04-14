@@ -165,8 +165,7 @@ class Lens:
             outputs = [outputs]
 
         output_internals = [o._internal for o in outputs]
-        # TODO(grtlr): We might want to remove the entity path filter from the Rust API.
-        self._internal = LensInternal(["/**"], input_component, outputs=output_internals)
+        self._internal = LensInternal(input_component, outputs=output_internals)
 
 
 def _normalize_selector(selector: Selector | str) -> Selector:

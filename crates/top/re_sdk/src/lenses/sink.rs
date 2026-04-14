@@ -1,12 +1,12 @@
 use re_chunk::Chunk;
-use re_lenses::{Lens, Lenses, OutputMode};
+use re_lenses::Lenses;
 use re_log_types::{LogMsg, StoreId};
 
 use crate::sink::LogSink;
 
 /// A sink which can transform a [`LogMsg`] and forward the result to an underlying backing [`LogSink`].
 ///
-/// The sink will only forward components that are matched by a lens specified via [`Self::with_lens`].
+/// The sink will only forward components that are matched by the provided [`Lenses`].
 pub struct LensesSink<S: LogSink> {
     sink: S,
     lenses: Lenses,
@@ -14,32 +14,16 @@ pub struct LensesSink<S: LogSink> {
 }
 
 impl<S: LogSink> LensesSink<S> {
-    /// Creates a new sink without any lenses attached.
-    ///
-    /// Use [`Self::with_lens`] to add an additional lens to this sink.
+    /// Creates a new sink with the given lenses.
     ///
     /// By default, the sink will do its best effort to produce chunks despite
     /// of errors in Lenses that it might encounter.
-    pub fn new(sink: S) -> Self {
+    pub fn new(sink: S, lenses: Lenses) -> Self {
         Self {
             sink,
-            lenses: Lenses::new(OutputMode::DropUnmatched),
+            lenses,
             strict: false,
         }
-    }
-
-    /// Adds a [`Lens`] to this sink.
-    pub fn with_lens(mut self, lens: Lens) -> Self {
-        self.lenses.add_lens(lens);
-        self
-    }
-
-    /// Configure how to handle matched and unmatched data.
-    ///
-    /// See [`OutputMode`] for more details.
-    pub fn output_mode(mut self, mode: OutputMode) -> Self {
-        self.lenses.set_output_mode(mode);
-        self
     }
 
     /// When `strict` is `true` Lenses that encounter an error will not emit partial chunks.

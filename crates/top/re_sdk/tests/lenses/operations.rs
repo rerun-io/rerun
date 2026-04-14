@@ -130,21 +130,20 @@ fn test_destructure_cast() {
     let original_chunk = nullability_chunk();
     println!("{original_chunk}");
 
-    let destructure = Lens::for_input_column(
-        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
-        "structs",
-    )
-    .output_columns(|out| {
-        out.at_entity("nullability/a").component(
-            Scalars::descriptor_scalars(),
-            Selector::parse(".a")?.pipe(op::cast(DataType::Float64)),
-        )
-    })
-    .unwrap()
-    .build();
+    let destructure = Lens::for_input_column("structs")
+        .output_columns(|out| {
+            out.at_entity("nullability/a").component(
+                Scalars::descriptor_scalars(),
+                Selector::parse(".a")?.pipe(op::cast(DataType::Float64)),
+            )
+        })
+        .unwrap()
+        .build();
 
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(destructure);
+    let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens_with_filter(
+        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
+        destructure,
+    );
 
     let res: Vec<re_chunk::Chunk> = lenses
         .apply(&original_chunk)
@@ -162,19 +161,18 @@ fn test_destructure() {
     let original_chunk = nullability_chunk();
     println!("{original_chunk}");
 
-    let destructure = Lens::for_input_column(
-        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
-        "structs",
-    )
-    .output_columns(|out| {
-        out.at_entity("nullability/b")
-            .component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
-    })
-    .unwrap()
-    .build();
+    let destructure = Lens::for_input_column("structs")
+        .output_columns(|out| {
+            out.at_entity("nullability/b")
+                .component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
+        })
+        .unwrap()
+        .build();
 
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(destructure);
+    let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens_with_filter(
+        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
+        destructure,
+    );
 
     let res: Vec<re_chunk::Chunk> = lenses
         .apply(&original_chunk)
@@ -229,22 +227,21 @@ fn test_time_column_extraction() {
     println!("{original_chunk}");
 
     // Create a lens that extracts the timestamp as a time column and keeps the original timestamp as a component
-    let time_lens = Lens::for_input_column(
-        re_log_types::EntityPathFilter::parse_forgiving("timestamped"),
-        "my_timestamp",
-    )
-    .output_columns(|out| {
-        out.time("my_timeline", TimeType::Sequence, Selector::parse(".")?)?
-            .component(
-                ComponentDescriptor::partial("extracted_time"),
-                Selector::parse(".")?,
-            )
-    })
-    .unwrap()
-    .build();
+    let time_lens = Lens::for_input_column("my_timestamp")
+        .output_columns(|out| {
+            out.time("my_timeline", TimeType::Sequence, Selector::parse(".")?)?
+                .component(
+                    ComponentDescriptor::partial("extracted_time"),
+                    Selector::parse(".")?,
+                )
+        })
+        .unwrap()
+        .build();
 
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(time_lens);
+    let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens_with_filter(
+        re_log_types::EntityPathFilter::parse_forgiving("timestamped"),
+        time_lens,
+    );
 
     let res: Vec<Chunk> = lenses
         .apply(&original_chunk)
@@ -348,7 +345,7 @@ fn test_scatter_columns() {
     println!("{original_chunk}");
 
     // Create a scatter lens that explodes the nested lists
-    let scatter_lens = Lens::for_input_column(re_log_types::EntityPathFilter::all(), "nested_data")
+    let scatter_lens = Lens::for_input_column("nested_data")
         .output_scatter_columns(|out| {
             out.at_entity("scatter_test/exploded")
                 .component(
@@ -364,8 +361,7 @@ fn test_scatter_columns() {
         .unwrap()
         .build();
 
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(scatter_lens);
+    let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
     let res: Vec<Chunk> = lenses
         .apply(&original_chunk)
@@ -435,7 +431,7 @@ fn test_scatter_columns_static() {
     println!("{original_chunk}");
 
     // Create a scatter lens that explodes the nested lists
-    let scatter_lens = Lens::for_input_column(re_log_types::EntityPathFilter::all(), "nested_data")
+    let scatter_lens = Lens::for_input_column("nested_data")
         .output_scatter_columns(|out| {
             out.at_entity("scatter_test/exploded")
                 .component(
@@ -451,8 +447,7 @@ fn test_scatter_columns_static() {
         .unwrap()
         .build();
 
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(scatter_lens);
+    let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
     let res: Vec<Chunk> = lenses
         .apply(&original_chunk)

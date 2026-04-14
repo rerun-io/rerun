@@ -1326,7 +1326,6 @@ class LensOutputInternal:
 class LensInternal:
     def __init__(
         self,
-        content: list[str],
         input_component: str,
         *,
         outputs: list[LensOutputInternal],

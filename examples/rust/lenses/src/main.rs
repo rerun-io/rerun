@@ -5,7 +5,7 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, Field};
 use rerun::external::re_log;
-use rerun::lenses::{Lens, LensesSink, Selector, op};
+use rerun::lenses::{Lens, Lenses, LensesSink, OutputMode, Selector, op};
 use rerun::sink::GrpcSink;
 use rerun::{
     ComponentDescriptor, DynamicArchetype, RecordingStream, Scalars, SerializedComponentColumn,
@@ -15,13 +15,13 @@ use rerun::{
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
 
-    let instruction = Lens::for_input_column("/instructions".parse()?, "example:Instruction:text")
+    let instruction = Lens::for_input_column("example:Instruction:text")
         .output_columns(|out| {
             out.component(TextDocument::descriptor_text(), Selector::parse(".")?)
         })?
         .build();
 
-    let destructure = Lens::for_input_column("/nested".parse()?, "example:Nested:payload")
+    let destructure = Lens::for_input_column("example:Nested:payload")
         .output_columns(|out| {
             out.at_entity("nested/a").component(
                 Scalars::descriptor_scalars(),
@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
         })?
         .build();
 
-    let time = Lens::for_input_column("/timestamped".parse()?, "my_timestamp")
+    let time = Lens::for_input_column("my_timestamp")
         .output_columns(|out| {
             out.time(
                 "my_timeline",
@@ -45,10 +45,12 @@ fn main() -> anyhow::Result<()> {
         })?
         .build();
 
-    let lenses_sink = LensesSink::new(GrpcSink::default())
-        .with_lens(instruction)
-        .with_lens(destructure)
-        .with_lens(time);
+    let lenses = Lenses::new(OutputMode::DropUnmatched)
+        .add_lens(instruction)
+        .add_lens(destructure)
+        .add_lens(time);
+
+    let lenses_sink = LensesSink::new(GrpcSink::default(), lenses);
 
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_lenses").spawn()?;
     rec.set_sink(Box::new(lenses_sink));
