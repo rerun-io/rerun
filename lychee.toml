@@ -71,6 +71,7 @@ exclude_path = [
   ".github/ghat/actions",
 
   # Actually ignored files beyond .gitignore
+  "lychee.toml", # Contains regex patterns with URL-like strings that aren't actual links.
   "crates/store/re_uri/src/lib.rs", # Contains some malformed URLs, but they are not actual links.
   "crates/store/re_uri/src/redap_uri.rs", # Same as above.
   "crates/store/re_grpc_server/src/lib.rs", # Contains CORS tests with fake origin URLs
