@@ -154,7 +154,7 @@ fn load_dae_from_buffer_inner(
             .map_or(correction, |a| up_axis_correction(a.up_axis));
         for root in &scene.nodes {
             // Each root node uses its own <asset><up_axis> if present, otherwise the scene's.
-            let root_pending = root
+            let root_correction = root
                 .asset
                 .as_deref()
                 .map_or(scene_correction, |a| up_axis_correction(a.up_axis));
@@ -162,7 +162,9 @@ fn load_dae_from_buffer_inner(
                 &mut model,
                 root,
                 &glam::Affine3A::IDENTITY,
-                &root_pending,
+                // No correction has been applied to the parent (IDENTITY) yet.
+                &glam::Affine3A::IDENTITY,
+                &root_correction,
                 &mesh_keys,
             );
         }
@@ -319,6 +321,9 @@ fn up_axis_correction(up_axis: dae_parser::UpAxis) -> glam::Affine3A {
         dae_parser::UpAxis::YUp => glam::Affine3A::from_mat3(
             glam::Mat3::from_rotation_x(std::f32::consts::FRAC_PI_2),
         ),
+        // X_UP is rare and the COLLADA spec doesn't fully define the secondary axes.
+        // We assume a right-handed system with X=Up, Y=Left, Z=Backward, mapping to
+        // RFU as: file (x, y, z) → world (-y, -z, x).
         dae_parser::UpAxis::XUp => glam::Affine3A::from_mat3(glam::Mat3::from_cols(
             glam::Vec3::new(0.0, 0.0, 1.0),
             glam::Vec3::new(-1.0, 0.0, 0.0),
@@ -327,11 +332,21 @@ fn up_axis_correction(up_axis: dae_parser::UpAxis) -> glam::Affine3A {
     }
 }
 
+/// Recursively walk the node tree, placing geometry instances with corrected world transforms.
+///
+/// `parent_correction` is the up-axis correction that is already baked into `parent_tf`.
+/// `node_correction` is the up-axis correction that applies to *this* node's local transforms.
+///
+/// To convert this node's local basis into the parent's already-corrected (RFU) frame we compute
+/// `pending = inverse(parent_correction) * node_correction`. For nodes that inherit the parent's
+/// basis this reduces to `IDENTITY`; for nodes that override it undoes the parent's correction
+/// and applies the child's.
 fn gather_instances_recursive(
     model: &mut CpuModel,
     node: &DaeNode,
     parent_tf: &glam::Affine3A,
-    correction: &glam::Affine3A,
+    parent_correction: &glam::Affine3A,
+    node_correction: &glam::Affine3A,
     meshes: &HashMap<String, CpuModelMeshKey>,
 ) {
     use glam::{Affine3A, Mat4, Quat, Vec3};
@@ -361,10 +376,10 @@ fn gather_instances_recursive(
         }
     }
 
-    // Apply the pending correction at the scope boundary, before composing with parent_tf.
-    // This ensures local_mat (expressed in this node's basis) is rebased to RFU before
-    // being combined with parent_tf (which is already in RFU).
-    let world_tf = *parent_tf * *correction * Affine3A::from_mat4(local_mat);
+    // Undo the parent's correction and apply this node's, so local_mat (expressed in this
+    // node's basis) is correctly rebased into the parent's already-corrected RFU frame.
+    let pending = parent_correction.inverse() * *node_correction;
+    let world_tf = *parent_tf * pending * Affine3A::from_mat4(local_mat);
 
     for Instance::<Geometry> { url, .. } in &node.instance_geometry {
         let id = match url.val.clone() {
@@ -387,14 +402,20 @@ fn gather_instances_recursive(
     }
 
     for child in &node.children {
-        // Each child uses its own <asset><up_axis> if present, otherwise IDENTITY —
-        // world_tf is already in RFU, so children that don't override need no correction.
-        let child_pending = child
+        // If the child declares its own up_axis, use that; otherwise inherit this node's basis.
+        let child_correction = child
             .asset
             .as_deref()
             .map(|a| up_axis_correction(a.up_axis))
-            .unwrap_or(glam::Affine3A::IDENTITY);
-        gather_instances_recursive(model, child, &world_tf, &child_pending, meshes);
+            .unwrap_or(*node_correction);
+        gather_instances_recursive(
+            model,
+            child,
+            &world_tf,
+            node_correction,
+            &child_correction,
+            meshes,
+        );
     }
 }
 
