@@ -14,6 +14,7 @@ from rerun_bindings import (
     DatasetViewInternal,
     TableEntryInternal,
     TableInsertModeInternal,
+    _IndexValuesLikeInternal,
 )
 
 from . import ContentFilter, EntryId
@@ -1005,6 +1006,9 @@ class DatasetView:
         include_tombstone_columns
             Whether to include tombstone columns.
         using_index_values
+            Index values at which to sample data.
+            If a plain array is provided, values are applied only to segments
+            whose index range covers them (segments outside the range are excluded).
             If a dict is provided, keys are segment IDs and values are the index values
             to sample for that segment (per-segment semantics).
             If a DataFrame is provided, it must have 'rerun_segment_id' and index columns.
@@ -1019,7 +1023,7 @@ class DatasetView:
         """
         import logging
 
-        import datafusion
+        import datafusion as dfn
 
         available_segments = set() if using_index_values is None else set(self._internal.segment_ids())
 
@@ -1028,15 +1032,18 @@ class DatasetView:
             case None:
                 pass
 
-            case df if isinstance(df, datafusion.DataFrame):
+            case df if isinstance(df, dfn.DataFrame):
                 index_values_dict = self._dataframe_to_index_values_dict(df, index)
 
             case dict() as d:
                 index_values_dict = d
 
             case _ as index_vals:
-                # Scalar IndexValuesLike: apply the same indices to all segments
-                index_values_dict = dict.fromkeys(available_segments, index_vals)
+                # Scalar IndexValuesLike: restrict to segments whose range covers each value
+                if index is None:
+                    raise ValueError("index must be provided when using_index_values is specified")
+                df = self._map_index_values_to_ranges(index, index_vals)
+                index_values_dict = self._dataframe_to_index_values_dict(df, index)
 
         if index_values_dict is not None:
             requested_segments = set(index_values_dict.keys())
@@ -1182,6 +1189,33 @@ class DatasetView:
             exprs.append(f"{index_col.name}:end")
 
         return self.segment_table().select(*exprs)
+
+    def _map_index_values_to_ranges(self, index: str, index_values: IndexValuesLike) -> datafusion.DataFrame:
+        """
+        Filter index values to only those within the range of some segment.
+
+        Joins the requested values against per-segment index ranges so that
+        each value is only associated with segments that actually cover it.
+
+        Note: this queries the segment table via get_index_ranges(), which is
+        more expensive than the previous approach of broadcasting values to all
+        segments. The tradeoff is correctness: segments whose range does not
+        cover a requested value will no longer receive it.
+        """
+        import datafusion as dfn
+
+        ctx = self.dataset.catalog.ctx
+        values = _IndexValuesLikeInternal(index_values).to_index_values()
+
+        df_ranges = self.get_index_ranges()
+        datatype = df_ranges.schema().field(f"{index}:start").type
+        df_indices = ctx.from_pydict({index: pa.array(values, type=datatype)})
+        return df_ranges.join_on(
+            df_indices, (dfn.col(index) >= dfn.col(f"{index}:start")) & (dfn.col(index) <= dfn.col(f"{index}:end"))
+        ).select(
+            "rerun_segment_id",
+            index,
+        )
 
     def _dataframe_to_index_values_dict(
         self, df: datafusion.DataFrame, index: str | None

@@ -1,0 +1,12 @@
+[project]
+name = "using_index_values"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["rerun-sdk"]
+
+[project.scripts]
+using_index_values = "using_index_values:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

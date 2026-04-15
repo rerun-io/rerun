@@ -131,6 +131,7 @@ examples = [
   "shared_recording",
   "stdio",
   "structure_from_motion",
+  "using_index_values",
   # TODO(RR-3223): fix opentelemetry conflicts
   # "face_tracking",
   # "gesture_detection",
@@ -210,6 +211,7 @@ server_tables = { workspace = true }
 shared_recording = { workspace = true }
 stdio = { workspace = true }
 structure_from_motion = { workspace = true }
+using_index_values = { workspace = true }
 
 [tool.uv.workspace]
 members = [
@@ -266,6 +268,7 @@ members = [
   "examples/python/structure_from_motion",
   "examples/python/table_zoo",
   "examples/python/template",
+  "examples/python/using_index_values",
 ]
 
 [tool.ruff]
