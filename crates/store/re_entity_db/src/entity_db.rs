@@ -164,12 +164,6 @@ pub struct EntityDb {
     /// Lazily calculated
     store_size_bytes: StoreSizeBytes,
 
-    /// How much RAM the whole application uses beyond the raw physical chunks in this recording.
-    ///
-    /// This is estimated by the viewer after a GC pass, when there is only one recording loaded.
-    /// Includes primary and secondary indices, (purged) caches, fonts, icons, and other overhead.
-    pub estimated_application_overhead_bytes: Option<u64>,
-
     stats: IngestionStatistics,
 }
 
@@ -227,7 +221,6 @@ impl EntityDb {
             data_meta_per_timeline: Default::default(),
             storage_engine,
             store_size_bytes: StoreSizeBytes(Mutex::new(None)),
-            estimated_application_overhead_bytes: None,
             stats: IngestionStatistics::default(),
         }
     }
@@ -362,6 +355,14 @@ impl EntityDb {
         }
     }
 
+    /// True if this recording has chunks we're actively keeping in memory.
+    ///
+    /// Recordings with protected chunks should not be auto-closed during memory pressure,
+    /// since we'd immediately need to re-download them.
+    pub fn has_protected_chunks(&self) -> bool {
+        self.rrd_manifest_index.has_protected_chunks()
+    }
+
     /// Are we connected to redap, and can fetch missing chunks?
     pub fn can_fetch_chunks_from_redap(&self) -> bool {
         match self.redap_connection_state() {
@@ -391,7 +392,7 @@ impl EntityDb {
                     .chunk_prioritizer()
                     .latest_result()
                 {
-                    !state.all_required_are_loaded
+                    state.all_required_are_loaded != Some(true)
                 } else {
                     true // no prefetch done yet
                 }
@@ -1285,7 +1286,6 @@ impl re_byte_size::SizeBytes for EntityDb {
             data_meta_per_timeline,
             storage_engine,
             store_size_bytes,
-            estimated_application_overhead_bytes: _,
             stats: _,
         } = self;
 
@@ -1330,7 +1330,6 @@ impl MemUsageTreeCapture for EntityDb {
             last_modified_at: _,
             latest_row_id: _,
             store_size_bytes: _,
-            estimated_application_overhead_bytes: _,
             stats: _,
         } = self;
 

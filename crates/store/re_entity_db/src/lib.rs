@@ -21,7 +21,8 @@ pub use self::entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb};
 pub use self::ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats};
 pub use self::instance_path::{InstancePath, InstancePathHash};
 pub use self::rrd_manifest_index::{
-    ChunkPrefetchOptions, ChunkPromise, ChunkRequests, RequestInfo, RrdManifestIndex,
+    ChunkFetcher, ChunkPrefetchOptions, ChunkPromise, ChunkRequests, FetchStage, PrefetchError,
+    RemainingByteBudget, RequestInfo, RrdManifestIndex,
 };
 pub use self::store_bundle::{StoreBundle, StoreLoadError};
 pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash};

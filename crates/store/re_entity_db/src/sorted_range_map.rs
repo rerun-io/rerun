@@ -49,6 +49,20 @@ impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
         }
     }
 
+    /// Resume a previously suspended overlap query from a saved cursor.
+    #[inline]
+    pub fn resume_query(
+        &self,
+        query: RangeInclusive<K>,
+        cursor: OverlapCursor,
+    ) -> OverlapIter<'_, K, V> {
+        OverlapIter {
+            map: self,
+            query,
+            idx: cursor.0,
+        }
+    }
+
     /// Find the first index that could possibly overlap with the query.
     #[inline]
     fn find_first_possible(&self, query: &RangeInclusive<K>) -> usize {
@@ -90,12 +104,28 @@ impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
     }
 }
 
+/// Opaque position within an [`OverlapIter`].
+///
+/// Obtain one via [`OverlapIter::cursor`] and pass it to
+/// [`SortedRangeMap::resume_query`] to continue iteration later.
+#[derive(Debug, Clone, Copy)]
+pub struct OverlapCursor(usize);
+
 /// Non-allocating iterator over overlapping ranges.
 #[derive(Debug, Clone)]
 pub struct OverlapIter<'a, K, V> {
     map: &'a SortedRangeMap<K, V>,
     query: RangeInclusive<K>,
     idx: usize,
+}
+
+impl<K, V> OverlapIter<'_, K, V> {
+    /// Snapshot the current position so the query can be resumed later
+    /// via [`SortedRangeMap::resume_query`].
+    #[inline]
+    pub fn cursor(&self) -> OverlapCursor {
+        OverlapCursor(self.idx)
+    }
 }
 
 impl<'a, K: Ord + Copy, V> Iterator for OverlapIter<'a, K, V> {

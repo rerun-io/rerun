@@ -457,12 +457,6 @@ fn debug_ui(ui: &mut egui::Ui, db: &EntityDb) {
         ui.label("Physical chunks");
         ui.label(format_bytes(db.byte_size_of_physical_chunks() as _));
         ui.end_row();
-
-        ui.label("App overhead");
-        if let Some(overhead) = db.estimated_application_overhead_bytes {
-            ui.label(format_bytes(overhead as _));
-        }
-        ui.end_row();
     });
 
     protected_chunks_ui(ui, db);
