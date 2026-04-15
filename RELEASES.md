@@ -62,8 +62,6 @@ There usually isn't any ambiguity, as releases are planned ahead of time.
 
 You can always find the latest release on our [GitHub releases](https://github.com/rerun-io/rerun/releases/tag/prerelease) page.
 
-**Important:** The version in `rerun/Cargo.toml` must match the version in `dataplatform/Cargo.toml` (CI enforces this).
-
 ### 2. Create a release branch
 
 The branch name is the single source of truth for the _release version_. Our release workflow automatically updates all versions
