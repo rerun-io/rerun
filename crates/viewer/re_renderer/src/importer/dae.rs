@@ -318,9 +318,9 @@ fn extract_material_color(
 fn up_axis_correction(up_axis: dae_parser::UpAxis) -> glam::Affine3A {
     match up_axis {
         dae_parser::UpAxis::ZUp => glam::Affine3A::IDENTITY,
-        dae_parser::UpAxis::YUp => glam::Affine3A::from_mat3(
-            glam::Mat3::from_rotation_x(std::f32::consts::FRAC_PI_2),
-        ),
+        dae_parser::UpAxis::YUp => {
+            glam::Affine3A::from_mat3(glam::Mat3::from_rotation_x(std::f32::consts::FRAC_PI_2))
+        }
         // X_UP is rare and the COLLADA spec doesn't fully define the secondary axes.
         // We assume a right-handed system with X=Up, Y=Left, Z=Backward, mapping to
         // RFU as: file (x, y, z) → world (-y, -z, x).
