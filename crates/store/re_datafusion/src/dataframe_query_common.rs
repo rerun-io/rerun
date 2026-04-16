@@ -18,8 +18,8 @@ use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use futures::StreamExt as _;
 use re_dataframe::external::re_chunk_store::ChunkStore;
-use re_dataframe::{Index, IndexValue, QueryExpression};
-use re_log_types::EntryId;
+use re_dataframe::{Index, IndexValue, QueryExpression, SparseFillStrategy};
+use re_log_types::{EntityPath, EntryId};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
@@ -186,7 +186,9 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
         let entity_paths = query_expression
             .view_contents
             .as_ref()
-            .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());
+            .map_or(vec![], |contents| {
+                contents.keys().cloned().collect::<Vec<_>>()
+            });
 
         let query = query_from_query_expression(query_expression);
         let fuzzy_descriptors: Vec<String> = query_expression
@@ -209,7 +211,7 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
                 .map(|id| id.as_ref().to_owned().into())
                 .collect(),
             chunk_ids: vec![],
-            entity_paths: entity_paths.into_iter().map(|p| (*p).clone()).collect(),
+            entity_paths,
             select_all_entity_paths,
             fuzzy_descriptors,
             exclude_static_data: false,
@@ -335,6 +337,26 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 }
             }
 
+            // Entity path projection pushdown: narrow the server request to only
+            // fetch chunks for entity paths that are actually needed by the projection
+            // and filters. Skip when fill_latest_at is enabled, because timestamps
+            // from excluded entities would produce rows with filled values that the
+            // user expects.
+            if self.query_expression.sparse_fill_strategy == SparseFillStrategy::None
+                && let Some(projected_paths) = projection.map(|projection| {
+                    extract_projected_entity_paths(&self.schema, projection, filters)
+                })
+                && !projected_paths.is_empty()
+            {
+                for query in &mut dataset_queries {
+                    if !query.select_all_entity_paths && !query.entity_paths.is_empty() {
+                        query
+                            .entity_paths
+                            .retain(|path| projected_paths.contains(path));
+                    }
+                }
+            }
+
             let mut query_expression = self.query_expression.clone();
 
             let mut chunk_info_batches = Vec::with_capacity(dataset_queries.len());
@@ -383,7 +405,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                     chunk_info_batches.push(batch);
                 }
             }
-            let chunk_info_batches = compute_unique_chunk_info_ids(vec![chunk_info_batches])?;
+            let chunk_info_batches = compute_unique_chunk_info_ids(chunk_info_batches)?;
 
             // Begin per-connection analytics tracking.
             // Fetch stats will be accumulated by the IO loops; the event is sent on drop.
@@ -492,6 +514,52 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 .collect::<Result<Vec<_>, DataFusionError>>()?)
         }
     }
+}
+
+/// Extract entity paths referenced by the projected columns and filter expressions.
+///
+/// Returns `None` when no narrowing is possible (`projection` is `None`).
+/// Returns `Some(empty set)` when projection contains only non-entity columns
+/// (e.g. time / `segment_id`) — caller should not narrow in this case.
+fn extract_projected_entity_paths(
+    schema: &SchemaRef,
+    projection: &Vec<usize>,
+    filters: &[Expr],
+) -> BTreeSet<EntityPath> {
+    let mut entity_paths = BTreeSet::new();
+
+    // Collect entity paths from projected columns.
+    for &idx in projection {
+        if let Some(path) = entity_path_from_field(schema.field(idx)) {
+            entity_paths.insert(path);
+        }
+    }
+
+    // Collect entity paths from filter-referenced columns. Filters may reference
+    // columns that aren't in the projection (e.g. `WHERE t.b > 5` with only `t.a`
+    // projected) — we must still fetch data for those entities.
+    for filter in filters {
+        for col_ref in filter.column_refs() {
+            if let Ok(field) = schema.field_with_name(col_ref.name())
+                && let Some(path) = entity_path_from_field(field)
+            {
+                entity_paths.insert(path);
+            }
+        }
+    }
+
+    entity_paths
+}
+
+/// Extract an [`EntityPath`] from an Arrow field's metadata, if present.
+///
+/// Component columns carry `rerun:entity_path` metadata; time/index columns
+/// and the prepended `rerun_segment_id` column do not.
+fn entity_path_from_field(field: &Field) -> Option<EntityPath> {
+    field
+        .metadata()
+        .get(re_sorbet::metadata::SORBET_ENTITY_PATH)
+        .map(|s| EntityPath::from(&**s))
 }
 
 /// Compute the output schema for a query on a dataset. When we call `get_dataset_schema`
@@ -679,15 +747,15 @@ pub fn query_from_query_expression(query_expression: &QueryExpression) -> Query 
 }
 
 fn compute_unique_chunk_info_ids(
-    chunk_info_batches: Vec<Vec<RecordBatch>>,
+    chunk_info_batches: Vec<RecordBatch>,
 ) -> Result<Option<RecordBatch>, DataFusionError> {
-    let batches: Vec<_> = chunk_info_batches.into_iter().flatten().collect();
-    if batches.is_empty() {
+    if chunk_info_batches.is_empty() {
         return Ok(None);
     }
 
-    let schema = batches[0].schema();
-    let combined = concat_batches(&schema, &batches)?;
+    let schema = chunk_info_batches[0].schema();
+    let combined = concat_batches(&schema, &chunk_info_batches)?;
+    drop(chunk_info_batches);
 
     // Find the chunk_id column
     let chunk_id_col = combined
@@ -726,7 +794,7 @@ fn compute_unique_chunk_info_ids(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, iter::once};
 
     use arrow::array::{Array as _, FixedSizeBinaryArray, FixedSizeBinaryBuilder};
 
@@ -848,5 +916,209 @@ mod tests {
             .unwrap();
         assert_eq!(chunk_ids_d.len(), 1);
         assert_eq!(chunk_ids_d.value(0), [6u8; 16]);
+    }
+
+    // ==================== Entity path projection pushdown tests ====================
+
+    /// Build a schema mimicking `DataframeQueryTableProvider`'s output schema:
+    /// - Index 0: `rerun_segment_id` (Utf8, no entity path metadata)
+    /// - Index 1: `log_time` (Int64, with `rerun:kind=index` metadata)
+    /// - Index 2: `/points:Position3D:positions` (component, `entity_path=/points`)
+    /// - Index 3: `/points:Color:colors` (component, `entity_path=/points`)
+    /// - Index 4: `/cameras:Transform3D:transform` (component, `entity_path=/cameras`)
+    fn make_schema_with_entities() -> SchemaRef {
+        use re_sorbet::metadata::{RERUN_KIND, SORBET_ENTITY_PATH};
+
+        let index_metadata = HashMap::from([(RERUN_KIND.to_owned(), "index".to_owned())]);
+        let points_metadata =
+            HashMap::from([(SORBET_ENTITY_PATH.to_owned(), "/points".to_owned())]);
+        let cameras_metadata =
+            HashMap::from([(SORBET_ENTITY_PATH.to_owned(), "/cameras".to_owned())]);
+
+        Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("rerun_segment_id", DataType::Utf8, false),
+                Field::new("log_time", DataType::Int64, false).with_metadata(index_metadata),
+                Field::new("/points:Position3D:positions", DataType::Utf8, true)
+                    .with_metadata(points_metadata.clone()),
+                Field::new("/points:Color:colors", DataType::Utf8, true)
+                    .with_metadata(points_metadata),
+                Field::new("/cameras:Transform3D:transform", DataType::Utf8, true)
+                    .with_metadata(cameras_metadata),
+            ],
+            HashMap::new(),
+        ))
+    }
+
+    #[test]
+    fn test_projection_single_entity() {
+        let schema = make_schema_with_entities();
+        // Select seg_id + log_time + both /points columns
+        let projection = vec![0, 1, 2, 3];
+        let paths = extract_projected_entity_paths(&schema, &projection, &[]);
+        assert_eq!(paths.len(), 1);
+        assert!(paths.contains(&EntityPath::from("/points")));
+    }
+
+    #[test]
+    fn test_projection_multiple_entities() {
+        let schema = make_schema_with_entities();
+        // Select seg_id + one /points col + /cameras col
+        let projection = vec![0, 2, 4];
+        let paths = extract_projected_entity_paths(&schema, &projection, &[]);
+        assert_eq!(paths.len(), 2);
+        assert!(paths.contains(&EntityPath::from("/points")));
+        assert!(paths.contains(&EntityPath::from("/cameras")));
+    }
+
+    #[test]
+    fn test_projection_only_non_entity_cols() {
+        let schema = make_schema_with_entities();
+        // Select only seg_id + log_time — no entity paths
+        let projection = vec![0, 1];
+        let paths = extract_projected_entity_paths(&schema, &projection, &[]);
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn test_filter_adds_entity_paths() {
+        use datafusion::logical_expr::col;
+
+        let schema = make_schema_with_entities();
+        // Project only /points column
+        let projection = vec![0, 2];
+        // Filter references /cameras column
+        let filters = vec![col("/cameras:Transform3D:transform").is_not_null()];
+        let paths = extract_projected_entity_paths(&schema, &projection, &filters);
+        assert_eq!(paths.len(), 2);
+        assert!(paths.contains(&EntityPath::from("/points")));
+        assert!(paths.contains(&EntityPath::from("/cameras")));
+    }
+
+    #[test]
+    fn test_filter_with_non_entity_cols_only() {
+        use datafusion::logical_expr::{col, lit};
+
+        let schema = make_schema_with_entities();
+        // Project only /points column
+        let projection = vec![0, 2];
+        // Filter references segment_id (no entity path) and time index (no entity path)
+        let filters = vec![
+            col("rerun_segment_id").eq(lit("seg_a")),
+            col("log_time").gt(lit(100_i64)),
+        ];
+        let paths = extract_projected_entity_paths(&schema, &projection, &filters);
+        // Only /points from projection — filters don't add entity paths
+        assert_eq!(paths.len(), 1);
+        assert!(paths.contains(&EntityPath::from("/points")));
+    }
+
+    #[test]
+    fn test_narrowing_intersects_with_original() {
+        let projected_paths: BTreeSet<EntityPath> = once(EntityPath::from("/points")).collect();
+        let mut query = QueryDatasetRequest {
+            entity_paths: vec![
+                EntityPath::from("/points"),
+                EntityPath::from("/cameras"),
+                EntityPath::from("/meshes"),
+            ],
+            select_all_entity_paths: false,
+            ..Default::default()
+        };
+
+        query
+            .entity_paths
+            .retain(|path| projected_paths.contains(path));
+
+        assert_eq!(query.entity_paths, vec![EntityPath::from("/points")]);
+    }
+
+    #[test]
+    fn test_narrowing_empty_projected_no_change() {
+        let projected_paths: BTreeSet<EntityPath> = BTreeSet::new();
+        let mut query = QueryDatasetRequest {
+            entity_paths: vec![EntityPath::from("/points"), EntityPath::from("/cameras")],
+            select_all_entity_paths: false,
+            ..Default::default()
+        };
+        let original = query.entity_paths.clone();
+
+        // Empty projected_paths → caller should skip narrowing
+        if !projected_paths.is_empty() {
+            query
+                .entity_paths
+                .retain(|path| projected_paths.contains(path));
+        }
+
+        assert_eq!(query.entity_paths, original);
+    }
+
+    #[test]
+    fn test_narrowing_select_all_no_change() {
+        let projected_paths: BTreeSet<EntityPath> = once(EntityPath::from("/points")).collect();
+        let mut query = QueryDatasetRequest {
+            entity_paths: vec![],
+            select_all_entity_paths: true,
+            ..Default::default()
+        };
+
+        // select_all_entity_paths=true → skip narrowing
+        if !query.select_all_entity_paths && !query.entity_paths.is_empty() {
+            query
+                .entity_paths
+                .retain(|path| projected_paths.contains(path));
+        }
+
+        assert!(query.entity_paths.is_empty());
+        assert!(query.select_all_entity_paths);
+    }
+
+    #[test]
+    fn test_narrowing_preserves_multiple_queries() {
+        let projected_paths: BTreeSet<EntityPath> = once(EntityPath::from("/points")).collect();
+        let mut queries = vec![
+            QueryDatasetRequest {
+                entity_paths: vec![EntityPath::from("/points"), EntityPath::from("/cameras")],
+                select_all_entity_paths: false,
+                ..Default::default()
+            },
+            QueryDatasetRequest {
+                entity_paths: vec![EntityPath::from("/points"), EntityPath::from("/meshes")],
+                select_all_entity_paths: false,
+                ..Default::default()
+            },
+        ];
+
+        for query in &mut queries {
+            if !query.select_all_entity_paths && !query.entity_paths.is_empty() {
+                query
+                    .entity_paths
+                    .retain(|path| projected_paths.contains(path));
+            }
+        }
+
+        assert_eq!(queries[0].entity_paths, vec![EntityPath::from("/points")]);
+        assert_eq!(queries[1].entity_paths, vec![EntityPath::from("/points")]);
+    }
+
+    #[test]
+    fn test_narrowing_skipped_with_fill_latest_at() {
+        let projected_paths: BTreeSet<EntityPath> = once(EntityPath::from("/points")).collect();
+        let mut query = QueryDatasetRequest {
+            entity_paths: vec![EntityPath::from("/points"), EntityPath::from("/cameras")],
+            select_all_entity_paths: false,
+            ..Default::default()
+        };
+        let original = query.entity_paths.clone();
+
+        // Simulate fill_latest_at=true check
+        let sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
+        if sparse_fill_strategy == SparseFillStrategy::None && !projected_paths.is_empty() {
+            query
+                .entity_paths
+                .retain(|path| projected_paths.contains(path));
+        }
+
+        assert_eq!(query.entity_paths, original);
     }
 }
