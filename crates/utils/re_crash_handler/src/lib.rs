@@ -101,7 +101,7 @@ fn panic_info_message(panic_info: &std::panic::PanicHookInfo<'_>) -> Option<Stri
 #[cfg(not(target_os = "windows"))]
 #[expect(unsafe_code)]
 #[expect(clippy::fn_to_numeric_cast_any)]
-fn install_signal_handler(build_info: BuildInfo) {
+pub fn install_signal_handler(build_info: BuildInfo) {
     *BUILD_INFO.lock() = Some(build_info); // Share it with the signal handler
 
     for signum in [
