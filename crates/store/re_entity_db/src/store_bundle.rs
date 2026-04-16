@@ -72,6 +72,8 @@ impl StoreBundle {
 
     /// Returns either a recording or blueprint [`EntityDb`].
     /// One is created if it doesn't already exist.
+    // NOTE(grtlr): We should clean this up, it's much too easy to create an
+    // entry in without the required book-keeping for new stores.
     pub fn entry(&mut self, id: &StoreId) -> &mut EntityDb {
         self.recording_store.entry(id.clone()).or_insert_with(|| {
             re_log::trace!("Creating new store: '{id:?}'");

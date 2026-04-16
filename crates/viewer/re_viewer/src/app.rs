@@ -2533,6 +2533,27 @@ impl App {
                 }
             };
 
+            // We centralize "new store" detection and `data_source` attachment here, so that the `on_new_store`
+            // side effects (like `set_opened(true)` for `OpenAndSelect`) fire regardless of which message type
+            // happens to come first.
+            let msg_store_id = match &msg {
+                DataSourceMessage::RrdManifest(store_id, _)
+                | DataSourceMessage::RrdManifestComplete(store_id) => Some(store_id.clone()),
+                DataSourceMessage::LogMsg(log_msg) => Some(log_msg.store_id().clone()),
+                DataSourceMessage::TableMsg(_) | DataSourceMessage::UiCommand(_) => None,
+            };
+
+            let maybe_new_store = msg_store_id
+                .as_ref()
+                .filter(|sid| !store_hub.store_bundle().contains(sid));
+
+            if let Some(sid) = &msg_store_id {
+                let entity_db = store_hub.entity_db_entry(sid);
+                if entity_db.data_source.is_none() {
+                    entity_db.data_source = Some((*channel_source).clone());
+                }
+            }
+
             match msg {
                 DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_entry(&store_id);
@@ -2561,6 +2582,12 @@ impl App {
                 DataSourceMessage::UiCommand(ui_command) => {
                     self.receive_data_source_ui_command(ui_command, &channel_source);
                 }
+            }
+
+            // Handle any action that is triggered by a new store _after_ processing the message
+            // that caused it.
+            if let Some(sid) = &maybe_new_store {
+                self.on_new_store(egui_ctx, sid, &channel_source, store_hub);
             }
 
             if start.elapsed() > web_time::Duration::from_millis(10) {
@@ -2594,14 +2621,10 @@ impl App {
             );
         }
 
-        // Note that the `SetStoreInfo` message might be missing. It's not strictly necessary to add a new store.
-        let msg_will_add_new_store = !store_hub.store_bundle().contains(store_id);
-
+        // NOTE: store materialization, `data_source` attachment, and the `on_new_store`
+        // dispatch are handled in `receive_messages` so that they also fire for stores first
+        // introduced by `RrdManifest` / `RrdManifestComplete` messages.
         let entity_db = store_hub.entity_db_entry(store_id);
-        if entity_db.data_source.is_none() {
-            entity_db.data_source = Some((*channel_source).clone());
-        }
-
         let was_empty = entity_db.num_physical_chunks() == 0;
         let entity_db_add_result = entity_db.add_log_msg(msg);
 
@@ -2626,8 +2649,11 @@ impl App {
         let is_empty = entity_db.num_physical_chunks() == 0;
         if was_empty && !is_empty {
             // Hack: we cannot go to a specific timeline or entity until we know about it.
-            // Now we _hopefully_ do.
-            if let LogSource::RedapGrpcStream { uri, .. } = channel_source {
+            // Now we _hopefully_ do. The `LogMsg` could also belong to the blueprint, so
+            // we need to check for that as well.
+            if let LogSource::RedapGrpcStream { uri, .. } = channel_source
+                && &uri.store_id() == store_id
+            {
                 self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
             }
         }
@@ -2709,11 +2735,6 @@ impl App {
                     }
                 }
             },
-        }
-
-        // Handle any action that is triggered by a new store _after_ processing the message that caused it.
-        if msg_will_add_new_store {
-            self.on_new_store(egui_ctx, store_id, channel_source, store_hub);
         }
     }
 

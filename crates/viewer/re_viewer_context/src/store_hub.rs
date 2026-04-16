@@ -408,6 +408,9 @@ impl StoreHub {
     /// Mutable access to a [`EntityDb`] by id.
     ///
     /// Creates it if it does not already exist.
+    // NOTE(grtlr): The sentence above should be read as a _warning_. If we call this
+    // function with the expectance to create a new store, the call site has to make sure
+    // to also do all of the required book-keeping.
     pub fn entity_db_entry(&mut self, store_id: &StoreId) -> &mut EntityDb {
         self.store_bundle.entry(store_id)
     }
