@@ -140,6 +140,53 @@ class TimeColumn(TimeColumnLike):
 TArchetype = TypeVar("TArchetype", bound=Archetype)
 
 
+def build_column_args(
+    indexes: Iterable[TimeColumnLike],
+    columns: Iterable[ComponentColumn],
+) -> tuple[dict[str, pa.Array], dict[ComponentDescriptor, pa.Array]]:
+    """
+    Validate and extract timeline and component column data.
+
+    Ensures all columns have the same length, then returns a `(timelines_args, columns_args)` tuple
+    ready to be forwarded to the native layer.
+
+    Raises
+    ------
+    ValueError
+        If column lengths don't match.
+
+    """
+    expected_length = None
+
+    timelines_args: dict[str, pa.Array] = {}
+    for t in indexes:
+        timeline_name = t.timeline_name()
+        time_column = t.as_arrow_array()
+        if expected_length is None:
+            expected_length = len(time_column)
+        elif len(time_column) != expected_length:
+            raise ValueError(
+                f"All columns must have the same length. Expected {expected_length} "
+                f"but timeline '{timeline_name}' has {len(time_column)}.",
+            )
+        timelines_args[timeline_name] = time_column
+
+    columns_args: dict[ComponentDescriptor, pa.Array] = {}
+    for c in columns:
+        descriptor = c.component_descriptor()
+        arrow_array = c.as_arrow_array()
+        if expected_length is None:
+            expected_length = len(arrow_array)
+        elif len(arrow_array) != expected_length:
+            raise ValueError(
+                f"All columns must have the same length. Expected {expected_length} "
+                f"but component '{descriptor}' has {len(arrow_array)}.",
+            )
+        columns_args[descriptor] = arrow_array
+
+    return timelines_args, columns_args
+
+
 @catch_and_log_exceptions()
 def send_columns(
     entity_path: str,
@@ -185,33 +232,7 @@ def send_columns(
         If None, use the global default from `rerun.strict_mode()`
 
     """
-    expected_length = None
-
-    timelines_args = {}
-    for t in indexes:
-        timeline_name = t.timeline_name()
-        time_column = t.as_arrow_array()
-        if expected_length is None:
-            expected_length = len(time_column)
-        elif len(time_column) != expected_length:
-            raise ValueError(
-                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(time_column)} for timeline: {timeline_name}",
-            )
-
-        timelines_args[timeline_name] = time_column
-
-    columns_args: dict[ComponentDescriptor, pa.Array] = {}
-    for component_column in columns:
-        component_descr = component_column.component_descriptor()
-        arrow_list_array = component_column.as_arrow_array()
-        if expected_length is None:
-            expected_length = len(arrow_list_array)
-        elif len(arrow_list_array) != expected_length:
-            raise ValueError(
-                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(arrow_list_array)} for component: {component_descr}",
-            )
-
-        columns_args[component_descr] = arrow_list_array
+    timelines_args, columns_args = build_column_args(indexes, columns)
 
     bindings.send_arrow_chunk(
         entity_path,
