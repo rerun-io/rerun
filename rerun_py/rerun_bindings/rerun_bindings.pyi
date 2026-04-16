@@ -854,7 +854,7 @@ def send_recording(rrd: RecordingInternal, recording: PyRecordingStream | None =
     """
     Send all chunks from a [`PyRecording`] to the given recording stream.
 
-    .. warning::
+    !!! Warning
         ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
     """
 

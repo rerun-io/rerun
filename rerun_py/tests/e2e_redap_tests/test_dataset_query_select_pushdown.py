@@ -130,7 +130,7 @@ def test_fill_latest_at_disables_narrowing(readonly_test_dataset: DatasetEntry, 
 @pytest.mark.parametrize("time_idx", ["time_1", "time_2", "time_3"])
 def test_filter_on_other_entity_expands_fetch_set(readonly_test_dataset: DatasetEntry, time_idx: str) -> None:
     """
-    A filter referencing /obj2 forces /obj2 chunks to be fetched even when only /obj1 is SELECTed.
+    A filter referencing /obj2 forces /obj2 chunks to be fetched even when only /obj1 is selected.
 
     This is the "case where we cannot filter out" — chunks for /obj2 are needed to evaluate the
     filter, so /obj2's index timestamps appear in the underlying scan. Rows are then dropped by

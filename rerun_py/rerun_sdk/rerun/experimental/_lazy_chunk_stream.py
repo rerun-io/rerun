@@ -165,7 +165,7 @@ class LazyChunkStream:
         Parameters
         ----------
         lenses:
-            One or more :class:`Lens` objects describing the transformations.
+            One or more [`Lens`][] objects describing the transformations.
         output_mode:
             How to handle unmatched chunks:
 

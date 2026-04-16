@@ -693,7 +693,7 @@ class RecordingStream:
         """
         Send a `Recording` loaded from a `.rrd` to the `RecordingStream`.
 
-        .. warning::
+        !!! Warning
             ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
 
         Parameters

@@ -152,6 +152,16 @@ The `uv` wrapper script unsets `CONDA_PREFIX` to ensure isolation from pixi's en
 - **Arrow Native**: Data is stored, transmitted, and queried as Apache Arrow arrays
 - **Multi-language**: Changes to .fbs files affect Rust, Python, and C++ simultaneously
 
+## Python docstring formatting
+
+Python API docs are built with **MkDocs + mkdocstrings** (NOT Sphinx). Never use reStructuredText (rST) syntax in Python docstrings or documentation. Use markdown instead:
+
+- **Cross-references:** Use `[`ClassName`][]` (mkdocstrings syntax), NOT `:class:`ClassName`` / `:func:` / `:meth:` (rST roles)
+- **Warnings/notes:** Use MkDocs admonitions (`!!! warning` with indented body), NOT `.. warning::` (rST directives)
+- **Deprecation notices:** Use the `@deprecated` decorator (mkdocstrings renders it automatically). Do NOT duplicate in the docstring with `.. deprecated::` or `**Deprecated:**`
+- **Code blocks:** Use markdown fenced blocks (`` ``` ``), NOT `.. code-block::`
+- **Parameter docs:** Use numpy-style sections (`Parameters`, `Returns` with `----------`), which is what the codebase already uses
+
 ## Documentation system
 
 See [`docs/README.md`](docs/README.md) for the full documentation architecture.

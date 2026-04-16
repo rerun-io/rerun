@@ -140,9 +140,6 @@ class Entry(ABC, Generic[InternalEntryT]):
         """
         Update this entry's properties.
 
-        .. deprecated::
-            Use :meth:`set_name` instead.
-
         Parameters
         ----------
         name:
@@ -680,13 +677,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         store_position: bool = False,
         base_tokenizer: str = "simple",
     ) -> None:
-        """
-        Create a full-text search index on the given column.
-
-        .. deprecated::
-            Index creation is currently not supported.
-            Contact Rerun if this is a feature you would like us to support.
-        """
+        """Create a full-text search index on the given column."""
 
         try:
             return self._internal.create_fts_search_index(  # ty: ignore[deprecated]
@@ -714,10 +705,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
     ) -> IndexingResult:
         """
         Create a vector index on the given column.
-
-        .. deprecated::
-            Index creation is currently not supported.
-            Contact Rerun if this is a feature you would like us to support.
 
         This will enable indexing and build the vector index over all existing values
         in the specified component column.
@@ -781,13 +768,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         query: str,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
     ) -> datafusion.DataFrame:
-        """
-        Search the dataset using a full-text search query.
-
-        .. deprecated::
-            Index search is currently not supported.
-            Contact Rerun if this is a feature you would like us to support.
-        """
+        """Search the dataset using a full-text search query."""
 
         try:
             return self._internal.search_fts(query, column)  # ty: ignore[deprecated]
@@ -805,13 +786,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         top_k: int,
     ) -> datafusion.DataFrame:
-        """
-        Search the dataset using a vector search query.
-
-        .. deprecated::
-            Index search is currently not supported.
-            Contact Rerun if this is a feature you would like us to support.
-        """
+        """Search the dataset using a vector search query."""
 
         try:
             return self._internal.search_vector(query, column, top_k)  # ty: ignore[deprecated]

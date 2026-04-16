@@ -96,11 +96,11 @@ class Selector:
         ----------
         func:
             A callable that accepts a ``pyarrow.Array`` and returns a ``pyarrow.Array``
-            or ``None``, or another :class:`Selector` to chain.
+            or ``None``, or another [`Selector`][] to chain.
 
         Returns
         -------
-        A new :class:`Selector` with the transformation applied.
+        A new [`Selector`][] with the transformation applied.
 
         """
         new = Selector.__new__(Selector)

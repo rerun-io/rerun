@@ -162,6 +162,16 @@ pixi run uv run script.py      # Explicit uv run
 - **Arrow Native**: Data stored, transmitted, queried as Apache Arrow arrays
 - **Multi-language**: .fbs changes affect Rust, Python, C++ simultaneously
 
+## Python docstring formatting
+
+Python API docs use **MkDocs + mkdocstrings** (NOT Sphinx). Never use reStructuredText (rST) in Python docstrings. Use markdown:
+
+- Cross-refs: `[`ClassName`][]` not `:class:`ClassName`` / `:func:` / `:meth:`
+- Warnings: `!!! warning` (MkDocs admonition with indented body) not `.. warning::`
+- Deprecation: use `@deprecated` decorator (mkdocstrings renders it), don't duplicate in docstring
+- Code blocks: markdown fenced blocks, not `.. code-block::`
+- Params: numpy-style (`Parameters`, `Returns` with `----------`)
+
 ## Documentation system
 
 See [`docs/README.md`](docs/README.md) for full docs architecture.
