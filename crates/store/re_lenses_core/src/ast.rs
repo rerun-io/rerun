@@ -293,17 +293,41 @@ impl OneToOne {
 
         let mut errors = Vec::new();
 
-        // Collect successful components directly into ChunkComponents, accumulate errors
-        let component_results: re_chunk::ChunkComponents =
-            collect_output_components_iter(input, &self.components, entity_path)
-                .filter_map(|result| match result {
-                    Ok(component) => Some(component),
-                    Err(err) => {
-                        errors.push(err);
-                        None
-                    }
-                })
-                .collect();
+        // Forward unmatched existing component columns from the input chunk.
+        // Row count is preserved in a 1:1 transformation, so we can clone them as-is.
+        // Collisions with lens output identifiers are reported as errors — the
+        // forwarded column is dropped so the lens output can take its place
+        // unambiguously below.
+        let mut component_results = re_chunk::ChunkComponents::default();
+        for (component, column) in chunk.components().iter() {
+            if *component == input.descriptor.component {
+                continue;
+            }
+            if self
+                .components
+                .iter()
+                .any(|out| out.component_descr.component == *component)
+            {
+                errors.push(LensError::ComponentIdentifierCollision {
+                    entity_path: entity_path.clone(),
+                    component: *component,
+                });
+                continue;
+            }
+            component_results.insert(column.clone());
+        }
+
+        // Collect successful components directly into ChunkComponents, accumulate errors.
+        // Lens outputs always win on collision — collisions were already reported above.
+        for result in collect_output_components_iter(input, &self.components, entity_path) {
+            match result {
+                Ok((component_descr, list_array)) => {
+                    component_results
+                        .insert(SerializedComponentColumn::new(list_array, component_descr));
+                }
+                Err(err) => errors.push(err),
+            }
+        }
 
         // Inherit all existing time columns as-is (since row count doesn't change)
         let mut chunk_times = chunk.timelines().clone();
@@ -472,14 +496,57 @@ impl OneToMany {
             }),
         );
 
-        // Explode all component outputs and collect errors
-        let chunk_components: re_chunk::ChunkComponents = output_components
-            .filter_map(|result| match result {
+        // Scatter and forward unmatched component columns from the input chunk so
+        // they flow through alongside the lens outputs. Collisions with lens output
+        // identifiers are reported as errors — the forwarded column is dropped so
+        // the lens output can take its place unambiguously below.
+        let mut chunk_components = re_chunk::ChunkComponents::default();
+        for (component, column) in chunk.components().iter() {
+            if *component == input.descriptor.component {
+                continue;
+            }
+            if self
+                .components
+                .iter()
+                .any(|out| out.component_descr.component == *component)
+            {
+                errors.push(LensError::ComponentIdentifierCollision {
+                    entity_path: entity_path.clone(),
+                    component: *component,
+                });
+                continue;
+            }
+
+            // `arrow::compute::take` is fine to use in this context, because we want to allow nullability.
+            #[expect(clippy::disallowed_methods)]
+            match take(&column.list_array, &scatter_indices_array, None) {
+                Ok(scattered) => {
+                    let scattered_list = scattered.as_list::<i32>().clone();
+                    chunk_components.insert(SerializedComponentColumn::new(
+                        scattered_list,
+                        column.descriptor.clone(),
+                    ));
+                }
+                Err(source) => {
+                    errors.push(LensError::ScatterExistingComponentFailed {
+                        entity_path: entity_path.clone(),
+                        component: *component,
+                        source,
+                    });
+                }
+            }
+        }
+
+        // Explode all component outputs and collect errors. Lens outputs always win
+        // on collision — collisions with forwarded columns were already reported above.
+        for result in output_components {
+            match result {
                 Ok((component_descr, list_array)) => match Explode.transform(&list_array) {
                     Ok(Some(exploded)) => {
-                        Some(SerializedComponentColumn::new(exploded, component_descr))
+                        chunk_components
+                            .insert(SerializedComponentColumn::new(exploded, component_descr));
                     }
-                    Ok(None) => None,
+                    Ok(None) => {}
                     Err(err) => {
                         errors.push(LensError::ComponentOperationFailed {
                             entity_path: entity_path.clone(),
@@ -487,15 +554,11 @@ impl OneToMany {
                             component: component_descr.component,
                             source: Box::new(err.into()),
                         });
-                        None
                     }
                 },
-                Err(err) => {
-                    errors.push(err);
-                    None
-                }
-            })
-            .collect();
+                Err(err) => errors.push(err),
+            }
+        }
 
         // Verify that all columns have the same length happens during chunk creation.
         finalize_chunk(entity_path.clone(), chunk_times, chunk_components, errors)
