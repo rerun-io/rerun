@@ -213,7 +213,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check spelling of entire workspace
-        uses: crate-ci/typos@v1.37.3
+        uses: crate-ci/typos@v1.45.1
 
   cpp-formatting:
     name: C++ formatting check

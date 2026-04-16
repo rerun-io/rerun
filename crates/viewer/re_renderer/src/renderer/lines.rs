@@ -199,7 +199,7 @@ impl DrawData for LineDrawData {
         _view_info: &DrawableCollectionViewInfo,
         collector: &mut DrawableCollector<'_>,
     ) {
-        // TODO(#1611): transparency, split drawables for some semblence of transparency ordering.
+        // TODO(#1611): transparency, split drawables for some semblance of transparency ordering.
         // TODO(#1025, #4787): Better handling of 2D objects.
 
         for (batch_idx, batch) in self.batches.iter().enumerate() {
