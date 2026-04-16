@@ -109,26 +109,31 @@ pub struct TonicStatusError(pub tonic::Status);
 
 impl std::fmt::Display for TonicStatusError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TODO(emilk): duplicated in `re_grpc_client`
-        let status = &self.0;
-
-        write!(f, "gRPC error")?;
-
-        if status.code() != tonic::Code::Unknown {
-            write!(f, ", code: '{}'", status.code())?;
-        }
-        if !status.message().is_empty() {
-            write!(f, ", message: {:?}", status.message())?;
-        }
-        // Binary data - not useful.
-        // if !status.details().is_empty() {
-        //     write!(f, ", details: {:?}", status.details())?;
-        // }
-        if !status.metadata().is_empty() {
-            write!(f, ", metadata: {:?}", status.metadata().as_ref())?;
-        }
-        Ok(())
+        // NOTE: duplicated in `re_grpc_client` and `re_redap_client`
+        fmt_tonic_status(f, &self.0)
     }
+}
+
+fn fmt_tonic_status(f: &mut std::fmt::Formatter<'_>, status: &tonic::Status) -> std::fmt::Result {
+    if status.message().is_empty() {
+        write!(f, "gRPC error")?;
+    } else {
+        write!(f, "{}", status.message())?;
+    }
+
+    if status.code() != tonic::Code::Unknown {
+        write!(f, " ({})", status.code())?;
+    }
+
+    if !status.metadata().is_empty() {
+        write!(
+            f,
+            "{} metadata: {:?}",
+            re_error::DETAILS_SEPARATOR,
+            status.metadata().as_ref()
+        )?;
+    }
+    Ok(())
 }
 
 impl From<tonic::Status> for TonicStatusError {

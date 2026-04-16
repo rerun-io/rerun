@@ -147,6 +147,7 @@ impl ApiError {
         let message = message.into();
         let kind = ApiErrorKind::from(err.code());
         let trace_id = extract_trace_id(err.metadata());
+        let err = crate::TonicStatusError::from(err); // Wrap in TonicStatusError so we get our nice Display formatting
         if let Some(trace_id) = trace_id {
             Self::new_with_source_and_trace_id(err, kind, message, trace_id)
         } else {

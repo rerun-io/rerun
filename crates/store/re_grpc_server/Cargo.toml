@@ -22,6 +22,7 @@ all-features = true
 [dependencies]
 re_byte_size.workspace = true
 re_chunk.workspace = true
+re_error.workspace = true
 re_format.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_channel.workspace = true
