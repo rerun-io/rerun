@@ -437,9 +437,7 @@ impl MemorySinkStorage {
             let mut inner = sink.inner.lock();
             inner.has_been_used = true;
 
-            for message in &inner.msgs {
-                encoder.append(message)?;
-            }
+            encoder.extend(inner.msgs.iter().map(Ok))?;
         }
 
         encoder.finish()?;
