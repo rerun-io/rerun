@@ -542,3 +542,87 @@ def test_lenses_dynamic_selector(test_rrd_path: Path) -> None:
     rb = chunks[0].to_record_batch()
     scalars = rb.column("Scalars:scalars")
     assert scalars.to_pylist() == [[0.2], [0.8]]
+
+
+# ---------------------------------------------------------------------------
+# map / flat_map
+# ---------------------------------------------------------------------------
+
+
+def test_map_identity(test_rrd_path: Path) -> None:
+    """map(identity) preserves all chunks."""
+    original = RrdReader(test_rrd_path).stream().to_chunks()
+    mapped = RrdReader(test_rrd_path).stream().map(lambda c: c).to_chunks()
+    assert len(mapped) == len(original)
+
+
+def test_flat_map_identity(test_rrd_path: Path) -> None:
+    """flat_map(lambda c: [c]) preserves all chunks."""
+    original = RrdReader(test_rrd_path).stream().to_chunks()
+    mapped = RrdReader(test_rrd_path).stream().flat_map(lambda c: [c]).to_chunks()
+    assert len(mapped) == len(original)
+
+
+def test_flat_map_drop_all(test_rrd_path: Path) -> None:
+    """flat_map(lambda c: []) produces an empty stream."""
+    chunks = RrdReader(test_rrd_path).stream().flat_map(lambda _c: []).to_chunks()
+    assert len(chunks) == 0
+
+
+def test_map_after_filter(test_rrd_path: Path) -> None:
+    """Map composes after filter."""
+    store = RrdReader(test_rrd_path).stream().filter(content="/robots/**").map(lambda c: c).collect()
+    assert store.schema().entity_paths() == ["/robots/arm"]
+
+
+def test_map_in_split_branch(test_rrd_path: Path) -> None:
+    """Map works on a branch produced by split."""
+    stream = RrdReader(test_rrd_path).stream()
+    matched, _non_matched = stream.split(content="/robots/**")
+    mapped = matched.map(lambda c: c)
+    store = mapped.collect()
+    assert store.schema().entity_paths() == ["/robots/arm"]
+
+
+def test_map_error_propagation(test_rrd_path: Path) -> None:
+    """A map callable that raises propagates the exception."""
+
+    def _raise(_c: Chunk) -> Chunk:
+        raise ValueError("test error from map")
+
+    with pytest.raises(ValueError, match="test error from map"):
+        RrdReader(test_rrd_path).stream().map(_raise).to_chunks()
+
+
+def test_flat_map_error_propagation(test_rrd_path: Path) -> None:
+    """A flat_map callable that raises propagates the exception."""
+
+    def _raise(_c: Chunk) -> list[Chunk]:
+        raise ValueError("test error from flat_map")
+
+    with pytest.raises(ValueError, match="test error from flat_map"):
+        RrdReader(test_rrd_path).stream().flat_map(_raise).to_chunks()
+
+
+def test_map_consumed_stream(test_rrd_path: Path) -> None:
+    """Calling map on a consumed stream raises ValueError."""
+    stream = RrdReader(test_rrd_path).stream()
+    _filtered = stream.filter(is_static=True)
+    with pytest.raises(ValueError, match="already been consumed"):
+        stream.map(lambda c: c)
+
+
+def test_flat_map_consumed_stream(test_rrd_path: Path) -> None:
+    """Calling flat_map on a consumed stream raises ValueError."""
+    stream = RrdReader(test_rrd_path).stream()
+    _filtered = stream.filter(is_static=True)
+    with pytest.raises(ValueError, match="already been consumed"):
+        stream.flat_map(lambda c: [c])
+
+
+def test_map_multiple_executions(test_rrd_path: Path) -> None:
+    """Calling to_chunks() twice on a mapped stream produces the same results."""
+    stream = RrdReader(test_rrd_path).stream().map(lambda c: c)
+    first = stream.to_chunks()
+    second = stream.to_chunks()
+    assert len(first) == len(second)

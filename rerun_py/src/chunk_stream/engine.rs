@@ -18,7 +18,7 @@ use pyo3::prelude::*;
 use re_chunk::Chunk;
 
 use super::ChunkStream;
-use super::error::{ChunkPipelineError, PythonException};
+use super::error::{ChunkPipelineError, PythonException, py_callable_err};
 use super::stream::{
     LazyChunkStream, PipelineStep, SplitOrigin, SplitSide, StreamSource, StructuredFilter,
 };
@@ -308,6 +308,21 @@ fn compile_inner(stream: &LazyChunkStream, ctx: &mut CompileContext) -> Box<dyn 
             PipelineStep::Filter(f) => Box::new(FilterStream::new(compiled, f.clone())),
             PipelineStep::Drop(f) => Box::new(DropStream::new(compiled, f.clone())),
             PipelineStep::Lenses(l) => Box::new(LensesStream::new(compiled, l.clone())),
+            PipelineStep::Map(callable) => {
+                let cloned = Python::attach(|py| callable.clone_ref(py));
+                Box::new(MapStream {
+                    inner: compiled,
+                    map_fn: cloned,
+                })
+            }
+            PipelineStep::FlatMap(callable) => {
+                let cloned = Python::attach(|py| callable.clone_ref(py));
+                Box::new(FlatMapStream {
+                    inner: compiled,
+                    map_fn: cloned,
+                    buffer: std::collections::VecDeque::new(),
+                })
+            }
         };
     }
 
@@ -460,6 +475,76 @@ impl ChunkStream for LensesStream {
             // If lenses produced output, the next iteration will drain the buffer.
             // If they produced nothing (e.g. DropUnmatched with no match), loop to
             // pull the next upstream chunk.
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// MapStream
+// ---------------------------------------------------------------------------
+
+struct MapStream {
+    inner: Box<dyn ChunkStream>,
+    map_fn: Py<PyAny>,
+}
+
+impl ChunkStream for MapStream {
+    fn next(&mut self) -> Result<Option<Arc<Chunk>>, ChunkPipelineError> {
+        let Some(chunk) = self.inner.next()? else {
+            return Ok(None);
+        };
+
+        Python::attach(|py| {
+            let py_chunk =
+                Py::new(py, crate::chunk::PyChunkInternal::new(chunk)).map_err(py_callable_err)?;
+            let result = self
+                .map_fn
+                .call1(py, (py_chunk,))
+                .map_err(py_callable_err)?;
+            let result_ref: PyRef<'_, crate::chunk::PyChunkInternal> =
+                result.extract(py).map_err(py_callable_err)?;
+            Ok(Some(Arc::clone(result_ref.inner())))
+        })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// FlatMapStream
+// ---------------------------------------------------------------------------
+
+struct FlatMapStream {
+    inner: Box<dyn ChunkStream>,
+    map_fn: Py<PyAny>,
+    buffer: std::collections::VecDeque<Arc<Chunk>>,
+}
+
+impl ChunkStream for FlatMapStream {
+    fn next(&mut self) -> Result<Option<Arc<Chunk>>, ChunkPipelineError> {
+        loop {
+            if let Some(chunk) = self.buffer.pop_front() {
+                return Ok(Some(chunk));
+            }
+
+            let Some(chunk) = self.inner.next()? else {
+                return Ok(None);
+            };
+
+            Python::attach(|py| -> Result<(), ChunkPipelineError> {
+                let py_chunk = Py::new(py, crate::chunk::PyChunkInternal::new(chunk))
+                    .map_err(py_callable_err)?;
+                let result = self
+                    .map_fn
+                    .call1(py, (py_chunk,))
+                    .map_err(py_callable_err)?;
+                let bound = result.bind(py);
+                for item in bound.try_iter().map_err(py_callable_err)? {
+                    let item = item.map_err(py_callable_err)?;
+                    let chunk_ref: PyRef<'_, crate::chunk::PyChunkInternal> =
+                        item.extract().map_err(py_callable_err)?;
+                    self.buffer.push_back(Arc::clone(chunk_ref.inner()));
+                }
+                Ok(())
+            })?;
         }
     }
 }

@@ -69,12 +69,22 @@ pub enum ChunkPipelineError {
 
     #[error("{0}")]
     PythonIterator(PythonException),
+
+    #[error("{0}")]
+    PythonCallable(PythonException),
+}
+
+pub(super) fn py_callable_err(e: pyo3::PyErr) -> ChunkPipelineError {
+    ChunkPipelineError::PythonCallable(PythonException::new(e))
 }
 
 impl From<ChunkPipelineError> for pyo3::PyErr {
     fn from(err: ChunkPipelineError) -> Self {
         match err {
-            ChunkPipelineError::PythonIterator(exc) => exc.into_py_err(),
+            // Exception raised from callbacks are simply re-raised to the user.
+            ChunkPipelineError::PythonIterator(exc) | ChunkPipelineError::PythonCallable(exc) => {
+                exc.into_py_err()
+            }
 
             ChunkPipelineError::RrdChunkDecode { .. }
             | ChunkPipelineError::RrdRead { .. }

@@ -110,6 +110,18 @@ impl PyLazyChunkStreamInternal {
         Ok((Self::new(a), Self::new(b)))
     }
 
+    /// Apply a Python callable to each chunk (1:1). Consumes this stream.
+    fn map(&self, callable: Py<PyAny>) -> PyResult<Self> {
+        let stream = self.take_inner()?;
+        Ok(Self::new(stream.map(callable)))
+    }
+
+    /// Apply a Python callable to each chunk (0:N). Consumes this stream.
+    fn flat_map(&self, callable: Py<PyAny>) -> PyResult<Self> {
+        let stream = self.take_inner()?;
+        Ok(Self::new(stream.flat_map(callable)))
+    }
+
     /// Apply lenses to transform chunk data. Consumes this stream.
     #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned Vec
     fn lenses(
