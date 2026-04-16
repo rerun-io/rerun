@@ -21,18 +21,18 @@ use crate::TempPath;
 pub type TuidPrefix = u64;
 
 pub fn next_chunk_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::ChunkId {
-    let mut chunk_id = re_chunk::ChunkId::from_tuid(Tuid::from_nanos_and_inc(prefix, 0));
+    let mut tuid = Tuid::from_nanos_and_inc(prefix, 0);
     move || {
-        chunk_id = chunk_id.next();
-        chunk_id
+        tuid = tuid.next();
+        re_chunk::ChunkId::from_tuid(tuid)
     }
 }
 
 pub fn next_row_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::RowId {
-    let mut row_id = re_chunk::RowId::from_tuid(Tuid::from_nanos_and_inc(prefix, 0));
+    let mut tuid = Tuid::from_nanos_and_inc(prefix, 0);
     move || {
-        row_id = row_id.next();
-        row_id
+        tuid = tuid.next();
+        re_chunk::RowId::from_tuid(tuid)
     }
 }
 
