@@ -200,8 +200,8 @@ impl ChunkStoreDiff {
         Self::VirtualAddition(ChunkStoreDiffVirtualAddition { rrd_manifest })
     }
 
-    pub fn deletion(chunk: Arc<Chunk>) -> Self {
-        Self::Deletion(ChunkStoreDiffDeletion { chunk })
+    pub fn deletion(chunk: Arc<Chunk>, reason: ChunkDeletionReason) -> Self {
+        Self::Deletion(ChunkStoreDiffDeletion { chunk, reason })
     }
 
     pub fn is_addition(&self) -> bool {
@@ -543,6 +543,32 @@ impl ChunkStoreDiffVirtualAddition {
     }
 }
 
+/// Why a chunk was removed from the store.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChunkDeletionReason {
+    /// Garbage collection due to memory pressure.
+    GarbageCollection,
+
+    /// A virtual chunk was replaced by its physical data.
+    VirtualToPhysicalReplacement,
+
+    /// Old split chunks cleaned up when their root chunk is re-inserted.
+    ///
+    /// When a root chunk is inserted, the store may split it into smaller physical chunks.
+    /// If the same root chunk is later re-downloaded (e.g. after GC eviction),
+    /// the old splits are stale duplicates and must be removed before the new insertion.
+    DanglingSplitCleanup,
+
+    /// A chunk was replaced by a compacted version.
+    Compaction,
+
+    /// A static chunk was overwritten by a newer value.
+    Overwrite,
+
+    /// Explicitly dropped by user action (e.g. undo/redo stack operations).
+    ExplicitDrop,
+}
+
 /// An atomic deletion event.
 ///
 /// Reminder: ⚠ Do not confuse _a deletion_ and _a clear_ ⚠.
@@ -561,21 +587,25 @@ pub struct ChunkStoreDiffDeletion {
     // downstream subscribers get a chance to inspect the data in the chunk before it gets permanently
     // deallocated.
     pub chunk: Arc<Chunk>,
+
+    /// Why this chunk was removed.
+    pub reason: ChunkDeletionReason,
 }
 
 impl std::fmt::Debug for ChunkStoreDiffDeletion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { chunk } = self;
+        let Self { chunk, reason } = self;
         f.debug_tuple("ChunkStoreDiffDeletion")
             .field(&chunk.id())
+            .field(reason)
             .finish()
     }
 }
 
 impl PartialEq for ChunkStoreDiffDeletion {
     fn eq(&self, other: &Self) -> bool {
-        let Self { chunk } = self;
-        chunk.id() == other.chunk.id()
+        let Self { chunk, reason } = self;
+        chunk.id() == other.chunk.id() && *reason == other.reason
     }
 }
 

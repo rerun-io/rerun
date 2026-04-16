@@ -816,7 +816,8 @@ mod tests {
     use itertools::Itertools as _;
     use re_chunk::{Chunk, ChunkId, RowId};
     use re_chunk_store::{
-        ChunkStore, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber as _,
+        ChunkDeletionReason, ChunkStore, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
+        ChunkStoreSubscriber as _,
     };
     use re_log_encoding::RrdManifest;
     use re_log_types::example_components::{MyPoint, MyPoints};
@@ -907,6 +908,7 @@ mod tests {
         let dels = store.write().remove_chunks_shallow(
             vec![Arc::new(chunk1.clone()), Arc::new(chunk3.clone())],
             None,
+            ChunkDeletionReason::ExplicitDrop,
         );
         cache.on_events(
             &dels
@@ -934,9 +936,11 @@ mod tests {
             assert_eq!(expected, results);
         }
 
-        let dels = store
-            .write()
-            .remove_chunks_shallow(vec![Arc::new(chunk2.clone())], None);
+        let dels = store.write().remove_chunks_shallow(
+            vec![Arc::new(chunk2.clone())],
+            None,
+            ChunkDeletionReason::ExplicitDrop,
+        );
         cache.on_events(
             &dels
                 .into_iter()
@@ -1099,9 +1103,11 @@ mod tests {
                 assert_eq!(expected, results);
             }
 
-            let dels = store
-                .write()
-                .remove_chunks_shallow(vec![Arc::new(tombstone.clone())], None);
+            let dels = store.write().remove_chunks_shallow(
+                vec![Arc::new(tombstone.clone())],
+                None,
+                ChunkDeletionReason::ExplicitDrop,
+            );
             cache.on_events(
                 &dels
                     .into_iter()
@@ -1129,9 +1135,11 @@ mod tests {
                 assert_eq!(expected, results);
             }
 
-            let dels = store
-                .write()
-                .remove_chunks_deep(vec![Arc::new(tombstone.clone())], None);
+            let dels = store.write().remove_chunks_deep(
+                vec![Arc::new(tombstone.clone())],
+                None,
+                ChunkDeletionReason::GarbageCollection,
+            );
             cache.on_events(
                 &dels
                     .into_iter()

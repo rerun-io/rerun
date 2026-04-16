@@ -954,6 +954,7 @@ impl EntityDb {
         &mut self,
         timeline: &TimelineName,
         drop_range: AbsoluteTimeRange,
+        reason: re_chunk_store::ChunkDeletionReason,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
@@ -961,7 +962,7 @@ impl EntityDb {
             .storage_engine
             .write()
             .store()
-            .drop_time_range_deep(timeline, drop_range);
+            .drop_time_range_deep(timeline, drop_range, reason);
 
         self.on_store_events(&store_events);
 

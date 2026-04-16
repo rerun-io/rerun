@@ -12,9 +12,9 @@ use re_log_encoding::{RrdManifest, RrdManifestTemporalMapEntry};
 
 use crate::store::ChunkIdSetPerTime;
 use crate::{
-    ChunkDirectLineage, ChunkDirectLineageReport, ChunkId, ChunkStore, ChunkStoreChunkStats,
-    ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreError, ChunkStoreEvent,
-    ChunkStoreResult,
+    ChunkDeletionReason, ChunkDirectLineage, ChunkDirectLineageReport, ChunkId, ChunkStore,
+    ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffAddition,
+    ChunkStoreError, ChunkStoreEvent, ChunkStoreResult,
 };
 
 // ---
@@ -273,9 +273,13 @@ impl ChunkStore {
             // The fix is simple: always unconditionally clean up the indexes when a virtual chunk
             // gets physically inserted.
             all_diffs.extend(
-                self.remove_chunks_deep(vec![chunk.clone()], None)
-                    .into_iter()
-                    .map(Into::into),
+                self.remove_chunks_deep(
+                    vec![chunk.clone()],
+                    None,
+                    ChunkDeletionReason::VirtualToPhysicalReplacement,
+                )
+                .into_iter()
+                .map(Into::into),
             );
         }
 
@@ -294,6 +298,7 @@ impl ChunkStore {
                         })
                         .collect(),
                     None,
+                    ChunkDeletionReason::DanglingSplitCleanup,
                 )
                 .into_iter()
                 .map(Into::into),
@@ -521,7 +526,10 @@ impl ChunkStore {
                         if let Some(chunk_removed) = chunk_removed {
                             self.static_chunks_stats -=
                                 ChunkStoreChunkStats::from_chunk(&chunk_removed);
-                            diffs.push(ChunkStoreDiff::deletion(chunk_removed));
+                            diffs.push(ChunkStoreDiff::deletion(
+                                chunk_removed,
+                                ChunkDeletionReason::Overwrite,
+                            ));
                         }
                     }
                 }
@@ -671,9 +679,13 @@ impl ChunkStore {
                     std::iter::once((chunk_before_processing.id(), chunk_before_processing))
                         .chain(
                             // NOTE: deep removal, we don't want a compacted chunk to linger on!
-                            self.remove_chunks_deep(vec![elected_chunk.clone()], None)
-                                .into_iter()
-                                .map(|diff| (diff.chunk.id(), diff.chunk)),
+                            self.remove_chunks_deep(
+                                vec![elected_chunk.clone()],
+                                None,
+                                ChunkDeletionReason::Compaction,
+                            )
+                            .into_iter()
+                            .map(|diff| (diff.chunk.id(), diff.chunk)),
                         )
                         .collect();
 
@@ -1008,7 +1020,7 @@ impl ChunkStore {
         let diffs: Vec<_> = dropped_static_chunks
             .into_iter()
             .chain(dropped_temporal_chunks)
-            .map(ChunkStoreDiff::deletion)
+            .map(|chunk| ChunkStoreDiff::deletion(chunk, ChunkDeletionReason::ExplicitDrop))
             .collect();
 
         self.finalize_events(diffs)

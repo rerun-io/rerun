@@ -131,6 +131,7 @@ impl BlueprintUndoState {
             let events = blueprint_db.drop_time_range(
                 &blueprint_timeline(),
                 AbsoluteTimeRange::new(first_dropped_event_time, re_chunk::TimeInt::MAX),
+                re_chunk_store::ChunkDeletionReason::ExplicitDrop,
             );
 
             // Also remove inflection points after the current time,
