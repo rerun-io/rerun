@@ -5,7 +5,7 @@ use re_log_types::{Timestamp, TimestampFormat};
 use re_memory::MemoryLimit;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::{AppOptions, VideoOptions};
+use re_viewer_context::{AppOptions, ExperimentalAppOptions, VideoOptions};
 
 use crate::StartupOptions;
 
@@ -153,15 +153,21 @@ fn settings_screen_ui_impl(
     video_section_ui(ui, video);
 
     {
+        let ExperimentalAppOptions {
+            enable_states_view,
+            table_grid_view,
+        } = experimental;
         separator_with_some_space(ui);
         ui.strong("Experimental");
-        ui.re_checkbox(
-            &mut experimental.enable_states_view,
-            "Enable States view (requires restart)",
-        )
-        .on_hover_text(
-            "Show the experimental States view for visualizing state transitions over time.",
-        );
+        ui.re_checkbox(enable_states_view, "Enable States view (requires restart)")
+            .on_hover_text(
+                "Show the experimental States view for visualizing state transitions over time.",
+            );
+        ui.re_checkbox(table_grid_view, "Table grid view")
+            .on_hover_text(
+                "Enable grid view mode for server supplied tables.\n\n\
+                 When enabled, a list/grid toggle appears in the table title bar.",
+            );
     }
 }
 

@@ -11,6 +11,9 @@
   "slow_animation_duration_sec": 0.2,
   "plot_grid_fade": 0.3,
 
+  "table_grid_view_card_min_width": 350,
+  "table_grid_view_card_spacing": 8,
+
   "loop_selection_alpha": 0.55, // Multiplied with selection_bg_fill
   "loop_selection_alpha_inactive": 0.20, // Multiplied with selection_bg_fill
 
@@ -161,6 +164,13 @@
     },
     "table_sort_icon_color": {
       "color": "{Blue.250}"
+    },
+    "table_grid_view_card_fill": {
+      "color": "{Gray.900}"
+    },
+    "table_grid_view_card_hover_overlay": {
+      "color": "{Gray.0}",
+      "alpha": 20
     },
 
     "drag_pill_droppable_fill": {
@@ -361,6 +371,22 @@
     "table_filter_frame_stroke": {
       "color": "{Gray.400}",
       "width": 1
+    },
+
+    "flag_untoggled_bg": {
+      "color": "{Gray.800}"
+    },
+    "flag_untoggled_bg_hover": {
+      "color": "{Gray.750}"
+    },
+    "flag_toggled_bg": {
+      "color": "#800b00"
+    },
+    "flag_toggled_bg_hover": {
+      "color": "#660900"
+    },
+    "flag_untoggled_icon": {
+      "color": "{Gray.500}"
     },
 
     "bg_fill_inverse": {

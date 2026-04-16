@@ -184,6 +184,32 @@ pub trait UiExt {
         response
     }
 
+    /// An icon-only selectable value button, like [`egui::Ui::selectable_value`] but with an icon.
+    ///
+    /// The `alt_text` is used for accessibility and hover tooltip.
+    fn icon_selectable_value<V: PartialEq>(
+        &mut self,
+        icon: &Icon,
+        alt_text: impl Into<String>,
+        current_value: &mut V,
+        selected_value: V,
+    ) -> egui::Response {
+        let ui = self.ui_mut();
+        let selected = *current_value == selected_value;
+        let alt_text = alt_text.into();
+        let response = ui
+            .add(
+                egui::Button::image(icon.as_image().alt_text(alt_text.clone()))
+                    .image_tint_follows_text_color(true)
+                    .selected(selected),
+            )
+            .on_hover_text(&alt_text);
+        if response.clicked() {
+            *current_value = selected_value;
+        }
+        response
+    }
+
     fn large_button_impl(
         &mut self,
         icon: &Icon,

@@ -34,6 +34,7 @@ pub fn loading_indicator_ui(ui: &mut egui::Ui, reason: &str) -> egui::Response {
     let r = calc_radius(ui.available_size_before_wrap());
     let size = r * Vec2::new(WIDTH_IN_R, HEIGHT_IN_R);
     let (rect, response) = ui.allocate_exact_size(size, egui::Sense::hover());
+    response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ProgressIndicator));
     let opacity = 1.0;
     paint_loading_indicator_inside(ui, Align2::CENTER_CENTER, rect, opacity, None, reason);
     response

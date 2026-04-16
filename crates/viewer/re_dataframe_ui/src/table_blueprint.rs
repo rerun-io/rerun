@@ -90,6 +90,9 @@ pub struct EntryLinksSpec {
 }
 
 /// The "blueprint" for a table, a.k.a the specification of how it should look.
+///
+/// This is the single source of truth for table configuration. Fields can be populated
+/// from the embedded `.fbs` `TableBlueprint` archetype or set programmatically.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
@@ -103,6 +106,20 @@ pub struct TableBlueprint {
 
     /// Filters specified by the user in the UI.
     pub column_filters: Vec<ColumnFilter>,
+
+    /// The name of the boolean column used for flag annotations.
+    ///
+    /// The column must exist in the table and be of boolean type.
+    /// Populated from schema metadata ([`crate::experimental_field_metadata::IS_FLAG_COLUMN`])
+    /// or the embedded `.fbs` `TableBlueprint` archetype.
+    pub flag_column: Option<String>,
+
+    /// The name of the column to use as the card title in grid view.
+    ///
+    /// If unset, the first visible string column is used.
+    /// Populated from schema metadata ([`crate::experimental_field_metadata::IS_GRID_VIEW_CARD_TITLE`])
+    /// or the embedded `.fbs` `TableBlueprint` archetype.
+    pub grid_view_card_title: Option<String>,
 }
 
 /// The blueprint for a specific column.

@@ -59,6 +59,9 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
         app.app_options_mut().video.ffmpeg_path = "/fake/ffmpeg/path".to_owned();
         app.app_options_mut().video.override_ffmpeg_path = true;
 
+        // Enable experimental grid view in tests.
+        app.app_options_mut().experimental.table_grid_view = true;
+
         // This is slightly different than calling this after we created the harness since
         // the harness will do some stepping upon creation.
         // Opening a URL directly after creation is much closer to the behavior when opening URL from command line start.
