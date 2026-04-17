@@ -1132,7 +1132,11 @@ class _UrdfTreeInternal:
 
     @staticmethod
     def from_file_path(
-        path: str | os.PathLike[str], entity_path_prefix: str | None = None, frame_prefix: str | None = None
+        path: str | os.PathLike[str],
+        entity_path_prefix: str | None = None,
+        *,
+        frame_prefix: str | None = None,
+        static_transform_entity_path: str | None = None,
     ) -> _UrdfTreeInternal: ...
     @property
     def name(self) -> str: ...

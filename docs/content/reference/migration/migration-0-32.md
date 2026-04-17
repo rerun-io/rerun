@@ -117,3 +117,10 @@ If you need entity path filtering, use `Lenses::add_lens_with_filter`:
 let lenses = Lenses::new(OutputMode::DropUnmatched)
     .add_lens_with_filter(EntityPathFilter::parse_forgiving("sensors/**"), lens);
 ```
+
+## URDF importer transform entity
+
+The [URDF importer](../../howto/logging-and-ingestion/urdf.md) now loads the static transforms of the model to the `/tf_static` entity by default.
+This replaces the model-dependent entity path of previous versions, and improves consistency with ROS data.
+
+A custom entity path can be now also configured in the `UrdfTree` API in Python and Rust, if desired.

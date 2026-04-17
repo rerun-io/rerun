@@ -179,6 +179,7 @@ class UrdfTree:
         entity_path_prefix: str | None = None,
         *,
         frame_prefix: str | None = None,
+        static_transform_entity_path: str | None = None,
     ) -> UrdfTree:
         """
         Load a URDF file from the given path.
@@ -192,9 +193,20 @@ class UrdfTree:
         frame_prefix:
             Optional prefix for all frame IDs.
             Use to load the same URDF multiple times with unique frames.
+        static_transform_entity_path:
+            Optional entity path to use when logging static transforms.
+            If omitted, defaults to ``/tf_static``.
+            This path is not affected by ``entity_path_prefix``.
 
         """
-        return UrdfTree(_UrdfTreeInternal.from_file_path(path, entity_path_prefix, frame_prefix))
+        return UrdfTree(
+            _UrdfTreeInternal.from_file_path(
+                path,
+                entity_path_prefix,
+                frame_prefix=frame_prefix,
+                static_transform_entity_path=static_transform_entity_path,
+            )
+        )
 
     @property
     def name(self) -> str:

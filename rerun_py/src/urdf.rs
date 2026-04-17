@@ -16,11 +16,15 @@ pub struct PyUrdfTree(UrdfTree);
 impl PyUrdfTree {
     /// Load the URDF found at `path`.
     #[staticmethod]
-    #[pyo3(text_signature = "(path, entity_path_prefix=None, frame_prefix=None)")]
+    #[pyo3(signature = (path, entity_path_prefix=None, *, frame_prefix=None, static_transform_entity_path=None))]
+    #[pyo3(
+        text_signature = "(path, entity_path_prefix=None, *, frame_prefix=None, static_transform_entity_path=None)"
+    )]
     pub fn from_file_path(
         path: PathBuf,
         entity_path_prefix: Option<String>,
         frame_prefix: Option<String>,
+        static_transform_entity_path: Option<String>,
     ) -> PyResult<Self> {
         let mut tree =
             UrdfTree::from_file_path(path, entity_path_prefix.map(EntityPath::from_single_string))
@@ -29,6 +33,9 @@ impl PyUrdfTree {
                 })?;
         if let Some(prefix) = frame_prefix {
             tree = tree.with_frame_prefix(prefix);
+        }
+        if let Some(entity_path) = static_transform_entity_path {
+            tree = tree.with_static_transform_entity(entity_path);
         }
         Ok(Self(tree))
     }
