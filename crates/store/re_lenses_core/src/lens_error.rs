@@ -1,16 +1,12 @@
 use arrow::datatypes::DataType;
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
-use re_log_types::EntityPathFilter;
 
 /// Different variants of errors that can happen when executing lenses.
 #[expect(missing_docs)]
 #[derive(Debug, thiserror::Error)]
 pub enum LensError {
-    #[error(
-        "Lens for input component `{input_component} with entity path filter `{input_filter:?}` is missing output components"
-    )]
+    #[error("Lens for input component `{input_component}` is missing output components")]
     MissingOutputComponent {
-        input_filter: EntityPathFilter,
         input_component: ComponentIdentifier,
     },
 
@@ -64,5 +60,23 @@ pub enum LensError {
         timeline_name: TimelineName,
         #[source]
         source: arrow::error::ArrowError,
+    },
+
+    #[error(
+        "Failed to scatter existing component column '{component}' across output rows (entity: `{entity_path}`)"
+    )]
+    ScatterExistingComponentFailed {
+        entity_path: EntityPath,
+        component: ComponentIdentifier,
+        #[source]
+        source: arrow::error::ArrowError,
+    },
+
+    #[error(
+        "Component identifier collision on entity `{entity_path}`: input chunk already contains component `{component}` which is also produced as a lens output"
+    )]
+    ComponentIdentifierCollision {
+        entity_path: EntityPath,
+        component: ComponentIdentifier,
     },
 }

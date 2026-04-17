@@ -16,14 +16,11 @@
 //! - Error type (either built-in such as [`pyo3::exceptions::PyValueError`] or custom) can always
 //!   be used directly using, e.g. `PyValueError::new_err("message")`.
 
-use std::error::Error as _;
-use std::fmt::Write as _;
-
 use pyo3::PyErr;
 use pyo3::exceptions::{
     PyConnectionError, PyException, PyPermissionError, PyRuntimeError, PyTimeoutError, PyValueError,
 };
-use re_redap_client::ApiErrorKind;
+use re_redap_client::{ApiErrorKind, TonicStatusError};
 
 pyo3::create_exception!(
     rerun_bindings.rerun_bindings,
@@ -47,7 +44,7 @@ pyo3::create_exception!(
 #[expect(clippy::enum_variant_names)] // this is by design
 enum ExternalError {
     #[error("{0}")]
-    TonicStatusError(Box<tonic::Status>),
+    TonicStatusError(Box<TonicStatusError>),
 
     #[error("{0}")]
     TonicTransportError(Box<tonic::transport::Error>),
@@ -111,29 +108,25 @@ impl_from_boxed!(re_chunk::ChunkError, ChunkError);
 impl_from_boxed!(re_chunk_store::ChunkStoreError, ChunkStoreError);
 impl_from_boxed!(re_redap_client::ApiError, ApiError);
 impl_from_boxed!(tonic::transport::Error, TonicTransportError);
-impl_from_boxed!(tonic::Status, TonicStatusError);
+impl_from_boxed!(re_redap_client::TonicStatusError, TonicStatusError);
+
+impl From<tonic::Status> for ExternalError {
+    fn from(value: tonic::Status) -> Self {
+        Self::TonicStatusError(Box::new(TonicStatusError::from(value)))
+    }
+}
 impl_from_boxed!(datafusion::error::DataFusionError, DatafusionError);
 impl_from_boxed!(re_protos::TypeConversionError, TypeConversionError);
 
 impl From<ExternalError> for PyErr {
     fn from(err: ExternalError) -> Self {
         match err {
-            ExternalError::TonicStatusError(status) => {
+            ExternalError::TonicStatusError(err) => {
+                let status: &tonic::Status = (*err).as_ref();
                 if status.code() == tonic::Code::DeadlineExceeded {
                     PyTimeoutError::new_err("Deadline expired before operation could complete")
                 } else {
-                    let mut msg = format!(
-                        "tonic status error: {} (code: {}",
-                        status.message(),
-                        status.code()
-                    );
-                    if let Some(source) = status.source() {
-                        write!(msg, ", source: {source})").ok();
-                    } else {
-                        msg.push(')');
-                    }
-
-                    PyConnectionError::new_err(msg)
+                    PyConnectionError::new_err(err.to_string())
                 }
             }
 

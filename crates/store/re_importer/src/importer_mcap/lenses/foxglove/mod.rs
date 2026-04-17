@@ -41,18 +41,18 @@ const FOXGLOVE_TIMESTAMP: &str = "timestamp";
 
 /// Creates a collection of all Foxglove lenses.
 pub fn foxglove_lenses(time_type: TimeType) -> Result<Lenses, LensError> {
-    let mut lenses = Lenses::new(OutputMode::ForwardUnmatched);
-    lenses.add_lens(camera_calibration(time_type)?);
-    lenses.add_lens(compressed_image(time_type)?);
-    lenses.add_lens(compressed_video(time_type)?);
-    lenses.add_lens(frame_transform(time_type)?);
-    lenses.add_lens(frame_transforms(time_type)?);
-    lenses.add_lens(location_fix(time_type)?);
-    lenses.add_lens(location_fixes(time_type)?);
-    lenses.add_lens(log(time_type)?);
-    lenses.add_lens(point_cloud(time_type)?);
-    lenses.add_lens(pose_in_frame(time_type)?);
-    lenses.add_lens(poses_in_frame(time_type)?);
-    lenses.add_lens(raw_image(time_type)?);
+    let lenses = Lenses::new(OutputMode::ForwardUnmatched)
+        .add_lens(camera_calibration(time_type)?)
+        .add_lens(compressed_image(time_type)?)
+        .add_lens(compressed_video(time_type)?)
+        .add_lens(frame_transform(time_type)?)
+        .add_lens(frame_transforms(time_type)?)
+        .add_lens(location_fix(time_type)?)
+        .add_lens(location_fixes(time_type)?)
+        .add_lens(log(time_type)?)
+        .add_lens(point_cloud(time_type)?)
+        .add_lens(pose_in_frame(time_type)?)
+        .add_lens(poses_in_frame(time_type)?)
+        .add_lens(raw_image(time_type)?);
     Ok(lenses)
 }

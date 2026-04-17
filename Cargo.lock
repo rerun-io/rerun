@@ -8625,7 +8625,6 @@ dependencies = [
  "itertools 0.14.0",
  "jiff",
  "ordered-float 5.1.0",
- "parking_lot",
  "re_arrow_util",
  "re_component_ui",
  "re_dataframe",
@@ -8633,7 +8632,9 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_mutex",
+ "re_protos",
  "re_quota_channel",
+ "re_redap_client",
  "re_sdk_types",
  "re_sorbet",
  "re_test_context",
@@ -8776,6 +8777,7 @@ dependencies = [
  "async-stream",
  "crossbeam",
  "re_chunk",
+ "re_error",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -8804,6 +8806,7 @@ dependencies = [
  "parking_lot",
  "re_byte_size",
  "re_chunk",
+ "re_error",
  "re_format",
  "re_log",
  "re_log_channel",
@@ -8875,13 +8878,16 @@ dependencies = [
 name = "re_integration_test"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "egui",
  "egui_kittest",
  "egui_tiles",
+ "futures",
  "insta",
  "ndarray",
  "parking_lot",
  "re_build_info",
+ "re_dataframe_ui",
  "re_log_encoding",
  "re_protos",
  "re_redap_client",
@@ -9363,6 +9369,7 @@ dependencies = [
  "re_backoff",
  "re_byte_size",
  "re_chunk",
+ "re_error",
  "re_format",
  "re_log",
  "re_log_channel",
@@ -9947,6 +9954,7 @@ dependencies = [
  "re_analytics",
  "re_build_tools",
  "re_entity_db",
+ "re_error",
  "re_format",
  "re_log",
  "re_log_types",
@@ -11120,9 +11128,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.10"
+version = "0.103.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df33b2b81ac578cabaf06b89b0631153a3f416b0a886e8a7a1707fb51abbd1ef"
+checksum = "8279bb85272c9f10811ae6a6c547ff594d6a7f3c6c6b02ee9726d1d0dcfcdd06"
 dependencies = [
  "ring",
  "rustls-pki-types",
@@ -12722,7 +12730,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c5f7c95348f20c1c913d72157b3c6dee6ea3e30b3d19502c5a7f6d3f160dacbf"
 dependencies = [
  "cc",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]

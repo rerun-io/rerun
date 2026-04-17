@@ -12,8 +12,8 @@ use re_chunk::{Chunk, ChunkId, TimelineName};
 use re_log_types::{AbsoluteTimeRange, TimeInt};
 
 use crate::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffDeletion, ChunkStoreEvent,
-    ChunkStoreStats,
+    ChunkDeletionReason, ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffDeletion,
+    ChunkStoreEvent, ChunkStoreStats,
 };
 
 // Used all over in docstrings.
@@ -346,12 +346,18 @@ impl ChunkStore {
                 };
 
             let now = Instant::now();
-            let dels1 =
-                self.remove_chunks_shallow(chunks_to_be_shallow_removed, Some(sweep_time_budget));
+            let dels1 = self.remove_chunks_shallow(
+                chunks_to_be_shallow_removed,
+                Some(sweep_time_budget),
+                ChunkDeletionReason::GarbageCollection,
+            );
 
             let remaining_budget = sweep_time_budget.saturating_sub(now.elapsed());
-            let dels2 =
-                self.remove_chunks_deep(chunks_to_be_deeply_removed, Some(remaining_budget));
+            let dels2 = self.remove_chunks_deep(
+                chunks_to_be_deeply_removed,
+                Some(remaining_budget),
+                ChunkDeletionReason::GarbageCollection,
+            );
 
             dels1.into_iter().chain(dels2).map(Into::into).collect()
         }
@@ -486,6 +492,7 @@ impl ChunkStore {
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
+        reason: ChunkDeletionReason,
     ) -> Vec<ChunkStoreDiffDeletion> {
         re_tracing::profile_function!();
 
@@ -494,7 +501,7 @@ impl ChunkStore {
         // The deep diff is always a superset of the shallow one (because you can remove physical
         // chunks while keeping virtual ones, but not vice-versa).
         let deletions_shallow =
-            self.remove_chunks_shallow(chunks_to_be_removed.clone(), time_budget);
+            self.remove_chunks_shallow(chunks_to_be_removed.clone(), time_budget, reason);
 
         let Self {
             id: _,
@@ -616,7 +623,7 @@ impl ChunkStore {
             }
 
             if was_removed {
-                deletions.push(ChunkStoreDiffDeletion { chunk });
+                deletions.push(ChunkStoreDiffDeletion { chunk, reason });
             }
         }
 
@@ -656,6 +663,7 @@ impl ChunkStore {
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
+        reason: ChunkDeletionReason,
     ) -> Vec<ChunkStoreDiffDeletion> {
         re_tracing::profile_function!();
 
@@ -700,7 +708,7 @@ impl ChunkStore {
 
             *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(&chunk);
 
-            deletions.push(ChunkStoreDiffDeletion { chunk });
+            deletions.push(ChunkStoreDiffDeletion { chunk, reason });
 
             // Only check time budget once we have removed at least one chunk.
             if time_budget <= start_time.elapsed() {

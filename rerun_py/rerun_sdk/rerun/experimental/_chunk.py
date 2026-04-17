@@ -3,8 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     import pyarrow as pa
 
+    from rerun import ComponentColumn
+    from rerun._send_columns import TimeColumnLike
     from rerun_bindings import ChunkInternal
 
 
@@ -15,6 +19,79 @@ class Chunk:
 
     def __init__(self, internal: ChunkInternal) -> None:
         self._internal = internal
+
+    @classmethod
+    def from_record_batch(cls, record_batch: pa.RecordBatch) -> Chunk:
+        """
+        Create a Chunk from a PyArrow RecordBatch with Rerun schema metadata.
+
+        The RecordBatch must have Rerun metadata in its schema, as produced by
+        `to_record_batch`. This enables round-tripping through PyArrow
+        transforms. The original chunk ID and row IDs are preserved.
+
+        Parameters
+        ----------
+        record_batch:
+            A PyArrow RecordBatch with Rerun schema metadata.
+
+        Raises
+        ------
+        ValueError
+            If the RecordBatch lacks required Rerun schema metadata.
+
+        """
+        from rerun_bindings import ChunkInternal
+
+        return cls(ChunkInternal.from_record_batch(record_batch))
+
+    @classmethod
+    def from_columns(
+        cls,
+        entity_path: str,
+        indexes: Iterable[TimeColumnLike],
+        columns: Iterable[ComponentColumn],
+    ) -> Chunk:
+        """
+        Create a Chunk from columns, mirroring the [`rerun.send_columns`][] API.
+
+        A fresh chunk ID and sequential row IDs are auto-generated.
+
+        Parameters
+        ----------
+        entity_path:
+            The entity path for this chunk (e.g., "/camera/image").
+        indexes:
+            The time columns for this chunk. Each `TimeColumnLike`
+            provides a timeline name and a PyArrow array of timestamps.
+            You typically use `TimeColumn` here.
+            Pass an empty iterable for static data.
+        columns:
+            The component columns for this chunk. Each
+            `ComponentColumn` provides a component descriptor
+            and a PyArrow array of component data.
+
+        Raises
+        ------
+        ValueError
+            If timeline and component column lengths don't match.
+
+        Example
+        -------
+        ```python
+        chunk = Chunk.from_columns(
+            "/robots/arm",
+            indexes=[rr.TimeColumn("frame", sequence=[0, 1, 2])],
+            columns=rr.Points3D.columns(positions=[[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+        )
+        ```
+
+        """
+        from rerun._send_columns import build_column_args
+        from rerun_bindings import ChunkInternal
+
+        timelines_args, columns_args = build_column_args(indexes, columns)
+
+        return cls(ChunkInternal.from_columns(entity_path, timelines_args, columns_args))
 
     @property
     def id(self) -> str:

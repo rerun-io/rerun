@@ -1,6 +1,7 @@
 use std::str::FromStr as _;
 use std::sync::Arc;
 
+use ahash::HashMap;
 use anyhow::Context as _;
 use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
@@ -17,9 +18,7 @@ use re_log_channel::{
     DataSourceMessage, DataSourceUiCommand, LogReceiver, LogReceiverSet, LogSource,
     RecordingOpenBehavior,
 };
-use re_log_types::{
-    ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg, TimelinePoint,
-};
+use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
@@ -110,6 +109,10 @@ pub struct App {
 
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
+
+    /// Cached app overhead: total memory use minus sum of all recording chunk sizes.
+    /// Updated during GC when we have a fresh memory snapshot.
+    cached_app_overhead_bytes: Option<u64>,
 
     egui_debug_panel_open: bool,
 
@@ -439,6 +442,7 @@ impl App {
 
             memory_panel: Default::default(),
             memory_panel_open: false,
+            cached_app_overhead_bytes: None,
 
             egui_debug_panel_open: false,
 
@@ -2529,6 +2533,27 @@ impl App {
                 }
             };
 
+            // We centralize "new store" detection and `data_source` attachment here, so that the `on_new_store`
+            // side effects (like `set_opened(true)` for `OpenAndSelect`) fire regardless of which message type
+            // happens to come first.
+            let msg_store_id = match &msg {
+                DataSourceMessage::RrdManifest(store_id, _)
+                | DataSourceMessage::RrdManifestComplete(store_id) => Some(store_id.clone()),
+                DataSourceMessage::LogMsg(log_msg) => Some(log_msg.store_id().clone()),
+                DataSourceMessage::TableMsg(_) | DataSourceMessage::UiCommand(_) => None,
+            };
+
+            let maybe_new_store = msg_store_id
+                .as_ref()
+                .filter(|sid| !store_hub.store_bundle().contains(sid));
+
+            if let Some(sid) = &msg_store_id {
+                let entity_db = store_hub.entity_db_entry(sid);
+                if entity_db.data_source.is_none() {
+                    entity_db.data_source = Some((*channel_source).clone());
+                }
+            }
+
             match msg {
                 DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_entry(&store_id);
@@ -2557,6 +2582,12 @@ impl App {
                 DataSourceMessage::UiCommand(ui_command) => {
                     self.receive_data_source_ui_command(ui_command, &channel_source);
                 }
+            }
+
+            // Handle any action that is triggered by a new store _after_ processing the message
+            // that caused it.
+            if let Some(sid) = &maybe_new_store {
+                self.on_new_store(egui_ctx, sid, &channel_source, store_hub);
             }
 
             if start.elapsed() > web_time::Duration::from_millis(10) {
@@ -2590,14 +2621,10 @@ impl App {
             );
         }
 
-        // Note that the `SetStoreInfo` message might be missing. It's not strictly necessary to add a new store.
-        let msg_will_add_new_store = !store_hub.store_bundle().contains(store_id);
-
+        // NOTE: store materialization, `data_source` attachment, and the `on_new_store`
+        // dispatch are handled in `receive_messages` so that they also fire for stores first
+        // introduced by `RrdManifest` / `RrdManifestComplete` messages.
         let entity_db = store_hub.entity_db_entry(store_id);
-        if entity_db.data_source.is_none() {
-            entity_db.data_source = Some((*channel_source).clone());
-        }
-
         let was_empty = entity_db.num_physical_chunks() == 0;
         let entity_db_add_result = entity_db.add_log_msg(msg);
 
@@ -2622,8 +2649,11 @@ impl App {
         let is_empty = entity_db.num_physical_chunks() == 0;
         if was_empty && !is_empty {
             // Hack: we cannot go to a specific timeline or entity until we know about it.
-            // Now we _hopefully_ do.
-            if let LogSource::RedapGrpcStream { uri, .. } = channel_source {
+            // Now we _hopefully_ do. The `LogMsg` could also belong to the blueprint, so
+            // we need to check for that as well.
+            if let LogSource::RedapGrpcStream { uri, .. } = channel_source
+                && &uri.store_id() == store_id
+            {
                 self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
             }
         }
@@ -2705,11 +2735,6 @@ impl App {
                     }
                 }
             },
-        }
-
-        // Handle any action that is triggered by a new store _after_ processing the message that caused it.
-        if msg_will_add_new_store {
-            self.on_new_store(egui_ctx, store_id, channel_source, store_hub);
         }
     }
 
@@ -2988,15 +3013,10 @@ impl App {
                 );
             }
 
-            let active_recording_id = self.active_recording_id();
-            let time_cursor_for = |store_id: &StoreId| -> Option<TimelinePoint> {
-                let time_ctrl = self.state.time_controls.get(store_id)?;
-                Some((*time_ctrl.timeline()?, time_ctrl.time_int()?).into())
-            };
             store_hub.purge_fraction_of_ram(
                 fraction_to_purge,
-                active_recording_id,
-                &time_cursor_for,
+                self.active_recording_id(),
+                &|store_id| self.state.time_cursor_for(store_id),
             );
 
             let mem_use_after = MemoryUse::capture();
@@ -3014,17 +3034,16 @@ impl App {
                 );
             }
 
-            if store_hub.store_bundle().recordings().count() == 1 {
-                // We're in a unique spot to accurately estimate how much
-                // EXTRA memory we use, beyond the raw chunks of memory.
-                // This is the true overhead of all book-keeping and unaccounted memory.
-                // This is the (currently) unevictable memory!
-                if let Some(current_mem_use) = mem_use_after.counted.or(mem_use_after.resident)
-                    && let Some(entity_db) = store_hub.store_bundle_mut().recordings_mut().next()
-                {
-                    entity_db.estimated_application_overhead_bytes =
-                        Some(current_mem_use - entity_db.byte_size_of_physical_chunks());
-                }
+            // Cache app overhead = total memory use minus all recording chunk data.
+            // This captures fonts, UI state, indices, and other unevictable memory.
+            if let Some(current_mem_use) = mem_use_after.counted.or(mem_use_after.resident) {
+                let total_chunk_bytes: u64 = store_hub
+                    .store_bundle()
+                    .recordings()
+                    .map(|r| r.byte_size_of_physical_chunks())
+                    .sum();
+                self.cached_app_overhead_bytes =
+                    Some(current_mem_use.saturating_sub(total_chunk_bytes));
             }
 
             self.memory_panel.note_memory_purge();
@@ -3421,182 +3440,84 @@ impl App {
     fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
+        use crate::prefetch_chunks::{RecordingOpenKind, RecordingPrefetchInfo};
+        use re_entity_db::ChunkPrefetchOptions;
+
         let active_recording_id = self.active_recording_id();
 
-        // Even if we wanted, we cannot get rid of this overhead
-        let unpurgable_cache_size = active_recording_id
-            .and_then(|id| store_hub.store_caches(id))
-            .map_or(0, |caches| caches.memory_use_after_last_purge());
-
+        // Fixed overhead for the app (fonts, icons, caches, etc.) that we cannot purge.
+        // We also want some headroom for spikes.
         const APP_OVERHEAD_BYTES: u64 = 300_000_000;
+
+        // When we have a measured overhead we need less extra headroom.
+        // When we don't, use a larger fraction to be safe.
         const FIXED_FRACTION_OVERHEAD: f32 = 0.10;
         const FALLBACK_FIXED_FRACTION_OVERHEAD: f32 = 0.20;
-        // Prefetch new chunks for the active recording (if any):
 
-        let active_recording = active_recording_id.and_then(|active_recording_id| {
-            store_hub.store_bundle_mut().get_mut(active_recording_id)
-        });
-
-        let mut memory_limit = if let Some(active_recording) = active_recording {
-            if active_recording.is_downloading_first_part_of_manifest() {
-                // We need at least ONE part of the manifest, but
-                // as soon as we have one part we start prefetching chunks
-                return;
-            }
-
-            // What is our memory budget for this recording?
-            // If need be, we can evict all other recordings and their caches.
-
-            // There is some fixed overhead in the process that we cannot purge.
-            // This includes things like fonts, icons, etc.
-            // We also want some headroom for spikes.
-            let overhead = active_recording
-                .estimated_application_overhead_bytes
-                .unwrap_or(APP_OVERHEAD_BYTES + unpurgable_cache_size);
-
-            // Leave some extra headroom (beyond the fixed overhead) for
-            // * secondary indices
-            // * failures in our accounting
-            let fixed_fraction_overhead = if active_recording
-                .estimated_application_overhead_bytes
-                .is_some()
-            {
-                FIXED_FRACTION_OVERHEAD // We have a good estimate, so we need less headroom
-            } else {
-                FALLBACK_FIXED_FRACTION_OVERHEAD
-            };
-
-            let memory_budget = self.startup_options.memory_limit.saturating_sub(overhead);
-
-            let memory_budget = memory_budget.split(fixed_fraction_overhead).1;
-
-            if memory_budget == re_memory::MemoryLimit::ZERO {
-                re_log::warn_once!("Very little memory budget left for active recording.");
-            }
-
-            // eprintln!("Memory budget for active recording: {memory_budget}");
-
-            let time_ctrl = self.state.time_controls.get(active_recording.store_id());
-
-            crate::prefetch_chunks::prefetch_chunks_for_recording(
-                &self.egui_ctx,
-                // If we can't afford at least this much for data, then what is even the point?
-                memory_budget.at_least(100_000_000),
-                active_recording,
-                time_ctrl,
-                self.connection_registry(),
-            );
-
-            memory_budget
+        let overhead = self.cached_app_overhead_bytes.unwrap_or(APP_OVERHEAD_BYTES);
+        let fixed_fraction_overhead = if self.cached_app_overhead_bytes.is_some() {
+            FIXED_FRACTION_OVERHEAD
         } else {
-            // No recording is open, use the memory limit with some memory left for the app.
-            self.startup_options
-                .memory_limit
-                .saturating_sub(APP_OVERHEAD_BYTES + unpurgable_cache_size)
-                .split(FALLBACK_FIXED_FRACTION_OVERHEAD)
-                .1
+            FALLBACK_FIXED_FRACTION_OVERHEAD
         };
 
-        let active_recording = active_recording_id
-            .and_then(|active_recording_id| store_hub.store_bundle().get(active_recording_id));
+        let memory_limit = self
+            .startup_options
+            .memory_limit
+            .saturating_sub(overhead)
+            .split(fixed_fraction_overhead)
+            .1;
 
-        // Fetch background recordings if we have space for them.
-        if active_recording.is_none_or(|rec| !rec.can_load_more()) {
-            re_tracing::profile_scope!("fetch_background_recordings");
+        if memory_limit == re_memory::MemoryLimit::ZERO {
+            re_log::warn_once!("Very little memory budget left for prefetching recordings.");
+        }
 
-            const BACKGROUND_HEADROOM_FRACTION: f32 = 0.2;
-            const RECORDING_HEADROOM_BYTES: u64 = 10_000_000;
+        let mut recordings_info: HashMap<StoreId, RecordingPrefetchInfo> = HashMap::default();
 
-            // Leave a good amount of extra headroom for downloading background
-            // recordings.
-            memory_limit = memory_limit.split(BACKGROUND_HEADROOM_FRACTION).1;
-
-            // Subtract all already loaded physical chunks from the memory limit.
-            for recording in store_hub.store_bundle().recordings() {
-                if recording.is_downloading_first_part_of_manifest() {
-                    // If any are downloading manifest, don't prefetch background recordings.
-                    memory_limit = re_memory::MemoryLimit::ZERO;
-                    break;
-                }
-
-                let fixed_fraction_overhead =
-                    if recording.estimated_application_overhead_bytes.is_some() {
-                        FIXED_FRACTION_OVERHEAD // We have a good estimate, so we need less headroom
-                    } else {
-                        FALLBACK_FIXED_FRACTION_OVERHEAD
-                    };
-
-                let size = recording.byte_size_of_physical_chunks()
-                    + recording.estimated_application_overhead_bytes.unwrap_or(0);
-
-                let estimated_size = ((1.0 + fixed_fraction_overhead as f64) * size as f64) as u64
-                    + RECORDING_HEADROOM_BYTES;
-
-                memory_limit = memory_limit.saturating_sub(estimated_size);
-
-                if memory_limit == re_memory::MemoryLimit::ZERO {
-                    break;
-                }
+        for recording in store_hub.store_bundle().recordings() {
+            if recording.is_downloading_first_part_of_manifest() {
+                // We need at least ONE part of the manifest before prefetching chunks.
+                continue;
             }
 
-            if memory_limit != re_memory::MemoryLimit::ZERO {
-                // Pre-compute which recordings should be prefetched to avoid borrow conflicts below.
-                let should_prefetch: ahash::HashSet<StoreId> = store_hub
-                    .store_bundle()
-                    .recordings()
-                    .filter_map(|rec| {
-                        if store_hub.was_preview(rec.store_id())
-                            || store_hub.is_opened(rec.store_id())
-                        {
-                            Some(rec.store_id().clone())
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+            let is_active = Some(recording.store_id()) == active_recording_id;
+            let usage = store_hub.usage(recording.store_id());
 
-                for recording in store_hub.store_bundle_mut().recordings_mut() {
-                    // This means we skip the active recording, since we're only
-                    // in this block to begin with if there is no active recording
-                    // or the active recording cannot load more.
-                    if !recording.can_load_more() {
-                        continue;
-                    }
+            let open_kind = if is_active {
+                RecordingOpenKind::Active
+            } else if usage.was_preview() {
+                RecordingOpenKind::Preview
+            } else if usage.opened {
+                RecordingOpenKind::Inactive
+            } else {
+                continue;
+            };
 
-                    if !should_prefetch.contains(recording.store_id()) {
-                        // Not currently displayed anywhere — skip.
-                        continue;
-                    }
-
-                    // For this stores memory limit, add back the size of all physical chunks
-                    // since that's considered in `prefetch_chunks_for_recording`.
-                    let memory_limit =
-                        memory_limit.saturating_add(recording.byte_size_of_physical_chunks());
-
-                    if memory_limit
-                        .checked_sub(recording.rrd_manifest_index().full_uncompressed_size())
-                        .is_none()
-                    {
-                        // Continue if this recording doesn't fit, smaller ones
-                        // might.
-                        continue;
-                    }
-
-                    let time_ctrl = self.state.time_controls.get(recording.store_id());
-
-                    crate::prefetch_chunks::prefetch_chunks_for_recording(
-                        &self.egui_ctx,
-                        memory_limit,
-                        recording,
-                        time_ctrl,
-                        &self.connection_registry,
-                    );
-
-                    // Only prefetch for one at a time.
-                    break;
-                }
+            let time_cursor = self.state.time_cursor_for(recording.store_id());
+            if let Some(redap_uri) = recording.redap_uri() {
+                let store_id = recording.store_id().clone();
+                recordings_info.insert(
+                    store_id.clone(),
+                    RecordingPrefetchInfo {
+                        store_id,
+                        open_kind,
+                        time_cursor,
+                        origin: redap_uri.origin.clone(),
+                    },
+                );
             }
         }
+
+        let total_bytes_in_memory = memory_limit.at_least(100_000_000).as_bytes();
+
+        crate::prefetch_chunks::prefetch_chunks_for_recordings(
+            &self.egui_ctx,
+            store_hub.store_bundle_mut(),
+            &recordings_info,
+            total_bytes_in_memory,
+            self.connection_registry(),
+            &ChunkPrefetchOptions::default(),
+        );
     }
 }
 

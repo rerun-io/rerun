@@ -2,7 +2,7 @@ use arrow::array::{Array as _, ArrayRef, StringArray};
 use re_lenses::{Lens, LensError, op};
 use re_lenses_core::Selector;
 use re_lenses_core::combinators::Error;
-use re_log_types::{EntityPathFilter, TimeType};
+use re_log_types::TimeType;
 use re_sdk_types::archetypes::TextLog;
 
 use super::FOXGLOVE_TIMESTAMP;
@@ -11,22 +11,20 @@ use super::FOXGLOVE_TIMESTAMP;
 ///
 /// [`foxglove.Log`]: https://docs.foxglove.dev/docs/sdk/schemas/log
 pub fn log(time_type: TimeType) -> Result<Lens, LensError> {
-    Ok(
-        Lens::for_input_column(EntityPathFilter::all(), "foxglove.Log:message")
-            .output_columns(|out| {
-                out.time(
-                    FOXGLOVE_TIMESTAMP,
-                    time_type,
-                    Selector::parse(".timestamp")?.pipe(op::timespec_to_nanos()),
-                )?
-                .component(TextLog::descriptor_text(), Selector::parse(".message")?)?
-                .component(
-                    TextLog::descriptor_level(),
-                    Selector::parse(".level.name")?.pipe(foxglove_to_rerun_log_level()),
-                )
-            })?
-            .build(),
-    )
+    Ok(Lens::for_input_column("foxglove.Log:message")
+        .output_columns(|out| {
+            out.time(
+                FOXGLOVE_TIMESTAMP,
+                time_type,
+                Selector::parse(".timestamp")?.pipe(op::timespec_to_nanos()),
+            )?
+            .component(TextLog::descriptor_text(), Selector::parse(".message")?)?
+            .component(
+                TextLog::descriptor_level(),
+                Selector::parse(".level.name")?.pipe(foxglove_to_rerun_log_level()),
+            )
+        })?
+        .build())
 }
 
 /// Returns a pipe-compatible function that maps Foxglove log level strings to Rerun

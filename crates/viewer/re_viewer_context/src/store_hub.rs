@@ -44,6 +44,16 @@ pub struct EntityDbUsages {
     pub opened: bool,
 }
 
+impl Clone for EntityDbUsages {
+    fn clone(&self) -> Self {
+        Self {
+            prev_preview: self.prev_preview,
+            new_preview: std::sync::atomic::AtomicBool::new(false),
+            opened: self.opened,
+        }
+    }
+}
+
 impl EntityDbUsages {
     fn new() -> Self {
         Self {
@@ -274,6 +284,14 @@ impl StoreHub {
             .is_some_and(|u| u.was_preview())
     }
 
+    /// Returns the usage tracking for a store.
+    pub fn usage(&self, store_id: &StoreId) -> EntityDbUsages {
+        self.store_usages
+            .get(store_id)
+            .cloned()
+            .unwrap_or_else(EntityDbUsages::new)
+    }
+
     /// Set or clear the [`EntityDbUsages::opened`] flag for a store.
     pub fn set_opened(&mut self, store_id: &StoreId, opened: bool) {
         self.store_usages
@@ -390,6 +408,9 @@ impl StoreHub {
     /// Mutable access to a [`EntityDb`] by id.
     ///
     /// Creates it if it does not already exist.
+    // NOTE(grtlr): The sentence above should be read as a _warning_. If we call this
+    // function with the expectance to create a new store, the call site has to make sure
+    // to also do all of the required book-keeping.
     pub fn entity_db_entry(&mut self, store_id: &StoreId) -> &mut EntityDb {
         self.store_bundle.entry(store_id)
     }
@@ -907,45 +928,72 @@ impl StoreHub {
             cache.purge_memory();
         }
 
-        let active_store_id = active_recording_id.cloned();
-        let background_recording_ids = self
-            .store_bundle
-            .recordings()
-            .map(|db| db.store_id().clone())
-            .filter(|store_id| Some(store_id) != active_store_id.as_ref())
-            .collect::<Vec<_>>();
+        // Currently active recording.
+        let mut active_recordings = Vec::new();
+        // Opened in the recording panel, but not currently active.
+        let mut opened_inactive_recordings = Vec::new();
+        // Used as a preview.
+        let mut preview_recordings = Vec::new();
+        // Not used anywhere.
+        let mut background_recordings = Vec::new();
+
+        for recording in self.store_bundle.recordings() {
+            let id = recording.store_id().clone();
+            let Some(usage) = self.store_usages.get(recording.store_id()) else {
+                background_recordings.push(id);
+                continue;
+            };
+
+            if active_recording_id == Some(recording.store_id()) {
+                active_recordings.push(id);
+            } else if usage.was_preview() {
+                preview_recordings.push(id);
+            } else if usage.opened {
+                opened_inactive_recordings.push(id);
+            } else {
+                background_recordings.push(id);
+            }
+        }
 
         let mut num_bytes_freed = 0;
 
-        let background_target = GarbageCollectionTarget::Everything;
+        // Just close unused recordings if we purge memory.
+        for store_id in &background_recordings {
+            let size = self
+                .store_bundle
+                .get(store_id)
+                .map(|db| db.total_size_bytes())
+                .unwrap_or(0);
 
-        for store_id in &background_recording_ids {
+            num_bytes_freed += size;
+            self.remove_store(store_id);
+        }
+
+        let inactive_target = GarbageCollectionTarget::Everything;
+
+        for store_id in &opened_inactive_recordings {
             let time_cursor = time_cursor_for(store_id);
-            num_bytes_freed += self.gc_store(background_target, store_id, time_cursor);
+            num_bytes_freed += self.gc_store(inactive_target, store_id, time_cursor);
         }
 
         let target = GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _);
 
-        if num_bytes_freed == 0
-            && let Some(active_store_id) = active_store_id
-        {
-            // We didn't free any memory from the background recordings,
-            // so try the active one:
-            let time_cursor = time_cursor_for(&active_store_id);
-            num_bytes_freed += self.gc_store(target, &active_store_id, time_cursor);
+        for store_id in preview_recordings.iter().chain(&active_recordings) {
+            let time_cursor = time_cursor_for(store_id);
+            num_bytes_freed += self.gc_store(target, store_id, time_cursor);
         }
 
         // Didn't free memory from the active recording, or background recordings,
         // so resort to closing background recordings.
         if num_bytes_freed == 0 {
             let mut closed_count = 0_usize;
-            for store_id in &background_recording_ids {
+            for store_id in &opened_inactive_recordings {
                 let Some(recording) = self.store_bundle.get(store_id) else {
                     continue;
                 };
 
-                // Don't close the active recording.
-                if active_recording_id == Some(store_id) {
+                // Don't close recordings with protected chunks — we'd just need to re-download them.
+                if recording.has_protected_chunks() {
                     continue;
                 }
 

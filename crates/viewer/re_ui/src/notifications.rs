@@ -4,7 +4,7 @@
 //! they're first created and in the notification panel.
 //!
 //! ## Special cased text
-//! - If a notifications text contains `"\nDetails:"` the section after that
+//! - If a notifications text contains [`re_error::DETAILS_SEPARATOR`] the section after that
 //!   will be displayed inside a collapsible details header.
 
 use std::time::Duration;
@@ -214,20 +214,18 @@ impl NotificationUi {
     /// based on that log.
     ///
     /// ## Special cased text
-    /// - If a notifications text contains `"\nDetails:"` the section after that
+    /// - If a notifications text contains [`re_error::DETAILS_SEPARATOR`] the section after that
     ///   will be displayed inside a collapsible details header.
     pub fn add_log(&mut self, message: re_log::LogMsg) {
         let re_log::LogMsg { level, target, msg } = message;
 
         if is_relevant(&target, level) {
-            let (split_msg, msg_details) = msg.split_once("\nDetails:").unzip();
+            let (summary, details) = re_error::split_details(&msg);
 
-            let msg = split_msg.unwrap_or(&msg);
+            let mut notification = Notification::new(level.into(), summary);
 
-            let mut notification = Notification::new(level.into(), msg);
-
-            if let Some(msg_details) = msg_details {
-                notification = notification.with_details(msg_details);
+            if let Some(details) = details {
+                notification = notification.with_details(details);
             }
 
             self.add(notification);

@@ -717,7 +717,7 @@ impl ViewBuilder {
         let setup = &self.setup;
 
         // Prepare the drawables for drawing!
-        self.draw_phase_manager.sort_drawables();
+        self.draw_phase_manager.sort_drawables(&renderers);
 
         let mut encoder = ctx
             .device

@@ -1,11 +1,11 @@
-"""Experimental parquet loader with configurable column grouping and column rules."""
+"""Experimental parquet reader with configurable column grouping and column rules."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from rerun_bindings import ParquetLoaderInternal
+from rerun_bindings import ParquetReaderInternal
 
 from ._lazy_chunk_stream import LazyChunkStream
 
@@ -103,10 +103,10 @@ class ColumnRule:
         )
 
 
-class ParquetLoader:
-    """Load chunks from a Parquet file."""
+class ParquetReader:
+    """Read chunks from a Parquet file."""
 
-    _internal: ParquetLoaderInternal
+    _internal: ParquetReaderInternal
 
     def __init__(
         self,
@@ -192,7 +192,7 @@ class ParquetLoader:
             [(t[0], t[1], t[2] if len(t) > 2 else None) for t in index_columns] if index_columns is not None else None
         )
 
-        self._internal = ParquetLoaderInternal(
+        self._internal = ParquetReaderInternal(
             str(path),
             entity_path_prefix=entity_path_prefix,
             column_grouping=column_grouping,
@@ -214,4 +214,4 @@ class ParquetLoader:
         return self._internal.path
 
     def __repr__(self) -> str:
-        return f"ParquetLoader({self._internal.path})"
+        return f"ParquetReader({self._internal.path})"

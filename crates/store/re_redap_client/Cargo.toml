@@ -36,6 +36,7 @@ re_auth = { workspace = true, features = ["oauth"] }
 re_backoff.workspace = true
 re_byte_size.workspace = true
 re_chunk.workspace = true
+re_error.workspace = true
 re_format.workspace = true
 re_log_channel.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder", "decoder"] }

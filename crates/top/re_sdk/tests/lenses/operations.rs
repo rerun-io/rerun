@@ -130,21 +130,20 @@ fn test_destructure_cast() {
     let original_chunk = nullability_chunk();
     println!("{original_chunk}");
 
-    let destructure = Lens::for_input_column(
-        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
-        "structs",
-    )
-    .output_columns(|out| {
-        out.at_entity("nullability/a").component(
-            Scalars::descriptor_scalars(),
-            Selector::parse(".a")?.pipe(op::cast(DataType::Float64)),
-        )
-    })
-    .unwrap()
-    .build();
+    let destructure = Lens::for_input_column("structs")
+        .output_columns(|out| {
+            out.at_entity("nullability/a").component(
+                Scalars::descriptor_scalars(),
+                Selector::parse(".a")?.pipe(op::cast(DataType::Float64)),
+            )
+        })
+        .unwrap()
+        .build();
 
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(destructure);
+    let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens_with_filter(
+        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
+        destructure,
+    );
 
     let res: Vec<re_chunk::Chunk> = lenses
         .apply(&original_chunk)
@@ -162,19 +161,18 @@ fn test_destructure() {
     let original_chunk = nullability_chunk();
     println!("{original_chunk}");
 
-    let destructure = Lens::for_input_column(
-        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
-        "structs",
-    )
-    .output_columns(|out| {
-        out.at_entity("nullability/b")
-            .component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
-    })
-    .unwrap()
-    .build();
+    let destructure = Lens::for_input_column("structs")
+        .output_columns(|out| {
+            out.at_entity("nullability/b")
+                .component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
+        })
+        .unwrap()
+        .build();
 
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(destructure);
+    let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens_with_filter(
+        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
+        destructure,
+    );
 
     let res: Vec<re_chunk::Chunk> = lenses
         .apply(&original_chunk)
@@ -229,22 +227,21 @@ fn test_time_column_extraction() {
     println!("{original_chunk}");
 
     // Create a lens that extracts the timestamp as a time column and keeps the original timestamp as a component
-    let time_lens = Lens::for_input_column(
-        re_log_types::EntityPathFilter::parse_forgiving("timestamped"),
-        "my_timestamp",
-    )
-    .output_columns(|out| {
-        out.time("my_timeline", TimeType::Sequence, Selector::parse(".")?)?
-            .component(
-                ComponentDescriptor::partial("extracted_time"),
-                Selector::parse(".")?,
-            )
-    })
-    .unwrap()
-    .build();
+    let time_lens = Lens::for_input_column("my_timestamp")
+        .output_columns(|out| {
+            out.time("my_timeline", TimeType::Sequence, Selector::parse(".")?)?
+                .component(
+                    ComponentDescriptor::partial("extracted_time"),
+                    Selector::parse(".")?,
+                )
+        })
+        .unwrap()
+        .build();
 
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(time_lens);
+    let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens_with_filter(
+        re_log_types::EntityPathFilter::parse_forgiving("timestamped"),
+        time_lens,
+    );
 
     let res: Vec<Chunk> = lenses
         .apply(&original_chunk)
@@ -332,7 +329,20 @@ fn test_scatter_columns() {
     // Each element is a struct with {timestamp: i64, value: String}
     let struct_list = create_test_struct_list();
 
-    let components = std::iter::once((ComponentDescriptor::partial("nested_data"), struct_list));
+    // An unrelated `tag` column that should be forwarded and scattered along
+    // with the existing time columns.
+    let mut tag_builder = ListBuilder::new(arrow::array::StringBuilder::new());
+    for tag in ["a", "b", "c"] {
+        tag_builder.values().append_value(tag);
+        tag_builder.append(true);
+    }
+    let tag_column = tag_builder.finish();
+
+    let components = [
+        (ComponentDescriptor::partial("nested_data"), struct_list),
+        (ComponentDescriptor::partial("tag"), tag_column),
+    ]
+    .into_iter();
 
     let time_column = TimeColumn::new_sequence("tick", [1, 2, 3]);
 
@@ -348,7 +358,7 @@ fn test_scatter_columns() {
     println!("{original_chunk}");
 
     // Create a scatter lens that explodes the nested lists
-    let scatter_lens = Lens::for_input_column(re_log_types::EntityPathFilter::all(), "nested_data")
+    let scatter_lens = Lens::for_input_column("nested_data")
         .output_scatter_columns(|out| {
             out.at_entity("scatter_test/exploded")
                 .component(
@@ -364,8 +374,7 @@ fn test_scatter_columns() {
         .unwrap()
         .build();
 
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(scatter_lens);
+    let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
     let res: Vec<Chunk> = lenses
         .apply(&original_chunk)
@@ -435,7 +444,7 @@ fn test_scatter_columns_static() {
     println!("{original_chunk}");
 
     // Create a scatter lens that explodes the nested lists
-    let scatter_lens = Lens::for_input_column(re_log_types::EntityPathFilter::all(), "nested_data")
+    let scatter_lens = Lens::for_input_column("nested_data")
         .output_scatter_columns(|out| {
             out.at_entity("scatter_test/exploded")
                 .component(
@@ -451,8 +460,7 @@ fn test_scatter_columns_static() {
         .unwrap()
         .build();
 
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(scatter_lens);
+    let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
     let res: Vec<Chunk> = lenses
         .apply(&original_chunk)
@@ -498,4 +506,72 @@ fn test_scatter_columns_static() {
     assert_eq!(strings_component.list_array.len(), 5);
 
     insta::assert_snapshot!("scatter_columns_static", format!("{chunk:-240}"));
+}
+
+#[test]
+fn test_forward_unmatched_collision_raises_error() {
+    use re_lenses_core::LensError;
+
+    // The input chunk contains a `value` column. The lens declares its own output
+    // component named `value` — this is a collision and should yield an error.
+    let mut value_builder = ListBuilder::new(arrow::array::StringBuilder::new());
+    for v in ["x", "y"] {
+        value_builder.values().append_value(v);
+        value_builder.append(true);
+    }
+    let value_column = value_builder.finish();
+
+    let mut input_builder = ListBuilder::new(arrow::array::StringBuilder::new());
+    for v in ["alpha", "beta"] {
+        input_builder.values().append_value(v);
+        input_builder.append(true);
+    }
+    let input_column = input_builder.finish();
+
+    let components = [
+        (ComponentDescriptor::partial("input"), input_column),
+        (ComponentDescriptor::partial("value"), value_column),
+    ]
+    .into_iter();
+
+    let original_chunk = Chunk::from_auto_row_ids(
+        ChunkId::new(),
+        "collision".into(),
+        std::iter::once((
+            TimelineName::new("tick"),
+            TimeColumn::new_sequence("tick", 0..2),
+        ))
+        .collect(),
+        components.collect(),
+    )
+    .unwrap();
+
+    let lens = Lens::for_input_column("input")
+        .output_columns(|out| {
+            out.component(ComponentDescriptor::partial("value"), Selector::parse(".")?)
+        })
+        .unwrap()
+        .build();
+
+    let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(lens);
+
+    let results: Vec<_> = lenses.apply(&original_chunk).collect();
+    assert_eq!(results.len(), 1);
+
+    let partial = results.into_iter().next().unwrap().unwrap_err();
+    let collisions: Vec<_> = partial
+        .errors()
+        .filter(|e| matches!(e, LensError::ComponentIdentifierCollision { .. }))
+        .collect();
+    assert_eq!(collisions.len(), 1);
+
+    // Despite the collision, the chunk is still produced and the lens output wins.
+    let chunk = partial.take().expect("chunk should still be produced");
+    let value = chunk
+        .components()
+        .get(ComponentDescriptor::partial("value").component)
+        .expect("`value` should be present");
+    let strings = value.list_array.values().as_string::<i32>();
+    assert_eq!(strings.value(0), "alpha");
+    assert_eq!(strings.value(1), "beta");
 }

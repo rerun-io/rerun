@@ -21,18 +21,18 @@ use crate::TempPath;
 pub type TuidPrefix = u64;
 
 pub fn next_chunk_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::ChunkId {
-    let mut chunk_id = re_chunk::ChunkId::from_tuid(Tuid::from_nanos_and_inc(prefix, 0));
+    let mut tuid = Tuid::from_nanos_and_inc(prefix, 0);
     move || {
-        chunk_id = chunk_id.next();
-        chunk_id
+        tuid = tuid.next();
+        re_chunk::ChunkId::from_tuid(tuid)
     }
 }
 
 pub fn next_row_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::RowId {
-    let mut row_id = re_chunk::RowId::from_tuid(Tuid::from_nanos_and_inc(prefix, 0));
+    let mut tuid = Tuid::from_nanos_and_inc(prefix, 0);
     move || {
-        row_id = row_id.next();
-        row_id
+        tuid = tuid.next();
+        re_chunk::RowId::from_tuid(tuid)
     }
 }
 
@@ -462,6 +462,124 @@ pub fn create_nasty_recording(
 
         rec.send_chunk(chunk8);
     }
+
+    rec.flush_blocking()?;
+
+    Ok(tmp_path)
+}
+
+/// Create a recording with deliberately divergent per-component time ranges within chunks.
+///
+/// This is designed to test correctness of latest-at and range queries when per-component
+/// time ranges differ significantly from the chunk's global time range.
+///
+/// Creates two chunks for entity `/sensor`:
+///
+/// ```text
+/// Chunk F: global [5, 20]
+///   - row at T=5:  points present, colors absent
+///   - row at T=8:  points present, colors absent
+///   - row at T=15: points absent,  colors present
+///   - row at T=20: points absent,  colors present
+///   → points@[5, 8], colors@[15, 20]
+///
+/// Chunk G: global [1, 3]
+///   - row at T=1: colors present
+///   - row at T=3: colors present
+///   → colors@[1, 3]
+/// ```
+pub fn create_divergent_component_ranges_recording(
+    tuid_prefix: TuidPrefix,
+    segment_id: &str,
+) -> anyhow::Result<TempPath> {
+    use re_chunk::Chunk;
+    use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
+    use re_log_types::{TimeInt, build_frame_nr};
+
+    let tmp_path = {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join(format!("{segment_id}.rrd"));
+        TempPath::new(dir, path)
+    };
+
+    let rec = RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
+        .recording_id(segment_id)
+        .send_properties(false)
+        .save(tmp_path.clone())?;
+
+    let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
+    let mut next_row_id = next_row_id_generator(tuid_prefix);
+
+    let entity_path = EntityPath::from("sensor");
+
+    let t5 = TimeInt::new_temporal(5);
+    let t8 = TimeInt::new_temporal(8);
+    let t15 = TimeInt::new_temporal(15);
+    let t20 = TimeInt::new_temporal(20);
+
+    let t1 = TimeInt::new_temporal(1);
+    let t3 = TimeInt::new_temporal(3);
+
+    let points_a = MyPoint::from_iter(0..1);
+    let points_b = MyPoint::from_iter(1..2);
+    let colors_a = MyColor::from_iter(0..1);
+    let colors_b = MyColor::from_iter(1..2);
+    let colors_c = MyColor::from_iter(2..3);
+    let colors_d = MyColor::from_iter(3..4);
+
+    // Chunk F: global [5, 20], points@[5, 8], colors@[15, 20]
+    let chunk_f = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+        .with_sparse_component_batches(
+            next_row_id(),
+            [build_frame_nr(t5)],
+            [
+                (MyPoints::descriptor_points(), Some(&points_a as _)),
+                (MyPoints::descriptor_colors(), None),
+            ],
+        )
+        .with_sparse_component_batches(
+            next_row_id(),
+            [build_frame_nr(t8)],
+            [
+                (MyPoints::descriptor_points(), Some(&points_b as _)),
+                (MyPoints::descriptor_colors(), None),
+            ],
+        )
+        .with_sparse_component_batches(
+            next_row_id(),
+            [build_frame_nr(t15)],
+            [
+                (MyPoints::descriptor_points(), None),
+                (MyPoints::descriptor_colors(), Some(&colors_a as _)),
+            ],
+        )
+        .with_sparse_component_batches(
+            next_row_id(),
+            [build_frame_nr(t20)],
+            [
+                (MyPoints::descriptor_points(), None),
+                (MyPoints::descriptor_colors(), Some(&colors_b as _)),
+            ],
+        )
+        .build()?;
+
+    rec.send_chunk(chunk_f);
+
+    // Chunk G: global [1, 3], colors@[1, 3]
+    let chunk_g = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+        .with_sparse_component_batches(
+            next_row_id(),
+            [build_frame_nr(t1)],
+            [(MyPoints::descriptor_colors(), Some(&colors_c as _))],
+        )
+        .with_sparse_component_batches(
+            next_row_id(),
+            [build_frame_nr(t3)],
+            [(MyPoints::descriptor_colors(), Some(&colors_d as _))],
+        )
+        .build()?;
+
+    rec.send_chunk(chunk_g);
 
     rec.flush_blocking()?;
 

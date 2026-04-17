@@ -7,12 +7,12 @@ if TYPE_CHECKING:
 
 
 @runtime_checkable
-class StreamingLoader(Protocol):
+class StreamingReader(Protocol):
     """
-    Protocol for loaders that produce a sequential stream of chunks.
+    Protocol for readers that produce a sequential stream of chunks.
 
-    All loaders provide ``stream() -> LazyChunkStream``. Loaders for indexable
-    formats will additionally satisfy ``IndexedLoader`` (future) and provide
+    All readers provide ``stream() -> LazyChunkStream``. Readers for indexable
+    formats will additionally satisfy ``IndexedReader`` (future) and provide
     ``store() -> ChunkStore``.
     """
 

@@ -68,17 +68,17 @@ class LensOutput:
         Parameters
         ----------
         component:
-            A :class:`ComponentDescriptor` or a component identifier string
+            A [`ComponentDescriptor`][] or a component identifier string
             for the output column (e.g. ``"Scalars:scalars"``).
             Using a full ``ComponentDescriptor`` preserves archetype and
             component type metadata in the output.
         selector:
-            A :class:`Selector` or selector query string to apply to the
+            A [`Selector`][] or selector query string to apply to the
             input column.
 
         Returns
         -------
-        A new :class:`LensOutput` with the component added.
+        A new [`LensOutput`][] with the component added.
 
         """
         sel = _normalize_selector(selector)
@@ -105,12 +105,12 @@ class LensOutput:
             Type of the timeline: ``"sequence"``, ``"duration_ns"``,
             or ``"timestamp_ns"``.
         selector:
-            A :class:`Selector` or selector query string to extract time
+            A [`Selector`][] or selector query string to extract time
             values (must produce ``Int64`` arrays).
 
         Returns
         -------
-        A new :class:`LensOutput` with the time column added.
+        A new [`LensOutput`][] with the time column added.
 
         """
         sel = _normalize_selector(selector)
@@ -157,7 +157,7 @@ class Lens:
         input_component:
             The component identifier to match in input chunks.
         outputs:
-            One or more :class:`LensOutput` objects describing the
+            One or more [`LensOutput`][] objects describing the
             output transformations.
 
         """
@@ -165,8 +165,7 @@ class Lens:
             outputs = [outputs]
 
         output_internals = [o._internal for o in outputs]
-        # TODO(grtlr): We might want to remove the entity path filter from the Rust API.
-        self._internal = LensInternal(["/**"], input_component, outputs=output_internals)
+        self._internal = LensInternal(input_component, outputs=output_internals)
 
 
 def _normalize_selector(selector: Selector | str) -> Selector:

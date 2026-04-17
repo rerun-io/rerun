@@ -3,7 +3,7 @@ title: Overview
 order: 50
 ---
 
-Internally, the [`Importer`](https://docs.rs/re_importer/latest/re_importer/trait.Importer.html) trait takes care of loading files into the Viewer and/or SDK.
+Internally, the [`Importer`](https://docs.rs/re_importer/latest/re_importer/trait.Importer.html?speculative-link) trait takes care of loading files into the Viewer and/or SDK.
 
 There are 3 broad kinds of `Importer`s: _builtin_, _external_ and _custom_.
 _External_ and _custom_ are the two ways of extending the file loading system that we'll describe below.
@@ -11,7 +11,7 @@ _External_ and _custom_ are the two ways of extending the file loading system th
 When a user attempts to open a file in the Viewer/SDK, **all** known `Importer`s are notified of the path to be opened, unconditionally.
 This gives `Importer`s maximum flexibility to decide what files they are interested in, as opposed to e.g. only being able to look at a file's extension.
 
-Once notified, an `Importer` can return an [`ImporterError::Incompatible`](https://docs.rs/re_importer/latest/re_importer/enum.ImporterError.html#variant.Incompatible) error to indicate that it doesn't support a given file type.
+Once notified, an `Importer` can return an [`ImporterError::Incompatible`](https://docs.rs/re_importer/latest/re_importer/enum.ImporterError.html?speculative-link#variant.Incompatible) error to indicate that it doesn't support a given file type.
 If, and only if, all importers known to the Viewer/SDK return an `Incompatible` error code, then an error message is shown to the user indicating that this file type is not (_yet_) supported.
 
 In these instances of unsupported files, we expose two ways of implementing and registering your `Importer`s, explained below.

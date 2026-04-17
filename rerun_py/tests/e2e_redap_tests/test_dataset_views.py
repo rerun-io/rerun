@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     import datafusion
     from pytest import LogCaptureFixture
-    from rerun.catalog import DatasetEntry
+    from rerun.catalog import DatasetEntry, IndexValuesLike
     from syrupy import SnapshotAssertion
 
     from e2e_redap_tests.conftest import EntryFactory
@@ -234,30 +234,138 @@ def test_dataframe_api_using_index_values_same_indices_on_all_segments(
         "68224eead5ed40838b3f3bdb0edfd2b2",
     ])
 
-    # Create a view with all partitions
+    all_index_values: list[IndexValuesLike] = [
+        pa.array([1705314885123456789, 1705315485123456789], type=pa.int64()),
+        pa.chunked_array([[1705314885123456789], [1705315485123456789]], type=pa.int64()),
+        np.array([np.int64(1705314885123456789), np.int64(1705315485123456789)], dtype=np.int64),
+        np.array(
+            [
+                np.datetime64("2024-01-15T10:34:45.123456789", "ns"),
+                np.datetime64("2024-01-15T10:44:45.123456789", "ns"),
+            ],
+            dtype=np.datetime64,
+        ),
+        pa.array([1705314885123456789, 1705315485123456789], type=pa.timestamp("ns")),
+    ]
+
+    results = []
+    arrow_results = []
+    for index_values in all_index_values:
+        df = (
+            dataset_view
+            .reader(
+                index="time_1",
+                using_index_values=index_values,
+                fill_latest_at=False,
+            )
+            .select("rerun_segment_id", "time_1", "/obj1:Points3D:positions", "/obj2:Points3D:positions")
+            .sort("rerun_segment_id", "time_1")
+        )
+        results.append(str(df))
+        arrow_results.append(str(pa.table(df)))
+
+        df_schema = df.schema()
+        for batch in df.collect():
+            assert batch.schema.equals(df_schema, check_metadata=True)
+
+    # All input types must produce identical results
+    for r in results[1:]:
+        assert r == results[0]
+    for r in arrow_results[1:]:
+        assert r == arrow_results[0]
+
+    # Snapshot once per representation
+    assert results[0] == snapshot
+    assert arrow_results[0] == snapshot
+
+    # Verify Python datetime.datetime objects work via numpy conversion.
+    # Tested separately because datetime.datetime only has microsecond precision,
+    # so the resulting index values differ from the nanosecond-precise ones above.
+    datetime_index_values = np.array(
+        [
+            datetime.datetime(2024, 1, 15, 10, 34, 45, 123456),
+            datetime.datetime(2024, 1, 15, 10, 44, 45, 123456),
+        ],
+        dtype="datetime64[ns]",
+    )
+    df = (
+        dataset_view
+        .reader(
+            index="time_1",
+            using_index_values=datetime_index_values,
+            fill_latest_at=False,
+        )
+        .select("rerun_segment_id", "time_1", "/obj1:Points3D:positions", "/obj2:Points3D:positions")
+        .sort("rerun_segment_id", "time_1")
+    )
+    table = pa.table(df)
+    assert table.num_rows > 0, "Expected results when using datetime.datetime index values"
+
+
+def test_dataframe_api_using_index_values_partial_overlap(
+    readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion
+) -> None:
+    """
+    Test that index values are restricted to segments whose range covers them.
+
+    Uses two segments with different time_1 ranges:
+    - 3ee345b2 spans 2024-01-15T10:30:45 to 2024-01-15T11:18:45
+    - 141a866d spans 2024-01-15T10:30:45 to 2024-01-15T12:04:45
+
+    We request three timestamps:
+    - 10:34:45 — inside both segments
+    - 11:30:45 — inside 141a866d only (after 3ee345b2's end)
+    - 12:30:00 — after both segments
+
+    Expected: 3 rows total (2 for 141a866d, 1 for 3ee345b2).
+    """
+    dataset_view = readonly_test_dataset.filter_segments([
+        "3ee345b2e801448cace33a1097b9b49b",
+        "141a866deb2d49f69eb3215e8a404ffc",
+    ])
+
     df = (
         dataset_view
         .reader(
             index="time_1",
             using_index_values=np.array(
                 [
-                    np.datetime64("2024-01-15T10:34:45.123456789", "ns"),
-                    np.datetime64("2024-01-15T10:44:45.123456789", "ns"),
+                    np.datetime64("2024-01-15T10:34:45.123456789", "ns"),  # inside both
+                    np.datetime64("2024-01-15T11:30:45.123456789", "ns"),  # inside 141a only
+                    np.datetime64("2024-01-15T12:30:00.000000000", "ns"),  # after both
                 ],
                 dtype=np.datetime64,
             ),
-            fill_latest_at=False,
+            fill_latest_at=True,
         )
         .select("rerun_segment_id", "time_1", "/obj1:Points3D:positions", "/obj2:Points3D:positions")
         .sort("rerun_segment_id", "time_1")
     )
 
-    df_schema = df.schema()
-    for batch in df.collect():
-        assert batch.schema.equals(df_schema, check_metadata=True)
-    assert str(df) == snapshot
+    table = pa.table(df)
+    seg_col = table.column("rerun_segment_id").to_pylist()
+    time_col = table.column("time_1").cast(pa.int64()).to_pylist()
 
-    assert str(pa.table(df)) == snapshot
+    in_both_ns = 1705314885123456789  # 2024-01-15T10:34:45.123456789
+    in_141a_only_ns = 1705318245123456789  # 2024-01-15T11:30:45.123456789
+
+    # Both segments should have the shared timestamp
+    assert seg_col.count("3ee345b2e801448cace33a1097b9b49b") == 1
+    assert seg_col.count("141a866deb2d49f69eb3215e8a404ffc") == 2
+
+    # 3ee345b2 should only have the in-both timestamp
+    for seg, ts in zip(seg_col, time_col, strict=False):
+        if seg == "3ee345b2e801448cace33a1097b9b49b":
+            assert ts == in_both_ns
+        elif seg == "141a866deb2d49f69eb3215e8a404ffc":
+            assert ts in (in_both_ns, in_141a_only_ns)
+
+    # The after-both timestamp (12:30:00) should not appear at all
+    after_both_ns = 1705321800000000000  # 2024-01-15T12:30:00
+    assert after_both_ns not in time_col
+
+    assert str(df) == snapshot
+    assert str(table) == snapshot
 
 
 def test_dataframe_api_using_index_values_empty(

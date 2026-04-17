@@ -612,13 +612,15 @@ impl TestContext {
             && let Some(timeline) = self.time_ctrl.read().timeline()
         {
             let (rrd_manifest, storage_engine) = db.rrd_manifest_index_mut_and_storage_engine();
+            let options = re_entity_db::ChunkPrefetchOptions::default();
+            // Budget of 0 bytes so that we don't try to load anything.
+            let mut budget =
+                re_entity_db::RemainingByteBudget::new(0, options.max_bytes_on_wire_at_once);
             let _err = rrd_manifest.prefetch_chunks(
                 storage_engine.store(),
-                &re_entity_db::ChunkPrefetchOptions {
-                    total_uncompressed_byte_budget: 0, // So that we don't try to load anything
-                    ..Default::default()
-                },
+                &options,
                 Some(TimelinePoint::from((*timeline, TimeInt::ZERO))),
+                &mut budget,
                 &|_| panic!("We have 0 bytes allowed memory"),
             );
         }

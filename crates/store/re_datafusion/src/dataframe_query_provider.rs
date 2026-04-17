@@ -266,9 +266,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             None => Arc::clone(table_schema),
         };
 
-        if let Some(projected_cols) = projection
-            && !projected_cols.is_empty()
-        {
+        if projection.is_some_and(|projection| !projection.is_empty()) {
             let selection = projected_schema
                 .fields()
                 .iter()

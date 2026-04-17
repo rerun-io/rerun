@@ -31,6 +31,7 @@ tempfile.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 [dev-dependencies]
+re_dataframe_ui.workspace = true
 re_test_context.workspace = true
 re_view_bar_chart.workspace = true
 re_view_tensor.workspace = true
@@ -38,6 +39,8 @@ re_view_text_document.workspace = true
 re_view_text_log.workspace = true
 re_view_time_series.workspace = true
 
+arrow.workspace = true
+futures.workspace = true
 insta.workspace = true
 ndarray.workspace = true
 

@@ -72,7 +72,7 @@ Lens::for_input_column(filter, "component")
     })?
 
 // After
-Lens::for_input_column(filter, "component")
+Lens::for_input_column("component")
     .output_columns(|out| {
         out.at_entity("target/entity")
             .component(descriptor, selector)
@@ -92,3 +92,28 @@ The same applies to scatter columns:
 ```
 
 Additionally, `ColumnsBuilder` and `ScatterColumnsBuilder` have been unified into a single `OutputBuilder` type.
+
+### `EntityPathFilter` removed from `Lens`
+
+Entity path filtering is no longer part of the `Lens` itself. A `Lens` now operates purely
+on component columns within a chunk. Entity path filtering is a separate concern handled
+either upstream (e.g. via stream filtering) or at the `Lenses` collection level.
+
+```rust
+// Before
+Lens::for_input_column(EntityPathFilter::all(), "component")
+    .output_columns(|out| { /* … */ })?
+    .build()
+
+// After
+Lens::for_input_column("component")
+    .output_columns(|out| { /* … */ })?
+    .build()
+```
+
+If you need entity path filtering, use `Lenses::add_lens_with_filter`:
+
+```rust
+let lenses = Lenses::new(OutputMode::DropUnmatched)
+    .add_lens_with_filter(EntityPathFilter::parse_forgiving("sensors/**"), lens);
+```

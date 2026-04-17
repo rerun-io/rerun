@@ -216,6 +216,14 @@ class ChunkInternal:
     @property
     def timeline_names(self) -> list[str]: ...
     def to_record_batch(self) -> pa.RecordBatch: ...
+    @staticmethod
+    def from_record_batch(record_batch: pa.RecordBatch) -> ChunkInternal: ...
+    @staticmethod
+    def from_columns(
+        entity_path: str,
+        timelines: dict[str, Any],
+        components: dict[ComponentDescriptor, Any],
+    ) -> ChunkInternal: ...
     def format(self, *, width: int = 240, redact: bool = False) -> str: ...
     def __repr__(self) -> str: ...
     def __len__(self) -> int: ...
@@ -854,7 +862,7 @@ def send_recording(rrd: RecordingInternal, recording: PyRecordingStream | None =
     """
     Send all chunks from a [`PyRecording`] to the given recording stream.
 
-    .. warning::
+    !!! Warning
         ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
     """
 
@@ -1193,10 +1201,11 @@ class _UrdfLinkInternal:
 
 class _IndexValuesLikeInternal:
     """
-    A Python wrapper for testing [`IndexValuesLike`] extraction functionality.
+    A Python wrapper for [`IndexValuesLike`] extraction and conversion.
 
-    This wrapper allows testing the `extract_bound` functionality by providing
-    a Python-accessible interface to create and convert index values.
+    Provides a Python-accessible interface to normalize various index value
+    representations (PyArrow arrays, NumPy arrays, ChunkedArrays) into sorted
+    int64 index values.
     """
 
     def __init__(self, values: IndexValuesLike) -> None: ...
@@ -1326,7 +1335,6 @@ class LensOutputInternal:
 class LensInternal:
     def __init__(
         self,
-        content: list[str],
         input_component: str,
         *,
         outputs: list[LensOutputInternal],
@@ -1458,8 +1466,8 @@ class ChunkStoreInternal:
     def summary(self) -> str: ...
     def stream(self) -> LazyChunkStreamInternal: ...
 
-class RrdLoaderInternal:
-    """Internal implementation. Use RrdLoader from rerun.experimental instead."""
+class RrdReaderInternal:
+    """Internal implementation. Use RrdReader from rerun.experimental instead."""
 
     def __init__(self, path: str) -> None: ...
     def stream(self) -> LazyChunkStreamInternal: ...
@@ -1471,8 +1479,8 @@ class RrdLoaderInternal:
     @property
     def path(self) -> Path: ...
 
-class McapLoaderInternal:
-    """Internal implementation. Use McapLoader from rerun.experimental instead."""
+class McapReaderInternal:
+    """Internal implementation. Use McapReader from rerun.experimental instead."""
 
     def __init__(
         self,
@@ -1487,8 +1495,8 @@ class McapLoaderInternal:
     @staticmethod
     def available_decoders() -> list[str]: ...
 
-class ParquetLoaderInternal:
-    """Internal implementation. Use ParquetLoader from rerun.experimental instead."""
+class ParquetReaderInternal:
+    """Internal implementation. Use ParquetReader from rerun.experimental instead."""
 
     def __init__(
         self,
@@ -1534,6 +1542,8 @@ class LazyChunkStreamInternal:
         components: list[str] | None = None,
     ) -> tuple[LazyChunkStreamInternal, LazyChunkStreamInternal]: ...
     def lenses(self, lenses: list[LensInternal], output_mode: str) -> LazyChunkStreamInternal: ...
+    def map(self, callable: Callable[[ChunkInternal], ChunkInternal]) -> LazyChunkStreamInternal: ...
+    def flat_map(self, callable: Callable[[ChunkInternal], list[ChunkInternal]]) -> LazyChunkStreamInternal: ...
     @staticmethod
     def merge(streams: list[LazyChunkStreamInternal]) -> LazyChunkStreamInternal: ...
     def write_rrd(self, path: str, application_id: str, recording_id: str) -> None: ...

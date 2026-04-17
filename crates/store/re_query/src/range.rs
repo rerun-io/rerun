@@ -398,7 +398,7 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{Chunk, ChunkId, RowId};
-    use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+    use re_chunk_store::{ChunkDeletionReason, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
     use re_log_types::{EntityPath, TimePoint, Timeline};
@@ -479,6 +479,7 @@ mod tests {
         store.write().remove_chunks_shallow(
             vec![Arc::new(chunk1.clone()), Arc::new(chunk3.clone())],
             None,
+            ChunkDeletionReason::ExplicitDrop,
         );
 
         // We've removed the first and last chunks from the store: results should now be partial.
@@ -496,9 +497,11 @@ mod tests {
 
         // Reminder: the store events are irrelevant here, since the range cache still always unconditionally
         // performs the underlying query regardless (only the sorting/slicing is cached).
-        store
-            .write()
-            .remove_chunks_shallow(vec![Arc::new(chunk2.clone())], None);
+        store.write().remove_chunks_shallow(
+            vec![Arc::new(chunk2.clone())],
+            None,
+            ChunkDeletionReason::ExplicitDrop,
+        );
 
         // Now we've removed absolutely everything: we should only get partial results.
         {

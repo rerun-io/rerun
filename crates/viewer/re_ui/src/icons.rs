@@ -245,3 +245,10 @@ pub const DOWNLOAD: Icon = icon_from_path!("../data/icons/download.svg");
 // Other non-icon-sized images:
 pub const DROPDOWN_ARROW: Icon = icon_from_path!("../data/icons/dropdown_arrow.svg");
 pub const CHECKED: Icon = icon_from_path!("../data/icons/checked.svg");
+
+// Datafusion tables:
+pub const TABLE_ROW_VIEW: Icon = icon_from_path!("../data/icons/table_row_view.svg");
+pub const TABLE_GRID_VIEW: Icon = icon_from_path!("../data/icons/table_grid_view.svg");
+pub const TABLE_COLUMNS: Icon = icon_from_path!("../data/icons/columns.svg");
+pub const FLAG_UNTOGGLED: Icon = icon_from_path!("../data/icons/flag_untoggled.svg");
+pub const FLAG_TOGGLED: Icon = icon_from_path!("../data/icons/flag_toggled.svg");

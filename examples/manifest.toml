@@ -200,6 +200,7 @@ examples = [
   "table_zoo",
   "template",
   "viewer_callbacks",
+  "using_index_values",
 
   # TODO(jleibs): We want to bring them back once opentelemtry is fixed
   "human_pose_tracking",

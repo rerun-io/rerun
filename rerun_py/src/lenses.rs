@@ -3,7 +3,6 @@ use pyo3::prelude::*;
 use pyo3::types::PyModule;
 
 use re_lenses_core::{DynExpr, Lens, LensBuilder, OutputMode, Selector};
-use re_log_types::EntityPathFilter;
 use re_types_core::{ComponentDescriptor, ComponentIdentifier};
 
 use crate::python_bridge::PyComponentDescriptor;
@@ -108,20 +107,14 @@ impl PyLensInternal {
 impl PyLensInternal {
     #[new]
     #[pyo3(
-        signature = (content, input_component, *, outputs),
-        text_signature = "(self, content, input_component, *, outputs)"
+        signature = (input_component, *, outputs),
+        text_signature = "(self, input_component, *, outputs)"
     )]
     #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned arguments
-    fn new(
-        content: Vec<String>,
-        input_component: &str,
-        outputs: Vec<PyRef<'_, PyLensOutputInternal>>,
-    ) -> PyResult<Self> {
-        let rules = content.join(" ");
-        let entity_path_filter = EntityPathFilter::parse_forgiving(&rules);
+    fn new(input_component: &str, outputs: Vec<PyRef<'_, PyLensOutputInternal>>) -> PyResult<Self> {
         let component: ComponentIdentifier = input_component.into();
 
-        let mut builder = Lens::for_input_column(entity_path_filter, component);
+        let mut builder = Lens::for_input_column(component);
 
         for output in &outputs {
             builder = build_output(builder, output)?;

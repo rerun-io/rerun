@@ -2379,6 +2379,7 @@ mod tests {
                 event_id: 0, // Wrong but don't care.
                 diff: ChunkStoreDiff::deletion(
                     chunk_store.iter_physical_chunks().next().unwrap().clone(),
+                    re_chunk_store::ChunkDeletionReason::GarbageCollection,
                 ),
             }],
             &store,

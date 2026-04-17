@@ -283,7 +283,7 @@ impl TableConfig {
     }
 
     pub fn button_ui(&mut self, ui: &mut egui::Ui) {
-        MenuButton::from_button(icons::SETTINGS.as_button_with_label(ui.tokens(), "Columns"))
+        MenuButton::from_button(icons::TABLE_COLUMNS.as_button_with_label(ui.tokens(), "Columns"))
             .config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside))
             .ui(ui, |ui| {
                 self.ui(ui);

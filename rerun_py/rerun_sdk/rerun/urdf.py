@@ -125,7 +125,7 @@ class UrdfJoint:
         Returns
         -------
         ComponentColumnList
-            Columnar transform data ready for use with :func:`rerun.send_columns`.
+            Columnar transform data ready for use with [`rerun.send_columns`][].
 
         """
         from . import Transform3D
@@ -165,9 +165,9 @@ class UrdfTree:
     """
     A URDF robot model with joints and links.
 
-    Use :meth:`log_urdf_to_recording` to log the full model (geometry + static transforms), then animate
+    Use [`log_urdf_to_recording`][rerun.urdf.UrdfTree.log_urdf_to_recording] to log the full model (geometry + static transforms), then animate
     individual joints by logging [`archetypes.Transform3D`][rerun.archetypes.Transform3D] computed via
-    :meth:`UrdfJoint.compute_transform`.
+    [`UrdfJoint.compute_transform`][rerun.urdf.UrdfJoint.compute_transform].
     """
 
     def __init__(self, inner: _UrdfTreeInternal) -> None:
@@ -294,7 +294,7 @@ class UrdfTree:
         """
         Log the full robot model (geometry + static transforms) to a recording stream.
 
-        This can be used as alternative to :func:`rerun.log_file_from_path` for URDF files,
+        This can be used as alternative to [`rerun.log_file_from_path`][] for URDF files,
         especially in cases where you need the extra configuration options of ``UrdfTree``
         (e.g. ``frame_prefix`` for multi-robot setups).
 

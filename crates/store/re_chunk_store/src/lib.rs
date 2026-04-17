@@ -50,8 +50,9 @@ pub use self::dataframe::{
 };
 pub use self::entity_tree::EntityTree;
 pub use self::events::{
-    ChunkComponentMeta, ChunkMeta, ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreDiffDeletion,
-    ChunkStoreDiffSchemaAddition, ChunkStoreDiffVirtualAddition, ChunkStoreEvent,
+    ChunkComponentMeta, ChunkDeletionReason, ChunkMeta, ChunkStoreDiff, ChunkStoreDiffAddition,
+    ChunkStoreDiffDeletion, ChunkStoreDiffSchemaAddition, ChunkStoreDiffVirtualAddition,
+    ChunkStoreEvent,
 };
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::lineage::{ChunkDirectLineage, ChunkDirectLineageReport};

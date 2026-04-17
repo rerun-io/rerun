@@ -1,6 +1,5 @@
 //! Lenses allow you to extract, transform, and restructure component data. They
-//! are applied to chunks that match the specified entity path filter and contain
-//! the target component.
+//! are applied to chunks that contain the target component.
 //!
 //! See [`crate::lenses::Lens`] for more details and assumptions. One way to make use of lenses is
 //! by using the [`crate::lenses::LensesSink`].

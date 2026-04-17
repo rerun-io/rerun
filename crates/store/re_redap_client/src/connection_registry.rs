@@ -136,6 +136,22 @@ pub enum Credentials {
     Stored,
 }
 
+impl Credentials {
+    /// Whether these credentials have write permission.
+    ///
+    /// Returns `None` for [`Credentials::Stored`] (resolved at connect time,
+    /// permissions unknown) or if the token claims cannot be decoded.
+    pub fn has_write_permission(&self) -> Option<bool> {
+        match self {
+            Self::Token(jwt) => {
+                let claims: re_auth::Claims = jwt.decode_claims().ok()?;
+                Some(claims.has_write_permission())
+            }
+            Self::Stored => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum CredentialSource {
     PerOrigin,

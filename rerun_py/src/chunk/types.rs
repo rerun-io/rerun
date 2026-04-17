@@ -4,12 +4,15 @@ use std::sync::atomic::Ordering;
 
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::exceptions::PyStopIteration;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
-use arrow::pyarrow::ToPyArrow as _;
+use arrow::array::RecordBatch as ArrowRecordBatch;
+use arrow::pyarrow::{PyArrowType, ToPyArrow as _};
 use re_chunk::Chunk;
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
-use re_log_types::{StoreId, StoreInfo, StoreSource};
+use re_log_types::{EntityPath, StoreId, StoreInfo, StoreSource};
 
 use crate::recording::PyRecordingInternal;
 
@@ -88,6 +91,32 @@ impl PyChunkInternal {
             .to_record_batch()
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
         Ok(batch.to_pyarrow(py)?.unbind())
+    }
+
+    /// Create a Chunk from a PyArrow RecordBatch with Rerun schema metadata.
+    ///
+    /// The RecordBatch must have been produced by ``to_record_batch()`` or have
+    /// equivalent Rerun metadata in its schema.
+    #[staticmethod]
+    #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned PyArrowType for #[staticmethod]
+    fn from_record_batch(record_batch: PyArrowType<ArrowRecordBatch>) -> PyResult<Self> {
+        let chunk = Chunk::from_record_batch(&record_batch.0)
+            .map_err(|err| PyValueError::new_err(err.to_string()))?;
+        Ok(Self::new(Arc::new(chunk)))
+    }
+
+    /// Create a Chunk from an entity path, timeline arrays, and component arrays.
+    ///
+    /// This is the low-level entry point called by ``Chunk.from_columns()`` in Python.
+    #[staticmethod]
+    fn from_columns(
+        entity_path: &str,
+        timelines: &Bound<'_, PyDict>,
+        components: &Bound<'_, PyDict>,
+    ) -> PyResult<Self> {
+        let entity_path = EntityPath::parse_forgiving(entity_path);
+        let chunk = crate::arrow::build_chunk_from_components(entity_path, timelines, components)?;
+        Ok(Self::new(Arc::new(chunk)))
     }
 
     /// Format this chunk as a human-readable table string.

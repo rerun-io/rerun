@@ -10,7 +10,7 @@
 
 use std::sync::Arc;
 
-use pyo3::{Py, PyAny};
+use pyo3::{Py, PyAny, Python};
 
 use re_chunk::Chunk;
 use re_types_core::ComponentIdentifier;
@@ -148,16 +148,29 @@ impl StructuredFilter {
 }
 
 /// A single transformation step in the pipeline.
-#[derive(Clone)]
 pub enum PipelineStep {
     Filter(StructuredFilter),
     Drop(StructuredFilter),
     Lenses(re_lenses_core::Lenses),
+    Map(Py<PyAny>),
+    FlatMap(Py<PyAny>),
+}
+
+impl Clone for PipelineStep {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Filter(f) => Self::Filter(f.clone()),
+            Self::Drop(f) => Self::Drop(f.clone()),
+            Self::Lenses(l) => Self::Lenses(l.clone()),
+            Self::Map(c) => Self::Map(Python::attach(|py| c.clone_ref(py))),
+            Self::FlatMap(c) => Self::FlatMap(Python::attach(|py| c.clone_ref(py))),
+        }
+    }
 }
 
 /// The source of chunks for a pipeline.
 pub enum StreamSource {
-    /// A stream factory, e.g. a loader that produces chunks from a file.
+    /// A stream factory, e.g. a reader that produces chunks from a file.
     StreamFactory(Box<dyn ChunkStreamFactory>),
 
     /// Wrap a Python iterable of Chunks.
@@ -216,7 +229,7 @@ pub struct LazyChunkStream {
 }
 
 impl LazyChunkStream {
-    /// Create a lazy stream backed by a factory (e.g. a loader).
+    /// Create a lazy stream backed by a factory (e.g. a reader).
     pub fn from_factory(factory: impl ChunkStreamFactory + 'static) -> Self {
         Self {
             source: StreamSource::StreamFactory(Box::new(factory)),
@@ -243,6 +256,16 @@ impl LazyChunkStream {
 
     pub fn lenses(mut self, lenses: re_lenses_core::Lenses) -> Self {
         self.steps.push(PipelineStep::Lenses(lenses));
+        self
+    }
+
+    pub fn map(mut self, callable: Py<PyAny>) -> Self {
+        self.steps.push(PipelineStep::Map(callable));
+        self
+    }
+
+    pub fn flat_map(mut self, callable: Py<PyAny>) -> Self {
+        self.steps.push(PipelineStep::FlatMap(callable));
         self
     }
 

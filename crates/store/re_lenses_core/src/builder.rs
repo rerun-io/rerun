@@ -1,7 +1,7 @@
 //! Builder API for constructing lenses.
 
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
-use re_log_types::{EntityPathFilter, TimeType};
+use re_log_types::TimeType;
 use re_sdk_types::ComponentDescriptor;
 
 use crate::ast::{OneToMany, OneToOne};
@@ -16,13 +16,9 @@ pub struct LensBuilder {
 }
 
 impl LensBuilder {
-    pub(crate) fn new(
-        entity_path_filter: EntityPathFilter,
-        component: impl Into<ComponentIdentifier>,
-    ) -> Self {
+    pub(crate) fn new(component: impl Into<ComponentIdentifier>) -> Self {
         Self {
             input: ast::InputColumn {
-                entity_path_filter,
                 component: component.into(),
             },
             outputs: vec![],
@@ -168,7 +164,6 @@ impl OutputBuilder {
             self.components
                 .try_into()
                 .map_err(|_err| LensError::MissingOutputComponent {
-                    input_filter: input.entity_path_filter.clone(),
                     input_component: input.component,
                 })?;
 

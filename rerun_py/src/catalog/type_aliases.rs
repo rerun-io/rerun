@@ -207,10 +207,11 @@ impl IndexValuesLike<'_> {
     }
 }
 
-/// A Python wrapper for testing [`IndexValuesLike`] extraction functionality.
+/// A Python wrapper for [`IndexValuesLike`] extraction and conversion.
 ///
-/// This wrapper allows testing the `extract_bound` functionality by providing
-/// a Python-accessible interface to create and convert index values.
+/// Provides a Python-accessible interface to normalize various index value
+/// representations (PyArrow arrays, NumPy arrays, ChunkedArrays) into sorted
+/// `TimeInt` values.
 #[pyclass(
     frozen,
     name = "_IndexValuesLikeInternal",

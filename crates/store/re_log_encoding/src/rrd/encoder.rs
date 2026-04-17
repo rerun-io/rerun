@@ -85,7 +85,7 @@ pub struct Encoder<W: std::io::Write> {
     ///
     /// If set to `None`, the footer will not be computed.
     ///
-    /// Calling [`Self::append_transport`] will automatically disable footers.
+    /// Calling [`Self::append_transport_without_footer`] will automatically disable footers.
     footer_state: Option<FooterState>,
 
     /// Tracks whether the end-of-stream marker, and optionally the associated footer, have been
@@ -213,9 +213,7 @@ impl Encoder<Vec<u8>> {
     ) -> Result<Vec<u8>, EncodeError> {
         re_tracing::profile_function!();
         let mut encoder = Self::local()?;
-        for message in messages {
-            encoder.append(message?.borrow())?;
-        }
+        encoder.extend(messages)?;
         encoder.finish()?;
         encoder.into_inner()
     }
@@ -258,40 +256,11 @@ impl<W: std::io::Write> Encoder<W> {
 
     /// Returns the size in bytes of the encoded data.
     pub fn append(&mut self, message: &re_log_types::LogMsg) -> Result<u64, EncodeError> {
-        if self.is_finished {
-            return Err(EncodeError::AlreadyFinished);
-        }
-
-        let Some(w) = self.write.as_mut() else {
-            return Err(EncodeError::AlreadyUnwrapped);
-        };
-
         re_tracing::profile_function!();
 
         let transport = message.to_transport(self.compression)?;
 
-        let byte_offset_excluding_header =
-            self.num_written + crate::MessageHeader::ENCODED_SIZE_BYTES as u64;
-
-        self.scratch.clear();
-        let n = match self.serializer {
-            Serializer::Protobuf => {
-                transport.to_rrd_bytes(&mut self.scratch)?;
-                let n = w
-                    .write_all(&self.scratch)
-                    .map(|()| self.scratch.len() as u64)
-                    .map_err(EncodeError::Write)?;
-                self.num_written += n;
-                n
-            }
-        };
-
-        let byte_size_excluding_header = n - crate::MessageHeader::ENCODED_SIZE_BYTES as u64;
-
-        let byte_span_excluding_header = re_span::Span {
-            start: byte_offset_excluding_header,
-            len: byte_size_excluding_header,
-        };
+        let (n, byte_span_excluding_header) = self.write_encodable(&transport)?;
 
         if let Some(footer_state) = self.footer_state.as_mut() {
             footer_state.append(
@@ -302,6 +271,21 @@ impl<W: std::io::Write> Encoder<W> {
         }
 
         Ok(n)
+    }
+
+    /// Returns the size in bytes of the encoded data.
+    pub fn extend(
+        &mut self,
+        messages: impl IntoIterator<Item = ChunkResult<impl Borrow<LogMsg>>>,
+    ) -> Result<u64, EncodeError> {
+        re_tracing::profile_function!();
+
+        let mut size_bytes = 0;
+        // TODO(emilk): call `.to_transport` in parallel.
+        for message in messages {
+            size_bytes += self.append(message?.borrow())?;
+        }
+        Ok(size_bytes)
     }
 
     /// Instructs the encoder to _not_ emit a footer at the end of the stream.
@@ -320,20 +304,30 @@ impl<W: std::io::Write> Encoder<W> {
     /// `message` must respect the global settings of the encoder (e.g. the compression used),
     /// otherwise the resulting RRD stream will be corrupt and unreadable.
     #[expect(unsafe_code)]
-    pub unsafe fn append_transport(
+    pub unsafe fn append_transport_without_footer(
         &mut self,
         message: &re_protos::log_msg::v1alpha1::log_msg::Msg,
     ) -> Result<(re_span::Span<u64>, u64), EncodeError> {
-        if self.is_finished {
-            return Err(EncodeError::AlreadyFinished);
-        }
-
-        re_tracing::profile_function!();
-
         // We cannot update the RRD manifest without decoding the message, which would defeat the
         // entire purposes of using this method in the first place.
         // Therefore, we disable footers if and when this method is used.
         self.do_not_emit_footer();
+
+        let (_, byte_span_excluding_header) = self.write_encodable(message)?;
+
+        Ok((byte_span_excluding_header, message.byte_size_uncompressed()))
+    }
+
+    /// Encode and write a message, returning `(total_bytes_written, byte_span_excluding_header)`.
+    fn write_encodable(
+        &mut self,
+        encodable: &dyn crate::Encodable,
+    ) -> Result<(u64, re_span::Span<u64>), EncodeError> {
+        re_tracing::profile_function!();
+
+        if self.is_finished {
+            return Err(EncodeError::AlreadyFinished);
+        }
 
         let Some(w) = self.write.as_mut() else {
             return Err(EncodeError::AlreadyUnwrapped);
@@ -345,7 +339,7 @@ impl<W: std::io::Write> Encoder<W> {
         self.scratch.clear();
         let n = match self.serializer {
             Serializer::Protobuf => {
-                message.to_rrd_bytes(&mut self.scratch)?;
+                encodable.to_rrd_bytes(&mut self.scratch)?;
                 let n = w
                     .write_all(&self.scratch)
                     .map(|()| self.scratch.len() as u64)
@@ -362,7 +356,7 @@ impl<W: std::io::Write> Encoder<W> {
             len: byte_size_excluding_header,
         };
 
-        Ok((byte_span_excluding_header, message.byte_size_uncompressed()))
+        Ok((n, byte_span_excluding_header))
     }
 
     /// Like [`Self::finish`], but appends the specified, custom RRD footer.
@@ -503,11 +497,7 @@ impl<W: std::io::Write> Encoder<W> {
     ) -> Result<u64, EncodeError> {
         re_tracing::profile_function!();
         let mut encoder = Encoder::new_eager(version, options, write)?;
-        let mut size_bytes = 0;
-        for message in messages {
-            size_bytes += encoder.append(message?.borrow())?;
-        }
-        Ok(size_bytes)
+        encoder.extend(messages)
     }
 }
 

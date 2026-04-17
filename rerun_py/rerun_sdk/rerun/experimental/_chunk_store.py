@@ -19,9 +19,9 @@ class ChunkStore:
 
     TODO(RR-4321): currently, this is fully materialized, in-memory.
 
-    Obtain a ChunkStore from an IndexedLoader, e.g.:
+    Obtain a ChunkStore from an IndexedReader, e.g.:
 
-        store = RrdLoader("recording.rrd").store()
+        store = RrdReader("recording.rrd").store()
 
     Use ``stream()`` to process chunks through the lazy pipeline, or
     ``write_rrd()`` to persist to disk.

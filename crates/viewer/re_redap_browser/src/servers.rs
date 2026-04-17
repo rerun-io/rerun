@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::task::Poll;
 
-use datafusion::common::TableReference;
 use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
+use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
@@ -184,12 +184,7 @@ impl Server {
             .show(viewer_ctx, &self.runtime, ui);
     }
 
-    fn dataset_entry_ui(
-        &self,
-        viewer_ctx: &StoreViewContext<'_>,
-        ui: &mut egui::Ui,
-        dataset: &Dataset,
-    ) {
+    fn dataset_entry_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, dataset: &Dataset) {
         const RECORDING_LINK_COLUMN_NAME: &str = "recording link";
 
         re_dataframe_ui::DataFusionTableWidget::new(
@@ -243,7 +238,7 @@ impl Server {
             self.origin.clone(),
             dataset.id(),
         )
-        .show(viewer_ctx, &self.runtime, ui);
+        .show(ctx, &self.runtime, ui);
     }
 
     fn table_entry_ui(&self, viewer_ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, table: &Table) {
@@ -253,6 +248,7 @@ impl Server {
         )
         .title(table.name().to_string())
         .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
+        .remote_table(re_uri::EntryUri::new(table.origin.clone(), table.id()))
         .show(viewer_ctx, &self.runtime, ui);
     }
 }
@@ -285,6 +281,7 @@ fn error_ui(
             }
 
             ClientCredentialsError::HostMismatch(_) => "The token is not allowed for this server",
+
             ClientCredentialsError::NotAuthorized => {
                 "This server requires authentication to access its data."
             }
@@ -792,24 +789,19 @@ impl RedapServers {
         send_crossbeam(&self.command_sender, Command::OpenEditServerModal(command)).ok();
     }
 
-    pub fn entry_ui(
-        &self,
-        viewer_ctx: &StoreViewContext<'_>,
-        ui: &mut egui::Ui,
-        active_entry: EntryId,
-    ) {
+    pub fn entry_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, active_entry: EntryId) {
         for server in self.servers.values() {
             if let Some(entry) = server.find_entry(active_entry) {
                 match entry.inner() {
                     Ok(crate::entries::EntryInner::Dataset(dataset)) => {
-                        server.dataset_entry_ui(viewer_ctx, ui, dataset);
+                        server.dataset_entry_ui(ctx, ui, dataset);
 
                         // If we're connected twice to the same server, we will find this entry
                         // multiple times. We avoid it by returning here.
                         return;
                     }
                     Ok(crate::entries::EntryInner::Table(table)) => {
-                        server.table_entry_ui(viewer_ctx, ui, table);
+                        server.table_entry_ui(ctx, ui, table);
 
                         // If we're connected twice to the same server, we will find this entry
                         // multiple times. We avoid it by returning here.

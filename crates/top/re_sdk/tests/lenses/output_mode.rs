@@ -2,6 +2,7 @@
 
 use arrow::array::{ListBuilder, StringBuilder};
 use re_chunk::{Chunk, ChunkId, TimeColumn, TimelineName};
+use re_log_types::EntityPathFilter;
 use re_sdk::lenses::{Lens, Lenses, OutputMode, Selector};
 use re_sdk_types::ComponentDescriptor;
 
@@ -34,21 +35,18 @@ fn test_output_mode_forward_all() {
     let unmatched_chunk = create_test_chunk("other/entity", "other_component");
 
     // Create a lens that only matches the first chunk
-    let lens = Lens::for_input_column(
-        re_log_types::EntityPathFilter::parse_forgiving("matched/**"),
-        "test_component",
-    )
-    .output_columns(|out| {
-        out.at_entity("matched/output").component(
-            ComponentDescriptor::partial("transformed"),
-            Selector::parse(".")?,
-        )
-    })
-    .unwrap()
-    .build();
+    let lens = Lens::for_input_column("test_component")
+        .output_columns(|out| {
+            out.at_entity("matched/output").component(
+                ComponentDescriptor::partial("transformed"),
+                Selector::parse(".")?,
+            )
+        })
+        .unwrap()
+        .build();
 
-    let mut lenses = Lenses::new(OutputMode::ForwardAll);
-    lenses.add_lens(lens);
+    let lenses = Lenses::new(OutputMode::ForwardAll)
+        .add_lens_with_filter(EntityPathFilter::parse_forgiving("matched/**"), lens);
 
     // Apply to matching chunk
     let matching_results: Vec<_> = lenses
@@ -85,21 +83,18 @@ fn test_output_mode_forward_unmatched() {
     let unmatched_chunk = create_test_chunk("other/entity", "other_component");
 
     // Create a lens that only matches the first chunk
-    let lens = Lens::for_input_column(
-        re_log_types::EntityPathFilter::parse_forgiving("matched/**"),
-        "test_component",
-    )
-    .output_columns(|out| {
-        out.at_entity("matched/output").component(
-            ComponentDescriptor::partial("transformed"),
-            Selector::parse(".")?,
-        )
-    })
-    .unwrap()
-    .build();
+    let lens = Lens::for_input_column("test_component")
+        .output_columns(|out| {
+            out.at_entity("matched/output").component(
+                ComponentDescriptor::partial("transformed"),
+                Selector::parse(".")?,
+            )
+        })
+        .unwrap()
+        .build();
 
-    let mut lenses = Lenses::new(OutputMode::ForwardUnmatched);
-    lenses.add_lens(lens);
+    let lenses = Lenses::new(OutputMode::ForwardUnmatched)
+        .add_lens_with_filter(EntityPathFilter::parse_forgiving("matched/**"), lens);
 
     // Apply to matching chunk
     let matching_results: Vec<_> = lenses
@@ -132,21 +127,18 @@ fn test_output_mode_drop_unmatched() {
     let unmatched_chunk = create_test_chunk("other/entity", "other_component");
 
     // Create a lens that only matches the first chunk
-    let lens = Lens::for_input_column(
-        re_log_types::EntityPathFilter::parse_forgiving("matched/**"),
-        "test_component",
-    )
-    .output_columns(|out| {
-        out.at_entity("matched/output").component(
-            ComponentDescriptor::partial("transformed"),
-            Selector::parse(".")?,
-        )
-    })
-    .unwrap()
-    .build();
+    let lens = Lens::for_input_column("test_component")
+        .output_columns(|out| {
+            out.at_entity("matched/output").component(
+                ComponentDescriptor::partial("transformed"),
+                Selector::parse(".")?,
+            )
+        })
+        .unwrap()
+        .build();
 
-    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
-    lenses.add_lens(lens);
+    let lenses = Lenses::new(OutputMode::DropUnmatched)
+        .add_lens_with_filter(EntityPathFilter::parse_forgiving("matched/**"), lens);
 
     // Apply to matching chunk
     let matching_results: Vec<_> = lenses

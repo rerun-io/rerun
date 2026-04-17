@@ -1,4 +1,6 @@
-use egui::{Frame, NumExt as _, Ui};
+use egui::{Color32, Frame, NumExt as _, Ui};
+
+use super::response_ext::ResponseExt as _;
 
 /// Per-item configuration for [`CardLayout`].
 pub struct CardLayoutItem {
@@ -16,6 +18,8 @@ pub struct CardLayoutItem {
 pub struct CardLayout {
     items: Vec<CardLayoutItem>,
     default_frame: Frame,
+    hover_overlay: Option<Color32>,
+    all_rows_use_available_width: bool,
 }
 
 /// Pre-computed assignment of items to a single row.
@@ -41,6 +45,8 @@ impl CardLayout {
                 })
                 .collect(),
             default_frame: frame,
+            hover_overlay: None,
+            all_rows_use_available_width: true,
         }
     }
 
@@ -49,13 +55,34 @@ impl CardLayout {
         Self {
             items,
             default_frame,
+            hover_overlay: None,
+            all_rows_use_available_width: true,
         }
+    }
+
+    /// Whether all rows stretch to fill the available width (default: `true`).
+    ///
+    /// When set to `false`, cards on the last row keep the same width
+    /// they would have on a full row.
+    pub fn all_rows_use_available_width(mut self, value: bool) -> Self {
+        self.all_rows_use_available_width = value;
+        self
+    }
+
+    /// Set an overlay color painted on top of hovered cards.
+    ///
+    /// The presence of this color enables hover interaction on cards.
+    pub fn hover_overlay(mut self, color: Color32) -> Self {
+        self.hover_overlay = Some(color);
+        self
     }
 
     pub fn show(self, ui: &mut Ui, mut show_item: impl FnMut(&mut Ui, usize)) {
         let Self {
             items,
             default_frame,
+            hover_overlay,
+            all_rows_use_available_width,
         } = self;
 
         if items.is_empty() {
@@ -108,7 +135,14 @@ impl CardLayout {
 
             let gap_space = item_spacing.x * (row.num_items - 1) as f32;
             let gap_space_item = gap_space / row.num_items as f32;
-            let item_growth = available_width / row.total_width;
+            let is_last_row = row_idx + 1 == rows.len();
+            let item_growth = if !all_rows_use_available_width && is_last_row && rows.len() > 1 {
+                // Use the first row's growth factor so last-row cards
+                // stay the same width as cards on full rows.
+                available_width / rows[0].total_width
+            } else {
+                available_width / row.total_width
+            };
 
             let mut card_x = full_rect.min.x;
             let mut new_row_stats = RowStats::default();
@@ -120,23 +154,38 @@ impl CardLayout {
                 let card_width =
                     (item_growth * item.min_width - gap_space_item).at_most(available_width);
 
+                let card_rect = egui::Rect::from_min_size(
+                    egui::pos2(card_x, row_y),
+                    egui::vec2(card_width, *row_height),
+                );
+
                 let mut child_ui = ui.new_child(
                     egui::UiBuilder::new()
-                        .max_rect(egui::Rect::from_min_size(
-                            egui::pos2(card_x, row_y),
-                            egui::vec2(card_width, *row_height),
-                        ))
+                        .max_rect(card_rect)
                         .layout(egui::Layout::left_to_right(egui::Align::Min)),
                 );
 
                 let mut content_height = 0.0;
-                frame.show(&mut child_ui, |ui| {
+                let frame_response = frame.show(&mut child_ui, |ui| {
                     ui.set_width((card_width - frame_margin.x).at_most(ui.available_width()));
                     show_item(ui, row.first_item + i);
 
                     content_height = ui.min_size().y;
                     ui.set_height((row_height - frame_margin.y).at_least(0.0));
                 });
+
+                // Paint a hover overlay on top of the card.
+                // Use `container_hovered` rather than `hovered()` so the overlay
+                // persists even when child widgets (e.g. flag buttons) consume clicks.
+                if let Some(overlay) = hover_overlay
+                    && frame_response.response.container_hovered()
+                {
+                    child_ui.painter().rect_filled(
+                        frame_response.response.rect,
+                        frame.corner_radius,
+                        overlay,
+                    );
+                }
 
                 new_row_stats.max_height = new_row_stats
                     .max_height

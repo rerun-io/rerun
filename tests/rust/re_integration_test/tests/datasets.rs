@@ -136,7 +136,6 @@ pub async fn start_with_dataset_url() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "flaky test"]
 pub async fn start_with_segment_fragment_url() {
     let (server, segment_id) = TestServer::spawn().await.with_test_data().await;
 

@@ -13,13 +13,13 @@ use super::py_stream::PyLazyChunkStreamInternal;
 use super::stream::LazyChunkStream;
 use super::{ChunkStream, ChunkStreamFactory};
 
-/// Internal MCAP loader binding.
+/// Internal MCAP reader binding.
 #[pyclass(
     frozen,
-    name = "McapLoaderInternal",
+    name = "McapReaderInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
-pub struct PyMcapLoaderInternal {
+pub struct PyMcapReaderInternal {
     path: PathBuf,
     loader: re_importer::importer_mcap::McapImporter,
     timeline_type: TimeType,
@@ -27,7 +27,7 @@ pub struct PyMcapLoaderInternal {
 }
 
 #[pymethods]
-impl PyMcapLoaderInternal {
+impl PyMcapReaderInternal {
     #[new]
     #[pyo3(text_signature = "(self, path, timeline_type, timestamp_offset_ns, decoders)")]
     fn new(
@@ -96,7 +96,7 @@ impl PyMcapLoaderInternal {
         )))
     }
 
-    /// The file path this loader was constructed with.
+    /// The file path this reader was constructed with.
     #[getter]
     fn path(&self) -> PathBuf {
         self.path.clone()

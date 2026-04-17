@@ -7,12 +7,9 @@ use nohash_hasher::IntSet;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{ChunkId, EntityPath, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
-use re_log::debug_assert;
 use re_log_encoding::{CodecResult, RrdManifest};
 use re_log_types::{AbsoluteTimeRange, StoreKind, TimelinePoint};
-use re_mutex::Mutex;
 
-use crate::chunk_requests::ChunkBatchRequest;
 pub use crate::chunk_requests::{ChunkPromise, ChunkRequests, RequestInfo};
 
 mod chunk_prioritizer;
@@ -20,7 +17,10 @@ mod collapsed_time_ranges;
 mod sorted_temporal_chunks;
 mod time_range_merger;
 
-pub use chunk_prioritizer::{ChunkPrefetchOptions, ChunkPrioritizer, PrefetchError};
+pub use chunk_prioritizer::{
+    ChunkFetcher, ChunkPrefetchOptions, ChunkPrioritizer, FetchStage, PrefetchError,
+    RemainingByteBudget,
+};
 pub use sorted_temporal_chunks::ChunkCountInfo;
 
 use sorted_temporal_chunks::SortedTemporalChunks;
@@ -584,64 +584,69 @@ impl RrdManifestIndex {
         store: &ChunkStore,
         options: &ChunkPrefetchOptions,
         time_cursor: Option<TimelinePoint>,
+        budget: &mut RemainingByteBudget,
         load_chunks: &dyn Fn(RecordBatch) -> ChunkPromise,
     ) -> Result<(), PrefetchError> {
         re_tracing::profile_function!();
 
-        let used_and_missing = store.take_tracked_chunk_ids(); // Note: this mutates the store (kind of).
+        let Some(mut fetcher) = self.prepare_chunk_fetcher(store, options, time_cursor, budget)
+        else {
+            return Ok(());
+        };
 
-        if let Some(manifest) = &self.manifest {
-            let to_load = self.chunk_prioritizer.prioritize_and_prefetch(
-                store,
-                &used_and_missing,
-                options,
-                time_cursor,
-                manifest,
-                &self.root_chunks,
-            )?;
+        fetcher.fetch(budget, FetchStage::Everything)?;
 
-            // Start loading all batches we prepared:
-            for (rb, batch_info) in to_load {
-                for root_chunk_id in &batch_info.root_chunk_ids {
-                    if let Some(root_chunk) = self.root_chunks.get_mut(root_chunk_id) {
-                        root_chunk.state = LoadState::InTransit;
-                    }
-                }
+        let res = fetcher.finish(load_chunks)?;
 
-                let promise = load_chunks(rb);
-                let batch = ChunkBatchRequest {
-                    promise: Mutex::new(Some(promise)),
-                    info: batch_info.into(),
-                };
-                self.chunk_prioritizer.chunk_requests_mut().add(batch);
+        self.handle_fetch_result(res);
+
+        Ok(())
+    }
+
+    pub fn handle_fetch_result(&mut self, res: chunk_prioritizer::ChunkFetchResult) {
+        for chunk_id in res.new_in_transit_chunks {
+            if let Some(chunk) = self.root_chunks.get_mut(&chunk_id) {
+                chunk.state = LoadState::InTransit;
             }
-
-            if let Some(time_cursor) = time_cursor {
-                self.update_loaded_ranges(time_cursor.name);
-            }
-
-            // Sanity checking:
-            if let Some(state) = self.chunk_prioritizer.latest_result()
-                && state.all_chunks_loaded_or_in_transit()
-            {
-                for (root_chunk_id, chunk_info) in &self.root_chunks {
-                    debug_assert!(
-                        chunk_info.state != LoadState::Unloaded,
-                        "All root chunks should be either loading or already loaded"
-                    );
-                    debug_assert!(
-                        self.chunk_prioritizer
-                            .protected_chunks()
-                            .roots
-                            .contains(root_chunk_id)
-                    );
-                }
-            }
-
-            Ok(())
-        } else {
-            Err(PrefetchError::NoManifest)
         }
+
+        if let Some(time_cursor) = res.time_cursor {
+            self.update_loaded_ranges(*time_cursor.timeline().name());
+        }
+    }
+
+    /// Handle initial chunk prioritization and build a [`ChunkFetcher`].
+    ///
+    /// This should be called once per frame per recording, because it
+    /// clears tracked missing & used chunks from the chunk store, so that can be populated again next frame.
+    ///
+    /// Subtracts already loaded physical chunks from the memory budget.
+    ///
+    /// Then call [`ChunkFetcher::fetch`] to actually fetch chunks,
+    /// and [`ChunkFetcher::finish`] when done.
+    pub fn prepare_chunk_fetcher<'a>(
+        &'a mut self,
+        store: &'a ChunkStore,
+        options: &ChunkPrefetchOptions,
+        time_cursor: Option<TimelinePoint>,
+        budget: &mut RemainingByteBudget,
+    ) -> Option<ChunkFetcher<'a>> {
+        let manifest = self.manifest.as_ref()?;
+        Some(self.chunk_prioritizer.prepare_chunk_fetcher(
+            store,
+            manifest,
+            options,
+            time_cursor,
+            &self.root_chunks,
+            budget,
+        ))
+    }
+
+    /// True if there are any protected chunks (chunks we're keeping in memory).
+    ///
+    /// Recordings with protected chunks should not be auto-closed.
+    pub fn has_protected_chunks(&self) -> bool {
+        !self.chunk_prioritizer.protected_chunks().roots.is_empty()
     }
 
     /// Creates an iterator of time ranges which are loaded on a specific timeline.

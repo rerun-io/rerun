@@ -260,7 +260,7 @@ impl CachedTransformsForTimeline {
                     Some(existing_path) => {
                         if existing_path != entity_path {
                             re_log::error_once!(
-                                "The entity path associated with a child frame mustn't change except for static vs temporal data. The frame {:?} was previously logged temporally at the path {existing_path:?} and was now logged on {entity_path:?}.",
+                                "Two entities define the same child frame. This is only allowed if one of them is static and the other is temporal. The frame {:?} was already temporally associated with {existing_path:?}, but is now also being temporally logged on {entity_path:?}.",
                                 frame_registry.lookup_frame_id(child_frame).map_or_else(
                                     || format!("{child_frame:?}"),
                                     ToString::to_string
@@ -303,7 +303,7 @@ impl CachedTransformsForTimeline {
                     Some(existing_path) => {
                         if existing_path != entity_path {
                             re_log::error_once!(
-                                "The entity path associated with a child frame mustn't change except for static vs temporal data. The frame {:?} was previously logged statically at the path {existing_path:?} and was now logged on {entity_path:?}.",
+                                "Two entities define the same child frame. This is only allowed if one of them is static and the other is temporal. The frame {:?} was already statically associated with {existing_path:?}, but is now also being statically logged on {entity_path:?}.",
                                 frame_registry.lookup_frame_id(child_frame).map_or_else(
                                     || format!("{child_frame:?}"),
                                     ToString::to_string

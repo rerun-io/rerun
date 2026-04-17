@@ -164,4 +164,10 @@ pub struct VideoOptions {
 pub struct ExperimentalAppOptions {
     /// Enable the experimental States view.
     pub enable_states_view: bool,
+
+    /// Enable grid view mode for data tables.
+    ///
+    /// When enabled, a list/grid toggle appears in the table title bar,
+    /// allowing users to switch between the traditional table and a card-based grid layout.
+    pub table_grid_view: bool,
 }

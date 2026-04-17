@@ -9,10 +9,10 @@ from ._chunk import Chunk
 from ._lens import Lens
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Sequence
+    from collections.abc import Callable, Iterable, Iterator, Sequence
     from pathlib import Path
 
-    from rerun_bindings import ComponentDescriptor
+    from rerun_bindings import ChunkInternal, ComponentDescriptor
 
     from ._chunk_store import ChunkStore
 
@@ -121,6 +121,33 @@ class LazyChunkStream:
             )
         )
 
+    # --- Map / FlatMap ---
+
+    def map(self, fn: Callable[[Chunk], Chunk]) -> LazyChunkStream:
+        """
+        Apply a Python function to each chunk, producing exactly one output chunk.
+
+        Runs in Python (GIL-bound, sequential). For transforms that may produce
+        zero or many chunks, use ``flat_map`` instead.
+        """
+
+        def _wrapper(internal: ChunkInternal) -> ChunkInternal:
+            return fn(Chunk(internal))._internal
+
+        return LazyChunkStream(self._internal.map(_wrapper))
+
+    def flat_map(self, fn: Callable[[Chunk], Iterable[Chunk]]) -> LazyChunkStream:
+        """
+        Apply a Python function to each chunk, producing zero or more output chunks.
+
+        Runs in Python (GIL-bound, sequential).
+        """
+
+        def _wrapper(internal: ChunkInternal) -> list[ChunkInternal]:
+            return [c._internal for c in fn(Chunk(internal))]
+
+        return LazyChunkStream(self._internal.flat_map(_wrapper))
+
     # --- Lenses ---
 
     def lenses(
@@ -138,7 +165,7 @@ class LazyChunkStream:
         Parameters
         ----------
         lenses:
-            One or more :class:`Lens` objects describing the transformations.
+            One or more [`Lens`][] objects describing the transformations.
         output_mode:
             How to handle unmatched chunks:
 

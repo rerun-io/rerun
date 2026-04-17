@@ -1,45 +1,186 @@
+use ahash::HashMap;
 use arrow::array::RecordBatch;
 
-use re_chunk::{Chunk, TimeInt};
-use re_entity_db::EntityDb;
-use re_log_types::TimelinePoint;
+use itertools::chain;
+use re_chunk::Chunk;
+use re_entity_db::{
+    ChunkFetcher, ChunkPrefetchOptions, FetchStage, RemainingByteBudget, StoreBundle,
+};
+use re_log_types::{StoreId, TimelinePoint};
 use re_redap_client::{ApiResult, ConnectionClient};
-use re_viewer_context::TimeControl;
 
-pub fn prefetch_chunks_for_recording(
+pub enum RecordingOpenKind {
+    Active,
+    Preview,
+    Inactive,
+}
+
+/// Info needed to prefetch chunks for a single recording.
+pub struct RecordingPrefetchInfo {
+    pub store_id: StoreId,
+    pub open_kind: RecordingOpenKind,
+    pub time_cursor: Option<TimelinePoint>,
+    pub origin: re_uri::Origin,
+}
+
+/// Prefetch chunks for multiple recordings with a shared memory budget
+/// between the recordings. Prioritizes the active recording and preview
+/// recordings over background recordings.
+pub fn prefetch_chunks_for_recordings(
     egui_ctx: &egui::Context,
-    chunk_budget: re_memory::MemoryLimit,
-    recording: &mut EntityDb,
-    time_ctrl: Option<&TimeControl>,
+    store_bundle: &mut StoreBundle,
+    recordings_info: &HashMap<StoreId, RecordingPrefetchInfo>,
+    total_bytes_in_memory: u64,
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    options: &ChunkPrefetchOptions,
 ) {
     re_tracing::profile_function!();
 
-    let Some(redap_uri) = recording.redap_uri().cloned() else {
-        return;
-    };
-    let origin = redap_uri.origin.clone();
+    struct FetchState<'a> {
+        store_id: StoreId,
+        fetcher: ChunkFetcher<'a>,
+        origin: re_uri::Origin,
+    }
 
-    let time_cursor = time_ctrl.and_then(|time_ctrl| {
-        let current_time = time_ctrl.time_i64()?;
-        let timeline = *time_ctrl.timeline()?;
-        let start_time = TimeInt::new_temporal(current_time);
+    /// Fetches all stages in a specific order:
+    /// 1. Required for active recordings.
+    /// 2. Required for preview recordings.
+    /// 3. Similar for active recordings.
+    /// 4. Similar for preview recordings.
+    /// 5. Everything for active recordings.
+    /// 6. Everything for background recordings.
+    ///
+    /// (Preview recordings intentionally skip the `Everything` stage)
+    ///
+    /// If any budget (on wire, or memory) gets filled here we stop and don't
+    /// request/prioritize further.
+    fn fetch_stages<'a>(
+        active_states: &mut [FetchState<'a>],
+        preview_states: &mut [FetchState<'a>],
+        background_states: &mut [FetchState<'a>],
+        mut fetch_stage: impl FnMut(&mut FetchState<'a>, FetchStage) -> bool,
+    ) {
+        for stage in [FetchStage::Required, FetchStage::Similar] {
+            for state in chain!(active_states.iter_mut(), preview_states.iter_mut()) {
+                if fetch_stage(state, stage) {
+                    return;
+                }
+            }
+        }
 
-        Some(TimelinePoint::from((timeline, start_time)))
-    });
+        for state in chain!(active_states.iter_mut(), background_states.iter_mut()) {
+            if fetch_stage(state, FetchStage::Everything) {
+                return;
+            }
+        }
+    }
 
-    if !recording.can_fetch_chunks_from_redap() {
+    let mut recordings_stores_with_info = store_bundle
+        .recordings_mut()
+        .filter_map(|recording| {
+            if !recording.can_fetch_chunks_from_redap() {
+                return None;
+            }
+
+            let info = recordings_info.get(recording.store_id())?;
+
+            let (rrd_manifest, storage_engine) =
+                recording.rrd_manifest_index_mut_and_storage_engine();
+
+            Some((info, rrd_manifest, storage_engine))
+        })
+        .collect::<Vec<_>>();
+
+    // Compute total in-flight bytes across all recordings upfront,
+    // so we know the remaining wire budget before creating any fetchers.
+    let total_in_flight_bytes: u64 = recordings_stores_with_info
+        .iter()
+        .map(|(_, manifest, _)| manifest.chunk_requests().num_on_wire_bytes_pending())
+        .sum();
+    let mut budget = RemainingByteBudget::new(
+        total_bytes_in_memory,
+        options
+            .max_bytes_on_wire_at_once
+            .saturating_sub(total_in_flight_bytes),
+    );
+
+    // Early out if the budget is full already.
+    if budget.full() {
         return;
     }
 
-    let options = re_entity_db::ChunkPrefetchOptions {
-        total_uncompressed_byte_budget: chunk_budget.as_bytes(),
-        ..Default::default()
-    };
+    // Update tracked chunk IDs and build priority lists for all recordings.
+    let mut active_states: Vec<FetchState<'_>> = Vec::new();
+    let mut preview_states: Vec<FetchState<'_>> = Vec::new();
+    let mut background_states: Vec<FetchState<'_>> = Vec::new();
+    for (info, manifest, storage_engine) in &mut recordings_stores_with_info {
+        if let Some(fetcher) = manifest.prepare_chunk_fetcher(
+            storage_engine.store(),
+            options,
+            info.time_cursor,
+            &mut budget,
+        ) {
+            let fetch_state = FetchState {
+                store_id: info.store_id.clone(),
+                fetcher,
+                origin: info.origin.clone(),
+            };
 
-    let (rrd_manifest, storage_engine) = recording.rrd_manifest_index_mut_and_storage_engine();
+            (match info.open_kind {
+                RecordingOpenKind::Active => &mut active_states,
+                RecordingOpenKind::Preview => &mut preview_states,
+                RecordingOpenKind::Inactive => &mut background_states,
+            })
+            .push(fetch_state);
+        }
+    }
 
-    let load_chunks = &|rb| {
+    fetch_stages(
+        &mut active_states,
+        &mut preview_states,
+        &mut background_states,
+        |state: &mut FetchState<'_>, stage| {
+            if let Err(err) = state.fetcher.fetch(&mut budget, stage) {
+                re_log::warn_once!("prefetch_chunks failed: {err}");
+            }
+
+            budget.full()
+        },
+    );
+
+    // Then finish fetching for all
+    let results = chain!(active_states, preview_states, background_states)
+        .map(|state| {
+            let load_fn = make_load_fn(egui_ctx, connection_registry, &state.origin);
+
+            (state.store_id, state.fetcher.finish(&load_fn))
+        })
+        .collect::<Vec<_>>();
+
+    drop(recordings_stores_with_info);
+
+    for (store_id, result) in results {
+        let Some(recording) = store_bundle.get_mut(&store_id) else {
+            continue;
+        };
+
+        match result {
+            Ok(res) => {
+                recording.rrd_manifest_index_mut().handle_fetch_result(res);
+            }
+            Err(err) => {
+                re_log::warn_once!("prefetch_chunks failed: {err}");
+            }
+        }
+    }
+}
+
+fn make_load_fn<'a>(
+    egui_ctx: &'a egui::Context,
+    connection_registry: &'a re_redap_client::ConnectionRegistryHandle,
+    origin: &'a re_uri::Origin,
+) -> impl Fn(RecordBatch) -> re_entity_db::ChunkPromise + 'a {
+    move |rb| {
         egui_ctx.request_repaint();
         let connection_registry = connection_registry.clone();
         let origin = origin.clone();
@@ -53,7 +194,6 @@ pub fn prefetch_chunks_for_recording(
             })
         };
 
-        // Annoying poll_promise API difference:
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
                 poll_promise::Promise::spawn_local(fut)
@@ -61,12 +201,6 @@ pub fn prefetch_chunks_for_recording(
                 poll_promise::Promise::spawn_async(fut)
             }
         }
-    };
-
-    if let Err(err) =
-        rrd_manifest.prefetch_chunks(storage_engine.store(), &options, time_cursor, load_chunks)
-    {
-        re_log::warn_once!("prefetch_chunks failed: {err}");
     }
 }
 
