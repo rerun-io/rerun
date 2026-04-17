@@ -24,6 +24,9 @@ type DrawDataIndex = u32;
 /// However, using just the higher 8 bits for [`RendererTypeId`] makes the process a lot simpler.
 /// We may reconsider this if we change the design such that variations of renderers are
 /// expressed in the [`RendererTypeId`] such that 8 bit are no longer sufficient.
+///
+/// The packed [`RendererTypeId`] is session-local (assigned on registration); for deterministic
+/// cross-session sort order, remap it via [`crate::context::Renderers::name_sort_remap`].
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct PackedRenderingKeyAndDrawDataIndex(u32);
 
@@ -94,16 +97,28 @@ impl Drawable {
         self.draw_data_plus_rendering_key.renderer_key()
     }
 
+    /// Sort key for this drawable under the given name-sort remap.
+    ///
+    /// `name_sort_remap[key]` is the name-sorted rank of each registration-order
+    /// [`RendererTypeId`] — see [`crate::context::Renderers::name_sort_remap`].
+    #[inline]
+    fn renderer_sort_key(&self, name_sort_remap: &[u8; 256]) -> u8 {
+        name_sort_remap[self.renderer_key().bits() as usize]
+    }
+
     /// Sorting key used for the opaque phases.
     ///
     /// Aggressively bundles by renderer type & draw data index.
     /// Within a single draw data, it puts near objects first so that the GPU can use early-z
     /// to discard objects that are further away.
+    ///
+    /// `name_sort_remap` provides a deterministic renderer ordering based on lexicographic
+    /// comparison of Rust type names; this is what makes draw order stable across sessions.
     #[inline]
-    fn sort_for_opaque_phase(drawables: &mut [Self]) {
+    fn sort_for_opaque_phase(drawables: &mut [Self], name_sort_remap: &[u8; 256]) {
         drawables.sort_by(|a, b| {
-            a.renderer_key()
-                .cmp(&b.renderer_key())
+            a.renderer_sort_key(name_sort_remap)
+                .cmp(&b.renderer_sort_key(name_sort_remap))
                 .then_with(|| a.draw_data_index().cmp(&b.draw_data_index()))
                 .then_with(|| a.distance_sort_key.total_cmp(&b.distance_sort_key))
                 .then_with(|| a.secondary_sort_key.total_cmp(&b.secondary_sort_key))
@@ -176,15 +191,23 @@ impl DrawPhaseManager {
     }
 
     /// Sorts all drawables for all active phases.
-    pub fn sort_drawables(&mut self) {
+    ///
+    /// Renderer-type ordering is derived from `Renderers::name_sort_remap` so draw order
+    /// is deterministic across sessions regardless of which renderer was registered first.
+    pub fn sort_drawables(&mut self, renderers: &Renderers) {
         re_tracing::profile_function!();
+
+        let name_sort_remap = renderers.name_sort_remap();
 
         // TODO(andreas): once we have traits/more dynamic interfaces for phases, they should own the sorting configuration.
         for phase in self.active_phases {
             if phase == DrawPhase::Transparent || phase == DrawPhase::OutlineMaskNoDepth {
                 Drawable::sort_for_transparent_phase(&mut self.drawables[phase as usize]);
             } else {
-                Drawable::sort_for_opaque_phase(&mut self.drawables[phase as usize]);
+                Drawable::sort_for_opaque_phase(
+                    &mut self.drawables[phase as usize],
+                    &name_sort_remap,
+                );
             }
         }
     }
@@ -364,6 +387,19 @@ mod tests {
     const RENDERER_0: RendererTypeId = RendererTypeId::from_bits(0);
     const RENDERER_2: RendererTypeId = RendererTypeId::from_bits(2);
 
+    /// Identity remap: [`RendererTypeId`] `i` has sort key `i`. Used by tests that want to
+    /// preserve the direct registration-order sort semantics the tests were originally written
+    /// against.
+    const IDENTITY_REMAP: [u8; 256] = {
+        let mut remap = [0u8; 256];
+        let mut i = 0;
+        while i < 256 {
+            remap[i] = i as u8;
+            i += 1;
+        }
+        remap
+    };
+
     const TEST_DRAWABLES: [Drawable; 7] = [
         Drawable {
             distance_sort_key: 0.0,
@@ -472,7 +508,7 @@ mod tests {
 
         {
             let mut drawables = TEST_DRAWABLES.to_vec();
-            Drawable::sort_for_opaque_phase(&mut drawables);
+            Drawable::sort_for_opaque_phase(&mut drawables, &IDENTITY_REMAP);
             assert_eq!(drawables, expected);
         }
 
@@ -485,7 +521,7 @@ mod tests {
             // items in the test sequence that are identical but have different payloads.
             drawables.swap(0, 1);
 
-            Drawable::sort_for_opaque_phase(&mut drawables);
+            Drawable::sort_for_opaque_phase(&mut drawables, &IDENTITY_REMAP);
             assert_eq!(drawables, expected);
         }
     }
@@ -673,9 +709,66 @@ mod tests {
             },
         ];
 
-        Drawable::sort_for_opaque_phase(&mut drawables);
+        Drawable::sort_for_opaque_phase(&mut drawables, &IDENTITY_REMAP);
 
         assert_eq!(drawables[0].draw_data_payload, 0);
         assert_eq!(drawables[1].draw_data_payload, 1);
+    }
+
+    /// Regression test: two drawables with identical distance/secondary sort keys but different
+    /// [`RendererTypeId`]s must have a deterministic relative order determined by the remap, not
+    /// by whichever key happens to have the lower u8 value.
+    ///
+    /// This is the exact scenario that previously caused view draw-order flake in a map view (trajectory
+    /// linestrings vs annotation points): both had `distance_sort_key = f32::MAX` and both were
+    /// in the opaque phase; their relative order was therefore decided by the registration-order
+    /// renderer key, which varied between sessions.
+    #[test]
+    fn test_opaque_sort_is_invariant_under_remap_inversion() {
+        let key_a = RendererTypeId::from_bits(0);
+        let key_b = RendererTypeId::from_bits(1);
+
+        let make_drawable = |key: RendererTypeId, payload: DrawDataDrawablePayload| Drawable {
+            distance_sort_key: f32::MAX,
+            secondary_sort_key: 0.0,
+            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(key, 0),
+            draw_data_payload: payload,
+        };
+
+        // Remap that swaps keys 0 and 1 — as would happen if renderer B's type name sorts
+        // before renderer A's.
+        let mut swapped_remap = IDENTITY_REMAP;
+        swapped_remap[0] = 1;
+        swapped_remap[1] = 0;
+
+        let base = vec![
+            make_drawable(key_a, 0), // payload 0 = renderer A
+            make_drawable(key_b, 1), // payload 1 = renderer B
+        ];
+
+        // Identity remap (A before B): A first.
+        {
+            let mut d = base.clone();
+            Drawable::sort_for_opaque_phase(&mut d, &IDENTITY_REMAP);
+            assert_eq!(d[0].draw_data_payload, 0);
+            assert_eq!(d[1].draw_data_payload, 1);
+        }
+
+        // Swapped remap (B before A): B first — regardless of input order.
+        {
+            let mut d = base.clone();
+            Drawable::sort_for_opaque_phase(&mut d, &swapped_remap);
+            assert_eq!(d[0].draw_data_payload, 1);
+            assert_eq!(d[1].draw_data_payload, 0);
+        }
+
+        // Order of the input vec must not affect the outcome — the remap is the only thing
+        // that decides the winner.
+        {
+            let mut d = vec![make_drawable(key_b, 1), make_drawable(key_a, 0)];
+            Drawable::sort_for_opaque_phase(&mut d, &swapped_remap);
+            assert_eq!(d[0].draw_data_payload, 1);
+            assert_eq!(d[1].draw_data_payload, 0);
+        }
     }
 }
