@@ -3,7 +3,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
-from rerun_bindings import _UrdfJointInternal, _UrdfLinkInternal, _UrdfTreeInternal
+from rerun_bindings import _UrdfJointInternal, _UrdfLinkInternal, _UrdfMimicInternal, _UrdfTreeInternal
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -13,7 +13,37 @@ if TYPE_CHECKING:
     from ._baseclasses import ComponentColumnList
     from .recording_stream import RecordingStream
 
-__all__ = ["UrdfJoint", "UrdfLink", "UrdfTree"]
+__all__ = ["UrdfJoint", "UrdfLink", "UrdfMimic", "UrdfTree"]
+
+
+class UrdfMimic:
+    """
+    A URDF ``<mimic>`` tag specification.
+
+    A mimic joint's value is derived from a driver joint as
+    ``value = multiplier * driver_value + offset``.
+    """
+
+    def __init__(self, inner: _UrdfMimicInternal) -> None:
+        self._inner = inner
+
+    @property
+    def joint(self) -> str:
+        """Name of the driver joint."""
+        return self._inner.joint
+
+    @property
+    def multiplier(self) -> float:
+        """Multiplier applied to the driver joint's value (defaults to ``1.0``)."""
+        return self._inner.multiplier
+
+    @property
+    def offset(self) -> float:
+        """Offset added after multiplying the driver joint's value (defaults to ``0.0``)."""
+        return self._inner.offset
+
+    def __repr__(self) -> str:
+        return self._inner.__repr__()
 
 
 class UrdfJoint:
@@ -76,6 +106,12 @@ class UrdfJoint:
     def limit_velocity(self) -> float:
         """Velocity limit of the joint."""
         return self._inner.limit_velocity
+
+    @property
+    def mimic(self) -> UrdfMimic | None:
+        """Mimic-tag specification, or ``None`` if this joint is not a mimic joint."""
+        inner = self._inner.mimic
+        return UrdfMimic(inner) if inner is not None else None
 
     def compute_transform(self, value: float, clamp: bool = True) -> Transform3D:
         """

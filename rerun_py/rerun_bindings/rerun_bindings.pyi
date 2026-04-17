@@ -1176,6 +1176,10 @@ class _UrdfJointInternal:
     def limit_effort(self) -> float: ...
     @property
     def limit_velocity(self) -> float: ...
+    @property
+    def mimic(self) -> _UrdfMimicInternal | None:
+        """The ``<mimic>`` tag for this joint, or ``None`` if this is not a mimic joint."""
+
     def compute_transform(self, value: float, clamp: bool = False) -> dict[str, Any]:
         """
         Compute the transform components for this joint at the given value.
@@ -1196,6 +1200,16 @@ class _UrdfJointInternal:
         If `clamp` is True, values outside joint limits will be clamped and a warning is generated.
         If `clamp` is False (default), values outside limits are used as-is without warnings.
         """
+
+class _UrdfMimicInternal:
+    """Internal Rust representation of a URDF ``<mimic>`` tag."""
+
+    @property
+    def joint(self) -> str: ...
+    @property
+    def multiplier(self) -> float: ...
+    @property
+    def offset(self) -> float: ...
 
 class _UrdfLinkInternal:
     """Internal Rust representation of a URDF link."""

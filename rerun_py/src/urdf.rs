@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError};
 use pyo3::prelude::*;
 use re_sdk::external::re_importer::{UrdfTree, urdf_joint_transform};
-use re_sdk::external::urdf_rs::{Joint, JointType, Link};
+use re_sdk::external::urdf_rs::{Joint, JointType, Link, Mimic};
 use re_sdk::{EntityPath, TimePoint};
 
 use crate::python_bridge::{PyRecordingStream, get_data_recording};
@@ -219,6 +219,12 @@ impl PyUrdfJoint {
         self.joint.limit.velocity
     }
 
+    /// Mimic-tag specification, or `None` if this joint is not a mimic joint.
+    #[getter]
+    pub fn mimic(&self) -> Option<PyUrdfMimic> {
+        self.joint.mimic.clone().map(PyUrdfMimic)
+    }
+
     /// Compute the transform components for this joint at the given value.
     ///
     /// The result is wrapped in a dictionary for easy conversion to the final types in Python.
@@ -264,8 +270,8 @@ impl PyUrdfJoint {
 
                 Ok(dict.into())
             }
-            Err(e @ urdf_joint_transform::Error::UnsupportedJointType(_)) => {
-                Err(PyNotImplementedError::new_err(e.to_string()))
+            Err(err @ urdf_joint_transform::Error::UnsupportedJointType(_)) => {
+                Err(PyNotImplementedError::new_err(err.to_string()))
             }
         }
     }
@@ -317,8 +323,8 @@ impl PyUrdfJoint {
                             Self::apply_prefix(self.frame_prefix.as_ref(), &result.child_frame);
                     }
                 }
-                Err(e @ urdf_joint_transform::Error::UnsupportedJointType(_)) => {
-                    return Err(PyNotImplementedError::new_err(e.to_string()));
+                Err(err @ urdf_joint_transform::Error::UnsupportedJointType(_)) => {
+                    return Err(PyNotImplementedError::new_err(err.to_string()));
                 }
             }
         }
@@ -353,6 +359,45 @@ impl PyUrdfJoint {
     }
 }
 
+/// URDF `<mimic>` tag: this joint's value is derived from a driver joint.
+#[pyclass(name = "_UrdfMimicInternal", module = "rerun_bindings.rerun_bindings")]
+#[derive(Clone)]
+pub struct PyUrdfMimic(pub Mimic);
+
+#[pymethods]
+impl PyUrdfMimic {
+    /// Name of the driver joint.
+    #[getter]
+    pub fn joint(&self) -> &str {
+        &self.0.joint
+    }
+
+    /// Multiplier applied to the driver joint's value.
+    ///
+    /// Defaults to `1.0` per the URDF spec when the `<mimic>` tag omits `multiplier`.
+    #[getter]
+    pub fn multiplier(&self) -> f64 {
+        self.0.multiplier.unwrap_or(1.0)
+    }
+
+    /// Offset added after multiplying the driver joint's value.
+    ///
+    /// Defaults to `0.0` per the URDF spec when the `<mimic>` tag omits `offset`.
+    #[getter]
+    pub fn offset(&self) -> f64 {
+        self.0.offset.unwrap_or(0.0)
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "UrdfMimic(joint={:?}, multiplier={}, offset={})",
+            self.0.joint,
+            self.multiplier(),
+            self.offset()
+        )
+    }
+}
+
 /// URDF link
 #[pyclass(name = "_UrdfLinkInternal", module = "rerun_bindings.rerun_bindings")]
 #[derive(Clone)]
@@ -375,6 +420,7 @@ impl PyUrdfLink {
 pub fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyUrdfTree>()?;
     m.add_class::<PyUrdfJoint>()?;
+    m.add_class::<PyUrdfMimic>()?;
     m.add_class::<PyUrdfLink>()?;
 
     Ok(())
