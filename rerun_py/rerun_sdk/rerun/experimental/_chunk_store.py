@@ -52,7 +52,7 @@ class ChunkStore:
 
         Each line describes one chunk:
 
-            {entity_path}  rows={n}  static={True|False}  timelines=[…]  cols=[…]
+            {entity_path}  rows={n}  bytes={…}  static={True|False}  timelines=[…]  cols=[…]
 
         Useful for snapshot testing.
 
@@ -66,9 +66,25 @@ class ChunkStore:
 
         return LazyChunkStream(self._internal.stream())
 
-    def compact(self) -> ChunkStore:
-        """Return a new ChunkStore with chunks compacted for optimal storage."""
-        return ChunkStore(self._internal.compact())
+    def compact(self, *, max_bytes: int | None = None, gop_batching: bool = True) -> ChunkStore:
+        """
+        Return a new ChunkStore with chunks compacted for optimal storage.
+
+        Parameters
+        ----------
+        max_bytes:
+            Override the per-chunk byte ceiling used when merging chunks.
+            If `None`, uses the store's default (~384 KiB).
+        gop_batching:
+            If `True` (default), video stream chunks are additionally rebatched
+            to align with GoP (keyframe) boundaries after normal compaction.
+
+            GoP rebatching never splits a GoP across chunks, so streams with long
+            keyframe intervals (e.g. 10+ seconds between I-frames) can produce
+            chunks much larger than `max_bytes`.
+
+        """
+        return ChunkStore(self._internal.compact(max_bytes=max_bytes, gop_batching=gop_batching))
 
     def write_rrd(
         self,

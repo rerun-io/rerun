@@ -94,6 +94,11 @@ pub fn detect_gop_start(
     }
 }
 
+/// Is the given sample the start of a GOP (i.e. a keyframe/sync).
+pub fn is_start_of_gop(sample_data: &[u8], codec: VideoCodec) -> Result<bool, DetectGopStartError> {
+    Ok(detect_gop_start(sample_data, codec)?.is_start_of_gop())
+}
+
 /// Try getting the metadata of the image as all supported formats.
 ///
 /// Returns the format string and metadata.

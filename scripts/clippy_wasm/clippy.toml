@@ -140,6 +140,8 @@ doc-valid-idents = [
   "GitHub",
   "GLB",
   "GLTF",
+  "GoP", # Group of Pictures - common video term
+  "GoPs", # Group of Pictures - common video term
   "iOS",
   "IPv4",
   "IPv6",

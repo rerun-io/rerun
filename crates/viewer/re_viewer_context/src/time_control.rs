@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use re_chunk::{EntityPath, TimelineName};
 use re_entity_db::EntityDb;
-use re_log_channel::LogSource;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeCell, TimeInt, TimeReal, TimeType,
     Timeline,
@@ -10,8 +9,8 @@ use re_log_types::{
 use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 
+use crate::NeedsRepaint;
 use crate::blueprint_helpers::BlueprintContext;
-use crate::{NeedsRepaint, heuristics};
 
 pub const TIME_PANEL_PATH: &str = "time_panel";
 
@@ -408,7 +407,7 @@ pub struct TimeControl {
 impl Default for TimeControl {
     fn default() -> Self {
         Self {
-            timeline: ActiveTimeline::Auto(default_timeline_heuristic(None, [], |_| 0)),
+            timeline: ActiveTimeline::Auto(Timeline::pick_best_timeline([], |_| 0)),
             states: Default::default(),
             playing: true,
             following: true,
@@ -1374,11 +1373,10 @@ impl TimeControl {
         };
 
         if reset_timeline || matches!(self.timeline, ActiveTimeline::Auto(_)) {
-            self.timeline = ActiveTimeline::Auto(default_timeline_heuristic(
-                entity_db.data_source.as_ref(),
-                timelines.values(),
-                |t| entity_db.num_temporal_rows_on_timeline(t.name()),
-            ));
+            self.timeline =
+                ActiveTimeline::Auto(Timeline::pick_best_timeline(timelines.values(), |t| {
+                    entity_db.num_temporal_rows_on_timeline(t.name())
+                }));
         }
     }
 
@@ -1484,123 +1482,5 @@ impl TimeControl {
         self.states
             .get(self.timeline_name())
             .and_then(|state| state.view)
-    }
-}
-
-/// Pick the timeline that should be the default, by row count and prioritizing user-defined ones
-/// with potential preferences for specific log sources.
-fn default_timeline_heuristic<'a>(
-    log_source: Option<&LogSource>,
-    timelines: impl IntoIterator<Item = &'a Timeline>,
-    row_count: impl Fn(&Timeline) -> u64,
-) -> Timeline {
-    re_tracing::profile_function!();
-
-    let timelines = timelines.into_iter().collect::<Vec<_>>();
-    if let Some(preferred_timeline) =
-        heuristics::preferred_timeline_for_log_source(log_source, &timelines)
-    {
-        return preferred_timeline;
-    }
-
-    fn timeline_priority(timeline: &Timeline) -> u8 {
-        match timeline {
-            t if *t == Timeline::log_tick() => 0, // lowest priority
-            t if *t == Timeline::log_time() => 1, // medium priority
-            _ => 2,                               // user-defined, highest priority
-        }
-    }
-
-    timelines
-        .into_iter()
-        .max_by(|a, b| {
-            timeline_priority(a)
-                .cmp(&timeline_priority(b))
-                .then_with(|| row_count(a).cmp(&row_count(b)))
-        })
-        .copied()
-        .unwrap_or_else(Timeline::log_time)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_default_timeline_heuristic() {
-        let log_time = Timeline::log_time();
-        let log_tick = Timeline::log_tick();
-        let custom_timeline0 = Timeline::new("my_timeline0", TimeType::DurationNs);
-        let custom_timeline1 = Timeline::new("my_timeline1", TimeType::DurationNs);
-
-        // With equal row counts, priority alone decides.
-        let equal = |_: &Timeline| 42_u64;
-
-        assert_eq!(default_timeline_heuristic(None, [], equal), log_time);
-        assert_eq!(
-            default_timeline_heuristic(None, [&log_tick], equal),
-            log_tick
-        );
-        assert_eq!(
-            default_timeline_heuristic(None, [&log_time], equal),
-            log_time
-        );
-        assert_eq!(
-            default_timeline_heuristic(None, [&log_time, &log_tick], equal),
-            log_time
-        );
-        assert_eq!(
-            default_timeline_heuristic(None, [&log_time, &log_tick, &custom_timeline0], equal,),
-            custom_timeline0
-        );
-        assert_eq!(
-            default_timeline_heuristic(None, [&custom_timeline0, &log_time, &log_tick], equal,),
-            custom_timeline0
-        );
-        assert_eq!(
-            default_timeline_heuristic(None, [&log_time, &custom_timeline0, &log_tick], equal,),
-            custom_timeline0
-        );
-        assert_eq!(
-            default_timeline_heuristic(None, [&custom_timeline0, &log_time], equal),
-            custom_timeline0
-        );
-        assert_eq!(
-            default_timeline_heuristic(None, [&custom_timeline0, &log_tick], equal),
-            custom_timeline0
-        );
-        assert_eq!(
-            default_timeline_heuristic(None, [&log_time, &custom_timeline0], equal),
-            custom_timeline0
-        );
-        assert_eq!(
-            default_timeline_heuristic(None, [&log_tick, &custom_timeline0], equal),
-            custom_timeline0
-        );
-        assert_eq!(
-            default_timeline_heuristic(None, [&custom_timeline0], equal),
-            custom_timeline0
-        );
-
-        // Row count breaks ties between timelines with the same priority.
-        let more_rows_on_1 = |t: &Timeline| {
-            if *t == custom_timeline1 { 100 } else { 10 }
-        };
-        assert_eq!(
-            default_timeline_heuristic(
-                None,
-                [&custom_timeline0, &custom_timeline1],
-                more_rows_on_1
-            ),
-            custom_timeline1
-        );
-        assert_eq!(
-            default_timeline_heuristic(
-                None,
-                [&custom_timeline1, &custom_timeline0],
-                more_rows_on_1
-            ),
-            custom_timeline1
-        );
     }
 }

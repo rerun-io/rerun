@@ -833,8 +833,8 @@ fn extract_keyframes(
             };
 
             let sample = sample.0.inner().as_slice();
-            match re_video::detect_gop_start(sample, codec.into()) {
-                Ok(re_video::GopStartDetection::StartOfGop(_)) => {
+            match re_video::is_start_of_gop(sample, codec.into()) {
+                Ok(true) => {
                     re_log::debug!(
                         entity = %entity_path,
                         time = %time_to_human_string(cutoff_timeline, time),
@@ -844,7 +844,7 @@ fn extract_keyframes(
                     keyframes.push(time);
                 }
 
-                Ok(re_video::GopStartDetection::NotStartOfGop) => {}
+                Ok(false) => {}
 
                 Err(err) => {
                     re_log::warn!(entity = %entity_path, chunk = %chunk.id(), %err, "keyframe detection failed");

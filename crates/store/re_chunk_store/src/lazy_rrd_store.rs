@@ -129,15 +129,9 @@ impl LazyRrdStore {
     }
 
     /// Load all chunks, then return a compacted copy of the store.
-    pub fn compacted(
-        &self,
-        compaction_config: &ChunkStoreConfig,
-        num_extra_passes: Option<usize>,
-    ) -> ChunkStoreResult<ChunkStore> {
+    pub fn compacted(&self, options: &crate::CompactionOptions) -> ChunkStoreResult<ChunkStore> {
         self.load_all_chunks()?;
-        self.store
-            .read()
-            .compacted(compaction_config, num_extra_passes)
+        self.store.read().compacted(options)
     }
 
     /// Load all chunks and return them.

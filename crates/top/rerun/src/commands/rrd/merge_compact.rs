@@ -2,7 +2,8 @@ use std::io::{IsTerminal as _, Write as _};
 
 use anyhow::Context as _;
 use itertools::Either;
-use re_chunk_store::ChunkStoreConfig;
+use re_byte_size::SizeBytes as _;
+use re_chunk_store::{ChunkStoreConfig, CompactionOptions, IsStartOfGop};
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
 use re_sdk::StoreKind;
@@ -46,11 +47,10 @@ impl MergeCommand {
         // (e.g. by recompacting it differently), so make sure to disable all these features.
         let store_config = ChunkStoreConfig::ALL_DISABLED;
 
-        let num_passes = 0;
         merge_and_compact(
-            num_passes,
             *continue_on_error,
             &store_config,
+            None, // no compaction for merge
             path_to_input_rrds,
             path_to_output_rrd.as_ref(),
         )
@@ -109,6 +109,18 @@ pub struct CompactCommand {
     /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
     #[clap(long = "continue-on-error", default_value_t = false)]
     continue_on_error: bool,
+
+    /// Disable rebatching of video stream chunks to GoP (Group of Pictures) boundaries.
+    ///
+    /// By default, after compaction, video stream chunks are rebatched on GoP
+    /// boundaries so that each chunk contains one or more complete GoPs.
+    /// This flag disables that behavior.
+    ///
+    /// Note: GoP rebatching never splits a GoP across chunks, so streams with
+    /// long keyframe intervals (e.g. 10+ seconds between I-frames) can produce
+    /// chunks much larger than `--max-bytes`.
+    #[clap(long = "no-rebatch-videos", default_value_t = false)]
+    no_rebatch_videos: bool,
 }
 
 impl CompactCommand {
@@ -121,6 +133,7 @@ impl CompactCommand {
             max_rows_if_unsorted,
             num_extra_passes,
             continue_on_error,
+            no_rebatch_videos,
         } = self;
 
         if path_to_output_rrd.is_none() {
@@ -145,10 +158,24 @@ impl CompactCommand {
             store_config.chunk_max_rows_if_unsorted = *max_rows_if_unsorted;
         }
 
+        let is_start_of_gop: IsStartOfGop = std::sync::Arc::new(|data, codec| {
+            re_video::is_start_of_gop(data, codec.into()).map_err(|err| anyhow::anyhow!(err))
+        });
+
+        let compaction_options = CompactionOptions {
+            config: store_config.clone(),
+            num_extra_passes: Some(*num_extra_passes as usize),
+            is_start_of_gop: if *no_rebatch_videos {
+                None
+            } else {
+                Some(is_start_of_gop)
+            },
+        };
+
         merge_and_compact(
-            *num_extra_passes,
             *continue_on_error,
             &store_config,
+            Some(&compaction_options),
             path_to_input_rrds,
             path_to_output_rrd.as_ref(),
         )
@@ -156,9 +183,9 @@ impl CompactCommand {
 }
 
 fn merge_and_compact(
-    num_passes: u32,
     continue_on_error: bool,
     store_config: &ChunkStoreConfig,
+    compaction_options: Option<&CompactionOptions>,
     path_to_input_rrds: &[String],
     path_to_output_rrd: Option<&String>,
 ) -> anyhow::Result<()> {
@@ -191,18 +218,15 @@ fn merge_and_compact(
         match res {
             Ok(msg) => {
                 num_chunks_before += matches!(msg, re_log_types::LogMsg::ArrowMsg(_, _)) as u64;
-                if let Err(err) = entity_dbs
-                    .entry(msg.store_id().clone())
-                    .or_insert_with(|| {
-                        let enable_viewer_indexes = false; // that would just slow us down for no reason
-                        re_entity_db::EntityDb::with_store_config(
-                            msg.store_id().clone(),
-                            enable_viewer_indexes,
-                            store_config.clone(),
-                        )
-                    })
-                    .add_log_msg(&msg)
-                {
+                let db = entity_dbs.entry(msg.store_id().clone()).or_insert_with(|| {
+                    let enable_viewer_indexes = false; // that would just slow us down for no reason
+                    re_entity_db::EntityDb::with_store_config(
+                        msg.store_id().clone(),
+                        enable_viewer_indexes,
+                        store_config.clone(),
+                    )
+                });
+                if let Err(err) = db.add_log_msg(&msg) {
                     re_log::error!(%err, "couldn't index corrupt chunk");
                     is_success = false;
                 }
@@ -232,7 +256,7 @@ fn merge_and_compact(
         }
     }
 
-    if num_passes > 0 {
+    if let Some(compaction_options) = compaction_options {
         let now = std::time::Instant::now();
 
         let num_chunks_before = entity_dbs
@@ -245,10 +269,7 @@ fn merge_and_compact(
             #[expect(unsafe_code)]
             let engine = unsafe { db.storage_engine_raw() };
 
-            let compacted = engine
-                .read()
-                .store()
-                .compacted(store_config, Some(num_passes as usize))?;
+            let compacted = engine.read().store().compacted(compaction_options)?;
             *engine.write().store() = compacted;
         }
 
@@ -267,6 +288,8 @@ fn merge_and_compact(
             "compaction completed",
         );
     }
+
+    log_chunk_size_stats(&entity_dbs, "post-compaction");
 
     let mut rrd_out = if let Some(path) = path_to_output_rrd {
         Either::Left(std::io::BufWriter::new(
@@ -330,14 +353,44 @@ fn merge_and_compact(
     re_log::info!(
         srcs = ?path_to_input_rrds,
         time = ?now.elapsed(),
-        num_chunks_before,
-        num_chunks_after,
-        num_chunks_reduction,
-        srcs_size_bytes = %file_size_to_string(rrds_in_size),
-        dst_size_bytes = %file_size_to_string(Some(rrd_out_size)),
-        size_reduction,
-        "merge/compaction finished"
+        "merge/compaction finished. Chunk count {} -> {} ({num_chunks_reduction}), size {} -> {} ({size_reduction})",
+        re_format::format_uint(num_chunks_before),
+        re_format::format_uint(num_chunks_after),
+        file_size_to_string(rrds_in_size),
+        file_size_to_string(Some(rrd_out_size)),
     );
 
     Ok(())
+}
+
+fn log_chunk_size_stats(entity_dbs: &std::collections::HashMap<StoreId, EntityDb>, label: &str) {
+    let mut min_bytes = u64::MAX;
+    let mut max_bytes = 0u64;
+    let mut total_bytes = 0u64;
+    let mut num_chunks = 0u64;
+
+    for db in entity_dbs.values() {
+        for chunk in db.storage_engine().store().iter_physical_chunks() {
+            let size = chunk.heap_size_bytes();
+            min_bytes = min_bytes.min(size);
+            max_bytes = max_bytes.max(size);
+            total_bytes += size;
+            num_chunks += 1;
+        }
+    }
+
+    if num_chunks == 0 {
+        return;
+    }
+
+    let avg_bytes = total_bytes / num_chunks;
+
+    re_log::info!(
+        num_chunks,
+        min = %re_format::format_bytes(min_bytes as _),
+        max = %re_format::format_bytes(max_bytes as _),
+        avg = %re_format::format_bytes(avg_bytes as _),
+        total = %re_format::format_bytes(total_bytes as _),
+        "{label} chunk size stats",
+    );
 }
