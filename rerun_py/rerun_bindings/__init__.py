@@ -8,5 +8,6 @@ from .rerun_bindings import (
     _ServerInternal as _ServerInternal,
     _UrdfJointInternal as _UrdfJointInternal,
     _UrdfLinkInternal as _UrdfLinkInternal,
+    _UrdfMimicInternal as _UrdfMimicInternal,
     _UrdfTreeInternal as _UrdfTreeInternal,
 )

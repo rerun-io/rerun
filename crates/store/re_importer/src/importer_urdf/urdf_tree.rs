@@ -10,6 +10,8 @@ use urdf_rs::{Geometry, Joint, Link, Material, Robot};
 
 use super::joint_transform;
 
+const DEFAULT_TF_STATIC_ENTITY_PATH: &str = "tf_static";
+
 /// Returns a short name for the geometry type, used as a path segment.
 fn geometry_type_name(geometry: &Geometry) -> &'static str {
     match geometry {
@@ -37,12 +39,13 @@ pub(crate) struct UrdfLogPaths {
 
 impl UrdfLogPaths {
     pub fn new(robot_name: &str, entity_path_prefix: Option<EntityPath>) -> Self {
-        let root = entity_path_prefix
-            .map(|prefix| prefix / EntityPath::from_single_string(robot_name))
-            .unwrap_or_else(|| EntityPath::from_single_string(robot_name));
+        let root = match entity_path_prefix {
+            Some(prefix) => prefix / EntityPath::from_single_string(robot_name),
+            None => EntityPath::from_single_string(robot_name),
+        };
         let visual_root = root.clone() / EntityPathPart::new("visual_geometries");
         let collision_root = root.clone() / EntityPathPart::new("collision_geometries");
-        let transforms = root.clone() / EntityPathPart::new("joint_transforms");
+        let transforms = EntityPath::from_single_string(DEFAULT_TF_STATIC_ENTITY_PATH);
 
         Self {
             root,
@@ -171,6 +174,14 @@ impl UrdfTree {
     /// Set the frame prefix applied to all frame IDs.
     pub fn with_frame_prefix(mut self, prefix: impl Into<String>) -> Self {
         self.frame_prefix = Some(prefix.into());
+        self
+    }
+
+    /// Set the entity path used for static transforms emitted by this URDF tree.
+    ///
+    /// This path is not affected by the tree's entity path prefix.
+    pub fn with_static_transform_entity(mut self, entity_path: impl Into<EntityPath>) -> Self {
+        self.log_paths.transforms = entity_path.into();
         self
     }
 
@@ -351,5 +362,34 @@ mod tests {
             .with_frame_prefix("left_arm/");
         assert_eq!(tree.apply_frame_prefix("base"), "left_arm/base");
         assert_eq!(tree.frame_prefix(), Some("left_arm/"));
+    }
+
+    #[test]
+    fn test_with_static_transform_entity_overrides_default_path() {
+        let robot = urdf_rs::Robot {
+            name: "test".to_owned(),
+            links: vec![make_minimal_link("base")],
+            joints: vec![],
+            materials: vec![],
+        };
+        let tree = UrdfTree::new(robot, None, None)
+            .unwrap()
+            .with_static_transform_entity("robot/tf");
+
+        assert_eq!(tree.log_paths.transforms.to_string(), "/robot/tf");
+    }
+
+    #[test]
+    fn test_static_transforms_path_defaults_to_tf_static() {
+        let paths = UrdfLogPaths::new("test", None);
+
+        assert_eq!(paths.transforms.to_string(), "/tf_static");
+    }
+
+    #[test]
+    fn test_static_transforms_path_is_unaffected_by_prefix() {
+        let paths = UrdfLogPaths::new("test", Some(EntityPath::parse_forgiving("robots/left_arm")));
+
+        assert_eq!(paths.transforms.to_string(), "/tf_static");
     }
 }

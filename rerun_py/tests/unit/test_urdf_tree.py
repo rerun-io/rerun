@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 import rerun as rr
 import rerun.urdf as rru
+from rerun.experimental import RrdReader
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 URDF_PATH = REPO_ROOT / "examples" / "rust" / "animated_urdf" / "data" / "so100.urdf"
@@ -128,6 +129,25 @@ def test_urdf_tree_log() -> None:
     # Also test with frame_prefix
     tree_prefixed = rru.UrdfTree.from_file_path(URDF_PATH, frame_prefix="left/")
     tree_prefixed.log_urdf_to_recording(rec)
+
+
+def test_urdf_tree_custom_static_transform_entity_path(tmp_path: Path) -> None:
+    rrd_path = tmp_path / "urdf_static_transforms.rrd"
+
+    with rr.RecordingStream(
+        "test_urdf_tree_custom_static_transform_entity_path",
+        make_default=False,
+        make_thread_default=False,
+    ) as rec:
+        rec.save(rrd_path)
+
+        tree = rru.UrdfTree.from_file_path(URDF_PATH, static_transform_entity_path="custom_tf_static")
+        tree.log_urdf_to_recording(rec)
+
+    paths = RrdReader(rrd_path).store().schema().entity_paths()
+
+    assert "/custom_tf_static" in paths
+    assert "/tf_static" not in paths
 
 
 def test_urdf_compute_transform_columns() -> None:

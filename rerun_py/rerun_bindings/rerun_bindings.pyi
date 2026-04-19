@@ -1132,7 +1132,11 @@ class _UrdfTreeInternal:
 
     @staticmethod
     def from_file_path(
-        path: str | os.PathLike[str], entity_path_prefix: str | None = None, frame_prefix: str | None = None
+        path: str | os.PathLike[str],
+        entity_path_prefix: str | None = None,
+        *,
+        frame_prefix: str | None = None,
+        static_transform_entity_path: str | None = None,
     ) -> _UrdfTreeInternal: ...
     @property
     def name(self) -> str: ...
@@ -1172,6 +1176,10 @@ class _UrdfJointInternal:
     def limit_effort(self) -> float: ...
     @property
     def limit_velocity(self) -> float: ...
+    @property
+    def mimic(self) -> _UrdfMimicInternal | None:
+        """The ``<mimic>`` tag for this joint, or ``None`` if this is not a mimic joint."""
+
     def compute_transform(self, value: float, clamp: bool = False) -> dict[str, Any]:
         """
         Compute the transform components for this joint at the given value.
@@ -1192,6 +1200,16 @@ class _UrdfJointInternal:
         If `clamp` is True, values outside joint limits will be clamped and a warning is generated.
         If `clamp` is False (default), values outside limits are used as-is without warnings.
         """
+
+class _UrdfMimicInternal:
+    """Internal Rust representation of a URDF ``<mimic>`` tag."""
+
+    @property
+    def joint(self) -> str: ...
+    @property
+    def multiplier(self) -> float: ...
+    @property
+    def offset(self) -> float: ...
 
 class _UrdfLinkInternal:
     """Internal Rust representation of a URDF link."""
