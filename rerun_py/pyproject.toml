@@ -37,6 +37,7 @@ text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
 tests = [
+  "av>=14.2.0", # PyAV, for demuxing mp4 in VideoStream tests
   "inline-snapshot==0.31.1",
   "opencv-python>4.6",
   "pandas>=2",

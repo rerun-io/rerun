@@ -27,6 +27,7 @@ mod lineage;
 mod missing_chunk_reporter;
 mod properties;
 mod query;
+mod rebatch_videos;
 mod stats;
 mod store;
 mod store_schema;
@@ -44,6 +45,7 @@ pub use {
     re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor},
 };
 
+pub use self::compact::{CompactionOptions, IsStartOfGop};
 pub use self::dataframe::{
     Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, StaticColumnSelection,
     ViewContentsSelector,
@@ -116,6 +118,7 @@ pub enum ChunkTrackingMode {
 
     /// Panic when a chunk is missing.
     ///
-    /// Only use this in tests!
+    /// Only use this in tests, or contexts where there really can't be
+    /// any virtual chunks, and you rather panic than have silent bugs.
     PanicOnMissing,
 }

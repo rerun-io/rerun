@@ -490,6 +490,15 @@ Examples:
 >
 > [Default: `false`]
 
+* `--no-rebatch-videos <NO_REBATCH_VIDEOS>`
+> Disable rebatching of video stream chunks to GoP (Group of Pictures) boundaries.
+>
+> By default, after compaction, video stream chunks are rebatched on GoP boundaries so that each chunk contains one or more complete GoPs. This flag disables that behavior.
+>
+> Note: GoP rebatching never splits a GoP across chunks, so streams with long keyframe intervals (e.g. 10+ seconds between I-frames) can produce chunks much larger than `--max-bytes`.
+>
+> [Default: `false`]
+
 ## rerun rrd compare
 
 Compares the data between 2 .rrd files, returning a successful shell exit code if they match.

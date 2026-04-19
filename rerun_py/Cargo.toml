@@ -58,11 +58,13 @@ web_viewer = ["re_sdk/web_viewer", "dep:re_web_viewer_server", "dep:re_grpc_serv
 re_arrow_util.workspace = true
 re_auth.workspace = true
 re_build_info.workspace = true
+re_byte_size.workspace = true
 re_chunk.workspace = true
 re_lenses_core.workspace = true
 re_chunk_store.workspace = true
 re_importer.workspace = true
 re_datafusion.workspace = true
+re_format.workspace = true
 re_redap_client.workspace = true
 re_grpc_client.workspace = true
 re_grpc_server = { workspace = true, optional = true }
@@ -82,6 +84,7 @@ re_video.workspace = true
 re_web_viewer_server = { workspace = true, optional = true }
 re_server = { workspace = true, features = ["lance"] }
 
+anyhow.workspace = true
 arrow = { workspace = true, features = ["pyarrow"] }
 bytes.workspace = true
 chrono.workspace = true #TODO(#9317): migrate to jiff

@@ -10850,6 +10850,7 @@ dependencies = [
 name = "rerun_py"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
+ "anyhow",
  "arrow",
  "bytes",
  "chrono",
@@ -10873,9 +10874,11 @@ dependencies = [
  "re_auth",
  "re_build_info",
  "re_build_tools",
+ "re_byte_size",
  "re_chunk",
  "re_chunk_store",
  "re_datafusion",
+ "re_format",
  "re_grpc_client",
  "re_grpc_server",
  "re_importer",

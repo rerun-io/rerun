@@ -15,6 +15,20 @@ use crate::{ChunkDirectLineage, ChunkStoreChunkStats, ChunkStoreError, ChunkStor
 
 // ---
 
+/// Configuration for the [`ChunkStore`].
+///
+/// The size thresholds (`chunk_max_bytes`, `chunk_max_rows`, `chunk_max_rows_if_unsorted`)
+/// serve as target chunk sizes for both **compaction** (merging small chunks together) and
+/// **splitting** (breaking large chunks apart on ingestion):
+///
+/// * During **compaction**, two chunks are only merged if their combined size stays within
+///   these thresholds.
+/// * During **splitting**, incoming chunks that exceed these thresholds are recursively split
+///   into smaller ones.
+///
+/// In other words, these thresholds define the target chunk size window from both directions.
+///
+// TODO(emilk): we should be able to turn on/off merging and splitting independently.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChunkStoreConfig {
     /// If `true` (the default), the store will emit events when its contents are modified in
@@ -25,6 +39,9 @@ pub struct ChunkStoreConfig {
     pub enable_changelog: bool,
 
     /// What is the threshold, in bytes, after which a [`Chunk`] cannot be compacted any further?
+    ///
+    /// This threshold is used both as a ceiling for compaction (don't merge beyond this)
+    /// and as a trigger for splitting (split incoming chunks that exceed this).
     ///
     /// This is a multi-dimensional trade-off:
     /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
@@ -44,6 +61,9 @@ pub struct ChunkStoreConfig {
     /// This specifically applies to time-sorted chunks.
     /// See also [`ChunkStoreConfig::chunk_max_rows_if_unsorted`].
     ///
+    /// Like `chunk_max_bytes`, this is used both as a ceiling for compaction and as a
+    /// trigger for splitting.
+    ///
     /// This is a multi-dimensional trade-off:
     /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
     /// * Larger chunks lead to slower query execution on some unhappy paths. Bad.
@@ -61,6 +81,9 @@ pub struct ChunkStoreConfig {
     ///
     /// This specifically applies to _non_ time-sorted chunks.
     /// See also [`ChunkStoreConfig::chunk_max_rows`].
+    ///
+    /// Like `chunk_max_bytes`, this is used both as a ceiling for compaction and as a
+    /// trigger for splitting.
     ///
     /// This is a multi-dimensional trade-off:
     /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.

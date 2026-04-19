@@ -3,6 +3,7 @@ use std::sync::Arc;
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 
+use re_byte_size::SizeBytes as _;
 use re_chunk::Chunk;
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle, LazyRrdStore};
 use re_log_types::{StoreId, StoreKind};
@@ -85,16 +86,43 @@ impl PyChunkStoreInternal {
     }
 
     /// Return a new store with chunks compacted for optimal storage.
-    fn compact(&self, py: Python<'_>) -> PyResult<Self> {
+    ///
+    /// `max_bytes`: override the `chunk_max_bytes` ceiling used when merging chunks.
+    /// If `None`, the default from [`ChunkStoreConfig::DEFAULT`] is used (~384 KiB).
+    ///
+    /// `gop_batching`: if `true` (default), video stream chunks are additionally
+    /// rebatched to align with GoP (keyframe) boundaries after normal compaction.
+    /// GoP rebatching never splits a GoP across chunks, so streams with long
+    /// keyframe intervals can produce chunks much larger than `max_bytes`.
+    #[pyo3(signature = (*, max_bytes=None, gop_batching=true))]
+    fn compact(
+        &self,
+        py: Python<'_>,
+        max_bytes: Option<u64>,
+        gop_batching: bool,
+    ) -> PyResult<Self> {
         let inner = self.0.clone();
         py.detach(move || {
+            let mut config = ChunkStoreConfig::CHANGELOG_DISABLED;
+            if let Some(max_bytes) = max_bytes {
+                config.chunk_max_bytes = max_bytes;
+            }
+            let is_start_of_gop: Option<re_chunk_store::IsStartOfGop> = if gop_batching {
+                Some(std::sync::Arc::new(|data, codec| {
+                    re_video::is_start_of_gop(data, codec.into())
+                        .map_err(|err| anyhow::anyhow!(err))
+                }))
+            } else {
+                None
+            };
+            let options = re_chunk_store::CompactionOptions {
+                config,
+                num_extra_passes: None,
+                is_start_of_gop,
+            };
             let compacted = match &inner {
-                ChunkStoreInternal::InMemory(handle) => handle
-                    .read()
-                    .compacted(&ChunkStoreConfig::CHANGELOG_DISABLED, None),
-                ChunkStoreInternal::IndexedRrd(lazy) => {
-                    lazy.compacted(&ChunkStoreConfig::CHANGELOG_DISABLED, None)
-                }
+                ChunkStoreInternal::InMemory(handle) => handle.read().compacted(&options),
+                ChunkStoreInternal::IndexedRrd(lazy) => lazy.compacted(&options),
             };
             compacted
                 .map(Self::in_memory)
@@ -113,7 +141,7 @@ impl PyChunkStoreInternal {
     /// Compact, deterministic summary of every chunk in the store for snapshot testing.
     ///
     /// Each line describes one chunk:
-    /// `{entity_path} rows={n} static={bool} timelines=[…] cols=[…]`
+    /// `{entity_path} rows={n} bytes={…} static={bool} timelines=[…] cols=[…]`
     ///
     /// Chunks are sorted by `(entity_path, !is_static)`. The `cols` list
     /// combines timeline and component column names (sorted), excluding
@@ -204,9 +232,10 @@ fn summary_from_chunks(chunks: &[Arc<Chunk>]) -> String {
             .collect::<Vec<_>>()
             .join(", ");
         let is_static = if chunk.is_static() { "True" } else { "False" };
+        let bytes = re_format::format_bytes(chunk.total_size_bytes() as f64);
 
         lines.push(format!(
-            "{entity_path} rows={rows} static={is_static} timelines=[{timelines_str}] cols=[{cols_str}]",
+            "{entity_path} rows={rows} bytes={bytes} static={is_static} timelines=[{timelines_str}] cols=[{cols_str}]",
             entity_path = chunk.entity_path(),
             rows = chunk.num_rows(),
         ));
