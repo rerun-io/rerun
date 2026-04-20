@@ -509,11 +509,10 @@ fn test_scatter_columns_static() {
 }
 
 #[test]
-fn test_forward_unmatched_collision_raises_error() {
-    use re_lenses_core::LensError;
-
+fn test_output_overwrites_same_named_component() {
     // The input chunk contains a `value` column. The lens declares its own output
-    // component named `value` — this is a collision and should yield an error.
+    // component named `value`. With `DropUnmatched`, only the lens output is
+    // produced, so the original `value` column is simply not forwarded.
     let mut value_builder = ListBuilder::new(arrow::array::StringBuilder::new());
     for v in ["x", "y"] {
         value_builder.values().append_value(v);
@@ -558,15 +557,7 @@ fn test_forward_unmatched_collision_raises_error() {
     let results: Vec<_> = lenses.apply(&original_chunk).collect();
     assert_eq!(results.len(), 1);
 
-    let partial = results.into_iter().next().unwrap().unwrap_err();
-    let collisions: Vec<_> = partial
-        .errors()
-        .filter(|e| matches!(e, LensError::ComponentIdentifierCollision { .. }))
-        .collect();
-    assert_eq!(collisions.len(), 1);
-
-    // Despite the collision, the chunk is still produced and the lens output wins.
-    let chunk = partial.take().expect("chunk should still be produced");
+    let chunk = results.into_iter().next().unwrap().unwrap();
     let value = chunk
         .components()
         .get(ComponentDescriptor::partial("value").component)

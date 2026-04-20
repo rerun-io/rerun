@@ -14,7 +14,6 @@ pub enum LensError {
     //              We probably want to split builder errors from computational errors once the API stabilizes.
     #[error("No component outputs were produced for target entity `{target_entity}`")]
     NoOutputColumnsProduced {
-        input_entity: EntityPath,
         input_component: ComponentIdentifier,
         target_entity: EntityPath,
     },
@@ -23,10 +22,10 @@ pub enum LensError {
     ChunkValidationFailed(#[from] re_chunk::ChunkError),
 
     #[error(
-        "Failed to apply operations to component '{component}' (entity: `{entity_path}`, input: `{input_component}`): {source}"
+        "Failed to apply operations to component '{component}' (entity: `{target_entity}`, input: `{input_component}`): {source}"
     )]
     ComponentOperationFailed {
-        entity_path: EntityPath,
+        target_entity: EntityPath,
         input_component: ComponentIdentifier,
         component: ComponentIdentifier,
         #[source]
@@ -34,10 +33,10 @@ pub enum LensError {
     },
 
     #[error(
-        "Failed to apply operations to timeline '{timeline_name}' (entity: `{entity_path}`, input: `{input_component}`): {source}"
+        "Failed to apply operations to timeline '{timeline_name}' (entity: `{target_entity}`, input: `{input_component}`): {source}"
     )]
     TimeOperationFailed {
-        entity_path: EntityPath,
+        target_entity: EntityPath,
         input_component: ComponentIdentifier,
         timeline_name: TimelineName,
         #[source]
@@ -60,23 +59,5 @@ pub enum LensError {
         timeline_name: TimelineName,
         #[source]
         source: arrow::error::ArrowError,
-    },
-
-    #[error(
-        "Failed to scatter existing component column '{component}' across output rows (entity: `{entity_path}`)"
-    )]
-    ScatterExistingComponentFailed {
-        entity_path: EntityPath,
-        component: ComponentIdentifier,
-        #[source]
-        source: arrow::error::ArrowError,
-    },
-
-    #[error(
-        "Component identifier collision on entity `{entity_path}`: input chunk already contains component `{component}` which is also produced as a lens output"
-    )]
-    ComponentIdentifierCollision {
-        entity_path: EntityPath,
-        component: ComponentIdentifier,
     },
 }
