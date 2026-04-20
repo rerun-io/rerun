@@ -19,12 +19,12 @@ class Selector:
 
     Syntax overview:
 
-    - ``.field`` — access a named field in a struct
-    - ``[]`` — iterate over every element of a list
-    - ``[N]`` — index into a list by position
-    - ``?`` — error suppression / optional operator
-    - ``!`` — assert non-null
-    - ``|`` — pipe the output of one expression to another
+    - `.field` — access a named field in a struct
+    - `[]` — iterate over every element of a list
+    - `[N]` — index into a list by position
+    - `?` — error suppression / optional operator
+    - `!` — assert non-null
+    - `|` — pipe the output of one expression to another
 
     Example usage::
 
@@ -95,8 +95,8 @@ class Selector:
         Parameters
         ----------
         func:
-            A callable that accepts a ``pyarrow.Array`` and returns a ``pyarrow.Array``
-            or ``None``, or another [`Selector`][] to chain.
+            A callable that accepts a `pyarrow.Array` and returns a `pyarrow.Array`
+            or `None`, or another [`Selector`][] to chain.
 
         Returns
         -------

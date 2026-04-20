@@ -23,8 +23,8 @@ class ChunkStore:
 
         store = RrdReader("recording.rrd").store()
 
-    Use ``stream()`` to process chunks through the lazy pipeline, or
-    ``write_rrd()`` to persist to disk.
+    Use `stream()` to process chunks through the lazy pipeline, or
+    `write_rrd()` to persist to disk.
     """
 
     _internal: ChunkStoreInternal

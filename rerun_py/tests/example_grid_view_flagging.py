@@ -8,8 +8,8 @@ remote table.
 Settings > Experimental > Grid view.
 
 The flag column is configured via Arrow field metadata
-(``rerun:is_flag_column = "true"``). The table must also have a
-``rerun:is_table_index`` column so that flag changes can be persisted
+(`rerun:is_flag_column = "true"`). The table must also have a
+`rerun:is_table_index` column so that flag changes can be persisted
 back to the server via upsert.
 
 Usage:

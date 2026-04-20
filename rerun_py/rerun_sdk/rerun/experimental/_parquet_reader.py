@@ -36,28 +36,28 @@ class ColumnRule:
 
     @classmethod
     def translation3d(cls, suffixes: list[str], *, field_name_override: str | None = None) -> ColumnRule:
-        """Create a rule that combines 3 columns into a ``Translation3D`` component."""
+        """Create a rule that combines 3 columns into a `Translation3D` component."""
         if len(suffixes) != 3:
             raise ValueError("Translation3D requires exactly 3 suffixes")
         return cls(suffixes, "Translation3D", field_name_override=field_name_override)
 
     @classmethod
     def rotation_quat(cls, suffixes: list[str], *, field_name_override: str | None = None) -> ColumnRule:
-        """Create a rule that combines 4 columns into a ``RotationQuat`` component."""
+        """Create a rule that combines 4 columns into a `RotationQuat` component."""
         if len(suffixes) != 4:
             raise ValueError("RotationQuat requires exactly 4 suffixes")
         return cls(suffixes, "RotationQuat", field_name_override=field_name_override)
 
     @classmethod
     def rotation_axis_angle(cls, suffixes: list[str], *, field_name_override: str | None = None) -> ColumnRule:
-        """Create a rule that combines 4 columns into a ``RotationAxisAngle`` component (3 axis + 1 angle)."""
+        """Create a rule that combines 4 columns into a `RotationAxisAngle` component (3 axis + 1 angle)."""
         if len(suffixes) != 4:
             raise ValueError("RotationAxisAngle requires exactly 4 suffixes (3 axis + 1 angle)")
         return cls(suffixes, "RotationAxisAngle", field_name_override=field_name_override)
 
     @classmethod
     def scale3d(cls, suffixes: list[str], *, field_name_override: str | None = None) -> ColumnRule:
-        """Create a rule that combines 3 columns into a ``Scale3D`` component."""
+        """Create a rule that combines 3 columns into a `Scale3D` component."""
         if len(suffixes) != 3:
             raise ValueError("Scale3D requires exactly 3 suffixes")
         return cls(suffixes, "Scale3D", field_name_override=field_name_override)
@@ -70,7 +70,7 @@ class ColumnRule:
         names: list[str],
         field_name_override: str | None = None,
     ) -> ColumnRule:
-        """Create a rule that combines N columns into a ``Scalars`` component with named series."""
+        """Create a rule that combines N columns into a `Scalars` component with named series."""
         if len(suffixes) != len(names):
             raise ValueError("suffixes and names must have the same length")
         return cls(suffixes, "Scalars", names=names, field_name_override=field_name_override)
@@ -84,11 +84,11 @@ class ColumnRule:
         field_name_override: str | None = None,
     ) -> ColumnRule:
         """
-        Create a rule that combines 3 translation + 4 rotation columns into a ``Transform3D``.
+        Create a rule that combines 3 translation + 4 rotation columns into a `Transform3D`.
 
         Both suffix sets must match with the same sub-prefix for columns to be
-        combined. In struct mode, produces a nested struct with ``translation``
-        and ``quaternion`` fields. In flat mode, emits both components at the
+        combined. In struct mode, produces a nested struct with `translation`
+        and `quaternion` fields. In flat mode, emits both components at the
         same entity path.
         """
         if len(translation_suffixes) != 3:
@@ -127,49 +127,49 @@ class ParquetReader:
         Parameters
         ----------
         path:
-            Path to the ``.parquet`` file.
+            Path to the `.parquet` file.
         entity_path_prefix:
-            Optional prefix for all entity paths (e.g. ``"/world"``).
+            Optional prefix for all entity paths (e.g. `"/world"`).
         column_grouping:
-            How to group columns into chunks. ``"prefix"`` splits column names
-            on `delimiter` and groups by the first segment. ``"individual"``
-            gives each column its own chunk. ``"explicit_prefixes"`` groups
+            How to group columns into chunks. `"prefix"` splits column names
+            on `delimiter` and groups by the first segment. `"individual"`
+            gives each column its own chunk. `"explicit_prefixes"` groups
             columns by the explicit prefix strings in `prefixes`.
         delimiter:
-            Character used to split column names when ``column_grouping="prefix"``.
+            Character used to split column names when `column_grouping="prefix"`.
         prefixes:
             Explicit prefix strings for grouping columns. Required when
-            ``column_grouping="explicit_prefixes"``. Columns starting with a
+            `column_grouping="explicit_prefixes"`. Columns starting with a
             prefix are grouped together; the prefix is stripped from the
             component name. Prefixes are tried longest-first to avoid
             ambiguity.
         use_structs:
-            When ``True`` (default) and ``column_grouping="prefix"`` or
-            ``"explicit_prefixes"``, columns sharing a prefix are packed into
-            a single Arrow ``Struct`` component. When ``False``, each column
+            When `True` (default) and `column_grouping="prefix"` or
+            `"explicit_prefixes"`, columns sharing a prefix are packed into
+            a single Arrow `Struct` component. When `False`, each column
             becomes a separate component (the pre-struct layout). Ignored
-            when ``column_grouping="individual"``.
+            when `column_grouping="individual"`.
         static_columns:
             Column names whose values are constant across all rows. These are
             emitted once as timeless/static data. An error is raised if a
             listed column contains varying values.
         index_columns:
             List of columns to use as timeline indices. Each entry is a tuple:
-            ``(name, type)`` or ``(name, type, unit)``.
+            `(name, type)` or `(name, type, unit)`.
 
-            The ``type`` specifies the timeline kind:
+            The `type` specifies the timeline kind:
 
-            - ``"timestamp"``: time since epoch
-            - ``"duration"``: elapsed time
-            - ``"sequence"``: ordinal integer index
+            - `"timestamp"`: time since epoch
+            - `"duration"`: elapsed time
+            - `"sequence"`: ordinal integer index
 
-            The ``unit`` describes what the raw integer values in the column
+            The `unit` describes what the raw integer values in the column
             represent (not a desired output unit). Rerun stores all timestamps
             in nanoseconds internally, so values are scaled accordingly.
-            Supported: ``"ns"`` (default), ``"us"``, ``"ms"``, ``"s"``.
-            Ignored for ``"sequence"`` type.
+            Supported: `"ns"` (default), `"us"`, `"ms"`, `"s"`.
+            Ignored for `"sequence"` type.
 
-            When omitted, a synthetic ``row_index`` sequence timeline is
+            When omitted, a synthetic `row_index` sequence timeline is
             generated automatically (one entry per row).
         column_rules:
             Rules for combining columns with matching suffixes into typed

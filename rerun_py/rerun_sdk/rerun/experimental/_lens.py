@@ -15,14 +15,14 @@ class LensOutput:
     """
     Describes one output group of a lens.
 
-    When ``scatter=False`` (default, 1:1), each input row produces exactly one
+    When `scatter=False` (default, 1:1), each input row produces exactly one
     output row. Times are inherited from the input chunk unchanged.
 
-    When ``scatter=True`` (1:N), each input row produces N output rows by
+    When `scatter=True` (1:N), each input row produces N output rows by
     exploding list arrays. Existing times are replicated across output rows.
     Useful for flattening lists or exploding batches.
 
-    In both modes, ``.component()`` and ``.time()`` work identically -- the
+    In both modes, `.component()` and `.time()` work identically -- the
     difference is only in how the output chunk is assembled.
 
     Example usage::
@@ -48,10 +48,10 @@ class LensOutput:
         Parameters
         ----------
         scatter:
-            If ``True``, use 1:N row mapping (explode lists). If ``False``
+            If `True`, use 1:N row mapping (explode lists). If `False`
             (default), use 1:1 row mapping.
         target_entity:
-            Target entity path for the output. If ``None``, uses the same
+            Target entity path for the output. If `None`, uses the same
             entity path as the input.
 
         """
@@ -69,8 +69,8 @@ class LensOutput:
         ----------
         component:
             A [`ComponentDescriptor`][] or a component identifier string
-            for the output column (e.g. ``"Scalars:scalars"``).
-            Using a full ``ComponentDescriptor`` preserves archetype and
+            for the output column (e.g. `"Scalars:scalars"`).
+            Using a full `ComponentDescriptor` preserves archetype and
             component type metadata in the output.
         selector:
             A [`Selector`][] or selector query string to apply to the
@@ -102,11 +102,11 @@ class LensOutput:
         timeline_name:
             Name of the timeline to create.
         timeline_type:
-            Type of the timeline: ``"sequence"``, ``"duration_ns"``,
-            or ``"timestamp_ns"``.
+            Type of the timeline: `"sequence"`, `"duration_ns"`,
+            or `"timestamp_ns"`.
         selector:
             A [`Selector`][] or selector query string to extract time
-            values (must produce ``Int64`` arrays).
+            values (must produce `Int64` arrays).
 
         Returns
         -------
@@ -138,7 +138,7 @@ class Lens:
         )
 
     To restrict which entities a lens applies to, use
-    ``stream.filter(content=...)`` before ``.lenses()``.
+    `stream.filter(content=...)` before `.lenses()`.
 
     """
 

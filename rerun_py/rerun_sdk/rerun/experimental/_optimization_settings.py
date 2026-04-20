@@ -8,7 +8,7 @@ class OptimizationSettings:
     """
     Settings for optimizing a ChunkStore via `LazyChunkStream.collect(optimize=...)`.
 
-    Defaults mirror those of the ``rerun rrd compact`` CLI. ``None`` on a threshold
+    Defaults mirror those of the `rerun rrd compact` CLI. `None` on a threshold
     field means using the default internal value.
     """
 
@@ -26,9 +26,9 @@ class OptimizationSettings:
 
     gop_batching: bool = True
     """
-    If ``True`` (default), video stream chunks are rebatched to align with GoP
+    If `True` (default), video stream chunks are rebatched to align with GoP
     (keyframe) boundaries after normal compaction.
 
     GoP rebatching never splits a GoP across chunks, so streams with long keyframe
-    intervals can produce chunks much larger than ``max_bytes``.
+    intervals can produce chunks much larger than `max_bytes`.
     """

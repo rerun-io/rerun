@@ -95,7 +95,7 @@ impl PyChunkInternal {
 
     /// Create a Chunk from a PyArrow RecordBatch with Rerun schema metadata.
     ///
-    /// The RecordBatch must have been produced by ``to_record_batch()`` or have
+    /// The RecordBatch must have been produced by `to_record_batch()` or have
     /// equivalent Rerun metadata in its schema.
     #[staticmethod]
     #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned PyArrowType for #[staticmethod]
@@ -107,7 +107,7 @@ impl PyChunkInternal {
 
     /// Create a Chunk from an entity path, timeline arrays, and component arrays.
     ///
-    /// This is the low-level entry point called by ``Chunk.from_columns()`` in Python.
+    /// This is the low-level entry point called by `Chunk.from_columns()` in Python.
     #[staticmethod]
     fn from_columns(
         entity_path: &str,

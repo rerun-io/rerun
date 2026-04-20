@@ -57,7 +57,7 @@ def _build_video_stream_rrd(tmp_dir: Path, filename: str, codec: rr.VideoCodec) 
     """
     Build an RRD with one VideoStream sample chunk per demuxed mp4 packet.
 
-    Returns ``(rrd_path, num_gops)`` where ``num_gops`` is the number of
+    Returns `(rrd_path, num_gops)` where `num_gops` is the number of
     keyframes (I-frames) in the source video.
     """
     import av
