@@ -4366,6 +4366,19 @@ impl MemUsageTreeCapture for App {
         node.add("state", self.state.capture_mem_usage_tree());
         node.add("rx_log", self.rx_log.capture_mem_usage_tree());
         node.add("store_hub", self.store_hub.capture_mem_usage_tree());
+        node.add(
+            "store_subscribers",
+            re_chunk_store::ChunkStore::capture_all_subscribers_mem_usage_tree(),
+        );
+
+        let mut globals = re_byte_size::MemUsageNode::new();
+        globals.add(
+            "forgiving_parse_cache",
+            re_log_types::forgiving_parse_cache_bytes_used(),
+        );
+        globals.add("string_interner", re_string_interner::bytes_used() as u64);
+        node.add("globals", globals.into_tree());
+
         node.into_tree()
     }
 }

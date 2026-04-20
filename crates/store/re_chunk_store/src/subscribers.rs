@@ -1,6 +1,7 @@
 use ahash::HashMap;
 use itertools::Itertools as _;
 use parking_lot::RwLock;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture};
 use re_log_types::StoreId;
 
 use crate::{ChunkStore, ChunkStoreEvent};
@@ -14,9 +15,9 @@ type SharedStoreSubscriber = RwLock<Box<dyn ChunkStoreSubscriber>>;
 /// through [`ChunkStoreEvent`]s.
 ///
 /// [`ChunkStoreSubscriber`]s can be used to build both secondary indices and trigger systems.
-//
-// TODO(#4204): StoreSubscriber should require SizeBytes so they can be part of memstats.
-pub trait ChunkStoreSubscriber: std::any::Any + Send + Sync {
+///
+/// The [`MemUsageTreeCapture`] bound lets the viewer's memory panel show how much memory each subscriber uses.
+pub trait ChunkStoreSubscriber: MemUsageTreeCapture + std::any::Any + Send + Sync {
     /// Arbitrary name for the subscriber.
     ///
     /// Does not need to be unique.
@@ -66,7 +67,9 @@ pub trait ChunkStoreSubscriber: std::any::Any + Send + Sync {
 }
 
 /// A [`ChunkStoreSubscriber`] that is instantiated for each unique [`StoreId`].
-pub trait PerStoreChunkSubscriber: Send + Sync + Default {
+///
+/// The [`MemUsageTreeCapture`] bound lets the viewer's memory panel show memory usage per [`StoreId`].
+pub trait PerStoreChunkSubscriber: MemUsageTreeCapture + Send + Sync + Default {
     /// Arbitrary name for the subscriber.
     ///
     /// Does not need to be unique.
@@ -251,6 +254,29 @@ impl ChunkStore {
             subscriber.write().on_events(events);
         }
     }
+
+    /// Captures the memory usage of all registered subscribers.
+    ///
+    /// Names are disambiguated with a `#idx` suffix when multiple subscribers share the same name.
+    pub fn capture_all_subscribers_mem_usage_tree() -> MemUsageTree {
+        re_tracing::profile_function!();
+        let subscribers = SUBSCRIBERS.read();
+        let mut node = MemUsageNode::new();
+        let mut name_counts: HashMap<String, usize> = HashMap::default();
+        for subscriber in subscribers.iter() {
+            let subscriber = subscriber.read();
+            let base_name = subscriber.name();
+            let count = name_counts.entry(base_name.clone()).or_insert(0);
+            let name = if *count == 0 {
+                base_name
+            } else {
+                format!("{base_name}#{count}")
+            };
+            *count += 1;
+            node.add(name, subscriber.capture_mem_usage_tree());
+        }
+        node.into_tree()
+    }
 }
 
 /// Utility that makes a [`PerStoreChunkSubscriber`] a [`ChunkStoreSubscriber`].
@@ -298,6 +324,23 @@ impl<S: PerStoreChunkSubscriber + 'static> ChunkStoreSubscriber
     }
 }
 
+impl<S: PerStoreChunkSubscriber + 'static> MemUsageTreeCapture
+    for PerStoreStoreSubscriberWrapper<S>
+{
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        let mut node = MemUsageNode::new();
+        for (store_id, subscriber) in &self.subscribers {
+            let name = format!(
+                "{}/{}",
+                store_id.application_id().as_str(),
+                store_id.recording_id().as_str()
+            );
+            node.add(name, subscriber.capture_mem_usage_tree());
+        }
+        node.into_tree()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -323,6 +366,12 @@ mod tests {
                 store_ids: store_ids.into_iter().collect(),
                 events: Vec::new(),
             }
+        }
+    }
+
+    impl MemUsageTreeCapture for AllEvents {
+        fn capture_mem_usage_tree(&self) -> MemUsageTree {
+            MemUsageTree::Bytes(0)
         }
     }
 

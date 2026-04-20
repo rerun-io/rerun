@@ -160,6 +160,36 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
     }
 }
 
+impl re_byte_size::SizeBytes for ChunkTimelineInfo {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // The chunk store owns the strong `Arc<Chunk>`s and accounts for their bytes there.
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
+impl re_byte_size::SizeBytes for EntityTimelineChunks {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            recursive_chunks_info,
+            total_num_events: _,
+        } = self;
+        recursive_chunks_info.heap_size_bytes()
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for PathRecursiveChunksPerTimelineStoreSubscriber {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+        re_byte_size::MemUsageTree::Bytes(self.chunks_per_timeline_per_entity.heap_size_bytes())
+    }
+}
+
 impl PerStoreChunkSubscriber for PathRecursiveChunksPerTimelineStoreSubscriber {
     #[inline]
     fn name() -> String {
