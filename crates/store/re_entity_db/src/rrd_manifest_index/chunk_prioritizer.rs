@@ -64,6 +64,12 @@ pub enum PrefetchError {
 /// How to calculate which chunks to prefetch.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChunkPrefetchOptions {
+    /// Only prefetch chunks up to (and including) this stage.
+    ///
+    /// Useful for debugging and for users who want to limit how aggressively
+    /// we prefetch data ahead of what is strictly needed.
+    pub max_fetch_stage: FetchStage,
+
     /// Batch together requests until we reach this size.
     pub max_on_wire_bytes_per_batch: u64,
 
@@ -74,6 +80,8 @@ pub struct ChunkPrefetchOptions {
 impl Default for ChunkPrefetchOptions {
     fn default() -> Self {
         Self {
+            max_fetch_stage: FetchStage::default(),
+
             // Batch small chunks together.
             max_on_wire_bytes_per_batch: 256 * 1024,
 
@@ -705,7 +713,19 @@ impl ChunkPrioritizer {
 }
 
 /// How much we should prefetch. A higher stage also includes all lower stages.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[derive(
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    Copy,
+    Debug,
+    Hash,
+    Default,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub enum FetchStage {
     /// Fetch all required chunks, which includes:
     /// - Static chunks.
@@ -715,6 +735,7 @@ pub enum FetchStage {
 
     /// Fetches all chunks on the component paths of chunks that were reported
     /// as used or missing.
+    #[default]
     Similar = 1,
 
     /// Fetches everything. Starting at the time cursor.

@@ -52,15 +52,21 @@ pub fn prefetch_chunks_for_recordings(
     ///
     /// (Preview recordings intentionally skip the `Everything` stage)
     ///
+    /// Stages above `max_fetch_stage` are skipped entirely.
+    ///
     /// If any budget (on wire, or memory) gets filled here we stop and don't
     /// request/prioritize further.
     fn fetch_stages<'a>(
         active_states: &mut [FetchState<'a>],
         preview_states: &mut [FetchState<'a>],
         background_states: &mut [FetchState<'a>],
+        max_fetch_stage: FetchStage,
         mut fetch_stage: impl FnMut(&mut FetchState<'a>, FetchStage) -> bool,
     ) {
         for stage in [FetchStage::Required, FetchStage::Similar] {
+            if max_fetch_stage < stage {
+                return;
+            }
             for state in chain!(active_states.iter_mut(), preview_states.iter_mut()) {
                 if fetch_stage(state, stage) {
                     return;
@@ -68,6 +74,9 @@ pub fn prefetch_chunks_for_recordings(
             }
         }
 
+        if max_fetch_stage < FetchStage::Everything {
+            return;
+        }
         for state in chain!(active_states.iter_mut(), background_states.iter_mut()) {
             if fetch_stage(state, FetchStage::Everything) {
                 return;
@@ -139,6 +148,7 @@ pub fn prefetch_chunks_for_recordings(
         &mut active_states,
         &mut preview_states,
         &mut background_states,
+        options.max_fetch_stage,
         |state: &mut FetchState<'_>, stage| {
             if let Err(err) = state.fetcher.fetch(&mut budget, stage) {
                 re_log::warn_once!("prefetch_chunks failed: {err}");

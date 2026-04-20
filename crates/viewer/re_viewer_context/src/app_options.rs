@@ -1,3 +1,4 @@
+use re_entity_db::FetchStage;
 use re_log_types::TimestampFormat;
 use re_video::{DecodeHardwareAcceleration, DecodeSettings};
 
@@ -53,6 +54,12 @@ pub struct AppOptions {
     /// Can also be set using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
     pub mapbox_access_token: String,
 
+    /// Only prefetch chunks up to (and including) this stage.
+    ///
+    /// Useful for debugging and for users who want to limit how aggressively
+    /// we prefetch data ahead of what is strictly needed.
+    pub max_fetch_stage: FetchStage,
+
     /// Path to the directory suitable for storing cache data.
     ///
     /// By cache data, we mean data that is safe to be garbage collected by the OS. Defaults to
@@ -90,6 +97,8 @@ impl Default for AppOptions {
             visualizer_limits_enabled: true,
 
             mapbox_access_token: String::new(),
+
+            max_fetch_stage: FetchStage::default(),
 
             #[cfg(not(target_arch = "wasm32"))]
             cache_directory: Self::default_cache_directory(),

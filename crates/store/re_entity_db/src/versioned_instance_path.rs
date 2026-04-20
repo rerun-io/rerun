@@ -10,8 +10,9 @@ use crate::{InstancePath, InstancePathHash};
 /// or the whole entity.
 ///
 /// The easiest way to construct this type is via [`crate::InstancePath::versioned`].
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
+)]
 pub struct VersionedInstancePath {
     pub instance_path: InstancePath,
     pub row_id: RowId,

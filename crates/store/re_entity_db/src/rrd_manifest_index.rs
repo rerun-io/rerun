@@ -594,7 +594,7 @@ impl RrdManifestIndex {
             return Ok(());
         };
 
-        fetcher.fetch(budget, FetchStage::Everything)?;
+        fetcher.fetch(budget, options.max_fetch_stage)?;
 
         let res = fetcher.finish(load_chunks)?;
 

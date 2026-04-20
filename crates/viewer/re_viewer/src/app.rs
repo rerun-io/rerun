@@ -3516,7 +3516,10 @@ impl App {
             &recordings_info,
             total_bytes_in_memory,
             self.connection_registry(),
-            &ChunkPrefetchOptions::default(),
+            &ChunkPrefetchOptions {
+                max_fetch_stage: self.app_options().max_fetch_stage,
+                ..ChunkPrefetchOptions::default()
+            },
         );
     }
 }

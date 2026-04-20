@@ -1,6 +1,7 @@
 use std::str::FromStr as _;
 
 use egui::{NumExt as _, Ui};
+use re_entity_db::FetchStage;
 use re_log_types::{Timestamp, TimestampFormat};
 use re_memory::MemoryLimit;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -87,16 +88,6 @@ fn settings_screen_ui_impl(
         egui::global_theme_preference_buttons(ui);
     });
 
-    ui.add_space(8.0);
-
-    ui.horizontal(|ui| {
-        ui.label("Memory budget");
-        memory_budget_section_ui(ui, startup_options);
-        ui.help_button(|ui| {
-            ui.label("When this limit is reached we start purging data from RAM");
-        });
-    });
-
     let AppOptions {
         experimental,
         warn_e2e_latency: _, // not yet exposed
@@ -110,10 +101,34 @@ fn settings_screen_ui_impl(
         timestamp_format,
         video,
         mapbox_access_token,
+        max_fetch_stage,
 
         #[cfg(not(target_arch = "wasm32"))]
             cache_directory: _, // not yet exposed
     } = app_options;
+
+    ui.add_space(8.0);
+
+    egui::Grid::new("prefetcher").num_columns(2).show(ui, |ui| {
+        ui.label("Memory budget");
+        memory_budget_section_ui(ui, startup_options);
+        ui.help_button(|ui| {
+            ui.label("When this limit is reached we start purging data from RAM");
+        });
+        ui.end_row();
+
+        ui.label("Prefetch");
+        prefetch_stage_combo_box_ui(ui, max_fetch_stage);
+        ui.help_button(|ui| {
+            ui.label(
+                "Controls how aggressively we prefetch chunks ahead of what is strictly needed.\n\n\
+                • Required: only chunks required to render the current time cursor.\n\
+                • Similar: also prefetch chunks on the same component paths as required chunks.\n\
+                • Everything: also prefetch every chunk in the recording.",
+            );
+        });
+        ui.end_row();
+    });
 
     ui.add_space(8.0);
 
@@ -207,6 +222,28 @@ fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
     } else {
         startup_options.memory_limit = MemoryLimit::UNLIMITED;
     }
+}
+
+fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage) {
+    fn label(stage: FetchStage) -> &'static str {
+        match stage {
+            FetchStage::Required => "Required",
+            FetchStage::Similar => "Similar",
+            FetchStage::Everything => "Everything",
+        }
+    }
+
+    egui::ComboBox::from_id_salt("max_fetch_stage")
+        .selected_text(label(*max_fetch_stage))
+        .show_ui(ui, |ui| {
+            for stage in [
+                FetchStage::Required,
+                FetchStage::Similar,
+                FetchStage::Everything,
+            ] {
+                ui.selectable_value(max_fetch_stage, stage, label(stage));
+            }
+        });
 }
 
 fn time_format_section_ui(ui: &mut Ui, timestamp_format: &mut TimestampFormat) {
