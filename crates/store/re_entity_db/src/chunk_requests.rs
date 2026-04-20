@@ -116,7 +116,7 @@ impl ChunkRequests {
     pub fn num_on_wire_bytes_pending(&self) -> u64 {
         self.requests
             .iter()
-            .map(|b| b.info.size_bytes_uncompressed)
+            .map(|b| b.info.size_bytes_on_wire)
             .sum()
     }
 
