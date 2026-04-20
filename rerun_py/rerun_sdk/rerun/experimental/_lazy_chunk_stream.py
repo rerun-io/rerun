@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from rerun_bindings import ChunkInternal, ComponentDescriptor
 
     from ._chunk_store import ChunkStore
+    from ._optimization_settings import OptimizationSettings
 
 
 class LazyChunkStream:
@@ -260,11 +261,50 @@ class LazyChunkStream:
             recording_id,
         )
 
-    def collect(self) -> ChunkStore:
-        """Consume the stream and materialize all chunks into a ChunkStore."""
+    def collect(
+        self,
+        *,
+        optimize: OptimizationSettings | None = None,
+    ) -> ChunkStore:
+        """
+        Consume the stream and materialize all chunks into a ChunkStore.
+
+        By default, only the single-pass compaction that happens naturally
+        during chunk insertion is applied. Pass ``optimize=OptimizationSettings(...)``
+        to run additional optimization (extra convergence passes, video GoP
+        rebatching); the defaults for [`OptimizationSettings`][rerun.experimental.OptimizationSettings]
+        mirror those of the ``rerun rrd compact`` CLI.
+
+        Parameters
+        ----------
+        optimize:
+            If ``None`` (default), no extra optimization is performed beyond
+            the single pass that happens on insert.
+
+            Otherwise, apply the given settings after insertion.
+
+        Examples
+        --------
+        Run optimization with default settings (matches ``rerun rrd compact``):
+
+        ```python
+        store = reader.stream().collect(optimize=OptimizationSettings())
+        ```
+
+        """
         from ._chunk_store import ChunkStore
 
-        return ChunkStore(self._internal.collect())
+        if optimize is None:
+            return ChunkStore(self._internal.collect())
+        return ChunkStore(
+            self._internal.collect(
+                max_bytes=optimize.max_bytes,
+                max_rows=optimize.max_rows,
+                max_rows_if_unsorted=optimize.max_rows_if_unsorted,
+                extra_passes=optimize.extra_passes,
+                gop_batching=optimize.gop_batching,
+            ),
+        )
 
     def to_chunks(self) -> list[Chunk]:
         """Consume the stream and return all chunks as a list."""

@@ -85,51 +85,6 @@ impl PyChunkStoreInternal {
         }
     }
 
-    /// Return a new store with chunks compacted for optimal storage.
-    ///
-    /// `max_bytes`: override the `chunk_max_bytes` ceiling used when merging chunks.
-    /// If `None`, the default from [`ChunkStoreConfig::DEFAULT`] is used (~384 KiB).
-    ///
-    /// `gop_batching`: if `true` (default), video stream chunks are additionally
-    /// rebatched to align with GoP (keyframe) boundaries after normal compaction.
-    /// GoP rebatching never splits a GoP across chunks, so streams with long
-    /// keyframe intervals can produce chunks much larger than `max_bytes`.
-    #[pyo3(signature = (*, max_bytes=None, gop_batching=true))]
-    fn compact(
-        &self,
-        py: Python<'_>,
-        max_bytes: Option<u64>,
-        gop_batching: bool,
-    ) -> PyResult<Self> {
-        let inner = self.0.clone();
-        py.detach(move || {
-            let mut config = ChunkStoreConfig::CHANGELOG_DISABLED;
-            if let Some(max_bytes) = max_bytes {
-                config.chunk_max_bytes = max_bytes;
-            }
-            let is_start_of_gop: Option<re_chunk_store::IsStartOfGop> = if gop_batching {
-                Some(std::sync::Arc::new(|data, codec| {
-                    re_video::is_start_of_gop(data, codec.into())
-                        .map_err(|err| anyhow::anyhow!(err))
-                }))
-            } else {
-                None
-            };
-            let options = re_chunk_store::CompactionOptions {
-                config,
-                num_extra_passes: None,
-                is_start_of_gop,
-            };
-            let compacted = match &inner {
-                ChunkStoreInternal::InMemory(handle) => handle.read().compacted(&options),
-                ChunkStoreInternal::IndexedRrd(lazy) => lazy.compacted(&options),
-            };
-            compacted
-                .map(Self::in_memory)
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))
-        })
-    }
-
     /// The total number of chunks in this store (virtual and physical).
     fn num_chunks(&self) -> usize {
         match &self.0 {

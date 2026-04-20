@@ -11,6 +11,7 @@ from inline_snapshot import snapshot as inline_snapshot
 from rerun.experimental import (
     ChunkStore,
     LazyChunkStream,
+    OptimizationSettings,
     RrdReader,
 )
 
@@ -210,40 +211,48 @@ def test_write_rrd_metadata(test_rrd_path: Path, tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# ChunkStore.compact()
+# LazyChunkStream.collect(compaction=...)
 # ---------------------------------------------------------------------------
 
 
-def test_compact_reduces_chunks(fragmented_rrd_path: Path) -> None:
-    """compact() merges small chunks into fewer, larger ones."""
-    store = RrdReader(fragmented_rrd_path).store()
-    before = len(store.stream().to_chunks())
-
-    compacted = store.compact()
-    after = len(compacted.stream().to_chunks())
-
-    assert after < before
+def test_collect_default_single_pass_compacts(fragmented_rrd_path: Path) -> None:
+    """Default collect() applies single-pass compaction (what happens on insert)."""
+    reader = RrdReader(fragmented_rrd_path)
+    default = reader.stream().collect()
+    # Without any optimization, many tiny single-row chunks still get merged by
+    # the natural insert-time compaction path.
+    assert len(default.stream().to_chunks()) < 20
 
 
-def test_compact_preserves_schema(fragmented_rrd_path: Path) -> None:
-    """compact() preserves the schema."""
-    store = RrdReader(fragmented_rrd_path).store()
-    compacted = store.compact()
-    assert store.schema() == compacted.schema()
+def test_collect_optimize_further_reduces(fragmented_rrd_path: Path) -> None:
+    """Explicit optimize=OptimizationSettings() reduces chunk count further."""
+    reader = RrdReader(fragmented_rrd_path)
+    default = reader.stream().collect()  # single-pass only
+    optimized = reader.stream().collect(optimize=OptimizationSettings())
+
+    assert len(optimized.stream().to_chunks()) <= len(default.stream().to_chunks())
 
 
-def test_compact_preserves_row_count(fragmented_rrd_path: Path) -> None:
-    """compact() preserves the total number of rows across all chunks."""
-    store = RrdReader(fragmented_rrd_path).store()
-    compacted = store.compact()
-
-    original_rows = sum(c.num_rows for c in store.stream().to_chunks())
-    compacted_rows = sum(c.num_rows for c in compacted.stream().to_chunks())
-    assert compacted_rows == original_rows
+def test_collect_preserves_schema(fragmented_rrd_path: Path) -> None:
+    """Optimization preserves the schema."""
+    reader = RrdReader(fragmented_rrd_path)
+    default = reader.stream().collect()
+    optimized = reader.stream().collect(optimize=OptimizationSettings())
+    assert default.schema() == optimized.schema()
 
 
-def test_compact_video_stream_summary(tmp_path_factory: pytest.TempPathFactory) -> None:
-    """Snapshot the summary of a VideoStream recording: normal compaction vs + GoP batching."""
+def test_collect_preserves_row_count(fragmented_rrd_path: Path) -> None:
+    """Optimization preserves the total number of rows."""
+    reader = RrdReader(fragmented_rrd_path)
+    default_rows = sum(c.num_rows for c in reader.stream().collect().stream().to_chunks())
+    optimized_rows = sum(
+        c.num_rows for c in reader.stream().collect(optimize=OptimizationSettings()).stream().to_chunks()
+    )
+    assert optimized_rows == default_rows
+
+
+def test_collect_optimize_video_stream_summary(tmp_path_factory: pytest.TempPathFactory) -> None:
+    """Snapshot the summary of a VideoStream recording: optimize without vs with GoP batching."""
 
     def report(label: str, num_gops: int, s: ChunkStore) -> str:
         num_chunks = sum(1 for _ in s.stream().to_chunks())
@@ -251,14 +260,14 @@ def test_compact_video_stream_summary(tmp_path_factory: pytest.TempPathFactory) 
 
     sections = []
     for filename, codec in VIDEO_CASES:
-        tmp_dir = tmp_path_factory.mktemp("compact_video")
+        tmp_dir = tmp_path_factory.mktemp("collect_optimize_video")
         rrd_path, num_gops = _build_video_stream_rrd(tmp_dir, filename, codec)
-        store = RrdReader(rrd_path).store()
+        reader = RrdReader(rrd_path)
 
-        # Normal compaction only (no GoP alignment).
-        without_gop = store.compact(gop_batching=False)
-        # Then re-compact with GoP batching on top.
-        with_gop = without_gop.compact(gop_batching=True)
+        # Optimize without GoP alignment.
+        without_gop = reader.stream().collect(optimize=OptimizationSettings(gop_batching=False))
+        # Re-optimize with GoP batching on top of the already-optimized store.
+        with_gop = without_gop.stream().collect(optimize=OptimizationSettings(gop_batching=True))
 
         sections.append(f"=== {filename} ===")
         sections.append(report("before_gop", num_gops, without_gop))

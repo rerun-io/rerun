@@ -9,7 +9,7 @@ use re_log_types::{
 };
 use re_types_core::ComponentIdentifier;
 
-use re_chunk_store::{ChunkStore, ChunkStoreConfig};
+use re_chunk_store::{ChunkStore, ChunkStoreConfig, CompactionOptions, IsStartOfGop};
 
 use super::ChunkStream;
 use super::chunk_store::PyChunkStoreInternal;
@@ -167,11 +167,54 @@ impl PyLazyChunkStreamInternal {
     }
 
     /// Consume the stream and materialize all chunks into a ChunkStore.
-    fn collect(&self, py: Python<'_>) -> PyResult<PyChunkStoreInternal> {
+    ///
+    /// The defaults (`extra_passes=0`, `gop_batching=False`) produce a store that
+    /// has only received the single-pass compaction that happens naturally during
+    /// chunk insertion. The Python wrapper `LazyChunkStream.collect(optimize=...)`
+    /// is the intended entry point.
+    #[pyo3(signature = (
+        *,
+        max_bytes = None,
+        max_rows = None,
+        max_rows_if_unsorted = None,
+        extra_passes = 0,
+        gop_batching = false,
+    ))]
+    fn collect(
+        &self,
+        py: Python<'_>,
+        max_bytes: Option<u64>,
+        max_rows: Option<u64>,
+        max_rows_if_unsorted: Option<u64>,
+        extra_passes: usize,
+        gop_batching: bool,
+    ) -> PyResult<PyChunkStoreInternal> {
         let mut compiled = self.compile_inner()?;
         py.detach(move || -> Result<_, ChunkPipelineError> {
+            let d = ChunkStoreConfig::DEFAULT;
+            let config = ChunkStoreConfig {
+                chunk_max_bytes: max_bytes.unwrap_or(d.chunk_max_bytes),
+                chunk_max_rows: max_rows.unwrap_or(d.chunk_max_rows),
+                chunk_max_rows_if_unsorted: max_rows_if_unsorted
+                    .unwrap_or(d.chunk_max_rows_if_unsorted),
+                ..ChunkStoreConfig::CHANGELOG_DISABLED
+            };
+            let is_start_of_gop: Option<IsStartOfGop> = if gop_batching {
+                Some(std::sync::Arc::new(|data, codec| {
+                    re_video::is_start_of_gop(data, codec.into())
+                        .map_err(|err| anyhow::anyhow!(err))
+                }))
+            } else {
+                None
+            };
+            let options = CompactionOptions {
+                config: config.clone(),
+                num_extra_passes: Some(extra_passes),
+                is_start_of_gop,
+            };
+
             let store_id = StoreId::random(StoreKind::Recording, "chunk-store");
-            let mut store = ChunkStore::new(store_id, ChunkStoreConfig::ALL_DISABLED);
+            let mut store = ChunkStore::new(store_id, config);
             while let Some(chunk) = compiled.next()? {
                 store
                     .insert_chunk(&chunk)
@@ -179,6 +222,18 @@ impl PyLazyChunkStreamInternal {
                         reason: err.to_string(),
                     })?;
             }
+
+            // Always pipe through `finalize_compaction`. When
+            // `num_extra_passes == Some(0)` and `is_start_of_gop == None`, this
+            // is a near-no-op that still applies the `ALL_DISABLED` post-condition
+            // (`ChunkStore::config` is `pub(crate)` so we can't set it directly
+            // from here).
+            let store = store.finalize_compaction(&options).map_err(|err| {
+                ChunkPipelineError::ChunkStoreInsert {
+                    reason: err.to_string(),
+                }
+            })?;
+
             Ok(PyChunkStoreInternal::in_memory(store))
         })
         .map_err(PyErr::from)

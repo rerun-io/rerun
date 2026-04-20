@@ -13,6 +13,7 @@ from ._indexed_reader import IndexedReader as IndexedReader
 from ._lazy_chunk_stream import LazyChunkStream as LazyChunkStream
 from ._lens import Lens as Lens, LensOutput as LensOutput
 from ._mcap_reader import McapReader as McapReader
+from ._optimization_settings import OptimizationSettings as OptimizationSettings
 from ._parquet_reader import ColumnRule as ColumnRule, ParquetReader as ParquetReader
 from ._rrd_reader import RrdReader as RrdReader
 from ._selector import Selector as Selector

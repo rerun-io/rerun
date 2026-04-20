@@ -51,6 +51,39 @@ impl ChunkStore {
     pub fn compacted(&self, options: &CompactionOptions) -> Result<Self, ChunkStoreError> {
         re_tracing::profile_function!();
 
+        // Initial pass: re-insert all chunks into a compaction-enabled store.
+        let mut store = Self::new(self.id().clone(), options.config.clone());
+        for chunk in self.iter_physical_chunks() {
+            store.insert_chunk(chunk)?;
+        }
+
+        store.finalize_compaction(options)
+    }
+
+    /// Finalize a compaction-enabled store: run up to
+    /// [`CompactionOptions::num_extra_passes`] additional compaction passes
+    /// (stopping early when the chunk count stops decreasing), optionally rebatch
+    /// video chunks along GoP boundaries, then disable compaction on the returned
+    /// store ([`ChunkStoreConfig::ALL_DISABLED`] config).
+    ///
+    /// Consumes `self`. Assumes `self` was built with a compaction-enabled
+    /// config (otherwise each pass is a no-op).
+    pub fn finalize_compaction(
+        mut self,
+        options: &CompactionOptions,
+    ) -> Result<Self, ChunkStoreError> {
+        re_tracing::profile_function!();
+
+        if self.config.chunk_max_bytes == 0
+            && self.config.chunk_max_rows == 0
+            && self.config.chunk_max_rows_if_unsorted == 0
+        {
+            re_log::debug_warn!(
+                "Finalizing compaction on a store that does not have compaction enabled. \
+                Extra compaction passes will have no effects."
+            );
+        }
+
         let CompactionOptions {
             config,
             num_extra_passes,
@@ -59,23 +92,16 @@ impl ChunkStore {
 
         let num_extra_passes = num_extra_passes.unwrap_or(50);
 
-        // Initial pass: re-insert all chunks into a compaction-enabled store.
-        let mut store = Self::new(self.id().clone(), config.clone());
-        for chunk in self.iter_physical_chunks() {
-            store.insert_chunk(chunk)?;
-        }
-
-        // Extra passes until convergence.
         for pass in 0..num_extra_passes {
             let now = web_time::Instant::now();
-            let num_before = store.num_physical_chunks();
-            let chunks: Vec<_> = store.iter_physical_chunks().cloned().collect();
-            let mut new_store = Self::new(store.id().clone(), config.clone());
+            let num_before = self.num_physical_chunks();
+            let chunks: Vec<_> = self.iter_physical_chunks().cloned().collect();
+            let mut new_store = Self::new(self.id().clone(), config.clone());
             for chunk in &chunks {
                 new_store.insert_chunk(chunk)?;
             }
             let num_after = new_store.num_physical_chunks();
-            store = new_store;
+            self = new_store;
 
             re_log::info!(
                 pass,
@@ -96,12 +122,12 @@ impl ChunkStore {
             let now = web_time::Instant::now();
 
             match crate::rebatch_videos::rebatch_video_chunks_to_gops(
-                &store,
+                &self,
                 config,
                 is_start_of_gop.as_ref(),
             ) {
                 Ok(new_store) => {
-                    store = new_store;
+                    self = new_store;
                     re_log::info!(time = ?now.elapsed(), "video GoP rebatching completed");
                 }
                 Err(err) => {
@@ -110,9 +136,28 @@ impl ChunkStore {
             }
         }
 
-        // Return with compaction disabled so the result is inert.
-        store.config = ChunkStoreConfig::ALL_DISABLED;
+        // Post-condition: returned store is inert.
+        self.config = ChunkStoreConfig::ALL_DISABLED;
+        Ok(self)
+    }
+}
 
-        Ok(store)
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn finalize_compaction_resets_config_to_all_disabled() {
+        let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test");
+        let store = ChunkStore::new(store_id, ChunkStoreConfig::CHANGELOG_DISABLED);
+        let options = CompactionOptions {
+            config: ChunkStoreConfig::CHANGELOG_DISABLED,
+            num_extra_passes: Some(0),
+            is_start_of_gop: None,
+        };
+        let result = store
+            .finalize_compaction(&options)
+            .expect("zero passes should succeed");
+        assert_eq!(result.config, ChunkStoreConfig::ALL_DISABLED);
     }
 }
