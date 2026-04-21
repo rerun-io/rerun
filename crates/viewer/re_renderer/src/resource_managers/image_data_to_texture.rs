@@ -85,7 +85,7 @@ pub enum ImageDataToTextureError {
     },
 
     #[error(
-        "Texture {label:?} has invalid texture format: {actual_format:?}, expected at least {required_format:?}"
+        "Texture {label:?} has invalid texture format: {actual_format:?}, expected {required_format:?}"
     )]
     InvalidTargetTextureFormat {
         label: Label,

@@ -156,6 +156,29 @@ impl ColormappedTexture {
         }
     }
 
+    /// Build a [`ColormappedTexture`] for a decoded video/image frame, choosing
+    /// the colormapping based on the texture's component count.
+    ///
+    /// RGBA textures pass through to [`Self::from_unorm_rgba`]. Single-channel textures
+    /// splat `.r` onto `.rgb` via [`ColorMapper::OffGrayscale`], since
+    /// [`Self::from_unorm_rgba`]'s `OffRGB` mapper is invalid for one-component inputs.
+    pub fn from_video_frame(texture: GpuTexture2D) -> Self {
+        let format = texture.format();
+        if format.components() != 1 {
+            return Self::from_unorm_rgba(texture);
+        }
+
+        Self {
+            range: crate::texture_info::sample_value_range(format),
+            texture,
+            decode_srgb: true,
+            texture_alpha: TextureAlpha::Opaque,
+            gamma: 1.0,
+            color_mapper: ColorMapper::OffGrayscale,
+            shader_decoding: None,
+        }
+    }
+
     pub fn width_height(&self) -> [u32; 2] {
         self.texture.width_height()
     }

@@ -72,6 +72,7 @@ fn decode_to_frame_content(
         .decode()
         .map_err(|err| crate::DecodeError::ImageDecoder(err.to_string()))?;
 
+    // RGB -> RGBA padding happens at a later stage.
     let converted_rgb;
     let converted_rgba;
     let (data, (width, height), format): (&[u8], (u32, u32), PixelFormat) = match &dynamic_image {

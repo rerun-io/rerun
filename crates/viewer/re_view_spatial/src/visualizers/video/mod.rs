@@ -419,7 +419,7 @@ fn show_video_frame(
                 top_left_corner_position,
                 extent_u,
                 extent_v,
-                colormapped_texture: renderer::ColormappedTexture::from_unorm_rgba(texture),
+                colormapped_texture: renderer::ColormappedTexture::from_video_frame(texture),
                 options: renderer::RectangleOptions {
                     texture_filter_magnification: renderer::TextureFilterMag::Nearest,
                     texture_filter_minification: renderer::TextureFilterMin::Linear,

@@ -416,7 +416,10 @@ impl<T: Default> VideoPlayer<T> {
             description.human_readable_codec_string()
         );
 
-        if let Some(details) = description.encoding_details.as_ref()
+        // Image sequences can display images with higher bit depth.
+        let is_image_sequence = matches!(description.codec, crate::VideoCodec::ImageSequence(_));
+        if !is_image_sequence
+            && let Some(details) = description.encoding_details.as_ref()
             && let Some(bit_depth) = details.bit_depth
         {
             if bit_depth < 8 {
