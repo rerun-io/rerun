@@ -9182,6 +9182,7 @@ dependencies = [
 name = "re_plot"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "egui",
  "indexmap",
  "re_ui",
@@ -9813,6 +9814,7 @@ dependencies = [
 name = "re_time_panel"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "anyhow",
  "criterion",
  "egui",
@@ -10053,6 +10055,7 @@ dependencies = [
 name = "re_view_bar_chart"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "arrow",
  "egui",
  "egui_plot",
@@ -10290,6 +10293,7 @@ dependencies = [
 name = "re_view_time_series"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "arrayvec",
  "egui",
  "egui_plot",

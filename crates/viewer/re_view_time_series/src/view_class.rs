@@ -1,4 +1,4 @@
-use egui::ahash::HashMap;
+use ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{Line, Plot, PlotPoint, Points};
 use itertools::{Either, Itertools as _};
@@ -862,8 +862,7 @@ impl ViewClass for TimeSeriesView {
                 // Multiple series can share a label (e.g. /spiral[0] and /spiral[1]), so we OR
                 // across all of them.
                 let prev_hovered_items = ctx.selection_state().hovered_items();
-                let mut label_hovered: egui::ahash::HashMap<&str, bool> =
-                    egui::ahash::HashMap::default();
+                let mut label_hovered: ahash::HashMap<&str, bool> = ahash::HashMap::default();
                 for series in all_plot_series
                     .iter()
                     .filter(|s| !matches!(s.kind, PlotSeriesKind::Clear))
@@ -1162,10 +1161,7 @@ fn find_nearest_data_point_and_show_tooltip(
     time_offset: i64,
     time_type: TimeType,
     timestamp_format: re_log_types::TimestampFormat,
-    plot_item_id_to_data_result_address: &egui::ahash::HashMap<
-        egui::Id,
-        DataResultInteractionAddress,
-    >,
+    plot_item_id_to_data_result_address: &ahash::HashMap<egui::Id, DataResultInteractionAddress>,
 ) -> Option<re_viewer_context::Item> {
     let hover_pos = match response.hover_pos() {
         Some(pos) if response.rect.contains(pos) => pos,

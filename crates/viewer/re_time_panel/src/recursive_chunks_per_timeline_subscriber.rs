@@ -1,6 +1,6 @@
 use std::sync::{Arc, OnceLock, Weak};
 
-use egui::ahash::HashMap;
+use ahash::HashMap;
 use nohash_hasher::IntMap;
 use re_chunk_store::{
     Chunk, ChunkDirectLineageReport, ChunkId, ChunkStore, ChunkStoreDiff, ChunkStoreEvent,

@@ -104,7 +104,7 @@ impl LegendWidget {
         }
 
         let mut hovered_id: Option<Id> = None;
-        let mut toggled_labels: egui::ahash::HashSet<&str> = egui::ahash::HashSet::default();
+        let mut toggled_labels: ahash::HashSet<&str> = ahash::HashSet::default();
         let mut focus_label: Option<&str> = None;
 
         self.show(ui, |ui| {
