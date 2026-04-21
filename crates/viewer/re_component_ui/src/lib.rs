@@ -39,6 +39,7 @@ use datatype_uis::{
     edit_ui_points, edit_view_enum, edit_view_enum_with_variant_available, edit_view_range1d,
     view_timestamp, view_uuid, view_view_id,
 };
+use re_sdk_types::ColormapSelection;
 use re_sdk_types::blueprint::components::{
     AngularSpeed, BackgroundKind, Corner2D, Enabled, Eye3DKind, ForceDistance, ForceIterations,
     ForceStrength, GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider, NearClipPlane,
@@ -51,7 +52,8 @@ use re_sdk_types::components::{
     Position3D, Range1D, Scale3D, ShowLabels, StrokeWidth, Text, Timestamp, TransformRelation,
     Translation3D, ValueRange, Vector3D, VideoCodec, Visible,
 };
-use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
+use re_sdk_types::{archetypes, components};
+use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui_with_selection;
 
 /// Default number of ui points to show a number.
 const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
@@ -182,7 +184,16 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view(time_range::time_range_singleline_view_ui);
 
     // `Colormap` _is_ an enum, but its custom editor is far better.
-    registry.add_singleline_edit_or_view(colormap_edit_or_view_ui);
+    registry.add_singleline_edit_or_view::<components::Colormap>(|ctx, ui, map| {
+        colormap_edit_or_view_ui_with_selection(ctx, ui, map, ColormapSelection::Standard)
+    });
+    // Include the grid map colormap category iff we have a `GridMap:colormap` component identifier.
+    registry.add_singleline_edit_or_view_for_component::<components::Colormap>(
+        archetypes::GridMap::descriptor_colormap().component,
+        |ctx, ui, _component_descriptor, map| {
+            colormap_edit_or_view_ui_with_selection(ctx, ui, map, ColormapSelection::IncludeGridMap)
+        },
+    );
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);

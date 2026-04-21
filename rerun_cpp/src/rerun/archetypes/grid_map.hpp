@@ -72,6 +72,7 @@ namespace rerun::archetypes {
     ///                  -(static_cast<float>(height) * cell_size) / 2.0f,
     ///                  0.0f}
     ///             )
+    ///             .with_colormap(rerun::components::Colormap::RvizMap)
     ///     );
     /// }
     /// ```

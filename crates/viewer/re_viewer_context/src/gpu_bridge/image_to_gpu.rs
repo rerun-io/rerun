@@ -41,7 +41,7 @@ fn generate_texture_key(image: &ImageInfo) -> u64 {
     hash((buffer_content_hash, format, kind))
 }
 
-/// `colormap` is currently only used for depth images.
+/// `colormap` is used for depth images and explicit scalar-image colorization.
 pub fn image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
@@ -52,30 +52,16 @@ pub fn image_to_gpu(
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
-    let texture_key = generate_texture_key(image);
-
     match image.kind {
         ImageKind::Color => {
-            color_image_to_gpu(render_ctx, debug_name, texture_key, image, image_stats)
+            color_image_to_gpu(render_ctx, debug_name, image, image_stats, colormap)
         }
-        ImageKind::Depth => depth_image_to_gpu(
-            render_ctx,
-            debug_name,
-            texture_key,
-            image,
-            image_stats,
-            colormap,
-        ),
+        ImageKind::Depth => {
+            depth_image_to_gpu(render_ctx, debug_name, image, image_stats, colormap)
+        }
         ImageKind::Segmentation => {
             if let Some(annotations) = annotations {
-                segmentation_image_to_gpu(
-                    render_ctx,
-                    debug_name,
-                    texture_key,
-                    image,
-                    image_stats,
-                    annotations,
-                )
+                segmentation_image_to_gpu(render_ctx, debug_name, image, image_stats, annotations)
             } else {
                 anyhow::bail!("Missing annotations for segmentation image")
             }
@@ -86,13 +72,14 @@ pub fn image_to_gpu(
 fn color_image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
-    texture_key: u64,
     image: &ImageInfo,
     image_stats: &ImageStats,
+    colormap: Option<&ColormapWithRange>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
     let image_format = image.format;
+    let texture_key = generate_texture_key(image);
 
     let texture_handle = get_or_create_texture(render_ctx, texture_key, || {
         texture_creation_desc_from_color_image(render_ctx.device_caps(), image, debug_name)
@@ -103,13 +90,23 @@ fn color_image_to_gpu(
 
     let shader_decoding = required_shader_decode(render_ctx.device_caps(), &image_format);
 
-    // TODO(emilk): let the user specify the color space.
-    let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
-        || image_decode_srgb_gamma_heuristic(image_stats, image_format);
+    // Explicit colormaps on single-channel images own the scalar interpretation, so they use
+    // their requested value range and skip the usual sRGB image decoding.
+    let colormap_single_channel = colormap.filter(|_| texture_format.components() == 1);
 
-    // Special casing for normalized textures used above:
-    let range = if matches!(
+    let decode_srgb = if colormap_single_channel.is_some() {
+        false
+    } else {
+        // TODO(emilk): let the user specify the color space.
+        texture_format == TextureFormat::Rgba8Unorm
+            || image_decode_srgb_gamma_heuristic(image_stats, image_format)
+    };
+
+    let range = if let Some(colormap) = colormap_single_channel {
+        explicit_colormap_range_for_scalar_texture(colormap, texture_format)
+    } else if matches!(
         texture_format,
+        // Special casing for normalized textures used above:
         TextureFormat::R8Unorm | TextureFormat::Rgba8Unorm | TextureFormat::Bgra8Unorm
     ) {
         emath::Rangef::new(0.0, 1.0)
@@ -123,14 +120,18 @@ fn color_image_to_gpu(
         image_data_range_heuristic(image_stats, &image_format)
     };
 
+    let color_mapper =
+        colormap.map(|colormap| ColorMapper::Function(colormap_to_re_renderer(colormap.colormap)));
+
     let color_mapper = if let Some(shader_decoding) = shader_decoding {
         match shader_decoding {
             // We only have 1D color maps, therefore BGR formats can't have color maps.
             ShaderDecoding::Bgr => ColorMapper::OffRGB,
         }
     } else if texture_format.components() == 1 {
-        // TODO(andreas): support colormap property
-        if decode_srgb {
+        if let Some(color_mapper) = color_mapper {
+            color_mapper
+        } else if decode_srgb {
             // Leave grayscale images unmolested - don't apply a colormap to them.
             ColorMapper::OffGrayscale
         } else {
@@ -167,6 +168,24 @@ fn color_image_to_gpu(
         color_mapper,
         shader_decoding,
     })
+}
+
+/// Scales an explicit colormap range to the texture's sampled value range.
+fn explicit_colormap_range_for_scalar_texture(
+    colormap: &ColormapWithRange,
+    texture_format: TextureFormat,
+) -> Rangef {
+    let [min, max] = colormap.value_range;
+
+    match texture_format {
+        // `ColormapWithRange::value_range` is expressed in source image units, but `R8Unorm`
+        // textures are sampled in normalized `0..1`, so byte ranges must be rescaled.
+        TextureFormat::R8Unorm => Rangef::new(min / 255.0, max / 255.0),
+
+        // All other scalar texture formats used here are sampled in the same units as the source
+        // image data, so the explicit colormap range can pass through unchanged.
+        _ => Rangef::new(min, max),
+    }
 }
 
 /// Get a valid, finite range for the gpu to use.
@@ -386,7 +405,6 @@ pub fn texture_creation_desc_from_color_image<'a>(
 fn depth_image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
-    texture_key: u64,
     image: &ImageInfo,
     image_stats: &ImageStats,
     colormap_with_range: Option<&ColormapWithRange>,
@@ -412,7 +430,7 @@ fn depth_image_to_gpu(
     } = colormap_with_range
         .cloned()
         .unwrap_or_else(|| ColormapWithRange::default_for_depth_images(image_stats));
-
+    let texture_key = generate_texture_key(image);
     let texture = get_or_create_texture(render_ctx, texture_key, || {
         general_texture_creation_desc_from_image(debug_name, image, ColorModel::L, datatype)
     })
@@ -432,7 +450,6 @@ fn depth_image_to_gpu(
 fn segmentation_image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
-    texture_key: u64,
     image: &ImageInfo,
     image_stats: &ImageStats,
     annotations: &Annotations,
@@ -453,6 +470,7 @@ fn segmentation_image_to_gpu(
     let datatype = image.format.datatype();
 
     let colormap_key = hash(annotations.row_id());
+    let texture_key = generate_texture_key(image);
 
     let (_, mut max) = image_stats
         .range

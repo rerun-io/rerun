@@ -343,6 +343,16 @@ impl GridMapVisualizer {
         // Lint against hard-coded UI colors doesn't apply here.
         let multiplicative_tint = re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
+        let texture_filter_minification = match &color_mode {
+            GridMapColorMode::Colormapped(ColormapWithRange {
+                // RViz colormaps encode discrete occupancy/cost classes.
+                // Use nearest instead of linear filtering to avoid blending neighboring values.
+                colormap: Colormap::RvizMap | Colormap::RvizCostmap,
+                ..
+            }) => renderer::TextureFilterMin::Nearest,
+            _ => renderer::TextureFilterMin::Linear,
+        };
+
         let textured_rect = renderer::TexturedRect {
             top_left_corner_position,
             extent_u,
@@ -350,7 +360,7 @@ impl GridMapVisualizer {
             colormapped_texture,
             options: renderer::RectangleOptions {
                 texture_filter_magnification: renderer::TextureFilterMag::Nearest,
-                texture_filter_minification: renderer::TextureFilterMin::Linear,
+                texture_filter_minification,
                 multiplicative_tint,
                 depth_offset: spatial_ctx.depth_offset,
                 outline_mask: spatial_ctx.highlight.overall,
@@ -374,8 +384,25 @@ impl GridMapVisualizer {
                 GridMap::descriptor_colormap().component,
                 VisualizerReportSeverity::Warning,
                 format!(
-                    "GridMap colormaps currently only apply to single-channel maps; ignoring colormap for {:?} data.",
+                    "GridMap colormaps only apply to single-channel images; ignoring colormap for {:?} data.",
                     component_data.image.format.color_model()
+                ),
+            );
+            return GridMapColorMode::NoColormap;
+        }
+
+        if matches!(colormap, Colormap::RvizMap | Colormap::RvizCostmap)
+            && !matches!(
+                component_data.image.format.datatype(),
+                re_sdk_types::datatypes::ChannelDatatype::U8
+            )
+        {
+            results.report_for_component(
+                GridMap::descriptor_colormap().component,
+                VisualizerReportSeverity::Warning,
+                format!(
+                    "RViz GridMap colormaps require L/U8 data; showing the original image for {:?} pixels.",
+                    component_data.image.format.datatype()
                 ),
             );
             return GridMapColorMode::NoColormap;
@@ -386,9 +413,10 @@ impl GridMapVisualizer {
                 |c: &mut re_viewer_context::ImageStatsCache| c.entry(&component_data.image),
             );
 
-        // TODO(michael): add support for RViz "Map"/"Costmap" colormaps
-        // and use [0.0, 255.0] as fixed range for them, if they are selected.
-        let value_range = {
+        let value_range = if matches!(colormap, Colormap::RvizMap | Colormap::RvizCostmap) {
+            // RViz grid-map colormaps are discrete mappings for u8 values, not continuous gradients.
+            [0.0, 255.0]
+        } else {
             // For conventional colormaps, use the image data range.
             let range =
                 gpu_bridge::image_data_range_heuristic(&image_stats, &component_data.image.format);

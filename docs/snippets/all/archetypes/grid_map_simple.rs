@@ -36,7 +36,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             -(width as f32) * cell_size / 2.0,
             -(height as f32) * cell_size / 2.0,
             0.0,
-        ]),
+        ])
+        .with_colormap(rerun::components::Colormap::RvizMap),
     )?;
 
     Ok(())

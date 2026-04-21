@@ -123,7 +123,7 @@ fn compute_point_data(quad_idx: u32) -> PointData {
         let normalized_depth =
             (world_space_depth - depth_cloud_info.min_max_depth_in_world.x) /
             (depth_cloud_info.min_max_depth_in_world.y - depth_cloud_info.min_max_depth_in_world.x);
-        let color = vec4f(colormap_linear(depth_cloud_info.colormap, normalized_depth), 1.0);
+        let color = colormap_linear(depth_cloud_info.colormap, normalized_depth);
 
         // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
         let intrinsics = depth_cloud_info.depth_camera_intrinsics;
@@ -194,7 +194,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
     if coverage < 0.001 {
         discard;
     }
-    return vec4f(in.point_color.rgb, coverage);
+    return vec4f(in.point_color.rgb, in.point_color.a * coverage);
 }
 
 @fragment

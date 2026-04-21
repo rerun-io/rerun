@@ -4,7 +4,7 @@ use re_sdk_types::{
     archetypes::{GridMap, TransformAxes3D},
     blueprint::archetypes::{EyeControls3D, LineGrid3D, SpatialInformation},
     blueprint::components::{Enabled, GridSpacing},
-    components::{ImageFormat, Position3D, RotationAxisAngle},
+    components::{Colormap, ImageFormat, Position3D, RotationAxisAngle},
     datatypes::{ChannelDatatype, ColorModel},
 };
 use re_test_context::TestContext;
@@ -118,4 +118,79 @@ fn test_grid_map_texel_accuracy() {
     harness.run_steps(10);
 
     harness.snapshot("grid_map_texel_accuracy");
+}
+
+/// Creates a snapshot that renders a strip with all the possible [`Colormap::RvizMap`] values.
+#[test]
+fn test_grid_map_rviz_map_colormap() {
+    run_grid_map_colormap_snapshot("grid_map_rviz_map", Colormap::RvizMap);
+}
+
+/// Creates a snapshot that renders a strip with all the possible [`Colormap::RvizCostmap`] values.
+#[test]
+fn test_grid_map_rviz_costmap_colormap() {
+    run_grid_map_colormap_snapshot("grid_map_rviz_costmap", Colormap::RvizCostmap);
+}
+
+fn run_grid_map_colormap_snapshot(name: &str, colormap: Colormap) {
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
+
+    // Create a grid map from an image strip where each column represents one value in [0, 255].
+    let width: u32 = 256;
+    let height: u32 = 50;
+    let cell_size = 3.;
+    let mut pixels = Vec::with_capacity((width * height) as usize);
+    for _y in 0..height {
+        for x in 0..width {
+            pixels.push(x as u8);
+        }
+    }
+    test_context.log_entity("map", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::STATIC,
+            &GridMap::new(
+                pixels,
+                ImageFormat::from_color_model([width, height], ColorModel::L, ChannelDatatype::U8),
+                cell_size,
+            )
+            .with_colormap(colormap),
+        )
+    });
+
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            re_view_spatial::SpatialView3D::identifier(),
+        ))
+    });
+
+    let mut harness = test_context
+        .setup_kittest_for_rendering_3d(egui::vec2(512.0, 100.0))
+        .build_ui(|ui| test_context.run_with_single_view(ui, view_id));
+
+    test_context.with_blueprint_ctx(|ctx, _| {
+        // Configure a top down eye view that nicely fits the strip.
+        let eye_x = width as f32 * cell_size * 0.5;
+        let eye_y = height as f32 * cell_size * 0.5;
+        let eye_z = width as f32 * cell_size * 0.25;
+
+        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
+            ctx.current_blueprint(),
+            ctx.blueprint_query(),
+            view_id,
+        );
+        eye_property.save_blueprint_component(
+            &ctx,
+            &EyeControls3D::descriptor_position(),
+            &Position3D::new(eye_x, eye_y, eye_z),
+        );
+        eye_property.save_blueprint_component(
+            &ctx,
+            &EyeControls3D::descriptor_look_target(),
+            &Position3D::new(eye_x, eye_y, 0.0),
+        );
+    });
+
+    harness.run_steps(10);
+    harness.snapshot(name);
 }
