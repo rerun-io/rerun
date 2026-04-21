@@ -11,9 +11,12 @@ use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use datafusion::common::hash_utils::HashValue as _;
-use datafusion::common::{exec_datafusion_err, exec_err, plan_err};
+use datafusion::common::plan_err;
 use datafusion::config::ConfigOptions;
 use datafusion::error::DataFusionError;
+use re_redap_client::{ApiError, ApiResult};
+
+use crate::IntoDfError as _;
 use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
 use datafusion::physical_expr::expressions::Column;
 use datafusion::physical_expr::{
@@ -67,7 +70,7 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
     async fn get_chunk_store_for_single_rerun_segment(
         &mut self,
         segment_id: &str,
-    ) -> Result<ChunkStoreHandle, DataFusionError> {
+    ) -> ApiResult<ChunkStoreHandle> {
         let chunk_infos = self.chunk_infos.iter().map(Into::into).collect::<Vec<_>>();
         let fetch_chunks_request = FetchChunksRequest { chunk_infos };
 
@@ -75,7 +78,7 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
             .client
             .fetch_chunks(fetch_chunks_request.into_request())
             .await
-            .map_err(|err| exec_datafusion_err!("{err}"))?;
+            .map_err(|err| ApiError::tonic(err, "fetch_chunks"))?;
 
         let response_stream =
             re_redap_client::ApiResponseStream::from_tonic_response(response, "/FetchChunks");
@@ -91,8 +94,7 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
         let store = ChunkStore::new_handle(store_id, Default::default());
 
         while let Some(chunks_and_segment_ids) = chunk_stream.next().await {
-            let chunks_and_segment_ids =
-                chunks_and_segment_ids.map_err(|err| exec_datafusion_err!("{err}"))?;
+            let chunks_and_segment_ids = chunks_and_segment_ids?;
 
             let _span = tracing::trace_span!(
                 "fetch_chunks::batch_insert",
@@ -103,16 +105,32 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
             for chunk_and_segment_id in chunks_and_segment_ids {
                 let (chunk, received_segment_id) = chunk_and_segment_id;
 
-                let received_segment_id = received_segment_id
-                    .ok_or_else(|| exec_datafusion_err!("Received chunk without a segment id"))?;
+                let received_segment_id = received_segment_id.ok_or_else(|| {
+                    ApiError::deserialization(
+                        None,
+                        "server returned chunk without a segment id in fetch_chunks response",
+                    )
+                })?;
                 if received_segment_id != segment_id {
-                    return exec_err!("Unexpected segment id: {received_segment_id}");
+                    return Err(ApiError::deserialization(
+                        None,
+                        format!(
+                            "server returned chunk for unexpected segment id `{received_segment_id}` \
+                             while fetching chunks for `{segment_id}`"
+                        ),
+                    ));
                 }
 
                 store
                     .write()
                     .insert_chunk(&Arc::new(chunk))
-                    .map_err(|err| exec_datafusion_err!("{err}"))?;
+                    .map_err(|err| {
+                        ApiError::internal_with_source(
+                            None,
+                            err,
+                            "inserting chunk into in-memory store",
+                        )
+                    })?;
             }
         }
 
@@ -139,7 +157,8 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
 
                 let runtime = Handle::current();
                 let store = runtime
-                    .block_on(this.get_chunk_store_for_single_rerun_segment(segment_id.as_str()))?;
+                    .block_on(this.get_chunk_store_for_single_rerun_segment(segment_id.as_str()))
+                    .map_err(|err| err.into_df_error())?;
 
                 let query_engine = QueryEngine::new(store.clone(), QueryCache::new_handle(store));
 
@@ -156,7 +175,9 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
                 .expect("current_query should be Some");
 
             // If the following returns none, we have exhausted that rerun segment id
-            match create_next_row(query, segment_id, &this.projected_schema)? {
+            match create_next_row(query, segment_id, &this.projected_schema)
+                .map_err(|err| err.into_df_error())?
+            {
                 Some(rb) => return Poll::Ready(Some(Ok(rb))),
                 None => this.current_query = None,
             }
@@ -271,7 +292,7 @@ fn create_next_row(
     query_handle: &QueryHandle<StorageEngine>,
     segment_id: &str,
     target_schema: &Arc<Schema>,
-) -> Result<Option<RecordBatch>, DataFusionError> {
+) -> ApiResult<Option<RecordBatch>> {
     let query_schema = Arc::clone(query_handle.schema());
     let num_fields = query_schema.fields.len();
 
@@ -284,7 +305,9 @@ fn create_next_row(
         return Ok(None);
     }
     if num_fields != next_row.len() {
-        return plan_err!("Unexpected number of columns returned from query");
+        return Err(ApiError::internal(
+            "Unexpected number of columns returned from query",
+        ));
     }
 
     let num_rows = next_row[0].len();
@@ -304,9 +327,18 @@ fn create_next_row(
         batch_schema,
         arrays,
         &RecordBatchOptions::default().with_row_count(Some(num_rows)),
-    )?;
+    )
+    .map_err(|err| {
+        ApiError::deserialization_with_source(
+            None,
+            err,
+            "building output record batch from chunk-store rows",
+        )
+    })?;
 
-    let output_batch = align_record_batch_to_schema(&batch, target_schema)?;
+    let output_batch = align_record_batch_to_schema(&batch, target_schema).map_err(|err| {
+        ApiError::deserialization_with_source(None, err, "DataFusion schema mismatch error")
+    })?;
 
     Ok(Some(output_batch))
 }

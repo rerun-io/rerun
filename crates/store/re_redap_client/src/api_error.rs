@@ -142,6 +142,23 @@ impl ApiError {
         }
     }
 
+    /// Construct an [`ApiError`] with an explicit `kind` and an optional `trace_id`.
+    ///
+    /// Do NOT include `err` in the `message` - it will be added for you.
+    pub fn with_kind_and_source(
+        kind: ApiErrorKind,
+        trace_id: Option<opentelemetry::TraceId>,
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind,
+            source: Some(Arc::new(err)),
+            trace_id,
+        }
+    }
+
     /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn tonic(err: tonic::Status, message: impl Into<String>) -> Self {
         let message = message.into();

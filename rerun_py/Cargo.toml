@@ -64,6 +64,7 @@ re_lenses_core.workspace = true
 re_chunk_store.workspace = true
 re_importer.workspace = true
 re_datafusion.workspace = true
+re_error.workspace = true
 re_format.workspace = true
 re_redap_client.workspace = true
 re_grpc_client.workspace = true

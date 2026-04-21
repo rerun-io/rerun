@@ -7,6 +7,7 @@ mod connection_registry;
 mod grpc;
 
 pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
+
 pub use self::api_response_stream::ApiResponseStream;
 pub use self::connection_client::{
     FetchChunksResponseStream, GenericConnectionClient, SegmentQueryParams,
@@ -19,6 +20,10 @@ pub use self::grpc::{
     ChunksWithSegment, RedapClient, StreamingOptions, channel,
     fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
 };
+
+/// Re-export of [`opentelemetry::TraceId`] for callers constructing
+/// [`ApiError`]s without taking a direct dependency on `opentelemetry`.
+pub use opentelemetry::TraceId;
 
 const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 

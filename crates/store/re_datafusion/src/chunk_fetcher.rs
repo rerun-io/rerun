@@ -5,8 +5,6 @@ use std::{error::Error as _, fmt::Write as _};
 
 use arrow::array::{Array as _, DictionaryArray, RecordBatch, StringArray, UInt64Array};
 use arrow::datatypes::Int32Type;
-use datafusion::common::exec_datafusion_err;
-use datafusion::error::DataFusionError;
 use futures::StreamExt as _;
 use tonic::IntoRequest as _;
 use tracing::Instrument as _;
@@ -205,7 +203,7 @@ pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
 pub async fn fetch_batch_direct(
     batch: &RecordBatch,
     http_client: &reqwest::Client,
-) -> Result<Vec<ChunksWithSegment>, DataFusionError> {
+) -> ApiResult<Vec<ChunksWithSegment>> {
     #[cfg(not(target_arch = "wasm32"))]
     let byte_size = batch_byte_size(batch);
 
@@ -224,7 +222,11 @@ pub async fn fetch_batch_direct(
             let reason = classify_failure_reason(&err);
             #[cfg(not(target_arch = "wasm32"))]
             metrics::record_direct_failure(reason);
-            Err(exec_datafusion_err!("Direct fetch failed: {err}"))
+            Err(re_redap_client::ApiError::connection_with_source(
+                None,
+                err,
+                "fetching chunks via direct URLs",
+            ))
         }
     }
 }
