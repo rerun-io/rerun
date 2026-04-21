@@ -169,9 +169,8 @@
     "table_grid_view_card_fill": {
       "color": "{Gray.150}"
     },
-    "table_grid_view_card_hover_overlay": {
-      "color": "{Gray.1000}",
-      "alpha": 25
+    "table_grid_view_card_hover_fill": {
+      "color": "{Gray.200}"
     },
 
     "drag_pill_droppable_fill": {
@@ -382,6 +381,10 @@
     },
 
     "flag_untoggled_bg": {
+      "color": "{Gray.200}",
+      "alpha": 0
+    },
+    "flag_untoggled_bg_card_hover": {
       "color": "{Gray.200}"
     },
     "flag_untoggled_bg_hover": {
@@ -390,11 +393,20 @@
     "flag_toggled_bg": {
       "color": "#511400"
     },
+    "flag_toggled_bg_card_hover": {
+      "color": "#5e1800"
+    },
     "flag_toggled_bg_hover": {
       "color": "#6b1c00"
     },
     "flag_untoggled_icon": {
+      "color": "{Gray.400}"
+    },
+    "flag_untoggled_icon_hover": {
       "color": "{Gray.500}"
+    },
+    "flag_toggled_icon": {
+      "color": "#E8722A"
     },
 
     "bg_fill_inverse": {
