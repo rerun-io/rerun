@@ -443,8 +443,10 @@ async fn send_next_row(
         )
     })?;
 
+    // align the batch to the target schema, this should be always possible
+    // by construction.
     let output_batch = align_record_batch_to_schema(&batch, target_schema).map_err(|err| {
-        ApiError::deserialization_with_source(None, err, "DataFusion schema mismatch error")
+        ApiError::internal_with_source(None, err, "DataFusion schema mismatch error")
     })?;
 
     // Slice the batch to respect the row limit

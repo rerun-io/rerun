@@ -91,6 +91,45 @@ mod tests {
 
 // ----------------------------------------------------------------
 
+/// Safety gate: reject [`DataType::Union`] in the checked type, and recursively within
+/// nested [`DataType::Struct`], [`DataType::List`], [`DataType::LargeList`], and
+/// [`DataType::FixedSizeList`] children.
+///
+/// This guards merges that would let `Field::try_merge` produce a shape the read-side
+/// aligner ([`align_record_batch_to_schema`](../../re_dataframe/utils/fn.align_record_batch_to_schema.html))
+/// cannot adapt. In particular, `try_merge` has a recursive Union arm that can widen
+/// children, but the aligner has no Union branch.
+///
+/// Known over-rejection: this check inspects only a single datatype tree, not both the
+/// current and incoming shapes, so it cannot tell "Union about to widen" (unsafe) from
+/// "Union identical across partitions, only a sibling field widens" (would be safe — the
+/// aligner's fast-path handles identical Unions). A two-tree check could close this gap; see
+/// the `union_over_rejected_when_only_a_sibling_widens` test for a pinned example. In
+/// practice this over-rejection only surfaces when a field that *contains* a Union also
+/// changes in some unrelated way across partitions.
+///
+/// Callers use this as a pre-merge guard on the datatypes they are about to merge.
+pub fn reject_unsupported_widenings(dt: &DataType) -> Result<(), arrow::error::ArrowError> {
+    match dt {
+        DataType::Union(_, _) => Err(arrow::error::ArrowError::SchemaError(
+            "union-typed fields in the checked datatype are not supported for schema merging"
+                .to_owned(),
+        )),
+        DataType::Struct(fields) => {
+            for f in fields {
+                reject_unsupported_widenings(f.data_type())?;
+            }
+            Ok(())
+        }
+        DataType::List(f) | DataType::LargeList(f) | DataType::FixedSizeList(f, _) => {
+            reject_unsupported_widenings(f.data_type())
+        }
+        _ => Ok(()),
+    }
+}
+
+// ----------------------------------------------------------------
+
 /// Error used when a column is missing from a record batch
 #[derive(Debug, Clone, thiserror::Error)]
 pub struct MissingColumnError {
@@ -144,5 +183,102 @@ impl std::fmt::Display for WrongDatatypeError {
         } else {
             write!(f, "Expected {expected}, got {actual}")
         }
+    }
+}
+
+#[cfg(test)]
+mod reject_unsupported_widenings_tests {
+    use super::*;
+    use arrow::datatypes::{DataType, Field, Fields};
+
+    fn small_union_type() -> DataType {
+        use arrow::datatypes::UnionFields;
+        let fields = UnionFields::try_new(vec![0], vec![Field::new("a", DataType::Int32, true)])
+            .expect("valid union fields");
+        DataType::Union(fields, arrow::datatypes::UnionMode::Sparse)
+    }
+
+    #[test]
+    fn top_level_union_rejected() {
+        let err = reject_unsupported_widenings(&small_union_type()).unwrap_err();
+        assert!(err.to_string().contains("union-typed"), "msg: {err}");
+    }
+
+    #[test]
+    fn union_nested_inside_struct_rejected() {
+        let struct_type = DataType::Struct(Fields::from(vec![
+            Field::new("a", DataType::Int32, true),
+            Field::new("u", small_union_type(), true),
+        ]));
+        let err = reject_unsupported_widenings(&struct_type).unwrap_err();
+        assert!(err.to_string().contains("union-typed"), "msg: {err}");
+    }
+
+    #[test]
+    fn union_nested_inside_list_rejected() {
+        let list_of_union = DataType::List(Arc::new(Field::new("item", small_union_type(), true)));
+        let err = reject_unsupported_widenings(&list_of_union).unwrap_err();
+        assert!(err.to_string().contains("union-typed"), "msg: {err}");
+    }
+
+    /// Documents a known over-rejection that surfaces in `re_server`'s `add_layer` flow
+    /// (`crates/store/re_server/src/store/dataset.rs`): when a new field differs from the
+    /// current one by a non-Union sibling, `Schema::try_merge` would accept the pair cleanly
+    /// and preserve any identical Union subtree untouched, but `reject_unsupported_widenings`
+    /// walks only the new field and cannot distinguish "safe identical Union" from "unsafe
+    /// widening Union" — so it rejects unconditionally.
+    ///
+    /// Closing this gap would require the gate to see both the current and new schemas and
+    /// only reject at positions where the Union actually differs. If this test ever flips
+    /// (i.e., the gate accepts), the aligner's Union handling must be re-verified end-to-end,
+    /// including `arrow::array::new_null_array(DataType::Union(...), n)` behavior for the
+    /// partition-missing-column null-pad path.
+    #[test]
+    fn union_over_rejected_when_only_a_sibling_widens() {
+        use std::collections::HashMap;
+
+        use arrow::datatypes::Schema;
+
+        // Two structs with an identical Union child and a sibling whose nullability widens.
+        let narrow_struct = DataType::Struct(Fields::from(vec![
+            Field::new("a", DataType::Int32, false),
+            Field::new("u", small_union_type(), true),
+        ]));
+        let wide_struct = DataType::Struct(Fields::from(vec![
+            Field::new("a", DataType::Int32, true),
+            Field::new("u", small_union_type(), true),
+        ]));
+
+        // `try_merge` is happy: `a` widens; the Union passes through unchanged.
+        let lhs =
+            Schema::new_with_metadata(vec![Field::new("s", narrow_struct, true)], HashMap::new());
+        let rhs = Schema::new_with_metadata(
+            vec![Field::new("s", wide_struct.clone(), true)],
+            HashMap::new(),
+        );
+        Schema::try_merge([lhs, rhs])
+            .expect("try_merge accepts: Union identical, only sibling widens");
+
+        // The Rerun gate rejects, even though `try_merge` would not widen the Union.
+        let err = reject_unsupported_widenings(&wide_struct).unwrap_err();
+        assert!(err.to_string().contains("union-typed"), "msg: {err}");
+    }
+
+    #[test]
+    fn plain_schema_accepted() {
+        let schema = DataType::Struct(Fields::from(vec![
+            Field::new("a", DataType::Int32, true),
+            Field::new(
+                "b",
+                DataType::List(Arc::new(Field::new("item", DataType::Utf8, false))),
+                true,
+            ),
+            Field::new(
+                "c",
+                DataType::Struct(Fields::from(vec![Field::new("d", DataType::Int64, false)])),
+                true,
+            ),
+        ]));
+        assert!(reject_unsupported_widenings(&schema).is_ok());
     }
 }
