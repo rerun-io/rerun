@@ -4733,6 +4733,11 @@ tests = [
     { name = "tomli" },
     { name = "torch" },
 ]
+tracing = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-sdk" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -4745,6 +4750,9 @@ requires-dist = [
     { name = "inline-snapshot", marker = "extra == 'tests'", specifier = "==0.31.1" },
     { name = "numpy", specifier = ">=2" },
     { name = "opencv-python", marker = "extra == 'tests'", specifier = ">4.6" },
+    { name = "opentelemetry-api", marker = "extra == 'tracing'" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc", marker = "extra == 'tracing'" },
+    { name = "opentelemetry-sdk", marker = "extra == 'tracing'" },
     { name = "pandas", marker = "extra == 'all'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'datafusion'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'dataplatform'", specifier = ">=2" },
@@ -4761,7 +4769,7 @@ requires-dist = [
     { name = "torch", marker = "extra == 'tests'", specifier = ">=2.5" },
     { name = "typing-extensions", specifier = ">=4.5" },
 ]
-provides-extras = ["all", "datafusion", "dataplatform", "notebook", "tests"]
+provides-extras = ["all", "datafusion", "dataplatform", "notebook", "tests", "tracing"]
 
 [[package]]
 name = "rerun-workspace"

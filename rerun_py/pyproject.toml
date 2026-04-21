@@ -56,6 +56,9 @@ dataplatform = [ # NOLINT
   "datafusion==52.3.0",
   "pandas>=2",
 ] # pandas is needed so pyarrow properly converts nanoseconds (RR-3532)
+# Client-side OpenTelemetry export, enabled by `TELEMETRY_ENABLED=true OTEL_SDK_ENABLED=true`.
+# Only needed for developers profiling the SDK — see `rerun._tracing`.
+tracing = ["opentelemetry-api", "opentelemetry-sdk", "opentelemetry-exporter-otlp-proto-grpc"]
 # Note: We avoid self-referential extras like "rerun-sdk[notebook]" because they cause
 # uv to fetch rerun-sdk from PyPI when the local package isn't built yet.
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency

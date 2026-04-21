@@ -116,8 +116,6 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
         // no sampling at the `tracing` level, only at the `opentelemetry` level.
         // We use that fact to our advantage in order to carry a bunch of state around across all
         // the stages of the request (first response, first chunk, end-of-stream, etc).
-        let mut safe_headers = request.headers().clone();
-        _ = safe_headers.remove("authorization");
         let span = tracing::span!(
             tracing::Level::INFO,
             "<request>",
