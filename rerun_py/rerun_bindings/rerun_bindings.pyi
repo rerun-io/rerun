@@ -1573,6 +1573,7 @@ class LazyChunkStreamInternal:
         max_rows_if_unsorted: int | None = None,
         extra_passes: int = 0,
         gop_batching: bool = False,
+        split_size_ratio: float | None = None,
     ) -> ChunkStoreInternal:
         """Consume the stream and materialize all chunks into a ChunkStore."""
     def to_chunks(self) -> list[ChunkInternal]: ...

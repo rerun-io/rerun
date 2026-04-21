@@ -303,6 +303,7 @@ class LazyChunkStream:
                 max_rows_if_unsorted=optimize.max_rows_if_unsorted,
                 extra_passes=optimize.extra_passes,
                 gop_batching=optimize.gop_batching,
+                split_size_ratio=optimize.split_size_ratio,
             ),
         )
 

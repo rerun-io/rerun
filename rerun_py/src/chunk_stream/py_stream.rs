@@ -179,7 +179,9 @@ impl PyLazyChunkStreamInternal {
         max_rows_if_unsorted = None,
         extra_passes = 0,
         gop_batching = false,
+        split_size_ratio = None,
     ))]
+    #[expect(clippy::too_many_arguments)]
     fn collect(
         &self,
         py: Python<'_>,
@@ -188,6 +190,7 @@ impl PyLazyChunkStreamInternal {
         max_rows_if_unsorted: Option<u64>,
         extra_passes: usize,
         gop_batching: bool,
+        split_size_ratio: Option<f64>,
     ) -> PyResult<PyChunkStoreInternal> {
         let mut compiled = self.compile_inner()?;
         py.detach(move || -> Result<_, ChunkPipelineError> {
@@ -211,7 +214,7 @@ impl PyLazyChunkStreamInternal {
                 config: config.clone(),
                 num_extra_passes: Some(extra_passes),
                 is_start_of_gop,
-                split_size_ratio: None,
+                split_size_ratio,
             };
 
             let store_id = StoreId::random(StoreKind::Recording, "chunk-store");

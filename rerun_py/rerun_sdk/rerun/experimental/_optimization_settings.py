@@ -32,3 +32,18 @@ class OptimizationSettings:
     GoP rebatching never splits a GoP across chunks, so streams with long keyframe
     intervals can produce chunks much larger than `max_bytes`.
     """
+
+    split_size_ratio: float | None = None
+    """
+    If set, split chunks so no two archetype groups sharing a chunk differ in
+    byte size by more than this factor. Values should be `>= 1`; at `1.0`,
+    every archetype is forced into its own chunk.
+
+    This keeps large columns (images, videos, blobs) out of the same chunk as
+    small columns (scalars, transforms, text), so the viewer can fetch just the
+    small columns without dragging along the large payload. Components belonging
+    to the same archetype are always kept together.
+
+    A good starting value is `10.0`. If `None` (default), no splitting is
+    performed.
+    """
