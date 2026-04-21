@@ -322,18 +322,19 @@ impl StoreHub {
 
     /// Get a read-only [`StorageContext`] and [`ActiveStoreContext`] from the [`StoreHub`].
     ///
-    /// All of the returned references to blueprints and recordings will have a
-    /// matching [`ApplicationId`].
-    pub fn read_context(&mut self, route: &Route) -> (StorageContext<'_>, ActiveStoreContext<'_>) {
+    /// The [`ActiveStoreContext`] is only returned for routes that have an associated [`ApplicationId`]
+    /// with an active blueprint — otherwise, `None` is returned and callers are expected to handle the absence explicitly.
+    ///
+    /// When returned, all of the references to blueprints and recordings will
+    /// have a matching [`ApplicationId`].
+    pub fn read_context(
+        &mut self,
+        route: &Route,
+    ) -> (StorageContext<'_>, Option<ActiveStoreContext<'_>>) {
+        // Used as stand-ins within the `Some` branch when only parts of a
+        // context are available (e.g. we have a blueprint but no recording).
         static EMPTY_RECORDING: LazyLock<EntityDb> =
             LazyLock::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
-        static EMPTY_BLUEPRINT: LazyLock<EntityDb> = LazyLock::new(|| {
-            EntityDb::new(re_log_types::StoreId::default_blueprint(
-                re_log_types::StoreId::empty_recording()
-                    .application_id()
-                    .clone(),
-            ))
-        });
         static EMPTY_CACHES: LazyLock<StoreCache> = LazyLock::new(|| {
             StoreCache::empty(
                 &ViewClassRegistry::default(),
@@ -384,16 +385,6 @@ impl StoreHub {
                 should_enable_heuristics,
             })
         };
-
-        // TODO(RR-3033): the viewer should be robust to not having a `StoreContext`.
-        // We should only have one if we are currently looking at a blueprint.
-        let store_context = store_context.unwrap_or(ActiveStoreContext {
-            blueprint: &EMPTY_BLUEPRINT,
-            default_blueprint: None,
-            recording: &EMPTY_RECORDING,
-            caches: &EMPTY_CACHES,
-            should_enable_heuristics: false,
-        });
 
         (
             StorageContext {

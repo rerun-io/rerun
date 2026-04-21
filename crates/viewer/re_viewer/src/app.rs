@@ -862,9 +862,20 @@ impl App {
                         };
                         let (storage_ctx, store_ctx) = store_hub.read_context(&route); // Materialize the target blueprint on-demand
 
+                        let Some(store_ctx) = store_ctx else {
+                            re_log::debug_panic!(
+                                "No store context found for recording {store_id:?} when handling time control commands sent from {sent_from}. This should never happen for local recording routes.",
+                            );
+                            re_log::error_once!(
+                                "Can't change time for recording {store_id:?} because it is not active."
+                            );
+                            return;
+                        };
+
                         let target_blueprint = store_ctx.blueprint;
-                        let blueprint_query =
-                            self.state.blueprint_query_for_viewer(target_blueprint);
+                        let blueprint_query = self
+                            .state
+                            .blueprint_query_for_viewer(Some(target_blueprint));
 
                         let blueprint_ctx = AppBlueprintCtx {
                             command_sender: &self.command_sender,
@@ -2395,7 +2406,7 @@ impl App {
         frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_context: &ActiveStoreContext<'_>,
+        store_context: Option<&ActiveStoreContext<'_>>,
         storage_context: &StorageContext<'_>,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
@@ -2417,7 +2428,7 @@ impl App {
                     frame,
                     self,
                     app_blueprint,
-                    Some(store_context),
+                    store_context,
                     storage_context.hub,
                     gpu_resource_stats,
                     ui,
@@ -2460,13 +2471,17 @@ impl App {
                         &self.command_sender,
                     );
 
+                    // TODO(RR-3033): `AppState::show` still expects a non-optional `ActiveStoreContext`; fall back to a sentinel empty context for no-store routes.
+                    let empty_store_context = ActiveStoreContext::empty();
+                    let active_store_context = store_context.unwrap_or(&empty_store_context);
+
                     self.state.show(
                         &self.app_env,
                         &mut startup_options,
                         app_blueprint,
                         ui,
                         render_ctx,
-                        store_context,
+                        active_store_context,
                         storage_context,
                         &self.reflection,
                         &self.component_ui_registry,
@@ -3668,12 +3683,11 @@ impl eframe::App for App {
             let route = self.state.navigation.current().clone();
             let (storage_context, store_context) = store_hub.read_context(&route);
 
-            let blueprint_query = self
-                .state
-                .blueprint_query_for_viewer(store_context.blueprint);
+            let blueprint = store_context.as_ref().map(|ctx| ctx.blueprint);
+            let blueprint_query = self.state.blueprint_query_for_viewer(blueprint);
 
             let app_blueprint = AppBlueprint::new(
-                Some(store_context.blueprint),
+                blueprint,
                 &blueprint_query,
                 egui_ctx,
                 self.panel_state_overrides_active
@@ -3684,7 +3698,7 @@ impl eframe::App for App {
                 egui_ctx,
                 &app_blueprint,
                 &storage_context,
-                Some(&store_context),
+                store_context.as_ref(),
                 &route,
             );
         }
@@ -3884,12 +3898,11 @@ impl eframe::App for App {
             let (storage_context, store_context) =
                 store_hub.read_context(self.state.navigation.current());
 
-            let blueprint_query = self
-                .state
-                .blueprint_query_for_viewer(store_context.blueprint);
+            let blueprint = store_context.as_ref().map(|ctx| ctx.blueprint);
+            let blueprint_query = self.state.blueprint_query_for_viewer(blueprint);
 
             let app_blueprint = AppBlueprint::new(
-                Some(store_context.blueprint),
+                blueprint,
                 &blueprint_query,
                 ui,
                 self.panel_state_overrides_active
@@ -3901,7 +3914,7 @@ impl eframe::App for App {
                 frame,
                 &app_blueprint,
                 &gpu_resource_stats,
-                &store_context,
+                store_context.as_ref(),
                 &storage_context,
                 mem_usage_tree,
                 store_stats.as_ref(),
@@ -3960,7 +3973,7 @@ impl eframe::App for App {
                 ui,
                 &app_blueprint,
                 &storage_context,
-                Some(&store_context),
+                store_context.as_ref(),
                 &route,
             );
         }
