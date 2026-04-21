@@ -6,7 +6,7 @@ import inspect
 import math
 import uuid
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeVar, overload
+from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 
 from typing_extensions import Self
 
@@ -1378,7 +1378,7 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
                 finally:
                     gen.close()
 
-            return generator_wrapper  # type: ignore[return-value]
+            return cast("_TFunc", generator_wrapper)
         else:
 
             @functools.wraps(func)
@@ -1387,7 +1387,7 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
                     gen = func(*args, **kwargs)
                     return gen
 
-            return wrapper  # type: ignore[return-value]
+            return cast("_TFunc", wrapper)
 
     return decorator
 
@@ -1465,6 +1465,6 @@ def recording_stream_generator_ctx(func: _TFunc) -> _TFunc:
                     current_recording.__enter__()
                 gen.close()
 
-        return generator_wrapper  # type: ignore[return-value]
+        return cast("_TFunc", generator_wrapper)
     else:
         raise ValueError("Only generator functions can be decorated with `recording_stream_generator_ctx`")

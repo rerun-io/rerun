@@ -191,6 +191,6 @@ class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):
         if isinstance(data, (Colormap, int, str)):
             data = [data]
 
-        pa_data = [Colormap.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
+        pa_data = [Colormap.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
 
         return pa.array(pa_data, type=data_type)

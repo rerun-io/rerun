@@ -35,7 +35,7 @@ dev = [
   "requests>=2.28",
   "types-requests==2.32.4.20250913",
   "tqdm>=4.60",
-  "ty==0.0.24",
+  "ty==0.0.31",
   "types-tqdm==4.67.0.20250809",
   "colorama>=0.4",
   "types-colorama>=0.4.15",

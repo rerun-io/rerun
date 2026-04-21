@@ -575,7 +575,7 @@ taplo = "=0.9.1"
 tomli = "=2.3.0"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
-ty = "==0.0.24"
+ty = "==0.0.31"
 typing_extensions = ">4.5"
 typos = ">=1.45.1"
 urllib3 = "<2.6.0" # TODO(googleapis/google-resumable-media-python#491)
