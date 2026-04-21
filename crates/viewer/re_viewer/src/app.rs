@@ -2343,6 +2343,7 @@ impl App {
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
+        storage_context: &re_viewer_context::StorageContext<'_>,
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
@@ -2360,6 +2361,7 @@ impl App {
                     mem_usage_tree,
                     gpu_resource_stats,
                     store_stats,
+                    storage_context,
                 );
             });
     }
@@ -2434,7 +2436,13 @@ impl App {
                     ui,
                 );
 
-                self.memory_panel_ui(ui, gpu_resource_stats, mem_usage_tree, store_stats);
+                self.memory_panel_ui(
+                    ui,
+                    gpu_resource_stats,
+                    mem_usage_tree,
+                    store_stats,
+                    storage_context,
+                );
 
                 self.egui_debug_panel_ui(ui);
 
@@ -3816,8 +3824,14 @@ impl eframe::App for App {
         let store_stats = self.memory_panel_open.then(|| store_hub.stats());
 
         // do early, before doing too many allocations
-        self.memory_panel
-            .update(&gpu_resource_stats, store_stats.as_ref());
+        let store_bundle_for_streaming = self
+            .memory_panel_open
+            .then(|| store_hub.store_bundle() as &re_entity_db::StoreBundle);
+        self.memory_panel.update(
+            &gpu_resource_stats,
+            store_stats.as_ref(),
+            store_bundle_for_streaming,
+        );
 
         self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
 

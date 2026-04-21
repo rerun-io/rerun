@@ -19,7 +19,7 @@ mod time_range_merger;
 
 pub use chunk_prioritizer::{
     ChunkFetcher, ChunkPrefetchOptions, ChunkPrioritizer, FetchStage, PrefetchError,
-    RemainingByteBudget,
+    PrioritizationState, ProtectedChunks, RemainingByteBudget,
 };
 pub use sorted_temporal_chunks::ChunkCountInfo;
 

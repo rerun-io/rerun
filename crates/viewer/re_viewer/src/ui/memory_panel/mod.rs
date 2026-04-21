@@ -1,14 +1,24 @@
+mod chunk_event_stats;
+mod memory_history;
+mod plot_utils;
+mod server_streaming_tab;
+mod streaming_history;
+
+use plot_utils::history_to_plot;
 use re_chunk_store::{ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreStats};
+use re_entity_db::StoreBundle;
 use re_format::{format_bytes, format_uint};
 use re_memory::MemoryLimit;
 use re_memory::util::sec_since_start;
 use re_query::{QueryCacheStats, QueryCachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;
+use re_viewer_context::StorageContext;
 use re_viewer_context::store_hub::StoreHubStats;
 
-use super::memory_history::MemoryHistory;
 use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
+use memory_history::MemoryHistory;
+use streaming_history::StreamingHistory;
 
 // ----------------------------------------------------------------------------
 
@@ -22,6 +32,8 @@ enum MemoryViewTab {
 
     Stores,
 
+    Streaming,
+
     AllocationTracking,
 
     Gpu,
@@ -33,6 +45,7 @@ impl MemoryViewTab {
             Self::Flamegraph => "Flamegraph",
             Self::TimeGraph => "Over time",
             Self::Stores => "Recordings",
+            Self::Streaming => "Server streaming",
             Self::AllocationTracking => "Allocation tracking",
             Self::Gpu => "GPU",
         }
@@ -42,6 +55,7 @@ impl MemoryViewTab {
 #[derive(Default)]
 pub struct MemoryPanel {
     history: MemoryHistory,
+    streaming_history: StreamingHistory,
     memory_purge_times: Vec<f64>,
     selected_tab: MemoryViewTab,
     include_rss_in_flamegraph: bool,
@@ -53,9 +67,17 @@ impl MemoryPanel {
         &mut self,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
+        store_bundle: Option<&StoreBundle>,
     ) {
         re_tracing::profile_function!();
+
+        // Ensure GC counter subscriber is registered (idempotent via OnceLock).
+        chunk_event_stats::ChunkEventStats::subscription_handle();
+
         self.history.capture(Some(gpu_resource_stats), store_stats);
+        if let Some(store_bundle) = store_bundle {
+            self.streaming_history.capture(store_bundle);
+        }
     }
 
     /// Note that we purged memory at this time, to show in stats.
@@ -71,6 +93,7 @@ impl MemoryPanel {
         mem_usage_tree: Option<re_byte_size::NamedMemUsageTree>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
+        storage_context: &StorageContext<'_>,
     ) {
         re_tracing::profile_function!();
 
@@ -103,6 +126,13 @@ impl MemoryPanel {
                     .show(ui, |ui| {
                         Self::store_stats_ui(ui, store_stats);
                     });
+            }
+            MemoryViewTab::Streaming => {
+                server_streaming_tab::server_streaming_tab_ui(
+                    ui,
+                    storage_context,
+                    &self.streaming_history,
+                );
             }
             MemoryViewTab::AllocationTracking => {
                 egui::ScrollArea::vertical()
@@ -436,18 +466,6 @@ impl MemoryPanel {
     fn plot(&self, ui: &mut egui::Ui, limit: &MemoryLimit) {
         re_tracing::profile_function!();
 
-        use itertools::Itertools as _;
-
-        fn to_line<'a>(name: &str, history: &egui::util::History<u64>) -> egui_plot::Line<'a> {
-            egui_plot::Line::new(
-                name,
-                history
-                    .iter()
-                    .map(|(time, bytes)| [time, bytes as f64])
-                    .collect_vec(),
-            )
-        }
-
         let ram_purge_color = ui.visuals().warn_fg_color;
 
         egui_plot::Plot::new("mem_history_plot")
@@ -483,16 +501,16 @@ impl MemoryPanel {
                     counted_table_stores,
                 } = &self.history;
 
-                plot_ui.line(to_line("Resident", resident).width(1.5));
-                plot_ui.line(to_line("Allocator", counted_allocator).width(1.5));
-                plot_ui.line(to_line("VRAM", counted_vram).width(1.5));
-                plot_ui.line(to_line("Recordings", counted_recordings).width(1.5));
+                plot_ui.line(history_to_plot("Resident", resident).width(1.5));
+                plot_ui.line(history_to_plot("Allocator", counted_allocator).width(1.5));
+                plot_ui.line(history_to_plot("VRAM", counted_vram).width(1.5));
+                plot_ui.line(history_to_plot("Recordings", counted_recordings).width(1.5));
 
                 if false {
                     // Intentionally omitted because they are uninteresting and clutter things up too much
-                    plot_ui.line(to_line("Blueprints", counted_blueprints).width(1.5));
-                    plot_ui.line(to_line("Query caches", counted_query_caches).width(1.5));
-                    plot_ui.line(to_line("Table stores", counted_table_stores).width(1.5));
+                    plot_ui.line(history_to_plot("Blueprints", counted_blueprints).width(1.5));
+                    plot_ui.line(history_to_plot("Query caches", counted_query_caches).width(1.5));
+                    plot_ui.line(history_to_plot("Table stores", counted_table_stores).width(1.5));
                 }
             });
     }

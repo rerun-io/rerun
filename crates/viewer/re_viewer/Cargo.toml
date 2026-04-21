@@ -141,6 +141,7 @@ glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 jiff.workspace = true
+num-traits.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
 rfd.workspace = true

@@ -186,7 +186,7 @@ impl re_byte_size::SizeBytes for EntityTimelineChunks {
 impl re_byte_size::MemUsageTreeCapture for PathRecursiveChunksPerTimelineStoreSubscriber {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
         use re_byte_size::SizeBytes as _;
-        re_byte_size::MemUsageTree::Bytes(self.chunks_per_timeline_per_entity.heap_size_bytes())
+        re_byte_size::MemUsageTree::Bytes(self.chunks_per_timeline_per_entity.total_size_bytes())
     }
 }
 
