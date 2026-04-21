@@ -91,6 +91,57 @@ mod tests {
 
 // ----------------------------------------------------------------
 
+/// Error returned when two Arrow arrays are not structurally similar.
+#[derive(Debug, thiserror::Error)]
+pub enum ArrayComparisonError {
+    #[error("data type mismatch: {left} != {right}")]
+    DataTypeMismatch {
+        left: arrow::datatypes::DataType,
+        right: arrow::datatypes::DataType,
+    },
+
+    #[error("{property} mismatch: {left} != {right}")]
+    PropertyMismatch {
+        property: &'static str,
+        left: usize,
+        right: usize,
+    },
+
+    #[error("null bitmaps differ")]
+    NullBitmapsDiffer,
+
+    #[error("union arrays differ")]
+    UnionArraysDiffer,
+
+    #[error("buffer contents differ")]
+    BufferContentsDiffer,
+
+    #[error("significant {float_type} difference: {left} vs {right}")]
+    FloatDifference {
+        float_type: &'static str,
+        left: f64,
+        right: f64,
+    },
+
+    #[error("buffer {index} (datatype {data_type}): {source}")]
+    Buffer {
+        index: usize,
+        data_type: arrow::datatypes::DataType,
+        #[source]
+        source: Box<Self>,
+    },
+
+    #[error("child {index} (datatype {data_type}): {source}")]
+    Child {
+        index: usize,
+        data_type: arrow::datatypes::DataType,
+        #[source]
+        source: Box<Self>,
+    },
+}
+
+// ----------------------------------------------------------------
+
 /// Error used when a column is missing from a record batch
 #[derive(Debug, Clone, thiserror::Error)]
 pub struct MissingColumnError {

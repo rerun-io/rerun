@@ -5,12 +5,27 @@
 //! generic and does not rely on any pre-baked message definitions, so it can be
 //! used to parse unknown types and still extract semantic meaning (types,
 //! arrays, names, constants, default values).
-use anyhow::Context as _;
-
-use crate::message_spec::MessageSpecification;
+use crate::message_spec::{MessageSpecification, ParseError};
 
 pub mod deserialize;
 pub mod message_spec;
+
+#[derive(thiserror::Error, Debug)]
+pub enum SchemaParseError {
+    #[error("failed to parse main message spec `{name}`: {source}")]
+    MainSpec {
+        name: String,
+        #[source]
+        source: ParseError,
+    },
+
+    #[error("failed to parse dependent message spec `{name}`: {source}")]
+    DependentSpec {
+        name: String,
+        #[source]
+        source: ParseError,
+    },
+}
 
 /// Parse a schema name from a line starting with "MSG: ".
 fn parse_schema_name(line: &str) -> Option<&str> {
@@ -27,17 +42,25 @@ pub struct MessageSchema {
 }
 
 impl MessageSchema {
-    pub fn parse(name: &str, input: &str) -> anyhow::Result<Self> {
+    pub fn parse(name: &str, input: &str) -> Result<Self, SchemaParseError> {
         let main_spec_content = extract_main_msg_spec(input);
         let specs = extract_msg_specs(input);
 
-        let main_spec = MessageSpecification::parse(name, &main_spec_content)
-            .with_context(|| format!("failed to parse main message spec `{name}`"))?;
+        let main_spec = MessageSpecification::parse(name, &main_spec_content).map_err(|err| {
+            SchemaParseError::MainSpec {
+                name: name.to_owned(),
+                source: err,
+            }
+        })?;
 
         let mut dependencies = Vec::new();
         for (dep_name, dep_content) in specs {
-            let dep_spec = MessageSpecification::parse(&dep_name, &dep_content)
-                .with_context(|| format!("failed to parse dependent message spec `{dep_name}`"))?;
+            let dep_spec = MessageSpecification::parse(&dep_name, &dep_content).map_err(|err| {
+                SchemaParseError::DependentSpec {
+                    name: dep_name.clone(),
+                    source: err,
+                }
+            })?;
             dependencies.push(dep_spec);
         }
 

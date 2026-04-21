@@ -447,7 +447,7 @@ impl MessageDecoder for McapRos2ReflectionDecoder {
                 MessageSchema::parse(&schema.name, &schema_content).map_err(|err| {
                     Error::InvalidSchema {
                         schema: schema.name.clone(),
-                        source: err,
+                        source: err.into(),
                     }
                 })?;
 

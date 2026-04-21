@@ -8223,7 +8223,6 @@ dependencies = [
 name = "re_arrow_util"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
- "anyhow",
  "arrow",
  "comfy-table",
  "datafusion",
@@ -9504,7 +9503,6 @@ dependencies = [
 name = "re_ros_msg"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
- "anyhow",
  "serde",
  "thiserror 2.0.18",
 ]
