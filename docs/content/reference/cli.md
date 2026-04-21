@@ -499,6 +499,13 @@ Examples:
 >
 > [Default: `false`]
 
+* `--split-size-ratio <SPLIT_SIZE_RATIO>`
+> If set, split chunks so no two archetype groups sharing a chunk differ in byte size by more than this factor. Values should be `>= 1`; at `1.0`, every archetype is forced into its own chunk.
+>
+> This keeps "thick" columns (images, videos, blobs) out of the same chunk as "thin" columns (scalars, transforms, text), so the viewer can fetch just the thin data without dragging along the thick payload. Components belonging to the same archetype are always kept together.
+>
+> A good starting value is 10.0. If unset, no thick/thin split is performed.
+
 ## rerun rrd compare
 
 Compares the data between 2 .rrd files, returning a successful shell exit code if they match.

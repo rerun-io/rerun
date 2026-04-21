@@ -40,6 +40,7 @@ fn options(num_extra_passes: Option<usize>) -> CompactionOptions {
         config: ChunkStoreConfig::DEFAULT,
         num_extra_passes,
         is_start_of_gop: None,
+        split_size_ratio: None,
     }
 }
 

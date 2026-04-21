@@ -640,6 +640,51 @@ fn static_invalidation() {
     );
 }
 
+#[test]
+fn same_row_id_across_chunks() {
+    let store = ChunkStore::new_handle(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+        Default::default(),
+    );
+    let mut caches = QueryCache::new(store.clone());
+
+    let entity_path = "point";
+    let timepoint = [build_frame_nr(123)];
+
+    // Two separate chunks share a single RowId, each carrying a different component.
+    let row_id = RowId::new();
+    let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
+    let colors = vec![MyColor::from_rgb(255, 0, 0)];
+
+    let chunk_points = Chunk::builder(entity_path)
+        .with_archetype(row_id, timepoint, &MyPoints::new(points.clone()))
+        .build()
+        .unwrap();
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk_points));
+
+    let chunk_colors = Chunk::builder(entity_path)
+        .with_archetype(
+            row_id,
+            timepoint,
+            &MyPoints::update_fields().with_colors(colors.clone()),
+        )
+        .build()
+        .unwrap();
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk_colors));
+
+    let query = re_chunk_store::LatestAtQuery::new(*timepoint[0].0.name(), timepoint[0].1);
+    let expected_compound_index = (TimeInt::new_temporal(123), row_id);
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query,
+        &entity_path.into(),
+        expected_compound_index,
+        &points,
+        &colors,
+    );
+}
+
 // ---
 
 fn insert_and_react(store: &mut ChunkStore, caches: &mut QueryCache, chunk: &Arc<Chunk>) {

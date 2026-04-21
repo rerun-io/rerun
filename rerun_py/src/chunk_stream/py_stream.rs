@@ -211,6 +211,7 @@ impl PyLazyChunkStreamInternal {
                 config: config.clone(),
                 num_extra_passes: Some(extra_passes),
                 is_start_of_gop,
+                split_size_ratio: None,
             };
 
             let store_id = StoreId::random(StoreKind::Recording, "chunk-store");

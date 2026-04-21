@@ -121,6 +121,19 @@ pub struct CompactCommand {
     /// chunks much larger than `--max-bytes`.
     #[clap(long = "no-rebatch-videos", default_value_t = false)]
     no_rebatch_videos: bool,
+
+    /// If set, split chunks so no two archetype groups sharing a chunk differ in
+    /// byte size by more than this factor. Values should be `>= 1`; at `1.0`,
+    /// every archetype is forced into its own chunk.
+    ///
+    /// This keeps "thick" columns (images, videos, blobs) out of the same chunk as
+    /// "thin" columns (scalars, transforms, text), so the viewer can fetch just the
+    /// thin data without dragging along the thick payload. Components belonging to
+    /// the same archetype are always kept together.
+    ///
+    /// A good starting value is 10.0. If unset, no thick/thin split is performed.
+    #[arg(long = "split-size-ratio")]
+    split_size_ratio: Option<f64>,
 }
 
 impl CompactCommand {
@@ -134,6 +147,7 @@ impl CompactCommand {
             num_extra_passes,
             continue_on_error,
             no_rebatch_videos,
+            split_size_ratio,
         } = self;
 
         if path_to_output_rrd.is_none() {
@@ -170,6 +184,7 @@ impl CompactCommand {
             } else {
                 Some(is_start_of_gop)
             },
+            split_size_ratio: *split_size_ratio,
         };
 
         merge_and_compact(

@@ -18,8 +18,6 @@ impl Chunk {
     /// Returns the cell corresponding to the specified [`RowId`] for a given [`re_types_core::ComponentIdentifier`].
     ///
     /// This is `O(log(n))` if `self.is_sorted()`, and `O(n)` otherwise.
-    ///
-    /// Reminder: duplicated `RowId`s results in undefined behavior.
     pub fn cell(&self, row_id: RowId, component: ComponentIdentifier) -> Option<ArrowArrayRef> {
         let list_array = self.components.get_array(component)?;
 

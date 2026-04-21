@@ -440,7 +440,8 @@ impl ChunkStore {
 
             let chunks_in_priority_order = self
                 .physical_chunk_ids_per_min_row_id
-                .values()
+                .iter()
+                .map(|(_, chunk_id)| chunk_id)
                 .filter(move |chunk_id| !protected_chunk_ids.contains(chunk_id))
                 .filter_map(|chunk_id| self.physical_chunks_per_chunk_id.get(chunk_id).cloned()) // physical only
                 .filter(|chunk| !chunk.is_static()) // cannot gc static data
@@ -694,7 +695,7 @@ impl ChunkStore {
         let mut deletions = Vec::with_capacity(chunks_to_be_removed.len());
         for chunk in chunks_to_be_removed {
             if let Some(row_id_min) = chunk.row_id_range().map(|(min, _)| min) {
-                physical_chunk_ids_per_min_row_id.remove(&row_id_min);
+                physical_chunk_ids_per_min_row_id.remove(&(row_id_min, chunk.id()));
             }
             let Some(chunk) = physical_chunks_per_chunk_id.remove(&chunk.id()) else {
                 continue;

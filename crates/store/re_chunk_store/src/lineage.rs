@@ -878,7 +878,8 @@ mod tests {
         {
             let chunk_ids = store
                 .physical_chunk_ids_per_min_row_id
-                .values()
+                .iter()
+                .map(|(_, id)| id)
                 .collect_vec();
 
             assert_eq!(true, store.descends_from_a_split(chunk_ids[0]));
@@ -909,7 +910,8 @@ mod tests {
         {
             let chunk_ids = store
                 .physical_chunk_ids_per_min_row_id
-                .values()
+                .iter()
+                .map(|(_, id)| id)
                 .collect_vec();
 
             assert_eq!(true, store.descends_from_a_split(chunk_ids[0]));
