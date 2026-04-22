@@ -102,7 +102,9 @@ fn load_dae_from_buffer_inner(
     let document = Document::from_reader(buffer).map_err(DaeImportError::Parser)?;
     let maps = document.local_maps();
 
-    // TODO(#12335): Respect up_axis from DAE file via ViewCoordinates.
+    // Compute a correction matrix to rotate from the DAE file's coordinate system into Rerun's
+    // default RFU (X=Right, Y=Forward, Z=Up) convention.
+    let correction = up_axis_correction(document.asset.up_axis);
 
     // Check for textures and warn if found
     check_for_textures(&document);
@@ -145,8 +147,26 @@ fn load_dae_from_buffer_inner(
     let mut any_scene = false;
     for scene in document.iter::<VisualScene>() {
         any_scene = true;
+        // A <visual_scene> may have its own <asset><up_axis> that overrides the document level.
+        let scene_correction = scene
+            .asset
+            .as_deref()
+            .map_or(correction, |a| up_axis_correction(a.up_axis));
         for root in &scene.nodes {
-            gather_instances_recursive(&mut model, root, &glam::Affine3A::IDENTITY, &mesh_keys);
+            // Each root node uses its own <asset><up_axis> if present, otherwise the scene's.
+            let root_correction = root
+                .asset
+                .as_deref()
+                .map_or(scene_correction, |a| up_axis_correction(a.up_axis));
+            gather_instances_recursive(
+                &mut model,
+                root,
+                &glam::Affine3A::IDENTITY,
+                // No correction has been applied to the parent (IDENTITY) yet.
+                &glam::Affine3A::IDENTITY,
+                &root_correction,
+                &mesh_keys,
+            );
         }
     }
 
@@ -293,10 +313,40 @@ fn extract_material_color(
     ))
 }
 
+/// Compute the correction matrix that rotates from a given COLLADA `up_axis` coordinate system
+/// into Rerun's default RFU (X=Right, Y=Forward, Z=Up) convention.
+fn up_axis_correction(up_axis: dae_parser::UpAxis) -> glam::Affine3A {
+    match up_axis {
+        dae_parser::UpAxis::ZUp => glam::Affine3A::IDENTITY,
+        dae_parser::UpAxis::YUp => {
+            glam::Affine3A::from_mat3(glam::Mat3::from_rotation_x(std::f32::consts::FRAC_PI_2))
+        }
+        // X_UP is rare and the COLLADA spec doesn't fully define the secondary axes.
+        // We assume a right-handed system with X=Up, Y=Left, Z=Backward, mapping to
+        // RFU as: file (x, y, z) → world (-y, -z, x).
+        dae_parser::UpAxis::XUp => glam::Affine3A::from_mat3(glam::Mat3::from_cols(
+            glam::Vec3::new(0.0, 0.0, 1.0),
+            glam::Vec3::new(-1.0, 0.0, 0.0),
+            glam::Vec3::new(0.0, -1.0, 0.0),
+        )),
+    }
+}
+
+/// Recursively walk the node tree, placing geometry instances with corrected world transforms.
+///
+/// `parent_correction` is the up-axis correction that is already baked into `parent_tf`.
+/// `node_correction` is the up-axis correction that applies to *this* node's local transforms.
+///
+/// To convert this node's local basis into the parent's already-corrected (RFU) frame we compute
+/// `pending = inverse(parent_correction) * node_correction`. For nodes that inherit the parent's
+/// basis this reduces to `IDENTITY`; for nodes that override it undoes the parent's correction
+/// and applies the child's.
 fn gather_instances_recursive(
     model: &mut CpuModel,
     node: &DaeNode,
     parent_tf: &glam::Affine3A,
+    parent_correction: &glam::Affine3A,
+    node_correction: &glam::Affine3A,
     meshes: &HashMap<String, CpuModelMeshKey>,
 ) {
     use glam::{Affine3A, Mat4, Quat, Vec3};
@@ -326,7 +376,10 @@ fn gather_instances_recursive(
         }
     }
 
-    let world_tf = *parent_tf * Affine3A::from_mat4(local_mat);
+    // Undo the parent's correction and apply this node's, so local_mat (expressed in this
+    // node's basis) is correctly rebased into the parent's already-corrected RFU frame.
+    let pending = parent_correction.inverse() * *node_correction;
+    let world_tf = *parent_tf * pending * Affine3A::from_mat4(local_mat);
 
     for Instance::<Geometry> { url, .. } in &node.instance_geometry {
         let id = match url.val.clone() {
@@ -349,7 +402,20 @@ fn gather_instances_recursive(
     }
 
     for child in &node.children {
-        gather_instances_recursive(model, child, &world_tf, meshes);
+        // If the child declares its own up_axis, use that; otherwise inherit this node's basis.
+        let child_correction = child
+            .asset
+            .as_deref()
+            .map(|a| up_axis_correction(a.up_axis))
+            .unwrap_or(*node_correction);
+        gather_instances_recursive(
+            model,
+            child,
+            &world_tf,
+            node_correction,
+            &child_correction,
+            meshes,
+        );
     }
 }
 
