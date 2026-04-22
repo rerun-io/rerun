@@ -99,7 +99,7 @@ impl Default for ServerModal {
         Self {
             modal: Default::default(),
             mode: ServerModalMode::Add,
-            scheme: Scheme::Rerun,
+            scheme: Scheme::RerunHttps,
             host: String::new(),
             auth: Authentication::new(AuthKind::RerunAccount(None)),
             port: 443,

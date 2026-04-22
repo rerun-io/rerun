@@ -143,15 +143,14 @@ mod tests {
 
     #[test]
     fn scheme_conversion() {
-        assert_eq!(Scheme::Rerun.as_http_scheme(), "https");
-        assert_eq!(Scheme::RerunHttp.as_http_scheme(), "http");
         assert_eq!(Scheme::RerunHttps.as_http_scheme(), "https");
+        assert_eq!(Scheme::RerunHttp.as_http_scheme(), "http");
     }
 
     #[test]
     fn origin_conversion() {
         let origin = crate::Origin {
-            scheme: Scheme::Rerun,
+            scheme: Scheme::RerunHttps,
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
         };
@@ -181,7 +180,7 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.scheme, Scheme::RerunHttps);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
         assert_eq!(
@@ -206,7 +205,7 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.scheme, Scheme::RerunHttps);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
         assert_eq!(
@@ -256,7 +255,7 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.scheme, Scheme::RerunHttps);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
         assert_eq!(
@@ -292,7 +291,7 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.scheme, Scheme::RerunHttps);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
         assert_eq!(
@@ -386,7 +385,7 @@ mod tests {
 
         let expected = RedapUri::Proxy(ProxyUri {
             origin: Origin {
-                scheme: Scheme::Rerun,
+                scheme: Scheme::RerunHttps,
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
             },
@@ -423,7 +422,7 @@ mod tests {
                 "rerun://localhost/catalog",
                 RedapUri::Catalog(CatalogUri {
                     origin: Origin {
-                        scheme: Scheme::Rerun,
+                        scheme: Scheme::RerunHttps,
                         host: url::Host::Domain("localhost".to_owned()),
                         port: DEFAULT_REDAP_PORT,
                     },
@@ -483,7 +482,7 @@ mod tests {
                 "rerun://example.com",
                 RedapUri::Catalog(CatalogUri {
                     origin: Origin {
-                        scheme: Scheme::Rerun,
+                        scheme: Scheme::RerunHttps,
                         host: url::Host::Domain("example.com".to_owned()),
                         port: 443,
                     },
@@ -493,7 +492,7 @@ mod tests {
                 "rerun://example.com:420/catalog",
                 RedapUri::Catalog(CatalogUri {
                     origin: Origin {
-                        scheme: Scheme::Rerun,
+                        scheme: Scheme::RerunHttps,
                         host: url::Host::Domain("example.com".to_owned()),
                         port: 420,
                     },
@@ -518,7 +517,7 @@ mod tests {
 
         let expected = RedapUri::Catalog(CatalogUri {
             origin: Origin {
-                scheme: Scheme::Rerun,
+                scheme: Scheme::RerunHttps,
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
             },
@@ -538,7 +537,7 @@ mod tests {
 
         let expected = RedapUri::Catalog(CatalogUri {
             origin: Origin {
-                scheme: Scheme::Rerun,
+                scheme: Scheme::RerunHttps,
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 123,
             },
