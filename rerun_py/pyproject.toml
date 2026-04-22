@@ -47,6 +47,7 @@ tests = [
   "syrupy==5.0.0",
   "tomli==2.0.1",
   "torch>=2.5", # Needs numpy 2 support
+  "torchvision", # Imported at top of `rerun.experimental.dataloader._decoders`, so needed to import the dataloader module at all
   "datafusion==52.3.0",
 ]
 notebook = ["rerun-notebook==0.32.0-alpha.1+dev"]
@@ -56,6 +57,14 @@ dataplatform = [ # NOLINT
   "datafusion==52.3.0",
   "pandas>=2",
 ] # pandas is needed so pyarrow properly converts nanoseconds (RR-3532)
+
+# PyTorch `Dataset` for the Rerun Data Platform.
+dataloader = ["torch>=2.5", "torchvision", "av", "pillow>=8.0.0"]
+
+# Client-side OpenTelemetry export, enabled by `TELEMETRY_ENABLED=true OTEL_SDK_ENABLED=true`.
+# Only needed for developers profiling the SDK — see `rerun._tracing`.
+tracing = ["opentelemetry-api", "opentelemetry-sdk", "opentelemetry-exporter-otlp-proto-grpc"]
+
 # Note: We avoid self-referential extras like "rerun-sdk[notebook]" because they cause
 # uv to fetch rerun-sdk from PyPI when the local package isn't built yet.
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency

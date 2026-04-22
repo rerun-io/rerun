@@ -90,6 +90,7 @@ re_renderer = { workspace = true, default-features = false }
 re_sdk_types.workspace = true
 re_selection_panel.workspace = true
 re_sorbet.workspace = true
+re_string_interner.workspace = true
 re_time_panel.workspace = true
 re_tracing = { workspace = true, features = ["server"] }
 re_types_core.workspace = true
@@ -140,6 +141,7 @@ glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 jiff.workspace = true
+num-traits.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
 rfd.workspace = true

@@ -287,7 +287,8 @@ impl AppState {
 
             // TODO(RR-3033): This needs to be further cleaned up and split into separately handled routes.
             _ => {
-                let blueprint_query = self.blueprint_query_for_viewer(store_context.blueprint);
+                let blueprint_query =
+                    self.blueprint_query_for_viewer(Some(store_context.blueprint));
                 let route = self.navigation.current();
 
                 let Self {
@@ -853,7 +854,10 @@ impl AppState {
     ///
     /// If `inspect_blueprint_timeline` is enabled, we use the time selection from the
     /// blueprint `time_ctrl`. Otherwise, we use a latest query from the blueprint timeline.
-    pub fn blueprint_query_for_viewer(&mut self, blueprint: &EntityDb) -> LatestAtQuery {
+    ///
+    /// If no blueprint is available (e.g. no active store context), falls back to
+    /// a latest query on the blueprint timeline.
+    pub fn blueprint_query_for_viewer(&mut self, blueprint: Option<&EntityDb>) -> LatestAtQuery {
         if self.app_options.inspect_blueprint_timeline {
             if self.blueprint_time_control.play_state() == PlayState::Following {
                 // Special-case just to make sure we include stuff added in this frame
@@ -861,12 +865,14 @@ impl AppState {
             } else {
                 self.blueprint_time_control.current_query().clone()
             }
-        } else {
+        } else if let Some(blueprint) = blueprint {
             let undo_state = self
                 .blueprint_undo_state
                 .entry(blueprint.store_id().clone())
                 .or_default();
             undo_state.blueprint_query()
+        } else {
+            LatestAtQuery::latest(re_viewer_context::blueprint_timeline())
         }
     }
 

@@ -27,7 +27,9 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
+use re_redap_client::{ApiError, ApiResult, ConnectionClient, ConnectionRegistryHandle};
+
+use crate::IntoDfError as _;
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_uri::Origin;
 use std::any::Any;
@@ -134,11 +136,8 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         segment_ids: &[impl AsRef<str> + Sync],
         index_values: IndexValuesMap,
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
-    ) -> Result<Self, DataFusionError> {
-        let client = connection
-            .client(origin.clone())
-            .await
-            .map_err(|err| exec_datafusion_err!("{err}"))?;
+    ) -> ApiResult<Self> {
+        let client = connection.client(origin.clone()).await?;
 
         let mut provider = Self::new_from_client(
             client,
@@ -166,20 +165,26 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
         segment_ids: &[impl AsRef<str> + Sync],
         index_values: IndexValuesMap,
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
-    ) -> Result<Self, DataFusionError> {
-        let schema = client
-            .get_dataset_schema(
-                tonic::Request::new(GetDatasetSchemaRequest {})
-                    .with_entry_id(dataset_id)
-                    .map_err(|err| exec_datafusion_err!("{err}"))?,
-            )
+    ) -> ApiResult<Self> {
+        let request = tonic::Request::new(GetDatasetSchemaRequest {})
+            .with_entry_id(dataset_id)
+            .map_err(|err| {
+                ApiError::internal_with_source(None, err, "attaching dataset entry_id header")
+            })?;
+        let response = client
+            .get_dataset_schema(request)
             .await
-            .map_err(|err| exec_datafusion_err!("{err}"))?
-            .into_inner()
-            .schema()
-            .map_err(|err| exec_datafusion_err!("{err}"))?;
+            .map_err(|err| ApiError::tonic(err, "get_dataset_schema"))?;
+        let trace_id = re_redap_client::extract_trace_id(response.metadata());
+        let schema = response.into_inner().schema().map_err(|err| {
+            ApiError::deserialization_with_source(trace_id, err, "decoding dataset schema")
+        })?;
 
-        let schema = compute_schema_for_query(&schema, query_expression)?;
+        let schema = compute_schema_for_query(&schema, query_expression).map_err(|err| {
+            // `compute_schema_for_query` fails when the caller-provided query
+            // references columns/entity-paths not present in the dataset schema
+            ApiError::invalid_arguments_with_source(trace_id, err, "computing schema for query")
+        })?;
 
         let select_all_entity_paths = false;
 
@@ -367,24 +372,26 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             for dataset_query in dataset_queries {
                 let query_start = Instant::now();
 
+                let request = tonic::Request::new(dataset_query.into())
+                    .with_entry_id(self.dataset_id)
+                    .map_err(|err| {
+                        ApiError::internal_with_source(
+                            None,
+                            err,
+                            "attaching dataset entry_id header",
+                        )
+                        .into_df_error()
+                    })?;
                 let response = self
                     .client
                     .clone()
-                    .query_dataset(
-                        tonic::Request::new(dataset_query.into())
-                            .with_entry_id(self.dataset_id)
-                            .map_err(|err| exec_datafusion_err!("{err}"))?,
-                    )
+                    .query_dataset(request)
                     .await
-                    .map_err(|err| exec_datafusion_err!("{err}"))?;
+                    .map_err(|err| ApiError::tonic(err, "query_dataset").into_df_error())?;
 
                 // Capture the server-side trace-id from response metadata.
                 if trace_id.is_none() {
-                    trace_id = response
-                        .metadata()
-                        .get("x-request-trace-id")
-                        .and_then(|v| v.to_str().ok())
-                        .and_then(|s| opentelemetry::TraceId::from_hex(s).ok());
+                    trace_id = re_redap_client::extract_trace_id(response.metadata());
                 }
 
                 let mut response_stream = response.into_inner();
@@ -394,13 +401,22 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                         time_to_first_chunk_info = Some(query_start.elapsed());
                     }
 
-                    let response = response.map_err(|err| exec_datafusion_err!("{err}"))?;
+                    let response = response.map_err(|err| {
+                        ApiError::tonic(err, "query_dataset response stream")
+                            .with_trace_id(trace_id)
+                            .into_df_error()
+                    })?;
                     let Some(dataframe_part) = response.data else {
                         continue;
                     };
-                    let batch: RecordBatch = dataframe_part
-                        .try_into()
-                        .map_err(|err| exec_datafusion_err!("{err}"))?;
+                    let batch: RecordBatch = dataframe_part.try_into().map_err(|err| {
+                        ApiError::deserialization_with_source(
+                            trace_id,
+                            err,
+                            "decoding query_dataset response batch",
+                        )
+                        .into_df_error()
+                    })?;
 
                     chunk_info_batches.push(batch);
                 }
@@ -464,6 +480,8 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 limit,
                 #[cfg(not(target_arch = "wasm32"))]
                 self.trace_headers.clone(),
+                #[cfg(not(target_arch = "wasm32"))]
+                trace_id,
                 pending_analytics,
             )
             .map(Arc::new)

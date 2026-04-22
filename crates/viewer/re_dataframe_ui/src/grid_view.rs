@@ -15,6 +15,14 @@ pub struct FlagChangeEvent {
     pub new_value: bool,
 }
 
+/// Shared parameters that are the same for every card in the grid.
+struct CardConfig<'a> {
+    table_config: &'a TableConfig,
+    title_col_index: Option<usize>,
+    table_blueprint: &'a TableBlueprint,
+    flagging_enabled: bool,
+}
+
 /// Render the data as a card-based grid.
 ///
 /// Returns a list of flag toggle changes that need to be applied to the underlying data.
@@ -44,6 +52,13 @@ pub fn grid_ui(
     // Resolve the title column index once for all cards.
     let title_col_index = find_title_column_index(table_blueprint, columns, table_config);
 
+    let card_config = CardConfig {
+        table_config,
+        title_col_index,
+        table_blueprint,
+        flagging_enabled,
+    };
+
     egui::ScrollArea::vertical()
         .auto_shrink(false)
         .content_margin(egui::Margin::same(card_spacing as i8))
@@ -56,20 +71,17 @@ pub fn grid_ui(
                 card_frame,
             )
             .all_rows_use_available_width(false)
-            .hover_overlay(tokens.table_grid_view_card_hover_overlay)
-            .show(ui, |ui, index| {
-                card_content_ui(
+            .hover_fill(tokens.table_grid_view_card_hover_fill)
+            .show(ui, |ui, index, card_hovered| {
+                flag_changes.extend(card_content_ui(
                     ctx,
+                    &card_config,
                     ui,
                     index as u64,
                     columns,
                     display_record_batches,
-                    table_config,
-                    title_col_index,
-                    table_blueprint,
-                    flagging_enabled,
-                    &mut flag_changes,
-                );
+                    card_hovered,
+                ));
             });
         });
 
@@ -79,26 +91,28 @@ pub fn grid_ui(
 /// Render the content of a single card for the given table row.
 ///
 /// This renders only the card interior — the frame is handled by [`CardLayout`].
-#[expect(clippy::too_many_arguments)]
 fn card_content_ui(
     ctx: &StoreViewContext<'_>,
+    config: &CardConfig<'_>,
     ui: &mut Ui,
     row_idx: u64,
     columns: &Columns<'_>,
     display_record_batches: &[DisplayRecordBatch],
-    table_config: &TableConfig,
-    title_col_index: Option<usize>,
-    table_blueprint: &TableBlueprint,
-    flagging_enabled: bool,
-    flag_changes: &mut Vec<FlagChangeEvent>,
-) {
+    card_hovered: bool,
+) -> Option<FlagChangeEvent> {
     re_tracing::profile_function!();
 
-    let Some((display_record_batch, batch_index)) =
-        find_row_batch(display_record_batches, row_idx as usize)
-    else {
-        return;
-    };
+    let &CardConfig {
+        table_config,
+        title_col_index,
+        table_blueprint,
+        flagging_enabled,
+    } = config;
+
+    let (display_record_batch, batch_index) =
+        find_row_batch(display_record_batches, row_idx as usize)?;
+
+    let mut flag_change_event = None;
 
     // Read the title value for this row from the pre-resolved title column.
     let title_text = title_col_index.and_then(|idx| {
@@ -131,8 +145,8 @@ fn card_content_ui(
 
                     // Right-align the flag toggle.
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if flag_button(ui, is_flagged).clicked() {
-                            flag_changes.push(FlagChangeEvent {
+                        if flag_button(ui, is_flagged, card_hovered).clicked() {
+                            flag_change_event = Some(FlagChangeEvent {
                                 row: row_idx,
                                 new_value: !is_flagged,
                             });
@@ -172,6 +186,8 @@ fn card_content_ui(
             }
         });
     });
+
+    flag_change_event
 }
 
 /// Find the column index to use as the card title.
@@ -210,30 +226,18 @@ fn find_title_column_index(
     None
 }
 
-/// A flag toggle button with custom styling.
-fn flag_button(ui: &mut Ui, is_flagged: bool) -> egui::Response {
+/// A flag toggle button with progressive-disclosure styling.
+///
+/// Three visual tiers based on hover context:
+/// - **Idle** (mouse away from card): transparent bg, muted icon — flag "melts" into the card.
+/// - **Card hovered**: subtle bg appears, icon becomes legible — flag is *revealed*.
+/// - **Flag hovered**: stronger bg, same icon — flag is clearly *actionable*.
+///
+/// When toggled on the flag is always visible (orange) so the user can see their selection
+/// at a glance, with the same three-tier brightness progression on hover.
+#[expect(clippy::fn_params_excessive_bools)]
+fn flag_button(ui: &mut Ui, is_flagged: bool, card_hovered: bool) -> egui::Response {
     let tokens = ui.tokens();
-
-    let icon = if is_flagged {
-        &re_ui::icons::FLAG_TOGGLED
-    } else {
-        &re_ui::icons::FLAG_UNTOGGLED
-    };
-    let icon_tint = if is_flagged {
-        egui::Color32::WHITE // The icon is colored already.
-    } else {
-        tokens.flag_untoggled_icon
-    };
-    let bg_fill = if is_flagged {
-        tokens.flag_toggled_bg
-    } else {
-        tokens.flag_untoggled_bg
-    };
-    let bg_fill_hover = if is_flagged {
-        tokens.flag_toggled_bg_hover
-    } else {
-        tokens.flag_untoggled_bg_hover
-    };
 
     let size = egui::vec2(30.0, 24.0);
     let icon_size = egui::vec2(14.0, 14.0);
@@ -247,14 +251,46 @@ fn flag_button(ui: &mut Ui, is_flagged: bool) -> egui::Response {
             "Flag",
         )
     });
+
     if ui.is_rect_visible(rect) {
-        let rounding = 4.0;
-        let fill = if response.hovered() {
-            bg_fill_hover
+        let flag_hovered = response.hovered();
+
+        let (bg, icon_tint) = if is_flagged {
+            let bg = if flag_hovered {
+                tokens.flag_toggled_bg_hover
+            } else if card_hovered {
+                tokens.flag_toggled_bg_card_hover
+            } else {
+                tokens.flag_toggled_bg
+            };
+            (bg, tokens.flag_toggled_icon)
         } else {
-            bg_fill
+            let bg = if flag_hovered {
+                tokens.flag_untoggled_bg_hover
+            } else if card_hovered {
+                tokens.flag_untoggled_bg_card_hover
+            } else {
+                tokens.flag_untoggled_bg
+            };
+            let icon_tint = if flag_hovered || card_hovered {
+                tokens.flag_untoggled_icon_hover
+            } else {
+                tokens.flag_untoggled_icon
+            };
+            (bg, icon_tint)
         };
-        ui.painter().rect_filled(rect, rounding, fill);
+
+        if bg.a() > 0 {
+            let rounding = 4.0;
+            ui.painter().rect_filled(rect, rounding, bg);
+        }
+
+        let icon = if is_flagged {
+            &re_ui::icons::FLAG_TOGGLED
+        } else {
+            &re_ui::icons::FLAG_UNTOGGLED
+        };
+
         let icon_rect = egui::Rect::from_center_size(rect.center(), icon_size);
         icon.as_image().tint(icon_tint).paint_at(ui, icon_rect);
     }

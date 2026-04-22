@@ -118,6 +118,10 @@ let lenses = Lenses::new(OutputMode::DropUnmatched)
     .add_lens_with_filter(EntityPathFilter::parse_forgiving("sensors/**"), lens);
 ```
 
+## `rerun rrd compact` renamed to `rerun rrd optimize`
+
+`rerun rrd compact` is now `rerun rrd optimize`.
+
 ## URDF importer transform entity
 
 The [URDF importer](../../howto/logging-and-ingestion/urdf.md) now loads the static transforms of the model to the `/tf_static` entity by default.

@@ -459,13 +459,13 @@ impl LogDataSource {
 /// Analytics data extracted from a [`LogDataSource`].
 #[derive(Clone, Debug)]
 pub struct LogDataSourceAnalytics {
-    /// The type of data source (e.g., "file", "http", ``redap_grpc``, "stdin").
+    /// The type of data source (e.g., "file", "http", `redap_grpc`, "stdin").
     pub source_type: &'static str,
 
     /// The file extension if applicable (e.g., "rrd", "png", "glb").
     pub file_extension: Option<String>,
 
-    /// How the file was opened (e.g., "cli", ``file_dialog``, ``drag_and_drop``).
+    /// How the file was opened (e.g., "cli", `file_dialog`, `drag_and_drop`).
     /// Only applicable for file-based sources.
     pub file_source: Option<&'static str>,
 }

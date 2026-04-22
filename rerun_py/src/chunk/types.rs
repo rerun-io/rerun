@@ -95,7 +95,7 @@ impl PyChunkInternal {
 
     /// Create a Chunk from a PyArrow RecordBatch with Rerun schema metadata.
     ///
-    /// The RecordBatch must have been produced by ``to_record_batch()`` or have
+    /// The RecordBatch must have been produced by `to_record_batch()` or have
     /// equivalent Rerun metadata in its schema.
     #[staticmethod]
     #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned PyArrowType for #[staticmethod]
@@ -107,7 +107,7 @@ impl PyChunkInternal {
 
     /// Create a Chunk from an entity path, timeline arrays, and component arrays.
     ///
-    /// This is the low-level entry point called by ``Chunk.from_columns()`` in Python.
+    /// This is the low-level entry point called by `Chunk.from_columns()` in Python.
     #[staticmethod]
     fn from_columns(
         entity_path: &str,
@@ -117,6 +117,38 @@ impl PyChunkInternal {
         let entity_path = EntityPath::parse_forgiving(entity_path);
         let chunk = crate::arrow::build_chunk_from_components(entity_path, timelines, components)?;
         Ok(Self::new(Arc::new(chunk)))
+    }
+
+    /// Apply one or more lenses to this chunk, returning transformed chunks.
+    #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned Vec
+    #[pyo3(signature = (lenses))]
+    fn apply_lenses(
+        &self,
+        lenses: Vec<PyRef<'_, crate::lenses::PyLensInternal>>,
+    ) -> PyResult<Vec<Self>> {
+        let mut collection =
+            re_lenses_core::Lenses::new(re_lenses_core::OutputMode::ForwardUnmatched);
+        for lens in &lenses {
+            collection = collection.add_lens(lens.inner().clone());
+        }
+
+        let mut results = Vec::new();
+        for result in collection.apply(&self.chunk) {
+            match result {
+                Ok(chunk) => results.push(Self {
+                    chunk: Arc::new(chunk),
+                }),
+                Err(partial) => {
+                    let reason = partial
+                        .errors()
+                        .map(|e| e.to_string())
+                        .collect::<Vec<_>>()
+                        .join("; ");
+                    return Err(PyValueError::new_err(reason));
+                }
+            }
+        }
+        Ok(results)
     }
 
     /// Format this chunk as a human-readable table string.

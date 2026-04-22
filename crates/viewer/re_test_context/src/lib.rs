@@ -632,6 +632,8 @@ impl TestContext {
             recording_id: self.recording_store_id.clone(),
         };
         let (storage_context, store_context) = store_hub.read_context(&route);
+        let store_context = store_context
+            .expect("a `Route::LocalRecording` must always have an active store context");
 
         let visualizable_entities_per_visualizer = store_context
             .caches

@@ -33,7 +33,7 @@ pub fn load_mcap(path: impl AsRef<Path>) -> LoadedMcap {
 
     if 10_000 < chunks.len() {
         re_log::warn!(
-            "MCAP file contained {} chunks. Consider running `rerun rrd compact` on the output.",
+            "MCAP file contained {} chunks. Consider running `rerun rrd optimize` on the output.",
             re_format::format_uint(chunks.len()),
         );
     }

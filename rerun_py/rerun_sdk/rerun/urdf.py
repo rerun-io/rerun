@@ -18,10 +18,10 @@ __all__ = ["UrdfJoint", "UrdfLink", "UrdfMimic", "UrdfTree"]
 
 class UrdfMimic:
     """
-    A URDF ``<mimic>`` tag specification.
+    A URDF `<mimic>` tag specification.
 
     A mimic joint's value is derived from a driver joint as
-    ``value = multiplier * driver_value + offset``.
+    `value = multiplier * driver_value + offset`.
     """
 
     def __init__(self, inner: _UrdfMimicInternal) -> None:
@@ -34,12 +34,12 @@ class UrdfMimic:
 
     @property
     def multiplier(self) -> float:
-        """Multiplier applied to the driver joint's value (defaults to ``1.0``)."""
+        """Multiplier applied to the driver joint's value (defaults to `1.0`)."""
         return self._inner.multiplier
 
     @property
     def offset(self) -> float:
-        """Offset added after multiplying the driver joint's value (defaults to ``0.0``)."""
+        """Offset added after multiplying the driver joint's value (defaults to `0.0`)."""
         return self._inner.offset
 
     def __repr__(self) -> str:
@@ -109,7 +109,7 @@ class UrdfJoint:
 
     @property
     def mimic(self) -> UrdfMimic | None:
-        """Mimic-tag specification, or ``None`` if this joint is not a mimic joint."""
+        """Mimic-tag specification, or `None` if this joint is not a mimic joint."""
         inner = self._inner.mimic
         return UrdfMimic(inner) if inner is not None else None
 
@@ -231,8 +231,8 @@ class UrdfTree:
             Use to load the same URDF multiple times with unique frames.
         static_transform_entity_path:
             Optional entity path to use when logging static transforms.
-            If omitted, defaults to ``/tf_static``.
-            This path is not affected by ``entity_path_prefix``.
+            If omitted, defaults to `/tf_static`.
+            This path is not affected by `entity_path_prefix`.
 
         """
         return UrdfTree(
@@ -343,13 +343,13 @@ class UrdfTree:
         Log the full robot model (geometry + static transforms) to a recording stream.
 
         This can be used as alternative to [`rerun.log_file_from_path`][] for URDF files,
-        especially in cases where you need the extra configuration options of ``UrdfTree``
-        (e.g. ``frame_prefix`` for multi-robot setups).
+        especially in cases where you need the extra configuration options of `UrdfTree`
+        (e.g. `frame_prefix` for multi-robot setups).
 
         Parameters
         ----------
         recording:
-            The recording stream to log to. If ``None``, the current active recording is used.
+            The recording stream to log to. If `None`, the current active recording is used.
 
         """
         self._inner.log(recording.to_native() if recording is not None else None)

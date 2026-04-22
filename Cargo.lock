@@ -8558,7 +8558,6 @@ dependencies = [
  "jiff",
  "re_arrow_ui",
  "re_arrow_util",
- "re_byte_size",
  "re_capabilities",
  "re_chunk_store",
  "re_entity_db",
@@ -9182,6 +9181,7 @@ dependencies = [
 name = "re_plot"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "egui",
  "indexmap",
  "re_ui",
@@ -9813,6 +9813,7 @@ dependencies = [
 name = "re_time_panel"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "anyhow",
  "criterion",
  "egui",
@@ -9820,6 +9821,7 @@ dependencies = [
  "itertools 0.14.0",
  "nohash-hasher",
  "rand 0.9.3",
+ "re_byte_size",
  "re_chunk",
  "re_chunk_store",
  "re_context_menu",
@@ -10052,6 +10054,7 @@ dependencies = [
 name = "re_view_bar_chart"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "arrow",
  "egui",
  "egui_plot",
@@ -10289,6 +10292,7 @@ dependencies = [
 name = "re_view_time_series"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "arrayvec",
  "egui",
  "egui_plot",
@@ -10338,6 +10342,7 @@ dependencies = [
  "itertools 0.14.0",
  "jiff",
  "js-sys",
+ "num-traits",
  "parking_lot",
  "poll-promise",
  "rayon",
@@ -10376,6 +10381,7 @@ dependencies = [
  "re_sdk_types",
  "re_selection_panel",
  "re_sorbet",
+ "re_string_interner",
  "re_test_context",
  "re_test_viewport",
  "re_time_panel",
@@ -10878,6 +10884,7 @@ dependencies = [
  "re_chunk",
  "re_chunk_store",
  "re_datafusion",
+ "re_error",
  "re_format",
  "re_grpc_client",
  "re_grpc_server",

@@ -13,13 +13,15 @@ use crate::Loggable as _;
 ///
 /// ### Uniqueness
 ///
-/// Duplicated [`RowId`]s within a single recording is considered undefined behavior.
+/// [`RowId::new`] generates fresh monotonic IDs, so each logged row normally has a unique
+/// [`RowId`]. Multiple chunks may share a [`RowId`] though, and queries handle that correctly.
 ///
-/// While it is benign in most cases, care has to be taken when manually crafting [`RowId`]s.
-/// Ideally: don't do so and stick to [`RowId::new`] instead to avoid bad surprises.
+/// But there are secondary caches that use row id in a way that requires uniqueness for a
+/// specific component.
 ///
-/// This makes it easy to build and maintain secondary indices around [`RowId`]s with few to no
-/// extraneous state tracking.
+/// ### Immutability
+///
+/// Because of secondary caches, a row id & component pair should never be mutated.
 ///
 /// ### Query
 ///

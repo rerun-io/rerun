@@ -3,13 +3,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Sequence
 
     import pyarrow as pa
 
     from rerun import ComponentColumn
     from rerun._send_columns import TimeColumnLike
     from rerun_bindings import ChunkInternal
+
+    from ._lens import Lens
 
 
 class Chunk:
@@ -131,6 +133,44 @@ class Chunk:
     def to_record_batch(self) -> pa.RecordBatch:
         """Convert this chunk to an Arrow RecordBatch."""
         return self._internal.to_record_batch()
+
+    def apply_lenses(self, lenses: Sequence[Lens] | Lens) -> list[Chunk]:
+        """
+        Apply one or more lenses to this chunk, returning transformed chunks.
+
+        Each lens matches by input component. Columns not consumed by
+        any matching lens are forwarded unchanged as a separate chunk.
+        A single lens with multiple [`LensOutput`][] groups may produce
+        multiple output chunks (e.g., with different target entities).
+
+        If no lens matches the chunk (including when an empty list of
+        lenses is passed), the original chunk is returned unchanged.
+
+        Parameters
+        ----------
+        lenses:
+            Zero or more [`Lens`][] objects to apply.
+
+        Returns
+        -------
+        A list of [`Chunk`][] objects. Contains the original chunk if no
+        lens matched, or one or more transformed chunks (optionally
+        preceded by a chunk with the untouched forwarded columns)
+        otherwise.
+
+        Raises
+        ------
+        ValueError
+            If a lens produces a partial result (e.g., a selector fails
+            to evaluate on the input data, or a lens produces no output
+            columns).
+
+        """
+        from ._lens import Lens as LensType
+
+        if isinstance(lenses, LensType):
+            lenses = [lenses]
+        return [Chunk(internal) for internal in self._internal.apply_lenses([lens._internal for lens in lenses])]
 
     def format(self, *, width: int = 240, redact: bool = False) -> str:
         """

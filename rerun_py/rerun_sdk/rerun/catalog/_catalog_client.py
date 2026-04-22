@@ -277,17 +277,37 @@ class CatalogClient:
 
     # ---
 
-    def create_dataset(self, name: str) -> DatasetEntry:
+    def create_dataset(self, name: str, *, exist_ok: bool = False) -> DatasetEntry:
         """
         Creates a new dataset with the given name.
 
         Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
         and must be at most 180 characters long.
+
+        Parameters
+        ----------
+        name
+            The name of the dataset to create.
+        exist_ok
+            If True, return the existing dataset if it already exists; otherwise, raise an error.
+
+        Raises
+        ------
+        AlreadyExistsError
+            If a dataset with the given name already exists and `exist_ok` is False.
+
         """
+
+        from rerun_bindings import AlreadyExistsError
 
         from . import DatasetEntry
 
-        return DatasetEntry(self._internal.create_dataset(name))
+        try:
+            return DatasetEntry(self._internal.create_dataset(name))
+        except AlreadyExistsError:
+            if not exist_ok:
+                raise
+            return self.get_dataset(name)
 
     def register_table(self, name: str, url: str) -> TableEntry:
         """

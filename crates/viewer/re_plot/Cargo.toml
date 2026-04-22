@@ -19,6 +19,7 @@ workspace = true
 all-features = true
 
 [dependencies]
+ahash.workspace = true
 egui.workspace = true
 indexmap.workspace = true
 re_ui.workspace = true

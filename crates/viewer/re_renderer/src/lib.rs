@@ -78,9 +78,9 @@ pub use allocator::{
 };
 pub use color::{Rgba32Unmul, UnalignedColor32};
 pub use colormap::{
-    Colormap, colormap_cyan_to_yellow_srgb, colormap_inferno_srgb, colormap_magma_srgb,
-    colormap_plasma_srgb, colormap_srgb, colormap_turbo_srgb, colormap_viridis_srgb,
-    grayscale_srgb,
+    Colormap, colormap_cyan_to_yellow_srgba, colormap_inferno_srgba, colormap_magma_srgba,
+    colormap_plasma_srgba, colormap_srgba, colormap_turbo_srgba, colormap_viridis_srgba,
+    grayscale_srgba,
 };
 pub use context::{
     MsaaMode, RenderConfig, RenderContext, RenderContextError, RendererTypeId, adapter_info_summary,

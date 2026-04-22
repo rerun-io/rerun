@@ -20,6 +20,9 @@ pub struct HarnessOptions {
     pub step_dt: Option<f32>,
     pub startup_url: Option<String>,
     pub enable_component_mapping: bool,
+
+    /// Allows the test to set `AppOptions` at start.
+    pub app_options_editor: Option<AppOptionsEditor>,
 }
 
 /// Convenience function for creating a kittest harness of the viewer App.
@@ -61,6 +64,10 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
 
         // Enable experimental grid view in tests.
         app.app_options_mut().experimental.table_grid_view = true;
+
+        if let Some(editor) = &options.app_options_editor {
+            editor(app.app_options_mut());
+        }
 
         // This is slightly different than calling this after we created the harness since
         // the harness will do some stepping upon creation.

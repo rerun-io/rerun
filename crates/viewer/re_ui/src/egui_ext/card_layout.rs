@@ -1,7 +1,5 @@
 use egui::{Color32, Frame, NumExt as _, Ui};
 
-use super::response_ext::ResponseExt as _;
-
 /// Per-item configuration for [`CardLayout`].
 pub struct CardLayoutItem {
     /// Frame drawn around this card. If `None`, uses the [`CardLayout`]'s default frame.
@@ -18,7 +16,7 @@ pub struct CardLayoutItem {
 pub struct CardLayout {
     items: Vec<CardLayoutItem>,
     default_frame: Frame,
-    hover_overlay: Option<Color32>,
+    hover_fill: Option<Color32>,
     all_rows_use_available_width: bool,
 }
 
@@ -45,7 +43,7 @@ impl CardLayout {
                 })
                 .collect(),
             default_frame: frame,
-            hover_overlay: None,
+            hover_fill: None,
             all_rows_use_available_width: true,
         }
     }
@@ -55,7 +53,7 @@ impl CardLayout {
         Self {
             items,
             default_frame,
-            hover_overlay: None,
+            hover_fill: None,
             all_rows_use_available_width: true,
         }
     }
@@ -69,19 +67,24 @@ impl CardLayout {
         self
     }
 
-    /// Set an overlay color painted on top of hovered cards.
+    /// Set a fill color used for hovered cards (replaces the default frame fill).
     ///
-    /// The presence of this color enables hover interaction on cards.
-    pub fn hover_overlay(mut self, color: Color32) -> Self {
-        self.hover_overlay = Some(color);
+    /// The card's frame fill is swapped to this color when the pointer is over the card.
+    pub fn hover_fill(mut self, color: Color32) -> Self {
+        self.hover_fill = Some(color);
         self
     }
 
-    pub fn show(self, ui: &mut Ui, mut show_item: impl FnMut(&mut Ui, usize)) {
+    /// Render the grid.
+    ///
+    /// `show_item` receives `(ui, item_index, card_hovered)`. The `card_hovered`
+    /// flag is `true` when the pointer is over the card, which lets content
+    /// (e.g. a flag button) adapt its appearance based on parent hover state.
+    pub fn show(self, ui: &mut Ui, mut show_item: impl FnMut(&mut Ui, usize, bool)) {
         let Self {
             items,
             default_frame,
-            hover_overlay,
+            hover_fill,
             all_rows_use_available_width,
         } = self;
 
@@ -165,27 +168,29 @@ impl CardLayout {
                         .layout(egui::Layout::left_to_right(egui::Align::Min)),
                 );
 
+                // Check hover on the pre-computed card rect *before* painting.
+                // This replicates the logic of `container_hovered()`: pointer is
+                // inside the rect on this layer and nothing is being dragged.
+                let card_hovered = hover_fill.is_some()
+                    && child_ui.ctx().dragged_id().is_none()
+                    && child_ui
+                        .ctx()
+                        .rect_contains_pointer(child_ui.layer_id(), card_rect);
+
+                let frame = if let (true, Some(fill)) = (card_hovered, hover_fill) {
+                    frame.fill(fill)
+                } else {
+                    frame
+                };
+
                 let mut content_height = 0.0;
-                let frame_response = frame.show(&mut child_ui, |ui| {
+                frame.show(&mut child_ui, |ui| {
                     ui.set_width((card_width - frame_margin.x).at_most(ui.available_width()));
-                    show_item(ui, row.first_item + i);
+                    show_item(ui, row.first_item + i, card_hovered);
 
                     content_height = ui.min_size().y;
                     ui.set_height((row_height - frame_margin.y).at_least(0.0));
                 });
-
-                // Paint a hover overlay on top of the card.
-                // Use `container_hovered` rather than `hovered()` so the overlay
-                // persists even when child widgets (e.g. flag buttons) consume clicks.
-                if let Some(overlay) = hover_overlay
-                    && frame_response.response.container_hovered()
-                {
-                    child_ui.painter().rect_filled(
-                        frame_response.response.rect,
-                        frame.corner_radius,
-                        overlay,
-                    );
-                }
 
                 new_row_stats.max_height = new_row_stats
                     .max_height

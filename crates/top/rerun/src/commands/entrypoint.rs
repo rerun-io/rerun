@@ -452,7 +452,9 @@ impl Args {
                 return;
             }
 
-            let any_subcommands = cmd.get_subcommands().any(|cmd| cmd.get_name() != "help");
+            let any_subcommands = cmd
+                .get_subcommands()
+                .any(|cmd| cmd.get_name() != "help" && !cmd.is_hide_set());
             let any_positional_args = cmd.get_arguments().any(|arg| arg.is_positional());
             let any_floating_args = cmd.get_arguments().any(|arg| {
                 !arg.is_positional() && !arg.is_hide_set() && arg.get_long() != Some("help")
@@ -504,7 +506,7 @@ impl Args {
             let commands = any_subcommands.then(|| {
                 let commands = cmd
                     .get_subcommands_mut()
-                    .filter(|cmd| cmd.get_name() != "help")
+                    .filter(|cmd| cmd.get_name() != "help" && !cmd.is_hide_set())
                     .map(|cmd| {
                         let name = cmd.get_name().to_owned();
                         let help = cmd.render_help().to_string();
@@ -574,6 +576,9 @@ impl Args {
             *out += "\n\n";
 
             for cmd in cmd.get_subcommands_mut() {
+                if cmd.is_hide_set() {
+                    continue;
+                }
                 generate_markdown_manual(full_name.clone(), out, cmd);
             }
         }
@@ -1334,7 +1339,7 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
             match msg.payload {
                 SmartMessagePayload::Msg(msg) => {
                     match msg {
-                        DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
+                        DataSourceMessage::RrdManifest(store_id, manifest) => {
                             let mut_db = match store_id.kind() {
                                 re_log_types::StoreKind::Recording => {
                                     rec.get_or_insert_with(|| {
@@ -1346,7 +1351,7 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                                 }),
                             };
 
-                            mut_db.add_rrd_manifest_message(rrd_manifest);
+                            mut_db.add_rrd_manifest_message(manifest);
                         }
 
                         DataSourceMessage::RrdManifestComplete(store_id) => {

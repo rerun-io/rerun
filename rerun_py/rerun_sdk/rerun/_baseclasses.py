@@ -338,10 +338,10 @@ class ComponentColumn:
         lengths:
             The lengths of each partition. Must sum to the total length of the component batch.
             If left unspecified, it will default to unit-length batches.
-            Mutually exclusive with ``offsets``.
+            Mutually exclusive with `offsets`.
         offsets:
             Pre-computed int32 offsets array (including the leading 0).
-            Mutually exclusive with ``lengths``.
+            Mutually exclusive with `lengths`.
 
         """
         if isinstance(descriptor, str):

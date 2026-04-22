@@ -61,6 +61,17 @@ pymethods_start = re.compile(r"#\[pymethods\]")
 double_the = re.compile(r"\bthe the\b")
 double_word = re.compile(r" ([a-z]+) \1[ \.]")
 
+# reStructuredText syntax that we don't want in Python docstrings.
+# Our Python API docs use MkDocs + mkdocstrings (not Sphinx), so rST isn't rendered.
+# See `CLAUDE.md` → "Python docstring formatting".
+rst_role = re.compile(r":(class|meth|func|mod|attr|exc|data|const|obj|ref):`")
+rst_directive = re.compile(
+    r"\.\.\s+(warning|note|deprecated|code-block|seealso|versionadded|versionchanged|admonition|caution|danger|hint|important|tip|attention|toctree|automodule|autoclass|autofunction)::"
+)
+# rST inline literal — ``code``. Markdown uses single backticks.
+# Avoid matching triple-backtick code fences.
+rst_double_backtick = re.compile(r"(?<!`)``[^`\n]+``(?!`)")
+
 Frontmatter = dict[str, Any]
 
 
@@ -301,6 +312,36 @@ def lint_line(
 
     if "rec_stream" in line or "rr_stream" in line:
         return "Instantiated RecordingStreams should be named `rec`"
+
+    # rST syntax is not rendered by MkDocs/mkdocstrings (our Python API docs).
+    # Python docstrings and Rust `///` doc comments (pyo3 exposes them as Python docstrings).
+    is_in_rust_doc_comment = file_extension == "rs" and re_docstring.match(line) is not None
+    if is_in_docstring or is_in_rust_doc_comment:
+        if m := rst_role.search(line):
+            role = m.group(1)
+            return (
+                f"Found rST role `:{role}:` in docstring — use markdown/mkdocstrings cross-references "
+                "like `[`Name`][]` or `[`Name`][module.Name]` instead "
+                "(our Python API docs are built with MkDocs, not Sphinx)"
+            )
+        if m := rst_directive.search(line):
+            directive = m.group(1)
+            if directive == "deprecated":
+                return (
+                    "Found rST `.. deprecated::` directive — use the `@deprecated` decorator instead "
+                    "(mkdocstrings renders it automatically)"
+                )
+            if directive == "code-block":
+                return "Found rST `.. code-block::` directive — use markdown fenced code blocks (```lang) instead"
+            return (
+                f"Found rST `.. {directive}::` directive — use a MkDocs admonition "
+                f"(`!!! {directive}` with an indented body) instead"
+            )
+        if rst_double_backtick.search(line):
+            return (
+                "Found rST double-backtick literal ``…`` — use a single backtick `…` in markdown "
+                "(our Python API docs are built with MkDocs, not Sphinx)"
+            )
 
     if is_in_oss_rerun_repo:
         # Check for specific data platform phrases that should be capitalized
@@ -559,6 +600,52 @@ def test_lint_line() -> None:
         for line in test.split("\n"):
             assert lint_line(line, prev_line) is not None, f'expected "{line}" to fail'
             prev_line = line
+
+    # rST (reStructuredText) is not rendered by MkDocs/mkdocstrings.
+    # Flagged inside Python docstrings and Rust `///` doc comments only.
+    rst_should_fail_in_docstring = [
+        "A :class:`Foo` object.",
+        "See :meth:`Foo.bar` for details.",
+        "Use :func:`rerun.init` to start.",
+        "Reference :attr:`Foo.x`.",
+        ".. warning::",
+        "    .. warning::",
+        ".. note:: This is important",
+        ".. deprecated:: 0.1",
+        ".. code-block:: python",
+        ".. seealso:: related",
+        "Handles ``list<double>`` and ``list<list<double>>``.",
+        "Returns ``None`` when empty.",
+    ]
+    for line in rst_should_fail_in_docstring:
+        assert lint_line(line, None, "py", is_in_docstring=True) is not None, (
+            f'expected "{line}" to fail inside a Python docstring'
+        )
+        # Same lines should not fire outside docstrings (e.g. in regular code/comments).
+        assert lint_line(line, None, "py", is_in_docstring=False) is None, (
+            f'expected "{line}" to pass outside a Python docstring, but it was flagged'
+        )
+        # Rust `///` doc comments (exposed as Python docstrings via pyo3) are checked too.
+        assert lint_line(f"/// {line}", None, "rs") is not None, f'expected "/// {line}" to fail in a Rust doc comment'
+        # Regular `//` comments are not checked.
+        assert lint_line(f"// {line}", None, "rs") is None, f'expected "// {line}" to pass in a regular Rust comment'
+
+    rst_should_pass_in_docstring = [
+        "Use [`Foo`][] instead.",
+        "Reference [`Foo.bar`][rerun.Foo.bar].",
+        "!!! warning",
+        "    !!! warning",
+        "!!! note",
+        "A regular sentence with no rST.",
+        "```python",
+        "Handles `list<double>` and `list<list<double>>`.",
+        # Parameter section headers (numpy style) — these look superficially similar but aren't rST directives.
+        "Parameters",
+        "----------",
+    ]
+    for line in rst_should_pass_in_docstring:
+        err = lint_line(line, None, "py", is_in_docstring=True)
+        assert err is None, f'expected "{line}" to pass inside a Python docstring, but got: "{err}"'
 
 
 # -----------------------------------------------------------------------------

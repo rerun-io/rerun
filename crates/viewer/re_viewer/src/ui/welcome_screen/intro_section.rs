@@ -222,7 +222,7 @@ pub fn intro_section(ui: &mut egui::Ui, ctx: &AppContext<'_>, cloud_state: &Clou
         items.iter().map(|item| item.card_item(ui)).collect(),
         Frame::NONE,
     )
-    .show(ui, |ui, index| {
+    .show(ui, |ui, index, _card_hovered| {
         let item = &items[index];
         item.show(ui, ctx, cloud_state);
     });

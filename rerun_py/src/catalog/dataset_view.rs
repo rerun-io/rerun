@@ -13,7 +13,6 @@ use re_log_types::{EntityPathFilter, ResolvedEntityPathFilter};
 #[cfg(feature = "perf_telemetry")]
 use re_perf_telemetry::extract_trace_context_from_contextvar;
 use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
-use tracing::instrument;
 
 use crate::catalog::trace_context::read_trace_context_from_python;
 use crate::catalog::{
@@ -104,9 +103,9 @@ impl PyDatasetViewInternal {
     }
 
     /// Return the schema of the data contained in this view.
-    #[instrument(skip_all)]
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let py = self_.py();
+        let _span = read_trace_context_from_python(py, "schema").entered();
         let dataset = self_.dataset.borrow(py);
         let PySchemaInternal {
             columns: base_columns,
@@ -122,8 +121,8 @@ impl PyDatasetViewInternal {
     }
 
     /// Return the Arrow schema of the data contained in this view.
-    #[instrument(skip_all)]
     fn arrow_schema(self_: PyRef<'_, Self>) -> PyResult<PyArrowType<ArrowSchema>> {
+        let _span = read_trace_context_from_python(self_.py(), "arrow_schema").entered();
         Ok(Self::schema(self_)?.into_arrow_schema().into())
     }
 
@@ -224,7 +223,6 @@ impl PyDatasetViewInternal {
         fill_latest_at = false,
         using_index_values = None,
     ))]
-    #[instrument(skip_all)]
     fn reader<'py>(
         self_: PyRef<'py, Self>,
         index: Option<String>,
@@ -234,6 +232,7 @@ impl PyDatasetViewInternal {
         using_index_values: Option<BTreeMap<String, IndexValuesLike<'_>>>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let py = self_.py();
+        let _span = read_trace_context_from_python(py, "reader").entered();
 
         // Convert IndexValuesLike to BTreeSet<TimeInt>
         let using_index_values = using_index_values
@@ -259,8 +258,6 @@ impl PyDatasetViewInternal {
         )?;
 
         let table = PyTableProviderAdapterInternal::new(provider, true);
-
-        let _span = read_trace_context_from_python(py, "reader").entered();
 
         let dataset = self_.dataset.borrow(py);
         let client = dataset.client().borrow(py);

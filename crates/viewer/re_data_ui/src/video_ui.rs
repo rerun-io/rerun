@@ -103,10 +103,13 @@ fn video_data_ui(
         );
 
         if let Some(bit_depth) = encoding_details.bit_depth {
+            // Images can display higher bit depths.
+            let is_image_sequence =
+                matches!(video_descr.codec, re_video::VideoCodec::ImageSequence(_));
             ui.list_item_flat_noninteractive(PropertyContent::new("Bit depth").value_fn(
                 |ui, _| {
                     ui.label(bit_depth.to_string());
-                    if 8 < bit_depth {
+                    if 8 < bit_depth && !is_image_sequence {
                         // TODO(#7594): HDR videos
                         ui.warning_label("HDR").on_hover_ui(|ui| {
                             ui.label(format!(
@@ -427,7 +430,7 @@ fn decoded_frame_ui<'a>(
                 ui,
                 ui_layout,
                 &format!("{stream_kind}_preview"),
-                &re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture.clone()),
+                &re_renderer::renderer::ColormappedTexture::from_video_frame(texture.clone()),
                 preview_size,
                 &|| match re_renderer::schedule_read_texture(ctx.render_ctx, &texture.inner.texture)
                 {

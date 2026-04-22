@@ -47,7 +47,7 @@ Here's an excerpt from a real-world chunk (taken from the [Helix example](https:
 </picture>
 
 You can see that this matches very closely the diagram above:
-* A single *control* column, that contains the globally unique row IDs.
+* A single *control* column, that contains the unique row IDs.
 * Multiple *time*/*index* columns (`log_tick`, `log_time`, `stable_time`).
 * Multiple component columns (`Points3D:colors`, `Points3D:positions`, `Points3D:radii`).
 

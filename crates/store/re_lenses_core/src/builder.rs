@@ -4,23 +4,20 @@ use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::TimeType;
 use re_sdk_types::ComponentDescriptor;
 
-use crate::ast::{OneToMany, OneToOne};
 use crate::selector::DynExpr;
 use crate::{LensError, Selector, ast};
 
 /// Builder for lenses with support for multiple output modes.
 #[must_use]
 pub struct LensBuilder {
-    input: ast::InputColumn,
-    outputs: Vec<ast::LensKind>,
+    input: ComponentIdentifier,
+    outputs: Vec<ast::LensOutput>,
 }
 
 impl LensBuilder {
     pub(crate) fn new(component: impl Into<ComponentIdentifier>) -> Self {
         Self {
-            input: ast::InputColumn {
-                component: component.into(),
-            },
+            input: component.into(),
             outputs: vec![],
         }
     }
@@ -39,7 +36,7 @@ impl LensBuilder {
         builder: impl FnOnce(OutputBuilder) -> Result<OutputBuilder, LensError>,
     ) -> Result<Self, LensError> {
         let output_builder = OutputBuilder::new(scatter);
-        let output = builder(output_builder)?.build(&self.input)?;
+        let output = builder(output_builder)?.build(self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -158,27 +155,20 @@ impl OutputBuilder {
         self
     }
 
-    /// Builds a [`ast::LensKind`], the `input` is passed for providing contextualized errors.
-    fn build(self, input: &ast::InputColumn) -> Result<ast::LensKind, LensError> {
+    /// Builds a [`ast::LensOutput`], the `input` is passed for providing contextualized errors.
+    fn build(self, input: ComponentIdentifier) -> Result<ast::LensOutput, LensError> {
         let components =
             self.components
                 .try_into()
                 .map_err(|_err| LensError::MissingOutputComponent {
-                    input_component: input.component,
+                    input_component: input,
                 })?;
 
-        if self.scatter {
-            Ok(ast::LensKind::ScatterColumns(OneToMany {
-                target_entity: self.target_entity,
-                components,
-                times: self.time_outputs,
-            }))
-        } else {
-            Ok(ast::LensKind::Columns(OneToOne {
-                target_entity: self.target_entity,
-                components,
-                times: self.time_outputs,
-            }))
-        }
+        Ok(ast::LensOutput {
+            scatter: self.scatter,
+            target_entity: self.target_entity,
+            output_components: components,
+            output_timelines: self.time_outputs,
+        })
     }
 }

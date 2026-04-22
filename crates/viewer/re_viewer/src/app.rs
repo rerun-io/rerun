@@ -862,9 +862,20 @@ impl App {
                         };
                         let (storage_ctx, store_ctx) = store_hub.read_context(&route); // Materialize the target blueprint on-demand
 
+                        let Some(store_ctx) = store_ctx else {
+                            re_log::debug_panic!(
+                                "No store context found for recording {store_id:?} when handling time control commands sent from {sent_from}. This should never happen for local recording routes.",
+                            );
+                            re_log::error_once!(
+                                "Can't change time for recording {store_id:?} because it is not active."
+                            );
+                            return;
+                        };
+
                         let target_blueprint = store_ctx.blueprint;
-                        let blueprint_query =
-                            self.state.blueprint_query_for_viewer(target_blueprint);
+                        let blueprint_query = self
+                            .state
+                            .blueprint_query_for_viewer(Some(target_blueprint));
 
                         let blueprint_ctx = AppBlueprintCtx {
                             command_sender: &self.command_sender,
@@ -2332,6 +2343,7 @@ impl App {
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
+        storage_context: &re_viewer_context::StorageContext<'_>,
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
@@ -2349,6 +2361,7 @@ impl App {
                     mem_usage_tree,
                     gpu_resource_stats,
                     store_stats,
+                    storage_context,
                 );
             });
     }
@@ -2395,7 +2408,7 @@ impl App {
         frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_context: &ActiveStoreContext<'_>,
+        store_context: Option<&ActiveStoreContext<'_>>,
         storage_context: &StorageContext<'_>,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
@@ -2417,13 +2430,19 @@ impl App {
                     frame,
                     self,
                     app_blueprint,
-                    Some(store_context),
+                    store_context,
                     storage_context.hub,
                     gpu_resource_stats,
                     ui,
                 );
 
-                self.memory_panel_ui(ui, gpu_resource_stats, mem_usage_tree, store_stats);
+                self.memory_panel_ui(
+                    ui,
+                    gpu_resource_stats,
+                    mem_usage_tree,
+                    store_stats,
+                    storage_context,
+                );
 
                 self.egui_debug_panel_ui(ui);
 
@@ -2460,13 +2479,17 @@ impl App {
                         &self.command_sender,
                     );
 
+                    // TODO(RR-3033): `AppState::show` still expects a non-optional `ActiveStoreContext`; fall back to a sentinel empty context for no-store routes.
+                    let empty_store_context = ActiveStoreContext::empty();
+                    let active_store_context = store_context.unwrap_or(&empty_store_context);
+
                     self.state.show(
                         &self.app_env,
                         &mut startup_options,
                         app_blueprint,
                         ui,
                         render_ctx,
-                        store_context,
+                        active_store_context,
                         storage_context,
                         &self.reflection,
                         &self.component_ui_registry,
@@ -3516,7 +3539,10 @@ impl App {
             &recordings_info,
             total_bytes_in_memory,
             self.connection_registry(),
-            &ChunkPrefetchOptions::default(),
+            &ChunkPrefetchOptions {
+                max_fetch_stage: self.app_options().max_fetch_stage,
+                ..ChunkPrefetchOptions::default()
+            },
         );
     }
 }
@@ -3665,12 +3691,11 @@ impl eframe::App for App {
             let route = self.state.navigation.current().clone();
             let (storage_context, store_context) = store_hub.read_context(&route);
 
-            let blueprint_query = self
-                .state
-                .blueprint_query_for_viewer(store_context.blueprint);
+            let blueprint = store_context.as_ref().map(|ctx| ctx.blueprint);
+            let blueprint_query = self.state.blueprint_query_for_viewer(blueprint);
 
             let app_blueprint = AppBlueprint::new(
-                Some(store_context.blueprint),
+                blueprint,
                 &blueprint_query,
                 egui_ctx,
                 self.panel_state_overrides_active
@@ -3681,7 +3706,7 @@ impl eframe::App for App {
                 egui_ctx,
                 &app_blueprint,
                 &storage_context,
-                Some(&store_context),
+                store_context.as_ref(),
                 &route,
             );
         }
@@ -3799,8 +3824,14 @@ impl eframe::App for App {
         let store_stats = self.memory_panel_open.then(|| store_hub.stats());
 
         // do early, before doing too many allocations
-        self.memory_panel
-            .update(&gpu_resource_stats, store_stats.as_ref());
+        let store_bundle_for_streaming = self
+            .memory_panel_open
+            .then(|| store_hub.store_bundle() as &re_entity_db::StoreBundle);
+        self.memory_panel.update(
+            &gpu_resource_stats,
+            store_stats.as_ref(),
+            store_bundle_for_streaming,
+        );
 
         self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
 
@@ -3881,12 +3912,11 @@ impl eframe::App for App {
             let (storage_context, store_context) =
                 store_hub.read_context(self.state.navigation.current());
 
-            let blueprint_query = self
-                .state
-                .blueprint_query_for_viewer(store_context.blueprint);
+            let blueprint = store_context.as_ref().map(|ctx| ctx.blueprint);
+            let blueprint_query = self.state.blueprint_query_for_viewer(blueprint);
 
             let app_blueprint = AppBlueprint::new(
-                Some(store_context.blueprint),
+                blueprint,
                 &blueprint_query,
                 ui,
                 self.panel_state_overrides_active
@@ -3898,7 +3928,7 @@ impl eframe::App for App {
                 frame,
                 &app_blueprint,
                 &gpu_resource_stats,
-                &store_context,
+                store_context.as_ref(),
                 &storage_context,
                 mem_usage_tree,
                 store_stats.as_ref(),
@@ -3957,7 +3987,7 @@ impl eframe::App for App {
                 ui,
                 &app_blueprint,
                 &storage_context,
-                Some(&store_context),
+                store_context.as_ref(),
                 &route,
             );
         }
@@ -4366,6 +4396,19 @@ impl MemUsageTreeCapture for App {
         node.add("state", self.state.capture_mem_usage_tree());
         node.add("rx_log", self.rx_log.capture_mem_usage_tree());
         node.add("store_hub", self.store_hub.capture_mem_usage_tree());
+        node.add(
+            "store_subscribers",
+            re_chunk_store::ChunkStore::capture_all_subscribers_mem_usage_tree(),
+        );
+
+        let mut globals = re_byte_size::MemUsageNode::new();
+        globals.add(
+            "forgiving_parse_cache",
+            re_log_types::forgiving_parse_cache_bytes_used(),
+        );
+        globals.add("string_interner", re_string_interner::bytes_used() as u64);
+        node.add("globals", globals.into_tree());
+
         node.into_tree()
     }
 }

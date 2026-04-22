@@ -349,10 +349,10 @@ def test_save_roundtrip(tmp_path: pathlib.Path) -> None:
 
 
 def test_save_roundtrip_compare(tmp_path: pathlib.Path) -> None:
-    """Test that compacting then roundtripping produces an identical RRD."""
+    """Test that optimizing then roundtripping produces an identical RRD."""
 
     original_rrd = tmp_path / "original.rrd"
-    compacted_rrd = tmp_path / "compacted.rrd"
+    optimized_rrd = tmp_path / "optimized.rrd"
     roundtrip_rrd = tmp_path / "roundtrip.rrd"
 
     with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
@@ -361,20 +361,20 @@ def test_save_roundtrip_compare(tmp_path: pathlib.Path) -> None:
         rec.log("points", rr.Points3D([[1, 2, 3]]))
         rec.log("static_text", rr.TextLog("Hello"), static=True)
 
-    # Compact the original so chunk boundaries match what ChunkStore produces
+    # Optimize the original so chunk boundaries match what ChunkStore produces
     process = subprocess.run(
-        ["rerun", "rrd", "compact", str(original_rrd), "-o", str(compacted_rrd)],
+        ["rerun", "rrd", "optimize", str(original_rrd), "-o", str(optimized_rrd)],
         check=False,
         capture_output=True,
     )
-    assert process.returncode == 0, f"RRD compact failed: {process.stderr.decode('utf-8')}"
+    assert process.returncode == 0, f"RRD optimize failed: {process.stderr.decode('utf-8')}"
 
     # Roundtrip via load + save
-    rr.recording.load_recording(compacted_rrd).save(roundtrip_rrd)
+    rr.recording.load_recording(optimized_rrd).save(roundtrip_rrd)
 
-    # Compare compacted vs roundtripped
+    # Compare optimized vs roundtripped
     process = subprocess.run(
-        ["rerun", "rrd", "compare", "--unordered", str(compacted_rrd), str(roundtrip_rrd)],
+        ["rerun", "rrd", "compare", "--unordered", str(optimized_rrd), str(roundtrip_rrd)],
         check=False,
         capture_output=True,
     )
@@ -388,7 +388,7 @@ def test_chunk_roundtrip_compare(tmp_path: pathlib.Path) -> None:
     """Test that roundtripping through chunks produces an identical RRD."""
 
     original_rrd = tmp_path / "original.rrd"
-    compacted_rrd = tmp_path / "compacted.rrd"
+    optimized_rrd = tmp_path / "optimized.rrd"
     roundtrip_rrd = tmp_path / "roundtrip.rrd"
 
     with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
@@ -400,16 +400,16 @@ def test_chunk_roundtrip_compare(tmp_path: pathlib.Path) -> None:
         rec.log("points", rr.Points3D([[4, 5, 6]]))
         rec.log("static_text", rr.TextLog("Hello"), static=True)
 
-    # Compact the original so chunk boundaries match what ChunkStore produces
+    # Optimize the original so chunk boundaries match what ChunkStore produces
     process = subprocess.run(
-        ["rerun", "rrd", "compact", str(original_rrd), "-o", str(compacted_rrd)],
+        ["rerun", "rrd", "optimize", str(original_rrd), "-o", str(optimized_rrd)],
         check=False,
         capture_output=True,
     )
-    assert process.returncode == 0, f"RRD compact failed: {process.stderr.decode('utf-8')}"
+    assert process.returncode == 0, f"RRD optimize failed: {process.stderr.decode('utf-8')}"
 
     # Load, roundtrip through chunks, and save
-    recording = rr.recording.load_recording(compacted_rrd)
+    recording = rr.recording.load_recording(optimized_rrd)
     reconstructed = rr.recording.Recording.from_chunks(
         recording.chunks(),
         application_id=recording.application_id(),
@@ -417,9 +417,9 @@ def test_chunk_roundtrip_compare(tmp_path: pathlib.Path) -> None:
     )
     reconstructed.save(roundtrip_rrd)
 
-    # Compare compacted vs roundtripped
+    # Compare optimized vs roundtripped
     process = subprocess.run(
-        ["rerun", "rrd", "compare", "--unordered", str(compacted_rrd), str(roundtrip_rrd)],
+        ["rerun", "rrd", "compare", "--unordered", str(optimized_rrd), str(roundtrip_rrd)],
         check=False,
         capture_output=True,
     )

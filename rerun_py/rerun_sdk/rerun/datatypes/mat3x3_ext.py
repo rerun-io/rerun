@@ -54,12 +54,12 @@ class Mat3x3Ext:
                 float_arrays = Mat3x3(data).flat_columns  # type: ignore[arg-type]
             except ValueError:
                 # If the data can't be possibly more than one Mat3x3, raise the original ValueError.
-                if isinstance(data[0], numbers.Number):  # type: ignore[arg-type, index]
+                if isinstance(data[0], numbers.Number):  # type: ignore[arg-type, index]  # ty: ignore[not-subscriptable]
                     raise
 
                 # Otherwise try to convert it to a sequence of Mat3x3s
                 # Let this value error propagate as the fallback
-                result = [Mat3x3(d).flat_columns for d in data]  # type: ignore[arg-type, union-attr, call-overload]
+                result = [Mat3x3(d).flat_columns for d in data]  # type: ignore[arg-type, union-attr, call-overload]  # ty: ignore[not-iterable]
                 float_arrays = np.hstack(result).ravel()
 
         float_arrays = np.ascontiguousarray(float_arrays)

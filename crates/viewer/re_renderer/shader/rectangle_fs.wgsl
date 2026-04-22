@@ -163,8 +163,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
     } else if rect_info.color_mapper == COLOR_MAPPER_OFF_RGB {
         texture_color = normalized_value;
     } else if rect_info.color_mapper == COLOR_MAPPER_FUNCTION {
-        let rgb = colormap_linear(rect_info.colormap_function, normalized_value.r);
-        texture_color = vec4f(rgb, 1.0);
+        texture_color = colormap_linear(rect_info.colormap_function, normalized_value.r);
     } else if rect_info.color_mapper == COLOR_MAPPER_TEXTURE {
         let colormap_size = textureDimensions(colormap_texture).xy;
         let num_colors = colormap_size.x * colormap_size.y;

@@ -89,6 +89,18 @@ pub enum Colormap {
     ///
     /// It interpolates from white to blue to purple to red to orange and back to white.
     Twilight = 9,
+
+    /// The classic `RViz` "Map" grid-map colormap intended for occupancy-style SLAM grid maps.
+    ///
+    /// Known values are mapped to a grayscale ramp from white (free) to black (occupied),
+    /// unknown values are in a green-blue color. Special / illegal values have highlight colors.
+    RvizMap = 10,
+
+    /// The classic `RViz` "Costmap" grid-map colormap for robot navigation cost maps.
+    ///
+    /// Cost values are mapped to blue to red spectrum, and special cost values
+    /// (e.g. lethal obstacles) have highlight colors. Zero values are fully transparent.
+    RvizCostmap = 11,
 }
 
 impl ::re_types_core::Component for Colormap {
@@ -188,6 +200,8 @@ impl std::fmt::Display for Colormap {
             Self::CyanToYellow => write!(f, "CyanToYellow"),
             Self::Spectral => write!(f, "Spectral"),
             Self::Twilight => write!(f, "Twilight"),
+            Self::RvizMap => write!(f, "RvizMap"),
+            Self::RvizCostmap => write!(f, "RvizCostmap"),
         }
     }
 }
@@ -207,6 +221,8 @@ impl ::re_types_core::reflection::Enum for Colormap {
             Self::CyanToYellow,
             Self::Spectral,
             Self::Twilight,
+            Self::RvizMap,
+            Self::RvizCostmap,
         ]
     }
 
@@ -239,6 +255,12 @@ impl ::re_types_core::reflection::Enum for Colormap {
             }
             Self::Twilight => {
                 "The Twilight colormap from Matplotlib.\n\nThis is a perceptually uniform cyclic colormap from Matplotlib, it is useful for\nvisualizing periodic or cyclic data.\n\nIt interpolates from white to blue to purple to red to orange and back to white."
+            }
+            Self::RvizMap => {
+                "The classic `RViz` \"Map\" grid-map colormap intended for occupancy-style SLAM grid maps.\n\nKnown values are mapped to a grayscale ramp from white (free) to black (occupied),\nunknown values are in a green-blue color. Special / illegal values have highlight colors."
+            }
+            Self::RvizCostmap => {
+                "The classic `RViz` \"Costmap\" grid-map colormap for robot navigation cost maps.\n\nCost values are mapped to blue to red spectrum, and special cost values\n(e.g. lethal obstacles) have highlight colors. Zero values are fully transparent."
             }
         }
     }

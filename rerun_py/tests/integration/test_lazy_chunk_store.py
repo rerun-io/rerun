@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 import rerun as rr
 from rerun.experimental import (
+    OptimizationSettings,
     RrdReader,
 )
 
@@ -85,13 +86,12 @@ def test_lazy_store_filter(lazy_rrd_path: Path) -> None:
         assert str(chunk.entity_path) == "/entity_0"
 
 
-def test_lazy_store_compact(lazy_rrd_path: Path) -> None:
-    """Compacting a lazy store should produce a materialized store."""
+def test_lazy_store_collect_optimize(lazy_rrd_path: Path) -> None:
+    """Collecting a lazy store with optimization settings produces a materialized store."""
     store = RrdReader(lazy_rrd_path).store()
-    compacted = store.compact()
+    optimized = store.stream().collect(optimize=OptimizationSettings())
 
-    # Compacted store should be usable.
-    chunks = compacted.stream().to_chunks()
+    chunks = optimized.stream().to_chunks()
     assert len(chunks) > 0
 
 

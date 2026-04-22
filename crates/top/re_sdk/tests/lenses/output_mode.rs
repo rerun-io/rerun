@@ -54,13 +54,13 @@ fn test_output_mode_forward_all() {
         .collect::<Result<_, _>>()
         .unwrap();
 
-    // Should get both the transformed chunk AND the original chunk
+    // Should get the original chunk first, then the transformed chunk
     assert_eq!(matching_results.len(), 2);
-    assert_eq!(matching_results[0].entity_path(), &"matched/output".into());
     assert_eq!(
-        matching_results[1].entity_path(),
+        matching_results[0].entity_path(),
         matching_chunk.entity_path()
     );
+    assert_eq!(matching_results[1].entity_path(), &"matched/output".into());
 
     // Apply to unmatched chunk
     let unmatched_results: Vec<_> = lenses
@@ -96,13 +96,13 @@ fn test_output_mode_forward_unmatched() {
     let lenses = Lenses::new(OutputMode::ForwardUnmatched)
         .add_lens_with_filter(EntityPathFilter::parse_forgiving("matched/**"), lens);
 
-    // Apply to matching chunk
+    // Apply to matching chunk (all components are matched, so no untouched remainder)
     let matching_results: Vec<_> = lenses
         .apply(&matching_chunk)
         .collect::<Result<_, _>>()
         .unwrap();
 
-    // Should get only the transformed chunk (not the original)
+    // Should get only the transformed chunk (no empty untouched remainder)
     assert_eq!(matching_results.len(), 1);
     assert_eq!(matching_results[0].entity_path(), &"matched/output".into());
 

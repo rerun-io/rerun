@@ -1,5 +1,10 @@
 # Rerun changelog
 
+## Unreleased
+
+### ⚠️ Breaking changes
+- `rerun rrd compact` renamed to `rerun rrd optimize`
+
 ## [0.31.3](https://github.com/rerun-io/rerun/compare/0.31.2...0.31.3) - 2026-04-13
 
 ### 🔎 Details

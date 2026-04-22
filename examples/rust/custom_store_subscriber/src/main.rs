@@ -12,6 +12,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 
+use rerun::external::re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use rerun::external::re_log_types::{AbsoluteTimeRange, TimelineName};
 use rerun::external::{anyhow, re_build_info, re_chunk_store, re_log};
 use rerun::time::{TimeInt, TimeType};
@@ -48,6 +49,12 @@ struct Orchestrator {
     time_ranges_per_entity: TimeRangesPerEntity,
 }
 
+impl MemUsageTreeCapture for Orchestrator {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        MemUsageTree::Bytes(0)
+    }
+}
+
 impl ChunkStoreSubscriber for Orchestrator {
     fn name(&self) -> String {
         "rerun.store_subscriber.ScreenClearer".into()
@@ -81,6 +88,12 @@ impl ChunkStoreSubscriber for Orchestrator {
 #[derive(Default, Debug, PartialEq, Eq)]
 struct ComponentsPerRecording {
     counters: BTreeMap<StoreId, BTreeMap<ComponentDescriptor, u64>>,
+}
+
+impl MemUsageTreeCapture for ComponentsPerRecording {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        MemUsageTree::Bytes(0)
+    }
 }
 
 impl ChunkStoreSubscriber for ComponentsPerRecording {
@@ -152,6 +165,12 @@ impl ChunkStoreSubscriber for ComponentsPerRecording {
 struct TimeRangesPerEntity {
     times: BTreeMap<EntityPath, BTreeMap<TimelineName, BTreeMap<TimeInt, u64>>>,
     time_column_times: HashMap<TimelineName, TimeType>,
+}
+
+impl MemUsageTreeCapture for TimeRangesPerEntity {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        MemUsageTree::Bytes(0)
+    }
 }
 
 impl ChunkStoreSubscriber for TimeRangesPerEntity {

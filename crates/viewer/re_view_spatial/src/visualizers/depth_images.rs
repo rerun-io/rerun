@@ -327,7 +327,6 @@ impl VisualizerSystem for DepthImageVisualizer {
                     let mut report_error = |error: String| {
                         results.report_unspecified_source(VisualizerReportSeverity::Error, error);
                     };
-
                     process_depth_image_data(
                         ctx,
                         spatial_ctx,

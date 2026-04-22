@@ -259,14 +259,18 @@ pub struct DesignTokens {
     pub table_grid_view_card_min_width: f32,
     pub table_grid_view_card_spacing: f32,
     pub table_grid_view_card_fill: Color32,
-    pub table_grid_view_card_hover_overlay: Color32,
+    pub table_grid_view_card_hover_fill: Color32,
 
-    // Flag button
+    // Flag button — three visual tiers: idle, card-hovered, flag-hovered
     pub flag_untoggled_bg: Color32,
+    pub flag_untoggled_bg_card_hover: Color32,
     pub flag_untoggled_bg_hover: Color32,
     pub flag_toggled_bg: Color32,
+    pub flag_toggled_bg_card_hover: Color32,
     pub flag_toggled_bg_hover: Color32,
     pub flag_untoggled_icon: Color32,
+    pub flag_untoggled_icon_hover: Color32,
+    pub flag_toggled_icon: Color32,
 
     pub bg_fill_inverse: Color32,
     pub bg_fill_inverse_hover: Color32,
@@ -460,13 +464,17 @@ impl DesignTokens {
             table_grid_view_card_min_width: get_scalar("table_grid_view_card_min_width")?,
             table_grid_view_card_spacing: get_scalar("table_grid_view_card_spacing")?,
             table_grid_view_card_fill: get_color("table_grid_view_card_fill"),
-            table_grid_view_card_hover_overlay: get_color("table_grid_view_card_hover_overlay"),
+            table_grid_view_card_hover_fill: get_color("table_grid_view_card_hover_fill"),
 
             flag_untoggled_bg: get_color("flag_untoggled_bg"),
+            flag_untoggled_bg_card_hover: get_color("flag_untoggled_bg_card_hover"),
             flag_untoggled_bg_hover: get_color("flag_untoggled_bg_hover"),
             flag_toggled_bg: get_color("flag_toggled_bg"),
+            flag_toggled_bg_card_hover: get_color("flag_toggled_bg_card_hover"),
             flag_toggled_bg_hover: get_color("flag_toggled_bg_hover"),
             flag_untoggled_icon: get_color("flag_untoggled_icon"),
+            flag_untoggled_icon_hover: get_color("flag_untoggled_icon_hover"),
+            flag_toggled_icon: get_color("flag_toggled_icon"),
 
             bg_fill_inverse: get_color("bg_fill_inverse"),
             bg_fill_inverse_hover: get_color("bg_fill_inverse-hover"),

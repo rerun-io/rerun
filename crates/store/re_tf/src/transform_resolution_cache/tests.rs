@@ -126,6 +126,12 @@ impl TestStoreSubscriber {
     }
 }
 
+impl re_byte_size::MemUsageTreeCapture for TestStoreSubscriber {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_byte_size::MemUsageTree::Bytes(0)
+    }
+}
+
 impl PerStoreChunkSubscriber for TestStoreSubscriber {
     fn name() -> String {
         "TestStoreSubscriber".to_owned()

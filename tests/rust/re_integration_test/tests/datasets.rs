@@ -8,7 +8,10 @@ use re_sdk::{
     external::{re_log_types::AbsoluteTimeRange, re_tuid},
 };
 use re_viewer::{
-    external::{re_chunk::TimelineName, re_viewer_context::open_url::ViewerOpenUrl},
+    external::{
+        re_chunk::TimelineName, re_entity_db::FetchStage,
+        re_viewer_context::open_url::ViewerOpenUrl,
+    },
     viewer_test_utils::{self, HarnessOptions},
 };
 
@@ -164,6 +167,9 @@ pub async fn start_with_segment_fragment_url() {
 
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         startup_url: Some(url.sharable_url(None).expect("Should be a sharable url")),
+        app_options_editor: Some(Box::new(|app_options| {
+            app_options.max_fetch_stage = FetchStage::Everything;
+        })),
         ..Default::default()
     });
 

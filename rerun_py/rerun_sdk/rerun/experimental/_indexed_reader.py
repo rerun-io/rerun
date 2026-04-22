@@ -13,8 +13,8 @@ class IndexedReader(StreamingReader, Protocol):
     """
     Protocol for readers that can produce a fully materialized ChunkStore.
 
-    Extends ``StreamingReader``: every ``IndexedReader`` also supports
-    ``stream() -> LazyChunkStream`` for pure-streaming processing.
+    Extends `StreamingReader`: every `IndexedReader` also supports
+    `stream() -> LazyChunkStream` for pure-streaming processing.
     """
 
     def store(self) -> ChunkStore:

@@ -51,7 +51,7 @@ impl DataSourceMessage {
     /// The name of the variant, useful for error message etc
     pub fn variant_name(&self) -> &'static str {
         match self {
-            Self::RrdManifest { .. } => "RrdManifest",
+            Self::RrdManifest(..) => "RrdManifest",
             Self::RrdManifestComplete(_) => "RrdManifestComplete",
             Self::LogMsg(_) => "LogMsg",
             Self::TableMsg(_) => "TableMsg",
@@ -64,7 +64,7 @@ impl DataSourceMessage {
         match self {
             Self::LogMsg(log_msg) => log_msg.insert_arrow_record_batch_metadata(key, value),
             Self::TableMsg(table_msg) => table_msg.insert_arrow_record_batch_metadata(key, value),
-            Self::RrdManifest { .. } | Self::RrdManifestComplete(_) | Self::UiCommand(_) => {
+            Self::RrdManifest(..) | Self::RrdManifestComplete(_) | Self::UiCommand(_) => {
                 // Not everything needs latency tracking
             }
         }

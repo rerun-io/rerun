@@ -540,7 +540,7 @@ pub struct ChunkStore {
     /// just hints that some data is missing and must first be re-inserted by the caller.
     pub(crate) physical_chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
-    /// All *physical* [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in
+    /// All *physical* [`ChunkId`]s currently in the store, ordered by the smallest [`RowId`] in
     /// each of them.
     ///
     /// This is effectively all chunks in global data order. Used for garbage collection.
@@ -548,7 +548,9 @@ pub struct ChunkStore {
     /// During garbage collection, physical chunks are offloaded from memory and become virtual
     /// chunks instead. At the same time, their IDs are removed from this set, which is how we
     /// distinguish virtual from physical chunks.
-    pub(crate) physical_chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
+    ///
+    /// Keyed on `(min RowId, ChunkId)` so that multiple chunks can share a min `RowId`.
+    pub(crate) physical_chunk_ids_per_min_row_id: BTreeSet<(RowId, ChunkId)>,
 
     /// Keeps track of where each individual chunks, both virtual & physical, came from.
     ///
@@ -755,7 +757,7 @@ impl std::fmt::Display for ChunkStore {
         f.write_str(&indent::indent_all_by(4, "}\n"))?;
 
         f.write_str(&indent::indent_all_by(4, "physical chunks: [\n"))?;
-        for chunk_id in chunk_ids_per_min_row_id.values() {
+        for (_, chunk_id) in chunk_ids_per_min_row_id {
             if let Some(chunk) = physical_chunks_per_chunk_id.get(chunk_id) {
                 f.write_str(&indent::indent_all_by(
                     8,

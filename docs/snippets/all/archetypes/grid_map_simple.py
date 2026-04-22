@@ -27,6 +27,6 @@ rr.log(
         ),
         cell_size=cell_size,
         translation=[-(width * cell_size) / 2.0, -(height * cell_size) / 2.0, 0.0],
-        colormap=None,
+        colormap=rr.components.Colormap.RvizMap,
     ),
 )

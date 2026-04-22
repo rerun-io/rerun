@@ -324,6 +324,13 @@ impl AnnotationContextStoreSubscriber {
     }
 }
 
+impl re_byte_size::MemUsageTreeCapture for AnnotationContextStoreSubscriber {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+        re_byte_size::MemUsageTree::Bytes(self.entities_with_annotation_context.total_size_bytes())
+    }
+}
+
 impl PerStoreChunkSubscriber for AnnotationContextStoreSubscriber {
     #[inline]
     fn name() -> String {

@@ -162,14 +162,14 @@ class PinholeExt:
                 else:
                     try:
                         # TODO(emilk): check that it is 2 elements long
-                        fl_x = focal_length[0]  # type: ignore[index]
-                        fl_y = focal_length[1]  # type: ignore[index]
+                        fl_x = focal_length[0]  # type: ignore[index]  # ty: ignore[not-subscriptable]
+                        fl_y = focal_length[1]  # type: ignore[index]  # ty: ignore[not-subscriptable]
                     except Exception:
                         raise ValueError("Expected focal_length to be one or two floats") from None
 
                 try:
-                    u_cen = principal_point[0]  # type: ignore[index]
-                    v_cen = principal_point[1]  # type: ignore[index]
+                    u_cen = principal_point[0]  # type: ignore[index]  # ty: ignore[not-subscriptable]
+                    v_cen = principal_point[1]  # type: ignore[index]  # ty: ignore[not-subscriptable]
                 except Exception:
                     raise ValueError("Expected principal_point to be one or two floats") from None
 

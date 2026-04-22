@@ -577,7 +577,7 @@ impl Dataset {
     ) -> Result<(), Error> {
         re_log::debug!(?segment_id, ?layer_name, "add_layer");
 
-        // Validate schema compatibility before inserting
+        // Validate schema compatibility before inserting.
         let current_schema = self.schema()?;
         let new_layer_schema = {
             let fields = store_handle
@@ -587,6 +587,20 @@ impl Dataset {
                 .arrow_fields();
             Schema::new_with_metadata(fields, HashMap::default())
         };
+        for new_field in new_layer_schema.fields() {
+            if let Ok(current_field) = current_schema.field_with_name(new_field.name())
+                && current_field != new_field.as_ref()
+            {
+                re_arrow_util::reject_unsupported_widenings(new_field.data_type()).map_err(
+                    |err| {
+                        Error::SchemaConflict(format!(
+                            "schema incompatibility on segment '{segment_id}', \
+                             layer '{layer_name}': {err}"
+                        ))
+                    },
+                )?;
+            }
+        }
         Schema::try_merge([current_schema, new_layer_schema]).map_err(|err| {
             Error::SchemaConflict(format!(
                 "schema incompatibility on segment '{segment_id}', layer '{layer_name}': {err}"

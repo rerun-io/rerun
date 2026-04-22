@@ -391,7 +391,7 @@ js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-
 # - RERUN_ALLOW_MISSING_BIN is needed to allow maturin to run without the `rerun` binary being part of the rerun-sdk
 #   package.
 
-py-build = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+py-build = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion,dataloader", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Build the `rerun-notebook` package.
 py-build-notebook = { cmd = "uv sync --package rerun-notebook --inexact --no-install-package rerun-sdk", depends-on = [
   "js-build-base",
@@ -410,19 +410,19 @@ py-sync-snippets = { cmd = "pixi run uv sync --group snippets --inexact --no-ins
 
 
 # Build the `rerun-sdk` package in release mode.
-py-build-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+py-build-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion,dataloader", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
-py-build-web-viewer = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion", depends-on = [
+py-build-web-viewer = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion,dataloader", depends-on = [
   "rerun-build-native-and-web",
 ], env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature in release mode.
-py-build-web-viewer-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion", depends-on = [
+py-build-web-viewer-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion,dataloader", depends-on = [
   "rerun-build-native-and-web-release",
 ], env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Dedicated alias for building the python bindings for the `py` environment with performance telemetry including Tracy profiler.
-py-build-perf-debug = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+py-build-perf-debug = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion,dataloader,tracing", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Dedicated alias for building the python bindings in release mode for the `py` environment with performance telemetry including Tracy profiler.
-py-build-perf-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+py-build-perf-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion,dataloader,tracing", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 
 py-test = { cmd = "uvpy -m pytest -vv rerun_py/tests", depends-on = ["py-build"] }
 py-test-no-build = { cmd = "uvpy -m pytest -vv rerun_py/tests" }
@@ -575,7 +575,7 @@ taplo = "=0.9.1"
 tomli = "=2.3.0"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
-ty = "==0.0.24"
+ty = "==0.0.31"
 typing_extensions = ">4.5"
 typos = ">=1.45.1"
 urllib3 = "<2.6.0" # TODO(googleapis/google-resumable-media-python#491)

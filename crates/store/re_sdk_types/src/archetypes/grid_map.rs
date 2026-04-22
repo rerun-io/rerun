@@ -67,7 +67,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///             -(width as f32) * cell_size / 2.0,
 ///             -(height as f32) * cell_size / 2.0,
 ///             0.0,
-///         ]),
+///         ])
+///         .with_colormap(rerun::components::Colormap::RvizMap),
 ///     )?;
 ///
 ///     Ok(())

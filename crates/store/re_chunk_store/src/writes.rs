@@ -517,8 +517,8 @@ impl ChunkStore {
 
                         let chunk_id_removed = self
                             .physical_chunk_ids_per_min_row_id
-                            .remove(&chunk_row_id_min);
-                        debug_assert!(chunk_id_removed.is_some());
+                            .remove(&(chunk_row_id_min, chunk_id));
+                        debug_assert!(chunk_id_removed);
 
                         let chunk_removed = self.physical_chunks_per_chunk_id.remove(&chunk_id);
                         debug_assert!(chunk_removed.is_some());
@@ -731,15 +731,9 @@ impl ChunkStore {
 
         // NOTE: ⚠️Make sure to recompute the Row ID range! The chunk might have been compacted
         // with another one, which might or might not have modified the range.
-        if let Some(min_row_id) = chunk_after_processing.row_id_range().map(|(min, _)| min)
-            && self
-                .physical_chunk_ids_per_min_row_id
-                .insert(min_row_id, chunk_after_processing.id())
-                .is_some()
-        {
-            re_log::warn_once!(
-                "Detected duplicated RowId in the data, this might lead to undefined behavior"
-            );
+        if let Some(min_row_id) = chunk_after_processing.row_id_range().map(|(min, _)| min) {
+            self.physical_chunk_ids_per_min_row_id
+                .insert((min_row_id, chunk_after_processing.id()));
         }
 
         Ok(all_diffs)
@@ -964,7 +958,7 @@ impl ChunkStore {
                     .get(chunk_id)
                     .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
                 {
-                    chunk_ids_per_min_row_id.remove(&min_row_id);
+                    chunk_ids_per_min_row_id.remove(&(min_row_id, *chunk_id));
                 }
             }
 
@@ -996,7 +990,7 @@ impl ChunkStore {
                     .get(chunk_id)
                     .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
                 {
-                    chunk_ids_per_min_row_id.remove(&min_row_id);
+                    chunk_ids_per_min_row_id.remove(&(min_row_id, *chunk_id));
                 }
             }
 
@@ -1029,7 +1023,7 @@ impl ChunkStore {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeSet;
 
     use re_chunk::{TimeInt, TimePoint, Timeline};
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
@@ -1703,7 +1697,7 @@ mod tests {
             chunks: impl IntoIterator<Item = (RowId, ChunkId)>,
         ) {
             assert_eq!(
-                chunks.into_iter().collect::<BTreeMap<_, _>>(),
+                chunks.into_iter().collect::<BTreeSet<_>>(),
                 store.physical_chunk_ids_per_min_row_id
             );
         }

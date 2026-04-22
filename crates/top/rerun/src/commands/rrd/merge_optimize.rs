@@ -60,7 +60,7 @@ impl MergeCommand {
 // ---
 
 #[derive(Debug, Clone, clap::Parser)]
-pub struct CompactCommand {
+pub struct OptimizeCommand {
     /// Paths to read from. Reads from standard input if none are specified.
     path_to_input_rrds: Vec<String>,
 
@@ -121,9 +121,22 @@ pub struct CompactCommand {
     /// chunks much larger than `--max-bytes`.
     #[clap(long = "no-rebatch-videos", default_value_t = false)]
     no_rebatch_videos: bool,
+
+    /// If set, split chunks so no two archetype groups sharing a chunk differ in
+    /// byte size by more than this factor. Values should be `>= 1`; at `1.0`,
+    /// every archetype is forced into its own chunk.
+    ///
+    /// This keeps "thick" columns (images, videos, blobs) out of the same chunk as
+    /// "thin" columns (scalars, transforms, text), so the viewer can fetch just the
+    /// thin data without dragging along the thick payload. Components belonging to
+    /// the same archetype are always kept together.
+    ///
+    /// A good starting value is 10.0. If unset, no thick/thin split is performed.
+    #[arg(long = "split-size-ratio")]
+    split_size_ratio: Option<f64>,
 }
 
-impl CompactCommand {
+impl OptimizeCommand {
     pub fn run(&self) -> anyhow::Result<()> {
         let Self {
             path_to_input_rrds,
@@ -134,6 +147,7 @@ impl CompactCommand {
             num_extra_passes,
             continue_on_error,
             no_rebatch_videos,
+            split_size_ratio,
         } = self;
 
         if path_to_output_rrd.is_none() {
@@ -170,6 +184,7 @@ impl CompactCommand {
             } else {
                 Some(is_start_of_gop)
             },
+            split_size_ratio: *split_size_ratio,
         };
 
         merge_and_compact(
@@ -181,6 +196,28 @@ impl CompactCommand {
         )
     }
 }
+
+// ---
+
+/// Stub for the old `rerun rrd compact` name. Accepts any arguments and errors out with a
+/// message pointing at the new name, so users who've scripted the old name get a clear hint.
+#[derive(Debug, Clone, clap::Parser)]
+pub struct CompactCommand {
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
+    _ignored: Vec<String>,
+}
+
+impl CompactCommand {
+    #[expect(clippy::unused_self)]
+    pub fn run(&self) -> anyhow::Result<()> {
+        anyhow::bail!(
+            "`rerun rrd compact` has been renamed to `rerun rrd optimize`. \
+             Please run `rerun rrd optimize --help` for usage."
+        )
+    }
+}
+
+// ---
 
 fn merge_and_compact(
     continue_on_error: bool,

@@ -1,5 +1,5 @@
+use ahash::HashMap;
 use egui::NumExt as _;
-use egui::ahash::HashMap;
 use re_log_types::{EntityPath, EntityPathHash};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend};
 use re_sdk_types::blueprint::components::{Corner2D, Enabled};

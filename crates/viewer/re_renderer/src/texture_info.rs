@@ -127,3 +127,88 @@ pub fn is_float_filterable(format: wgpu::TextureFormat, device_features: wgpu::F
         .flags
         .contains(wgpu::TextureFormatFeatureFlags::FILTERABLE)
 }
+
+/// The range of values a shader sees when sampling this format.
+///
+/// `Unorm`, `Float` and sRGB formats sample in `[0, 1]`, `Snorm` in `[-1, 1]`, and integer
+/// formats sample as the raw integer cast to float.
+pub fn sample_value_range(format: wgpu::TextureFormat) -> [f32; 2] {
+    use wgpu::TextureFormat as F;
+
+    #[expect(clippy::match_same_arms)]
+    match format {
+        // 8-bit unsigned normalized / sRGB
+        F::R8Unorm
+        | F::Rg8Unorm
+        | F::Rgba8Unorm
+        | F::Rgba8UnormSrgb
+        | F::Bgra8Unorm
+        | F::Bgra8UnormSrgb => [0.0, 1.0],
+
+        // 8-bit signed normalized
+        F::R8Snorm | F::Rg8Snorm | F::Rgba8Snorm => [-1.0, 1.0],
+
+        // 8-bit integer
+        F::R8Uint | F::Rg8Uint | F::Rgba8Uint => [0.0, u8::MAX as f32],
+        F::R8Sint | F::Rg8Sint | F::Rgba8Sint => [i8::MIN as f32, i8::MAX as f32],
+
+        // 16-bit normalized
+        F::R16Unorm | F::Rg16Unorm | F::Rgba16Unorm => [0.0, 1.0],
+        F::R16Snorm | F::Rg16Snorm | F::Rgba16Snorm => [-1.0, 1.0],
+
+        // 16-bit integer
+        F::R16Uint | F::Rg16Uint | F::Rgba16Uint => [0.0, u16::MAX as f32],
+        F::R16Sint | F::Rg16Sint | F::Rgba16Sint => [i16::MIN as f32, i16::MAX as f32],
+
+        // 16-bit float
+        F::R16Float | F::Rg16Float | F::Rgba16Float => [0.0, 1.0],
+
+        // 32-bit integer
+        F::R32Uint | F::Rg32Uint | F::Rgba32Uint | F::R64Uint => [0.0, u32::MAX as f32],
+        F::R32Sint | F::Rg32Sint | F::Rgba32Sint => [i32::MIN as f32, i32::MAX as f32],
+
+        // 32-bit float
+        F::R32Float | F::Rg32Float | F::Rgba32Float => [0.0, 1.0],
+
+        // Packed formats
+        F::Rgb10a2Uint => [0.0, 1023.0],
+        F::Rgb10a2Unorm | F::Rg11b10Ufloat | F::Rgb9e5Ufloat => [0.0, 1.0],
+
+        // Depth / stencil
+        F::Stencil8 => [0.0, u8::MAX as f32],
+        F::Depth16Unorm
+        | F::Depth24Plus
+        | F::Depth24PlusStencil8
+        | F::Depth32Float
+        | F::Depth32FloatStencil8 => [0.0, 1.0],
+
+        // YUV video formats sample each plane as a float in [0, 1]
+        F::NV12 | F::P010 => [0.0, 1.0],
+
+        // All supported compressed formats sample as float in [0, 1]
+        F::Bc1RgbaUnorm
+        | F::Bc1RgbaUnormSrgb
+        | F::Bc2RgbaUnorm
+        | F::Bc2RgbaUnormSrgb
+        | F::Bc3RgbaUnorm
+        | F::Bc3RgbaUnormSrgb
+        | F::Bc4RUnorm
+        | F::Bc5RgUnorm
+        | F::Bc6hRgbUfloat
+        | F::Bc6hRgbFloat
+        | F::Bc7RgbaUnorm
+        | F::Bc7RgbaUnormSrgb
+        | F::Etc2Rgb8Unorm
+        | F::Etc2Rgb8UnormSrgb
+        | F::Etc2Rgb8A1Unorm
+        | F::Etc2Rgb8A1UnormSrgb
+        | F::Etc2Rgba8Unorm
+        | F::Etc2Rgba8UnormSrgb
+        | F::EacR11Unorm
+        | F::EacRg11Unorm
+        | F::Astc { .. } => [0.0, 1.0],
+
+        // Signed-normalized variants of the compressed formats
+        F::Bc4RSnorm | F::Bc5RgSnorm | F::EacR11Snorm | F::EacRg11Snorm => [-1.0, 1.0],
+    }
+}

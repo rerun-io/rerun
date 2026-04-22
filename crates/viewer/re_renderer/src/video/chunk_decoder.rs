@@ -22,14 +22,44 @@ pub fn update_video_texture_with_frame(
             &render_ctx.gpu_resources.textures,
             source_content.width(),
             source_content.height(),
+            gpu_texture_format_for_frame_content(source_content),
         )
     });
 
-    let format = copy_frame_to_texture(render_ctx, source_content, gpu_texture)?;
+    // If the upload fails, clear the texture so we don't render stale/zeroed contents.
+    let format = match copy_frame_to_texture(render_ctx, source_content, gpu_texture) {
+        Ok(format) => format,
+        Err(err) => {
+            target_video_texture.texture = None;
+            return Err(err);
+        }
+    };
 
     target_video_texture.source_pixel_format = format;
 
     Ok(())
+}
+
+/// Picks the GPU texture format for the allocated video frame texture.
+///
+/// Native decoders can produce single-channel frames (`L8`/`L16`); web decoders always
+/// feed us via `CopyExternalImageSourceInfo`, which targets `Rgba8Unorm`.
+#[cfg(not(target_arch = "wasm32"))]
+fn gpu_texture_format_for_frame_content(content: &FrameContent) -> wgpu::TextureFormat {
+    match content.format {
+        re_video::PixelFormat::L8 => wgpu::TextureFormat::R8Unorm,
+        // `R16Unorm` would require the `TEXTURE_FORMAT_16BIT_NORM` feature, which isn't
+        // implemented in wgpu's OpenGL backend.
+        re_video::PixelFormat::L16 => wgpu::TextureFormat::R16Uint,
+        re_video::PixelFormat::Rgb8Unorm
+        | re_video::PixelFormat::Rgba8Unorm
+        | re_video::PixelFormat::Yuv { .. } => wgpu::TextureFormat::Rgba8Unorm,
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn gpu_texture_format_for_frame_content(_content: &FrameContent) -> wgpu::TextureFormat {
+    wgpu::TextureFormat::Rgba8Unorm
 }
 
 fn alloc_video_frame_texture(
@@ -37,6 +67,7 @@ fn alloc_video_frame_texture(
     pool: &GpuTexturePool,
     width: u32,
     height: u32,
+    format: wgpu::TextureFormat,
 ) -> GpuTexture2D {
     let Some(texture) = GpuTexture2D::new(
         pool.alloc(
@@ -51,7 +82,7 @@ fn alloc_video_frame_texture(
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
+                format,
                 // Needs [`wgpu::TextureUsages::RENDER_ATTACHMENT`], otherwise copy of external textures will fail.
                 // Adding [`wgpu::TextureUsages::COPY_SRC`] so we can read back pixels on demand.
                 usage: wgpu::TextureUsages::COPY_DST
@@ -192,7 +223,7 @@ fn copy_native_video_frame_to_texture(
         }
 
         re_video::PixelFormat::L16 => {
-            SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::R16Unorm)
+            SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::R16Uint)
         }
     };
 

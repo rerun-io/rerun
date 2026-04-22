@@ -5,7 +5,7 @@ use arrow::datatypes::Field;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
-use egui::{Frame, Id, Margin, OpenUrl, Panel, RichText, Ui, Widget as _};
+use egui::{Frame, Id, Margin, OpenUrl, Panel, RichText, Ui};
 use egui_table::{CellInfo, HeaderCellInfo};
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -690,7 +690,10 @@ impl<'a> DataFusionTableWidget<'a> {
                         },
                         |ui| {
                             ui.set_height(height);
-                            if icons::RESET.as_button().ui(ui).clicked() {
+                            if ui
+                                .small_icon_button(&icons::RESET, "Refresh table")
+                                .clicked()
+                            {
                                 action = Some(BottomBarAction::Refresh);
                             }
 

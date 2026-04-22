@@ -142,6 +142,6 @@ class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):
         if isinstance(data, (MarkerShape, int, str)):
             data = [data]
 
-        pa_data = [MarkerShape.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
+        pa_data = [MarkerShape.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
 
         return pa.array(pa_data, type=data_type)
