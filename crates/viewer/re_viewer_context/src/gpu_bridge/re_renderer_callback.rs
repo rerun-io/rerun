@@ -52,7 +52,7 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
 
     fn paint(
         &self,
-        _info: egui::PaintCallbackInfo,
+        info: egui::PaintCallbackInfo,
         render_pass: &mut wgpu::RenderPass<'static>,
         paint_callback_resources: &egui_wgpu::CallbackResources,
     ) {
@@ -63,6 +63,29 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
             );
             return;
         };
+
+        // `egui-wgpu` clamps the viewport to the framebuffer via `egui::epaint::ViewportInPixels`.
+        // When our callback rect extends beyond the OS window (e.g. a grid-view card scrolled past the top edge),
+        // the clamp changes the viewport aspect so that NDC→FB stretches our texture.
+        // So instead, we set a viewport ourselves that just draws outside of the OS window, the graphics API will clip this for us anyways.
+        //
+        // Note that this identical to `egui::epaint::ViewportInPixels` but without clamping. Negative coordinates may happen (intentionally!).
+        let left_px = (info.pixels_per_point * info.viewport.min.x).round() as i32; // inclusive
+        let top_px = (info.pixels_per_point * info.viewport.min.y).round() as i32; // inclusive
+        let right_px = (info.pixels_per_point * info.viewport.max.x).round() as i32; // exclusive
+        let bottom_px = (info.pixels_per_point * info.viewport.max.y).round() as i32; // exclusive
+        let width_px = right_px - left_px;
+        let height_px = bottom_px - top_px;
+
+        render_pass.set_viewport(
+            left_px as f32,
+            top_px as f32,
+            width_px as f32,
+            height_px as f32,
+            0.0,
+            1.0,
+        );
+
         self.view_builder.lock().composite(ctx, render_pass);
     }
 }

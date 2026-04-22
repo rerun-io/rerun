@@ -192,6 +192,7 @@ impl SpatialView2D {
 
         let (response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
+        let ui_rect = response.rect;
 
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
@@ -235,7 +236,7 @@ impl SpatialView2D {
         let near_clip_plane = f32::max(f32::MIN_POSITIVE, *near_clip_plane.0);
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
-        let (label_shapes, ui_rects) = create_labels(
+        let (label_shapes, label_ui_rects) = create_labels(
             &collect_ui_labels(&system_output),
             ui_from_scene,
             &eye,
@@ -259,7 +260,7 @@ impl SpatialView2D {
                 response,
                 state,
                 &system_output,
-                &ui_rects,
+                &label_ui_rects,
                 query,
                 SpatialViewKind::TwoD,
             )?;
@@ -273,6 +274,7 @@ impl SpatialView2D {
         let Ok(target_config) = setup_target_config(
             ctx.render_mode(),
             &painter,
+            ui_rect,
             scene_bounds,
             near_clip_plane,
             &query.space_origin.to_string(),
@@ -307,7 +309,7 @@ impl SpatialView2D {
         // Camera & projection are configured to ingest space coordinates directly.
         painter.add(gpu_bridge::new_renderer_callback(
             view_builder,
-            painter.clip_rect(),
+            ui_rect,
             clear_color,
         ));
 
@@ -345,6 +347,7 @@ impl SpatialView2D {
 fn setup_target_config(
     render_mode: re_renderer::RenderMode,
     egui_painter: &egui::Painter,
+    ui_rect: Rect,
     scene_bounds: Rect,
     near_clip_plane: f32,
     space_name: &str,
@@ -427,8 +430,7 @@ fn setup_target_config(
     // ----------------------
 
     let pixels_per_point = egui_painter.ctx().pixels_per_point();
-    let resolution_in_pixel =
-        gpu_bridge::viewport_resolution_in_pixels(egui_painter.clip_rect(), pixels_per_point);
+    let resolution_in_pixel = gpu_bridge::viewport_resolution_in_pixels(ui_rect, pixels_per_point);
     anyhow::ensure!(0 < resolution_in_pixel[0] && 0 < resolution_in_pixel[1]);
 
     Ok({
