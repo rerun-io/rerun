@@ -242,7 +242,10 @@ toml-fmt = "taplo fmt"
 # internally for this check is being set up by the pep517 environment and so
 # we might run it in an environment that doesn't otherwise have or expect
 # rust to be setup.
-uv-lock-check = "env -u RUSTC_WRAPPER uv lock --dry-run && uv lock --check"
+uv-lock-check-workspace = "env -u RUSTC_WRAPPER uv lock --dry-run && uv lock --check"
+# Same check for every isolated example project (discovered via `[tool.rerun-example] isolated = true`).
+uv-lock-check-isolated-examples = "python scripts/ci/isolated_examples.py check-lock"
+uv-lock-check = { depends-on = ["uv-lock-check-workspace", "uv-lock-check-isolated-examples"] }
 
 # ------------------------------------------------------------------------------------------
 # Protobuf stuff:
@@ -305,11 +308,18 @@ py-lint-nb-rerun = { cmd = "uv run nbqa mypy --no-warn-unused-ignore examples/no
 # Need to run this in env with rerun installed
 py-lint-rerun = "uv run mypy --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_sdk"
 py-lint-rerun-ty = "uv run ty check --error deprecated"
+# Isolated examples (their own uv project + .venv, excluded from the shared mypy run above).
+# The script auto-discovers any example whose pyproject.toml sets
+# `[tool.rerun-example] isolated = true` and lints it with the shared mypy config.
+# RERUN_ALLOW_MISSING_BIN matches `py-build` — lets maturin build the rerun-sdk extension
+# into each example's .venv without needing the `rerun` CLI binary on disk first.
+py-lint-isolated-examples = { cmd = "python scripts/ci/isolated_examples.py lint", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 py-lint = { depends-on = [
   "py-lint-rerun-ty", # Fast first
   "py-lint-non-sdk",
   "py-lint-rerun",
   "py-lint-nb-rerun",
+  "py-lint-isolated-examples",
 ] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }

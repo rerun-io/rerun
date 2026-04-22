@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 import pyarrow as pa
-from lerobot.datasets.lerobot_dataset import LeRobotDataset  # type: ignore[import-untyped,import-not-found]
+from lerobot.datasets.lerobot_dataset import LeRobotDataset
 from tqdm import tqdm
 
 import rerun as rr

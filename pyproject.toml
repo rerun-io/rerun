@@ -202,6 +202,7 @@ open_photogrammetry_format = { workspace = true }
 openstreetmap_data = { workspace = true }
 # TODO(RR-3548): Figure out a way to include this, without lerobot causing dependency issues.
 # rerun_export = { workspace = true }
+# dataloader = { workspace = true }  # Excluded: same RR-3548 reason (lerobot pins old rerun-sdk).
 plots = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
@@ -257,6 +258,7 @@ members = [
   "examples/python/open_photogrammetry_format",
   "examples/python/openstreetmap_data",
   # "examples/python/rerun_export" # Excluded: causes dependency issues,
+  # "examples/python/dataloader" # Excluded: same RR-3548 reason (lerobot).
   "examples/python/plots",
   "examples/python/raw_mesh",
   "examples/python/rgbd",

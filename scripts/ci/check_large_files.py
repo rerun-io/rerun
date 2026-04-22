@@ -25,6 +25,9 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "pixi.lock",
     "rerun_cpp/docs/Doxyfile",
     "uv.lock",
+    # Examples excluded from the uv workspace so they maintain standalone lockfiles.
+    "examples/python/dataloader/uv.lock",
+    "examples/python/rerun_export/uv.lock",
 }
 
 # Paths with the following prefixes are allowed to contain PNG files that are not checked into LFS

@@ -1,46 +1,25 @@
 [project]
-name = "rerun_export"
+name = "dataloader"
 version = "0.1.0"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
-dependencies = [
-  "av",
-  "datafusion",
-  "lerobot==0.4.2",
-  "numpy",
-  "pandas",
-  "pillow",
-  "pyarrow",
-  "rerun-sdk",
-  "scipy",
-  "tqdm",
-]
-
-[project.scripts]
-rerun_export = "rerun_export.__main__:main"
+dependencies = ["rerun-sdk[dataloader,dataplatform]", "huggingface-hub<1.0", "lerobot==0.4"]
 
 [dependency-groups]
 # rerun-dev-fixup installs the .pth shim that makes `import rerun` resolve to the
 # editable `rerun_py/rerun_sdk/` tree — same trick the workspace .venv uses.
-dev = [
-  "mypy==1.19.1",
-  "rerun-dev-fixup",
-  "pandas-stubs==2.3.3.251201",
-  "types-tqdm==4.67.0.20250809",
-]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+dev = ["mypy==1.19.1", "rerun-dev-fixup"]
 
 [tool.rerun-example]
 # Picked up by scripts/ci/isolated_examples.py and the `py-lint-isolated-examples` pixi task.
 isolated = true
 
 [tool.uv]
+# The example is flat scripts, not a wheel — skip project build, just sync deps.
+package = false
 # Ignore LeRobot's pinned rerun-sdk so resolution picks the local source below.
 # Scoped to this project — does not affect the root workspace.
-override-dependencies = ["rerun-sdk"]
+override-dependencies = ["rerun-sdk[dataloader,dataplatform]"]
 
 [tool.uv.sources]
 rerun-sdk = { path = "../../../rerun_py", editable = true }
@@ -50,5 +29,5 @@ rerun-dev-fixup = { path = "../../../rerun_py/rerun_dev_fixup", editable = false
 # scripts/ci/isolated_examples.py — list the untyped third-party libs this
 # example actually imports.
 [[tool.mypy.overrides]]
-module = ["lerobot.*", "av.*", "datafusion.*", "scipy.*"]
+module = ["lerobot.*", "torch.*", "torchvision.*", "diffusers.*", "accelerate.*"]
 ignore_missing_imports = true

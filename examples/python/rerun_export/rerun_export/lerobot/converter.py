@@ -11,8 +11,8 @@ import datafusion as dfn
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from lerobot.datasets.compute_stats import compute_episode_stats  # type: ignore[import-untyped,import-not-found]
-from lerobot.datasets.utils import update_chunk_file_indices  # type: ignore[import-untyped,import-not-found]
+from lerobot.datasets.compute_stats import compute_episode_stats
+from lerobot.datasets.utils import update_chunk_file_indices
 from tqdm import tqdm
 
 from rerun_export.lerobot.video_processing import (
@@ -24,7 +24,7 @@ from rerun_export.lerobot.video_processing import (
 from rerun_export.utils import normalize_times, suppress_ffmpeg_output, to_float32_vector, unwrap_singleton
 
 if TYPE_CHECKING:
-    from lerobot.datasets.lerobot_dataset import LeRobotDataset  # type: ignore[import-untyped,import-not-found]
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
     from rerun_export.lerobot.types import (
         FeatureSpec,

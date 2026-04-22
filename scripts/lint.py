@@ -344,11 +344,12 @@ def lint_line(
             )
 
     if is_in_oss_rerun_repo:
-        # Check for specific data platform phrases that should be capitalized
+        # Check for specific data platform phrases that should be capitalized.
+        # Skip URL paths (`/dataplatform/`) and python package extras specifiers
         if re.search(r"(the\s+data\s+platform|Rerun\s+data\s+platform)", line) or re.search(
-            r"(?<!/)dataplatform(?!/)", line
+            r"(?<![/\[,])dataplatform(?![/\],])", line
         ):
-            return "Use 'the Data Platform', 'Rerun Data Platform', or 'Data Platform' (unless it's part of a URL path)"
+            return "Use 'the Data Platform', 'Rerun Data Platform', or 'Data Platform' (unless it's part of a URL path or python package extras specifier)"
 
     if not is_in_docstring:
         if m := re.search(
@@ -475,6 +476,9 @@ def test_lint_line() -> None:
         "fn ret_any_mut() -> &mut dyn std::any::Any",
         "Visit /dataplatform/docs for more info",
         "The https://example.com/dataplatform/api endpoint",
+        'dependencies = ["rerun-sdk[dataloader,dataplatform]"]',
+        'override-dependencies = ["rerun-sdk[dataplatform]"]',
+        'extras = ["dataplatform,extra"]',
         "We need a data platform solution",
         "Building data platform infrastructure",
         # %err (Display) in tracing macros is good
@@ -1300,12 +1304,12 @@ def fix_header_casing(s: str) -> str:
 
 
 def fix_dataplatform(s: str) -> str:
-    """Fix specific data platform phrases to proper capitalization unless it's part of a URL path."""
-    # Don't fix if it's in a URL path (has slashes before or after)
-    # Use negative lookbehind and lookahead to avoid URL paths
+    """Fix specific data platform phrases to proper capitalization unless it's part of a URL path or package extras."""
+    # Skip URL paths (`/dataplatform/`) and package extras specifiers
+    # (`rerun-sdk[dataloader,dataplatform]`) — those reference the feature name, not prose.
     s = re.sub(r"the\s+data\s+platform", "the Data Platform", s)
     s = re.sub(r"Rerun\s+data\s+platform", "Rerun Data Platform", s)
-    s = re.sub(r"(?<!/)dataplatform(?!/)", "Data Platform", s)
+    s = re.sub(r"(?<![/\[,])dataplatform(?![/\],])", "Data Platform", s)
     return s
 
 

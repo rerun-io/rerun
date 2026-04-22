@@ -186,6 +186,7 @@ examples = [
   "custom_view",
   "custom_visualizer",
   "dataframe_query",
+  "dataloader", # Isolated uv project (conflicts with workspace deps via LeRobot), not built by rerun.io
   "drone_lidar",
   "extend_viewer_ui",
   "external_importer",
