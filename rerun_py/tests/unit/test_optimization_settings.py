@@ -4,7 +4,7 @@ from rerun.experimental import OptimizationSettings
 
 
 def test_optimization_settings_defaults() -> None:
-    """OptimizationSettings() mirrors `rerun rrd compact` defaults."""
+    """OptimizationSettings() mirrors `rerun rrd optimize` defaults."""
     s = OptimizationSettings()
     # Threshold fields default to None — resolved to ChunkStoreConfig::DEFAULT by Rust.
     assert s.max_bytes is None

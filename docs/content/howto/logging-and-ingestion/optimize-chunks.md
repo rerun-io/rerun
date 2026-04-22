@@ -94,9 +94,9 @@ ipc_size_bytes_p999 = 568 KiB
 # … truncated …
 ```
 
-If a file contains many small chunks, run [`rerun rrd compact`](../../reference/cli.md#rerun-rrd-compact) to rewrite it with fewer, larger chunks. For example:
+If a file contains many small chunks, run [`rerun rrd optimize`](../../reference/cli.md#rerun-rrd-optimize) to rewrite it with fewer, larger chunks. For example:
 ```sh
-$ rerun rrd compact --max-rows 4096 --max-bytes 1048576 -o nuscenes_compacted.rrd <(curl 'https://app.rerun.io/version/latest/examples/nuscenes_dataset.rrd')
+$ rerun rrd optimize --max-rows 4096 --max-bytes 1048576 -o nuscenes_compacted.rrd <(curl 'https://app.rerun.io/version/latest/examples/nuscenes_dataset.rrd')
 merge/compaction finished srcs=["/dev/fd/63"] time=2.51217062s num_chunks_before=576 num_chunks_after=217 num_chunks_reduction="-62.326%" srcs_size_bytes=90.0 MiB dst_size_bytes=89.6 MiB size_reduction="-0.474%"
 
 $ rrd stats nuscenes_compacted.rrd
@@ -136,7 +136,7 @@ This produces a new file where chunks have been merged up to ~4096 rows or 1 M
 
 Because it runs offline, the CLI compactor has full access to the dataset and no real-time constraints, making it the most effective tool for optimal compaction. It's a good idea to compact files ahead of time if they’ll be queried or visualized repeatedly.
 
-> ⚠️ `rerun rrd compact` will automatically migrate the data to the latest version of the RRD protocol, if needed. ⚠️
+> ⚠️ `rerun rrd optimize` will automatically migrate the data to the latest version of the RRD protocol, if needed. ⚠️
 
 Constraints:
 * Runs: standalone CLI tool
@@ -151,4 +151,4 @@ Constraints:
 * Compaction can (and should) happen at multiple stages, each with different tradeoffs, operating under very different constraints.
 * The Rerun CLI is your best tool to:
     * Understand chunk-related performance issues (`rerun rrd stats`)
-    * Preemptively optimize data (`rerun rrd compact`)
+    * Preemptively optimize data (`rerun rrd optimize`)

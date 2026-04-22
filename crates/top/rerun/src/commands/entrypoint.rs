@@ -452,7 +452,9 @@ impl Args {
                 return;
             }
 
-            let any_subcommands = cmd.get_subcommands().any(|cmd| cmd.get_name() != "help");
+            let any_subcommands = cmd
+                .get_subcommands()
+                .any(|cmd| cmd.get_name() != "help" && !cmd.is_hide_set());
             let any_positional_args = cmd.get_arguments().any(|arg| arg.is_positional());
             let any_floating_args = cmd.get_arguments().any(|arg| {
                 !arg.is_positional() && !arg.is_hide_set() && arg.get_long() != Some("help")
@@ -504,7 +506,7 @@ impl Args {
             let commands = any_subcommands.then(|| {
                 let commands = cmd
                     .get_subcommands_mut()
-                    .filter(|cmd| cmd.get_name() != "help")
+                    .filter(|cmd| cmd.get_name() != "help" && !cmd.is_hide_set())
                     .map(|cmd| {
                         let name = cmd.get_name().to_owned();
                         let help = cmd.render_help().to_string();
@@ -574,6 +576,9 @@ impl Args {
             *out += "\n\n";
 
             for cmd in cmd.get_subcommands_mut() {
+                if cmd.is_hide_set() {
+                    continue;
+                }
                 generate_markdown_manual(full_name.clone(), out, cmd);
             }
         }

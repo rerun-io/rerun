@@ -273,7 +273,7 @@ class LazyChunkStream:
         during chunk insertion is applied. Pass `optimize=OptimizationSettings(...)`
         to run additional optimization (extra convergence passes, video GoP
         rebatching); the defaults for [`OptimizationSettings`][rerun.experimental.OptimizationSettings]
-        mirror those of the `rerun rrd compact` CLI.
+        mirror those of the `rerun rrd optimize` CLI.
 
         Parameters
         ----------
@@ -285,7 +285,7 @@ class LazyChunkStream:
 
         Examples
         --------
-        Run optimization with default settings (matches `rerun rrd compact`):
+        Run optimization with default settings (matches `rerun rrd optimize`):
 
         ```python
         store = reader.stream().collect(optimize=OptimizationSettings())

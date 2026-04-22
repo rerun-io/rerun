@@ -326,7 +326,7 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
 
                     This compaction process is an ephemeral, in-memory optimization of the Rerun viewer.\
                     It will not modify the recording itself: use the `Save` command of the viewer, or the \
-                    `rerun rrd compact` CLI tool if you wish to persist the compacted results, which will \
+                    `rerun rrd optimize` CLI tool if you wish to persist the compacted results, which will \
                     make future runs cheaper.
                     ",
                         chunk_max_rows = re_format::format_uint(chunk_max_rows),

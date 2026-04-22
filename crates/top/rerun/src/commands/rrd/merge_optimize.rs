@@ -60,7 +60,7 @@ impl MergeCommand {
 // ---
 
 #[derive(Debug, Clone, clap::Parser)]
-pub struct CompactCommand {
+pub struct OptimizeCommand {
     /// Paths to read from. Reads from standard input if none are specified.
     path_to_input_rrds: Vec<String>,
 
@@ -136,7 +136,7 @@ pub struct CompactCommand {
     split_size_ratio: Option<f64>,
 }
 
-impl CompactCommand {
+impl OptimizeCommand {
     pub fn run(&self) -> anyhow::Result<()> {
         let Self {
             path_to_input_rrds,
@@ -196,6 +196,28 @@ impl CompactCommand {
         )
     }
 }
+
+// ---
+
+/// Stub for the old `rerun rrd compact` name. Accepts any arguments and errors out with a
+/// message pointing at the new name, so users who've scripted the old name get a clear hint.
+#[derive(Debug, Clone, clap::Parser)]
+pub struct CompactCommand {
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
+    _ignored: Vec<String>,
+}
+
+impl CompactCommand {
+    #[expect(clippy::unused_self)]
+    pub fn run(&self) -> anyhow::Result<()> {
+        anyhow::bail!(
+            "`rerun rrd compact` has been renamed to `rerun rrd optimize`. \
+             Please run `rerun rrd optimize --help` for usage."
+        )
+    }
+}
+
+// ---
 
 fn merge_and_compact(
     continue_on_error: bool,

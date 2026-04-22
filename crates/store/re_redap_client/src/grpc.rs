@@ -758,7 +758,7 @@ async fn load_chunks(
     );
     if 10_000 < num_chunks {
         re_log::warn!(
-            "There are {} chunks in this recording. Consider running `rerun rrd compact` on it!",
+            "There are {} chunks in this recording. Consider running `rerun rrd optimize` on it!",
             re_format::format_uint(num_chunks)
         );
     }

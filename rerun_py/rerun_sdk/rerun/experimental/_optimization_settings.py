@@ -8,7 +8,7 @@ class OptimizationSettings:
     """
     Settings for optimizing a ChunkStore via `LazyChunkStream.collect(optimize=...)`.
 
-    Defaults mirror those of the `rerun rrd compact` CLI. `None` on a threshold
+    Defaults mirror those of the `rerun rrd optimize` CLI. `None` on a threshold
     field means using the default internal value.
     """
 
