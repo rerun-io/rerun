@@ -4,7 +4,7 @@
 //! Whirlwind tour of how to interpret picture data (from a Video perspective)
 //! ---------------------------------------------------------------------------------
 //!
-//! Extracted from the [av1 codec wiki](https://wiki.x266.mov/docs/colorimetry/intro) and other sources.
+//! Extracted from the [av1 codec wiki](https://web.archive.org/web/20260318141718/https://wiki.x266.mov/docs/colorimetry/intro) and other sources.
 //! Follows the trail of information we get from our AV1 decoder.
 //!
 //! ### How to get from YUV to RGB?
@@ -29,7 +29,7 @@
 //!
 //! ### Given a normalized YUV triplet, how do we get color?
 //!
-//! * `picture.matrix_coefficients()` (see <https://wiki.x266.mov/docs/colorimetry/matrix>)
+//! * `picture.matrix_coefficients()` (see <https://web.archive.org/web/20260318141742/https://wiki.x266.mov/docs/colorimetry/matrix>)
 //!   * this tells us what to multiply the incoming YUV data with to get SOME RGB data
 //!   * there's various standards of how to do this, but the most common is BT.709
 //!   * here's a fun special one: `identity` means it's not actually YUV, but GBR!
