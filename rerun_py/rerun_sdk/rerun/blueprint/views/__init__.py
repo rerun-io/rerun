@@ -8,6 +8,7 @@ from .graph_view import GraphView
 from .map_view import MapView
 from .spatial2d_view import Spatial2DView
 from .spatial3d_view import Spatial3DView
+from .status_view import StatusView
 from .tensor_view import TensorView
 from .text_document_view import TextDocumentView
 from .text_log_view import TextLogView
@@ -20,6 +21,7 @@ __all__ = [
     "MapView",
     "Spatial2DView",
     "Spatial3DView",
+    "StatusView",
     "TensorView",
     "TextDocumentView",
     "TextLogView",

@@ -36,5 +36,6 @@ Utf8
 * [`McapSchema`](../archetypes/mcap_schema.md)
 * [`Points2D`](../archetypes/points2d.md)
 * [`Points3D`](../archetypes/points3d.md)
+* [`Status`](../archetypes/status.md?speculative-link)
 * [`TextDocument`](../archetypes/text_document.md)
 * [`TextLog`](../archetypes/text_log.md)

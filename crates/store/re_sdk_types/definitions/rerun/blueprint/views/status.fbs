@@ -1,0 +1,12 @@
+namespace rerun.blueprint.views;
+
+/// A view for displaying status transitions over time, for use with [archetypes.Status].
+// TODO(RR-4240): Add a proper snippet and update screenshot.
+///
+/// \example views/status title="Use a blueprint to show a StatusView." image="https://static.rerun.io/status_view/997ff1c16765374651ba662812a78e53803aba75/1200w.png"
+table StatusView (
+  "attr.docs.unreleased",
+  "attr.rerun.view_identifier": "Status",
+  "attr.rerun.state": "unstable"
+) {
+}

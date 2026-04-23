@@ -1,27 +1,27 @@
-/// Collection of state lanes produced by a visualizer.
+/// Collection of status lanes produced by a visualizer.
 #[derive(Clone, Debug, Default)]
-pub struct StateLanesData {
-    pub lanes: Vec<StateLane>,
+pub struct StatusLanesData {
+    pub lanes: Vec<StatusLane>,
 }
 
-/// A single horizontal lane of state phases.
+/// A single horizontal lane of status phases.
 #[derive(Clone, Debug)]
-pub struct StateLane {
+pub struct StatusLane {
     /// Display name for this lane (typically the entity path).
     pub label: String,
 
     /// Ordered list of phases. Each phase starts at `start_time` and implicitly ends
     /// where the next phase begins (or at the right edge of the visible range).
-    pub phases: Vec<StateLanePhase>,
+    pub phases: Vec<StatusLanePhase>,
 }
 
-/// One contiguous phase within a [`StateLane`].
+/// One contiguous phase within a [`StatusLane`].
 #[derive(Clone, Debug)]
-pub struct StateLanePhase {
+pub struct StatusLanePhase {
     /// Start time in timeline units.
     pub start_time: i64,
 
-    /// Human-readable state label (e.g. "Idle", "Moving").
+    /// Human-readable status label (e.g. "Idle", "Moving").
     pub label: String,
 
     /// Display color for this phase.

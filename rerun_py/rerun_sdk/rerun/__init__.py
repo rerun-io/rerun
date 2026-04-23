@@ -132,6 +132,7 @@ from .archetypes import (
     SegmentationImage as SegmentationImage,
     SeriesLines as SeriesLines,
     SeriesPoints as SeriesPoints,
+    Status as Status,
     Tensor as Tensor,
     TextDocument as TextDocument,
     TextLog as TextLog,

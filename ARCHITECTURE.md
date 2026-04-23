@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/d3b0ac2900964d7b7ce6ef07443fac6de1f720ab/1200w.png">
+  <img src="https://static.rerun.io/architecture_diagram/e611cd77b5322761eba3188def773c2bfd30a355/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/e611cd77b5322761eba3188def773c2bfd30a355/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/e611cd77b5322761eba3188def773c2bfd30a355/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/e611cd77b5322761eba3188def773c2bfd30a355/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/e611cd77b5322761eba3188def773c2bfd30a355/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -115,7 +115,7 @@ FigJam document: https://www.figma.com/file/Umob8ztK1HmYKLUMSq8aPb/Crates-org
 Update instructions:
 1) Update the FigJam document
 2) Select all -> right-click -> Copy as PNG
-3) `pixi run upload-image --name crates`
+3) `pixi run upload-image --name architecture_diagram`
 4) Copy/paste the resulting HTML
 -->
 
@@ -153,7 +153,7 @@ Update instructions:
 | re_view_graph          | A View that shows a graph (node-link diagram).                                                             |
 | re_view_map            | A View that shows geospatial data on a map.                                                                |
 | re_view_spatial        | Views that show entities in a 2D or 3D spatial relationship.                                               |
-| re_view_states         | A view that shows state transitions as horizontal lanes over time.                                         |
+| re_view_status         | A view that shows status transitions as horizontal lanes over time.                                        |
 | re_view_tensor         | A View dedicated to visualizing tensors with arbitrary dimensionality.                                     |
 | re_view_text_document  | A simple View that shows a single text box.                                                                |
 | re_view_text_log       | A View that shows text entries in a table and scrolls with the active time.                                |

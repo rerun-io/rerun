@@ -320,6 +320,11 @@ SECTION_TABLE: Final[list[Section]] = [
         gen_page=False,
     ),
     Section(
+        title="Status",
+        class_list=["archetypes.Status"],
+        gen_page=False,
+    ),
+    Section(
         title="Transforms and Coordinate Systems",
         class_list=[
             "archetypes.Pinhole",

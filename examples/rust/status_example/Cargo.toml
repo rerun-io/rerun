@@ -1,5 +1,5 @@
 [package]
-name = "states_example"
+name = "status_example"
 version = "0.31.0-alpha.1+dev"
 edition = "2024"
 rust-version = "1.92"

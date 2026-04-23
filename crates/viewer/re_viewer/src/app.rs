@@ -280,6 +280,10 @@ impl App {
             state.app_options = AppOptions::test();
         }
 
+        if startup_options.enable_experimental_status_view {
+            state.app_options.experimental.enable_status_view = true;
+        }
+
         let reflection = re_sdk_types::reflection::generate_reflection().unwrap_or_else(|err| {
             re_log::error!(
                 "Failed to create list of serialized default values for components: {err}"

@@ -106,6 +106,9 @@ pub struct StartupOptions {
     /// * notebooks & native: use rerun.io/viewer with the crate's last known stable version
     /// * web viewers: use the url of the page it is embedded in
     pub viewer_base_url: Option<String>,
+
+    /// Enable the experimental Status view.
+    pub enable_experimental_status_view: bool,
 }
 
 impl StartupOptions {
@@ -201,6 +204,8 @@ impl Default for StartupOptions {
             login: None,
 
             viewer_base_url: None,
+
+            enable_experimental_status_view: false,
         }
     }
 }

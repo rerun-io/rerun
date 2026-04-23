@@ -39,6 +39,7 @@ scalars.rs linguist-generated=true
 segmentation_image.rs linguist-generated=true
 series_lines.rs linguist-generated=true
 series_points.rs linguist-generated=true
+status.rs linguist-generated=true
 tensor.rs linguist-generated=true
 text_document.rs linguist-generated=true
 text_log.rs linguist-generated=true

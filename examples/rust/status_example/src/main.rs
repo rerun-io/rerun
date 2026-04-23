@@ -1,4 +1,4 @@
-//! Example app that opens a Rerun Viewer with the States view showing test state data.
+//! Example app that opens a Rerun Viewer with the Status view showing test state data.
 
 use rerun::external::{re_crash_handler, re_grpc_server, re_log, re_viewer, tokio};
 
@@ -17,10 +17,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let startup_options = re_viewer::StartupOptions::default();
-    let app_env = re_viewer::AppEnvironment::Custom("States view example".to_owned());
+    let app_env = re_viewer::AppEnvironment::Custom("Status view example".to_owned());
 
-    // Log some state data via SDK so the States view has something to show.
-    log_state_data()?;
+    // Log some status data via SDK so the Status view has something to show.
+    log_status_data()?;
 
     re_viewer::run_native_app(
         main_thread_token,
@@ -45,11 +45,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn log_state_data() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_states")
+fn log_status_data() -> Result<(), Box<dyn std::error::Error>> {
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_status")
         .default_enabled(true)
         .connect_grpc()
         .map_err(|err| format!("Failed to connect: {err}"))?;
+
+    // Base timestamp: 2025-04-01 12:00:00 UTC
+    let base_ts: f64 = 1_743_508_800.0;
+    let step_secs: f64 = 5.0;
 
     let states: Vec<(i64, &str, &str)> = vec![
         (0, "state/robot_mode", "Idle"),
@@ -65,9 +69,18 @@ fn log_state_data() -> Result<(), Box<dyn std::error::Error>> {
         (30, "state/connection", "Connected"),
     ];
 
-    for (tick, entity, label) in states {
+    for (tick, entity, label) in &states {
+        rec.set_time_sequence("tick", *tick);
+        rec.set_timestamp_secs_since_epoch("timestamp", base_ts + *tick as f64 * step_secs);
+        rec.log(*entity, &rerun::Status::new().with_status(*label))?;
+    }
+
+    // Log scalar data on the same timelines so a time series view can be added.
+    for tick in 0..50 {
+        let t = tick as f64;
         rec.set_time_sequence("tick", tick);
-        rec.log(entity, &rerun::TextLog::new(label))?;
+        rec.set_timestamp_secs_since_epoch("timestamp", base_ts + t * step_secs);
+        rec.log("scalar/sine", &rerun::Scalars::new([f64::sin(t * 0.3)]))?;
     }
 
     let _ = rec.flush_blocking();

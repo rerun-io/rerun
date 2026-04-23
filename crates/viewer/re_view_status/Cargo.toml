@@ -1,10 +1,10 @@
 [package]
 authors.workspace = true
-description = "A view that shows state transitions as horizontal lanes over time."
+description = "A view that shows status transitions as horizontal lanes over time."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
-name = "re_view_states"
+name = "re_view_status"
 publish = true
 readme = "README.md"
 repository.workspace = true

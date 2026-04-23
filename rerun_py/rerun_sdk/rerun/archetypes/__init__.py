@@ -40,6 +40,7 @@ from .scalars import Scalars
 from .segmentation_image import SegmentationImage
 from .series_lines import SeriesLines
 from .series_points import SeriesPoints
+from .status import Status
 from .tensor import Tensor
 from .text_document import TextDocument
 from .text_log import TextLog
@@ -88,6 +89,7 @@ __all__ = [
     "SegmentationImage",
     "SeriesLines",
     "SeriesPoints",
+    "Status",
     "Tensor",
     "TextDocument",
     "TextLog",

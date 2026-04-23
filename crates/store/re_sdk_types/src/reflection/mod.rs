@@ -3410,6 +3410,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.Status"),
+            ArchetypeReflection {
+                display_name: "Status",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["StatusView"],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "status",
+                    display_name: "Status",
+                    component_type: "rerun.components.Text".into(),
+                    docstring_md: "The new status value. A `null` status is ignored, it can be used to partially update a multi-instance status array.",
+                    flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                }],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.Tensor"),
             ArchetypeReflection {
                 display_name: "Tensor",

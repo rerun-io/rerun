@@ -77,8 +77,8 @@ fn populate_view_class_registry_with_builtin(
         app_options,
         fallback_registry,
     )?;
-    if app_options.experimental.enable_states_view {
-        view_class_registry.add_class::<re_view_states::StatesView>(
+    if app_options.experimental.enable_status_view {
+        view_class_registry.add_class::<re_view_status::StatusView>(
             reflection,
             app_options,
             fallback_registry,

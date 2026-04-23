@@ -158,14 +158,14 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     {
         let ExperimentalAppOptions {
-            enable_states_view,
+            enable_status_view,
             table_grid_view,
         } = experimental;
         separator_with_some_space(ui);
         ui.strong("Experimental");
-        ui.re_checkbox(enable_states_view, "Enable States view (requires restart)")
+        ui.re_checkbox(enable_status_view, "Enable Status view (requires restart)")
             .on_hover_text(
-                "Show the experimental States view for visualizing state transitions over time.",
+                "Show the experimental Status view for visualizing status transitions over time.",
             );
         ui.re_checkbox(table_grid_view, "Table grid view")
             .on_hover_text(

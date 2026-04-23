@@ -40,6 +40,7 @@
 #include "archetypes/segmentation_image.hpp"
 #include "archetypes/series_lines.hpp"
 #include "archetypes/series_points.hpp"
+#include "archetypes/status.hpp"
 #include "archetypes/tensor.hpp"
 #include "archetypes/text_document.hpp"
 #include "archetypes/text_log.hpp"

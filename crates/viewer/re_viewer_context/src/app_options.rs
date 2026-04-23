@@ -190,8 +190,8 @@ pub struct VideoOptions {
 #[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct ExperimentalAppOptions {
-    /// Enable the experimental States view.
-    pub enable_states_view: bool,
+    /// Enable the experimental Status view.
+    pub enable_status_view: bool,
 
     /// Enable grid view mode for data tables.
     ///

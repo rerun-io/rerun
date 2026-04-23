@@ -1,13 +1,12 @@
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, TimeCell, TimeReal, TimeType, TimelineName, TimestampFormat};
 use re_ui::{Help, icons};
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, RecommendedVisualizers,
-    ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableReason,
+    IdentifiedViewSystem as _, TimeControlCommand, ViewClass, ViewClassLayoutPriority,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewerContext,
 };
 
-use crate::data::{StateLane, StateLanesData};
+use crate::data::{StatusLane, StatusLanesData};
 
 // Layout constants (in screen pixels).
 const LANE_BAND_HEIGHT: f32 = 22.0;
@@ -20,13 +19,20 @@ const TOP_MARGIN: f32 = 4.0;
 
 /// View state for pan/zoom.
 #[derive(Default)]
-struct StatesViewState {
+struct StatusViewState {
     /// Visible time range: (min, max) in timeline units.
     /// `None` means "fit all data".
     time_range: Option<(f64, f64)>,
+
+    /// The timeline we last rendered. When the active timeline changes,
+    /// we reset `time_range` so the view auto-fits to the new data.
+    active_timeline: Option<TimelineName>,
+
+    /// `true` while the user is dragging the time cursor.
+    dragging_cursor: bool,
 }
 
-impl ViewState for StatesViewState {
+impl ViewState for StatusViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -37,15 +43,15 @@ impl ViewState for StatesViewState {
 }
 
 #[derive(Default)]
-pub struct StatesView;
+pub struct StatusView;
 
-impl ViewClass for StatesView {
+impl ViewClass for StatusView {
     fn identifier() -> re_sdk_types::ViewClassIdentifier {
-        "States".into()
+        "Status".into()
     }
 
     fn display_name(&self) -> &'static str {
-        "States"
+        "Status"
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -54,19 +60,19 @@ impl ViewClass for StatesView {
     }
 
     fn new_state(&self) -> Box<dyn ViewState> {
-        Box::<StatesViewState>::default()
+        Box::<StatusViewState>::default()
     }
 
     fn help(&self, _os: egui::os::OperatingSystem) -> Help {
-        Help::new("States view")
-            .markdown("Shows state transitions as horizontal colored lanes over time.")
+        Help::new("Status view")
+            .markdown("Shows status transitions as horizontal colored lanes over time.")
     }
 
     fn on_register(
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_visualizer::<crate::StatesVisualizer>()
+        system_registry.register_visualizer::<crate::StatusVisualizer>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
@@ -79,26 +85,20 @@ impl ViewClass for StatesView {
 
     fn spawn_heuristics(
         &self,
-        _ctx: &ViewerContext<'_>,
-        _include_entity: &dyn Fn(&EntityPath) -> bool,
+        ctx: &ViewerContext<'_>,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
-        // TODO(RR-4248): Spawn heuristics for state logs.
-        ViewSpawnHeuristics::empty()
-    }
+        re_tracing::profile_function!();
 
-    fn recommended_visualizers_for_entity(
-        &self,
-        _entity_path: &EntityPath,
-        visualizers: &[(ViewSystemIdentifier, &VisualizableReason)],
-        _indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
-    ) -> RecommendedVisualizers {
-        if visualizers
-            .iter()
-            .any(|(viz, _)| *viz == crate::StatesVisualizer::identifier())
+        // Show every status in a single view by default.
+        if ctx
+            .indicated_entities_per_visualizer
+            .get(&crate::StatusVisualizer::identifier())
+            .is_some_and(|entities| entities.iter().any(include_entity))
         {
-            RecommendedVisualizers::default(crate::StatesVisualizer::identifier())
+            ViewSpawnHeuristics::root()
         } else {
-            RecommendedVisualizers::empty()
+            ViewSpawnHeuristics::empty()
         }
     }
 
@@ -124,17 +124,23 @@ impl ViewClass for StatesView {
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let state = state.downcast_mut::<StatesViewState>()?;
+        let state = state.downcast_mut::<StatusViewState>()?;
+
+        // Reset time range when the active timeline changes.
+        if state.active_timeline.as_ref() != Some(&query.timeline) {
+            state.active_timeline = Some(query.timeline);
+            state.time_range = None;
+        }
 
         // Collect all lanes from all visualizers.
-        let all_lanes: Vec<&StateLane> = system_output
-            .iter_visualizer_data::<StateLanesData>()
+        let all_lanes: Vec<&StatusLane> = system_output
+            .iter_visualizer_data::<StatusLanesData>()
             .flat_map(|d| d.lanes.iter())
             .collect();
 
         if all_lanes.is_empty() {
             ui.centered_and_justified(|ui| {
-                ui.label("No state data. Add a visualizer that produces StateLanesData.");
+                ui.label("No status data. Add a visualizer that produces StatusLanesData.");
             });
             return Ok(());
         }
@@ -143,7 +149,7 @@ impl ViewClass for StatesView {
         let (data_min, data_max) = data_time_range(&all_lanes);
 
         // Auto-fit on first frame.
-        // TODO(aedm): The calculation of the end time is incorrect since state transitions don't have an end time.
+        // TODO(aedm): The calculation of the end time is incorrect since status transitions don't have an end time.
         //      We should use an estimation so that the latest state is still somewhat visible. Maybe also consider
         //      the density of states? An idea is to keep as much space for the last state as the average state
         //      duration on the screen.
@@ -181,8 +187,35 @@ impl ViewClass for StatesView {
             rect.right_bottom(),
         );
 
-        // Pan & zoom.
-        handle_pan_zoom(ui, &response, lanes_rect, &mut t_min, &mut t_max);
+        // Detect cursor drag vs pan: if drag started near the cursor, drag the cursor.
+        // TODO(RR-4433): the implementation is incomplete and inconsistent with the time series view.
+        let current_time = query.latest_at.as_i64() as f64;
+        let cursor_x = time_to_x(current_time, rect, t_min, t_max);
+        const CURSOR_GRAB_RADIUS: f32 = 6.0;
+
+        if response.drag_started() {
+            state.dragging_cursor = ui
+                .input(|i| i.pointer.press_origin())
+                .is_some_and(|pos| (pos.x - cursor_x).abs() <= CURSOR_GRAB_RADIUS);
+        }
+        if !response.dragged() {
+            state.dragging_cursor = false;
+        }
+
+        if state.dragging_cursor {
+            // Drag the time cursor.
+            if let Some(pos) = response.interact_pointer_pos() {
+                let frac = ((pos.x - rect.left()) / rect.width()) as f64;
+                let drag_time = t_min + frac * (t_max - t_min);
+                ctx.send_time_commands([
+                    TimeControlCommand::Pause,
+                    TimeControlCommand::SetTime(TimeReal::from(drag_time)),
+                ]);
+            }
+        } else {
+            // Pan & zoom.
+            handle_pan_zoom(ui, &response, rect, &mut t_min, &mut t_max);
+        }
         state.time_range = Some((t_min, t_max));
 
         // Background.
@@ -192,14 +225,22 @@ impl ViewClass for StatesView {
         // Draw lanes.
         let label_color = ui.style().visuals.text_color();
         let weak_color = ui.style().visuals.weak_text_color();
+        let time_type = ctx
+            .time_ctrl
+            .timeline()
+            .map_or(TimeType::Sequence, |tl| tl.typ());
+        let timestamp_format = ctx.app_options().timestamp_format;
         for (lane_idx, lane) in all_lanes.iter().enumerate() {
             paint_lane(
+                ui,
                 &painter,
                 lanes_rect,
                 lane_idx,
                 lane,
                 t_min,
                 t_max,
+                time_type,
+                timestamp_format,
                 label_color,
             );
         }
@@ -210,20 +251,43 @@ impl ViewClass for StatesView {
             time_axis_rect,
             t_min,
             t_max,
+            time_type,
+            timestamp_format,
             label_color,
             weak_color,
         );
 
         // Draw time cursor as a full-height vertical line.
-        let current_time = query.latest_at.as_i64() as f64;
         if current_time >= t_min && current_time <= t_max {
-            let cursor_x = time_to_x(current_time, rect, t_min, t_max);
+            let cursor_hovered = ui
+                .input(|i| i.pointer.hover_pos())
+                .is_some_and(|pos| (pos.x - cursor_x).abs() <= CURSOR_GRAB_RADIUS);
             let stroke = ui.visuals().widgets.inactive.fg_stroke;
+            if cursor_hovered || state.dragging_cursor {
+                ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+            }
+            let width_multiplier = if cursor_hovered || state.dragging_cursor {
+                3.0
+            } else {
+                1.5
+            };
             painter.vline(
                 cursor_x,
                 rect.top()..=rect.bottom(),
-                egui::Stroke::new(1.5 * stroke.width, stroke.color),
+                egui::Stroke::new(width_multiplier * stroke.width, stroke.color),
             );
+        }
+
+        // Click to set time cursor.
+        if response.clicked()
+            && let Some(pos) = response.interact_pointer_pos()
+        {
+            let frac = ((pos.x - rect.left()) / rect.width()) as f64;
+            let click_time = t_min + frac * (t_max - t_min);
+            ctx.send_time_commands([
+                TimeControlCommand::Pause,
+                TimeControlCommand::SetTime(TimeReal::from(click_time)),
+            ]);
         }
 
         Ok(())
@@ -231,7 +295,7 @@ impl ViewClass for StatesView {
 }
 
 /// Compute the (min, max) time range across all lanes.
-fn data_time_range(lanes: &[&StateLane]) -> (f64, f64) {
+fn data_time_range(lanes: &[&StatusLane]) -> (f64, f64) {
     let mut min = f64::MAX;
     let mut max = f64::MIN;
     for lane in lanes {
@@ -274,10 +338,10 @@ fn handle_pan_zoom(
         *t_max += dt;
     }
 
-    // Scroll to zoom.
-    let scroll = ui.input(|i| i.smooth_scroll_delta.y);
-    if scroll.abs() > 0.0 && response.hovered() {
-        let zoom_factor = (scroll / 200.0).exp() as f64;
+    // Cmd/Ctrl + scroll to zoom (egui routes Cmd+scroll to zoom_delta).
+    let zoom_delta = ui.input(|i| i.zoom_delta());
+    if zoom_delta != 1.0 && response.hovered() {
+        let zoom_factor = zoom_delta as f64;
         // Zoom centered on the mouse position.
         let mouse_x = ui
             .input(|i| i.pointer.hover_pos())
@@ -291,14 +355,18 @@ fn handle_pan_zoom(
     }
 }
 
-/// Paint a single lane (label + colored band of phases).
+/// Paint a single lane (label + colored band of phases) and show tooltips on hover.
+#[expect(clippy::too_many_arguments)]
 fn paint_lane(
+    ui: &egui::Ui,
     painter: &egui::Painter,
     lanes_rect: egui::Rect,
     lane_idx: usize,
-    lane: &StateLane,
+    lane: &StatusLane,
     t_min: f64,
     t_max: f64,
+    time_type: TimeType,
+    timestamp_format: TimestampFormat,
     label_color: egui::Color32,
 ) {
     let y_top = lanes_rect.top() + TOP_MARGIN + lane_idx as f32 * LANE_TOTAL_HEIGHT;
@@ -318,10 +386,13 @@ fn paint_lane(
         label_color,
     );
 
+    let hover_pos = ui.input(|i| i.pointer.hover_pos());
+
     // Phases.
     for (i, phase) in lane.phases.iter().enumerate() {
         let x_start = time_to_x(phase.start_time as f64, lanes_rect, t_min, t_max);
-        let x_end = if let Some(next) = lane.phases.get(i + 1) {
+        let next_phase = lane.phases.get(i + 1);
+        let x_end = if let Some(next) = next_phase {
             time_to_x(next.start_time as f64, lanes_rect, t_min, t_max)
         } else {
             lanes_rect.right()
@@ -340,10 +411,20 @@ fn paint_lane(
             egui::pos2(x_end, band_y_bottom),
         );
 
+        // Filled band. Dim when not hovered.
+        let hovered = hover_pos.is_some_and(|pos| phase_rect.contains(pos));
+        #[expect(clippy::disallowed_methods)]
+        // Data-driven visualization color, not a UI theme color.
+        let fill = if hovered {
+            phase.color
+        } else {
+            let [r, g, b, _] = phase.color.to_array();
+            egui::Color32::from_rgba_unmultiplied(r, g, b, 200)
+        };
         painter.add(egui::epaint::RectShape::new(
             phase_rect,
             0.0,
-            phase.color,
+            fill,
             egui::Stroke::NONE,
             egui::StrokeKind::Outside,
         ));
@@ -359,6 +440,38 @@ fn paint_lane(
                 readable_text_color(phase.color),
             );
         }
+
+        // Tooltip on hover.
+        if let Some(pos) = hover_pos
+            && phase_rect.contains(pos)
+        {
+            let start = TimeCell::new(time_type, phase.start_time).format(timestamp_format);
+            egui::Tooltip::always_open(
+                ui.ctx().clone(),
+                ui.layer_id(),
+                egui::Id::new("state_tooltip"),
+                egui::PopupAnchor::Pointer,
+            )
+            .show(|ui| {
+                ui.label(&phase.label);
+                ui.add_space(4.0);
+                let weak = ui.visuals().weak_text_color();
+                let small = egui::FontId::proportional(11.0);
+                ui.label(
+                    egui::RichText::new(format!("Start: {start}"))
+                        .font(small.clone())
+                        .color(weak),
+                );
+                if let Some(next) = next_phase {
+                    let end = TimeCell::new(time_type, next.start_time).format(timestamp_format);
+                    ui.label(
+                        egui::RichText::new(format!("End: {end}"))
+                            .font(small)
+                            .color(weak),
+                    );
+                }
+            });
+        }
     }
 }
 
@@ -372,11 +485,14 @@ fn readable_text_color(bg: egui::Color32) -> egui::Color32 {
 }
 
 /// Paint the time axis with tick marks and labels.
+#[expect(clippy::too_many_arguments)]
 fn paint_time_axis(
     painter: &egui::Painter,
     rect: egui::Rect,
     t_min: f64,
     t_max: f64,
+    time_type: TimeType,
+    timestamp_format: TimestampFormat,
     text_color: egui::Color32,
     weak_color: egui::Color32,
 ) {
@@ -418,11 +534,7 @@ fn paint_time_axis(
         );
 
         // Label.
-        let label = if step >= 1.0 {
-            format!("{}", t as i64)
-        } else {
-            format!("{t:.1}")
-        };
+        let label = TimeCell::new(time_type, t as i64).format_compact(timestamp_format);
         painter.text(
             egui::pos2(x, rect.top() + 5.0),
             egui::Align2::CENTER_TOP,
@@ -437,5 +549,5 @@ fn paint_time_axis(
 
 #[test]
 fn test_help_view() {
-    re_test_context::TestContext::test_help_view(|ctx| StatesView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| StatusView.help(ctx));
 }
