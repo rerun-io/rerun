@@ -27,10 +27,10 @@ from shutil import copytree
 
 # Sourced from https://archive.mesa3d.org/. Bumping this requires
 # updating the mesa build in https://github.com/gfx-rs/ci-build and creating a new release.
-MESA_VERSION = "24.2.3"
+MESA_VERSION = "25.2.7"
 
 # Corresponds to https://github.com/gfx-rs/ci-build/releases
-CI_BINARY_BUILD = "build19"
+CI_BINARY_BUILD = "build26"
 
 # Lavapipe build for macOS from https://github.com/rerun-io/lavapipe-build
 LAVAPIPE_MACOS_VERSION = "v0.4.0"
