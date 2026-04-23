@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pyarrow as pa
 
+from rerun._tracing import with_tracing
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
@@ -124,6 +126,7 @@ class SampleIndex:
         return range(lo, hi + 1)
 
     @staticmethod
+    @with_tracing("SampleIndex.build")
     def build(
         source: DataSource,
         index: str,

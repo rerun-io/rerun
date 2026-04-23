@@ -107,7 +107,11 @@ impl ConnectionAnalytics {
 
         let fut = async move {
             if let Err(err) = this.send_span_impl(span, trace_id).await {
-                re_log::debug_once!("Failed to send analytics to Rerun Cloud: {err}");
+                re_log::debug_once!(
+                    "Failed to send analytics to Rerun Cloud: {} ({})",
+                    err.code(),
+                    err.message()
+                );
             }
         };
 

@@ -20,16 +20,21 @@ pub(crate) fn get_tokio_runtime() -> &'static Runtime {
 
 /// `f` should do very little work besides spawning tasks and awaiting them.
 ///
+/// The caller's current [`tracing::Span`] is attached to the future so that
+/// `Span::current()` inside `f` resolves to the caller's span on every poll,
+/// even after the future is resumed on a different tokio worker thread.
+///
 /// See [this] for more information.
 ///
 /// [this]: https://docs.rs/tokio/latest/tokio/runtime/struct.Runtime.html#non-worker-future
-#[tracing::instrument(level = "trace", skip_all)]
 pub fn wait_for_future<F>(py: Python<'_>, f: F) -> F::Output
 where
     F: Future + Send,
     F::Output: Send,
 {
+    use tracing::Instrument as _;
     let runtime: &Runtime = get_tokio_runtime();
+    let f = f.in_current_span();
     py.detach(|| runtime.block_on(f))
 }
 

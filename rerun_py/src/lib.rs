@@ -31,6 +31,7 @@ mod python_bridge;
 mod recording;
 mod selector;
 mod server;
+mod trace_context;
 mod urdf;
 mod utils;
 mod video;

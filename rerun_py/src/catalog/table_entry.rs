@@ -12,8 +12,8 @@ use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry,
 
 use crate::catalog::entry::set_entry_name;
 use crate::catalog::table_provider_adapter::ffi_logical_codec_from_pycapsule;
-use crate::catalog::trace_context::read_trace_context_from_python;
 use crate::catalog::{PyCatalogClientInternal, PyEntryDetails, to_py_err};
+use crate::trace_context::read_trace_context_from_python;
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// A table entry in the catalog.

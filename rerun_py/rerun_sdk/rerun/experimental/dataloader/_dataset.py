@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import os
 from collections import defaultdict
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pyarrow as pa
@@ -14,6 +15,7 @@ import pyarrow.compute as pc
 import torch
 import torch.utils.data
 
+from rerun._tracing import attach_parent_carrier, current_trace_carrier, tracing_scope, with_tracing
 from rerun.catalog import CatalogClient
 
 from ._sample_index import FixedRateSampling, SampleIndex
@@ -123,7 +125,13 @@ class RerunDataset(torch.utils.data.IterableDataset[dict[str, torch.Tensor]]):
         """Strip the unpicklable catalog view so DataLoader can send us to workers."""
         state = self.__dict__.copy()
         state["_view"] = None
+        # Capture the parent's OTel context so worker spans are linked to it.
+        state["_parent_trace_carrier"] = current_trace_carrier()
         return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.__dict__.update(state)
+        attach_parent_carrier(state.get("_parent_trace_carrier"))
 
     @property
     def sample_index(self) -> SampleIndex:
@@ -155,17 +163,26 @@ class RerunDataset(torch.utils.data.IterableDataset[dict[str, torch.Tensor]]):
             return
 
         executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rerun-fetch")
-        try:
-            pending: Future[tuple[list[Target], dict[str, pa.Table]]] | None = executor.submit(
-                self._fetch_arrow, chunks[0]
+
+        def submit_fetch(chunk: np.ndarray) -> Future[tuple[list[Target], dict[str, pa.Table]]]:
+            # Copy the calling thread's contextvars so _fetch_arrow's span is
+            # parented under the current OTel context instead of appearing as a root trace.
+            ctx = contextvars.copy_context()
+            return cast(
+                "Future[tuple[list[Target], dict[str, pa.Table]]]",
+                executor.submit(ctx.run, self._fetch_arrow, chunk),
             )
+
+        try:
+            pending: Future[tuple[list[Target], dict[str, pa.Table]]] | None = submit_fetch(chunks[0])
             for i, _ in enumerate(chunks):
                 assert pending is not None
                 targets, seg_tables = pending.result()
-                pending = executor.submit(self._fetch_arrow, chunks[i + 1]) if i + 1 < len(chunks) else None
+                pending = submit_fetch(chunks[i + 1]) if i + 1 < len(chunks) else None
                 yield from self._decode_iter(targets, seg_tables)
         finally:
-            executor.shutdown(wait=False)
+            with tracing_scope("executor.shutdown"):
+                executor.shutdown(wait=False)
 
     def _worker_indices(self) -> np.ndarray:
         """Return the indices this worker is responsible for, shuffled if requested."""
@@ -196,6 +213,7 @@ class RerunDataset(torch.utils.data.IterableDataset[dict[str, torch.Tensor]]):
 
         return all_indices
 
+    @with_tracing("RerunDataset._fetch_arrow")
     def _fetch_arrow(self, indices: np.ndarray) -> tuple[list[Target], dict[str, pa.Table]]:
         """
         Run the server query for `indices` and return `(targets, per-segment tables)`.
@@ -230,20 +248,21 @@ class RerunDataset(torch.utils.data.IterableDataset[dict[str, torch.Tensor]]):
     ) -> Iterator[dict[str, torch.Tensor]]:
         """Yield decoded samples one at a time from a pre-fetched arrow chunk."""
         for seg_meta, idx_val in targets:
-            seg_table = seg_tables.get(seg_meta.segment_id)
-            if seg_table is None:
-                raise RuntimeError(f"No rows returned for segment {seg_meta.segment_id!r} at index {idx_val!r}")
-            sample: dict[str, torch.Tensor] = {}
-            index_array = seg_table[self._index]
-            for key, col in self._columns.items():
-                decoder = self._decoders[key]
-                lo, hi = _column_index_range(idx_val, col, decoder) or (idx_val, idx_val)
-                mask = pc.and_(
-                    pc.greater_equal(index_array, lo),
-                    pc.less_equal(index_array, hi),
-                )
-                raw = seg_table.filter(mask).column(col.path)
-                sample[key] = decoder.decode(raw, idx_val, seg_meta.segment_id)
+            with tracing_scope("RerunDataset._decode_sample"):
+                seg_table = seg_tables.get(seg_meta.segment_id)
+                if seg_table is None:
+                    raise RuntimeError(f"No rows returned for segment {seg_meta.segment_id!r} at index {idx_val!r}")
+                sample: dict[str, torch.Tensor] = {}
+                index_array = seg_table[self._index]
+                for key, col in self._columns.items():
+                    decoder = self._decoders[key]
+                    lo, hi = _column_index_range(idx_val, col, decoder) or (idx_val, idx_val)
+                    mask = pc.and_(
+                        pc.greater_equal(index_array, lo),
+                        pc.less_equal(index_array, hi),
+                    )
+                    raw = seg_table.filter(mask).column(col.path)
+                    sample[key] = decoder.decode(raw, idx_val, seg_meta.segment_id)
             yield sample
 
     def _global_to_local(self, idx: int) -> tuple[SegmentMetadata, int | np.datetime64]:
@@ -255,6 +274,7 @@ class RerunDataset(torch.utils.data.IterableDataset[dict[str, torch.Tensor]]):
         seg = self._sample_index.segments[seg_idx]
         return seg, self._sample_index.resolve_local_index(seg, pos)
 
+    @with_tracing("RerunDataset._ensure_initialized")
     def _ensure_initialized(self) -> None:
         """Lazily set up per-worker catalog connection, decoders, and view."""
         pid = os.getpid()

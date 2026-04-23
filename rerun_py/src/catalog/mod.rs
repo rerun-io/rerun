@@ -16,7 +16,6 @@ mod schema;
 mod segment_url_udf;
 mod table_entry;
 mod table_provider_adapter;
-mod trace_context;
 mod type_aliases;
 
 use errors::{AlreadyExistsError, NotFoundError};
@@ -79,8 +78,6 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     // register exceptions generated with the [`pyo3::create_exception!`] macro
     m.add("NotFoundError", _py.get_type::<NotFoundError>())?;
     m.add("AlreadyExistsError", _py.get_type::<AlreadyExistsError>())?;
-
-    m.add_function(wrap_pyfunction!(trace_context::get_trace_context_var, m)?)?;
 
     Ok(())
 }

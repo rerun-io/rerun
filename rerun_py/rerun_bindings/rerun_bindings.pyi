@@ -1459,7 +1459,7 @@ def logout() -> str | None:
 
     """
 
-def get_trace_context_var() -> Any:
+def _get_trace_context_var() -> Any:
     """
     Return the `ContextVar` that Python uses to pass trace headers to Rust.
 

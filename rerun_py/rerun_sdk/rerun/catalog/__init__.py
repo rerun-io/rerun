@@ -12,7 +12,6 @@ from rerun_bindings import (
     IndexingResult as IndexingResult,
     NotFoundError as NotFoundError,
     VectorDistanceMetric as VectorDistanceMetric,
-    get_trace_context_var as get_trace_context_var,
 )
 from rerun_bindings.types import (
     IndexValuesLike as IndexValuesLike,

@@ -19,6 +19,7 @@ from lerobot.policies.act.configuration_act import ACTConfig
 from lerobot.policies.act.modeling_act import ACTPolicy
 from torch.utils.data import DataLoader
 
+from rerun._tracing import tracing_scope, with_tracing
 from rerun.catalog import CatalogClient
 from rerun.experimental.dataloader import (
     Column,
@@ -49,6 +50,7 @@ class CollateFn:
         self.chunk_size = chunk_size
         self.state_dim = state_dim
 
+    @with_tracing("CollateFn")
     def __call__(self, samples: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
         batch_size = len(samples)
 
@@ -95,6 +97,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+@with_tracing("main")
 def main() -> None:
     args = parse_args()
 
@@ -194,56 +197,58 @@ def main() -> None:
     print(f"\nTraining for {args.epochs} epochs, {num_batches} batches/epoch, batch_size={args.batch_size}\n")
 
     for epoch in range(args.epochs):
-        ds.set_epoch(epoch)
-        total_loss = 0.0
-        total_l1 = 0.0
-        total_kld = 0.0
-        n = 0
+        with tracing_scope(f"epoch {epoch}"):
+            ds.set_epoch(epoch)
+            total_loss = 0.0
+            total_l1 = 0.0
+            total_kld = 0.0
+            n = 0
 
-        t_last_print = time.perf_counter()
-        data_sum = 0.0
-        model_sum = 0.0
-        t_data_start = time.perf_counter()
-        for batch in loader:
-            data_time = time.perf_counter() - t_data_start
-
-            t_model_start = time.perf_counter()
-            batch = {k: v.to(device) for k, v in batch.items()}
-            loss, loss_dict = policy.forward(batch)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            model_time = time.perf_counter() - t_model_start
-
-            total_loss += loss.item()
-            total_l1 += loss_dict["l1_loss"]
-            total_kld += loss_dict.get("kld_loss", 0.0)
-            data_sum += data_time
-            model_sum += model_time
-            n += 1
-
-            if n % 10 == 0 or n == 1:
-                now = time.perf_counter()
-                since_last = now - t_last_print
-                t_last_print = now
-                print(
-                    f"  epoch {epoch + 1}/{args.epochs}  batch {n}/{num_batches}"
-                    f"  loss={loss.item():.4f}"
-                    f"  data={data_sum:.1f}s model={model_sum:.1f}s"
-                    f"  since_last={since_last:.1f}s",
-                    flush=True,
-                )
-                data_sum = 0.0
-                model_sum = 0.0
-
+            t_last_print = time.perf_counter()
+            data_sum = 0.0
+            model_sum = 0.0
             t_data_start = time.perf_counter()
+            for batch in loader:
+                data_time = time.perf_counter() - t_data_start
 
-        avg_loss = total_loss / max(n, 1)
-        avg_l1 = total_l1 / max(n, 1)
-        avg_kld = total_kld / max(n, 1)
-        print(f"Epoch {epoch + 1}/{args.epochs}  loss={avg_loss:.4f}  l1={avg_l1:.4f}  kld={avg_kld:.4f}")
+                t_model_start = time.perf_counter()
+                batch = {k: v.to(device) for k, v in batch.items()}
+                loss, loss_dict = policy.forward(batch)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                model_time = time.perf_counter() - t_model_start
 
-    policy.save_pretrained(str(args.checkpoint_dir))
+                total_loss += loss.item()
+                total_l1 += loss_dict["l1_loss"]
+                total_kld += loss_dict.get("kld_loss", 0.0)
+                data_sum += data_time
+                model_sum += model_time
+                n += 1
+
+                if n % 10 == 0 or n == 1:
+                    now = time.perf_counter()
+                    since_last = now - t_last_print
+                    t_last_print = now
+                    print(
+                        f"  epoch {epoch + 1}/{args.epochs}  batch {n}/{num_batches}"
+                        f"  loss={loss.item():.4f}"
+                        f"  data={data_sum:.1f}s model={model_sum:.1f}s"
+                        f"  since_last={since_last:.1f}s",
+                        flush=True,
+                    )
+                    data_sum = 0.0
+                    model_sum = 0.0
+
+                t_data_start = time.perf_counter()
+
+            avg_loss = total_loss / max(n, 1)
+            avg_l1 = total_l1 / max(n, 1)
+            avg_kld = total_kld / max(n, 1)
+            print(f"Epoch {epoch + 1}/{args.epochs}  loss={avg_loss:.4f}  l1={avg_l1:.4f}  kld={avg_kld:.4f}")
+
+    with tracing_scope("save_pretrained"):
+        policy.save_pretrained(str(args.checkpoint_dir))
     print(f"\nSaved checkpoint to {args.checkpoint_dir}")
 
 

@@ -14,11 +14,11 @@ use re_log_types::{EntityPathFilter, ResolvedEntityPathFilter};
 use re_perf_telemetry::extract_trace_context_from_contextvar;
 use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
 
-use crate::catalog::trace_context::read_trace_context_from_python;
 use crate::catalog::{
     IndexValuesLike, PyDatasetEntryInternal, PySchemaInternal, PyTableProviderAdapterInternal,
     to_py_err,
 };
+use crate::trace_context::read_trace_context_from_python;
 use crate::utils::wait_for_future;
 
 /// A view over a dataset with optional segment and content filters applied lazily.

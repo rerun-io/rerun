@@ -61,6 +61,7 @@ pub(crate) fn read_trace_context_from_python(
 ///
 /// Returns `None` when `perf_telemetry` is disabled.
 #[pyfunction]
+#[pyo3(name = "_get_trace_context_var")]
 pub fn get_trace_context_var(py: Python<'_>) -> PyResult<Py<PyAny>> {
     #[cfg(feature = "perf_telemetry")]
     {

@@ -69,3 +69,6 @@ uv run python train.py \
 ```
 
 Pass `--num-segments 0` to train on all segments in the dataset.
+
+### 4b. Train with traces
+TELEMETRY_ENABLED=true OTEL_SDK_ENABLED=true uv run python train.py

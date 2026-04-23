@@ -11,6 +11,8 @@ import torch
 from PIL import Image
 from torchvision.transforms.functional import pil_to_tensor  # type: ignore[import-untyped]
 
+from rerun._tracing import with_tracing
+
 from ._sample_index import _ns_to_datetime64
 
 if TYPE_CHECKING:
@@ -68,6 +70,7 @@ class ColumnDecoder(ABC):
 class ImageDecoder(ColumnDecoder):
     """Decode a single encoded-image blob (JPEG/PNG) to a `[C, H, W]` uint8 tensor."""
 
+    @with_tracing("ImageDecoder.decode")
     def decode(self, raw: pa.ChunkedArray, index_value: int | np.datetime64, segment_id: str) -> torch.Tensor:
         del index_value, segment_id
         combined = raw.combine_chunks()
@@ -79,6 +82,7 @@ class ImageDecoder(ColumnDecoder):
 class NumericDecoder(ColumnDecoder):
     """Decode Arrow numeric / list-of-numeric columns to a tensor."""
 
+    @with_tracing("NumericDecoder.decode")
     def decode(self, raw: pa.ChunkedArray, index_value: int | np.datetime64, segment_id: str) -> torch.Tensor:
         del index_value, segment_id
         return torch.as_tensor(_unwrap_to_numpy(raw.combine_chunks()))
@@ -206,6 +210,7 @@ class VideoFrameDecoder(ColumnDecoder):
         iv = int(index_value)
         return (max(0, iv - self._keyframe_interval), iv)
 
+    @with_tracing("VideoFrameDecoder.decode")
     def decode(
         self,
         raw: pa.ChunkedArray,

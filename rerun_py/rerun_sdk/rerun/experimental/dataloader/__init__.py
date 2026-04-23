@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from rerun._tracing import tracing_scope, with_tracing
+
 from ._config import Column, DataSource
 from ._dataset import RerunDataset
 from ._decoders import ColumnDecoder, ImageDecoder, NumericDecoder, VideoFrameDecoder
@@ -22,4 +24,6 @@ __all__ = [
     "SampleIndex",
     "SegmentMetadata",
     "VideoFrameDecoder",
+    "tracing_scope",
+    "with_tracing",
 ]

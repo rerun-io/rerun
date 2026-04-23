@@ -272,6 +272,12 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // catalog
     crate::catalog::register(py, m)?;
 
+    // tracing bridge: connect Python tracing spans to Rust
+    m.add_function(wrap_pyfunction!(
+        crate::trace_context::get_trace_context_var,
+        m
+    )?)?;
+
     // viewer
     crate::viewer::register(py, m)?;
 

@@ -3,7 +3,7 @@ name = "dataloader"
 version = "0.1.0"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
-dependencies = ["rerun-sdk[dataloader,dataplatform]", "huggingface-hub<1.0", "lerobot==0.4"]
+dependencies = ["rerun-sdk[dataloader,dataplatform,tracing]", "huggingface-hub<1.0", "lerobot==0.4"]
 
 [dependency-groups]
 # rerun-dev-fixup installs the .pth shim that makes `import rerun` resolve to the
@@ -19,7 +19,7 @@ isolated = true
 package = false
 # Ignore LeRobot's pinned rerun-sdk so resolution picks the local source below.
 # Scoped to this project — does not affect the root workspace.
-override-dependencies = ["rerun-sdk[dataloader,dataplatform]"]
+override-dependencies = ["rerun-sdk[dataloader,dataplatform,tracing]"]
 
 [tool.uv.sources]
 rerun-sdk = { path = "../../../rerun_py", editable = true }

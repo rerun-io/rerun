@@ -24,7 +24,6 @@ use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 use tokio_stream::StreamExt as _;
 
 use super::registration_handle::PyRegistrationHandleInternal;
-use super::trace_context::read_trace_context_from_python;
 use super::{
     PyCatalogClientInternal, PyEntryDetails, PyIndexConfig, PyIndexingResult,
     PyTableProviderAdapterInternal, VectorDistanceMetricLike, VectorLike, to_py_err,
@@ -32,6 +31,7 @@ use super::{
 use crate::catalog::entry::set_entry_name;
 use crate::catalog::{AnyComponentColumn, PyIndexColumnSelector, PySchemaInternal};
 use crate::recording::PyRecordingInternal;
+use crate::trace_context::read_trace_context_from_python;
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
