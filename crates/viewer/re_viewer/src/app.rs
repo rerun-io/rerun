@@ -3039,7 +3039,7 @@ impl App {
             store_hub.purge_fraction_of_ram(
                 fraction_to_purge,
                 self.active_recording_id(),
-                &|store_id| self.state.time_cursor_for(store_id),
+                &|store_id| self.state.time_cursor_for(store_id).map(|t| t.time_cursor),
             );
 
             let mem_use_after = MemoryUse::capture();

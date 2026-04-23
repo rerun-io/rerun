@@ -54,7 +54,7 @@ impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
     pub fn resume_query(
         &self,
         query: RangeInclusive<K>,
-        cursor: OverlapCursor,
+        cursor: OverlapIterState,
     ) -> OverlapIter<'_, K, V> {
         OverlapIter {
             map: self,
@@ -109,7 +109,7 @@ impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
 /// Obtain one via [`OverlapIter::cursor`] and pass it to
 /// [`SortedRangeMap::resume_query`] to continue iteration later.
 #[derive(Debug, Clone, Copy)]
-pub struct OverlapCursor(usize);
+pub struct OverlapIterState(usize);
 
 /// Non-allocating iterator over overlapping ranges.
 #[derive(Debug, Clone)]
@@ -123,8 +123,8 @@ impl<K, V> OverlapIter<'_, K, V> {
     /// Snapshot the current position so the query can be resumed later
     /// via [`SortedRangeMap::resume_query`].
     #[inline]
-    pub fn cursor(&self) -> OverlapCursor {
-        OverlapCursor(self.idx)
+    pub fn cursor(&self) -> OverlapIterState {
+        OverlapIterState(self.idx)
     }
 }
 

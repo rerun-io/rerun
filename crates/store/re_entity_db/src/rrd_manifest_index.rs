@@ -8,7 +8,7 @@ use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{ChunkId, EntityPath, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 use re_log_encoding::{CodecResult, RrdManifest};
-use re_log_types::{AbsoluteTimeRange, StoreKind, TimelinePoint};
+use re_log_types::{AbsoluteTimeRange, StoreKind};
 
 pub use crate::chunk_requests::{ChunkPromise, ChunkRequests, RequestInfo};
 
@@ -19,7 +19,7 @@ mod time_range_merger;
 
 pub use chunk_prioritizer::{
     ChunkFetcher, ChunkPrefetchOptions, ChunkPrioritizer, FetchStage, PrefetchError,
-    PrioritizationState, ProtectedChunks, RemainingByteBudget,
+    PrefetchTimeCursor, PrioritizationState, ProtectedChunks, RemainingByteBudget,
 };
 pub use sorted_temporal_chunks::ChunkCountInfo;
 
@@ -583,7 +583,7 @@ impl RrdManifestIndex {
         &mut self,
         store: &ChunkStore,
         options: &ChunkPrefetchOptions,
-        time_cursor: Option<TimelinePoint>,
+        time_cursor: Option<PrefetchTimeCursor>,
         budget: &mut RemainingByteBudget,
         load_chunks: &dyn Fn(RecordBatch) -> ChunkPromise,
     ) -> Result<(), PrefetchError> {
@@ -628,7 +628,7 @@ impl RrdManifestIndex {
         &'a mut self,
         store: &'a ChunkStore,
         options: &ChunkPrefetchOptions,
-        time_cursor: Option<TimelinePoint>,
+        time_cursor: Option<PrefetchTimeCursor>,
         budget: &mut RemainingByteBudget,
     ) -> Option<ChunkFetcher<'a>> {
         let manifest = self.manifest.as_ref()?;
@@ -636,7 +636,15 @@ impl RrdManifestIndex {
             store,
             manifest,
             options,
-            time_cursor,
+            time_cursor.map(|mut time_cursor| {
+                if let Some(loop_range) = time_cursor.loop_range
+                    && let Some(timeline_range) = self.timeline_range(time_cursor.name())
+                {
+                    time_cursor.loop_range = loop_range.intersection(timeline_range);
+                }
+
+                time_cursor
+            }),
             &self.root_chunks,
             budget,
         ))

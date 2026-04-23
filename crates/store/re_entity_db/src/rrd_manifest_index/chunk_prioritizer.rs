@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::RangeInclusive;
+use std::time::Duration;
 
 use ahash::{HashMap, HashSet};
 use arrow::array::RecordBatch;
@@ -14,7 +15,7 @@ use re_mutex::Mutex;
 use crate::{
     chunk_requests::{ChunkRequests, RequestInfo},
     rrd_manifest_index::{LoadState, RootChunkInfo},
-    sorted_range_map::{OverlapCursor, SortedRangeMap},
+    sorted_range_map::{OverlapIterState, SortedRangeMap},
 };
 
 #[derive(Clone, Copy, Default)]
@@ -332,9 +333,9 @@ impl PrioritizedRootChunk {
         }
     }
 
-    fn similar(chunk_id: ChunkId) -> Self {
+    fn similar(chunk_id: ChunkId, time_cursor_offset: Option<Duration>) -> Self {
         Self {
-            stage: FetchStage::Similar,
+            stage: FetchStage::Similar(time_cursor_offset),
             root_chunk_id: chunk_id,
         }
     }
@@ -454,6 +455,27 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
             + component_paths_from_root_id.heap_size_bytes()
             + components_of_interest.heap_size_bytes()
             + frame_visited.heap_size_bytes()
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct PrefetchTimeCursor {
+    pub time_cursor: TimelinePoint,
+
+    /// How fast the time cursor would move in `TimeInt / real second` if
+    /// not paused.
+    pub speed_if_unpaused: f64,
+
+    /// If the time playing is looped this defines what range is looped.
+    pub loop_range: Option<AbsoluteTimeRange>,
+}
+
+impl std::ops::Deref for PrefetchTimeCursor {
+    type Target = TimelinePoint;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.time_cursor
     }
 }
 
@@ -604,7 +626,7 @@ impl ChunkPrioritizer {
         store: &'a ChunkStore,
         manifest: &'a RrdManifest,
         options: &ChunkPrefetchOptions,
-        time_cursor: Option<TimelinePoint>,
+        time_cursor: Option<PrefetchTimeCursor>,
         root_chunks: &'a HashMap<ChunkId, RootChunkInfo>,
         budget: &mut RemainingByteBudget,
     ) -> ChunkFetcher<'a> {
@@ -713,19 +735,8 @@ impl ChunkPrioritizer {
 }
 
 /// How much we should prefetch. A higher stage also includes all lower stages.
-#[derive(
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Clone,
-    Copy,
-    Debug,
-    Hash,
-    Default,
-    serde::Deserialize,
-    serde::Serialize,
-)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
+#[repr(u32)]
 pub enum FetchStage {
     /// Fetch all required chunks, which includes:
     /// - Static chunks.
@@ -734,25 +745,59 @@ pub enum FetchStage {
     Required = 0,
 
     /// Fetches all chunks on the component paths of chunks that were reported
-    /// as used or missing.
-    #[default]
-    Similar = 1,
+    /// as used or missing within the given time range.
+    ///
+    /// This is in number of seconds ahead if the timeline were to be played.
+    Similar(Option<Duration>) = 1,
 
     /// Fetches everything. Starting at the time cursor.
     Everything = 2,
+}
+
+impl PartialOrd for FetchStage {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for FetchStage {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        use std::cmp::Ordering;
+        match (self, other) {
+            (Self::Required, Self::Required) | (Self::Everything, Self::Everything) => {
+                Ordering::Equal
+            }
+
+            (Self::Similar(a), Self::Similar(b)) => match (a, b) {
+                (Some(a), Some(b)) => a.cmp(b),
+                (Some(_), None) => Ordering::Less,
+                (None, Some(_)) => Ordering::Greater,
+                (None, None) => Ordering::Equal,
+            },
+
+            (Self::Required, _) | (_, Self::Everything) => Ordering::Less,
+            (_, Self::Required) | (Self::Everything, _) => Ordering::Greater,
+        }
+    }
+}
+
+impl Default for FetchStage {
+    fn default() -> Self {
+        Self::Similar(Some(Duration::from_secs(30)))
+    }
 }
 
 impl FetchStage {
     pub fn is_required(&self) -> bool {
         match self {
             Self::Required => true,
-            Self::Similar | Self::Everything => false,
+            Self::Similar(_) | Self::Everything => false,
         }
     }
 
     pub fn is_everything(&self) -> bool {
         match self {
-            Self::Required | Self::Similar => false,
+            Self::Required | Self::Similar(_) => false,
             Self::Everything => true,
         }
     }
@@ -762,6 +807,25 @@ enum IterState {
     Uninited,
     Idx(usize),
     Done,
+}
+
+#[derive(Clone, Copy)]
+enum TimeRangeStage {
+    AfterCursor,
+    BeforeCursor,
+    AfterCursorOutsideLoop,
+    BeforeCursorOutsideLoop,
+}
+
+impl TimeRangeStage {
+    fn next(&self) -> Option<Self> {
+        match self {
+            Self::AfterCursor => Some(Self::BeforeCursor),
+            Self::BeforeCursor => Some(Self::AfterCursorOutsideLoop),
+            Self::AfterCursorOutsideLoop => Some(Self::BeforeCursorOutsideLoop),
+            Self::BeforeCursorOutsideLoop => None,
+        }
+    }
 }
 
 /// Chunk fetching stages, defined in the order they're done.
@@ -783,8 +847,8 @@ enum ChunkPriorityStage<'a> {
     /// If `interesting` is true, this only fetches chunks if they contain a component path
     /// that has been marked as used/missing.
     TimeQuery {
-        query: RangeInclusive<TimeInt>,
-        cursor: Option<OverlapCursor>,
+        stage: TimeRangeStage,
+        iter_state: Option<OverlapIterState>,
         interesting: bool,
     },
 
@@ -803,7 +867,7 @@ enum ChunkPriorityStage<'a> {
 /// [`Self::finish`] must be called when completed.
 #[must_use]
 pub struct ChunkFetcher<'a> {
-    time_cursor: Option<TimelinePoint>,
+    time_cursor: Option<PrefetchTimeCursor>,
     visited_root_chunks: HashSet<ChunkId>,
     chunk_id_scratch: Vec<ChunkId>,
     pub state: PrioritizationState,
@@ -906,77 +970,44 @@ impl ChunkFetcher<'_> {
                         };
 
                         return Some(PrioritizedRootChunk::required(c.chunk_id));
-                    } else if let Some(time_cursor) = self.time_cursor {
+                    } else {
                         self.fetch_stage = ChunkPriorityStage::TimeQuery {
-                            query: time_cursor.time..=TimeInt::MAX,
-                            cursor: None,
+                            stage: TimeRangeStage::AfterCursor,
+                            iter_state: None,
                             interesting: true,
                         };
-                    } else {
-                        self.fetch_stage = ChunkPriorityStage::Everything(self.root_chunks.keys());
                     }
                 }
                 ChunkPriorityStage::TimeQuery {
-                    query,
-                    cursor,
+                    stage,
+                    iter_state,
                     interesting,
                 } => {
-                    if let Some(time_cursor) = self.time_cursor
-                        && let Some(map) = self
-                            .prioritizer
-                            .root_chunk_intervals
-                            .get(&time_cursor.timeline())
-                        && let Some((_, chunk_id)) = {
-                            let mut iter = match *cursor {
-                                Some(c) => map.resume_query(query.clone(), c),
-                                None => map.query(query.clone()),
-                            };
-
-                            // Skip chunks that don't match the current interest filter.
-                            let chunk = iter.find(|(_, c)| {
-                                let is_interesting = self
-                                    .prioritizer
-                                    .component_paths_from_root_id
-                                    .get(c)
-                                    .is_some_and(|k| {
-                                        k.iter().any(|k| {
-                                            self.prioritizer.components_of_interest.contains(k)
-                                        })
-                                    });
-
-                                is_interesting == *interesting
-                            });
-
-                            *cursor = Some(iter.cursor());
-
-                            chunk
-                        }
+                    let stage = *stage;
+                    let interesting = *interesting;
+                    let mut iter_state = *iter_state;
+                    if let Some(chunk) =
+                        self.next_in_time_query(stage, &mut iter_state, interesting)
                     {
-                        return Some(if *interesting {
-                            PrioritizedRootChunk::similar(*chunk_id)
-                        } else {
-                            PrioritizedRootChunk::everything(*chunk_id)
-                        });
-                    } else if let Some(time_cursor) = self.time_cursor {
-                        // Go from after time cursor, to before time cursor.
-                        if *query.end() == TimeInt::MAX {
-                            self.fetch_stage = ChunkPriorityStage::TimeQuery {
-                                query: TimeInt::MIN..=time_cursor.time.saturating_sub(1),
-                                cursor: None,
-                                interesting: *interesting,
-                            };
-                        }
-                        // Go from interesting to uninteresting.
-                        else if *interesting {
-                            self.fetch_stage = ChunkPriorityStage::TimeQuery {
-                                query: time_cursor.time..=TimeInt::MAX,
-                                cursor: None,
-                                interesting: false,
-                            };
-                        } else {
-                            self.fetch_stage =
-                                ChunkPriorityStage::Everything(self.root_chunks.keys());
-                        }
+                        self.fetch_stage = ChunkPriorityStage::TimeQuery {
+                            stage,
+                            iter_state,
+                            interesting,
+                        };
+
+                        return Some(chunk);
+                    } else if let Some(stage) = stage.next() {
+                        self.fetch_stage = ChunkPriorityStage::TimeQuery {
+                            stage,
+                            iter_state: None,
+                            interesting,
+                        };
+                    } else if interesting {
+                        self.fetch_stage = ChunkPriorityStage::TimeQuery {
+                            stage: TimeRangeStage::AfterCursor,
+                            iter_state: None,
+                            interesting: false,
+                        };
                     } else {
                         self.fetch_stage = ChunkPriorityStage::Everything(self.root_chunks.keys());
                     }
@@ -991,6 +1022,113 @@ impl ChunkFetcher<'_> {
                 ChunkPriorityStage::Done => return None,
             }
         }
+    }
+
+    fn next_in_time_query(
+        &self,
+        stage: TimeRangeStage,
+        cursor: &mut Option<OverlapIterState>,
+        interesting: bool,
+    ) -> Option<PrioritizedRootChunk> {
+        let time_cursor = self.time_cursor?;
+        let query = match stage {
+            TimeRangeStage::AfterCursor => {
+                let loop_range = time_cursor.loop_range?;
+                AbsoluteTimeRange::new(loop_range.min.max(time_cursor.time), loop_range.max)
+            }
+            TimeRangeStage::BeforeCursor => {
+                let loop_range = time_cursor.loop_range?;
+                AbsoluteTimeRange::new(
+                    loop_range.min,
+                    loop_range.max.min(time_cursor.time.saturating_sub(1)),
+                )
+            }
+            TimeRangeStage::AfterCursorOutsideLoop => AbsoluteTimeRange::new(
+                time_cursor
+                    .loop_range
+                    .map(|r| r.max + TimeInt::new_temporal(1))
+                    .unwrap_or(time_cursor.time),
+                TimeInt::MAX,
+            ),
+            TimeRangeStage::BeforeCursorOutsideLoop => AbsoluteTimeRange::new(
+                TimeInt::MIN,
+                time_cursor
+                    .loop_range
+                    .map(|r| r.min.saturating_sub(1))
+                    .unwrap_or_else(|| time_cursor.time.saturating_sub(1)),
+            ),
+        };
+
+        if query.is_empty() {
+            return None;
+        }
+
+        let map = self
+            .prioritizer
+            .root_chunk_intervals
+            .get(&time_cursor.timeline())?;
+
+        let mut iter = match *cursor {
+            Some(c) => map.resume_query(query.min..=query.max, c),
+            None => map.query(query.min..=query.max),
+        };
+
+        // Skip chunks that don't match the current interest filter.
+        let chunk = iter.find(|(_, c)| {
+            let is_interesting = self
+                .prioritizer
+                .component_paths_from_root_id
+                .get(c)
+                .is_some_and(|k| {
+                    k.iter()
+                        .any(|k| self.prioritizer.components_of_interest.contains(k))
+                });
+
+            is_interesting == interesting
+        });
+
+        *cursor = Some(iter.cursor());
+
+        let (range, chunk_id) = chunk?;
+        let range = AbsoluteTimeRange::new(*range.start(), *range.end());
+
+        let chunk = if interesting {
+            let after = Duration::try_from_secs_f64(
+                (range.min - time_cursor.time).max(TimeInt::ZERO).as_f64()
+                    / time_cursor.speed_if_unpaused,
+            )
+            .ok();
+
+            // The time it would take (in real time), for the time cursor to get to this chunk.
+            //
+            // `None` if it would never reach, if for example outside of the current loop section.
+            let real_time_offset = match stage {
+                TimeRangeStage::AfterCursor => after,
+                TimeRangeStage::BeforeCursor => time_cursor.loop_range.and_then(|loop_range| {
+                    Duration::try_from_secs_f64(
+                        ((loop_range.max - time_cursor.time).max(TimeInt::ZERO)
+                            + (range.min - loop_range.min).max(TimeInt::ZERO))
+                        .as_f64()
+                            / time_cursor.speed_if_unpaused,
+                    )
+                    .ok()
+                }),
+                TimeRangeStage::AfterCursorOutsideLoop => {
+                    if time_cursor.loop_range.is_some() {
+                        None
+                    } else {
+                        after
+                    }
+                }
+                TimeRangeStage::BeforeCursorOutsideLoop => None,
+            };
+
+            PrioritizedRootChunk::similar(*chunk_id, real_time_offset)
+        } else {
+            PrioritizedRootChunk::everything(*chunk_id)
+        };
+
+        Some(chunk)
     }
 
     /// Iterate through prioritized chunks, consuming budget.
@@ -1175,7 +1313,7 @@ impl ChunkFetcher<'_> {
 
         let mut res = ChunkFetchResult {
             new_in_transit_chunks: Vec::new(),
-            time_cursor: self.time_cursor,
+            time_cursor: self.time_cursor.as_deref().copied(),
         };
 
         if let Some(batcher) = self.request_batcher.take() {

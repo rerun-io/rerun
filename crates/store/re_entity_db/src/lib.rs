@@ -22,7 +22,8 @@ pub use self::ingestion_statistics::{IngestionStatistics, LatencySnapshot, Laten
 pub use self::instance_path::{InstancePath, InstancePathHash};
 pub use self::rrd_manifest_index::{
     ChunkFetcher, ChunkPrefetchOptions, ChunkPromise, ChunkRequests, FetchStage, PrefetchError,
-    PrioritizationState, ProtectedChunks, RemainingByteBudget, RequestInfo, RrdManifestIndex,
+    PrefetchTimeCursor, PrioritizationState, ProtectedChunks, RemainingByteBudget, RequestInfo,
+    RrdManifestIndex,
 };
 pub use self::store_bundle::{StoreBundle, StoreLoadError};
 pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash};

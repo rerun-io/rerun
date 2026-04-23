@@ -6,7 +6,7 @@ use re_chunk::Chunk;
 use re_entity_db::{
     ChunkFetcher, ChunkPrefetchOptions, FetchStage, RemainingByteBudget, StoreBundle,
 };
-use re_log_types::{StoreId, TimelinePoint};
+use re_log_types::StoreId;
 use re_redap_client::{ApiResult, ConnectionClient};
 
 pub enum RecordingOpenKind {
@@ -19,7 +19,7 @@ pub enum RecordingOpenKind {
 pub struct RecordingPrefetchInfo {
     pub store_id: StoreId,
     pub open_kind: RecordingOpenKind,
-    pub time_cursor: Option<TimelinePoint>,
+    pub time_cursor: Option<re_entity_db::PrefetchTimeCursor>,
     pub origin: re_uri::Origin,
 }
 
@@ -43,14 +43,14 @@ pub fn prefetch_chunks_for_recordings(
     }
 
     /// Fetches all stages in a specific order:
-    /// 1. Required for active recordings.
-    /// 2. Required for preview recordings.
-    /// 3. Similar for active recordings.
-    /// 4. Similar for preview recordings.
-    /// 5. Everything for active recordings.
-    /// 6. Everything for background recordings.
+    /// 1. `Required` for active recordings.
+    /// 2. `Required` for preview recordings.
+    /// 3. `Similar(MAX_PREVIEW_FETCH_STAGE)` for active recordings.
+    /// 4. `Similar(MAX_PREVIEW_FETCH_STAGE)` for preview recordings.
+    /// 3. `max_fetch_stage` for active recordings.
+    /// 6. If `max_fetch_stage == Everything`, `Everything` for background recordings.
     ///
-    /// (Preview recordings intentionally skip the `Everything` stage)
+    /// (Preview recordings intentionally skip above `Similar(MAX_PREVIEW_FETCH_STAGE)` stage)
     ///
     /// Stages above `max_fetch_stage` are skipped entirely.
     ///
@@ -63,23 +63,31 @@ pub fn prefetch_chunks_for_recordings(
         max_fetch_stage: FetchStage,
         mut fetch_stage: impl FnMut(&mut FetchState<'a>, FetchStage) -> bool,
     ) {
-        for stage in [FetchStage::Required, FetchStage::Similar] {
-            if max_fetch_stage < stage {
-                return;
-            }
+        const MAX_PREVIEW_FETCH_STAGE: FetchStage =
+            FetchStage::Similar(Some(std::time::Duration::from_secs(10)));
+
+        for stage in [
+            FetchStage::Required,
+            MAX_PREVIEW_FETCH_STAGE.min(max_fetch_stage),
+        ] {
             for state in chain!(active_states.iter_mut(), preview_states.iter_mut()) {
-                if fetch_stage(state, stage) {
+                if fetch_stage(state, stage.min(max_fetch_stage)) {
                     return;
                 }
             }
         }
 
-        if max_fetch_stage < FetchStage::Everything {
-            return;
-        }
-        for state in chain!(active_states.iter_mut(), background_states.iter_mut()) {
-            if fetch_stage(state, FetchStage::Everything) {
+        for state in active_states.iter_mut() {
+            if fetch_stage(state, max_fetch_stage) {
                 return;
+            }
+        }
+
+        if max_fetch_stage == FetchStage::Everything {
+            for state in background_states.iter_mut() {
+                if fetch_stage(state, FetchStage::Everything) {
+                    return;
+                }
             }
         }
     }

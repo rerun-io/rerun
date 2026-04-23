@@ -123,7 +123,7 @@ fn settings_screen_ui_impl(
             ui.label(
                 "Controls how aggressively we prefetch chunks ahead of what is strictly needed.\n\n\
                 • Required: only chunks required to render the current time cursor.\n\
-                • Similar: also prefetch chunks on the same component paths as required chunks.\n\
+                • Similar: also prefetch chunks on the same component paths as required chunks up to a given real-time duration.\n\
                 • Everything: also prefetch every chunk in the recording.",
             );
         });
@@ -228,7 +228,7 @@ fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage) {
     fn label(stage: FetchStage) -> &'static str {
         match stage {
             FetchStage::Required => "Required",
-            FetchStage::Similar => "Similar",
+            FetchStage::Similar(_) => "Similar",
             FetchStage::Everything => "Everything",
         }
     }
@@ -238,12 +238,58 @@ fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage) {
         .show_ui(ui, |ui| {
             for stage in [
                 FetchStage::Required,
-                FetchStage::Similar,
+                FetchStage::default(),
                 FetchStage::Everything,
             ] {
                 ui.selectable_value(max_fetch_stage, stage, label(stage));
             }
         });
+
+    /// Maps t in [0, 1] to a log scale value in [min, max],
+    /// where t=1.0 maps to `f64::INFINITY`.
+    fn log_slider_to_value(t: f64, min: f64, max_finite: f64) -> f64 {
+        if t >= 1.0 {
+            return f64::INFINITY;
+        }
+        // Remap t in [0, 1) to log scale over [min, max_finite]
+        let log_min = min.log10();
+        let log_max = max_finite.log10();
+        10f64.powf(log_min + t * (log_max - log_min))
+    }
+
+    fn value_to_log_slider(value: f64, min: f64, max_finite: f64) -> f64 {
+        if value.is_infinite() {
+            return 1.0;
+        }
+        let log_min = min.log10();
+        let log_max = max_finite.log10();
+        (value.log10() - log_min) / (log_max - log_min)
+    }
+
+    match max_fetch_stage {
+        FetchStage::Similar(range) => {
+            const MIN: f64 = 1.0;
+            const MAX_FINITE: f64 = 600.0;
+
+            let seconds = range.map(|d| d.as_secs_f64()).unwrap_or(f64::INFINITY);
+
+            let mut value = value_to_log_slider(seconds, MIN, MAX_FINITE);
+            ui.add(egui::Slider::new(&mut value, 0.0..=1.0).show_value(false));
+
+            *range =
+                std::time::Duration::try_from_secs_f64(log_slider_to_value(value, MIN, MAX_FINITE))
+                    .ok();
+
+            let label = if let Some(range) = range {
+                format!("{}s", range.as_secs())
+            } else {
+                "∞".to_owned()
+            };
+
+            ui.label(label);
+        }
+        FetchStage::Required | FetchStage::Everything => {}
+    }
 }
 
 fn time_format_section_ui(ui: &mut Ui, timestamp_format: &mut TimestampFormat) {

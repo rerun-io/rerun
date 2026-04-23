@@ -1342,6 +1342,36 @@ impl TimeControl {
         }
     }
 
+    /// Get the current [`re_entity_db::PrefetchTimeCursor`].
+    ///
+    /// If the whole recording is looped the loop range is
+    /// `TimeInt::MIN..=TimeInt::MAX`.
+    pub fn time_cursor(&self) -> Option<re_entity_db::PrefetchTimeCursor> {
+        let typ = self.time_type()?;
+        let speed_if_unpaused = match typ {
+            TimeType::DurationNs | TimeType::TimestampNs => {
+                TimeInt::from_secs(1.0).as_f64() * self.speed as f64
+            }
+            TimeType::Sequence => self.fps()? as f64 * self.speed as f64,
+        };
+
+        let loop_range = if self.loop_mode == LoopMode::All {
+            Some(AbsoluteTimeRange::new(TimeInt::MIN, TimeInt::MAX))
+        } else {
+            self.active_loop_selection().map(|r| r.to_int())
+        };
+
+        Some(re_entity_db::PrefetchTimeCursor {
+            time_cursor: re_log_types::TimelinePoint {
+                name: *self.timeline_name(),
+                typ,
+                time: self.time_int()?,
+            },
+            speed_if_unpaused,
+            loop_range,
+        })
+    }
+
     /// playback speed
     pub fn speed(&self) -> f32 {
         self.speed
