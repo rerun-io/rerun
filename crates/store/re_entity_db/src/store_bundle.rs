@@ -20,7 +20,7 @@ pub enum StoreLoadError {
 #[derive(Default)]
 pub struct StoreBundle {
     // `indexmap` is used to keep track of the insertion order.
-    recording_store: indexmap::IndexMap<StoreId, EntityDb>,
+    stores: indexmap::IndexMap<StoreId, EntityDb>,
 }
 
 impl StoreBundle {
@@ -28,6 +28,7 @@ impl StoreBundle {
     /// It can theoretically contain multiple recordings, and blueprints.
     pub fn from_rrd<R: std::io::Read>(
         reader: std::io::BufReader<R>,
+        data_source: &re_log_channel::LogSource,
     ) -> Result<Self, StoreLoadError> {
         re_tracing::profile_function!();
 
@@ -37,37 +38,42 @@ impl StoreBundle {
 
         for msg in decoder {
             let msg = msg?;
-            slf.entry(msg.store_id()).add_log_msg(&msg)?;
+            let entity_db = slf.stores.entry(msg.store_id().clone()).or_insert_with(|| {
+                let mut db = EntityDb::new(msg.store_id().clone());
+                db.data_source = Some(data_source.clone());
+                db
+            });
+            entity_db.add_log_msg(&msg)?;
         }
         Ok(slf)
     }
 
     /// All loaded [`EntityDb`], both recordings and blueprints, in insertion order.
     pub fn entity_dbs(&self) -> impl Iterator<Item = &EntityDb> {
-        self.recording_store.values()
+        self.stores.values()
     }
 
     /// All loaded [`EntityDb`], both recordings and blueprints, in insertion order.
     pub fn entity_dbs_mut(&mut self) -> impl Iterator<Item = &mut EntityDb> {
-        self.recording_store.values_mut()
+        self.stores.values_mut()
     }
 
     pub fn remove(&mut self, id: &StoreId) -> Option<EntityDb> {
-        self.recording_store.shift_remove(id)
+        self.stores.shift_remove(id)
     }
 
     // --
 
     pub fn contains(&self, id: &StoreId) -> bool {
-        self.recording_store.contains_key(id)
+        self.stores.contains_key(id)
     }
 
     pub fn get(&self, id: &StoreId) -> Option<&EntityDb> {
-        self.recording_store.get(id)
+        self.stores.get(id)
     }
 
     pub fn get_mut(&mut self, id: &StoreId) -> Option<&mut EntityDb> {
-        self.recording_store.get_mut(id)
+        self.stores.get_mut(id)
     }
 
     /// Returns either a recording or blueprint [`EntityDb`].
@@ -75,7 +81,7 @@ impl StoreBundle {
     // NOTE(grtlr): We should clean this up, it's much too easy to create an
     // entry in without the required book-keeping for new stores.
     pub fn entry(&mut self, id: &StoreId) -> &mut EntityDb {
-        self.recording_store.entry(id.clone()).or_insert_with(|| {
+        self.stores.entry(id.clone()).or_insert_with(|| {
             re_log::trace!("Creating new store: '{id:?}'");
             EntityDb::new(id.clone())
         })
@@ -87,7 +93,7 @@ impl StoreBundle {
     pub fn blueprint_entry(&mut self, id: &StoreId) -> &mut EntityDb {
         re_log::debug_assert!(id.is_blueprint());
 
-        self.recording_store.entry(id.clone()).or_insert_with(|| {
+        self.stores.entry(id.clone()).or_insert_with(|| {
             // TODO(jleibs): If the blueprint doesn't exist this probably means we are
             // initializing a new default-blueprint for the application in question.
             // Make sure it's marked as a blueprint.
@@ -109,20 +115,19 @@ impl StoreBundle {
     }
 
     pub fn insert(&mut self, entity_db: EntityDb) {
-        self.recording_store
-            .insert(entity_db.store_id().clone(), entity_db);
+        self.stores.insert(entity_db.store_id().clone(), entity_db);
     }
 
     /// In insertion order.
     pub fn recordings(&self) -> impl Iterator<Item = &EntityDb> {
-        self.recording_store
+        self.stores
             .values()
             .filter(|log| log.store_kind() == StoreKind::Recording)
     }
 
     /// In insertion order.
     pub fn recordings_mut(&mut self) -> impl Iterator<Item = &mut EntityDb> {
-        self.recording_store
+        self.stores
             .values_mut()
             .filter(|log| log.store_kind() == StoreKind::Recording)
     }
@@ -130,11 +135,11 @@ impl StoreBundle {
     // --
 
     pub fn retain(&mut self, mut f: impl FnMut(&EntityDb) -> bool) {
-        self.recording_store.retain(|_, db| f(db));
+        self.stores.retain(|_, db| f(db));
     }
 
     /// In insertion order.
     pub fn drain_entity_dbs(&mut self) -> impl Iterator<Item = EntityDb> + '_ {
-        self.recording_store.drain(..).map(|(_, store)| store)
+        self.stores.drain(..).map(|(_, store)| store)
     }
 }

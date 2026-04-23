@@ -661,18 +661,6 @@ impl StoreHub {
         self.store_caches.get(store_id)
     }
 
-    /// Get or create the [`StoreCache`] for a given store.
-    pub fn store_cache_entry(
-        &mut self,
-        store_id: &StoreId,
-        view_class_registry: &ViewClassRegistry,
-    ) -> &mut StoreCache {
-        let entity_db = self.store_bundle.entry(store_id);
-        self.store_caches
-            .entry(store_id.clone())
-            .or_insert_with(|| StoreCache::new(view_class_registry, entity_db))
-    }
-
     /// Get both the [`EntityDb`] and [`StoreCache`] for a given store.
     ///
     /// Uses split borrows to allow simultaneous access.
@@ -709,7 +697,13 @@ impl StoreHub {
             self.load_persisted_blueprints_for_app(&app_id);
         }
 
-        self.store_cache_entry(recording_id, view_class_registry);
+        let store_bundle = &self.store_bundle;
+        let store_caches = &mut self.store_caches;
+        if let Some(entity_db) = store_bundle.get(recording_id) {
+            store_caches
+                .entry(recording_id.clone())
+                .or_insert_with(|| StoreCache::new(view_class_registry, entity_db));
+        }
     }
 
     // ---------------------

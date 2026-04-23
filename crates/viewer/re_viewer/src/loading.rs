@@ -18,21 +18,17 @@ pub fn load_blueprint_file(path: &std::path::Path) -> Option<StoreBundle> {
         re_tracing::profile_function!();
 
         let file = std::fs::File::open(path)?;
-        let file = std::io::BufReader::new(file);
+        let reader = std::io::BufReader::new(file);
+        let data_source = re_log_channel::LogSource::File {
+            path: path.into(),
+            follow: false,
+        };
 
-        Ok(StoreBundle::from_rrd(file)?)
+        Ok(StoreBundle::from_rrd(reader, &data_source)?)
     }
 
     match load_file_path_impl(path) {
-        Ok(mut rrd) => {
-            for entity_db in rrd.entity_dbs_mut() {
-                entity_db.data_source = Some(re_log_channel::LogSource::File {
-                    path: path.into(),
-                    follow: false,
-                });
-            }
-            Some(rrd)
-        }
+        Ok(rrd) => Some(rrd),
         Err(err) => {
             let msg = format!("Failed loading {path:?}: {err}");
 

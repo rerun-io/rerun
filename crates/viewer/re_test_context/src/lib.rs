@@ -624,7 +624,7 @@ impl TestContext {
         }
 
         // Ensure the per-store cache exists with up-to-date visualizer subscribers.
-        store_hub.store_cache_entry(&self.recording_store_id, &self.view_class_registry);
+        store_hub.entity_db_and_cache(&self.recording_store_id, &self.view_class_registry);
 
         let route = Route::LocalRecording {
             recording_id: self.recording_store_id.clone(),

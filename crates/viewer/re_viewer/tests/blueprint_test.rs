@@ -66,9 +66,13 @@ fn save_blueprint_to_file(test_context: &TestContext, path: &Path) {
 
 fn load_blueprint_from_file(test_context: &mut TestContext, path: &Path) {
     let file = std::fs::File::open(path).expect("Failed to open blueprint file.");
-    let file = std::io::BufReader::new(file);
-    let rbl_store =
-        re_entity_db::StoreBundle::from_rrd(file).expect("Failed to load blueprint store");
+    let reader = std::io::BufReader::new(file);
+    let data_source = re_log_channel::LogSource::File {
+        path: path.into(),
+        follow: false,
+    };
+    let rbl_store = re_entity_db::StoreBundle::from_rrd(reader, &data_source)
+        .expect("Failed to load blueprint store");
     {
         let mut lock = test_context.store_hub.lock();
         let app_id = test_context.application_id.clone();
