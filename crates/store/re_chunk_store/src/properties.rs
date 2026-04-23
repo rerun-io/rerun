@@ -41,27 +41,39 @@ impl ChunkStore {
         let mut fields = vec![];
         let mut data = vec![];
 
-        for entity in self
+        // Sweep all property entities first and collect the union of missing virtual chunks
+        // across all of them. This way callers that auto-load (e.g. `LazyRrdStore::extract_properties`)
+        // see the full batch in one shot and converge in a single retry instead of one disk
+        // round-trip per entity.
+        let per_entity: Vec<(EntityPath, QueryResults)> = self
             .all_entities()
             .into_iter()
             .filter(EntityPath::is_property)
-        {
-            let QueryResults { chunks, missing_virtual } = self
-                // TODO(zehiko) we should be able to get static chunks without specifying the timeline
-                .latest_at_relevant_chunks_for_all_components(
-                    ChunkTrackingMode::Report,
-                    &LatestAtQuery::new(
-                        TimelineName::log_tick(), /* timeline is irrelevant, these are static chunks */
-                        TimeInt::MIN,
-                    ),
-                    &entity,
-                    true, /* yes, we want static chunks */
-                );
+            .map(|entity| {
+                let results = self
+                    // TODO(zehiko) we should be able to get static chunks without specifying the timeline
+                    .latest_at_relevant_chunks_for_all_components(
+                        ChunkTrackingMode::Report,
+                        &LatestAtQuery::new(
+                            TimelineName::log_tick(), /* timeline is irrelevant, these are static chunks */
+                            TimeInt::MIN,
+                        ),
+                        &entity,
+                        true, /* yes, we want static chunks */
+                    );
+                (entity, results)
+            })
+            .collect();
 
-            if !missing_virtual.is_empty() {
-                return Err(ExtractPropertiesError::MissingData(missing_virtual));
-            }
+        let all_missing: Vec<_> = per_entity
+            .iter()
+            .flat_map(|(_, qr)| qr.missing_virtual.iter().copied())
+            .collect();
+        if !all_missing.is_empty() {
+            return Err(ExtractPropertiesError::MissingData(all_missing));
+        }
 
+        for (entity, QueryResults { chunks, .. }) in per_entity {
             for chunk in chunks {
                 for component_desc in chunk.component_descriptors() {
                     let component = component_desc.component;

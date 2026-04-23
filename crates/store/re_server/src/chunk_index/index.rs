@@ -492,8 +492,13 @@ fn find_datatypes(
 ) -> Option<IndexDataTypes> {
     for segment in dataset.segments().values() {
         for layer in segment.layers().values() {
-            let chunk_store = layer.store_handle().read();
-            for chunk in chunk_store.iter_physical_chunks() {
+            let chunks: Vec<Arc<Chunk>> = match layer.resolved_store() {
+                crate::store::ResolvedStore::Eager(h) => {
+                    h.read().iter_physical_chunks().cloned().collect()
+                }
+                crate::store::ResolvedStore::Lazy(lazy) => lazy.collect_physical_chunks().ok()?,
+            };
+            for chunk in chunks {
                 if chunk.entity_path() == entity_path
                     && let Some(component) = chunk.components().0.get(component)
                     && let Some(timeline) = chunk.timelines().get(timeline_name)

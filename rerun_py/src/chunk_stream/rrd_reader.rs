@@ -6,7 +6,6 @@ use pyo3::prelude::*;
 
 use re_chunk::Chunk;
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, LazyRrdStore};
-use re_log_encoding::RrdManifest;
 use re_log_types::{LogMsg, StoreId, StoreInfo, StoreKind};
 
 use super::chunk_store::PyChunkStoreInternal;
@@ -87,8 +86,13 @@ impl PyRrdReaderInternal {
 
             match re_log_encoding::read_rrd_footer(&mut file) {
                 Ok(Some(rrd_footer)) => {
-                    let manifest = pick_first_recording_manifest(&rrd_footer, &path)?;
-                    let lazy = LazyRrdStore::new(file, path, Arc::new(manifest));
+                    let raw = pick_first_recording_manifest(&rrd_footer, &path)?;
+                    let lazy = LazyRrdStore::try_new(file, path.clone(), Arc::new(raw)).map_err(
+                        |err| ChunkPipelineError::RrdRead {
+                            path,
+                            reason: format!("Invalid RRD manifest: {err}"),
+                        },
+                    )?;
                     Ok(PyChunkStoreInternal::indexed_rrd(lazy))
                 }
                 Ok(None) => {
@@ -318,7 +322,7 @@ fn load_rrd_to_chunk_store(path: &Path) -> Result<PyChunkStoreInternal, ChunkPip
 fn pick_first_recording_manifest(
     rrd_footer: &re_log_encoding::RrdFooter,
     path: &Path,
-) -> Result<RrdManifest, ChunkPipelineError> {
+) -> Result<re_log_encoding::RawRrdManifest, ChunkPipelineError> {
     let (_, raw_manifest) = rrd_footer
         .manifests
         .iter()
@@ -327,10 +331,7 @@ fn pick_first_recording_manifest(
             path: path.to_path_buf(),
             reason: "No recording store found in RRD footer".to_owned(),
         })?;
-    RrdManifest::try_new(raw_manifest).map_err(|err| ChunkPipelineError::RrdRead {
-        path: path.to_path_buf(),
-        reason: format!("Invalid RRD manifest: {err}"),
-    })
+    Ok(raw_manifest.clone())
 }
 
 /// Open an RRD file and extract the [`StoreInfo`] from the first recording store.

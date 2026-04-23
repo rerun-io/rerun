@@ -283,6 +283,77 @@ impl RawRrdManifest {
         })
     }
 
+    /// Merges multiple manifests into one, tolerating schema differences.
+    ///
+    /// Unlike [`Self::concat`] — which requires identical schemas and `store_id`s — this allows
+    /// each input to carry its own schema. Fields that exist in some manifests but not others are
+    /// padded with nulls during merging. Sorbet schemas are unified via
+    /// [`arrow::datatypes::Schema::try_merge`] and the hash is recomputed.
+    ///
+    /// The resulting manifest's `store_id` is set to the provided value — the individual inputs'
+    /// `store_id`s are ignored, since this method is designed for cases where the inputs come from
+    /// distinct recordings (e.g. per-layer manifests being merged into a segment-scoped one).
+    ///
+    /// The `:has_static_data` and `:num_rows` columns are non-nullable in the `RawRrdManifest`
+    /// contract: cross-layer null values are collapsed to the underlying buffer default
+    /// (`false` / `0`) so that clients get the same shape regardless of whether a column came
+    /// from one layer or many. This mirrors what `ExtendedRrdManifest::try_into_standard_manifest`
+    /// does on the commercial side.
+    pub fn merge(store_id: StoreId, manifests: Vec<Self>) -> CodecResult<Self> {
+        re_tracing::profile_function!();
+
+        if manifests.is_empty() {
+            return Err(CodecError::ArrowDeserialization(
+                ArrowError::InvalidArgumentError("cannot merge 0 manifests".to_owned()),
+            ));
+        }
+
+        let parts: Vec<_> = manifests
+            .into_iter()
+            .map(|m| (m.sorbet_schema, m.data))
+            .collect();
+
+        let (sorbet_schema, sorbet_schema_sha256, data) = Self::merge_polymorphic_parts(parts)?;
+
+        let data = strip_null_mask_on_default_columns(data)?;
+
+        Ok(Self {
+            store_id,
+            sorbet_schema,
+            sorbet_schema_sha256,
+            data,
+        })
+    }
+
+    /// Polymorphic-merge kernel: unify sorbet schemas and concatenate data batches.
+    ///
+    /// Takes one `(sorbet_schema, data_batch)` pair per logical input manifest, and returns
+    /// `(merged_sorbet_schema, merged_sha256, merged_data_batch)`.
+    pub fn merge_polymorphic_parts(
+        parts: Vec<(arrow::datatypes::Schema, RecordBatch)>,
+    ) -> CodecResult<(arrow::datatypes::Schema, [u8; 32], RecordBatch)> {
+        use re_arrow_util::{RecordBatchExt as _, concat_polymorphic_batches};
+
+        let (sorbet_schemas, data_batches): (Vec<_>, Vec<_>) = parts.into_iter().unzip();
+
+        let sorbet_schema = arrow::datatypes::Schema::try_merge(sorbet_schemas)
+            .map_err(CodecError::ArrowDeserialization)?;
+        let sorbet_schema_sha256 = Self::compute_sorbet_schema_sha256(&sorbet_schema)
+            .map_err(CodecError::ArrowSerialization)?;
+
+        // Make all fields nullable so `concat_polymorphic_batches` can backfill missing columns
+        // with nulls.
+        let nullable_batches: Vec<RecordBatch> = data_batches
+            .into_iter()
+            .map(|b| b.make_nullable())
+            .collect();
+
+        let data = concat_polymorphic_batches(&nullable_batches)
+            .map_err(CodecError::ArrowDeserialization)?;
+
+        Ok((sorbet_schema, sorbet_schema_sha256, data))
+    }
+
     /// High-level helper to parse [`RawRrdManifest`]s from raw RRD bytes.
     ///
     /// This does not decode all the data, but rather goes straight to the RRD footer (if any).
@@ -527,16 +598,8 @@ impl RawRrdManifest {
                 continue;
             }
 
-            pub fn get_index_name(field: &arrow::datatypes::Field) -> Option<&str> {
-                field.metadata().get("rerun:index").map(|s| s.as_str())
-            }
-
-            pub fn is_specific_index(field: &arrow::datatypes::Field, index_name: &str) -> bool {
-                get_index_name(field) == Some(index_name)
-            }
-
             let Some((_, col_start)) = itertools::izip!(fields, columns).find(|(f, _col)| {
-                is_specific_index(f, index)
+                Self::is_specific_index(f, index)
                     && f.name().ends_with(":start")
                     && f.metadata().get("rerun:component") == Some(component)
             }) else {
@@ -545,7 +608,7 @@ impl RawRrdManifest {
                 }));
             };
             let Some((_, col_end)) = itertools::izip!(fields, columns).find(|(f, _col)| {
-                is_specific_index(f, index)
+                Self::is_specific_index(f, index)
                     && f.name().ends_with(":end")
                     && f.metadata().get("rerun:component") == Some(component)
             }) else {
@@ -555,7 +618,7 @@ impl RawRrdManifest {
             };
             let Some((field_num_rows, col_num_rows)) =
                 itertools::izip!(fields, columns).find(|(f, _col)| {
-                    is_specific_index(f, index)
+                    Self::is_specific_index(f, index)
                         && f.name().ends_with(":num_rows")
                         && f.metadata().get("rerun:component") == Some(component)
                 })
@@ -678,6 +741,73 @@ impl PartialEq for RawRrdManifest {
                     .sorted_by_key(|f| f.name());
                 itertools::izip!(sorted_fields, other_sorted_fields).all(|(f1, f2)| f1 == f2)
             }
+    }
+}
+
+// Index-column helpers.
+//
+// Rerun index columns are tagged with `rerun:*` metadata keys that describe what kind of index
+// they represent (static vs temporal, sequence vs timestamp, start/end/len marker, etc). These
+// helpers centralize the key-name conventions so downstream code doesn't reach into the metadata
+// map directly.
+impl RawRrdManifest {
+    /// `true` if the field is a Rerun index column (temporal or static).
+    pub fn is_index(field: &Field) -> bool {
+        field.metadata().contains_key("rerun:index")
+    }
+
+    /// The index name (e.g. `"frame_nr"`, `"log_time"`, `"static"`) for a field, if any.
+    pub fn get_index_name(field: &Field) -> Option<&str> {
+        field.metadata().get("rerun:index").map(|s| s.as_str())
+    }
+
+    /// The index kind (`"sequence"`, `"timestamp"`, `"duration"`) for a field, if any.
+    pub fn get_index_kind(field: &Field) -> Option<&str> {
+        field.metadata().get("rerun:index_kind").map(|s| s.as_str())
+    }
+
+    /// `true` if the field is a Rerun index column with the given name.
+    pub fn is_specific_index(field: &Field, index_name: &str) -> bool {
+        Self::get_index_name(field) == Some(index_name)
+    }
+
+    /// `true` if the field belongs to the static-data pseudo-index.
+    pub fn is_index_static(field: &Field) -> bool {
+        Self::is_specific_index(field, "static")
+    }
+
+    /// `true` if the field is the `:start` marker of an index.
+    pub fn is_index_start(field: &Field) -> bool {
+        field
+            .metadata()
+            .get("rerun:index_marker")
+            .map(|s| s.as_str())
+            == Some("start")
+    }
+
+    /// `true` if the field is the `:end` marker of an index.
+    pub fn is_index_end(field: &Field) -> bool {
+        field
+            .metadata()
+            .get("rerun:index_marker")
+            .map(|s| s.as_str())
+            == Some("end")
+    }
+
+    /// `true` if the field is the `:len` marker of an index.
+    pub fn is_index_length(field: &Field) -> bool {
+        field
+            .metadata()
+            .get("rerun:index_marker")
+            .map(|s| s.as_str())
+            == Some("len")
+    }
+
+    /// `true` if the field is a temporal index column (not static, not per-component).
+    pub fn is_index_global_temporal(field: &Field) -> bool {
+        Self::is_index(field)
+            && !Self::is_index_static(field)
+            && !field.metadata().contains_key("rerun:component")
     }
 }
 
@@ -1601,4 +1731,61 @@ impl RawRrdManifest {
                 )))
             })
     }
+}
+
+/// Strip the null mask from columns that the [`RawRrdManifest`] contract says are non-nullable
+/// with a default value (`:has_static_data` → `false`, `:num_rows` → `0`).
+///
+/// After [`crate::RrdManifestBuilder`] emits a manifest for a single layer, these columns are
+/// fully populated. But once we merge multiple per-layer manifests via polymorphic concat, a
+/// component only known to one layer will have nulls in the rows from other layers. The contract
+/// — shared with commercial (see `ExtendedRrdManifest::try_into_standard_manifest`) — is that
+/// the output manifest has these columns non-nullable with the underlying buffer's zero bits
+/// (which Arrow zero-initializes when `new_null_array` is called).
+fn strip_null_mask_on_default_columns(data: RecordBatch) -> CodecResult<RecordBatch> {
+    use re_arrow_util::ArrowArrayDowncastRef as _;
+
+    let (schema, mut columns, num_rows) = data.into_parts();
+    let mut new_fields = schema.fields.to_vec();
+
+    for (field, column) in itertools::izip!(&mut new_fields, &mut columns) {
+        if column.null_count() == 0 {
+            continue;
+        }
+
+        let name = field.name().as_str();
+        if name.ends_with(":has_static_data") {
+            let Some(c) = column.downcast_array_ref::<BooleanArray>() else {
+                return Err(CodecError::ArrowDeserialization(ArrowError::SchemaError(
+                    format!(
+                        "'{name}' should be a BooleanArray, got {}",
+                        column.data_type()
+                    ),
+                )));
+            };
+            let (bools, _nulls) = c.clone().into_parts();
+            *column = std::sync::Arc::new(BooleanArray::new(bools, None));
+            *field = std::sync::Arc::new((**field).clone().with_nullable(false));
+        } else if name.ends_with(":num_rows") {
+            let Some(c) = column.downcast_array_ref::<UInt64Array>() else {
+                return Err(CodecError::ArrowDeserialization(ArrowError::SchemaError(
+                    format!(
+                        "'{name}' should be a UInt64Array, got {}",
+                        column.data_type()
+                    ),
+                )));
+            };
+            let (_dt, ints, _nulls) = c.clone().into_parts();
+            *column = std::sync::Arc::new(UInt64Array::new(ints, None));
+            *field = std::sync::Arc::new((**field).clone().with_nullable(false));
+        }
+    }
+
+    let schema = arrow::datatypes::Schema::new_with_metadata(new_fields, schema.metadata.clone());
+    RecordBatch::try_new_with_options(
+        std::sync::Arc::new(schema),
+        columns,
+        &arrow::array::RecordBatchOptions::new().with_row_count(Some(num_rows)),
+    )
+    .map_err(CodecError::ArrowSerialization)
 }

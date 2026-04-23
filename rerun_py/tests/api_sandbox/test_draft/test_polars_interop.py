@@ -59,24 +59,26 @@ Schema([('rerun_segment_id', String),
         ('timeline:start', Datetime(time_unit='ns', time_zone=None))])\
 """)
 
-        df = df.drop(["rerun_storage_urls", "rerun_last_updated_at", "property:RecordingInfo:start_time"]).sort(
-            "rerun_segment_id"
-        )
+        df = df.drop([
+            "rerun_storage_urls",
+            "rerun_last_updated_at",
+            "property:RecordingInfo:start_time",
+            "rerun_size_bytes",
+        ]).sort("rerun_segment_id")
         assert str(df) == inline_snapshot("""\
-shape: (3, 6)
-┌────────────────┬────────────────┬────────────────┬───────────────┬───────────────┬───────────────┐
-│ rerun_segment_ ┆ rerun_layer_na ┆ rerun_num_chun ┆ rerun_size_by ┆ timeline:end  ┆ timeline:star │
-│ id             ┆ mes            ┆ ks             ┆ tes           ┆ ---           ┆ t             │
-│ ---            ┆ ---            ┆ ---            ┆ ---           ┆ datetime[ns]  ┆ ---           │
-│ str            ┆ list[str]      ┆ u64            ┆ u64           ┆               ┆ datetime[ns]  │
-╞════════════════╪════════════════╪════════════════╪═══════════════╪═══════════════╪═══════════════╡
-│ simple_recordi ┆ ["base"]       ┆ 2              ┆ 2656          ┆ 2000-01-01    ┆ 2000-01-01    │
-│ ng_0           ┆                ┆                ┆               ┆ 00:00:00      ┆ 00:00:00      │
-│ simple_recordi ┆ ["base"]       ┆ 2              ┆ 2656          ┆ 2000-01-01    ┆ 2000-01-01    │
-│ ng_1           ┆                ┆                ┆               ┆ 00:00:01      ┆ 00:00:01      │
-│ simple_recordi ┆ ["base"]       ┆ 2              ┆ 2656          ┆ 2000-01-01    ┆ 2000-01-01    │
-│ ng_2           ┆                ┆                ┆               ┆ 00:00:02      ┆ 00:00:02      │
-└────────────────┴────────────────┴────────────────┴───────────────┴───────────────┴───────────────┘\
+shape: (3, 5)
+┌──────────────────────┬───────────────────┬──────────────────┬──────────────┬─────────────────────┐
+│ rerun_segment_id     ┆ rerun_layer_names ┆ rerun_num_chunks ┆ timeline:end ┆ timeline:start      │
+│ ---                  ┆ ---               ┆ ---              ┆ ---          ┆ ---                 │
+│ str                  ┆ list[str]         ┆ u64              ┆ datetime[ns] ┆ datetime[ns]        │
+╞══════════════════════╪═══════════════════╪══════════════════╪══════════════╪═════════════════════╡
+│ simple_recording_0   ┆ ["base"]          ┆ 2                ┆ 2000-01-01   ┆ 2000-01-01 00:00:00 │
+│                      ┆                   ┆                  ┆ 00:00:00     ┆                     │
+│ simple_recording_1   ┆ ["base"]          ┆ 2                ┆ 2000-01-01   ┆ 2000-01-01 00:00:01 │
+│                      ┆                   ┆                  ┆ 00:00:01     ┆                     │
+│ simple_recording_2   ┆ ["base"]          ┆ 2                ┆ 2000-01-01   ┆ 2000-01-01 00:00:02 │
+│                      ┆                   ┆                  ┆ 00:00:02     ┆                     │
+└──────────────────────┴───────────────────┴──────────────────┴──────────────┴─────────────────────┘\
 """)
 
 

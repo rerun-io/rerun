@@ -2,13 +2,17 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use ahash::{HashMap, HashMapExt as _};
+use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
 
 use re_chunk::{Chunk, ChunkId};
-use re_log_encoding::RrdManifest;
+use re_log_encoding::{CodecResult, RawRrdManifest, RrdManifest};
+use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, Timeline};
 
 use crate::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ChunkStoreResult, EntityTree, StoreSchema,
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ChunkStoreResult, ChunkTrackingMode,
+    EntityTree, ExtractPropertiesError, LatestAtQuery, QueryResults, RangeQuery, StoreSchema,
 };
 
 /// A [`ChunkStore`] backed by an RRD file, with index loaded but chunks loaded on demand.
@@ -28,7 +32,14 @@ pub struct LazyRrdStore {
     store: ChunkStoreHandle,
     file: Mutex<File>,
     rrd_path: PathBuf,
+    raw_manifest: Arc<RawRrdManifest>,
     manifest: Arc<RrdManifest>,
+
+    /// Precomputed map from `ChunkId` to manifest row index.
+    chunk_id_to_index: HashMap<ChunkId, usize>,
+
+    /// Precomputed per-chunk timeline ranges.
+    timeline_ranges: HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>>,
 }
 
 impl LazyRrdStore {
@@ -41,7 +52,13 @@ impl LazyRrdStore {
     /// the same file — byte offsets in the manifest are meaningless otherwise.
     ///
     /// `rrd_path` is kept for diagnostic messages only; all I/O goes through `file`.
-    pub fn new(file: File, rrd_path: PathBuf, manifest: Arc<RrdManifest>) -> Self {
+    pub fn try_new(
+        file: File,
+        rrd_path: PathBuf,
+        raw_manifest: Arc<RawRrdManifest>,
+    ) -> CodecResult<Self> {
+        let manifest = Arc::new(RrdManifest::try_new(&raw_manifest)?);
+
         // IMPORTANT: `ALL_DISABLED` here is load-bearing, since the `ChunkStore` is essentially
         // acting as a cache for the underlying RRD. Any compaction, etc. would lead to unexpected
         // consequences.
@@ -51,12 +68,45 @@ impl LazyRrdStore {
         #[expect(clippy::let_underscore_must_use)]
         let _ = store.insert_rrd_manifest(Arc::clone(&manifest));
 
-        Self {
+        let chunk_id_to_index: HashMap<ChunkId, usize> = manifest
+            .col_chunk_ids()
+            .iter()
+            .enumerate()
+            .map(|(i, &id)| (id, i))
+            .collect();
+
+        let timeline_ranges = Self::build_timeline_ranges(&manifest);
+
+        Ok(Self {
             store: ChunkStoreHandle::new(store),
             file: Mutex::new(file),
             rrd_path,
+            raw_manifest,
             manifest,
+            chunk_id_to_index,
+            timeline_ranges,
+        })
+    }
+
+    fn build_timeline_ranges(
+        manifest: &RrdManifest,
+    ) -> HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>> {
+        let mut result: HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>> = HashMap::new();
+        for per_entity in manifest.temporal_map().values() {
+            for (timeline, per_component) in per_entity {
+                for per_chunk in per_component.values() {
+                    for (&chunk_id, entry) in per_chunk {
+                        let e = result.entry(chunk_id).or_default();
+                        e.entry(*timeline)
+                            .and_modify(|existing| {
+                                *existing = existing.union(entry.time_range);
+                            })
+                            .or_insert(entry.time_range);
+                    }
+                }
+            }
         }
+        result
     }
 
     /// Load specific chunks from disk into the store.
@@ -149,6 +199,126 @@ impl LazyRrdStore {
     pub fn manifest(&self) -> &Arc<RrdManifest> {
         &self.manifest
     }
+
+    /// The raw manifest as-parsed from the RRD footer, before validation/extraction.
+    ///
+    /// Kept around so the server can synthesize `GetRrdManifest` responses without materializing
+    /// chunks: the footer already contains everything a client needs to pick which chunks to fetch.
+    pub fn raw_manifest(&self) -> &Arc<RawRrdManifest> {
+        &self.raw_manifest
+    }
+
+    /// Look up the manifest row index for a given chunk ID.
+    pub fn chunk_row_index(&self, chunk_id: &ChunkId) -> Option<usize> {
+        self.chunk_id_to_index.get(chunk_id).copied()
+    }
+
+    /// Per-chunk timeline ranges.
+    pub fn timeline_ranges(&self) -> &HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>> {
+        &self.timeline_ranges
+    }
+
+    /// The store ID (from the manifest, no store lock needed).
+    pub fn store_id(&self) -> &StoreId {
+        self.manifest.store_id()
+    }
+
+    /// All entity paths known to this store (populated from the virtual index).
+    pub fn all_entities(&self) -> IntSet<EntityPath> {
+        self.store.read().all_entities()
+    }
+
+    /// Get a physical chunk by ID if it's already loaded. Returns `None` for
+    /// virtual-only chunks — use [`Self::load_chunks`] to materialize them first.
+    pub fn physical_chunk(&self, id: &ChunkId) -> Option<Arc<Chunk>> {
+        self.store.read().physical_chunk(id).cloned()
+    }
+
+    /// Extract properties, automatically loading the required property chunks
+    /// on demand if they are still virtual.
+    //TODO(RR-4458): currently takes one disk round-trip per property entity with virtual
+    // chunks because `ChunkStore::extract_properties` short-circuits on the first missing
+    // entity. Once it reports the full union of missing chunks, this will converge in a
+    // single retry.
+    pub fn extract_properties(&self) -> Result<arrow::array::RecordBatch, ExtractPropertiesError> {
+        self.with_autoload(|store| store.extract_properties())
+    }
+
+    /// Run an operation against the inner [`ChunkStore`], auto-loading any chunks the
+    /// operation reports as missing and retrying until it succeeds or returns a different
+    /// error.
+    ///
+    /// The closure receives `&ChunkStore` rather than `&self`, which structurally prevents
+    /// the read guard from escaping a single iteration — [`Self::load_chunks`] needs the
+    /// write lock, and holding a read guard across that call would deadlock.
+    ///
+    /// A generous fixed attempt cap guards against a bug downstream (e.g. `load_chunks`
+    /// silently no-ops while `MissingData` keeps being reported): exceeding it surfaces
+    /// as an `Internal` error instead of spinning forever. In practice this loop converges
+    /// in a handful of iterations; the cap is a paranoia valve, not a tight bound.
+    fn with_autoload<T, F>(&self, mut op: F) -> Result<T, ExtractPropertiesError>
+    where
+        F: FnMut(&ChunkStore) -> Result<T, ExtractPropertiesError>,
+    {
+        const MAX_AUTOLOAD_ATTEMPTS: usize = 1024;
+        for _ in 0..MAX_AUTOLOAD_ATTEMPTS {
+            // IMPORTANT: bind to a local first so the read-guard temporary from
+            // `self.store.read()` is dropped at this statement's semicolon. Matching on
+            // `op(&self.store.read())` directly would extend the scrutinee's temporaries
+            // through the arms and `self.load_chunks` (write lock) would deadlock.
+            let result = op(&self.store.read());
+            match result {
+                Err(ExtractPropertiesError::MissingData(missing_ids)) => {
+                    self.load_chunks(&missing_ids)
+                        .map_err(|err| ExtractPropertiesError::Internal(err.to_string()))?;
+                }
+                other => return other,
+            }
+        }
+        Err(ExtractPropertiesError::Internal(format!(
+            "autoload did not converge after {MAX_AUTOLOAD_ATTEMPTS} attempts"
+        )))
+    }
+
+    /// Run a latest-at query against the virtual index.
+    ///
+    /// Returns [`QueryResults`] with physical chunks in `chunks` and
+    /// not-yet-loaded chunk IDs in `missing_virtual`.
+    pub fn latest_at_relevant_chunks_for_all_components(
+        &self,
+        report_mode: ChunkTrackingMode,
+        query: &LatestAtQuery,
+        entity_path: &EntityPath,
+        include_static: bool,
+    ) -> QueryResults {
+        self.store
+            .read()
+            .latest_at_relevant_chunks_for_all_components(
+                report_mode,
+                query,
+                entity_path,
+                include_static,
+            )
+    }
+
+    /// Run a range query against the virtual index.
+    ///
+    /// Returns [`QueryResults`] with physical chunks in `chunks` and
+    /// not-yet-loaded chunk IDs in `missing_virtual`.
+    pub fn range_relevant_chunks_for_all_components(
+        &self,
+        report_mode: ChunkTrackingMode,
+        query: &RangeQuery,
+        entity_path: &EntityPath,
+        include_static: bool,
+    ) -> QueryResults {
+        self.store.read().range_relevant_chunks_for_all_components(
+            report_mode,
+            query,
+            entity_path,
+            include_static,
+        )
+    }
 }
 
 #[cfg(test)]
@@ -156,7 +326,7 @@ mod tests {
     use super::*;
 
     use re_chunk::{RowId, TimePoint, Timeline};
-    use re_log_encoding::{EncodingOptions, RrdManifest};
+    use re_log_encoding::EncodingOptions;
     use re_log_types::{
         EntityPath, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
         example_components::{MyPoint, MyPoints},
@@ -218,23 +388,22 @@ mod tests {
         (path, file, store_id, chunks)
     }
 
-    fn read_manifest(file: &mut File, store_id: &StoreId) -> Arc<RrdManifest> {
+    fn read_raw_manifest(file: &mut File, store_id: &StoreId) -> Arc<RawRrdManifest> {
         let footer = re_log_encoding::read_rrd_footer(file).unwrap().unwrap();
-        let raw = footer.manifests[store_id].clone();
-        Arc::new(RrdManifest::try_new(&raw).unwrap())
+        Arc::new(footer.manifests[store_id].clone())
     }
 
     #[test]
     fn test_lazy_store_no_physical_chunks() {
         let dir = tempfile::tempdir().unwrap();
         let (path, mut file, store_id, chunks) = create_test_rrd(dir.path(), 2, 3);
-        let manifest = read_manifest(&mut file, &store_id);
+        let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = LazyRrdStore::new(file, path, manifest.clone());
+        let lazy = LazyRrdStore::try_new(file, path, raw).unwrap();
 
         assert_eq!(lazy.num_physical_chunks(), 0);
         assert_eq!(
-            manifest.col_chunk_ids().len(),
+            lazy.manifest().col_chunk_ids().len(),
             chunks.len(),
             "All chunk IDs should be in manifest"
         );
@@ -244,9 +413,9 @@ mod tests {
     fn test_lazy_store_entities_visible() {
         let dir = tempfile::tempdir().unwrap();
         let (path, mut file, store_id, _) = create_test_rrd(dir.path(), 3, 2);
-        let manifest = read_manifest(&mut file, &store_id);
+        let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = LazyRrdStore::new(file, path, manifest);
+        let lazy = LazyRrdStore::try_new(file, path, raw).unwrap();
         let entity_tree = lazy.entity_tree();
 
         let mut entities = Vec::new();
@@ -263,9 +432,9 @@ mod tests {
     fn test_lazy_store_load_all() {
         let dir = tempfile::tempdir().unwrap();
         let (path, mut file, store_id, chunks) = create_test_rrd(dir.path(), 2, 3);
-        let manifest = read_manifest(&mut file, &store_id);
+        let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = LazyRrdStore::new(file, path, manifest);
+        let lazy = LazyRrdStore::try_new(file, path, raw).unwrap();
         let loaded = lazy.collect_physical_chunks().unwrap();
         assert_eq!(loaded.len(), chunks.len());
     }
@@ -274,10 +443,10 @@ mod tests {
     fn test_lazy_store_load_single_chunk() {
         let dir = tempfile::tempdir().unwrap();
         let (path, mut file, store_id, chunks) = create_test_rrd(dir.path(), 2, 3);
-        let manifest = read_manifest(&mut file, &store_id);
+        let raw = read_raw_manifest(&mut file, &store_id);
 
-        let first_chunk_id = manifest.col_chunk_ids()[0];
-        let lazy = LazyRrdStore::new(file, path, manifest);
+        let lazy = LazyRrdStore::try_new(file, path, raw).unwrap();
+        let first_chunk_id = lazy.manifest().col_chunk_ids()[0];
         let loaded = lazy.load_chunks(&[first_chunk_id]).unwrap();
 
         assert_eq!(loaded.len(), 1);
@@ -293,9 +462,9 @@ mod tests {
     fn test_lazy_store_load_idempotent() {
         let dir = tempfile::tempdir().unwrap();
         let (path, mut file, store_id, _) = create_test_rrd(dir.path(), 1, 3);
-        let manifest = read_manifest(&mut file, &store_id);
+        let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = LazyRrdStore::new(file, path, manifest);
+        let lazy = LazyRrdStore::try_new(file, path, raw).unwrap();
         lazy.load_all_chunks().unwrap();
 
         let count_before = lazy.num_physical_chunks();
@@ -312,9 +481,9 @@ mod tests {
     fn test_lazy_store_schema() {
         let dir = tempfile::tempdir().unwrap();
         let (path, mut file, store_id, _) = create_test_rrd(dir.path(), 2, 3);
-        let manifest = read_manifest(&mut file, &store_id);
+        let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = LazyRrdStore::new(file, path, manifest);
+        let lazy = LazyRrdStore::try_new(file, path, raw).unwrap();
         let schema = lazy.schema();
 
         // Schema should be non-empty even without physical chunks.
@@ -329,10 +498,10 @@ mod tests {
     fn test_lazy_vs_eager_equivalence() {
         let dir = tempfile::tempdir().unwrap();
         let (path, mut file, store_id, _) = create_test_rrd(dir.path(), 2, 3);
-        let manifest = read_manifest(&mut file, &store_id);
+        let raw = read_raw_manifest(&mut file, &store_id);
 
         // Lazy path: create lazy store, load all chunks.
-        let lazy = LazyRrdStore::new(file, path.clone(), manifest);
+        let lazy = LazyRrdStore::try_new(file, path.clone(), raw).unwrap();
         lazy.load_all_chunks().unwrap();
 
         // Eager path: load the same file fully.

@@ -7,7 +7,6 @@ use std::sync::{Arc, OnceLock};
 
 use ahash::{HashMap, HashMapExt as _};
 use futures::StreamExt as _;
-use re_chunk_store::ChunkStoreHandle;
 use re_log_types::{ComponentPath, EntityPath, EntryId};
 use re_protos::cloud::v1alpha1::ext::{
     CreateIndexRequest, IndexColumn, IndexConfig, SearchDatasetRequest,
@@ -205,23 +204,32 @@ impl DatasetChunkIndexes {
     pub async fn on_layer_added(
         &self,
         segment_id: SegmentId,
-        store: ChunkStoreHandle,
+        resolved: &crate::store::ResolvedStore,
         layer_name: &str,
         _overwritten: bool,
     ) -> Result<(), StoreError> {
+        // Fast path: no indexes exist, nothing to do (no chunk loading needed).
+        if self.indexes.read().await.is_empty() {
+            return Ok(());
+        }
+
+        // Collect physical chunks from the store, loading on demand for lazy stores.
+        let chunks: Vec<std::sync::Arc<re_chunk_store::Chunk>> = match resolved {
+            crate::store::ResolvedStore::Eager(h) => {
+                h.read().iter_physical_chunks().cloned().collect()
+            }
+            crate::store::ResolvedStore::Lazy(lazy) => lazy
+                .collect_physical_chunks()
+                .map_err(|err| StoreError::IndexingError(format!("{err:#}")))?,
+        };
+
         let mut worklist = vec![];
-
         {
-            // Blocking lock: quickly get what we need
             let indexes = self.indexes.read().await;
-            let store = store.read();
-
-            for chunk in store.iter_physical_chunks() {
+            for chunk in &chunks {
                 if let Some(entity_indexes) = indexes.get(chunk.entity_path()) {
-                    // Find components by iterating on indexes (lower cardinality)
                     for (name, index) in entity_indexes {
                         if chunk.components().0.contains_key(name) {
-                            // Needs indexing
                             worklist.push((
                                 index.clone(),
                                 segment_id.clone(),
@@ -235,12 +243,8 @@ impl DatasetChunkIndexes {
         }
 
         for (index, segment_id, layer_name, chunk) in worklist {
-            let checkout_latest = true;
             index
-                .store_chunks(
-                    vec![(segment_id.clone(), layer_name, chunk.clone())],
-                    checkout_latest,
-                )
+                .store_chunks(vec![(segment_id.clone(), layer_name, chunk.clone())], true)
                 .await?;
         }
 
@@ -317,12 +321,21 @@ impl DatasetChunkIndexes {
         let mut backfill = Vec::new();
         for (segment_id, segment) in dataset.segments() {
             for (layer_name, layer) in segment.layers() {
-                let store = layer.store_handle().read();
-                for chunk in store.iter_physical_chunks() {
+                let chunks: Vec<std::sync::Arc<re_chunk_store::Chunk>> = match layer
+                    .resolved_store()
+                {
+                    crate::store::ResolvedStore::Eager(h) => {
+                        h.read().iter_physical_chunks().cloned().collect()
+                    }
+                    crate::store::ResolvedStore::Lazy(lazy) => lazy
+                        .collect_physical_chunks()
+                        .map_err(|err| StoreError::IndexingError(format!("{err:#}")))?,
+                };
+                for chunk in chunks {
                     if chunk.entity_path() == entity_path
                         && chunk.components().0.contains_key(component)
                     {
-                        backfill.push((segment_id.clone(), layer_name.clone(), chunk.clone()));
+                        backfill.push((segment_id.clone(), layer_name.clone(), chunk));
                     }
                 }
             }
@@ -425,7 +438,7 @@ mod tests {
             ChunkStoreConfig::default(),
         );
         store.insert_chunk(&Arc::new(chunk))?;
-        let handle = ChunkStoreHandle::new(store);
+        let handle = re_chunk_store::ChunkStoreHandle::new(store);
         let store_slot_id = crate::store::StoreSlotId::new();
 
         dataset
@@ -433,7 +446,7 @@ mod tests {
                 segment_id,
                 layer_name,
                 store_slot_id,
-                handle,
+                crate::store::ResolvedStore::Eager(handle),
                 IfDuplicateBehavior::Error,
             )
             .await?;
