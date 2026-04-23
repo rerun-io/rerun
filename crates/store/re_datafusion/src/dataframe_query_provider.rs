@@ -5,6 +5,7 @@ use std::pin::Pin;
 use std::sync::{Arc, LazyLock};
 use std::task::{Context, Poll};
 
+use crate::analytics::{QueryErrorKind, TaskFetchStats};
 use crate::chunk_fetcher::{
     SortedChunksWithSegment, batch_byte_size, batch_has_any_direct_urls, fetch_batch_direct,
     fetch_batch_group_via_grpc, split_batch_by_direct_url,
@@ -184,8 +185,16 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
             && let Some(cpu_join_result) = join_handle.now_or_never()
         {
             match cpu_join_result {
-                Err(err) => return Poll::Ready(Some(exec_err!("{err}"))),
+                Err(err) => {
+                    if let Some(analytics) = &this.pending_analytics {
+                        analytics.record_error(QueryErrorKind::Decode);
+                    }
+                    return Poll::Ready(Some(exec_err!("{err}")));
+                }
                 Ok(Err(err)) => {
+                    if let Some(analytics) = &this.pending_analytics {
+                        analytics.record_error(QueryErrorKind::Decode);
+                    }
                     return Poll::Ready(Some(Err(err
                         .with_trace_id(this.server_trace_id)
                         .into_df_error())));
@@ -201,8 +210,19 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
             && let Some(io_join_result) = join_handle.now_or_never()
         {
             match io_join_result {
-                Err(err) => return Poll::Ready(Some(exec_err!("{err}"))),
+                Err(err) => {
+                    if let Some(analytics) = &this.pending_analytics {
+                        analytics.record_error(QueryErrorKind::Other);
+                    }
+                    return Poll::Ready(Some(exec_err!("{err}")));
+                }
                 Ok(Err(err)) => {
+                    if let Some(analytics) = &this.pending_analytics {
+                        // The IO task's own error-recording will have already set a
+                        // more specific kind (direct_fetch / grpc_fetch) via OnceLock,
+                        // so this call is a no-op fallback if that hasn't happened.
+                        analytics.record_error(QueryErrorKind::Other);
+                    }
                     return Poll::Ready(Some(Err(err
                         .with_trace_id(this.server_trace_id)
                         .into_df_error())));
@@ -905,10 +925,20 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
         )
         .await;
 
-        // All fetches were gRPC — record total bytes
         if let Some(analytics) = &pending_analytics {
-            let total_bytes: u64 = request_batches.iter().map(batch_byte_size).sum();
-            analytics.record_grpc_fetch(total_bytes);
+            match &result {
+                Ok(()) => {
+                    // All fetches were gRPC — record total bytes into a task-local
+                    // buffer and flush once. No intermediate atomics.
+                    let total_bytes: u64 = request_batches.iter().map(batch_byte_size).sum();
+                    let mut stats = TaskFetchStats::default();
+                    stats.record_grpc_fetch(total_bytes);
+                    stats.flush_into(analytics.fetch_stats());
+                }
+                Err(_) => {
+                    analytics.record_error(QueryErrorKind::GrpcFetch);
+                }
+            }
         }
 
         return result;
@@ -954,13 +984,33 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
             let client = client.clone();
             let pending_analytics = pending_analytics.clone();
             async move {
+                // Task-local stats buffer — flushed once to the shared atomics
+                // at the end of this task to avoid cross-core cache-line
+                // contention on the hot counters.
+                let mut stats = TaskFetchStats::default();
+                let pending_analytics = pending_analytics.as_ref();
+
                 let chunks = match task {
                     FetchTask::Direct(batch) => {
                         let bytes = batch_byte_size(&batch);
-                        let chunks = fetch_batch_direct(&batch, &http_client).await?;
-                        if let Some(analytics) = &pending_analytics {
-                            analytics.record_direct_fetch(bytes);
-                        }
+                        let chunks = match fetch_batch_direct(
+                            &batch,
+                            &http_client,
+                            &mut stats,
+                            pending_analytics,
+                        )
+                        .await
+                        {
+                            Ok(chunks) => chunks,
+                            Err(err) => {
+                                stats.try_flush_into(
+                                    pending_analytics,
+                                    Err(QueryErrorKind::DirectFetch),
+                                );
+                                return Err(err);
+                            }
+                        };
+                        stats.record_direct_fetch(bytes);
                         chunks
                     }
                     FetchTask::Grpc(batch) => {
@@ -968,14 +1018,25 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                         #[cfg(not(target_arch = "wasm32"))]
                         crate::chunk_fetcher::metrics::record_grpc_no_direct_urls(bytes);
                         let chunks =
-                            fetch_batch_group_via_grpc(std::slice::from_ref(&batch), &client)
-                                .await?;
-                        if let Some(analytics) = &pending_analytics {
-                            analytics.record_grpc_fetch(bytes);
-                        }
+                            match fetch_batch_group_via_grpc(std::slice::from_ref(&batch), &client)
+                                .await
+                            {
+                                Ok(chunks) => chunks,
+                                Err(err) => {
+                                    stats.try_flush_into(
+                                        pending_analytics,
+                                        Err(QueryErrorKind::GrpcFetch),
+                                    );
+                                    return Err(err);
+                                }
+                            };
+                        stats.record_grpc_fetch(bytes);
                         chunks
                     }
                 };
+
+                stats.try_flush_into(pending_analytics, Ok(()));
+
                 Ok::<_, ApiError>((task_idx, chunks))
             }
             .instrument(tracing::info_span!("fetch_task", task_idx))

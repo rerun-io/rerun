@@ -13,6 +13,7 @@ use re_dataframe::external::re_chunk::Chunk;
 use re_protos::cloud::v1alpha1::{FetchChunksRequest, QueryDatasetResponse};
 use re_redap_client::ApiResult;
 
+use crate::analytics::{DirectFetchFailureReason, PendingQueryAnalytics, TaskFetchStats};
 use crate::dataframe_query_common::DataframeClientAPI;
 
 // --- Telemetry ---
@@ -199,10 +200,15 @@ pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
 /// Fetch a batch of chunks via direct URLs.
 ///
 /// Individual requests are retried up to [`DIRECT_FETCH_MAX_RETRIES`] times on transient errors.
+///
+/// `stats` is the caller's per-task accumulator; `pending` is used only for
+/// recording the one-shot terminal failure reason on the shared state.
 #[tracing::instrument(level = "info", skip_all, fields(num_chunks, byte_size))]
 pub async fn fetch_batch_direct(
     batch: &RecordBatch,
     http_client: &reqwest::Client,
+    stats: &mut TaskFetchStats,
+    pending: Option<&PendingQueryAnalytics>,
 ) -> ApiResult<Vec<ChunksWithSegment>> {
     #[cfg(not(target_arch = "wasm32"))]
     let byte_size = batch_byte_size(batch);
@@ -212,16 +218,19 @@ pub async fn fetch_batch_direct(
     #[cfg(not(target_arch = "wasm32"))]
     span.record("byte_size", byte_size);
 
-    match fetch_batch_via_direct_urls(http_client, batch).await {
+    match fetch_batch_via_direct_urls(http_client, batch, stats).await {
         Ok(chunks) => {
             #[cfg(not(target_arch = "wasm32"))]
             metrics::record_direct_success(byte_size);
             Ok(chunks)
         }
         Err(err) => {
-            let reason = classify_failure_reason(&err);
+            let reason = DirectFetchFailureReason::classify(&err);
+            if let Some(pending) = pending {
+                pending.record_direct_terminal_failure(reason);
+            }
             #[cfg(not(target_arch = "wasm32"))]
-            metrics::record_direct_failure(reason);
+            metrics::record_direct_failure(reason.as_str());
             Err(re_redap_client::ApiError::connection_with_source(
                 None,
                 err,
@@ -231,24 +240,26 @@ pub async fn fetch_batch_direct(
     }
 }
 
-/// Classify a `DirectFetchError` into a bounded metric reason tag.
-fn classify_failure_reason(err: &DirectFetchError) -> &'static str {
-    let msg = &err.msg;
-    if msg.contains("timed out") || msg.contains("Timeout") {
-        "timeout"
-    } else if msg.contains("status 4") {
-        "http_4xx"
-    } else if msg.contains("status 5") {
-        "http_5xx"
-    } else if msg.contains("connection") || msg.contains("dns") || msg.contains("connect") {
-        "connection"
-    } else if msg.contains("decode")
-        || msg.contains("from_rrd_bytes")
-        || msg.contains("from_record_batch")
-    {
-        "decode"
-    } else {
-        "other"
+impl DirectFetchFailureReason {
+    /// Classify a `DirectFetchError` by matching on its error message.
+    fn classify(err: &DirectFetchError) -> Self {
+        let msg = &err.msg;
+        if msg.contains("timed out") || msg.contains("Timeout") {
+            Self::Timeout
+        } else if msg.contains("status 4") {
+            Self::Http4xx
+        } else if msg.contains("status 5") {
+            Self::Http5xx
+        } else if msg.contains("connection") || msg.contains("dns") || msg.contains("connect") {
+            Self::Connection
+        } else if msg.contains("decode")
+            || msg.contains("from_rrd_bytes")
+            || msg.contains("from_record_batch")
+        {
+            Self::Decode
+        } else {
+            Self::Other
+        }
     }
 }
 
@@ -484,6 +495,7 @@ fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<String>), Dire
 async fn fetch_batch_via_direct_urls(
     http_client: &reqwest::Client,
     batch: &RecordBatch,
+    stats: &mut TaskFetchStats,
 ) -> Result<Vec<ChunksWithSegment>, DirectFetchError> {
     fn batch_column<'a, T: arrow::array::Array + 'static>(
         batch: &'a RecordBatch,
@@ -553,12 +565,18 @@ async fn fetch_batch_via_direct_urls(
     span.record("num_merged_requests", merged_requests.len());
     span.record("concurrency", concurrency);
 
+    stats.record_direct_ranges(all_ranges.len() as u64, merged_requests.len() as u64);
+
     re_log::debug!(
         "Range merging: {num_rows} chunks → {} merged requests, concurrency={concurrency}",
         merged_requests.len()
     );
 
     // Step 4: Fetch merged ranges concurrently and extract individual chunks.
+    //
+    // Each inner future owns its own `TaskFetchStats` so nothing touches a
+    // shared cache line across threads during the retry-heavy hot path. The
+    // per-future buffers are merged into the outer task's accumulator below.
     let fetches = merged_requests
         .into_iter()
         .enumerate()
@@ -572,6 +590,7 @@ async fn fetch_batch_via_direct_urls(
 
             let http_client = http_client.clone();
             async move {
+                let mut local_stats = TaskFetchStats::default();
                 // Range headers are inclusive
                 let range_end = file_range_end - 1;
                 re_log::debug!(
@@ -590,10 +609,15 @@ async fn fetch_batch_via_direct_urls(
                 for attempt in 1..=DIRECT_FETCH_MAX_RETRIES {
                     if last_err.is_some() {
                         let backoff = backoff_gen.gen_next();
+                        let jittered = backoff.jittered();
                         re_log::debug!(
-                            "Direct fetch [{req_idx}] retry attempt {attempt}/{DIRECT_FETCH_MAX_RETRIES} after {:?}",
-                            backoff.jittered()
+                            "Direct fetch [{req_idx}] retry attempt {attempt}/{DIRECT_FETCH_MAX_RETRIES} after {jittered:?}"
                         );
+                        if attempt == 2 {
+                            // Count this merged request as "needed a retry" on the first retry only.
+                            local_stats.record_direct_request_was_retried();
+                        }
+                        local_stats.record_direct_retry(jittered, attempt as u64);
                         backoff.sleep().await;
                     }
 
@@ -613,7 +637,7 @@ async fn fetch_batch_via_direct_urls(
                                     "Direct fetch [{req_idx}] succeeded on attempt {attempt}"
                                 );
                             }
-                            return Ok(results);
+                            return (Ok(results), local_stats);
                         }
                         Err(err) if err.retryable => {
                             re_log::debug!(
@@ -625,15 +649,21 @@ async fn fetch_batch_via_direct_urls(
                             re_log::error!(
                                 "Non-retryable direct fetch failure on attempt {attempt}: {err}"
                             );
-                            return Err(err);
+                            return (Err(err), local_stats);
                         }
                     }
                 }
 
                 let err = last_err.expect("at least one attempt was made");
-                Err(DirectFetchError::new(format!(
-                    "request [{req_idx}] failed after {DIRECT_FETCH_MAX_RETRIES} attempts: {err}"
-                ), false))
+                (
+                    Err(DirectFetchError::new(
+                        format!(
+                            "request [{req_idx}] failed after {DIRECT_FETCH_MAX_RETRIES} attempts: {err}"
+                        ),
+                        false,
+                    )),
+                    local_stats,
+                )
             }
             .instrument(tracing::info_span!(
                 "direct_fetch_request",
@@ -642,16 +672,28 @@ async fn fetch_batch_via_direct_urls(
             ))
         });
 
-    let results: Vec<Result<Vec<_>, DirectFetchError>> = futures::stream::iter(fetches)
-        .buffer_unordered(concurrency)
-        .collect()
-        .instrument(tracing::info_span!("direct_fetch_all"))
-        .await;
-
-    // Any merged range failure fails the whole batch.
+    // Fold every inner buffer into the outer task's accumulator before we bail
+    // on the first error — we want stats from successful fetches preserved.
     let mut all_chunks: Vec<(usize, (Chunk, Option<String>))> = Vec::new();
-    for result in results {
-        all_chunks.extend(result?);
+    let mut first_err: Option<DirectFetchError> = None;
+    async {
+        let mut stream = futures::stream::iter(fetches).buffer_unordered(concurrency);
+        while let Some((result, local_stats)) = stream.next().await {
+            stats.merge_from(local_stats);
+            match result {
+                Ok(chunks) => all_chunks.extend(chunks),
+                Err(err) => {
+                    if first_err.is_none() {
+                        first_err = Some(err);
+                    }
+                }
+            }
+        }
+    }
+    .instrument(tracing::info_span!("direct_fetch_all"))
+    .await;
+    if let Some(err) = first_err {
+        return Err(err);
     }
 
     // Step 5: Reassemble in original row order.

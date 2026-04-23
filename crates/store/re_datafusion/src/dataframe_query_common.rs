@@ -1,7 +1,8 @@
+use crate::analytics::QueryType;
 use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use crate::batch_coalescer::coalescer::CoalescerOptions;
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
-use ahash::HashSet;
+use ahash::{HashMap, HashMapExt as _, HashSet};
 use arrow::array::{
     Array as _, ArrayRef, DurationNanosecondArray, FixedSizeBinaryArray, Int64Array, RecordBatch,
     StringArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
@@ -150,7 +151,36 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         )
         .await?;
 
-        provider.analytics = Some(crate::ConnectionAnalytics::new(origin));
+        let analytics = crate::ConnectionAnalytics::new(origin);
+
+        // Kick off a background fetch of the server version so subsequent analytics
+        // spans can be filtered by cloud build. Lazy-cached on `analytics`; the
+        // first query will ship without it, the rest will have it.
+        {
+            let analytics_bg = analytics.clone();
+            let mut client_bg = provider.client.clone();
+            let fetch_fut = async move {
+                match client_bg.version_info().await {
+                    Ok(response) => {
+                        analytics_bg.set_server_version(Some(response.version));
+                    }
+                    Err(err) => {
+                        re_log::debug_once!("Failed to fetch server version for analytics: {err}");
+                        analytics_bg.set_server_version(None);
+                    }
+                }
+            };
+
+            #[cfg(target_arch = "wasm32")]
+            wasm_bindgen_futures::spawn_local(fetch_fut);
+
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Ok(handle) = tokio::runtime::Handle::try_current() {
+                handle.spawn(fetch_fut);
+            }
+        }
+
+        provider.analytics = Some(analytics);
 
         Ok(provider)
     }
@@ -426,30 +456,27 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             // Begin per-connection analytics tracking.
             // Fetch stats will be accumulated by the IO loops; the event is sent on drop.
             let pending_analytics = self.analytics.as_ref().map(|analytics| {
-                let query_chunks = chunk_info_batches.as_ref().map_or(0, |b| b.num_rows());
-
-                let query_segments = chunk_info_batches.as_ref().map_or(0, |batch| {
-                    batch
-                        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
-                        .and_then(|col| col.as_any().downcast_ref::<StringArray>())
-                        .map_or(0, |arr| arr.iter().flatten().collect::<BTreeSet<_>>().len())
-                });
-
-                let total_chunk_bytes: u64 = chunk_info_batches.as_ref().map_or(0, |batch| {
-                    batch
-                        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
-                        .and_then(|col| col.as_any().downcast_ref::<arrow::array::UInt64Array>())
-                        .map_or(0, |arr| arr.iter().flatten().sum())
-                });
+                let agg = chunk_info_batches
+                    .as_ref()
+                    .map(compute_chunk_info_aggregates)
+                    .unwrap_or_default();
 
                 analytics.begin_query(
                     crate::analytics::QueryInfo {
                         dataset_id: self.dataset_id.to_string(),
-                        query_chunks,
-                        query_segments,
+                        query_chunks: agg.chunks,
+                        query_segments: agg.segments,
+                        query_layers: agg.layers,
                         query_columns: self.schema.fields().len(),
                         query_entities: self.query_dataset_request.entity_paths.len(),
-                        query_bytes: total_chunk_bytes,
+                        query_bytes: agg.bytes,
+                        query_chunks_per_segment_max: agg.chunks_per_segment_max,
+                        query_chunks_per_segment_mean: agg.chunks_per_segment_mean,
+                        query_type: QueryType::classify(&self.query_expression),
+                        primary_index_name: self
+                            .query_expression
+                            .filtered_index
+                            .map(|i| i.as_str().to_owned()),
                         time_range: scan_start_wall..web_time::SystemTime::now(),
                         time_to_first_chunk_info,
                         trace_id,
@@ -735,6 +762,78 @@ pub(crate) fn time_array_ref_to_i64(time_array: &ArrayRef) -> Result<Int64Array,
             ));
         }
     })
+}
+
+/// Aggregates derived from the deduplicated chunk metadata returned by `query_dataset`.
+///
+/// These are cheap zero-copy Arrow reads (no per-element allocation except the
+/// segment histogram map). The scan path computes them once to seed the
+/// analytics span without adding an extra pass.
+#[derive(Default)]
+pub(crate) struct ChunkInfoAggregates {
+    pub chunks: usize,
+    pub segments: usize,
+    pub layers: usize,
+    pub bytes: u64,
+    pub chunks_per_segment_max: u32,
+    pub chunks_per_segment_mean: f32,
+}
+
+pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAggregates {
+    use arrow::array::UInt64Array;
+
+    let chunks = batch.num_rows();
+
+    /// Downcasts `column_name` to array type `T` and iterates over its non-null values.
+    fn iter_column_values<'a, T: Any>(
+        batch: &'a RecordBatch,
+        column_name: &str,
+    ) -> Option<std::iter::Flatten<<&'a T as IntoIterator>::IntoIter>>
+    where
+        &'a T: IntoIterator<Item: IntoIterator>,
+    {
+        let arr = batch
+            .column_by_name(column_name)?
+            .as_any()
+            .downcast_ref::<T>()?;
+        Some(arr.into_iter().flatten())
+    }
+
+    // Segment count + per-segment histogram in one pass
+    let mut per_segment: HashMap<&str, u32> = HashMap::new();
+    if let Some(items) =
+        iter_column_values::<StringArray>(batch, QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
+    {
+        for v in items {
+            *per_segment.entry(v).or_default() += 1;
+        }
+    }
+    let segments = per_segment.len();
+    let chunks_per_segment_max = per_segment.into_values().max().unwrap_or(0);
+    let chunks_per_segment_mean = if segments == 0 {
+        0.0
+    } else {
+        // chunks fits in u32 for realistic queries; precision loss is acceptable for analytics.
+        chunks as f32 / segments as f32
+    };
+
+    let layers =
+        iter_column_values::<StringArray>(batch, QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME)
+            .map(|iter| iter.collect::<HashSet<_>>().len())
+            .unwrap_or(0);
+
+    let bytes: u64 =
+        iter_column_values::<UInt64Array>(batch, QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
+            .map_or(0, Iterator::sum);
+
+    ChunkInfoAggregates {
+        chunks,
+        segments,
+        layers,
+        bytes,
+        chunks_per_segment_max,
+        chunks_per_segment_mean,
+    }
 }
 
 pub fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
