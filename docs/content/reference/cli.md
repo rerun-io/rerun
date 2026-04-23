@@ -50,8 +50,7 @@ The Rerun command-line interface:
 > An upper limit on how much memory the Rerun Viewer should use.
 > When this limit is reached, Rerun will drop the oldest data.
 > Example: `16GB` or `50%` (of system total).
->
-> [Default: `75%`]
+> You can also set this in the settings panel.
 
 * `--server-memory-limit <SERVER_MEMORY_LIMIT>`
 > An upper limit on how much memory the gRPC server (`--serve-web`) should use.

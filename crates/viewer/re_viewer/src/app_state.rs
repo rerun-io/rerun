@@ -203,7 +203,7 @@ impl AppState {
     pub fn show(
         &mut self,
         app_env: &crate::AppEnvironment,
-        startup_options: &mut StartupOptions,
+        startup_options: &StartupOptions,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
@@ -230,12 +230,7 @@ impl AppState {
         match self.navigation.current() {
             Route::Settings { previous } => {
                 let mut show_settings_ui = true;
-                settings_screen_ui(
-                    ui,
-                    &mut self.app_options,
-                    startup_options,
-                    &mut show_settings_ui,
-                );
+                settings_screen_ui(ui, &mut self.app_options, &mut show_settings_ui);
                 if !show_settings_ui {
                     self.navigation.replace((**previous).clone());
                 }
@@ -435,7 +430,6 @@ impl AppState {
                     app_ctx: AppContext {
                         is_test: app_env.is_test(),
 
-                        memory_limit: startup_options.memory_limit,
                         app_options,
                         reflection,
 

@@ -8,14 +8,7 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::{AppOptions, ExperimentalAppOptions, VideoOptions};
 
-use crate::StartupOptions;
-
-pub fn settings_screen_ui(
-    ui: &mut egui::Ui,
-    app_options: &mut AppOptions,
-    startup_options: &mut StartupOptions,
-    keep_open: &mut bool,
-) {
+pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
     egui::Frame {
         inner_margin: egui::Margin::same(5),
         ..Default::default()
@@ -32,7 +25,7 @@ pub fn settings_screen_ui(
             .auto_shrink(false)
             .show(&mut child_ui, |ui| {
                 ui.set_min_width(MIN_WIDTH);
-                settings_screen_ui_impl(ui, app_options, startup_options, keep_open);
+                settings_screen_ui_impl(ui, app_options, keep_open);
             });
 
         if ui.input_mut(|ui| ui.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
@@ -41,12 +34,7 @@ pub fn settings_screen_ui(
     });
 }
 
-fn settings_screen_ui_impl(
-    ui: &mut egui::Ui,
-    app_options: &mut AppOptions,
-    startup_options: &mut StartupOptions,
-    keep_open: &mut bool,
-) {
+fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
     //
     // Title
     //
@@ -101,6 +89,7 @@ fn settings_screen_ui_impl(
         timestamp_format,
         video,
         mapbox_access_token,
+        memory_limit,
         max_fetch_stage,
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -111,7 +100,7 @@ fn settings_screen_ui_impl(
 
     egui::Grid::new("prefetcher").num_columns(2).show(ui, |ui| {
         ui.label("Memory budget");
-        memory_budget_section_ui(ui, startup_options);
+        memory_budget_section_ui(ui, memory_limit);
         ui.help_button(|ui| {
             ui.label("When this limit is reached we start purging data from RAM");
         });
@@ -186,11 +175,11 @@ fn settings_screen_ui_impl(
     }
 }
 
-fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
+fn memory_budget_section_ui(ui: &mut Ui, memory_limit: &mut MemoryLimit) {
     const BYTES_PER_GIB: u64 = 1024 * 1024 * 1024;
     const UPPER_LIMIT_BYTES: u64 = 1_000 * BYTES_PER_GIB;
 
-    let mut bytes = startup_options.memory_limit.as_bytes();
+    let mut bytes = memory_limit.as_bytes();
 
     let speed = (0.02 * bytes as f32).clamp(0.01 * BYTES_PER_GIB as f32, BYTES_PER_GIB as f32);
 
@@ -218,9 +207,9 @@ fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
     );
 
     if bytes < UPPER_LIMIT_BYTES {
-        startup_options.memory_limit = MemoryLimit::from_bytes(bytes);
+        *memory_limit = MemoryLimit::from_bytes(bytes);
     } else {
-        startup_options.memory_limit = MemoryLimit::UNLIMITED;
+        *memory_limit = MemoryLimit::UNLIMITED;
     }
 }
 

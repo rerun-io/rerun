@@ -277,8 +277,7 @@ impl App {
         }
 
         if app_env.is_test() {
-            // Disable certain labels/warnings/etc that would be flaky or not CI-runner-agnostic in snapshot tests.
-            state.app_options.show_metrics = false;
+            state.app_options = AppOptions::test();
         }
 
         let reflection = re_sdk_types::reflection::generate_reflection().unwrap_or_else(|err| {
@@ -2357,7 +2356,7 @@ impl App {
             .show_animated_inside(ui, self.memory_panel_open, |ui| {
                 self.memory_panel.ui(
                     ui,
-                    &self.startup_options.memory_limit,
+                    &self.state.app_options().memory_limit,
                     mem_usage_tree,
                     gpu_resource_stats,
                     store_stats,
@@ -2471,8 +2470,6 @@ impl App {
                         );
                     }
 
-                    let mut startup_options = self.startup_options.clone();
-
                     self.texture_readback.poll_and_save_texture_readbacks(
                         render_ctx,
                         ui,
@@ -2485,7 +2482,7 @@ impl App {
 
                     self.state.show(
                         &self.app_env,
-                        &mut startup_options,
+                        &self.startup_options,
                         app_blueprint,
                         ui,
                         render_ctx,
@@ -2505,7 +2502,6 @@ impl App {
                         &self.connection_registry,
                         &self.async_runtime,
                     );
-                    self.startup_options = startup_options;
                     render_ctx.before_submit();
 
                     self.show_text_logs_as_notifications();
@@ -3011,7 +3007,7 @@ impl App {
         use re_format::format_bytes;
         use re_memory::MemoryUse;
 
-        let limit = self.startup_options.memory_limit;
+        let limit = self.app_options().memory_limit;
         let mem_use_before = MemoryUse::capture();
 
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
@@ -3485,7 +3481,7 @@ impl App {
         };
 
         let memory_limit = self
-            .startup_options
+            .app_options()
             .memory_limit
             .saturating_sub(overhead)
             .split(fixed_fraction_overhead)
@@ -3774,7 +3770,7 @@ impl eframe::App for App {
             return;
         }
 
-        if self.startup_options.memory_limit.is_unlimited() {
+        if self.app_options().memory_limit.is_unlimited() {
             // we only warn about high memory usage if the user hasn't specified a limit
             self.ram_limit_warner.update();
         }

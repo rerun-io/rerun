@@ -291,7 +291,7 @@ impl TestContext {
             re_sdk_types::reflection::generate_reflection().expect("Failed to generate reflection");
 
         Self {
-            app_options: Default::default(),
+            app_options: AppOptions::test(),
             recording_store_id,
             application_id,
 
@@ -658,8 +658,6 @@ impl TestContext {
         let ctx = ViewerContext {
             app_ctx: AppContext {
                 is_test: true,
-
-                memory_limit: re_memory::MemoryLimit::UNLIMITED,
 
                 app_options: &self.app_options,
                 reflection: &self.reflection,

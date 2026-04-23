@@ -7,7 +7,8 @@ use saturating_cast::SaturatingCast as _;
 ///
 /// It is recommended that they log using [`re_log::info_once`] when they
 /// drop data because a memory limit is reached.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(transparent)]
 pub struct MemoryLimit {
     /// Limit in bytes.
     ///

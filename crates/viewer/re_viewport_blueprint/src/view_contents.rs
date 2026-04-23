@@ -809,7 +809,7 @@ mod tests {
         view_class_registry
             .add_class::<TestViewClass>(
                 &Reflection::default(),
-                &re_viewer_context::AppOptions::default(),
+                &re_viewer_context::AppOptions::test(),
                 &mut fallback_registry,
             )
             .expect("registering test view class should succeed");
@@ -960,7 +960,7 @@ mod tests {
                 &query_range,
                 &visualizable_entities_for_visualizer_systems.as_ref(),
                 &PerVisualizerType::default(),
-                &re_viewer_context::AppOptions::default(),
+                &re_viewer_context::AppOptions::test(),
             );
 
             let mut visited = vec![];

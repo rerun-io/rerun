@@ -1,5 +1,6 @@
 use re_entity_db::FetchStage;
 use re_log_types::TimestampFormat;
+use re_memory::MemoryLimit;
 use re_video::{DecodeHardwareAcceleration, DecodeSettings};
 
 const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
@@ -54,6 +55,9 @@ pub struct AppOptions {
     /// Can also be set using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
     pub mapbox_access_token: String,
 
+    /// When the total process RAM reaches this limit, we GC old data.
+    pub memory_limit: MemoryLimit,
+
     /// Only prefetch chunks up to (and including) this stage.
     ///
     /// Useful for debugging and for users who want to limit how aggressively
@@ -98,6 +102,13 @@ impl Default for AppOptions {
 
             mapbox_access_token: String::new(),
 
+            memory_limit: if cfg!(target_arch = "wasm32") {
+                // On wasm32 we only have 4GB of memory to play around with.
+                re_memory::MemoryLimit::from_bytes(2_500_000_000)
+            } else {
+                MemoryLimit::from_fraction_of_total(0.75)
+            },
+
             max_fetch_stage: FetchStage::default(),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -107,6 +118,14 @@ impl Default for AppOptions {
 }
 
 impl AppOptions {
+    pub fn test() -> Self {
+        Self {
+            memory_limit: MemoryLimit::UNLIMITED,
+            show_metrics: false, // flaky in snapshot tests
+            ..Default::default()
+        }
+    }
+
     pub fn mapbox_access_token(&self) -> Option<String> {
         if self.mapbox_access_token.is_empty() {
             std::env::var(MAPBOX_ACCESS_TOKEN_ENV_VAR).ok()

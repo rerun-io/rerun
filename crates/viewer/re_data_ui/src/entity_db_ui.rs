@@ -210,7 +210,7 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
         if db.rrd_manifest_index().has_manifest() {
             ui.grid_left_hand_label("Downloaded");
 
-            let memory_limit = ctx.memory_limit;
+            let memory_limit = ctx.app_options.memory_limit;
             let max_downloaded_bytes = if db.rrd_manifest_index().is_fully_loaded() {
                 full_size_bytes
             } else {

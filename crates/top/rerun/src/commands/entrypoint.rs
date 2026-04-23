@@ -144,12 +144,12 @@ struct Args {
 
     #[clap(
         long,
-        default_value = "75%",
         long_help = r"An upper limit on how much memory the Rerun Viewer should use.
 When this limit is reached, Rerun will drop the oldest data.
-Example: `16GB` or `50%` (of system total)."
+Example: `16GB` or `50%` (of system total).
+You can also set this in the settings panel."
     )]
-    memory_limit: String,
+    memory_limit: Option<String>,
 
     #[clap(
         long,
@@ -998,6 +998,7 @@ fn start_native_viewer(
     let connect = args.connect.is_some();
     let follow = args.follow;
     let renderer = args.renderer.as_deref();
+    let memory_limit = args.memory_limit.clone();
 
     let (command_tx, command_rx) = re_viewer_context::command_channel();
 
@@ -1043,6 +1044,13 @@ fn start_native_viewer(
                 text_log_rx,
                 (command_tx, command_rx),
             );
+
+            if let Some(memory_limit) = memory_limit {
+                re_log::debug!("Parsing --memory-limit (for Viewer)");
+                let memory_limit = re_memory::MemoryLimit::parse(&memory_limit)
+                    .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?;
+                app.app_options_mut().memory_limit = memory_limit;
+            }
 
             #[allow(clippy::allow_attributes, unused_mut)]
             let ReceiversFromUrlParams {
@@ -1101,11 +1109,6 @@ fn native_startup_options_from_args(args: &Args) -> anyhow::Result<re_viewer::St
     Ok(re_viewer::StartupOptions {
         hide_welcome_screen: args.hide_welcome_screen,
         detach_process: args.detach_process,
-        memory_limit: {
-            re_log::debug!("Parsing --memory-limit (for Viewer)");
-            re_memory::MemoryLimit::parse(&args.memory_limit)
-                .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?
-        },
         persist_state: args.persist_state,
         is_in_notebook: false,
         screenshot_to_path_then_quit: args.screenshot_to.clone(),
