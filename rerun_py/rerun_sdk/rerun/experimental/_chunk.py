@@ -8,10 +8,12 @@ if TYPE_CHECKING:
     import pyarrow as pa
 
     from rerun import ComponentColumn
+    from rerun._baseclasses import ComponentDescriptor
     from rerun._send_columns import TimeColumnLike
     from rerun_bindings import ChunkInternal
 
     from ._lens import Lens
+    from ._selector import Selector
 
 
 class Chunk:
@@ -133,6 +135,47 @@ class Chunk:
     def to_record_batch(self) -> pa.RecordBatch:
         """Convert this chunk to an Arrow RecordBatch."""
         return self._internal.to_record_batch()
+
+    def apply_selector(
+        self,
+        source: ComponentDescriptor | str,
+        selector: Selector | str,
+    ) -> Chunk:
+        """
+        Apply a selector to a single component, returning a new chunk with the component transformed.
+
+        All other columns (timelines, other components) are preserved unchanged.
+        The source component's existing descriptor is preserved.
+
+        Parameters
+        ----------
+        source:
+            A [`ComponentDescriptor`][] or component identifier string for the
+            input column to transform.
+        selector:
+            A [`Selector`][] or selector query string to apply to the component.
+
+        Returns
+        -------
+        A new [`Chunk`][] with the component transformed.
+
+        Raises
+        ------
+        ValueError
+            If the source component is not found in the chunk or the selector
+            fails to evaluate.
+
+        """
+        from rerun._baseclasses import ComponentDescriptor as CD
+
+        from ._selector import Selector as SelectorType
+
+        source_str = source.component if isinstance(source, CD) else source
+
+        if isinstance(selector, str):
+            selector = SelectorType(selector)
+
+        return Chunk(self._internal.apply_selector(source_str, selector._internal))
 
     def apply_lenses(self, lenses: Sequence[Lens] | Lens) -> list[Chunk]:
         """

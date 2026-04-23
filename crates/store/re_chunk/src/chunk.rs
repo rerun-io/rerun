@@ -428,21 +428,18 @@ impl Chunk {
     /// The returned chunk always gets a new unique [`ChunkId`] and new auto-generated [`RowId`]s,
     /// since the component data may have been modified by the closure.
     ///
-    /// Note: archetype information and component type information is lost on the mapped component.
+    /// When `target` is `None` the new column will carry over the [`ComponentDescriptor`] from
+    /// the `source` column.
     pub fn with_mapped_component<E>(
         &self,
         source: ComponentIdentifier,
-        target: ComponentIdentifier,
+        target: Option<ComponentDescriptor>,
         f: impl FnOnce(ArrowListArray) -> Result<ArrowListArray, E>,
     ) -> Result<Self, E> {
         let mut new_components = self.components.clone();
         if let Some(old_entry) = new_components.remove(&source) {
             new_components.insert(SerializedComponentColumn {
-                descriptor: ComponentDescriptor {
-                    component: target,
-                    archetype: None,
-                    component_type: None,
-                },
+                descriptor: target.unwrap_or(old_entry.descriptor),
                 list_array: f(old_entry.list_array)?,
             });
         }

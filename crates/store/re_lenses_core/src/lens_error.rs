@@ -1,10 +1,18 @@
 use arrow::datatypes::DataType;
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 
+// TODO(grtlr): Error management has grown organically and needs some cleanup.
+
 /// Different variants of errors that can happen when executing lenses.
 #[expect(missing_docs)]
 #[derive(Debug, thiserror::Error)]
 pub enum LensError {
+    #[error("Component '{component}' not found in chunk for entity `{entity_path}`")]
+    ComponentNotFound {
+        entity_path: EntityPath,
+        component: ComponentIdentifier,
+    },
+
     #[error("Lens for input component `{input_component}` is missing output components")]
     MissingOutputComponent {
         input_component: ComponentIdentifier,

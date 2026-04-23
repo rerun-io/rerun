@@ -612,3 +612,88 @@ def test_apply_lenses_with_pipe() -> None:
 │ └───────────────────────────────────────────────┴───────────────────┴────────────────────────────┘ │
 └────────────────────────────────────────────────────────────────────────────────────────────────────┘\
 """)
+
+
+# ---------------------------------------------------------------------------
+# apply_selector
+# ---------------------------------------------------------------------------
+
+
+def test_apply_selector_doubles_values() -> None:
+    """apply_selector doubles float values via pipe, keeping other columns intact."""
+    import pyarrow.compute as pc
+
+    chunk = Chunk.from_columns(
+        "/sensor",
+        indexes=[rr.TimeColumn("tick", sequence=[0, 1])],
+        columns=rr.DynamicArchetype.columns(
+            archetype="MyArchetype", components={"value": pa.array([1.0, 2.0], type=pa.float64())}
+        ),
+    )
+
+    assert chunk.format(redact=True) == inline_snapshot("""\
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                           │
+│ * entity_path: /sensor                                                                              │
+│ * id: [**REDACTED**]                                                                                │
+│ * version: [**REDACTED**]                                                                           │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌───────────────────────────────────────────────┬──────────────────┬──────────────────────────────┐ │
+│ │ RowId                                         ┆ tick             ┆ MyArchetype:value            │ │
+│ │ ---                                           ┆ ---              ┆ ---                          │ │
+│ │ type: non-null FixedSizeBinary(16)            ┆ type: Int64      ┆ type: List(Float64)          │ │
+│ │ ARROW:extension:metadata: {"namespace":"row"} ┆ index_name: tick ┆ archetype: MyArchetype       │ │
+│ │ ARROW:extension:name: TUID                    ┆ is_sorted: true  ┆ component: MyArchetype:value │ │
+│ │ is_sorted: true                               ┆ kind: index      ┆ kind: data                   │ │
+│ │ kind: control                                 ┆                  ┆                              │ │
+│ ╞═══════════════════════════════════════════════╪══════════════════╪══════════════════════════════╡ │
+│ │ row_[**REDACTED**]                            ┆ 0                ┆ [1.0]                        │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ row_[**REDACTED**]                            ┆ 1                ┆ [2.0]                        │ │
+│ └───────────────────────────────────────────────┴──────────────────┴──────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────┘\
+""")
+
+    selector = Selector(".").pipe(lambda arr: pc.multiply(arr, 2.0))
+    result = chunk.apply_selector("MyArchetype:value", selector)
+
+    assert isinstance(result, Chunk)
+    assert result.num_rows == chunk.num_rows
+    assert result.entity_path == "/sensor"
+    assert chunk.id != result.id
+    assert result.format(redact=True) == inline_snapshot("""\
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                           │
+│ * entity_path: /sensor                                                                              │
+│ * id: [**REDACTED**]                                                                                │
+│ * version: [**REDACTED**]                                                                           │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌───────────────────────────────────────────────┬──────────────────┬──────────────────────────────┐ │
+│ │ RowId                                         ┆ tick             ┆ MyArchetype:value            │ │
+│ │ ---                                           ┆ ---              ┆ ---                          │ │
+│ │ type: non-null FixedSizeBinary(16)            ┆ type: Int64      ┆ type: List(Float64)          │ │
+│ │ ARROW:extension:metadata: {"namespace":"row"} ┆ index_name: tick ┆ archetype: MyArchetype       │ │
+│ │ ARROW:extension:name: TUID                    ┆ is_sorted: true  ┆ component: MyArchetype:value │ │
+│ │ is_sorted: true                               ┆ kind: index      ┆ kind: data                   │ │
+│ │ kind: control                                 ┆                  ┆                              │ │
+│ ╞═══════════════════════════════════════════════╪══════════════════╪══════════════════════════════╡ │
+│ │ row_[**REDACTED**]                            ┆ 0                ┆ [2.0]                        │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ row_[**REDACTED**]                            ┆ 1                ┆ [4.0]                        │ │
+│ └───────────────────────────────────────────────┴──────────────────┴──────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────┘\
+""")
+
+
+def test_apply_selector_component_not_found() -> None:
+    """apply_selector raises ValueError when the source component doesn't exist."""
+    chunk = Chunk.from_columns(
+        "/test",
+        indexes=[rr.TimeColumn("tick", sequence=[0])],
+        columns=rr.DynamicArchetype.columns(
+            archetype="MyArchetype", components={"value": pa.array([1.0], type=pa.float64())}
+        ),
+    )
+
+    with pytest.raises(ValueError, match="not found"):
+        chunk.apply_selector("nonexistent:component", Selector("."))

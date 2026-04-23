@@ -147,6 +147,26 @@ impl PyChunkInternal {
         }
     }
 
+    /// Apply a selector to a single component, returning a new chunk with the component transformed.
+    #[pyo3(signature = (source, selector))]
+    fn apply_selector(
+        &self,
+        source: &str,
+        selector: &crate::selector::PySelectorInternal,
+    ) -> PyResult<Self> {
+        use re_lenses_core::ChunkExt as _;
+        use re_types_core::ComponentIdentifier;
+
+        let source_id = ComponentIdentifier::from(source);
+
+        let new_chunk = self
+            .chunk
+            .apply_selector(source_id, selector.selector())
+            .map_err(|err| PyValueError::new_err(err.to_string()))?;
+
+        Ok(Self::new(Arc::new(new_chunk)))
+    }
+
     /// Format this chunk as a human-readable table string.
     ///
     /// Args:
