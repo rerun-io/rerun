@@ -1,12 +1,12 @@
-use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_sdk_types::blueprint::{archetypes::PlotLegend, components::Corner2D};
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
-use re_viewport_blueprint::{ViewBlueprint, ViewContents};
+use re_viewport_blueprint::{ViewBlueprint, ViewContents, ViewProperty};
 
 fn color_gradient0(step: i64) -> re_sdk_types::components::Color {
     re_sdk_types::components::Color::from_rgb((step * 8) as u8, 255 - (step * 8) as u8, 0)
@@ -41,15 +41,13 @@ fn test_clear_series_points_and_line_impl(
     // visualizer for scalar values. We force `SeriesPoints` to have data, by
     // explicitly setting the marker shape to circle.
     test_context.log_entity("plots/line", |builder| {
-        builder.with_archetype(
-            RowId::new(),
+        builder.with_archetype_auto_row(
             TimePoint::default(),
             &re_sdk_types::archetypes::SeriesLines::new(),
         )
     });
     test_context.log_entity("plots/point", |builder| {
-        builder.with_archetype(
-            RowId::new(),
+        builder.with_archetype_auto_row(
             TimePoint::default(),
             &re_sdk_types::archetypes::SeriesPoints::new()
                 .with_markers([re_sdk_types::components::MarkerShape::Circle]),
@@ -62,8 +60,7 @@ fn test_clear_series_points_and_line_impl(
         match i {
             15 => {
                 test_context.log_entity("plots", |builder| {
-                    builder.with_archetype(
-                        RowId::new(),
+                    builder.with_archetype_auto_row(
                         timepoint,
                         &re_sdk_types::archetypes::Clear::new(true),
                     )
@@ -83,10 +80,10 @@ fn test_clear_series_points_and_line_impl(
                 };
 
                 test_context.log_entity("plots/line", |builder| {
-                    builder.with_archetype(RowId::new(), timepoint.clone(), &data)
+                    builder.with_archetype_auto_row(timepoint.clone(), &data)
                 });
                 test_context.log_entity("plots/point", |builder| {
-                    builder.with_archetype(RowId::new(), timepoint, &data)
+                    builder.with_archetype_auto_row(timepoint, &data)
                 });
             }
         }
@@ -170,7 +167,7 @@ fn test_line_properties_impl(
             .with_names(["static"])
     };
     test_context.log_entity("entity_static_props", |builder| {
-        builder.with_archetype(RowId::new(), TimePoint::default(), &properties_static)
+        builder.with_archetype_auto_row(TimePoint::default(), &properties_static)
     });
 
     for step in 0..32 {
@@ -191,12 +188,12 @@ fn test_line_properties_impl(
 
         let (scalars_static, scalars_dynamic) = scalars_for_properties_test(step, multiple_scalars);
         test_context.log_entity("entity_static_props", |builder| {
-            builder.with_archetype(RowId::new(), timepoint.clone(), &scalars_static)
+            builder.with_archetype_auto_row(timepoint.clone(), &scalars_static)
         });
         test_context.log_entity("entity_dynamic_props", |builder| {
             builder
-                .with_archetype(RowId::new(), timepoint.clone(), &properties)
-                .with_archetype(RowId::new(), timepoint, &scalars_dynamic)
+                .with_archetype_auto_row(timepoint.clone(), &properties)
+                .with_archetype_auto_row(timepoint, &scalars_dynamic)
         });
     }
 
@@ -232,8 +229,7 @@ fn test_per_series_visibility() {
         let timeline = Timeline::log_tick();
 
         test_context.log_entity("plots", |builder| {
-            builder.with_archetype(
-                RowId::new(),
+            builder.with_archetype_auto_row(
                 TimePoint::default(),
                 &re_sdk_types::archetypes::SeriesLines::new().with_visible_series(visibility),
             )
@@ -243,7 +239,7 @@ fn test_per_series_visibility() {
             let timepoint = TimePoint::from([(timeline, step)]);
             let (scalars, _) = scalars_for_properties_test(step, true);
             test_context.log_entity("plots", |builder| {
-                builder.with_archetype(RowId::new(), timepoint.clone(), &scalars)
+                builder.with_archetype_auto_row(timepoint.clone(), &scalars)
             });
         }
 
@@ -312,7 +308,7 @@ fn test_point_properties_impl(
     };
 
     test_context.log_entity("entity_static_props", |builder| {
-        builder.with_archetype(RowId::new(), TimePoint::default(), &static_props)
+        builder.with_archetype_auto_row(TimePoint::default(), &static_props)
     });
 
     for step in 0..32 {
@@ -337,12 +333,12 @@ fn test_point_properties_impl(
 
         let (scalars_static, scalars_dynamic) = scalars_for_properties_test(step, multiple_scalars);
         test_context.log_entity("entity_static_props", |builder| {
-            builder.with_archetype(RowId::new(), timepoint.clone(), &scalars_static)
+            builder.with_archetype_auto_row(timepoint.clone(), &scalars_static)
         });
         test_context.log_entity("entity_dynamic_props", |builder| {
             builder
-                .with_archetype(RowId::new(), timepoint.clone(), &properties)
-                .with_archetype(RowId::new(), timepoint, &scalars_dynamic)
+                .with_archetype_auto_row(timepoint.clone(), &properties)
+                .with_archetype_auto_row(timepoint, &scalars_dynamic)
         });
     }
 
@@ -364,6 +360,128 @@ fn test_point_properties_impl(
     ));
 }
 
+/// Renders three parallel sine waves that each embed a different non-finite
+/// "gap" value (`NaN`, `+inf`, `-inf`) with varying gap density.
+///
+/// The three series are vertically offset so each is independently visible in the snapshot.
+/// Every series is 64 points split into four quarters of the same density pattern:
+/// - Q1: all valid — continuous baseline
+/// - Q2: `[gap, valid, gap, valid, …]` — 1 gap between each valid point
+/// - Q3: `[gap, gap, valid, …]` — 2 gap stride
+/// - Q4: `[gap, gap, gap, gap, valid, …]` — 4 gap stride
+///
+/// This exercises three things at once: NaN's role as a line-break sentinel, aggregation's
+/// non-aggregatable handling of non-finite values, and that ±inf values don't hijack the
+/// auto-computed y-range and flatten the finite data.
+#[test]
+fn test_non_finite_islands() {
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+    let timeline = Timeline::log_tick();
+
+    let num_points: i64 = 64;
+    let quarter = num_points / 4;
+
+    let series = [
+        ("plots/nan", f64::NAN, 0.0),
+        ("plots/pos_inf", f64::INFINITY, 2.5),
+        ("plots/neg_inf", f64::NEG_INFINITY, -2.5),
+    ];
+
+    for (entity, gap_value, offset) in series {
+        test_context.log_entity(entity, |builder| {
+            builder.with_archetype_auto_row(
+                TimePoint::default(),
+                &re_sdk_types::archetypes::SeriesLines::new().with_widths([3.0]),
+            )
+        });
+        for i in 0..num_points {
+            let timepoint = TimePoint::from([(timeline, i)]);
+            let sine = (i as f64 / 10.0).sin() * 0.5 + offset;
+
+            let value = if i < quarter {
+                sine
+            } else if i < quarter * 2 {
+                let local = (i - quarter) % 2;
+                if local == 0 { gap_value } else { sine }
+            } else if i < quarter * 3 {
+                let local = (i - quarter * 2) % 3;
+                if local < 2 { gap_value } else { sine }
+            } else {
+                let local = (i - quarter * 3) % 5;
+                if local < 4 { gap_value } else { sine }
+            };
+
+            test_context.log_entity(entity, |builder| {
+                builder.with_archetype_auto_row(
+                    timepoint,
+                    &re_sdk_types::archetypes::Scalars::single(value),
+                )
+            });
+        }
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    // Move the legend to the top right corner to avoid covering any of the data.
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
+        ViewProperty::from_archetype::<PlotLegend>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view.id,
+        )
+        .save_blueprint_component(
+            ctx,
+            &PlotLegend::descriptor_corner(),
+            &[Corner2D::RightTop],
+        );
+        blueprint.add_view_at_root(view)
+    });
+
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "non_finite_islands",
+        egui::vec2(300.0, 300.0),
+        None,
+    ));
+}
+
+/// Series containing only `±inf` values (no finite data).
+///
+/// The viewer must not crash and should fall back to a sane y-range.
+#[test]
+fn test_all_inf_values() {
+    let mut snapshot_results = SnapshotResults::new();
+    for (name, inf_value) in [
+        ("all_pos_inf", f64::INFINITY),
+        ("all_neg_inf", f64::NEG_INFINITY),
+    ] {
+        let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+        let timeline = Timeline::log_tick();
+
+        for i in 0..8 {
+            let timepoint = TimePoint::from([(timeline, i)]);
+            test_context.log_entity("plots/all_inf", |builder| {
+                builder.with_archetype_auto_row(
+                    timepoint,
+                    &re_sdk_types::archetypes::Scalars::single(inf_value),
+                )
+            });
+        }
+
+        test_context.set_active_timeline(*timeline.name());
+
+        let view_id = setup_blueprint(&mut test_context);
+        snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+            view_id,
+            name,
+            egui::vec2(300.0, 300.0),
+            None,
+        ));
+    }
+}
+
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
         blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
@@ -382,8 +500,7 @@ fn test_special_characters_in_entity_path() {
     for i in 0..32 {
         let timepoint = TimePoint::from([(timeline, i)]);
         test_context.log_entity("test::data", |builder| {
-            builder.with_archetype(
-                RowId::new(),
+            builder.with_archetype_auto_row(
                 timepoint,
                 &re_sdk_types::archetypes::Scalars::single((i as f64 / 5.0).sin()),
             )
@@ -414,8 +531,7 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool, snapshot_results: &mu
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
     fn with_scalar(builder: ChunkBuilder, value: i64) -> ChunkBuilder {
-        builder.with_archetype(
-            RowId::new(),
+        builder.with_archetype_auto_row(
             TimePoint::from([(Timeline::log_tick(), value)]),
             &re_sdk_types::archetypes::Scalars::new([value as f64]),
         )
@@ -423,16 +539,14 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool, snapshot_results: &mu
 
     test_context.log_entity("scalars", |builder| {
         let mut builder = builder
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 TimePoint::from([(Timeline::log_tick(), 0)]),
                 &re_sdk_types::archetypes::SeriesLines::new()
                     .with_widths([5.0])
                     .with_colors([re_sdk_types::components::Color::from_rgb(0, 255, 255)])
                     .with_names(["muh_scalars_from_0"]),
             )
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 TimePoint::from([(Timeline::log_tick(), 45)]),
                 &re_sdk_types::archetypes::SeriesLines::new()
                     .with_widths([5.0])

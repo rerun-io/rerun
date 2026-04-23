@@ -277,7 +277,6 @@ fn add_series_runs(
         #[expect(clippy::branches_sharing_code)]
         if p.attrs == attrs {
             // Same attributes, just add to the current series.
-
             series.points.push((p.time, p.value));
         } else {
             // Attributes changed since last point, break up the current run into a

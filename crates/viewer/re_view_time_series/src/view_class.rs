@@ -1442,27 +1442,60 @@ fn add_series_to_plot(
     *scalar_range = None;
 
     for series in all_plot_series {
+        if !series.visible {
+            continue;
+        }
+
+        let is_line = match series.kind {
+            PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_) => true,
+            PlotSeriesKind::Scatter(_) | PlotSeriesKind::Clear => false,
+        };
         let points = if series.visible {
             series
                 .points
                 .iter()
-                .map(|p| {
-                    if let Some(scalar_range) = scalar_range.as_mut() {
-                        if p.1 < scalar_range.start() {
-                            *scalar_range.start_mut() = p.1;
+                .copied()
+                .map(|(x, y)| {
+                    // Non-finite values (NaN, ±inf) must not hijack the auto-computed range —
+                    // a single ±inf would otherwise blow up the range and flatten all finite data.
+                    if y.is_finite() {
+                        if let Some(scalar_range) = scalar_range.as_mut() {
+                            if y < scalar_range.start() {
+                                *scalar_range.start_mut() = y;
+                            }
+                            if y > scalar_range.end() {
+                                *scalar_range.end_mut() = y;
+                            }
+                        } else {
+                            *scalar_range = Some(Range1D::new(y, y));
                         }
-                        if p.1 > scalar_range.end() {
-                            *scalar_range.end_mut() = p.1;
-                        }
-                    } else {
-                        *scalar_range = Some(Range1D::new(p.1, p.1));
                     }
 
-                    [(p.0.saturating_sub(time_offset)) as _, p.1]
+                    [(x.saturating_sub(time_offset)) as _, y]
                 })
                 .collect::<Vec<_>>()
         } else {
             continue; // Skip rendering hidden series.
+        };
+
+        // Collect all line points that are completely surrounded by non-finite values.
+        // Note that by handling this late, aggregation still applied earlier, this is intentional
+        // since on line plots we don't want to handle those are clears which would fully abort aggregation.
+        let isolated_line_points = if is_line {
+            let nan_sentinel = [0.0, f64::NAN];
+            let padded = std::iter::once(&nan_sentinel)
+                .chain(points.iter())
+                .chain(std::iter::once(&nan_sentinel));
+
+            padded
+                .tuple_windows()
+                .filter(|([_prev_x, prev_y], [_x, y], [_next_x, next_y])| {
+                    !prev_y.is_finite() && y.is_finite() && !next_y.is_finite()
+                })
+                .map(|(_, p, _)| *p)
+                .collect()
+        } else {
+            Vec::new()
         };
 
         let color = series.color;
@@ -1501,8 +1534,19 @@ fn add_series_to_plot(
                     .highlight(highlight)
                     .id(series.id()),
             ),
-            // Break up the chart. At some point we might want something fancier.
             PlotSeriesKind::Clear => {}
+        }
+
+        // Render isolated points as scatter so they're visible even without line neighbors.
+        if !isolated_line_points.is_empty() {
+            plot_ui.points(
+                Points::new(&series.label, isolated_line_points)
+                    .color(color)
+                    .radius(series.radius_ui)
+                    .shape(egui_plot::MarkerShape::Circle)
+                    .highlight(highlight)
+                    .id(series.id()),
+            );
         }
     }
 }
