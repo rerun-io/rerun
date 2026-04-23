@@ -197,6 +197,7 @@ where
     }
 
     /// Get the Arrow schema for a dataset entry.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_dataset_schema(&mut self, entry_id: EntryId) -> ApiResult<ArrowSchema> {
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()

@@ -21,6 +21,10 @@ pub struct SearchResultsTableProvider {
     client: ConnectionClient,
     dataset_id: EntryId,
     request: SearchDatasetRequest,
+
+    /// Captured at construction so DataFusion-spawned execution tasks can re-attach
+    /// the caller's tracing span — otherwise gRPC spans below surface as root traces.
+    parent_span: tracing::Span,
 }
 
 impl std::fmt::Debug for SearchResultsTableProvider {
@@ -48,6 +52,7 @@ impl SearchResultsTableProvider {
             client,
             dataset_id,
             request,
+            parent_span: tracing::Span::current(),
         })
     }
 
@@ -61,7 +66,7 @@ impl SearchResultsTableProvider {
 impl GrpcStreamToTable for SearchResultsTableProvider {
     type GrpcStreamData = SearchDatasetResponse;
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
         let mut request = self.request.clone();
         request.scan_parameters = Some(ScanParameters {
@@ -111,7 +116,7 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
         Ok(rb.schema())
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn send_streaming_request(
         &mut self,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {

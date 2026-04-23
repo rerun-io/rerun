@@ -37,6 +37,10 @@ pub struct TableEntryTableProvider {
 
     // cache the table id when resolved
     table_id: Option<EntryId>,
+
+    /// Captured at construction so DataFusion-spawned execution tasks can re-attach
+    /// the caller's tracing span — otherwise gRPC spans below surface as root traces.
+    parent_span: tracing::Span,
 }
 
 impl std::fmt::Debug for TableEntryTableProvider {
@@ -59,6 +63,7 @@ impl TableEntryTableProvider {
             table: table.into(),
             table_id: None,
             runtime,
+            parent_span: tracing::Span::current(),
         }
     }
 
@@ -71,7 +76,7 @@ impl TableEntryTableProvider {
         Ok(GrpcStreamProvider::prepare(self).await?)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn table_id(&mut self) -> ApiResult<EntryId> {
         if let Some(table_id) = self.table_id {
             return Ok(table_id);
@@ -133,7 +138,7 @@ impl TableEntryTableProvider {
 impl GrpcStreamToTable for TableEntryTableProvider {
     type GrpcStreamData = ScanTableResponse;
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
         let request = GetTableSchemaRequest {
             table_id: Some(self.table_id().await?.into()),
@@ -172,7 +177,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         ))
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn send_streaming_request(
         &mut self,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {

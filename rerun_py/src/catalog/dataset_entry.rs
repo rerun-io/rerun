@@ -81,13 +81,13 @@ impl PyDatasetEntryInternal {
 
     /// Delete this entry from the catalog.
     fn delete(&mut self, py: Python<'_>) -> PyResult<()> {
-        let _span = read_trace_context_from_python(py, "delete").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.delete").entered();
         let connection = self.client.borrow_mut(py).connection().clone();
         connection.delete_entry(py, self.entry_details.id)
     }
 
     fn set_name(&mut self, py: Python<'_>, name: String) -> PyResult<()> {
-        let _span = read_trace_context_from_python(py, "set_name").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.set_name").entered();
         set_entry_name(py, name, &mut self.entry_details, &self.client)
     }
 
@@ -104,7 +104,8 @@ impl PyDatasetEntryInternal {
 
     /// Return the Arrow schema of the data contained in the dataset.
     fn arrow_schema(self_: PyRef<'_, Self>) -> PyResult<PyArrowType<ArrowSchema>> {
-        let _span = read_trace_context_from_python(self_.py(), "arrow_schema").entered();
+        let _span =
+            read_trace_context_from_python(self_.py(), "DatasetEntry.arrow_schema").entered();
         let arrow_schema = Self::fetch_arrow_schema(&self_)?;
 
         Ok(arrow_schema.into())
@@ -112,7 +113,7 @@ impl PyDatasetEntryInternal {
 
     /// The associated blueprint dataset, if any.
     fn blueprint_dataset(self_: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Option<Py<Self>>> {
-        let _span = read_trace_context_from_python(py, "blueprint_dataset").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.blueprint_dataset").entered();
         let Some(blueprint_dataset_entry_id) = self_.dataset_details.blueprint_dataset else {
             return Ok(None);
         };
@@ -144,7 +145,8 @@ impl PyDatasetEntryInternal {
         segment_id: Option<String>,
     ) -> PyResult<()> {
         let _span =
-            read_trace_context_from_python(py, "set_default_blueprint_segment_id").entered();
+            read_trace_context_from_python(py, "DatasetEntry.set_default_blueprint_segment_id")
+                .entered();
         let connection = self_.client.borrow(py).connection().clone();
 
         let mut dataset_details = self_.dataset_details.clone();
@@ -159,14 +161,14 @@ impl PyDatasetEntryInternal {
 
     /// Return the schema of the data contained in the dataset.
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
-        let _span = read_trace_context_from_python(self_.py(), "schema").entered();
+        let _span = read_trace_context_from_python(self_.py(), "DatasetEntry.schema").entered();
         Self::fetch_schema(&self_)
     }
 
     /// Returns a list of segment IDs for the dataset.
     pub fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "segment_ids").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.segment_ids").entered();
         let connection = self_.client.borrow(py).connection().clone();
 
         connection.get_dataset_segment_ids(py, self_.entry_details.id)
@@ -175,7 +177,7 @@ impl PyDatasetEntryInternal {
     /// Return the segment table as a DataFusion DataFrame.
     fn segment_table(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "segment_table").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.segment_table").entered();
         let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
@@ -199,7 +201,7 @@ impl PyDatasetEntryInternal {
     /// Return the dataset manifest as a DataFusion DataFrame.
     fn manifest(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "manifest").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.manifest").entered();
         let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
@@ -341,7 +343,7 @@ impl PyDatasetEntryInternal {
         let py = self_.py();
         let connection = self_.client.borrow(py).connection().clone();
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
-        let _span = read_trace_context_from_python(py, "register").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.register").entered();
 
         let results = connection.register_with_dataset(
             py,
@@ -394,7 +396,7 @@ impl PyDatasetEntryInternal {
         force: bool,
     ) -> PyResult<()> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "unregister").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.unregister").entered();
         let connection = self_.client.borrow(py).connection().clone();
 
         let _results = connection.unregister_from_dataset(
@@ -438,7 +440,7 @@ impl PyDatasetEntryInternal {
         let connection = self_.client.borrow(py).connection().clone();
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
 
-        let _span = read_trace_context_from_python(py, "register_prefix").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.register_prefix").entered();
 
         let results = connection.register_with_dataset_prefix(
             py,
@@ -459,7 +461,8 @@ impl PyDatasetEntryInternal {
         self_: PyRef<'_, Self>,
         segment_id: String,
     ) -> PyResult<PyRecordingInternal> {
-        let _span = read_trace_context_from_python(self_.py(), "download_segment").entered();
+        let _span =
+            read_trace_context_from_python(self_.py(), "DatasetEntry.download_segment").entered();
         let catalog_client = self_.client.borrow(self_.py());
         let connection = catalog_client.connection();
         let dataset_id = self_.entry_details.id;
@@ -533,7 +536,9 @@ impl PyDatasetEntryInternal {
         store_position: bool,
         base_tokenizer: &str,
     ) -> PyResult<()> {
-        let _span = read_trace_context_from_python(self_.py(), "create_fts_search_index").entered();
+        let _span =
+            read_trace_context_from_python(self_.py(), "DatasetEntry.create_fts_search_index")
+                .entered();
         let connection = self_.client.borrow(self_.py()).connection().clone();
         let dataset_id = self_.entry_details.id;
         let time_selector: TimeColumnSelector = time_index.into();
@@ -615,7 +620,8 @@ impl PyDatasetEntryInternal {
         distance_metric: VectorDistanceMetricLike,
     ) -> PyResult<PyIndexingResult> {
         let _span =
-            read_trace_context_from_python(self_.py(), "create_vector_search_index").entered();
+            read_trace_context_from_python(self_.py(), "DatasetEntry.create_vector_search_index")
+                .entered();
         let connection = self_.client.borrow(self_.py()).connection().clone();
         let dataset_id = self_.entry_details.id;
 
@@ -671,7 +677,8 @@ impl PyDatasetEntryInternal {
 
     /// List all user-defined indexes in this dataset.
     fn list_search_indexes(self_: PyRef<'_, Self>) -> PyResult<Vec<PyIndexingResult>> {
-        let _span = read_trace_context_from_python(self_.py(), "list_search_indexes").entered();
+        let _span = read_trace_context_from_python(self_.py(), "DatasetEntry.list_search_indexes")
+            .entered();
         let connection = self_.client.borrow(self_.py()).connection().clone();
         let dataset_id = self_.entry_details.id;
 
@@ -717,7 +724,9 @@ impl PyDatasetEntryInternal {
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
     ) -> PyResult<Vec<PyIndexConfig>> {
-        let _span = read_trace_context_from_python(self_.py(), "delete_search_indexes").entered();
+        let _span =
+            read_trace_context_from_python(self_.py(), "DatasetEntry.delete_search_indexes")
+                .entered();
         let connection = self_.client.borrow(self_.py()).connection().clone();
         let dataset_id = self_.entry_details.id;
 
@@ -762,7 +771,7 @@ impl PyDatasetEntryInternal {
         column: AnyComponentColumn,
     ) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "search_fts").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.search_fts").entered();
         let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
@@ -820,7 +829,7 @@ impl PyDatasetEntryInternal {
         top_k: u32,
     ) -> PyResult<Bound<'py, PyAny>> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "search_vector").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.search_vector").entered();
         let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
@@ -876,7 +885,7 @@ impl PyDatasetEntryInternal {
         cleanup_before: Option<Bound<'_, PyAny>>,
         unsafe_allow_recent_cleanup: bool,
     ) -> PyResult<()> {
-        let _span = read_trace_context_from_python(py, "do_maintenance").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.do_maintenance").entered();
         let connection = self_.client.borrow(self_.py()).connection().clone();
 
         let cleanup_before_nanos = cleanup_before
@@ -948,6 +957,7 @@ impl PyDatasetEntryInternal {
 }
 
 impl PyDatasetEntryInternal {
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
         let connection = self_.client.borrow_mut(self_.py()).connection().clone();
 
@@ -956,6 +966,7 @@ impl PyDatasetEntryInternal {
         Ok(schema)
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let arrow_schema = Self::fetch_arrow_schema(self_)?;
         let columns = SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())

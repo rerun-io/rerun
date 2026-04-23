@@ -223,6 +223,7 @@ impl ConnectionRegistryHandle {
     /// - Local credentials for Rerun Cloud
     ///
     /// Failing that, no token will be used.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn client(&self, origin: re_uri::Origin) -> ApiResult<ConnectionClient> {
         // happy path
         {
@@ -306,6 +307,7 @@ impl ConnectionRegistryHandle {
     /// Try creating (and validating) a raw client using whatever token we might have available.
     ///
     /// If successful, returns both the client and the working token.
+    #[tracing::instrument(level = "info", skip_all)]
     async fn try_create_raw_client(
         origin: re_uri::Origin,
         possible_credentials: impl Iterator<Item = SourcedCredentials>,
@@ -351,6 +353,7 @@ impl ConnectionRegistryHandle {
         }
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     async fn create_and_validate_raw_client_with_token(
         origin: re_uri::Origin,
         credentials: Option<SourcedCredentials>,

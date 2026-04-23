@@ -19,6 +19,10 @@ use crate::wasm_compat::make_future_send;
 pub struct SegmentTableProvider {
     client: ConnectionClient,
     dataset_id: EntryId,
+
+    /// Captured at construction so DataFusion-spawned execution tasks can re-attach
+    /// the caller's tracing span — otherwise gRPC spans below surface as root traces.
+    parent_span: tracing::Span,
 }
 
 impl std::fmt::Debug for SegmentTableProvider {
@@ -31,7 +35,11 @@ impl std::fmt::Debug for SegmentTableProvider {
 
 impl SegmentTableProvider {
     pub fn new(client: ConnectionClient, dataset_id: EntryId) -> Self {
-        Self { client, dataset_id }
+        Self {
+            client,
+            dataset_id,
+            parent_span: tracing::Span::current(),
+        }
     }
 
     /// This is a convenience function
@@ -44,7 +52,7 @@ impl SegmentTableProvider {
 impl GrpcStreamToTable for SegmentTableProvider {
     type GrpcStreamData = ScanSegmentTableResponse;
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
         let mut client = self.client.clone();
         let dataset_id = self.dataset_id;
@@ -57,7 +65,7 @@ impl GrpcStreamToTable for SegmentTableProvider {
 
     // TODO(ab): what `GrpcStreamToTable` attempts to simplify should probably be handled by
     // `ConnectionClient`
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn send_streaming_request(
         &mut self,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {

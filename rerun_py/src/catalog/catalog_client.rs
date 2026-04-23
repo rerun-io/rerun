@@ -146,7 +146,7 @@ impl PyCatalogClientInternal {
         self_: Py<Self>,
         py: Python<'_>,
     ) -> PyResult<(String, Option<String>, Option<String>)> {
-        let _span = read_trace_context_from_python(py, "version_info").entered();
+        let _span = read_trace_context_from_python(py, "CatalogClient.version_info").entered();
         let connection = self_.borrow(py).connection.clone();
         let info = connection.version_info(py)?;
         Ok((info.version, info.cloud_provider, info.cloud_region))
@@ -158,7 +158,7 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         include_hidden: bool,
     ) -> PyResult<Vec<Py<PyDatasetEntryInternal>>> {
-        let _span = read_trace_context_from_python(py, "datasets").entered();
+        let _span = read_trace_context_from_python(py, "CatalogClient.datasets").entered();
         let connection = self_.borrow(py).connection.clone();
 
         let mut entry_details =
@@ -189,7 +189,7 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         include_hidden: bool,
     ) -> PyResult<Vec<Py<PyTableEntryInternal>>> {
-        let _span = read_trace_context_from_python(py, "tables").entered();
+        let _span = read_trace_context_from_python(py, "CatalogClient.tables").entered();
         let connection = self_.borrow(py).connection.clone();
 
         let entry_details =
@@ -215,7 +215,7 @@ impl PyCatalogClientInternal {
         id: Py<PyEntryId>,
         py: Python<'_>,
     ) -> PyResult<Py<PyDatasetEntryInternal>> {
-        let _span = read_trace_context_from_python(py, "get_dataset").entered();
+        let _span = read_trace_context_from_python(py, "CatalogClient.get_dataset").entered();
         let connection = self_.borrow(py).connection.clone();
         let dataset_entry = connection.read_dataset(py, id.borrow(py).id)?;
 
@@ -233,7 +233,7 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         id: Py<PyEntryId>,
     ) -> PyResult<Py<PyTableEntryInternal>> {
-        let _span = read_trace_context_from_python(py, "get_table").entered();
+        let _span = read_trace_context_from_python(py, "CatalogClient.get_table").entered();
         let connection = self_.borrow(py).connection.clone();
         let table_entry = connection.read_table(py, id.borrow(py).id)?;
 
@@ -251,7 +251,7 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         name: &str,
     ) -> PyResult<Py<PyDatasetEntryInternal>> {
-        let _span = read_trace_context_from_python(py, "create_dataset").entered();
+        let _span = read_trace_context_from_python(py, "CatalogClient.create_dataset").entered();
         let connection = self_.borrow_mut(py).connection.clone();
         let dataset_entry = connection.create_dataset(py, name.to_owned())?;
 
@@ -267,7 +267,7 @@ impl PyCatalogClientInternal {
         name: String,
         url: String,
     ) -> PyResult<Py<PyTableEntryInternal>> {
-        let _span = read_trace_context_from_python(py, "register_table").entered();
+        let _span = read_trace_context_from_python(py, "CatalogClient.register_table").entered();
         let connection = self_.borrow_mut(py).connection.clone();
 
         let url = url
@@ -298,7 +298,7 @@ impl PyCatalogClientInternal {
         schema: PyArrowType<Schema>,
         url: Option<String>,
     ) -> PyResult<Py<PyTableEntryInternal>> {
-        let _span = read_trace_context_from_python(py, "create_table").entered();
+        let _span = read_trace_context_from_python(py, "CatalogClient.create_table").entered();
         let connection = self_.borrow_mut(py).connection.clone();
 
         // Verify we have a valid table name
@@ -342,7 +342,8 @@ impl PyCatalogClientInternal {
 
     /// Perform global maintenance tasks on the server.
     fn do_global_maintenance(self_: Py<Self>, py: Python<'_>) -> PyResult<()> {
-        let _span = read_trace_context_from_python(py, "do_global_maintenance").entered();
+        let _span =
+            read_trace_context_from_python(py, "CatalogClient.do_global_maintenance").entered();
         let connection = self_.borrow_mut(py).connection.clone();
 
         connection.do_global_maintenance(py)
@@ -372,7 +373,8 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         name: String,
     ) -> PyResult<Py<PyEntryId>> {
-        let _span = read_trace_context_from_python(py, "_entry_id_from_entry_name").entered();
+        let _span =
+            read_trace_context_from_python(py, "CatalogClient._entry_id_from_entry_name").entered();
         let connection = self_.borrow(py).connection.clone();
 
         let entry_details = connection.find_entries(py, EntryFilter::new().with_name(&name))?;

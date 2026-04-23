@@ -105,7 +105,7 @@ impl PyDatasetViewInternal {
     /// Return the schema of the data contained in this view.
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "schema").entered();
+        let _span = read_trace_context_from_python(py, "DatasetView.schema").entered();
         let dataset = self_.dataset.borrow(py);
         let PySchemaInternal {
             columns: base_columns,
@@ -122,13 +122,15 @@ impl PyDatasetViewInternal {
 
     /// Return the Arrow schema of the data contained in this view.
     fn arrow_schema(self_: PyRef<'_, Self>) -> PyResult<PyArrowType<ArrowSchema>> {
-        let _span = read_trace_context_from_python(self_.py(), "arrow_schema").entered();
+        let _span =
+            read_trace_context_from_python(self_.py(), "DatasetView.arrow_schema").entered();
         Ok(Self::schema(self_)?.into_arrow_schema().into())
     }
 
     /// Returns a list of segment IDs for this view (filtered if segment filter is set).
     fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
         let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetView.segment_ids").entered();
         let dataset = self_.dataset.borrow(py);
 
         let all_segment_ids = PyDatasetEntryInternal::segment_ids(dataset)?;
@@ -150,6 +152,7 @@ impl PyDatasetViewInternal {
     ///     A list of segment ID strings.
     fn filter_segments(self_: PyRef<'_, Self>, segment_ids: Vec<String>) -> PyResult<Py<Self>> {
         let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetView.filter_segments").entered();
 
         // Extract segment IDs from input
         let new_segments: HashSet<String> = segment_ids.into_iter().collect();
@@ -177,6 +180,7 @@ impl PyDatasetViewInternal {
     ///     Entity path expressions like "/points/**", "-/text/**".
     fn filter_contents(self_: PyRef<'_, Self>, exprs: Vec<String>) -> PyResult<Py<Self>> {
         let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetView.filter_contents").entered();
 
         // Combine with existing content filters
         let combined_filters = match &self_.content_filters {
@@ -232,7 +236,7 @@ impl PyDatasetViewInternal {
         using_index_values: Option<BTreeMap<String, IndexValuesLike<'_>>>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "reader").entered();
+        let _span = read_trace_context_from_python(py, "DatasetView.reader").entered();
 
         // Convert IndexValuesLike to BTreeSet<TimeInt>
         let using_index_values = using_index_values

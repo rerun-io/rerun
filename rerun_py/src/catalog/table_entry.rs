@@ -44,13 +44,13 @@ impl PyTableEntryInternal {
 
     /// Delete this entry from the catalog.
     fn delete(&mut self, py: Python<'_>) -> PyResult<()> {
-        let _span = read_trace_context_from_python(py, "delete").entered();
+        let _span = read_trace_context_from_python(py, "TableEntry.delete").entered();
         let connection = self.client.borrow_mut(py).connection().clone();
         connection.delete_entry(py, self.entry_details.id)
     }
 
     fn set_name(&mut self, py: Python<'_>, name: String) -> PyResult<()> {
-        let _span = read_trace_context_from_python(py, "set_name").entered();
+        let _span = read_trace_context_from_python(py, "TableEntry.set_name").entered();
         set_entry_name(py, name, &mut self.entry_details, &self.client)
     }
 
@@ -64,7 +64,8 @@ impl PyTableEntryInternal {
         session: &Bound<'py, PyAny>,
     ) -> PyResult<Bound<'py, PyCapsule>> {
         let _span =
-            read_trace_context_from_python(self_.py(), "__datafusion_table_provider__").entered();
+            read_trace_context_from_python(self_.py(), "TableEntry.__datafusion_table_provider__")
+                .entered();
         let provider = Self::table_provider(self_)?;
 
         let capsule_name = cr"datafusion_table_provider".into();
@@ -98,7 +99,7 @@ impl PyTableEntryInternal {
         self_: PyRef<'py, Self>,
         py: Python<'py>,
     ) -> PyResult<Bound<'py, PyAny>> {
-        let _span = read_trace_context_from_python(py, "to_arrow_reader").entered();
+        let _span = read_trace_context_from_python(py, "TableEntry.to_arrow_reader").entered();
         let df = Self::reader(self_)?;
 
         py.import("pyarrow")?
@@ -123,7 +124,7 @@ impl PyTableEntryInternal {
         batches: &Bound<'_, PyAny>,
         insert_mode: PyTableInsertModeInternal,
     ) -> PyResult<()> {
-        let _span = read_trace_context_from_python(py, "write_batches").entered();
+        let _span = read_trace_context_from_python(py, "TableEntry.write_batches").entered();
         let entry_id = self_.borrow(py).entry_details.id;
         let connection = self_
             .borrow_mut(py)
