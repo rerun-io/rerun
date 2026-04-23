@@ -157,12 +157,13 @@ impl OutputBuilder {
 
     /// Builds a [`ast::LensOutput`], the `input` is passed for providing contextualized errors.
     fn build(self, input: ComponentIdentifier) -> Result<ast::LensOutput, LensError> {
-        let components =
-            self.components
-                .try_into()
-                .map_err(|_err| LensError::MissingOutputComponent {
-                    input_component: input,
-                })?;
+        let components = self
+            .components
+            .try_into()
+            .map_err(|_err| LensError::NoOutputColumns {
+                input_component: input,
+                target_entity: None,
+            })?;
 
         Ok(ast::LensOutput {
             scatter: self.scatter,

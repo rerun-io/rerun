@@ -61,9 +61,9 @@ impl ChunkExt for Chunk {
                 }
             })?;
 
-            result.ok_or_else(|| LensError::NoOutputColumnsProduced {
+            result.ok_or_else(|| LensError::NoOutputColumns {
                 input_component: source,
-                target_entity: entity_path.clone(),
+                target_entity: Some(entity_path.clone()),
             })
         })
     }

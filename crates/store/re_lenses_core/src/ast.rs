@@ -370,9 +370,9 @@ fn apply_one_to_many(
             return Err(PartialChunk {
                 inner: Box::new(PartialChunkInner {
                     chunk: None,
-                    errors: vec![LensError::NoOutputColumnsProduced {
+                    errors: vec![LensError::NoOutputColumns {
                         input_component: input.descriptor.component,
-                        target_entity: target_entity.clone(),
+                        target_entity: Some(target_entity.clone()),
                     }],
                 }),
             });
