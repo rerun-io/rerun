@@ -905,6 +905,22 @@ impl Chunk {
         Self::from_native_row_ids(id, entity_path, Some(true), &row_ids, timelines, components)
     }
 
+    /// Creates a new [`Chunk`] from columnar data.
+    ///
+    /// Pass an empty iterator for `timelines` to create static data.
+    pub fn from_columns(
+        entity_path: impl Into<EntityPath>,
+        timelines: impl IntoIterator<Item = TimeColumn>,
+        components: impl IntoIterator<Item = (ComponentDescriptor, ArrowListArray)>,
+    ) -> ChunkResult<Self> {
+        let timelines: IntMap<TimelineName, TimeColumn> = timelines
+            .into_iter()
+            .map(|tc| (*tc.timeline().name(), tc))
+            .collect();
+        let components: ChunkComponents = components.into_iter().collect();
+        Self::from_auto_row_ids(ChunkId::new(), entity_path.into(), timelines, components)
+    }
+
     /// Simple helper for [`Self::new`] for static data.
     ///
     /// For a row-oriented constructor, see [`Self::builder`].

@@ -19,10 +19,12 @@ pub use crate::selector::{
 // Lenses
 mod ast;
 mod builder;
+mod chunk;
 mod lens_error;
 
 pub use self::{
     ast::{Lens, Lenses, OutputMode, PartialChunk},
     builder::{LensBuilder, OutputBuilder},
+    chunk::ChunkExt,
     lens_error::LensError,
 };

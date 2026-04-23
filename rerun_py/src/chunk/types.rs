@@ -126,29 +126,25 @@ impl PyChunkInternal {
         &self,
         lenses: Vec<PyRef<'_, crate::lenses::PyLensInternal>>,
     ) -> PyResult<Vec<Self>> {
-        let mut collection =
-            re_lenses_core::Lenses::new(re_lenses_core::OutputMode::ForwardUnmatched);
-        for lens in &lenses {
-            collection = collection.add_lens(lens.inner().clone());
-        }
+        use re_lenses_core::ChunkExt as _;
 
-        let mut results = Vec::new();
-        for result in collection.apply(&self.chunk) {
-            match result {
-                Ok(chunk) => results.push(Self {
+        let lenses: Vec<_> = lenses.iter().map(|l| l.inner().clone()).collect();
+        match self.chunk.apply_lenses(&lenses) {
+            Ok(chunks) => Ok(chunks
+                .into_iter()
+                .map(|chunk| Self {
                     chunk: Arc::new(chunk),
-                }),
-                Err(partial) => {
-                    let reason = partial
-                        .errors()
-                        .map(|e| e.to_string())
-                        .collect::<Vec<_>>()
-                        .join("; ");
-                    return Err(PyValueError::new_err(reason));
-                }
+                })
+                .collect()),
+            Err(partial) => {
+                let reason = partial
+                    .errors()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join("; ");
+                Err(PyValueError::new_err(reason))
             }
         }
-        Ok(results)
     }
 
     /// Format this chunk as a human-readable table string.
