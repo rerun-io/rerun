@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, LazyLock};
 
 use ahash::{HashMap, HashMapExt as _, HashSet};
@@ -161,12 +161,16 @@ pub type BlueprintSaver = dyn Fn(&ApplicationId, &EntityDb) -> anyhow::Result<()
 /// Validate a blueprint against the current blueprint schema requirements.
 pub type BlueprintValidator = dyn Fn(&EntityDb) -> bool + Send + Sync;
 
+/// Delete a persisted blueprint from storage, e.g. disk.
+pub type BlueprintDeleter = dyn Fn(&ApplicationId) -> anyhow::Result<()> + Send + Sync;
+
 /// How to save and load blueprints
 #[derive(Default)]
 pub struct BlueprintPersistence {
     pub loader: Option<Box<BlueprintLoader>>,
     pub saver: Option<Box<BlueprintSaver>>,
     pub validator: Option<Box<BlueprintValidator>>,
+    pub deleter: Option<Box<BlueprintDeleter>>,
 }
 
 /// Convenient information used for `MemoryPanel`.
@@ -215,6 +219,7 @@ impl StoreHub {
                 loader: None,
                 saver: None,
                 validator: None,
+                deleter: None,
             },
             &|_| {},
         )
@@ -883,6 +888,34 @@ impl StoreHub {
             // next frame.
             self.should_enable_heuristics_by_app_id
                 .insert(app_id.clone());
+        }
+    }
+
+    /// Clear active blueprints (in-memory and on disk) for all `app_ids` that have
+    /// recordings originating from the given server.
+    pub fn clear_blueprints_for_origin(&mut self, origin: &re_uri::Origin) {
+        let affected_app_ids: BTreeSet<ApplicationId> = self
+            .store_bundle
+            .recordings()
+            .filter(|db| {
+                matches!(
+                    &db.data_source,
+                    Some(LogSource::RedapGrpcStream { uri, .. }) if uri.origin == *origin
+                )
+            })
+            .map(|db| db.application_id().clone())
+            .collect();
+
+        for app_id in &affected_app_ids {
+            self.clear_active_blueprint_for_app_id(app_id);
+        }
+
+        if let Some(deleter) = &self.persistence.deleter {
+            for app_id in &affected_app_ids {
+                if let Err(err) = (deleter)(app_id) {
+                    re_log::warn!("Failed to delete persisted blueprint for {app_id}: {err}");
+                }
+            }
         }
     }
 

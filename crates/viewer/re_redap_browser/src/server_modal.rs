@@ -359,11 +359,9 @@ impl ServerModal {
                         ui.close();
 
                         if let ServerModalMode::Edit(edit) = &self.mode {
-                            re_quota_channel::send_crossbeam(
-                                ctx.command_sender,
-                                Command::RemoveServer(edit.origin.clone()),
-                            )
-                            .ok();
+                            app_ctx
+                                .command_sender
+                                .send_system(SystemCommand::RemoveRedapServer(edit.origin.clone()));
                         }
 
                         let on_add: Box<dyn FnOnce() + Send> =

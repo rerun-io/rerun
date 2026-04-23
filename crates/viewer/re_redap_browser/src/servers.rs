@@ -545,9 +545,6 @@ pub enum Command {
         on_add: Option<Box<dyn FnOnce() + Send>>,
     },
 
-    /// Remove a server and its token.
-    RemoveServer(re_uri::Origin),
-
     RefreshCollection(re_uri::Origin),
 
     /// Use the stored account credentials for a server and refresh.
@@ -571,7 +568,6 @@ impl std::fmt::Debug for Command {
                 .field("credentials", credentials)
                 .field("on_add", &on_add.as_ref().map(|_| "…"))
                 .finish(),
-            Self::RemoveServer(origin) => f.debug_tuple("RemoveServer").field(origin).finish(),
             Self::RefreshCollection(origin) => {
                 f.debug_tuple("RefreshCollection").field(origin).finish()
             }
@@ -590,6 +586,16 @@ impl RedapServers {
     /// Whether we already know about a given server (or have it queued to be added).
     pub fn has_server(&self, origin: &re_uri::Origin) -> bool {
         self.servers.contains_key(origin) || self.pending_servers.contains(origin)
+    }
+
+    /// Remove a server and its credentials.
+    pub fn remove_server(
+        &mut self,
+        origin: &re_uri::Origin,
+        connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    ) {
+        self.servers.remove(origin);
+        connection_registry.remove_credentials(origin);
     }
 
     /// Add a server to the hub.
@@ -745,11 +751,6 @@ impl RedapServers {
                 if let Some(on_add) = on_add {
                     on_add();
                 }
-            }
-
-            Command::RemoveServer(origin) => {
-                self.servers.remove(&origin);
-                connection_registry.remove_credentials(&origin);
             }
 
             Command::RefreshCollection(origin) => {

@@ -314,7 +314,8 @@ fn server_section_ui(
                         .ui(ui)
                         .clicked()
                     {
-                        servers.send_command(Command::RemoveServer(origin.clone()));
+                        ctx.command_sender()
+                            .send_system(SystemCommand::RemoveRedapServer(origin.clone()));
                     }
                 }),
         );

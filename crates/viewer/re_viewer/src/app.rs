@@ -1118,6 +1118,13 @@ impl App {
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
+            SystemCommand::RemoveRedapServer(origin) => {
+                self.state
+                    .redap_servers
+                    .remove_server(&origin, &self.connection_registry);
+                store_hub.clear_blueprints_for_origin(&origin);
+            }
+
             SystemCommand::EditRedapServerModal(command) => {
                 self.state.redap_servers.open_edit_server_modal(command);
             }
@@ -3550,6 +3557,7 @@ fn blueprint_loader() -> BlueprintPersistence {
         loader: None,
         saver: None,
         validator: Some(Box::new(crate::blueprint::is_valid_blueprint)),
+        deleter: None,
     }
 }
 
@@ -3605,6 +3613,7 @@ fn blueprint_loader() -> BlueprintPersistence {
         loader: Some(Box::new(load_blueprint_from_disk)),
         saver: Some(Box::new(save_blueprint_to_disk)),
         validator: Some(Box::new(crate::blueprint::is_valid_blueprint)),
+        deleter: Some(Box::new(crate::saving::delete_blueprint)),
     }
 }
 
