@@ -54,7 +54,7 @@ fn transform_chunk(
     target_datatype: Option<&arrow::datatypes::DataType>,
     chunk: &re_chunk_store::Chunk,
 ) -> Result<re_chunk_store::Chunk, ComponentMappingError> {
-    chunk.with_mapped_component(*source, *target, |arr| {
+    chunk.with_shadowed_component(*source, *target, |arr| {
         let transformed = if let Some(sel) = selector {
             sel.execute_per_row(&arr)
                 .map_err(ComponentMappingError::SelectorExecutionFailed)?

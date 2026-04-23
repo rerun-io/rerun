@@ -250,6 +250,22 @@ pub struct Chunk {
     pub(crate) components: ChunkComponents,
 }
 
+/// Generates sequential [`RowId`]s derived from a [`ChunkId`].
+///
+/// A core assumption of the data model is that the value of a cell
+/// defined by (`RowId` x column descriptor) is not allowed to change,
+/// which is why we have to generate new `RowId`s before modifying
+/// components or indexes.
+fn auto_row_ids(id: ChunkId, count: usize) -> FixedSizeBinaryArray {
+    let row_ids: Vec<RowId> =
+        std::iter::successors(Some(RowId::from_tuid((*id).next())), |row_id| {
+            Some(row_id.next())
+        })
+        .take(count)
+        .collect();
+    RowId::arrow_from_slice(&row_ids)
+}
+
 impl std::fmt::Debug for Chunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
@@ -407,12 +423,62 @@ impl Chunk {
             && components.0 == other.components.0
     }
 
-    /// Clones the chunk and renames a component.
+    /// Creates a new chunk with a mapped component column.
     ///
-    /// The returned chunk always gets a new unique [`ChunkId`].
+    /// The returned chunk always gets a new unique [`ChunkId`] and new auto-generated [`RowId`]s,
+    /// since the component data may have been modified by the closure.
     ///
-    /// Note: archetype information and component type information is lost.
+    /// Note: archetype information and component type information is lost on the mapped component.
     pub fn with_mapped_component<E>(
+        &self,
+        source: ComponentIdentifier,
+        target: ComponentIdentifier,
+        f: impl FnOnce(ArrowListArray) -> Result<ArrowListArray, E>,
+    ) -> Result<Self, E> {
+        let mut new_components = self.components.clone();
+        if let Some(old_entry) = new_components.remove(&source) {
+            new_components.insert(SerializedComponentColumn {
+                descriptor: ComponentDescriptor {
+                    component: target,
+                    archetype: None,
+                    component_type: None,
+                },
+                list_array: f(old_entry.list_array)?,
+            });
+        }
+
+        let id = ChunkId::new();
+        let row_ids = auto_row_ids(id, self.num_rows());
+
+        Ok(Self {
+            id,
+            entity_path: self.entity_path.clone(),
+            heap_size_bytes: AtomicU64::new(0),
+            is_sorted: true,
+            row_ids,
+            timelines: self.timelines.clone(),
+            components: new_components,
+        })
+    }
+
+    /// Creates a new chunk with a mapped component column, keeping the original [`RowId`]s.
+    ///
+    /// The returned chunk gets a new unique [`ChunkId`] but retains the original [`RowId`]s.
+    ///
+    /// In most cases, prefer [`Self::with_mapped_component`] instead, which generates new
+    /// [`RowId`]s to maintain the data model invariants.
+    ///
+    /// # Warning
+    ///
+    /// This is **only safe** when the closure does **not** modify the actual component data
+    /// (e.g. it introduces a new component column). If an existing column is modified, the
+    /// invariant that the value of a cell defined by (`RowId` x column descriptor) is immutable
+    /// will be violated, and the caller has to handle this appropriately.
+    ///
+    /// Note: archetype information and component type information is lost on the mapped component.
+    //
+    // TODO(grtlr): This should be revised when implementing caching of mapped chunks.
+    pub fn with_shadowed_component<E>(
         &self,
         source: ComponentIdentifier,
         target: ComponentIdentifier,
@@ -890,19 +956,9 @@ impl Chunk {
             .next()
             .map_or(0, |list_array| list_array.len());
 
-        let row_ids = std::iter::from_fn({
-            let tuid: re_tuid::Tuid = *id;
-            let mut row_id = RowId::from_tuid(tuid.next());
-            move || {
-                let yielded = row_id;
-                row_id = row_id.next();
-                Some(yielded)
-            }
-        })
-        .take(count)
-        .collect_vec();
+        let row_ids = auto_row_ids(id, count);
 
-        Self::from_native_row_ids(id, entity_path, Some(true), &row_ids, timelines, components)
+        Self::new(id, entity_path, Some(true), row_ids, timelines, components)
     }
 
     /// Creates a new [`Chunk`] from columnar data.
