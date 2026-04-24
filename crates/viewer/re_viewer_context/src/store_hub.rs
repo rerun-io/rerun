@@ -890,13 +890,7 @@ impl StoreHub {
     pub fn clear_blueprints_for_origin(&mut self, origin: &re_uri::Origin) {
         let affected_app_ids: BTreeSet<ApplicationId> = self
             .store_bundle
-            .recordings()
-            .filter(|db| {
-                matches!(
-                    &db.data_source,
-                    Some(LogSource::RedapGrpcStream { uri, .. }) if uri.origin == *origin
-                )
-            })
+            .recordings_for_origin(origin)
             .map(|db| db.application_id().clone())
             .collect();
 

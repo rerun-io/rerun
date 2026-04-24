@@ -132,6 +132,20 @@ impl StoreBundle {
             .filter(|log| log.store_kind() == StoreKind::Recording)
     }
 
+    /// Recordings for a redap origin
+    pub fn recordings_for_origin(
+        &self,
+        origin: &re_uri::Origin,
+    ) -> impl Iterator<Item = &EntityDb> {
+        self.recordings()
+            .filter(|db| {
+                matches!(
+                    &db.data_source,
+                    Some(re_log_channel::LogSource::RedapGrpcStream { uri, .. }) if uri.origin == *origin
+                )
+            })
+    }
+
     // --
 
     pub fn retain(&mut self, mut f: impl FnMut(&EntityDb) -> bool) {

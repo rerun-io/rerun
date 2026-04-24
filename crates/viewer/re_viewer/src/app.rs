@@ -843,6 +843,49 @@ impl App {
         }
     }
 
+    fn close_recording(&self, store_hub: &mut StoreHub, entry: &RecordingOrTable) {
+        // TODO(#9464): Find a better successor here.
+
+        if let RecordingOrTable::Recording { store_id } = entry {
+            store_hub.set_opened(store_id, false);
+        }
+
+        let data_source = match entry {
+            RecordingOrTable::Recording { store_id } => {
+                store_hub.entity_db_entry(store_id).data_source.clone()
+            }
+            RecordingOrTable::Table { .. } => None,
+        };
+        if let Some(data_source) = data_source {
+            // Only certain sources should be closed.
+            #[expect(clippy::match_same_arms)]
+            let should_close = match &data_source {
+                // Specific files should stop streaming when closing them.
+                LogSource::File { .. } => true,
+
+                // Specific HTTP streams should stop streaming when closing them.
+                LogSource::HttpStream { .. } => true,
+
+                // Specific GRPC streams should stop streaming when closing them.
+                // TODO(#10967): We still stream in some data after that.
+                LogSource::RedapGrpcStream { .. } => true,
+
+                // Don't close generic connections (like to an SDK) that may feed in different recordings over time.
+                LogSource::RrdWebEvent
+                | LogSource::JsChannel { .. }
+                | LogSource::Sdk
+                | LogSource::Stdin
+                | LogSource::MessageProxy(_) => false,
+            };
+
+            if should_close {
+                self.rx_log.retain(|r| r.source() != &data_source);
+            }
+        }
+
+        store_hub.remove(entry);
+    }
+
     fn run_system_command(
         &mut self,
         sent_from: &std::panic::Location<'_>, // Who sent this command? Useful for debugging!
@@ -965,46 +1008,7 @@ impl App {
             }
 
             SystemCommand::CloseRecordingOrTable(entry) => {
-                // TODO(#9464): Find a better successor here.
-
-                if let RecordingOrTable::Recording { store_id } = &entry {
-                    store_hub.set_opened(store_id, false);
-                }
-
-                let data_source = match &entry {
-                    RecordingOrTable::Recording { store_id } => {
-                        store_hub.entity_db_entry(store_id).data_source.clone()
-                    }
-                    RecordingOrTable::Table { .. } => None,
-                };
-                if let Some(data_source) = data_source {
-                    // Only certain sources should be closed.
-                    #[expect(clippy::match_same_arms)]
-                    let should_close = match &data_source {
-                        // Specific files should stop streaming when closing them.
-                        LogSource::File { .. } => true,
-
-                        // Specific HTTP streams should stop streaming when closing them.
-                        LogSource::HttpStream { .. } => true,
-
-                        // Specific GRPC streams should stop streaming when closing them.
-                        // TODO(#10967): We still stream in some data after that.
-                        LogSource::RedapGrpcStream { .. } => true,
-
-                        // Don't close generic connections (like to an SDK) that may feed in different recordings over time.
-                        LogSource::RrdWebEvent
-                        | LogSource::JsChannel { .. }
-                        | LogSource::Sdk
-                        | LogSource::Stdin
-                        | LogSource::MessageProxy(_) => false,
-                    };
-
-                    if should_close {
-                        self.rx_log.retain(|r| r.source() != &data_source);
-                    }
-                }
-
-                store_hub.remove(&entry);
+                self.close_recording(store_hub, &entry);
             }
 
             SystemCommand::CloseAllEntries => {
@@ -1123,10 +1127,27 @@ impl App {
             }
 
             SystemCommand::RemoveRedapServer(origin) => {
+                // Clearing blueprints must happen before closing the recordings (so we can know
+                // what to close)
+                store_hub.clear_blueprints_for_origin(&origin);
+
+                // Close any recordings streaming from this server, otherwise their
+                // still-open connections keep emitting "Failed to connect to remote
+                // data source" warnings.
+                let recordings_to_close: Vec<_> = store_hub
+                    .store_bundle()
+                    .recordings_for_origin(&origin)
+                    .map(|db| db.store_id().clone())
+                    .collect();
+
+                // Close the recordings before removing the server, to avoid a race
+                for store_id in recordings_to_close {
+                    self.close_recording(store_hub, &store_id.into());
+                }
+
                 self.state
                     .redap_servers
                     .remove_server(&origin, &self.connection_registry);
-                store_hub.clear_blueprints_for_origin(&origin);
             }
 
             SystemCommand::EditRedapServerModal(command) => {
