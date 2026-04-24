@@ -128,7 +128,11 @@ impl DataframeQueryTableProvider<ConnectionClient> {
     /// Create a table provider for a gRPC query. This function is async
     /// because we need to make gRPC calls to determine the schema at the
     /// creation of the table provider.
+    ///
+    /// If `arrow_schema` is `Some`, it is used directly and the `/GetDatasetSchema`
+    /// RPC is skipped — useful when the caller has already fetched the schema.
     #[tracing::instrument(level = "info", skip_all)]
+    #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::too_many_arguments))]
     pub async fn new(
         origin: Origin,
         connection: ConnectionRegistryHandle,
@@ -136,6 +140,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         query_expression: &QueryExpression,
         segment_ids: &[impl AsRef<str> + Sync],
         index_values: IndexValuesMap,
+        arrow_schema: Option<Schema>,
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
     ) -> ApiResult<Self> {
         let client = connection.client(origin.clone()).await?;
@@ -146,6 +151,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
             query_expression,
             segment_ids,
             index_values,
+            arrow_schema,
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers,
         )
@@ -194,21 +200,28 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
         query_expression: &QueryExpression,
         segment_ids: &[impl AsRef<str> + Sync],
         index_values: IndexValuesMap,
+        arrow_schema: Option<Schema>,
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
     ) -> ApiResult<Self> {
-        let request = tonic::Request::new(GetDatasetSchemaRequest {})
-            .with_entry_id(dataset_id)
-            .map_err(|err| {
-                ApiError::internal_with_source(None, err, "attaching dataset entry_id header")
+        // Either use the caller-provided schema or fetch it from the server.
+        let (schema, trace_id) = if let Some(schema) = arrow_schema {
+            (schema, None)
+        } else {
+            let request = tonic::Request::new(GetDatasetSchemaRequest {})
+                .with_entry_id(dataset_id)
+                .map_err(|err| {
+                    ApiError::internal_with_source(None, err, "attaching dataset entry_id header")
+                })?;
+            let response = client
+                .get_dataset_schema(request)
+                .await
+                .map_err(|err| ApiError::tonic(err, "get_dataset_schema"))?;
+            let trace_id = re_redap_client::extract_trace_id(response.metadata());
+            let schema = response.into_inner().schema().map_err(|err| {
+                ApiError::deserialization_with_source(trace_id, err, "decoding dataset schema")
             })?;
-        let response = client
-            .get_dataset_schema(request)
-            .await
-            .map_err(|err| ApiError::tonic(err, "get_dataset_schema"))?;
-        let trace_id = re_redap_client::extract_trace_id(response.metadata());
-        let schema = response.into_inner().schema().map_err(|err| {
-            ApiError::deserialization_with_source(trace_id, err, "decoding dataset schema")
-        })?;
+            (schema, trace_id)
+        };
 
         let schema = compute_schema_for_query(&schema, query_expression).map_err(|err| {
             // `compute_schema_for_query` fails when the caller-provided query

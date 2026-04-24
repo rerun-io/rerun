@@ -141,7 +141,8 @@ async fn query_dataset_snapshot<T: RerunCloudService>(
         &query,
         &[] as &[&str],
         Some(Arc::new(index_values)),
-        None,
+        None, // arrow_schema — let the provider fetch it
+        None, // trace_headers
     )
     .await
     .unwrap();

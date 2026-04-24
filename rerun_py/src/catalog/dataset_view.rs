@@ -405,6 +405,8 @@ fn build_dataframe_query_table_provider(
     let trace_headers_opt = None;
 
     let index_values = using_index_values.map(Arc::new);
+    // Reuse the already-fetched schema so the provider skips its own `GetDatasetSchema` RPC.
+    let arrow_schema = Some(schema);
     wait_for_future(py, async move {
         DataframeQueryTableProvider::new(
             connection.origin().clone(),
@@ -413,6 +415,7 @@ fn build_dataframe_query_table_provider(
             &query_expression,
             &segment_ids,
             index_values,
+            arrow_schema,
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers_opt,
         )
