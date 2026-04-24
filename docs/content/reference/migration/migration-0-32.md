@@ -59,40 +59,6 @@ rerun-importer-my-format
 
 ## Lenses API (Rust)
 
-### `output_columns_at` / `output_scatter_columns_at` replaced by `OutputBuilder::at_entity`
-
-The `output_columns_at` and `output_scatter_columns_at` methods on `LensBuilder` have been removed.
-Use `at_entity` on the `OutputBuilder` inside the closure instead:
-
-```rust
-// Before
-Lens::for_input_column(filter, "component")
-    .output_columns_at("target/entity", |out| {
-        out.component(descriptor, selector)
-    })?
-
-// After
-Lens::for_input_column("component")
-    .output_columns(|out| {
-        out.at_entity("target/entity")
-            .component(descriptor, selector)
-    })?
-```
-
-The same applies to scatter columns:
-
-```rust
-// Before
-.output_scatter_columns_at("target/entity", |out| { … })?
-
-// After
-.output_scatter_columns(|out| {
-    out.at_entity("target/entity") // …
-})?
-```
-
-Additionally, `ColumnsBuilder` and `ScatterColumnsBuilder` have been unified into a single `OutputBuilder` type.
-
 ### `EntityPathFilter` removed from `Lens`
 
 Entity path filtering is no longer part of the `Lens` itself. A `Lens` now operates purely
@@ -117,6 +83,27 @@ If you need entity path filtering, use `Lenses::add_lens_with_filter`:
 let lenses = Lenses::new(OutputMode::DropUnmatched)
     .add_lens_with_filter(EntityPathFilter::parse_forgiving("sensors/**"), lens);
 ```
+
+### `scatter` moved from `LensOutput` to `Lens`
+
+Scatter (1:N row mapping) is now a property of the `Lens`, not of individual outputs.
+The `output_scatter_columns` and `output_scatter_columns_at` methods have been removed.
+Use `LensBuilder::scatter()` before `output_columns` / `output_columns_at` instead:
+
+```rust
+// Before
+Lens::for_input_column("component")
+    .output_scatter_columns_at("/target", |out| { /* … */ })?
+    .build()
+
+// After
+Lens::for_input_column("component")
+    .scatter()
+    .output_columns_at("/target", |out| { /* … */ })?
+    .build()
+```
+
+Lenses that scatter are only available in Rust.
 
 ## `rerun rrd compact` renamed to `rerun rrd optimize`
 

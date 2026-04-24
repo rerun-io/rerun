@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensError, op};
+use re_lenses::{Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, InstancePoses3D, Points3D};
@@ -9,7 +9,7 @@ use super::packed_element_field::{extract_colors, extract_positions};
 /// Creates a lens for [`foxglove.PointCloud`] messages.
 ///
 /// [`foxglove.PointCloud`]: https://docs.foxglove.dev/docs/sdk/schemas/point-cloud
-pub fn point_cloud(time_type: TimeType) -> Result<Lens, LensError> {
+pub fn point_cloud(time_type: TimeType) -> Result<Lens, LensBuilderError> {
     let flatten = Selector::parse(".[]")?;
 
     Ok(Lens::for_input_column("foxglove.PointCloud:message")

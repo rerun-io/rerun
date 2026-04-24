@@ -36,8 +36,8 @@ fn test_output_mode_forward_all() {
 
     // Create a lens that only matches the first chunk
     let lens = Lens::for_input_column("test_component")
-        .output_columns(|out| {
-            out.at_entity("matched/output").component(
+        .output_columns_at("matched/output", |out| {
+            out.component(
                 ComponentDescriptor::partial("transformed"),
                 Selector::parse(".")?,
             )
@@ -84,8 +84,8 @@ fn test_output_mode_forward_unmatched() {
 
     // Create a lens that only matches the first chunk
     let lens = Lens::for_input_column("test_component")
-        .output_columns(|out| {
-            out.at_entity("matched/output").component(
+        .output_columns_at("matched/output", |out| {
+            out.component(
                 ComponentDescriptor::partial("transformed"),
                 Selector::parse(".")?,
             )
@@ -128,8 +128,8 @@ fn test_output_mode_drop_unmatched() {
 
     // Create a lens that only matches the first chunk
     let lens = Lens::for_input_column("test_component")
-        .output_columns(|out| {
-            out.at_entity("matched/output").component(
+        .output_columns_at("matched/output", |out| {
+            out.component(
                 ComponentDescriptor::partial("transformed"),
                 Selector::parse(".")?,
             )

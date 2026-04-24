@@ -1,6 +1,6 @@
 use re_chunk::{Chunk, ComponentIdentifier};
 
-use crate::{DynExpr, Lens, LensError, Lenses, OutputMode, PartialChunk, Selector};
+use crate::{DynExpr, Lens, LensRuntimeError, Lenses, OutputMode, PartialChunk, Selector};
 
 /// Extension methods for applying lenses to a [`Chunk`].
 pub trait ChunkExt {
@@ -23,7 +23,7 @@ pub trait ChunkExt {
         &self,
         source: ComponentIdentifier,
         selector: &Selector<DynExpr>,
-    ) -> Result<Chunk, LensError>;
+    ) -> Result<Chunk, LensRuntimeError>;
 }
 
 impl ChunkExt for Chunk {
@@ -40,9 +40,9 @@ impl ChunkExt for Chunk {
         &self,
         source: ComponentIdentifier,
         selector: &Selector<DynExpr>,
-    ) -> Result<Chunk, LensError> {
+    ) -> Result<Chunk, LensRuntimeError> {
         if !self.components().contains_component(source) {
-            return Err(LensError::ComponentNotFound {
+            return Err(LensRuntimeError::ComponentNotFound {
                 entity_path: self.entity_path().clone(),
                 component: source,
             });
@@ -53,7 +53,7 @@ impl ChunkExt for Chunk {
 
         self.with_mapped_component(source, None, |list_array| {
             let result = selector.execute_per_row(&list_array).map_err(|err| {
-                LensError::ComponentOperationFailed {
+                LensRuntimeError::ComponentOperationFailed {
                     target_entity: entity_path.clone(),
                     input_component: source,
                     component: source,
@@ -61,9 +61,9 @@ impl ChunkExt for Chunk {
                 }
             })?;
 
-            result.ok_or_else(|| LensError::NoOutputColumns {
+            result.ok_or_else(|| LensRuntimeError::NoOutputColumnsProduced {
                 input_component: source,
-                target_entity: Some(entity_path.clone()),
+                target_entity: entity_path.clone(),
             })
         })
     }

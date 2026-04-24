@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensError, op};
+use re_lenses::{Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, InstancePoses3D};
@@ -8,7 +8,7 @@ use super::FOXGLOVE_TIMESTAMP;
 /// Creates a lens for [`foxglove.PosesInFrame`] messages.
 ///
 /// [`foxglove.PosesInFrame`]: https://docs.foxglove.dev/docs/sdk/schemas/poses-in-frame
-pub fn poses_in_frame(time_type: TimeType) -> Result<Lens, LensError> {
+pub fn poses_in_frame(time_type: TimeType) -> Result<Lens, LensBuilderError> {
     Ok(Lens::for_input_column("foxglove.PosesInFrame:message")
         .output_columns(|out| {
             out.time(

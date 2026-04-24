@@ -14,7 +14,7 @@ mod pose_in_frame;
 mod poses_in_frame;
 mod raw_image;
 
-use re_lenses::{LensError, Lenses, OutputMode};
+use re_lenses::{LensBuilderError, Lenses, OutputMode};
 use re_log_types::TimeType;
 
 pub use camera_calibration::camera_calibration;
@@ -40,7 +40,10 @@ const IMAGE_PLANE_SUFFIX: &str = "_image_plane";
 const FOXGLOVE_TIMESTAMP: &str = "timestamp";
 
 /// Adds all Foxglove lenses to an existing collection.
-pub fn add_foxglove_lenses(lenses: &mut Lenses, time_type: TimeType) -> Result<(), LensError> {
+pub fn add_foxglove_lenses(
+    lenses: &mut Lenses,
+    time_type: TimeType,
+) -> Result<(), LensBuilderError> {
     *lenses = std::mem::replace(lenses, Lenses::new(OutputMode::ForwardUnmatched))
         .add_lens(camera_calibration(time_type)?)
         .add_lens(compressed_image(time_type)?)

@@ -21,14 +21,13 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
 // LensOutputInternal
 // ---------------------------------------------------------------------------
 
-/// Describes one output group: either 1:1 (columns) or 1:N (scatter columns).
+/// Describes one output group of a lens.
 #[pyclass(
     frozen,
     name = "LensOutputInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
 pub struct PyLensOutputInternal {
-    scatter: bool,
     components: Vec<(ComponentDescriptor, Selector<DynExpr>)>,
     times: Vec<(String, re_log_types::TimeType, Selector<DynExpr>)>,
 }
@@ -36,13 +35,9 @@ pub struct PyLensOutputInternal {
 #[pymethods]
 impl PyLensOutputInternal {
     #[new]
-    #[pyo3(
-        signature = (*, scatter = false),
-        text_signature = "(self, *, scatter=False)"
-    )]
-    fn new(scatter: bool) -> Self {
+    #[pyo3(text_signature = "(self)")]
+    fn new() -> Self {
         Self {
-            scatter,
             components: Vec::new(),
             times: Vec::new(),
         }
@@ -58,7 +53,6 @@ impl PyLensOutputInternal {
         let mut components = self.components.clone();
         components.push((descr, selector.selector().clone()));
         Self {
-            scatter: self.scatter,
             components,
             times: self.times.clone(),
         }
@@ -79,7 +73,6 @@ impl PyLensOutputInternal {
             selector.selector().clone(),
         ));
         Ok(Self {
-            scatter: self.scatter,
             components: self.components.clone(),
             times,
         })
@@ -151,20 +144,22 @@ fn build_output(
     desc: &PyLensOutputInternal,
     target_entity: Option<&str>,
 ) -> PyResult<LensBuilder> {
-    builder
-        .output(desc.scatter, |mut out| {
-            if let Some(target) = target_entity {
-                out = out.at_entity(target);
-            }
-            for (descr, selector) in &desc.components {
-                out = out.component(descr.clone(), selector.clone())?;
-            }
-            for (name, timeline_type, selector) in &desc.times {
-                out = out.time(name.as_str(), *timeline_type, selector.clone())?;
-            }
-            Ok(out)
-        })
-        .map_err(|err| PyValueError::new_err(err.to_string()))
+    let build_fn = |mut out: re_lenses_core::OutputBuilder| {
+        for (descr, selector) in &desc.components {
+            out = out.component(descr.clone(), selector.clone())?;
+        }
+        for (name, timeline_type, selector) in &desc.times {
+            out = out.time(name.as_str(), *timeline_type, selector.clone())?;
+        }
+        Ok(out)
+    };
+
+    let result = match target_entity {
+        None => builder.output_columns(build_fn),
+        Some(target) => builder.output_columns_at(target, build_fn),
+    };
+
+    result.map_err(|err| PyValueError::new_err(err.to_string()))
 }
 
 fn parse_timeline_type(s: &str) -> PyResult<re_log_types::TimeType> {

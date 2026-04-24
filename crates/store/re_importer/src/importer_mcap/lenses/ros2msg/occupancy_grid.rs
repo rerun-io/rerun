@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensError, op};
+use re_lenses::{Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, GridMap};
@@ -10,7 +10,7 @@ use super::ros_map_helpers::{
 };
 
 /// Creates a lens for `nav_msgs/msg/OccupancyGrid` messages.
-pub fn occupancy_grid(time_type: TimeType) -> Result<Lens, LensError> {
+pub fn occupancy_grid(time_type: TimeType) -> Result<Lens, LensBuilderError> {
     Ok(Lens::for_input_column("nav_msgs.msg.OccupancyGrid:message")
         .output_columns(|out| {
             out.time(

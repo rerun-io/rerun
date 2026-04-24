@@ -26,5 +26,5 @@ pub use self::{
     ast::{Lens, Lenses, OutputMode, PartialChunk},
     builder::{LensBuilder, OutputBuilder},
     chunk::ChunkExt,
-    lens_error::LensError,
+    lens_error::{LensBuilderError, LensRuntimeError},
 };

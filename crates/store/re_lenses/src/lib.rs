@@ -7,5 +7,6 @@ pub mod op;
 
 // Re-export core types for backward compatibility.
 pub use re_lenses_core::{
-    ChunkExt, Lens, LensBuilder, LensError, Lenses, OutputBuilder, OutputMode, PartialChunk,
+    ChunkExt, Lens, LensBuilder, LensBuilderError, LensRuntimeError, Lenses, OutputBuilder,
+    OutputMode, PartialChunk,
 };

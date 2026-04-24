@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensError, op};
+use re_lenses::{Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, GeoPoints};
@@ -12,7 +12,7 @@ use super::FOXGLOVE_TIMESTAMP;
 /// Converts a single GNSS fix to a [`GeoPoints`] archetype with one position and optional color.
 ///
 /// [`foxglove.LocationFix`]: https://docs.foxglove.dev/docs/sdk/schemas/location-fix
-pub fn location_fix(time_type: TimeType) -> Result<Lens, LensError> {
+pub fn location_fix(time_type: TimeType) -> Result<Lens, LensBuilderError> {
     Ok(Lens::for_input_column("foxglove.LocationFix:message")
         .output_columns(|out| {
             out.time(

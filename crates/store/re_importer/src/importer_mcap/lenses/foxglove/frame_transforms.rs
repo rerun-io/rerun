@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensError, op};
+use re_lenses::{Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::Transform3D;
@@ -8,9 +8,10 @@ use super::FOXGLOVE_TIMESTAMP;
 /// Creates a lens for [`foxglove.FrameTransforms`] messages.
 ///
 /// [`foxglove.FrameTransforms`]: https://docs.foxglove.dev/docs/sdk/schemas/frame-transforms
-pub fn frame_transforms(time_type: TimeType) -> Result<Lens, LensError> {
+pub fn frame_transforms(time_type: TimeType) -> Result<Lens, LensBuilderError> {
     Ok(Lens::for_input_column("foxglove.FrameTransforms:message")
-        .output_scatter_columns(|out| {
+        .scatter()
+        .output_columns(|out| {
             out.time(
                 FOXGLOVE_TIMESTAMP,
                 time_type,

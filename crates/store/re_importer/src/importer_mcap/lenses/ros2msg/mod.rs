@@ -3,7 +3,7 @@
 mod occupancy_grid;
 mod ros_map_helpers;
 
-use re_lenses::{LensError, Lenses, OutputMode};
+use re_lenses::{LensBuilderError, Lenses, OutputMode};
 use re_log_types::TimeType;
 
 pub use occupancy_grid::occupancy_grid;
@@ -12,7 +12,10 @@ pub use occupancy_grid::occupancy_grid;
 const ROS2_TIMESTAMP: &str = "ros2_timestamp";
 
 /// Adds all ROS 2 message lenses to an existing collection.
-pub fn add_ros2msg_lenses(lenses: &mut Lenses, time_type: TimeType) -> Result<(), LensError> {
+pub fn add_ros2msg_lenses(
+    lenses: &mut Lenses,
+    time_type: TimeType,
+) -> Result<(), LensBuilderError> {
     *lenses = std::mem::replace(lenses, Lenses::new(OutputMode::ForwardUnmatched))
         .add_lens(occupancy_grid(time_type)?);
     Ok(())

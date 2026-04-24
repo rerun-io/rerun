@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensError, op};
+use re_lenses::{Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, EncodedImage};
@@ -8,7 +8,7 @@ use super::{FOXGLOVE_TIMESTAMP, IMAGE_PLANE_SUFFIX};
 /// Creates a lens for [`foxglove.CompressedImage`] messages.
 ///
 /// [`foxglove.CompressedImage`]: https://docs.foxglove.dev/docs/sdk/schemas/compressed-image
-pub fn compressed_image(time_type: TimeType) -> Result<Lens, LensError> {
+pub fn compressed_image(time_type: TimeType) -> Result<Lens, LensBuilderError> {
     Ok(Lens::for_input_column("foxglove.CompressedImage:message")
         .output_columns(|out| {
             out.time(

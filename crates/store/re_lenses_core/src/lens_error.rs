@@ -1,22 +1,39 @@
 use arrow::datatypes::DataType;
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 
-// TODO(grtlr): Error management has grown organically and needs some cleanup.
-
-/// Different variants of errors that can happen when executing lenses.
+/// Errors that can occur when constructing a lens via the builder API.
 #[expect(missing_docs)]
 #[derive(Debug, thiserror::Error)]
-pub enum LensError {
+pub enum LensBuilderError {
+    #[error("Lens for input component `{input_component}` is missing output components")]
+    MissingOutputComponent {
+        input_component: ComponentIdentifier,
+    },
+
+    #[error("Duplicate output for target entity `{target_entity}`")]
+    DuplicateTargetEntity { target_entity: EntityPath },
+
+    #[error("Duplicate output for same-as-input entity")]
+    DuplicateSameEntityOutput,
+
+    #[error(transparent)]
+    SelectorParseFailed(#[from] crate::SelectorError),
+}
+
+/// Errors that can occur when executing lenses at runtime.
+#[expect(missing_docs)]
+#[derive(Debug, thiserror::Error)]
+pub enum LensRuntimeError {
     #[error("Component '{component}' not found in chunk for entity `{entity_path}`")]
     ComponentNotFound {
         entity_path: EntityPath,
         component: ComponentIdentifier,
     },
 
-    #[error("No output columns for input component `{input_component}`{}", target_entity.as_ref().map_or_else(String::new, |e| format!(" on target entity `{e}`")))]
-    NoOutputColumns {
+    #[error("No component outputs were produced for target entity `{target_entity}`")]
+    NoOutputColumnsProduced {
         input_component: ComponentIdentifier,
-        target_entity: Option<EntityPath>,
+        target_entity: EntityPath,
     },
 
     #[error("Chunk validation failed: {0}")]
@@ -51,9 +68,6 @@ pub enum LensError {
         timeline_name: TimelineName,
         actual_type: DataType,
     },
-
-    #[error(transparent)]
-    SelectorFailed(#[from] crate::SelectorError),
 
     #[error("Failed to scatter existing timeline '{timeline_name}' across output rows")]
     ScatterExistingTimeFailed {

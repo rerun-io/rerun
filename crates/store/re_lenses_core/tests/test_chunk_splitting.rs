@@ -188,9 +188,8 @@ fn forward_unmatched_no_prefix_when_all_consumed() {
 
     let make_lens = |input: &str, output: &str| {
         Lens::for_input_column(input)
-            .output_columns(|out| {
-                out.at_entity(input)
-                    .component(ComponentDescriptor::partial(output), Selector::parse(".")?)
+            .output_columns_at(input, |out| {
+                out.component(ComponentDescriptor::partial(output), Selector::parse(".")?)
             })
             .unwrap()
             .build()

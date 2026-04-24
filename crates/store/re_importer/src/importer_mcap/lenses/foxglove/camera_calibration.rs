@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensError, op};
+use re_lenses::{Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::Pinhole;
@@ -10,7 +10,7 @@ use super::{FOXGLOVE_TIMESTAMP, IMAGE_PLANE_SUFFIX};
 /// Creates a lens for [`foxglove.CameraCalibration`] messages.
 ///
 /// [`foxglove.CameraCalibration`]: https://docs.foxglove.dev/docs/sdk/schemas/camera-calibration
-pub fn camera_calibration(time_type: TimeType) -> Result<Lens, LensError> {
+pub fn camera_calibration(time_type: TimeType) -> Result<Lens, LensBuilderError> {
     Ok(Lens::for_input_column("foxglove.CameraCalibration:message")
         .output_columns(|out| {
             out.time(

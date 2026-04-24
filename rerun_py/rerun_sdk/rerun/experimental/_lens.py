@@ -15,15 +15,8 @@ class LensOutput:
     """
     Describes one output group of a lens.
 
-    When `scatter=False` (default, 1:1), each input row produces exactly one
-    output row. Times are inherited from the input chunk unchanged.
-
-    When `scatter=True` (1:N), each input row produces N output rows by
-    exploding list arrays. Existing times are replicated across output rows.
-    Useful for flattening lists or exploding batches.
-
-    In both modes, `.to_component()` and `.to_timeline()` work identically -- the
-    difference is only in how the output chunk is assembled.
+    Each input row produces exactly one output row (1:1 mapping).
+    Times are inherited from the input chunk unchanged.
 
     Example usage::
 
@@ -36,22 +29,9 @@ class LensOutput:
 
     _internal: LensOutputInternal
 
-    def __init__(
-        self,
-        *,
-        scatter: bool = False,
-    ) -> None:
-        """
-        Create a new output group.
-
-        Parameters
-        ----------
-        scatter:
-            If `True`, use 1:N row mapping (explode lists). If `False`
-            (default), use 1:1 row mapping.
-
-        """
-        self._internal = LensOutputInternal(scatter=scatter)
+    def __init__(self) -> None:
+        """Create a new output group."""
+        self._internal = LensOutputInternal()
 
     def to_component(
         self,

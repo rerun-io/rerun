@@ -1,5 +1,5 @@
 use arrow::array::{Array as _, ArrayRef, StringArray};
-use re_lenses::{Lens, LensError, op};
+use re_lenses::{Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_lenses_core::combinators::Error;
 use re_log_types::TimeType;
@@ -10,7 +10,7 @@ use super::FOXGLOVE_TIMESTAMP;
 /// Creates a lens for converting [`foxglove.Log`] messages to Rerun's [`TextLog`] archetype.
 ///
 /// [`foxglove.Log`]: https://docs.foxglove.dev/docs/sdk/schemas/log
-pub fn log(time_type: TimeType) -> Result<Lens, LensError> {
+pub fn log(time_type: TimeType) -> Result<Lens, LensBuilderError> {
     Ok(Lens::for_input_column("foxglove.Log:message")
         .output_columns(|out| {
             out.time(

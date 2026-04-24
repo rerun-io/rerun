@@ -5,7 +5,7 @@ mod ros2msg;
 
 pub use crate::FOXGLOVE_LENSES_IDENTIFIER;
 
-use re_lenses::{LensError, Lenses, OutputMode};
+use re_lenses::{LensBuilderError, Lenses, OutputMode};
 use re_log_types::TimeType;
 use re_mcap::{DecoderIdentifier, SelectedDecoders};
 
@@ -14,7 +14,7 @@ const ROS2MSG_DECODER_IDENTIFIER: &str = "ros2msg";
 pub fn mcap_lenses(
     selected_decoders: &SelectedDecoders,
     time_type: TimeType,
-) -> Result<Option<Lenses>, LensError> {
+) -> Result<Option<Lenses>, LensBuilderError> {
     let mut lenses = Lenses::new(OutputMode::ForwardUnmatched);
 
     let has_foxglove_lenses = if selected_decoders

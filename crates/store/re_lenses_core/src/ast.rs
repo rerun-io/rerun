@@ -4,8 +4,10 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
+use std::collections::BTreeMap;
+
 use crate::combinators::{Explode, Transform as _};
-use crate::{DynExpr, LensError, Selector};
+use crate::{DynExpr, LensRuntimeError, Selector};
 use arrow::array::{AsArray as _, Int64Array, ListArray};
 use arrow::compute::take;
 use itertools::Itertools as _;
@@ -21,17 +23,6 @@ use vec1::Vec1;
 use crate::builder::LensBuilder;
 
 type ChunkTimelines = IntMap<TimelineName, TimeColumn>;
-
-/// Target entity path for lens outputs.
-#[derive(Debug, Clone, Default)]
-pub enum TargetEntity {
-    /// Use the matched input entity path.
-    #[default]
-    SameAsInput,
-
-    /// Use a specific entity path.
-    Explicit(EntityPath),
-}
 
 /// A component output.
 ///
@@ -53,9 +44,6 @@ pub struct TimeOutput {
 
 #[derive(Clone)]
 pub struct LensOutput {
-    pub(crate) scatter: bool,
-    pub(crate) target_entity: TargetEntity,
-
     /// Component columns that will be created.
     pub output_components: Vec1<ComponentOutput>,
 
@@ -66,16 +54,12 @@ pub struct LensOutput {
 impl LensOutput {
     fn apply(
         &self,
-        original_entity: &EntityPath,
+        scatter: bool,
+        target_entity: &EntityPath,
         timelines: &ChunkTimelines,
         input: &SerializedComponentColumn,
     ) -> Result<Chunk, PartialChunk> {
-        let target_entity = match &self.target_entity {
-            TargetEntity::SameAsInput => original_entity,
-            TargetEntity::Explicit(entity_path) => entity_path,
-        };
-
-        if self.scatter {
+        if scatter {
             apply_one_to_many(
                 target_entity,
                 timelines,
@@ -103,13 +87,24 @@ impl LensOutput {
 ///
 /// # Assumptions
 ///
+/// There can be at most one set of output columns per target entity within a lens.
+///
 /// Works on component columns within a chunk. Because what goes into a chunk
 /// is non-deterministic, and dependent on the batcher, no assumptions should be
 /// made for values across rows.
 #[derive(Clone)]
 pub struct Lens {
     pub(crate) input: ComponentIdentifier,
-    pub(crate) outputs: Vec<LensOutput>,
+
+    /// When `true`, use 1:N row mapping (scatter/explode lists).
+    /// When `false`, use 1:1 row mapping.
+    pub(crate) scatter: bool,
+
+    /// Output for the same entity as the input.
+    pub(crate) same_entity_output: Option<LensOutput>,
+
+    /// Outputs keyed by explicit target entity path.
+    pub(crate) entity_outputs: BTreeMap<EntityPath, LensOutput>,
 }
 
 impl Lens {
@@ -122,15 +117,21 @@ impl Lens {
     }
 
     /// Applies this lens and creates one or more chunks.
-    fn apply(
-        &self,
-        original_entity: &EntityPath,
-        timelines: &ChunkTimelines,
-        input: &SerializedComponentColumn,
-    ) -> impl Iterator<Item = Result<Chunk, PartialChunk>> {
-        self.outputs
+    fn apply<'a>(
+        &'a self,
+        original_entity: &'a EntityPath,
+        timelines: &'a ChunkTimelines,
+        input: &'a SerializedComponentColumn,
+    ) -> impl Iterator<Item = Result<Chunk, PartialChunk>> + 'a {
+        let scatter = self.scatter;
+        self.same_entity_output
             .iter()
-            .map(|output| output.apply(original_entity, timelines, input))
+            .map(move |output| output.apply(scatter, original_entity, timelines, input))
+            .chain(
+                self.entity_outputs
+                    .iter()
+                    .map(move |(path, output)| output.apply(scatter, path, timelines, input)),
+            )
     }
 }
 
@@ -151,7 +152,7 @@ struct PartialChunkInner {
     chunk: Option<Chunk>,
 
     /// Collection of errors encountered while executing the Lens.
-    errors: Vec<LensError>,
+    errors: Vec<LensRuntimeError>,
 }
 
 impl PartialChunk {
@@ -160,7 +161,7 @@ impl PartialChunk {
         self.inner.chunk
     }
 
-    pub fn errors(&self) -> impl Iterator<Item = &LensError> {
+    pub fn errors(&self) -> impl Iterator<Item = &LensRuntimeError> {
         self.inner.errors.iter()
     }
 }
@@ -169,7 +170,7 @@ fn collect_components_iter<'a>(
     input: &'a SerializedComponentColumn,
     components: &'a [ComponentOutput],
     target_entity: &'a EntityPath,
-) -> impl Iterator<Item = Result<(ComponentDescriptor, ListArray), LensError>> + 'a {
+) -> impl Iterator<Item = Result<(ComponentDescriptor, ListArray), LensRuntimeError>> + 'a {
     components.iter().filter_map(move |output| {
         match output.selector.execute_per_row(&input.list_array) {
             Ok(Some(list_array)) => Some(Ok((output.component_descr.clone(), list_array))),
@@ -180,7 +181,7 @@ fn collect_components_iter<'a>(
                 );
                 None
             }
-            Err(source) => Some(Err(LensError::ComponentOperationFailed {
+            Err(source) => Some(Err(LensRuntimeError::ComponentOperationFailed {
                 target_entity: target_entity.clone(),
                 input_component: input.descriptor.component,
                 component: output.component_descr.component,
@@ -194,7 +195,7 @@ fn collect_output_times_iter<'a>(
     input: &'a SerializedComponentColumn,
     timelines: &'a [TimeOutput],
     target_entity: &'a EntityPath,
-) -> impl Iterator<Item = Result<(TimelineName, TimeType, ListArray), LensError>> + 'a {
+) -> impl Iterator<Item = Result<(TimelineName, TimeType, ListArray), LensRuntimeError>> + 'a {
     timelines.iter().filter_map(move |time| {
         match time.selector.execute_per_row(&input.list_array) {
             Ok(Some(list_array)) => Some(Ok((time.timeline_name, time.timeline_type, list_array))),
@@ -205,7 +206,7 @@ fn collect_output_times_iter<'a>(
                 );
                 None
             }
-            Err(source) => Some(Err(LensError::TimeOperationFailed {
+            Err(source) => Some(Err(LensRuntimeError::TimeOperationFailed {
                 target_entity: target_entity.clone(),
                 input_component: input.descriptor.component,
                 timeline_name: time.timeline_name,
@@ -222,7 +223,7 @@ fn try_convert_time_column(
     timeline_name: TimelineName,
     timeline_type: TimeType,
     list_array: &ListArray,
-) -> Result<(TimelineName, TimeColumn), LensError> {
+) -> Result<(TimelineName, TimeColumn), LensRuntimeError> {
     if let Some(time_vals) = list_array.values().as_any().downcast_ref::<Int64Array>() {
         let time_column = re_chunk::TimeColumn::new(
             None,
@@ -231,7 +232,7 @@ fn try_convert_time_column(
         );
         Ok((timeline_name, time_column))
     } else {
-        Err(LensError::InvalidTimeColumn {
+        Err(LensRuntimeError::InvalidTimeColumn {
             timeline_name,
             actual_type: list_array.values().data_type().clone(),
         })
@@ -246,7 +247,7 @@ fn finalize_chunk(
     entity_path: EntityPath,
     chunk_times: IntMap<TimelineName, TimeColumn>,
     component_results: re_chunk::ChunkComponents,
-    mut errors: Vec<LensError>,
+    mut errors: Vec<LensRuntimeError>,
 ) -> Result<Chunk, PartialChunk> {
     match Chunk::from_auto_row_ids(ChunkId::new(), entity_path, chunk_times, component_results) {
         Ok(chunk) => {
@@ -370,9 +371,9 @@ fn apply_one_to_many(
             return Err(PartialChunk {
                 inner: Box::new(PartialChunkInner {
                     chunk: None,
-                    errors: vec![LensError::NoOutputColumns {
+                    errors: vec![LensRuntimeError::NoOutputColumnsProduced {
                         input_component: input.descriptor.component,
-                        target_entity: Some(target_entity.clone()),
+                        target_entity: target_entity.clone(),
                     }],
                 }),
             });
@@ -421,7 +422,7 @@ fn apply_one_to_many(
                 chunk_times.insert(*timeline_name, new_time_column);
             }
             Err(source) => {
-                errors.push(LensError::ScatterExistingTimeFailed {
+                errors.push(LensRuntimeError::ScatterExistingTimeFailed {
                     timeline_name: *timeline_name,
                     source,
                 });
@@ -446,7 +447,7 @@ fn apply_one_to_many(
                         }
                         Ok(None) => None,
                         Err(err) => {
-                            errors.push(LensError::TimeOperationFailed {
+                            errors.push(LensRuntimeError::TimeOperationFailed {
                                 target_entity: target_entity.clone(),
                                 input_component: input.descriptor.component,
                                 timeline_name,
@@ -475,7 +476,7 @@ fn apply_one_to_many(
                 }
                 Ok(None) => {}
                 Err(err) => {
-                    errors.push(LensError::ComponentOperationFailed {
+                    errors.push(LensRuntimeError::ComponentOperationFailed {
                         target_entity: target_entity.clone(),
                         input_component: input.descriptor.component,
                         component: component_descr.component,

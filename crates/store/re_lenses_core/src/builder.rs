@@ -1,78 +1,93 @@
 //! Builder API for constructing lenses.
 
+use std::collections::BTreeMap;
+
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::TimeType;
 use re_sdk_types::ComponentDescriptor;
 
 use crate::selector::DynExpr;
-use crate::{LensError, Selector, ast};
+use crate::{LensBuilderError, Selector, ast};
 
 /// Builder for lenses with support for multiple output modes.
 #[must_use]
 pub struct LensBuilder {
     input: ComponentIdentifier,
-    outputs: Vec<ast::LensOutput>,
+    scatter: bool,
+    same_entity_output: Option<ast::LensOutput>,
+    entity_outputs: BTreeMap<EntityPath, ast::LensOutput>,
 }
 
 impl LensBuilder {
     pub(crate) fn new(component: impl Into<ComponentIdentifier>) -> Self {
         Self {
             input: component.into(),
-            outputs: vec![],
+            scatter: false,
+            same_entity_output: None,
+            entity_outputs: BTreeMap::new(),
         }
     }
 
-    /// Adds an output group configured via the builder closure.
+    /// Enables 1:N row mapping (scatter) for this lens.
     ///
-    /// When `scatter` is `false` (1:1), each input row produces exactly one output row.
-    /// When `scatter` is `true` (1:N), each input row produces multiple output rows by
-    /// exploding list arrays.
+    /// When scatter is enabled, each input row produces multiple output rows by
+    /// exploding list arrays. The timepoint is replicated/scattered across the
+    /// output rows. Useful for flattening lists or exploding batches.
     ///
-    /// Outputs inherit time columns from the input, plus any additional time columns
-    /// specified via `.time()`.
-    pub fn output(
+    /// By default, lenses use 1:1 row mapping where each input row produces
+    /// exactly one output row.
+    pub fn scatter(mut self) -> Self {
+        self.scatter = true;
+        self
+    }
+
+    /// Adds an output with the same entity as the input.
+    ///
+    /// Each input row produces exactly one output row (unless `.scatter()` is set on the
+    /// builder). Outputs inherit time columns from the input, plus any additional time
+    /// columns specified via `.time()`.
+    pub fn output_columns(
         mut self,
-        scatter: bool,
-        builder: impl FnOnce(OutputBuilder) -> Result<OutputBuilder, LensError>,
-    ) -> Result<Self, LensError> {
-        let output_builder = OutputBuilder::new(scatter);
+        builder: impl FnOnce(OutputBuilder) -> Result<OutputBuilder, LensBuilderError>,
+    ) -> Result<Self, LensBuilderError> {
+        if self.same_entity_output.is_some() {
+            return Err(LensBuilderError::DuplicateSameEntityOutput);
+        }
+        let output_builder = OutputBuilder::new();
         let output = builder(output_builder)?.build(self.input)?;
-        self.outputs.push(output);
+        self.same_entity_output = Some(output);
         Ok(self)
     }
 
-    /// Adds a temporal output with 1:1 row mapping.
+    /// Adds an output targeting an explicit entity path.
     ///
-    /// Each input row produces exactly one output row. Outputs inherit time columns from
-    /// the input, plus any additional time columns specified via `.time()`.
-    ///
-    /// The output will use the same entity path as the input.
-    pub fn output_columns(
-        self,
-        builder: impl FnOnce(OutputBuilder) -> Result<OutputBuilder, LensError>,
-    ) -> Result<Self, LensError> {
-        self.output(false, builder)
-    }
-
-    /// Adds a temporal output with 1:N row mapping (scatter).
-    ///
-    /// Each input row produces multiple output rows at the same timepoint. The timepoint
-    /// is replicated/scattered across the output rows. Useful for flattening lists or
-    /// exploding batches.
-    ///
-    /// The output will use the same entity path as the input.
-    pub fn output_scatter_columns(
-        self,
-        builder: impl FnOnce(OutputBuilder) -> Result<OutputBuilder, LensError>,
-    ) -> Result<Self, LensError> {
-        self.output(true, builder)
+    /// Each input row produces exactly one output row (unless `.scatter()` is set on the
+    /// builder). Outputs inherit time columns from the input, plus any additional time
+    /// columns specified via `.time()`.
+    pub fn output_columns_at(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        builder: impl FnOnce(OutputBuilder) -> Result<OutputBuilder, LensBuilderError>,
+    ) -> Result<Self, LensBuilderError> {
+        let entity_path = entity_path.into();
+        if self.entity_outputs.contains_key(&entity_path) {
+            return Err(LensBuilderError::DuplicateTargetEntity {
+                target_entity: entity_path,
+            });
+        }
+        let output_builder = OutputBuilder::new();
+        let output = builder(output_builder)?.build(self.input)?;
+        self.entity_outputs.insert(entity_path, output);
+        Ok(self)
     }
 
     /// Finalizes this builder and returns the corresponding lens.
     pub fn build(self) -> ast::Lens {
         ast::Lens {
             input: self.input,
-            outputs: self.outputs,
+            scatter: self.scatter,
+            same_entity_output: self.same_entity_output,
+            entity_outputs: self.entity_outputs,
         }
     }
 }
@@ -81,16 +96,9 @@ impl LensBuilder {
 
 /// Builder for lens output groups.
 ///
-/// When `scatter` is `false` (1:1), each input row produces exactly one output row.
-/// Outputs inherit time columns from the input, plus any additional time columns specified.
-///
-/// When `scatter` is `true` (1:N), each input row produces multiple output rows at the
-/// same timepoint. The timepoint is replicated/scattered across all output rows. This is
-/// useful for flattening lists or exploding batches while maintaining temporal alignment.
+/// Defines the component and time columns that a lens output produces.
 #[must_use]
 pub struct OutputBuilder {
-    scatter: bool,
-    target_entity: ast::TargetEntity,
     components: Vec<ast::ComponentOutput>,
     time_outputs: Vec<ast::TimeOutput>,
 }
@@ -101,10 +109,8 @@ pub struct OutputBuilder {
     reason = "Result return enables `?` chaining in builder closures"
 )]
 impl OutputBuilder {
-    fn new(scatter: bool) -> Self {
+    fn new() -> Self {
         Self {
-            scatter,
-            target_entity: ast::TargetEntity::SameAsInput,
             components: vec![],
             time_outputs: vec![],
         }
@@ -119,7 +125,7 @@ impl OutputBuilder {
         mut self,
         component_descr: ComponentDescriptor,
         selector: impl Into<Selector<DynExpr>>,
-    ) -> Result<Self, LensError> {
+    ) -> Result<Self, LensBuilderError> {
         self.components.push(ast::ComponentOutput {
             component_descr,
             selector: selector.into(),
@@ -140,7 +146,7 @@ impl OutputBuilder {
         timeline_name: impl Into<TimelineName>,
         timeline_type: TimeType,
         selector: impl Into<Selector<DynExpr>>,
-    ) -> Result<Self, LensError> {
+    ) -> Result<Self, LensBuilderError> {
         self.time_outputs.push(ast::TimeOutput {
             timeline_name: timeline_name.into(),
             timeline_type,
@@ -149,25 +155,15 @@ impl OutputBuilder {
         Ok(self)
     }
 
-    /// Specify the target entity path for the outputs.
-    pub fn at_entity(mut self, entity_path: impl Into<EntityPath>) -> Self {
-        self.target_entity = ast::TargetEntity::Explicit(entity_path.into());
-        self
-    }
-
     /// Builds a [`ast::LensOutput`], the `input` is passed for providing contextualized errors.
-    fn build(self, input: ComponentIdentifier) -> Result<ast::LensOutput, LensError> {
-        let components = self
-            .components
-            .try_into()
-            .map_err(|_err| LensError::NoOutputColumns {
+    fn build(self, input: ComponentIdentifier) -> Result<ast::LensOutput, LensBuilderError> {
+        let components = self.components.try_into().map_err(|_err| {
+            LensBuilderError::MissingOutputComponent {
                 input_component: input,
-                target_entity: None,
-            })?;
+            }
+        })?;
 
         Ok(ast::LensOutput {
-            scatter: self.scatter,
-            target_entity: self.target_entity,
             output_components: components,
             output_timelines: self.time_outputs,
         })
