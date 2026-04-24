@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
@@ -1348,16 +1348,17 @@ class SelectorInternal:
     def __str__(self) -> str: ...
 
 class LensOutputInternal:
-    def __init__(self, *, scatter: bool = False, target_entity: str | None = None) -> None: ...
-    def component(self, component: ComponentDescriptor, selector: SelectorInternal) -> LensOutputInternal: ...
-    def time(self, timeline_name: str, timeline_type: str, selector: SelectorInternal) -> LensOutputInternal: ...
+    def __init__(self, *, scatter: bool = False) -> None: ...
+    def to_component(self, component: ComponentDescriptor, selector: SelectorInternal) -> LensOutputInternal: ...
+    def to_timeline(self, timeline_name: str, timeline_type: str, selector: SelectorInternal) -> LensOutputInternal: ...
 
 class LensInternal:
     def __init__(
         self,
         input_component: str,
+        output: LensOutputInternal | None = None,
         *,
-        outputs: list[LensOutputInternal],
+        to_entity: Mapping[str, LensOutputInternal] | None = None,
     ) -> None: ...
 
 class _ServerInternal:

@@ -8,7 +8,7 @@ from rerun_bindings import LensInternal, LensOutputInternal
 from ._selector import Selector
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping
 
 
 class LensOutput:
@@ -22,14 +22,14 @@ class LensOutput:
     exploding list arrays. Existing times are replicated across output rows.
     Useful for flattening lists or exploding batches.
 
-    In both modes, `.component()` and `.time()` work identically -- the
+    In both modes, `.to_component()` and `.to_timeline()` work identically -- the
     difference is only in how the output chunk is assembled.
 
     Example usage::
 
         output = (
             LensOutput()
-            .component("rerun.components.TextDocument:text", Selector("."))
+            .to_component("rerun.components.TextDocument:text", Selector("."))
         )
 
     """
@@ -40,7 +40,6 @@ class LensOutput:
         self,
         *,
         scatter: bool = False,
-        target_entity: str | None = None,
     ) -> None:
         """
         Create a new output group.
@@ -50,14 +49,11 @@ class LensOutput:
         scatter:
             If `True`, use 1:N row mapping (explode lists). If `False`
             (default), use 1:1 row mapping.
-        target_entity:
-            Target entity path for the output. If `None`, uses the same
-            entity path as the input.
 
         """
-        self._internal = LensOutputInternal(scatter=scatter, target_entity=target_entity)
+        self._internal = LensOutputInternal(scatter=scatter)
 
-    def component(
+    def to_component(
         self,
         component: ComponentDescriptor | str,
         selector: Selector | str,
@@ -85,10 +81,10 @@ class LensOutput:
         new = LensOutput.__new__(LensOutput)
         if isinstance(component, str):
             component = ComponentDescriptor(component)
-        new._internal = self._internal.component(component, sel._internal)
+        new._internal = self._internal.to_component(component, sel._internal)
         return new
 
-    def time(
+    def to_timeline(
         self,
         timeline_name: str,
         timeline_type: Literal["sequence", "duration_ns", "timestamp_ns"],
@@ -115,7 +111,7 @@ class LensOutput:
         """
         sel = _normalize_selector(selector)
         new = LensOutput.__new__(LensOutput)
-        new._internal = self._internal.time(timeline_name, timeline_type, sel._internal)
+        new._internal = self._internal.to_timeline(timeline_name, timeline_type, sel._internal)
         return new
 
 
@@ -131,10 +127,18 @@ class Lens:
 
         lens = Lens(
             "example:Instruction:text",
-            [
-                LensOutput()
-                .component("rerun.components.TextDocument:text", Selector("."))
-            ],
+            LensOutput()
+            .to_component("rerun.components.TextDocument:text", Selector(".")),
+        )
+
+    To write to explicit target entities::
+
+        lens = Lens(
+            "Imu:accel",
+            to_entity={
+                "/out/x": LensOutput().to_component(desc, ".x"),
+                "/out/y": LensOutput().to_component(desc, ".y"),
+            },
         )
 
     To restrict which entities a lens applies to, use
@@ -147,7 +151,9 @@ class Lens:
     def __init__(
         self,
         input_component: str,
-        outputs: Sequence[LensOutput] | LensOutput,
+        output: LensOutput | None = None,
+        *,
+        to_entity: Mapping[str, LensOutput] | None = None,
     ) -> None:
         """
         Create a new lens.
@@ -156,16 +162,20 @@ class Lens:
         ----------
         input_component:
             The component identifier to match in input chunks.
-        outputs:
-            One or more [`LensOutput`][] objects describing the
-            output transformations.
+        output:
+            A [`LensOutput`][] for the same entity as the input.
+            At most one is allowed.
+        to_entity:
+            A dict mapping entity paths to [`LensOutput`][] objects
+            for writing to explicit target entities.
 
         """
-        if isinstance(outputs, LensOutput):
-            outputs = [outputs]
-
-        output_internals = [o._internal for o in outputs]
-        self._internal = LensInternal(input_component, outputs=output_internals)
+        target_internals = {k: v._internal for k, v in to_entity.items()} if to_entity else None
+        self._internal = LensInternal(
+            input_component,
+            output._internal if output is not None else None,
+            to_entity=target_internals,
+        )
 
 
 def _normalize_selector(selector: Selector | str) -> Selector:

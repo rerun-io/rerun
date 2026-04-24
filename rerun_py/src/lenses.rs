@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
@@ -27,7 +29,6 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
 )]
 pub struct PyLensOutputInternal {
     scatter: bool,
-    target_entity: Option<String>,
     components: Vec<(ComponentDescriptor, Selector<DynExpr>)>,
     times: Vec<(String, re_log_types::TimeType, Selector<DynExpr>)>,
 }
@@ -36,33 +37,35 @@ pub struct PyLensOutputInternal {
 impl PyLensOutputInternal {
     #[new]
     #[pyo3(
-        signature = (*, scatter = false, target_entity = None),
-        text_signature = "(self, *, scatter=False, target_entity=None)"
+        signature = (*, scatter = false),
+        text_signature = "(self, *, scatter=False)"
     )]
-    fn new(scatter: bool, target_entity: Option<String>) -> Self {
+    fn new(scatter: bool) -> Self {
         Self {
             scatter,
-            target_entity,
             components: Vec::new(),
             times: Vec::new(),
         }
     }
 
     /// Add a component output column. Returns a new LensOutput with the component added.
-    fn component(&self, component: PyComponentDescriptor, selector: &PySelectorInternal) -> Self {
+    fn to_component(
+        &self,
+        component: PyComponentDescriptor,
+        selector: &PySelectorInternal,
+    ) -> Self {
         let descr = component.0;
         let mut components = self.components.clone();
         components.push((descr, selector.selector().clone()));
         Self {
             scatter: self.scatter,
-            target_entity: self.target_entity.clone(),
             components,
             times: self.times.clone(),
         }
     }
 
     /// Add a time extraction column. Returns a new LensOutput with the time added.
-    fn time(
+    fn to_timeline(
         &self,
         timeline_name: &str,
         timeline_type: &str,
@@ -77,7 +80,6 @@ impl PyLensOutputInternal {
         ));
         Ok(Self {
             scatter: self.scatter,
-            target_entity: self.target_entity.clone(),
             components: self.components.clone(),
             times,
         })
@@ -107,17 +109,34 @@ impl PyLensInternal {
 impl PyLensInternal {
     #[new]
     #[pyo3(
-        signature = (input_component, *, outputs),
-        text_signature = "(self, input_component, *, outputs)"
+        signature = (input_component, output = None, *, to_entity = None),
+        text_signature = "(self, input_component, output=None, *, to_entity=None)"
     )]
     #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned arguments
-    fn new(input_component: &str, outputs: Vec<PyRef<'_, PyLensOutputInternal>>) -> PyResult<Self> {
-        let component: ComponentIdentifier = input_component.into();
+    fn new(
+        py: Python<'_>,
+        input_component: &str,
+        output: Option<PyRef<'_, PyLensOutputInternal>>,
+        to_entity: Option<BTreeMap<String, Py<PyLensOutputInternal>>>,
+    ) -> PyResult<Self> {
+        if output.is_none() && to_entity.as_ref().is_none_or(BTreeMap::is_empty) {
+            return Err(PyValueError::new_err(
+                "At least one of `output` or `to_entity` must be provided",
+            ));
+        }
 
+        let component: ComponentIdentifier = input_component.into();
         let mut builder = Lens::for_input_column(component);
 
-        for output in &outputs {
-            builder = build_output(builder, output)?;
+        if let Some(ref out) = output {
+            builder = build_output(builder, out, None)?;
+        }
+
+        if let Some(ref to_entity) = to_entity {
+            for (entity_path, out) in to_entity {
+                let out = out.borrow(py);
+                builder = build_output(builder, &out, Some(entity_path.as_str()))?;
+            }
         }
 
         Ok(Self {
@@ -127,11 +146,15 @@ impl PyLensInternal {
 }
 
 /// Build one output group from its description, appending it to the lens builder.
-fn build_output(builder: LensBuilder, desc: &PyLensOutputInternal) -> PyResult<LensBuilder> {
+fn build_output(
+    builder: LensBuilder,
+    desc: &PyLensOutputInternal,
+    target_entity: Option<&str>,
+) -> PyResult<LensBuilder> {
     builder
         .output(desc.scatter, |mut out| {
-            if let Some(ref target) = desc.target_entity {
-                out = out.at_entity(target.as_str());
+            if let Some(target) = target_entity {
+                out = out.at_entity(target);
             }
             for (descr, selector) in &desc.components {
                 out = out.component(descr.clone(), selector.clone())?;

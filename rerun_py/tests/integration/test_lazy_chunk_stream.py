@@ -350,7 +350,7 @@ def test_lenses_identity(test_rrd_path: Path) -> None:
 
     lens = Lens(
         "Imu:accel",
-        [LensOutput().component("Imu:accel", Selector("."))],
+        LensOutput().to_component("Imu:accel", Selector(".")),
     )
 
     store = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).collect()
@@ -364,7 +364,7 @@ def test_lenses_field_selector(test_rrd_path: Path) -> None:
 
     lens = Lens(
         "Imu:accel",
-        [LensOutput().component(rr.Scalars.descriptor_scalars(), Selector(".x"))],
+        LensOutput().to_component(rr.Scalars.descriptor_scalars(), Selector(".x")),
     )
 
     store = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).collect()
@@ -384,10 +384,10 @@ def test_lenses_multiple_outputs(test_rrd_path: Path) -> None:
 
     lens = Lens(
         "Imu:accel",
-        [
-            LensOutput(target_entity="/out/x").component(rr.Scalars.descriptor_scalars(), Selector(".x")),
-            LensOutput(target_entity="/out/z").component(rr.Scalars.descriptor_scalars(), Selector(".z")),
-        ],
+        to_entity={
+            "/out/x": LensOutput().to_component(rr.Scalars.descriptor_scalars(), Selector(".x")),
+            "/out/z": LensOutput().to_component(rr.Scalars.descriptor_scalars(), Selector(".z")),
+        },
     )
 
     store = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).collect()
@@ -402,7 +402,7 @@ def test_lenses_drop_unmatched(test_rrd_path: Path) -> None:
 
     lens = Lens(
         "nonexistent:Component:foo",
-        [LensOutput().component("out:Component:bar", Selector("."))],
+        LensOutput().to_component("out:Component:bar", Selector(".")),
     )
 
     store = RrdReader(test_rrd_path).stream().lenses(lens, output_mode="drop_unmatched").collect()
@@ -414,7 +414,9 @@ def test_lenses_forward_unmatched(test_rrd_path: Path) -> None:
 
     lens = Lens(
         "Imu:accel",
-        [LensOutput(target_entity="/transformed").component(rr.Scalars.descriptor_scalars(), Selector(".x"))],
+        to_entity={
+            "/transformed": LensOutput().to_component(rr.Scalars.descriptor_scalars(), Selector(".x")),
+        },
     )
 
     store = (
@@ -437,7 +439,9 @@ def test_lenses_forward_all(test_rrd_path: Path) -> None:
 
     lens = Lens(
         "Imu:accel",
-        [LensOutput(target_entity="/transformed").component(rr.Scalars.descriptor_scalars(), Selector(".x"))],
+        to_entity={
+            "/transformed": LensOutput().to_component(rr.Scalars.descriptor_scalars(), Selector(".x")),
+        },
     )
 
     store = (
@@ -461,7 +465,7 @@ def test_lenses_consumes_stream(test_rrd_path: Path) -> None:
 
     lens = Lens(
         "Imu:accel",
-        [LensOutput().component(rr.Scalars.descriptor_scalars(), Selector(".x"))],
+        LensOutput().to_component(rr.Scalars.descriptor_scalars(), Selector(".x")),
     )
 
     stream = RrdReader(test_rrd_path).stream()
@@ -476,7 +480,7 @@ def test_lenses_chained_with_filter(test_rrd_path: Path) -> None:
 
     lens = Lens(
         "Imu:accel",
-        [LensOutput().component(rr.Scalars.descriptor_scalars(), Selector(".z"))],
+        LensOutput().to_component(rr.Scalars.descriptor_scalars(), Selector(".z")),
     )
 
     store = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).collect()
@@ -490,7 +494,7 @@ def test_lenses_invalid_output_mode(test_rrd_path: Path) -> None:
 
     lens = Lens(
         "Points3D:positions",
-        [LensOutput().component("Points3D:positions", Selector("."))],
+        LensOutput().to_component("Points3D:positions", Selector(".")),
     )
 
     with pytest.raises(ValueError, match="Unknown output_mode"):
@@ -502,11 +506,9 @@ def test_lenses_time_extraction(test_rrd_path: Path) -> None:
 
     lens = Lens(
         "Imu:accel",
-        [
-            LensOutput()
-            .component(rr.Scalars.descriptor_scalars(), Selector(".x"))
-            .time("sensor_time", "timestamp_ns", Selector(".timestamp"))
-        ],
+        LensOutput()
+        .to_component(rr.Scalars.descriptor_scalars(), Selector(".x"))
+        .to_timeline("sensor_time", "timestamp_ns", Selector(".timestamp")),
     )
 
     store = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).collect()
@@ -530,7 +532,7 @@ def test_lenses_dynamic_selector(test_rrd_path: Path) -> None:
 
     lens = Lens(
         "Imu:accel",
-        [LensOutput().component(rr.Scalars.descriptor_scalars(), selector)],
+        LensOutput().to_component(rr.Scalars.descriptor_scalars(), selector),
     )
 
     store = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).collect()

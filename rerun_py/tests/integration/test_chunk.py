@@ -209,7 +209,7 @@ def test_apply_lenses_field_extraction() -> None:
 
     lens = Lens(
         "Imu:accel",
-        [LensOutput().component(rr.Scalars.descriptor_scalars(), ".x")],
+        LensOutput().to_component(rr.Scalars.descriptor_scalars(), ".x"),
     )
     results = chunk.apply_lenses(lens)
 
@@ -249,7 +249,7 @@ def test_apply_lenses_no_match() -> None:
 
     lens = Lens(
         "Nonexistent:foo",
-        [LensOutput().component("out:bar", ".")],
+        LensOutput().to_component("out:bar", "."),
     )
     results = chunk.apply_lenses(lens)
     assert len(results) == 1
@@ -303,10 +303,10 @@ def test_apply_lenses_multiple_outputs() -> None:
 
     lens = Lens(
         "Imu:accel",
-        [
-            LensOutput(target_entity="/out/x").component(rr.Scalars.descriptor_scalars(), ".x"),
-            LensOutput(target_entity="/out/y").component(rr.Scalars.descriptor_scalars(), ".y"),
-        ],
+        to_entity={
+            "/out/x": LensOutput().to_component(rr.Scalars.descriptor_scalars(), ".x"),
+            "/out/y": LensOutput().to_component(rr.Scalars.descriptor_scalars(), ".y"),
+        },
     )
     results = chunk.apply_lenses(lens)
 
@@ -397,10 +397,10 @@ def test_apply_lenses_multiple_outputs_preserves_other_columns() -> None:
 
     lens = Lens(
         "Imu:accel",
-        [
-            LensOutput(target_entity="/out/x").component(rr.Scalars.descriptor_scalars(), ".x"),
-            LensOutput(target_entity="/out/y").component(rr.Scalars.descriptor_scalars(), ".y"),
-        ],
+        to_entity={
+            "/out/x": LensOutput().to_component(rr.Scalars.descriptor_scalars(), ".x"),
+            "/out/y": LensOutput().to_component(rr.Scalars.descriptor_scalars(), ".y"),
+        },
     )
     results = chunk.apply_lenses(lens)
 
@@ -510,11 +510,9 @@ def test_apply_lenses_time_extraction() -> None:
 
     lens = Lens(
         "Sensor:data",
-        [
-            LensOutput()
-            .component(rr.Scalars.descriptor_scalars(), ".value")
-            .time("sensor_time", "timestamp_ns", ".ts"),
-        ],
+        LensOutput()
+        .to_component(rr.Scalars.descriptor_scalars(), ".value")
+        .to_timeline("sensor_time", "timestamp_ns", ".ts"),
     )
     results = chunk.apply_lenses(lens)
 
@@ -584,7 +582,7 @@ def test_apply_lenses_with_pipe() -> None:
     selector = Selector(".x").pipe(lambda arr: pc.multiply(arr, 2.0))
     lens = Lens(
         "S:d",
-        [LensOutput().component(rr.Scalars.descriptor_scalars(), selector)],
+        LensOutput().to_component(rr.Scalars.descriptor_scalars(), selector),
     )
     results = chunk.apply_lenses(lens)
 
