@@ -59,6 +59,9 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     OpenProfiler,
 
+    #[cfg(not(target_arch = "wasm32"))]
+    CaptureProfileTrace,
+
     TogglePanelStateOverrides,
     ToggleMemoryPanel,
     ToggleTopPanel,
@@ -225,6 +228,12 @@ impl UICommand {
             Self::OpenProfiler => (
                 "Open profiler",
                 "Starts a profiler, showing what makes the viewer run slow",
+            ),
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::CaptureProfileTrace => (
+                "Capture profile trace…",
+                "Capture profiling data and save them as a .puffin file",
             ),
 
             Self::ToggleMemoryPanel => (
@@ -460,6 +469,8 @@ impl UICommand {
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => smallvec![ctrl_shift(Key::P)],
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::CaptureProfileTrace => smallvec![],
             Self::ToggleMemoryPanel => smallvec![ctrl_shift(Key::M)],
             Self::TogglePanelStateOverrides => smallvec![],
             Self::ToggleTopPanel => smallvec![],

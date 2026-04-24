@@ -1,8 +1,14 @@
 //! Helpers for tracing/spans/flamegraphs and such.
 
 #[cfg(not(target_arch = "wasm32"))]
+mod profile_capture;
+
+#[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "server")]
 mod server;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use profile_capture::ProfileCapture;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "server")]

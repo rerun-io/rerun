@@ -84,6 +84,10 @@ pub struct App {
     #[cfg(not(target_arch = "wasm32"))]
     profiler: re_tracing::Profiler,
 
+    /// Active in-memory profile capture, if any.
+    #[cfg(not(target_arch = "wasm32"))]
+    profile_capture: Option<re_tracing::ProfileCapture>,
+
     /// Listens to the local text log stream
     text_log_rx: crossbeam::channel::Receiver<re_log::LogMsg>,
 
@@ -426,6 +430,9 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             profiler: Default::default(),
+
+            #[cfg(not(target_arch = "wasm32"))]
+            profile_capture: None,
 
             text_log_rx,
             component_ui_registry,
@@ -1930,6 +1937,14 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::OpenProfiler => {
                 self.profiler.start();
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::CaptureProfileTrace => {
+                if self.profile_capture.is_none() {
+                    self.profile_capture = Some(re_tracing::ProfileCapture::start(5));
+                    egui_ctx.request_repaint();
+                }
             }
 
             UICommand::ToggleMemoryPanel => {
@@ -3752,6 +3767,19 @@ impl eframe::App for App {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry_tracy"))]
         re_perf_telemetry::external::tracing_tracy::client::frame_mark();
 
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(capture) = &self.profile_capture {
+            if capture.is_done() {
+                if let Some(capture) = self.profile_capture.take()
+                    && let Err(err) = save_profile_trace(&capture.finish())
+                {
+                    re_log::error!("Failed to save profile trace: {err}");
+                }
+            } else {
+                ui.ctx().request_repaint();
+            }
+        }
+
         if let Some(seconds) = frame.info().cpu_usage {
             self.frame_time_history.add(ui.input(|i| i.time), seconds);
         }
@@ -4315,6 +4343,26 @@ fn save_blueprint(
     let title = "Save blueprint";
 
     save_entity_db(app, rrd_version, file_name, title.to_owned(), messages)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn save_profile_trace(view: &re_tracing::reexports::puffin::FrameView) -> anyhow::Result<()> {
+    let Some(path) = rfd::FileDialog::new()
+        .set_file_name("rerun.puffin")
+        .set_title("Save profile trace")
+        .add_filter("Puffin profile", &["puffin"])
+        .save_file()
+    else {
+        re_log::info!("Profile trace capture cancelled by user.");
+        return Ok(());
+    };
+
+    let file = std::fs::File::create(&path)?;
+    let mut writer = std::io::BufWriter::new(file);
+    view.write(&mut writer)?;
+
+    re_log::info!("Saved profile trace to {}", path.display());
+    Ok(())
 }
 
 // TODO(emilk): unify this with `ViewerContext::save_file_dialog`

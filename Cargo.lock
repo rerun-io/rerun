@@ -9846,6 +9846,7 @@ dependencies = [
 name = "re_tracing"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
+ "parking_lot",
  "puffin",
  "puffin_http",
  "re_log",
