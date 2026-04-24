@@ -137,6 +137,7 @@ features = [
 
 [opt_out]
 backwards_check = [
+  "archetypes/image_advanced", # Uses Pillow to encode a PNG; Pillow encodes differently on different OSes, so the bytes in the RRD won't match the checked-in reference.
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
   "concepts/explicit_recording", # The file path differs locally and on CI
   "howto/convert_mcap_protobuf", # Processes video from MCAP, non-deterministic encoding
@@ -472,6 +473,9 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "cpp",
   "py",
   "rust",
+]
+"archetypes/image_advanced" = [
+  "py", # Pillow encodes pngs differently on different OSes, and differently from Rust or C++.
 ]
 "archetypes/arrows3d_simple" = [
   "py", # Python has different colors. TODO(emilk): fix that

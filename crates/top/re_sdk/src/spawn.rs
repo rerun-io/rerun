@@ -225,6 +225,14 @@ pub fn spawn(opts: &SpawnOptions) -> Result<u16, SpawnError> {
     > Rerun Viewer: v__VIEWER_VERSION__ (executable: \"__VIEWER_PATH__\")
     > Rerun SDK: v__SDK_VERSION__";
 
+    if std::env::var_os("CI").is_some() {
+        re_log::warn!(
+            "Spawning a Rerun Viewer while the `CI` environment variable is set. \
+            This is almost certainly unintended and will hang or fail on most CI runners. \
+            Consider removing `spawn=True` from this code path."
+        );
+    }
+
     let port = opts.port;
     let connect_addr = opts.connect_addr();
     let memory_limit = &opts.memory_limit;
