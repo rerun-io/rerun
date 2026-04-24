@@ -132,13 +132,20 @@ def get_added_lines_with_links(
             # Extract filename from +++ b/path/to/file
             if line.startswith("+++ b/"):
                 current_file = line[6:]  # Remove '+++ b/'
-                # Strip git subdirectory prefix if running from a subdirectory
-                if git_prefix and current_file.startswith(git_prefix):
-                    current_file = current_file[len(git_prefix) :]
+                # Strip git subdirectory prefix if running from a subdirectory.
+                # Files outside the current subdirectory (e.g. sibling dirs in a
+                # monorepo checkout) are skipped — their relative links resolve
+                # against paths we can't see from here and they're the
+                # responsibility of their own subdir's link checker.
+                if git_prefix:
+                    if not current_file.startswith(git_prefix):
+                        current_file = None
+                    else:
+                        current_file = current_file[len(git_prefix) :]
                 # Skip files that match lychee exclude patterns
-                if should_exclude_file(current_file, exclude_patterns):
+                if current_file is not None and should_exclude_file(current_file, exclude_patterns):
                     current_file = None
-                elif current_file not in lines_by_file:
+                elif current_file is not None and current_file not in lines_by_file:
                     lines_by_file[current_file] = []
             else:
                 current_file = None

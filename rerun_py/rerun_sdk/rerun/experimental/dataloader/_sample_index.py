@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pyarrow as pa
 
-from rerun._tracing import with_tracing
+from rerun._tracing import tracing_scope, with_tracing
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -77,6 +77,9 @@ class SampleIndex:
         self._ns_per_sample = ns_per_sample
         self._is_timestamp = is_timestamp
 
+        seg_sizes = np.array([s.num_samples for s in segments], dtype=np.int64)
+        self._cumulative_sizes = np.concatenate([[0], np.cumsum(seg_sizes)])
+
     @property
     def segments(self) -> list[SegmentMetadata]:
         """Per-segment metadata list."""
@@ -95,7 +98,22 @@ class SampleIndex:
     @property
     def total_samples(self) -> int:
         """Total number of samples across all segments."""
-        return sum(s.num_samples for s in self._segments)
+        return int(self._cumulative_sizes[-1])
+
+    def global_to_local(self, idx: int) -> tuple[SegmentMetadata, int | np.datetime64]:
+        """
+        Map a global index `[0, total_samples)` to `(segment, concrete_idx_value)`.
+
+        The returned index value is a plain `int` for integer timelines
+        and a `datetime64[ns]` for timestamp timelines.
+        """
+        total = int(self._cumulative_sizes[-1])
+        if idx < 0 or idx >= total:
+            raise IndexError(f"Index {idx} out of range [0, {total})")
+        seg_idx = int(np.searchsorted(self._cumulative_sizes[1:], idx, side="right"))
+        pos = idx - int(self._cumulative_sizes[seg_idx])
+        seg = self._segments[seg_idx]
+        return seg, self.resolve_local_index(seg, pos)
 
     def resolve_local_index(self, seg: SegmentMetadata, pos: int) -> int | np.datetime64:
         """
@@ -223,7 +241,11 @@ def _build(
         return SampleIndex([])
 
     view = dataset.filter_segments(all_segment_ids)
-    ranges_table = view.get_index_ranges().to_arrow_table()
+    ranges_df = view.get_index_ranges()
+    with tracing_scope("ranges_df.to_arrow_table"):
+        # `get_index_ranges()` returns a lazy DataFusion DataFrame; the actual
+        # server query only runs here, so the scope captures that cost.
+        ranges_table = ranges_df.to_arrow_table()
 
     start_col, end_col = _find_range_columns(ranges_table, index)
     ctx = _RangesCtx(

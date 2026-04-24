@@ -9,6 +9,7 @@ import pyarrow as pa
 from pyarrow import RecordBatchReader
 from typing_extensions import deprecated
 
+from rerun._tracing import with_tracing
 from rerun_bindings import (
     DatasetEntryInternal,
     DatasetViewInternal,
@@ -239,6 +240,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return Schema(self._internal.schema())
 
+    @with_tracing("DatasetEntry.segment_ids")
     def segment_ids(self) -> list[str]:
         """Returns a list of segment IDs for the dataset."""
 
@@ -510,6 +512,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return Recording(self._internal.download_segment(segment_id))
 
+    @with_tracing("DatasetEntry.filter_segments")
     def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
         """
         Return a new DatasetView filtered to the given segment IDs.
@@ -554,6 +557,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
+    @with_tracing("DatasetEntry.filter_contents")
     def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given entity paths.
@@ -809,6 +813,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             optimize_indexes, retrain_indexes, compact_fragments, cleanup_before, unsafe_allow_recent_cleanup
         )
 
+    @with_tracing("DatasetEntry.get_index_ranges")
     def get_index_ranges(self) -> datafusion.DataFrame:
         """Returns the range bounds of all indexes per segment."""
         view = self.filter_contents(["/**"])
@@ -887,6 +892,7 @@ class DatasetView:
         """
         return self._internal.arrow_schema()
 
+    @with_tracing("DatasetView.segment_ids")
     def segment_ids(self) -> list[str]:
         """
         Return the segment IDs for this view.
@@ -1043,6 +1049,7 @@ class DatasetView:
             using_index_values=index_values_dict,
         )
 
+    @with_tracing("DatasetView.filter_segments")
     def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
         """
         Return a new DatasetView filtered to the given segment IDs.
@@ -1087,6 +1094,7 @@ class DatasetView:
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
+    @with_tracing("DatasetView.filter_contents")
     def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given entity paths.
@@ -1156,6 +1164,7 @@ class DatasetView:
 
         return f"DatasetView({dataset_str}, {segment_str}, {content_str})"
 
+    @with_tracing("DatasetView.get_index_ranges")
     def get_index_ranges(self) -> datafusion.DataFrame:
         """Returns the range bounds of all indexes per segment."""
         exprs = ["rerun_segment_id"]

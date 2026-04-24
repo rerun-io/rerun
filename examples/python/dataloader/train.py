@@ -25,7 +25,8 @@ from rerun.experimental.dataloader import (
     Column,
     DataSource,
     NumericDecoder,
-    RerunDataset,
+    RerunIterableDataset,
+    RerunMapDataset,
     VideoFrameDecoder,
 )
 
@@ -89,6 +90,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num-workers", type=int, default=NUM_WORKERS, help="DataLoader worker processes")
     parser.add_argument("--lr", type=float, default=LR, help="Learning rate")
     parser.add_argument(
+        "--dataset-style",
+        choices=("iterable", "map"),
+        default="iterable",
+        help="Which Rerun dataset class to use: 'iterable' (RerunIterableDataset, internal shuffling) "
+        "or 'map' (RerunMapDataset, random access via DataLoader samplers).",
+    )
+    parser.add_argument(
         "--checkpoint-dir",
         type=Path,
         default=CHECKPOINT_DIR,
@@ -112,33 +120,35 @@ def main() -> None:
 
     source = DataSource(dataset_entry, segments=segments)
 
-    ds = RerunDataset(
-        source=source,
-        index="frame_index",
-        columns={
-            "state": Column("/observation.state:Scalars:scalars", decode=NumericDecoder()),
-            "action": Column(
-                "/action:Scalars:scalars",
-                decode=NumericDecoder(),
-                window=(1, CHUNK_SIZE),
-            ),
-            "image_laptop": Column(
-                "/observation.images.laptop:VideoStream:sample",
-                decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
-            ),
-            "image_phone": Column(
-                "/observation.images.phone:VideoStream:sample",
-                decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
-            ),
-            "image_side": Column(
-                "/observation.images.side:VideoStream:sample",
-                decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
-            ),
-        },
-        fetch_size=512,
-    )
-    print(f"Dataset has {len(ds)} samples (after window trimming)")
+    columns = {
+        "state": Column("/observation.state:Scalars:scalars", decode=NumericDecoder()),
+        "action": Column(
+            "/action:Scalars:scalars",
+            decode=NumericDecoder(),
+            window=(1, CHUNK_SIZE),
+        ),
+        "image_laptop": Column(
+            "/observation.images.laptop:VideoStream:sample",
+            decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
+        ),
+        "image_phone": Column(
+            "/observation.images.phone:VideoStream:sample",
+            decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
+        ),
+        "image_side": Column(
+            "/observation.images.side:VideoStream:sample",
+            decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
+        ),
+    }
 
+    ds: RerunIterableDataset | RerunMapDataset
+    if args.dataset_style == "map":
+        ds = RerunMapDataset(source=source, index="frame_index", columns=columns)
+    else:
+        ds = RerunIterableDataset(source=source, index="frame_index", columns=columns, fetch_size=512)
+    print(f"Using {args.dataset_style} dataset with {len(ds)} samples (after window trimming)")
+
+    # IterableDataset doesn't support indexing, so probe shape via iteration.
     state_dim = next(iter(ds))["state"].shape[0]
     action_dim = state_dim
     print(f"Dimensions: {state_dim=}, {action_dim=}")
@@ -184,9 +194,13 @@ def main() -> None:
     )
 
     collate_fn = CollateFn(CHUNK_SIZE, state_dim)
+    # For the map-style dataset, shuffling is driven by the DataLoader's default RandomSampler.
+    # Swap in `sampler=DistributedSampler(ds)` (and call `sampler.set_epoch(epoch)` each epoch)
+    # for multi-node training, or plug in any other PyTorch sampler.
     loader = DataLoader(
         ds,
         batch_size=args.batch_size,
+        shuffle=isinstance(ds, RerunMapDataset),
         num_workers=args.num_workers,
         collate_fn=collate_fn,
         persistent_workers=True,
@@ -198,7 +212,9 @@ def main() -> None:
 
     for epoch in range(args.epochs):
         with tracing_scope(f"epoch {epoch}"):
-            ds.set_epoch(epoch)
+            if isinstance(ds, RerunIterableDataset):
+                ds.set_epoch(epoch)
+
             total_loss = 0.0
             total_l1 = 0.0
             total_kld = 0.0

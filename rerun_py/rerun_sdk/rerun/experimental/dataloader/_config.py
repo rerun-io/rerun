@@ -1,4 +1,4 @@
-"""User-facing configuration dataclasses for [`RerunDataset`][rerun.experimental.dataloader.RerunDataset]."""
+"""User-facing configuration dataclasses for Rerun Data Platform-backed Torch datasets."""
 
 from __future__ import annotations
 

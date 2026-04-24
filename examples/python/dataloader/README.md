@@ -71,4 +71,18 @@ uv run python train.py \
 Pass `--num-segments 0` to train on all segments in the dataset.
 
 ### 4b. Train with traces
+
+```sh
 TELEMETRY_ENABLED=true OTEL_SDK_ENABLED=true uv run python train.py
+```
+
+### Iterable vs. Map-style dataset
+
+Pass `--dataset-style` to pick the PyTorch dataset class:
+
+- `iterable` (default) uses `RerunIterableDataset` — in-order streaming with shuffling and cross-worker partitioning handled internally.
+- `map` uses `RerunMapDataset` — random access by global index, so it plugs into PyTorch's sampler ecosystem (`DistributedSampler`, `WeightedRandomSampler`, `SubsetRandomSampler`, …).
+
+```bash
+uv run python train.py --dataset-style map
+```
