@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use ahash::HashMap;
 use anyhow::{Context as _, anyhow};
-use arrow::array::{Int64Array, RecordBatch};
+use arrow::array::{Float64Array, Int64Array, RecordBatch};
 use crossbeam::channel::Sender;
 use itertools::Either;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
@@ -233,7 +233,7 @@ pub struct LeRobotDatasetInfo {
     pub image_path: Option<String>,
 
     /// The frame rate of the recorded episode data.
-    pub fps: usize,
+    pub fps: f32,
 
     /// A mapping of feature names to their respective [`Feature`] definitions.
     pub features: HashMap<String, Feature>,
@@ -368,18 +368,29 @@ fn load_episode(
         .read_episode_data(episode)
         .map_err(|err| anyhow!("Reading data for episode {} failed: {err}", episode.0))?;
 
-    let frame_indices = data
-        .column_by_name("frame_index")
-        .ok_or_else(|| anyhow!("Failed to get frame index column in LeRobot dataset"))?
-        .clone();
-
-    let timeline = re_log_types::Timeline::new_sequence("frame_index");
-    let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
-        .downcast_array_ref::<Int64Array>()
-        .ok_or_else(|| anyhow!("LeRobot dataset frame indices are of an unexpected type"))?
-        .values();
-
-    let time_column = re_chunk::TimeColumn::new(None, timeline, times.clone());
+    let (timeline, time_column) = if let Some(frame_indices) = data.column_by_name("frame_index") {
+        let timeline = re_log_types::Timeline::new_sequence("frame_index");
+        let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
+            .downcast_array_ref::<Int64Array>()
+            .ok_or_else(|| anyhow!("LeRobot dataset frame indices are of an unexpected type"))?
+            .values();
+        (
+            timeline,
+            re_chunk::TimeColumn::new(None, timeline, times.clone()),
+        )
+    } else if let Some(timestamps) = data.column_by_name("timestamp") {
+        let timeline = re_log_types::Timeline::new_duration("timestamp");
+        let times: arrow::buffer::ScalarBuffer<i64> = timestamps
+            .downcast_array_ref::<Float64Array>()
+            .ok_or_else(|| anyhow!("LeRobot dataset timestamps are of an unexpected type"))?
+            .values()
+            .iter()
+            .map(|t| re_log_types::Duration::from_secs(*t).as_nanos())
+            .collect();
+        (timeline, re_chunk::TimeColumn::new(None, timeline, times))
+    } else {
+        return Err(anyhow!("LeRobot dataset has neither frame_index nor timestamp column").into());
+    };
     let timelines = std::iter::once((*timeline.name(), time_column.clone())).collect();
 
     let mut chunks = Vec::new();
