@@ -636,6 +636,7 @@ async fn query_dataset_snapshot(
         .remove_columns(&[
             QueryDatasetResponse::FIELD_CHUNK_KEY,
             QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
+            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED,
         ])
         .auto_sort_rows()
         .unwrap();

@@ -1,6 +1,8 @@
-use arrow::array::{FixedSizeBinaryArray, RecordBatch, RecordBatchOptions, UInt32Array};
+use arrow::array::{
+    Array as _, FixedSizeBinaryArray, RecordBatch, RecordBatchOptions, UInt32Array, UInt64Array,
+};
 use futures::StreamExt as _;
-use re_log_types::{AbsoluteTimeRange, TimeInt};
+use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
 use re_protos::cloud::v1alpha1::QueryDatasetResponse;
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, DataSourceKind, Query, QueryDatasetRequest, QueryLatestAt, QueryRange,
@@ -315,6 +317,142 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
     }
 }
 
+/// Verify that `chunk_byte_size_uncompressed` is present and populated with
+/// non-zero values for every chunk in the query response.
+pub async fn query_dataset_has_uncompressed_sizes(service: impl RerunCloudService) {
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [LayerDefinition::simple("segment", &["my/entity"])],
+    );
+
+    let dataset_name = "dataset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    let chunk_info: Vec<RecordBatch> = service
+        .query_dataset(
+            tonic::Request::new(QueryDatasetRequest::default().into())
+                .with_entry_name(entry_name(dataset_name))
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .flat_map(|resp| futures::stream::iter(resp.unwrap().data))
+        .map(|dfp| dfp.try_into().unwrap())
+        .collect()
+        .await;
+
+    let merged = concat_record_batches(&chunk_info);
+    assert!(
+        merged.num_rows() > 0,
+        "query should return at least one chunk"
+    );
+
+    let uncompressed_col = merged
+        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED)
+        .expect("chunk_byte_size_uncompressed column must be present");
+
+    let uncompressed = uncompressed_col
+        .as_any()
+        .downcast_ref::<UInt64Array>()
+        .expect("chunk_byte_size_uncompressed must be UInt64Array");
+
+    for i in 0..merged.num_rows() {
+        assert!(
+            !uncompressed.is_null(i),
+            "row {i}: uncompressed size must not be null"
+        );
+        assert!(
+            uncompressed.value(i) > 0,
+            "row {i}: uncompressed size must be > 0"
+        );
+    }
+}
+
+/// Verify that every response in the `query_dataset` stream has the same schema, even when
+/// different segments use different timelines. Regression test for a server bug where each
+/// (segment, layer) response only emitted `:start` columns for timelines present in its own
+/// chunks, producing mismatched schemas that broke client-side concatenation.
+pub async fn query_dataset_consistent_schema_across_timelines(service: impl RerunCloudService) {
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::simple_with_time(
+                "segment_sequence",
+                &["my/entity"],
+                0,
+                TimeType::Sequence,
+            ),
+            LayerDefinition::simple_with_time(
+                "segment_timestamp",
+                &["my/entity"],
+                0,
+                TimeType::TimestampNs,
+            ),
+        ],
+    );
+
+    let dataset_name = "dataset_mixed_timelines";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    let request = QueryDatasetRequest {
+        query: Some(Query {
+            columns_always_include_global_indexes: true,
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    let responses: Vec<RecordBatch> = service
+        .query_dataset(
+            tonic::Request::new(request.into())
+                .with_entry_name(entry_name(dataset_name))
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .flat_map(|resp| futures::stream::iter(resp.unwrap().data))
+        .map(|dfp| dfp.try_into().unwrap())
+        .collect()
+        .await;
+
+    // Backends are free to split a query across any number of responses (the OSS test server
+    // emits one per `(segment, layer)`; other backends may fuse them into a single batch). The
+    // only invariants we care about here are that we got data back and that every response
+    // shares a schema covering both timelines.
+    assert!(
+        !responses.is_empty(),
+        "expected at least one response, got none",
+    );
+
+    let first_schema = responses[0].schema();
+    for (idx, rb) in responses.iter().enumerate() {
+        assert_eq!(
+            rb.schema(),
+            first_schema,
+            "response {idx} has a different schema than response 0 — client-side concatenation would fail",
+        );
+    }
+
+    for expected_col in ["frame_nr:start", "timestamp:start"] {
+        assert!(
+            first_schema.field_with_name(expected_col).is_ok(),
+            "expected `{expected_col}` in response schema, got: {:#?}",
+            first_schema.fields(),
+        );
+    }
+
+    // concat_batches should succeed now that all responses share a schema.
+    let _ = concat_record_batches(&responses);
+}
+
 // ---
 
 // TODO(rerun-io/dataplatform#2228) remove the `chunk_ids_to_remove` parameter
@@ -372,6 +510,7 @@ async fn query_dataset_snapshot(
         .remove_columns(&[
             QueryDatasetResponse::FIELD_CHUNK_KEY,
             QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
+            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED,
         ])
         .auto_sort_rows()
         .unwrap();

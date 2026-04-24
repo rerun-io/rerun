@@ -30,6 +30,13 @@ pub struct InMemoryStore {
     id_by_name: HashMap<EntryName, EntryId>,
     task_registry: TaskRegistry,
     store_pool: StorePool,
+
+    /// Config applied to eager (in-memory) chunk stores created by this server.
+    ///
+    /// Lazy stores load their config from the RRD file they back and ignore this
+    /// value. Exposed via the builder as a testing hook so integration tests can
+    /// tune eager chunk-store knobs without relying on global env vars.
+    eager_chunk_store_config: ChunkStoreConfig,
 }
 
 impl Default for InMemoryStore {
@@ -40,6 +47,7 @@ impl Default for InMemoryStore {
             id_by_name: HashMap::default(),
             task_registry: TaskRegistry::default(),
             store_pool: StorePool::default(),
+            eager_chunk_store_config: Self::default_eager_chunk_store_config(),
         };
         ret.update_entries_table()
             .expect("update_entries_table should never fail on initialization.");
@@ -48,7 +56,17 @@ impl Default for InMemoryStore {
 }
 
 impl InMemoryStore {
-    pub fn chunk_store_config() -> re_chunk_store::ChunkStoreConfig {
+    pub fn eager_chunk_store_config(&self) -> ChunkStoreConfig {
+        self.eager_chunk_store_config.clone()
+    }
+
+    pub fn set_eager_chunk_store_config(&mut self, config: ChunkStoreConfig) {
+        self.eager_chunk_store_config = config;
+    }
+
+    /// Default eager `ChunkStoreConfig` for callsites that can't take a `&self`
+    /// (e.g. the static `ResolvedStore::load_rrd_file` eager-load fallback).
+    pub fn default_eager_chunk_store_config() -> ChunkStoreConfig {
         ChunkStoreConfig::CHANGELOG_DISABLED
             .apply_env()
             .unwrap_or(ChunkStoreConfig::CHANGELOG_DISABLED)

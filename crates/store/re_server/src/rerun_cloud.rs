@@ -140,6 +140,14 @@ impl RerunCloudHandlerBuilder {
         Ok(self)
     }
 
+    pub fn with_eager_chunk_store_config(
+        mut self,
+        config: re_chunk_store::ChunkStoreConfig,
+    ) -> Self {
+        self.store.set_eager_chunk_store_config(config);
+        self
+    }
+
     pub fn build(self) -> RerunCloudHandler {
         RerunCloudHandler::new(self.settings, self.store)
     }
@@ -149,14 +157,16 @@ impl RerunCloudHandlerBuilder {
 
 pub struct RerunCloudHandler {
     settings: RerunCloudHandlerSettings,
-
+    eager_chunk_store_config: re_chunk_store::ChunkStoreConfig,
     store: tokio::sync::RwLock<InMemoryStore>,
 }
 
 impl RerunCloudHandler {
     pub fn new(settings: RerunCloudHandlerSettings, store: InMemoryStore) -> Self {
+        let eager_chunk_store_config = store.eager_chunk_store_config();
         Self {
             settings,
+            eager_chunk_store_config,
             store: tokio::sync::RwLock::new(store),
         }
     }
@@ -1026,7 +1036,7 @@ impl RerunCloudService for RerunCloudHandler {
                             entry_id.to_string(),
                             segment_id.id.clone(),
                         ),
-                        InMemoryStore::chunk_store_config(),
+                        self.eager_chunk_store_config.clone(),
                     )
                 })
                 .insert_chunk(&chunk)
@@ -1431,6 +1441,22 @@ impl RerunCloudService for RerunCloudHandler {
             ));
         }
 
+        // Compute the union of timelines across every (segment, layer) touched by this query, so
+        // every response we emit below carries the same `{timeline}:start` columns and the client
+        // can concatenate them. Individual responses fill in `None` for timelines their chunks
+        // don't contain.
+        let all_timelines: BTreeMap<String, arrow::datatypes::DataType> = chunk_stores
+            .iter()
+            .flat_map(|(_, _, _, resolved)| {
+                resolved
+                    .schema()
+                    .timelines()
+                    .into_values()
+                    .map(|tl| (tl.name().as_str().to_owned(), tl.datatype()))
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+
         let stream = futures::stream::iter(chunk_stores.into_iter().map(
             move |(segment_id, layer_name, store_slot_id, resolved)| {
                 // Build metadata for all relevant chunks (physical + virtual).
@@ -1488,17 +1514,25 @@ impl RerunCloudService for RerunCloudHandler {
                 let mut chunk_entity_path = Vec::with_capacity(num_chunks);
                 let mut chunk_is_static = Vec::with_capacity(num_chunks);
                 let mut chunk_byte_sizes = Vec::with_capacity(num_chunks);
+                let mut chunk_byte_sizes_uncompressed = Vec::with_capacity(num_chunks);
                 let mut chunk_direct_urls = Vec::with_capacity(num_chunks);
                 let mut chunk_direct_url_expiry = Vec::with_capacity(num_chunks);
 
+                // Seed with the full set of timelines the query can see so the response schema
+                // matches every other response in this stream, even for segments/layers whose
+                // chunks don't use all those timelines.
                 let mut timelines: BTreeMap<
-                    &str,
-                    (
-                        arrow::datatypes::DataType,
-                        Vec<Option<i64>>,
-                        Vec<Option<i64>>,
-                    ),
-                > = BTreeMap::new();
+                    String,
+                    (arrow::datatypes::DataType, Vec<Option<i64>>),
+                > = all_timelines
+                    .iter()
+                    .map(|(name, dtype)| {
+                        (
+                            name.clone(),
+                            (dtype.clone(), Vec::with_capacity(num_chunks)),
+                        )
+                    })
+                    .collect();
 
                 for meta in &metadata_vec {
                     if !entity_paths.is_empty()
@@ -1521,29 +1555,24 @@ impl RerunCloudService for RerunCloudHandler {
                         continue;
                     }
 
-                    let mut missing_timelines: BTreeSet<_> = timelines.keys().copied().collect();
+                    let mut missing_timelines: BTreeSet<String> =
+                        timelines.keys().cloned().collect();
                     for (timeline, range) in &meta.timelines {
                         let timeline_name = timeline.name().as_str();
                         missing_timelines.remove(timeline_name);
 
-                        let timeline_data = timelines.entry(timeline_name).or_insert_with(|| {
-                            (
-                                timeline.datatype(),
-                                vec![None; chunk_segment_ids.len()],
-                                vec![None; chunk_segment_ids.len()],
-                            )
-                        });
+                        let timeline_data = timelines
+                            .get_mut(timeline_name)
+                            .expect("timeline was pre-seeded from chunk stores");
 
                         timeline_data.1.push(Some(range.min().as_i64()));
-                        timeline_data.2.push(Some(range.max().as_i64()));
                     }
                     for timeline_name in missing_timelines {
                         let timeline_data = timelines
-                            .get_mut(timeline_name)
+                            .get_mut(&timeline_name)
                             .expect("timeline_names already checked");
 
                         timeline_data.1.push(None);
-                        timeline_data.2.push(None);
                     }
 
                     chunk_segment_ids.push(segment_id.id.clone());
@@ -1551,6 +1580,8 @@ impl RerunCloudService for RerunCloudHandler {
                     chunk_entity_path.push(meta.entity_path.clone());
                     chunk_is_static.push(meta.is_static);
                     chunk_byte_sizes.push(meta.byte_size);
+                    // OSS server stores decoded data, so compressed == uncompressed.
+                    chunk_byte_sizes_uncompressed.push(Some(meta.byte_size));
 
                     chunk_keys.push(
                         ChunkKey {
@@ -1566,7 +1597,7 @@ impl RerunCloudService for RerunCloudHandler {
 
                 let chunk_layer_names = vec![layer_name.clone(); chunk_ids.len()];
                 let chunk_key_refs = chunk_keys.iter().map(|v| v.as_slice()).collect();
-                let batch = QueryDatasetResponse::create_dataframe(
+                let batch = QueryDatasetResponse::create_dataframe_with_timelines(
                     chunk_ids,
                     chunk_segment_ids,
                     chunk_layer_names,
@@ -1574,8 +1605,10 @@ impl RerunCloudService for RerunCloudHandler {
                     chunk_entity_path,
                     chunk_is_static,
                     chunk_byte_sizes,
+                    chunk_byte_sizes_uncompressed,
                     chunk_direct_urls,
                     chunk_direct_url_expiry,
+                    &timelines,
                 )
                 .map_err(|err| {
                     tonic::Status::internal(format!("Failed to create dataframe: {err:#}"))

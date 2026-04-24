@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use arrow::array::{
     Array, ArrayRef, BinaryArray, BooleanArray, DictionaryArray, FixedSizeBinaryBuilder,
-    ListBuilder, PrimitiveDictionaryBuilder, RecordBatch, RecordBatchOptions, StringArray,
-    StringBuilder, TimestampNanosecondArray, UInt8Array, UInt64Array,
+    Int64Array, ListBuilder, PrimitiveDictionaryBuilder, RecordBatch, RecordBatchOptions,
+    StringArray, StringBuilder, TimestampNanosecondArray, UInt8Array, UInt64Array,
 };
 use arrow::datatypes::{DataType, Field, FieldRef, Int32Type, Int64Type, Schema, TimeUnit};
 use arrow::error::ArrowError;
@@ -356,6 +356,7 @@ impl QueryDatasetResponse {
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
     pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
     pub const FIELD_CHUNK_BYTE_LENGTH: &str = "chunk_byte_len";
+    pub const FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED: &str = "chunk_byte_size_uncompressed";
     pub const FIELD_DIRECT_URL: &str = "rerun_layer_direct_url";
     pub const FIELD_DIRECT_URL_EXPIRES_AT: &str = "rerun_layer_direct_url_expires_at";
 
@@ -431,6 +432,14 @@ impl QueryDatasetResponse {
         ))
     }
 
+    pub fn field_chunk_byte_len_uncompressed() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED,
+            DataType::UInt64,
+            true
+        ))
+    }
+
     pub fn field_direct_url() -> FieldRef {
         lazy_field_ref!(Field::new(
             Self::FIELD_DIRECT_URL,
@@ -447,6 +456,28 @@ impl QueryDatasetResponse {
         ))
     }
 
+    /// Per-timeline `{timeline_name}:start` column that carries `time_min` for each chunk.
+    ///
+    /// Consumed by the client's `build_segment_manifests` to compute the per-segment safe
+    /// horizon; no other downstream consumer reads the time range, so there is no matching
+    /// `:end` column.
+    ///
+    /// The column type is `Int64` because all rerun time types store `i64` internally.
+    pub fn field_timeline_start(timeline_name: &str) -> FieldRef {
+        let metadata = std::collections::HashMap::from([
+            ("rerun:index".to_owned(), timeline_name.to_owned()),
+            (
+                re_sorbet::metadata::RERUN_KIND.to_owned(),
+                "index".to_owned(),
+            ),
+            ("rerun:index_marker".to_owned(), "start".to_owned()),
+        ]);
+        Arc::new(
+            Field::new(format!("{timeline_name}:start"), DataType::Int64, true)
+                .with_metadata(metadata),
+        )
+    }
+
     pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_chunk_id(),
@@ -456,6 +487,7 @@ impl QueryDatasetResponse {
             Self::field_chunk_entity_path(),
             Self::field_chunk_is_static(),
             Self::field_chunk_byte_len(),
+            Self::field_chunk_byte_len_uncompressed(),
             Self::field_direct_url(),
             Self::field_direct_url_expires_at(),
         ]
@@ -478,16 +510,47 @@ impl QueryDatasetResponse {
         chunk_entity_paths: Vec<String>,
         chunk_is_static: Vec<bool>,
         chunk_byte_lengths: Vec<u64>,
+        chunk_byte_lengths_uncompressed: Vec<Option<u64>>,
         chunk_direct_urls: Vec<Option<String>>,
         chunk_direct_urls_expiry: Vec<Option<i64>>,
     ) -> arrow::error::Result<RecordBatch> {
-        let schema = Arc::new(Self::schema());
+        Self::create_dataframe_with_timelines(
+            chunk_ids,
+            chunk_segment_ids,
+            chunk_layer_names,
+            chunk_keys,
+            chunk_entity_paths,
+            chunk_is_static,
+            chunk_byte_lengths,
+            chunk_byte_lengths_uncompressed,
+            chunk_direct_urls,
+            chunk_direct_urls_expiry,
+            &Default::default(),
+        )
+    }
+
+    #[expect(clippy::too_many_arguments)]
+    pub fn create_dataframe_with_timelines(
+        chunk_ids: Vec<re_chunk::ChunkId>,
+        chunk_segment_ids: Vec<String>,
+        chunk_layer_names: Vec<String>,
+        chunk_keys: Vec<&[u8]>,
+        chunk_entity_paths: Vec<String>,
+        chunk_is_static: Vec<bool>,
+        chunk_byte_lengths: Vec<u64>,
+        chunk_byte_lengths_uncompressed: Vec<Option<u64>>,
+        chunk_direct_urls: Vec<Option<String>>,
+        chunk_direct_urls_expiry: Vec<Option<i64>>,
+        timelines: &std::collections::BTreeMap<String, (DataType, Vec<Option<i64>>)>,
+    ) -> arrow::error::Result<RecordBatch> {
+        let num_rows = chunk_ids.len();
 
         let mut chunk_direct_url_expiry_builder =
             PrimitiveDictionaryBuilder::<Int32Type, Int64Type>::new();
         chunk_direct_url_expiry_builder.extend(chunk_direct_urls_expiry);
 
-        let columns: Vec<ArrayRef> = vec![
+        let mut fields: Vec<FieldRef> = Self::fields();
+        let mut columns: Vec<ArrayRef> = vec![
             chunk_ids
                 .to_arrow()
                 .expect("to_arrow for ChunkIds never fails"),
@@ -497,6 +560,7 @@ impl QueryDatasetResponse {
             Arc::new(StringArray::from(chunk_entity_paths)),
             Arc::new(BooleanArray::from(chunk_is_static)),
             Arc::new(UInt64Array::from(chunk_byte_lengths)),
+            Arc::new(UInt64Array::from(chunk_byte_lengths_uncompressed)),
             Arc::new(
                 chunk_direct_urls
                     .iter()
@@ -506,10 +570,18 @@ impl QueryDatasetResponse {
             Arc::new(chunk_direct_url_expiry_builder.finish()),
         ];
 
+        // Caller is responsible for producing the same `timelines` set for every response of a
+        // single query, so all batches share a schema and the client can concatenate them.
+        for (timeline_name, (_data_type, mins)) in timelines {
+            fields.push(Self::field_timeline_start(timeline_name));
+            columns.push(Arc::new(Int64Array::from(mins.clone())) as ArrayRef);
+        }
+
+        let schema = Arc::new(Schema::new(fields));
         RecordBatch::try_new_with_options(
             schema,
             columns,
-            &RecordBatchOptions::default().with_row_count(Some(chunk_ids.len())),
+            &RecordBatchOptions::default().with_row_count(Some(num_rows)),
         )
     }
 }
@@ -2784,6 +2856,8 @@ mod tests {
         let direct_urls = vec![None, None];
         let direct_urls_expiry = vec![None, None];
 
+        let chunk_byte_lengths_uncompressed = vec![Some(2048u64), Some(4096u64)];
+
         QueryDatasetResponse::create_dataframe(
             chunk_ids,
             chunk_segment_ids,
@@ -2792,6 +2866,7 @@ mod tests {
             chunk_entity_paths,
             chunk_is_static,
             chunk_byte_lengths,
+            chunk_byte_lengths_uncompressed,
             direct_urls,
             direct_urls_expiry,
         )

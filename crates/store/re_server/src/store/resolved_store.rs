@@ -150,7 +150,7 @@ impl ResolvedStore {
         } else {
             // Legacy fallback: eager load (no footer, or footer read error).
             let contents = ChunkStore::handle_from_rrd_filepath(
-                &super::InMemoryStore::chunk_store_config(),
+                &super::InMemoryStore::default_eager_chunk_store_config(),
                 path,
             )
             .map_err(super::Error::RrdLoadingError)?;
