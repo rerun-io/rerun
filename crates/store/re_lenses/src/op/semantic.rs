@@ -111,7 +111,7 @@ impl Transform for TimeSpecToNanos {
     fn transform(&self, source: &StructArray) -> Result<Option<Self::Target>, Error> {
         let (Some(seconds_array), Some(nanos_array)) = (
             Self::get_field_from_variants::<Int64Type>(source, &["seconds", "sec"])?,
-            Self::get_field_from_variants::<Int32Type>(source, &["nanos", "nsec"])?,
+            Self::get_field_from_variants::<Int32Type>(source, &["nanos", "nanosec", "nsec"])?,
         ) else {
             return Ok(None);
         };

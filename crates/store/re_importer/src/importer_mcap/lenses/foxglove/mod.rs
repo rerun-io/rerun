@@ -39,9 +39,9 @@ const IMAGE_PLANE_SUFFIX: &str = "_image_plane";
 /// Name of the timestamp field in Foxglove messages and name of the corresponding Rerun timeline.
 const FOXGLOVE_TIMESTAMP: &str = "timestamp";
 
-/// Creates a collection of all Foxglove lenses.
-pub fn foxglove_lenses(time_type: TimeType) -> Result<Lenses, LensError> {
-    let lenses = Lenses::new(OutputMode::ForwardUnmatched)
+/// Adds all Foxglove lenses to an existing collection.
+pub fn add_foxglove_lenses(lenses: &mut Lenses, time_type: TimeType) -> Result<(), LensError> {
+    *lenses = std::mem::replace(lenses, Lenses::new(OutputMode::ForwardUnmatched))
         .add_lens(camera_calibration(time_type)?)
         .add_lens(compressed_image(time_type)?)
         .add_lens(compressed_video(time_type)?)
@@ -54,5 +54,5 @@ pub fn foxglove_lenses(time_type: TimeType) -> Result<Lenses, LensError> {
         .add_lens(pose_in_frame(time_type)?)
         .add_lens(poses_in_frame(time_type)?)
         .add_lens(raw_image(time_type)?);
-    Ok(lenses)
+    Ok(())
 }

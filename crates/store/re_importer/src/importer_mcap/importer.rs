@@ -12,10 +12,7 @@ use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 use re_mcap::{DecoderIdentifier, DecoderRegistry, SelectedDecoders};
 use re_quota_channel::send_crossbeam;
 
-use crate::{
-    FOXGLOVE_LENSES_IDENTIFIER, ImportedData, Importer, ImporterError, ImporterSettings,
-    URDF_DECODER_IDENTIFIER,
-};
+use crate::{ImportedData, Importer, ImporterError, ImporterSettings, URDF_DECODER_IDENTIFIER};
 
 const MCAP_IMPORTER_NAME: &str = "McapImporter";
 
@@ -84,15 +81,12 @@ impl McapImporter {
         selected_decoders: &SelectedDecoders,
         time_type: re_log_types::TimeType,
     ) -> Option<Arc<Lenses>> {
-        if !selected_decoders.contains(&DecoderIdentifier::from(FOXGLOVE_LENSES_IDENTIFIER)) {
-            return None;
-        }
-
-        match super::lenses::foxglove_lenses(time_type) {
-            Ok(lenses) => Some(Arc::new(lenses)),
+        match super::lenses::mcap_lenses(selected_decoders, time_type) {
+            Ok(Some(lenses)) => Some(Arc::new(lenses)),
+            Ok(None) => None,
             Err(err) => {
                 re_log::error_once!(
-                    "Failed to build Foxglove lenses: {err}. MCAP importer will run without them."
+                    "Failed to build MCAP lenses: {err}. MCAP importer will run without them."
                 );
                 None
             }
