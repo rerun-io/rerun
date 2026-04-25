@@ -756,8 +756,8 @@ async fn load_chunks(
         "Downloading {} chunks from server…",
         re_format::format_uint(num_chunks)
     );
-    if 10_000 < num_chunks {
-        re_log::warn!(
+    if 25_000 < num_chunks {
+        re_log::debug_warn!(
             "There are {} chunks in this recording. Consider running `rerun rrd optimize` on it!",
             re_format::format_uint(num_chunks)
         );

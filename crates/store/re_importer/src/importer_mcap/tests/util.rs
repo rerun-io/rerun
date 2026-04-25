@@ -31,7 +31,7 @@ pub fn load_mcap(path: impl AsRef<Path>) -> LoadedMcap {
 
     let chunks: Vec<Chunk> = rx.iter().filter_map(ImportedData::into_chunk).collect();
 
-    if 10_000 < chunks.len() {
+    if 25_000 < chunks.len() {
         re_log::warn!(
             "MCAP file contained {} chunks. Consider running `rerun rrd optimize` on the output.",
             re_format::format_uint(chunks.len()),
