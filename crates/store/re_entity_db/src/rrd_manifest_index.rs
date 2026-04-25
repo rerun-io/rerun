@@ -410,8 +410,8 @@ impl RrdManifestIndex {
         self.manifest_complete = true;
 
         let num_root_chunks = self.root_chunks.len();
-        if 10_000 < num_root_chunks {
-            re_log::warn!(
+        if 25_000 < num_root_chunks {
+            re_log::debug_warn!(
                 "There are {} root chunks in this recording. Consider running `rerun rrd optimize` on the original.",
                 re_format::format_uint(num_root_chunks)
             );
