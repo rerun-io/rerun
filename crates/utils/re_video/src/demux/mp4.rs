@@ -227,11 +227,17 @@ fn codec_details_from_stds(
         _ => {}
     }
 
-    Ok(VideoEncodingDetails {
-        codec_string: stsd
+    let codec_string = match &stsd.contents {
+        // https://www.w3.org/TR/webcodecs-vp8-codec-registration/#fully-qualified-codec-strings
+        re_mp4::StsdBoxContent::Vp08(_) => "vp8".to_owned(),
+        _ => stsd
             .contents
             .codec_string()
             .ok_or(VideoLoadError::UnableToDetermineCodecString)?,
+    };
+
+    Ok(VideoEncodingDetails {
+        codec_string,
         coded_dimensions: [track.width, track.height],
         bit_depth: stsd.contents.bit_depth(),
         chroma_subsampling: subsampling_mode(&stsd),

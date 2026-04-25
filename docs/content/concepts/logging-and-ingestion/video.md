@@ -94,16 +94,11 @@ Codec support varies in the web & native viewer:
 
 |            | Browser | Native |
 | ---------- | ------- | ------ |
-| AV1        | ✅       | 🟧      |
-| H.264/avc  | ✅       | ✅      |
-| H.265/hevc | 🟧       | ✅      |
-| VP9        | ✅       | ❌      |
-
-<!--
-for web codecs see https://www.w3.org/TR/webcodecs-codec-registry/#video-codec-registry
-VP8 is only not in the list because VP9 doesn't support MP4 as a container and that's
-today the only container we take.
--->
+| AV1        | ✅      | 🟧     |
+| H.264/avc  | ✅      | ✅     |
+| H.265/hevc | 🟧      | ✅     |
+| VP8        | ✅      | ❌     |
+| VP9        | ✅      | ❌     |
 
 Details see below.
 

@@ -33,11 +33,9 @@ fn video_test_file_mp4(codec: &VideoCodec, need_dts_equal_pts: bool) -> std::pat
     let codec_str = match codec {
         VideoCodec::H264 => "h264",
         VideoCodec::H265 => "h265",
-        VideoCodec::VP9 => "vp9",
-        VideoCodec::VP8 => {
-            panic!("We don't have test data for vp8, because Mp4 doesn't support vp8.")
-        }
         VideoCodec::AV1 => "av1",
+        VideoCodec::VP8 => "vp8",
+        VideoCodec::VP9 => "vp9",
         VideoCodec::ImageSequence(_) => panic!("mp4 can't be an image sequence"),
     };
 
@@ -345,6 +343,11 @@ fn test_video_asset_codec_h264() {
 #[test]
 fn test_video_asset_codec_h265() {
     test_video(VideoType::AssetVideo, &VideoCodec::H265);
+}
+
+#[test]
+fn test_video_asset_codec_vp8() {
+    test_video(VideoType::AssetVideo, &VideoCodec::VP8);
 }
 
 #[test]
