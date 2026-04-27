@@ -205,6 +205,31 @@ impl PyRegistrationHandleInternal {
             .instrument(span),
         )
     }
+
+    /// Cancel dataset registration.
+    /// If the registration is already done, this is a noop.
+    #[pyo3(signature = ())]
+    fn cancel(&self, py: Python<'_>) -> PyResult<()> {
+        let span = read_trace_context_from_python(py, "cancel");
+
+        let connection = self.client.borrow(py).connection().clone();
+        let task_ids = self.task_ids();
+
+        wait_for_future(
+            py,
+            async move {
+                connection
+                    .client()
+                    .await?
+                    .cancel_tasks(task_ids)
+                    .await
+                    .map_err(to_py_err)?;
+
+                Ok(())
+            }
+            .instrument(span),
+        )
+    }
 }
 
 /// Process a single response from the task completion stream.

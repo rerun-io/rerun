@@ -16,13 +16,13 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::cloud::v1alpha1::{
-    CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FetchChunksRequest,
-    FindEntriesRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-    GetDatasetSchemaRequest, GetRrdManifestResponse, GetSegmentTableSchemaRequest,
-    GetSegmentTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionResponse,
-    QueryTasksResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
-    RegisterWithDatasetResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
-    UnregisterFromDatasetResponse, VersionRequest, WriteTableRequest,
+    CancelTasksRequest, CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind,
+    FetchChunksRequest, FindEntriesRequest, GetDatasetManifestSchemaRequest,
+    GetDatasetManifestSchemaResponse, GetDatasetSchemaRequest, GetRrdManifestResponse,
+    GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryDatasetResponse,
+    QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
+    ReadTableEntryRequest, RegisterWithDatasetResponse, ScanSegmentTableRequest,
+    ScanSegmentTableResponse, UnregisterFromDatasetResponse, VersionRequest, WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
@@ -1051,6 +1051,15 @@ where
             response,
             "/QueryTasksOnCompletion",
         ))
+    }
+
+    pub async fn cancel_tasks(&mut self, task_ids: Vec<TaskId>) -> ApiResult {
+        self.inner()
+            .cancel_tasks(CancelTasksRequest { ids: task_ids })
+            .await
+            .map_err(|err| ApiError::tonic(err, "/CancelTasks failed"))?;
+
+        Ok(())
     }
 
     pub async fn query_tasks(&mut self, task_ids: Vec<TaskId>) -> ApiResult<QueryTasksResponse> {

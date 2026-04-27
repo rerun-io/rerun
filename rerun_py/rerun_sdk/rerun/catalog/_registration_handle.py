@@ -105,3 +105,16 @@ class RegistrationHandle:
         """
         segment_ids = self._internal.wait(timeout_secs)
         return RegistrationResult(segment_ids=segment_ids)
+
+    def cancel(self) -> None:
+        """
+        Cancel dataset registration. If the registration is already done, this is a noop.
+
+        Raises
+        ------
+        ValueError
+            If the cancellation fails.
+
+        """
+
+        self._internal.cancel()

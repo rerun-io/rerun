@@ -19,13 +19,13 @@ use re_log_encoding::ToTransport as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, Timeline};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
-    GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
-    GetRrdManifestResponse, GetSegmentTableSchemaResponse, QueryDatasetResponse,
-    QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
-    QueryTasksResponse, RegisterTableRequest, RegisterTableResponse, RegisterWithDatasetResponse,
-    ScanDatasetManifestRequest, ScanDatasetManifestResponse, ScanSegmentTableResponse,
-    ScanTableResponse,
+    CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, EntryDetails, EntryKind,
+    FetchChunksRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
+    GetDatasetSchemaResponse, GetRrdManifestResponse, GetSegmentTableSchemaResponse,
+    QueryDatasetResponse, QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse,
+    QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
+    RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
+    ScanSegmentTableResponse, ScanTableResponse,
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
@@ -1897,6 +1897,14 @@ impl RerunCloudService for RerunCloudHandler {
                 })
             })) as Self::QueryTasksOnCompletionStream,
         ))
+    }
+
+    async fn cancel_tasks(
+        &self,
+        _request: tonic::Request<CancelTasksRequest>,
+    ) -> tonic::Result<tonic::Response<CancelTasksResponse>> {
+        // Cancelling tasks is a noop in the OSS server
+        Ok(tonic::Response::new(CancelTasksResponse {}))
     }
 
     async fn do_maintenance(

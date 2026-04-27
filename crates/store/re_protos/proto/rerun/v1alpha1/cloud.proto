@@ -204,6 +204,9 @@ service RerunCloudService {
   // Query the status of submitted tasks as soon as they are no longer pending
   rpc QueryTasksOnCompletion(QueryTasksOnCompletionRequest) returns (stream QueryTasksOnCompletionResponse) {}
 
+  // Cancel existing tasks
+  rpc CancelTasks(CancelTasksRequest) returns (CancelTasksResponse);
+
   // --- Utilities ---
 
   // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
@@ -877,6 +880,15 @@ message QueryTasksOnCompletionRequest {
 message QueryTasksOnCompletionResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
+
+// `CancelTasksRequest` is the request message for cancelling a number of tasks
+message CancelTasksRequest {
+  // Unique identifiers for the tasks
+  repeated rerun.common.v1alpha1.TaskId ids = 1;
+}
+
+// `CancelTasksResponse` is the response message for cancelling a number of tasks
+message CancelTasksResponse {}
 
 // --- Catalog ---
 
