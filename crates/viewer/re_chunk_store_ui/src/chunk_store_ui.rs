@@ -3,13 +3,14 @@ use std::sync::Arc;
 
 use egui_extras::{Column, TableRow};
 use itertools::{Either, Itertools as _};
+use re_byte_size::SizeBytes as _;
 use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreGeneration, ChunkTrackingMode, LatestAtQuery, RangeQuery,
 };
 use re_log_types::{
     AbsoluteTimeRange, StoreId, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
 };
-use re_ui::text_edit::autocomplete_text_edit;
+use re_ui::{ContextExt as _, text_edit::autocomplete_text_edit};
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::external::re_entity_db::EntityDb;
 use re_viewer_context::{ActiveStoreContext, StorageContext};
@@ -28,6 +29,7 @@ enum ChunkListColumn {
     ChunkId,
     EntityPath,
     RowCount,
+    ChunkSize,
     Timeline(TimelineName),
 }
 
@@ -101,6 +103,7 @@ impl ChunkListColumn {
             Self::ChunkId => sortable_column_header_ui(self, ui, sort_column, "Chunk ID"),
             Self::EntityPath => sortable_column_header_ui(self, ui, sort_column, "Entity"),
             Self::RowCount => sortable_column_header_ui(self, ui, sort_column, "# rows"),
+            Self::ChunkSize => sortable_column_header_ui(self, ui, sort_column, "Size"),
             Self::Timeline(timeline_name) => {
                 sortable_column_header_ui(self, ui, sort_column, timeline_name.as_str());
             }
@@ -370,6 +373,10 @@ impl DatastoreUi {
                     ChunkListColumn::RowCount.ui(ui, &mut self.chunk_list_sort_column);
                 });
 
+                row.col(|ui| {
+                    ChunkListColumn::ChunkSize.ui(ui, &mut self.chunk_list_sort_column);
+                });
+
                 for &timeline in all_timelines.keys() {
                     row.col(|ui| {
                         ChunkListColumn::Timeline(timeline)
@@ -402,7 +409,13 @@ impl DatastoreUi {
                         });
 
                         row.col(|ui| {
-                            ui.label(chunk.num_rows().to_string());
+                            ui.label(re_format::format_uint(chunk.num_rows()));
+                        });
+
+                        row.col(|ui| {
+                            ui.label(re_format::format_bytes(
+                                Chunk::heap_size_bytes(chunk.as_ref()) as _,
+                            ));
                         });
 
                         let timeline_ranges = chunk
@@ -413,6 +426,15 @@ impl DatastoreUi {
 
                         for timeline in all_timelines.values() {
                             row.col(|ui| {
+                                if chunk
+                                    .timelines()
+                                    .get(timeline.name())
+                                    .is_some_and(|t| !t.is_sorted())
+                                {
+                                    ui.label(ui.warning_text("Unsorted")).on_hover_text(
+                                        "This timeline is unordered relative to RowId",
+                                    );
+                                }
                                 if let Some(time_range) = timeline_ranges.get(timeline.name()) {
                                     ui.label(format_time_range(
                                         timeline,
@@ -447,7 +469,7 @@ impl DatastoreUi {
                         .id_salt(chunk_store.id())
                         .columns(
                             Column::auto_with_initial_suggestion(200.0).clip(true),
-                            4 + all_timelines.len(),
+                            5 + all_timelines.len(),
                         )
                         .resizable(true)
                         .vscroll(true)
@@ -586,6 +608,7 @@ impl DatastoreUi {
                 chunks.sort_by_key(|chunk| chunk.entity_path().to_string());
             }
             ChunkListColumn::RowCount => chunks.sort_by_key(|chunk| chunk.num_rows()),
+            ChunkListColumn::ChunkSize => chunks.sort_by_key(|chunk| chunk.heap_size_bytes()),
             ChunkListColumn::Timeline(timeline_name) => chunks.sort_by_key(|chunk| {
                 chunk
                     .timelines()

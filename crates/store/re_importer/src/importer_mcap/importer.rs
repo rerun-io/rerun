@@ -304,7 +304,22 @@ fn apply_timestamp_offset(mut chunk: re_chunk::Chunk, offset_ns: Option<i64>) ->
     chunk
 }
 
-fn send_chunk_to_channel(tx: &Sender<ImportedData>, store_id: &StoreId, chunk: re_chunk::Chunk) {
+fn send_chunk_to_channel(
+    tx: &Sender<ImportedData>,
+    store_id: &StoreId,
+    mut chunk: re_chunk::Chunk,
+) {
+    chunk.sort_if_unsorted();
+
+    for (name, column) in chunk.timelines() {
+        if !column.is_sorted() {
+            let entity_path = chunk.entity_path();
+            re_log::warn_once!(
+                "Found unsorted timeline '{name}' for entity '{entity_path}'. This may lead to suboptimal performance.",
+            );
+        }
+    }
+
     if send_crossbeam(
         tx,
         ImportedData::Chunk(MCAP_IMPORTER_NAME.to_owned(), store_id.clone(), chunk),

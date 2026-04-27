@@ -234,7 +234,19 @@ impl MessageDecoderRunner {
                 }
             }
 
-            for chunk in decoder.finish() {
+            for mut chunk in decoder.finish() {
+                if let Ok(chunk) = &mut chunk {
+                    chunk.sort_if_unsorted();
+                    for (name, column) in chunk.timelines() {
+                        if !column.is_sorted() {
+                            let entity_path = chunk.entity_path();
+                            re_log::warn_once!(
+                                "Found unsorted timeline '{name}' for entity '{entity_path}'. This may lead to suboptimal performance.",
+                            );
+                        }
+                    }
+                }
+
                 match chunk {
                     Ok(c) => emit(c),
                     Err(err) => re_log::error!("Failed to decode chunk: {err}"),
