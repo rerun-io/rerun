@@ -94,6 +94,8 @@ impl Points2DVisualizer {
                 // Determine if there's any sub-ranges that need extra highlighting.
                 {
                     re_tracing::profile_scope!("marking additional highlight points");
+                    #[expect(clippy::iter_over_hash_type)]
+                    // Non-overlapping per-instance mask ranges.
                     for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
                         let highlighted_point_index = (highlighted_key.get()
                             < num_instances as u64)

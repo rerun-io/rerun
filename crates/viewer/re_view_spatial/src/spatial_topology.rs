@@ -476,6 +476,7 @@ impl SpatialTopology {
         split_subspace.child_spaces.insert(new_space_origin.clone());
 
         // Patch parents of the child spaces that were moved to the new space.
+        #[expect(clippy::iter_over_hash_type)] // Same value written to disjoint keys.
         for child_origin in &new_space.child_spaces {
             let child_space = self
                 .subspaces

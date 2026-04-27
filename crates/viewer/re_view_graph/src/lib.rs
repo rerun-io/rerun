@@ -2,6 +2,8 @@
 //!
 //! A View that shows a graph (node-link diagram).
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod graph;
 mod layout;
 mod ui;

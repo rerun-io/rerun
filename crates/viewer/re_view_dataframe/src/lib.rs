@@ -2,6 +2,8 @@
 //!
 //! A View that shows the data contained in entities in a table.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod dataframe_ui;
 
 mod expanded_rows;

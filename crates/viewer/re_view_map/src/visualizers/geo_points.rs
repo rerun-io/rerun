@@ -187,6 +187,7 @@ impl GeoPointsOutput {
 
             //TODO(ab, andreas): boilerplate copy-pasted from points2d
             let num_instances = positions.len() as u64;
+            #[expect(clippy::iter_over_hash_type)] // Non-overlapping per-instance mask ranges.
             for (highlighted_key, instance_mask_ids) in &outline.instances {
                 let highlighted_point_index =
                     (highlighted_key.get() < num_instances).then_some(highlighted_key.get());

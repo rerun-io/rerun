@@ -212,10 +212,15 @@ mod file_server_impl {
                     .with_context(|| format!("couldn't resolve imports for file at {path:?}"))?
                     .imports;
 
+                #[expect(clippy::iter_over_hash_type)]
+                // Each import path is watched independently; errors are logged, not propagated.
                 for path in imports {
-                    self.watcher
+                    if let Err(err) = self
+                        .watcher
                         .watch(path.as_ref(), RecursiveMode::NonRecursive)
-                        .with_context(|| format!("couldn't watch file at {path:?}"))?;
+                    {
+                        re_log::error!(%err, ?path, "couldn't watch imported dependency");
+                    }
                 }
             }
 
@@ -276,6 +281,8 @@ mod file_server_impl {
             // On the other hand, we don't care whether a file has dropped one of its imported
             // dependencies: worst case we'll watch a file that's not used anymore, that's
             // not an issue.
+            #[expect(clippy::iter_over_hash_type)]
+            // Each path is re-watched independently; errors are logged, not propagated.
             for path in &paths {
                 if let Err(err) = self.watch(resolver, path, false) {
                     re_log::error!(err=%re_error::format(err), "couldn't watch imported dependency");

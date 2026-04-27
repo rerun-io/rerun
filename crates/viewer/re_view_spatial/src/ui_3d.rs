@@ -413,6 +413,8 @@ impl SpatialView3D {
         }
         if state.state_3d.show_per_entity_bbox {
             let mut batch = line_builder.batch("per_entity_regions_of_interest");
+            #[expect(clippy::iter_over_hash_type)]
+            // Debug bounding boxes; all same color, depth-buffered.
             for region_of_interest in state.bounding_boxes.region_of_interest_per_entity.values() {
                 batch
                     .add_box_outline(region_of_interest)

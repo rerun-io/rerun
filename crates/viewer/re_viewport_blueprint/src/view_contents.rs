@@ -287,12 +287,14 @@ impl ViewContents {
             re_tracing::profile_scope!("visualizable_entities_per_visualizer_in_view");
 
             let mut visualizable_entities_per_visualizer_in_view = IntMap::default();
+            #[expect(clippy::iter_over_hash_type)] // Filling another hash map.
             for (visualizer, visualizable_entities) in visualizable_entities_per_visualizer.iter() {
                 // Skip over visualizers that aren't used in this view.
                 if !visualizer_collection.contains_visualizer_type(*visualizer) {
                     continue;
                 }
 
+                #[expect(clippy::iter_over_hash_type)] // Filling another hash map.
                 for (entity_path, reason) in visualizable_entities.iter() {
                     visualizable_entities_per_visualizer_in_view
                         .entry(entity_path.hash())
@@ -328,6 +330,7 @@ impl ViewContents {
 
             // Figure out which components are relevant.
             let mut components_for_defaults = IntSet::default();
+            #[expect(clippy::iter_over_hash_type)] // Set union is order-independent.
             for (visualizer, entities) in visualizable_entities_per_visualizer.iter() {
                 if entities.is_empty() {
                     continue;
