@@ -23,9 +23,11 @@ re_viewer = { workspace = true, features = ["testing", "map_view"] }
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
+arrow.workspace = true
 egui_kittest.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
+futures.workspace = true
 parking_lot.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
@@ -39,8 +41,6 @@ re_view_text_document.workspace = true
 re_view_text_log.workspace = true
 re_view_time_series.workspace = true
 
-arrow.workspace = true
-futures.workspace = true
 insta.workspace = true
 ndarray.workspace = true
 
