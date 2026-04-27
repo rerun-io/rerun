@@ -4,12 +4,18 @@ use nohash_hasher::IntMap;
 use re_byte_size::SizeBytes;
 use re_chunk_store::ChunkStore;
 use re_log_types::{EntityPath, EntityPathHash, TimeInt, TimelineName};
+use re_sdk_types::ChunkId;
 
 use crate::TransformFrameIdHash;
 use crate::frame_id_registry::FrameIdRegistry;
 use crate::transform_aspect::TransformAspect;
+use crate::transform_queries::{
+    atomic_component_set_for_instance_poses, atomic_component_set_for_pinhole_projection,
+    atomic_component_set_for_tree_transforms,
+};
+use crate::transform_resolution_cache::iter_relevant_rows_in_chunk;
 
-use super::iter_child_frames_in_chunk;
+use super::iter_relevant_rows_in_chunk_with_child_frames;
 use super::pose_transform_for_entity::PoseTransformForEntity;
 use super::tree_transforms_for_child_frame::TreeTransformsForChildFrame;
 
@@ -91,6 +97,7 @@ impl CachedTransformsForTimeline {
 
             result.add_temporal_chunk(
                 chunk,
+                chunk.id(),
                 aspects,
                 timeline,
                 static_transforms,
@@ -105,6 +112,7 @@ impl CachedTransformsForTimeline {
     pub fn add_temporal_chunk(
         &mut self,
         chunk: &re_chunk_store::Chunk,
+        physical_chunk_id: ChunkId,
         aspects: TransformAspect,
         timeline: TimelineName,
         static_timeline: &Self,
@@ -120,9 +128,12 @@ impl CachedTransformsForTimeline {
             re_sdk_types::archetypes::Pinhole::descriptor_child_frame().component;
 
         if aspects.contains(TransformAspect::Frame) {
-            for (time, frame) in
-                iter_child_frames_in_chunk(chunk, timeline, transform_child_frame_component)
-            {
+            for ((time, row_id), frame) in iter_relevant_rows_in_chunk_with_child_frames(
+                chunk,
+                timeline,
+                transform_child_frame_component,
+                atomic_component_set_for_tree_transforms(),
+            ) {
                 self.get_or_create_tree_transforms_temporal(
                     entity_path,
                     frame,
@@ -130,19 +141,26 @@ impl CachedTransformsForTimeline {
                     static_timeline,
                     frame_id_registry,
                 )
-                .invalidate_transform_at(time);
+                .invalidate_transform_at(time, physical_chunk_id, row_id);
             }
         }
         if aspects.contains(TransformAspect::Pose) {
             let poses = self.get_or_create_pose_transforms_temporal(entity_path, static_timeline);
-            for (time, _) in chunk.iter_indices(&timeline) {
-                poses.invalidate_at(time);
+            for (time, row_id) in iter_relevant_rows_in_chunk(
+                chunk,
+                timeline,
+                atomic_component_set_for_instance_poses(),
+            ) {
+                poses.invalidate_at(time, physical_chunk_id, row_id);
             }
         }
-        if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
-            for (time, frame) in
-                iter_child_frames_in_chunk(chunk, timeline, pinhole_child_frame_component)
-            {
+        if aspects.contains(TransformAspect::Pinhole) {
+            for ((time, row_id), frame) in iter_relevant_rows_in_chunk_with_child_frames(
+                chunk,
+                timeline,
+                pinhole_child_frame_component,
+                atomic_component_set_for_pinhole_projection(),
+            ) {
                 self.get_or_create_tree_transforms_temporal(
                     entity_path,
                     frame,
@@ -150,7 +168,7 @@ impl CachedTransformsForTimeline {
                     static_timeline,
                     frame_id_registry,
                 )
-                .invalidate_pinhole_projection_at(time);
+                .invalidate_pinhole_projection_at(time, physical_chunk_id, row_id);
             }
         }
 
@@ -209,9 +227,12 @@ impl CachedTransformsForTimeline {
 
         // Remove existing data.
         if aspects.contains(TransformAspect::Frame) {
-            for (time, frame) in
-                iter_child_frames_in_chunk(chunk, timeline, transform_child_frame_component)
-            {
+            for ((time, _row_id), frame) in iter_relevant_rows_in_chunk_with_child_frames(
+                chunk,
+                timeline,
+                transform_child_frame_component,
+                atomic_component_set_for_tree_transforms(),
+            ) {
                 if let Some(transforms) = self.per_child_frame_transforms.get_mut(&frame) {
                     transforms.events.get_mut().frame_transforms.remove(&time);
                 }
@@ -220,14 +241,21 @@ impl CachedTransformsForTimeline {
         if aspects.contains(TransformAspect::Pose)
             && let Some(poses) = self.per_entity_poses.get_mut(&entity_path.hash())
         {
-            for (time, _) in chunk.iter_indices(&timeline) {
+            for (time, _) in iter_relevant_rows_in_chunk(
+                chunk,
+                timeline,
+                atomic_component_set_for_instance_poses(),
+            ) {
                 poses.poses_per_time.get_mut().remove(&time);
             }
         }
-        if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
-            for (time, frame) in
-                iter_child_frames_in_chunk(chunk, timeline, pinhole_child_frame_component)
-            {
+        if aspects.contains(TransformAspect::Pinhole) {
+            for ((time, _row_id), frame) in iter_relevant_rows_in_chunk_with_child_frames(
+                chunk,
+                timeline,
+                pinhole_child_frame_component,
+                atomic_component_set_for_pinhole_projection(),
+            ) {
                 if let Some(transforms) = self.per_child_frame_transforms.get_mut(&frame) {
                     transforms
                         .events

@@ -15,8 +15,8 @@ use re_sdk_types::{
     components::{self, PinholeProjection},
 };
 
-use crate::TransformFrameIdHash;
 use crate::convert;
+use crate::{TransformFrameIdHash, transform_resolution_cache::ResolvedPinholeProjectionCached};
 
 use super::pose_transform_for_entity::PoseTransformForEntity;
 use super::tree_transforms_for_child_frame::TreeTransformsForChildFrame;
@@ -518,9 +518,11 @@ fn test_static_pinhole_projection() -> Result<(), Box<dyn std::error::Error>> {
                 &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
             ),
             Some(ResolvedPinholeProjection {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                image_from_camera: image_from_camera_final,
-                resolution: Some([2.0, 2.0].into()),
+                cached: ResolvedPinholeProjectionCached {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    image_from_camera: image_from_camera_final,
+                    resolution: Some([2.0, 2.0].into()),
+                },
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
             })
         );
@@ -543,9 +545,11 @@ fn test_static_pinhole_projection() -> Result<(), Box<dyn std::error::Error>> {
                 &LatestAtQuery::new(*timeline.name(), 1)
             ),
             Some(ResolvedPinholeProjection {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                image_from_camera: image_from_camera_final,
-                resolution: Some([2.0, 2.0].into()),
+                cached: ResolvedPinholeProjectionCached {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    image_from_camera: image_from_camera_final,
+                    resolution: Some([2.0, 2.0].into()),
+                },
                 view_coordinates: components::ViewCoordinates::BLU,
             })
         );
@@ -564,9 +568,11 @@ fn test_static_pinhole_projection() -> Result<(), Box<dyn std::error::Error>> {
                 &LatestAtQuery::new(TimelineName::new("other"), 123)
             ),
             Some(ResolvedPinholeProjection {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                image_from_camera: image_from_camera_final,
-                resolution: Some([2.0, 2.0].into()),
+                cached: ResolvedPinholeProjectionCached {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    image_from_camera: image_from_camera_final,
+                    resolution: Some([2.0, 2.0].into()),
+                },
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
             })
         );
@@ -640,9 +646,11 @@ fn test_static_view_coordinates_projection() -> Result<(), Box<dyn std::error::E
                 &LatestAtQuery::new(*timeline.name(), 1)
             ),
             Some(ResolvedPinholeProjection {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                image_from_camera,
-                resolution: None,
+                cached: ResolvedPinholeProjectionCached {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    image_from_camera,
+                    resolution: None,
+                },
                 view_coordinates: components::ViewCoordinates::BLU,
             })
         );
@@ -846,9 +854,11 @@ fn test_pinhole_projections() -> Result<(), Box<dyn std::error::Error>> {
         assert_eq!(
             latest_at_pinhole_test(transforms, &entity_db, &LatestAtQuery::new(timeline, t)),
             pinhole_view_coordinates.map(|view_coordinates| ResolvedPinholeProjection {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                image_from_camera,
-                resolution: None,
+                cached: ResolvedPinholeProjectionCached {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    image_from_camera,
+                    resolution: None,
+                },
                 view_coordinates,
             }),
             "Unexpected result at time {t}"
@@ -1757,9 +1767,11 @@ fn test_pinhole_with_explicit_frames() -> Result<(), Box<dyn std::error::Error>>
                 &LatestAtQuery::new(timeline_name, t)
             ),
             Some(ResolvedPinholeProjection {
-                parent: TransformFrameIdHash::from_str("parent_frame"),
-                image_from_camera,
-                resolution: None,
+                cached: ResolvedPinholeProjectionCached {
+                    parent: TransformFrameIdHash::from_str("parent_frame"),
+                    image_from_camera,
+                    resolution: None,
+                },
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
             }),
             "Unexpected pinhole for child_frame at time t={t}"
@@ -1816,9 +1828,11 @@ fn test_pinhole_with_explicit_frames() -> Result<(), Box<dyn std::error::Error>>
                     &LatestAtQuery::new(timeline_name, t)
                 ),
                 Some(ResolvedPinholeProjection {
-                    parent: TransformFrameIdHash::from_str("parent_frame"),
-                    image_from_camera,
-                    resolution: Some([1.0, 2.0].into()),
+                    cached: ResolvedPinholeProjectionCached {
+                        parent: TransformFrameIdHash::from_str("parent_frame"),
+                        image_from_camera,
+                        resolution: Some([1.0, 2.0].into()),
+                    },
                     view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                 }),
                 "Unexpected pinhole for other_frame at time t={t}"

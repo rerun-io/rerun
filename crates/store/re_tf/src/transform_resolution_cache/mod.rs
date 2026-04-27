@@ -13,28 +13,33 @@ mod tests;
 pub use self::cache::TransformResolutionCache;
 pub use self::cached_transforms_for_timeline::CachedTransformsForTimeline;
 pub use self::parent_from_child_transform::ParentFromChildTransform;
-pub use self::resolved_pinhole_projection::ResolvedPinholeProjection;
+pub use self::resolved_pinhole_projection::{
+    ResolvedPinholeProjection, ResolvedPinholeProjectionCached,
+};
 
+use arrow::array::Array as _;
 use itertools::{Either, izip};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::Chunk;
 use re_chunk_store::external::arrow;
 use re_log_types::{TimeInt, TimelineName};
-use re_sdk_types::ComponentIdentifier;
+use re_sdk_types::{ComponentIdentifier, RowId};
 
 use crate::TransformFrameIdHash;
 
-/// Iterates over all frames of a given component type that are in a chunk.
+/// Iterates over all relevant rows in a chunk in a given timeline, resolving the child frames for each.
 ///
 /// If the chunk is static, `timeline` will be ignored.
 ///
-/// Yields an entry for every row. Note that there may be many entries per time though.
+/// Yields an entry for every row where at least one out of `relevant_components` is non-null (even if the `frame_component` is null on that row).
+/// Note that there may be many entries per time though.
 /// (Currently, there can be only a single frame id per row)
-fn iter_child_frames_in_chunk(
-    chunk: &Chunk,
+fn iter_relevant_rows_in_chunk_with_child_frames<'a>(
+    chunk: &'a Chunk,
     timeline: TimelineName,
     frame_component: ComponentIdentifier,
-) -> impl Iterator<Item = (TimeInt, TransformFrameIdHash)> {
+    relevant_components: &'static [ComponentIdentifier],
+) -> impl Iterator<Item = ((TimeInt, RowId), TransformFrameIdHash)> + 'a {
     let implicit_frame = TransformFrameIdHash::from_entity_path(chunk.entity_path());
 
     // This is similar to `iter_slices` but it also yields elements for rows where the component is null.
@@ -74,8 +79,170 @@ fn iter_child_frames_in_chunk(
         }
     );
 
-    izip!(
-        chunk.iter_indices(&timeline).map(|(t, _)| t),
-        frame_ids_per_row
-    )
+    let relevant_chunk_chunk_arrays = relevant_components
+        .iter()
+        .filter_map(|component| chunk.components().get_array(*component))
+        .collect::<Vec<_>>();
+
+    izip!(chunk.iter_indices(&timeline), frame_ids_per_row)
+        .enumerate()
+        .filter(move |(index, _)| {
+            // *Something* on this row has to be non-empty & non-null!
+            // Example where this is not the case:
+            //
+            // ┌────────────────┬─────────────┬────────────┐
+            // │ child_frame_id │ translation │ color      │
+            // ├────────────────┼─────────────┼────────────┤
+            // │ ["myframe"]    │ [[1,2,3]]   │ null       │
+            // │ null           │ null        │ 0xFF00FFFF │
+            // │ null           │ []          │ null       │
+            // └────────────────┴─────────────┴────────────┘
+            //
+            // The second row doesn't have any of the components of our atomic set.
+            // It is therefore not relevant for what we're looking for!
+            // The last row *is* relevant, because it clears out the translation for the
+            // entity derived child_frame_id, thus setting it to an identity transform.
+            relevant_chunk_chunk_arrays
+                .iter()
+                .any(|array| !array.is_null(*index))
+        })
+        .map(|(_, values)| values)
+}
+
+/// Iterates over relevant rows of a chunk in a given timeline.
+///
+/// If the chunk is static, `timeline` will be ignored.
+///
+/// Yields an entry for every row where at least one out of `relevant_components` is non-null.
+/// Note that there may be many entries per time though.
+fn iter_relevant_rows_in_chunk<'a>(
+    chunk: &'a Chunk,
+    timeline: TimelineName,
+    relevant_components: &'static [ComponentIdentifier],
+) -> impl Iterator<Item = (TimeInt, RowId)> + 'a {
+    let relevant_chunk_chunk_arrays = relevant_components
+        .iter()
+        .filter_map(|component| chunk.components().get_array(*component))
+        .collect::<Vec<_>>();
+
+    chunk
+        .iter_indices(&timeline)
+        .enumerate()
+        .filter(move |(index, _)| {
+            // *Something* on this row has to be non-empty & non-null!
+            // Example where this is not the case:
+            //
+            // ┌────────────────┬─────────────┬────────────┐
+            // │ child_frame_id │ translation │ color      │
+            // ├────────────────┼─────────────┼────────────┤
+            // │ ["myframe"]    │ [[1,2,3]]   │ null       │
+            // │ null           │ null        │ 0xFF00FFFF │
+            // │ null           │ []          │ null       │
+            // └────────────────┴─────────────┴────────────┘
+            //
+            // The second row doesn't have any of the components of our atomic set.
+            // It is therefore not relevant for what we're looking for!
+            // The last row *is* relevant, because it clears out the translation for the
+            // entity derived child_frame_id, thus setting it to an identity transform.
+            relevant_chunk_chunk_arrays
+                .iter()
+                .any(|array| !array.is_null(*index))
+        })
+        .map(|(_, values)| values)
+}
+
+#[cfg(test)]
+mod iterator_tests {
+    use re_chunk_store::Chunk;
+    use re_log_types::{
+        EntityPath, TimeInt, Timeline,
+        example_components::{MyPoint, MyPoints},
+    };
+    use re_sdk_types::{
+        archetypes::{self, Pinhole, Transform3D},
+        components::PinholeProjection,
+    };
+
+    use super::{iter_relevant_rows_in_chunk, iter_relevant_rows_in_chunk_with_child_frames};
+    use crate::{TransformFrameIdHash, transform_queries};
+
+    #[test]
+    fn iter_relevant_rows_in_chunk_with_child_frames_skips_unrelated_rows_and_uses_implicit_frame()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let timeline = Timeline::new_sequence("t");
+        let entity_path = EntityPath::from("my_entity");
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &Transform3D::from_translation([1.0, 2.0, 3.0]).with_child_frame("explicit_frame"),
+            )
+            .with_archetype_auto_row([(timeline, 2)], &MyPoints::new([MyPoint::new(1.0, 2.0)]))
+            .with_archetype_auto_row([(timeline, 3)], &Transform3D::clear_fields())
+            .with_archetype_auto_row([(timeline, 4)], &Transform3D::from_scale([2.0, 3.0, 4.0]))
+            .build()?;
+
+        let row_ids = chunk.row_ids_slice().to_vec();
+        let relevant_rows = iter_relevant_rows_in_chunk_with_child_frames(
+            &chunk,
+            *timeline.name(),
+            archetypes::Transform3D::descriptor_child_frame().component,
+            transform_queries::atomic_component_set_for_tree_transforms(),
+        )
+        .collect::<Vec<_>>();
+
+        assert_eq!(
+            relevant_rows,
+            vec![
+                (
+                    (TimeInt::new_temporal(1), row_ids[0]),
+                    TransformFrameIdHash::from_str("explicit_frame"),
+                ),
+                (
+                    (TimeInt::new_temporal(3), row_ids[2]),
+                    TransformFrameIdHash::from_entity_path(&entity_path),
+                ),
+                (
+                    (TimeInt::new_temporal(4), row_ids[3]),
+                    TransformFrameIdHash::from_entity_path(&entity_path),
+                ),
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn iter_relevant_rows_in_chunk_skips_unrelated_rows() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let timeline = Timeline::new_sequence("t");
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &Pinhole::new(PinholeProjection::from_focal_length_and_principal_point(
+                    [1.0, 2.0],
+                    [3.0, 4.0],
+                )),
+            )
+            .with_archetype_auto_row([(timeline, 2)], &MyPoints::new([MyPoint::new(1.0, 2.0)]))
+            .with_archetype_auto_row([(timeline, 3)], &Pinhole::clear_fields())
+            .build()?;
+
+        let row_ids = chunk.row_ids_slice().to_vec();
+        let relevant_rows = iter_relevant_rows_in_chunk(
+            &chunk,
+            *timeline.name(),
+            transform_queries::atomic_component_set_for_pinhole_projection(),
+        )
+        .collect::<Vec<_>>();
+
+        assert_eq!(
+            relevant_rows,
+            vec![
+                (TimeInt::new_temporal(1), row_ids[0]),
+                (TimeInt::new_temporal(3), row_ids[2]),
+            ]
+        );
+
+        Ok(())
+    }
 }

@@ -7,29 +7,23 @@ use re_chunk_store::{LatestAtQuery, MissingChunkReporter};
 use re_entity_db::EntityDb;
 use re_log::debug_assert;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
+use re_sdk_types::{ChunkId, RowId};
 
-use crate::TransformFrameIdHash;
 use crate::transform_queries::{
     query_and_resolve_pinhole_projection_at_entity, query_and_resolve_tree_transform_at_entity,
 };
+use crate::{ResolvedPinholeProjection, TransformFrameIdHash, query_view_coordinates};
 
 use super::cached_transform_value::{
     CachedTransformValue, add_invalidated_entry_if_not_already_cleared,
 };
 use super::cached_transforms_for_timeline::CachedTransformsForTimeline;
 use super::parent_from_child_transform::ParentFromChildTransform;
-use super::resolved_pinhole_projection::ResolvedPinholeProjection;
 use super::transforms_for_child_frame_events::TransformsForChildFrameEvents;
 
 /// Cached transforms from a single child frame to a (potentially changing) parent frame over time.
 ///
 /// Incorporates any static transforms that may apply to this entity.
-///
-/// Time points are conservative: it can happen that we generate new events (==cache slots) despite no change
-/// occurring for this child frame.
-/// However, we mustn't ever note down timepoints at which the given child frame is not "active" on its entity.
-/// Doing so would mean that queries using `re_query` yield information about a _different_ child frame
-/// which we then can't add to the cache entries of the current frame.
 #[derive(Debug)]
 pub struct TreeTransformsForChildFrame {
     // Is None if this is about static time.
@@ -189,15 +183,30 @@ impl TreeTransformsForChildFrame {
     }
 
     /// Inserts an invalidation point for transforms.
-    pub fn invalidate_transform_at(&mut self, time: TimeInt) {
+    pub fn invalidate_transform_at(&mut self, time: TimeInt, chunk_id: ChunkId, row_id: RowId) {
         let events = self.events.get_mut();
-        add_invalidated_entry_if_not_already_cleared(&mut events.frame_transforms, time);
+        add_invalidated_entry_if_not_already_cleared(
+            &mut events.frame_transforms,
+            time,
+            chunk_id,
+            row_id,
+        );
     }
 
     /// Inserts an invalidation point for pinhole projections.
-    pub fn invalidate_pinhole_projection_at(&mut self, time: TimeInt) {
+    pub fn invalidate_pinhole_projection_at(
+        &mut self,
+        time: TimeInt,
+        chunk_id: ChunkId,
+        row_id: RowId,
+    ) {
         let events = self.events.get_mut();
-        add_invalidated_entry_if_not_already_cleared(&mut events.pinhole_projections, time);
+        add_invalidated_entry_if_not_already_cleared(
+            &mut events.pinhole_projections,
+            time,
+            chunk_id,
+            row_id,
+        );
     }
 
     #[inline]
@@ -218,29 +227,22 @@ impl TreeTransformsForChildFrame {
                 &query.at(),
                 |time_of_last_update_to_this_frame, frame_transform| {
                     // Separate check to work around borrow checker issues.
-                    if frame_transform == &CachedTransformValue::Invalidated {
+                    if let CachedTransformValue::Invalidated { row_id, chunk_id } = frame_transform
+                    {
                         let transform = query_and_resolve_tree_transform_at_entity(
                             entity_db,
                             missing_chunk_reporter,
                             self.associated_entity_path(*time_of_last_update_to_this_frame),
-                            self.child_frame,
-                            // Do NOT use the original query time since that may give us information about a different child frame!
-                            &LatestAtQuery::new(
-                                query.timeline(),
-                                *time_of_last_update_to_this_frame,
-                            ),
+                            *chunk_id,
+                            *row_id,
                         );
 
                         // First, we update the cache value.
                         *frame_transform = match &transform {
-                            Ok(transform) => CachedTransformValue::Resident(transform.clone()),
-
-                            Err(crate::transform_queries::TransformError::MissingTransform {
-                                ..
-                            }) => {
-                                // This can happen if we conservatively added a timepoint before any transform event happened.
-                                CachedTransformValue::Cleared
-                            }
+                            Ok(transform) => CachedTransformValue::Resident {
+                                value: transform.clone(),
+                                row_id: *row_id,
+                            },
 
                             Err(err) => {
                                 // Only warn since we can still work just fine if a transform didn't work.
@@ -251,9 +253,9 @@ impl TreeTransformsForChildFrame {
                     }
 
                     match frame_transform {
-                        CachedTransformValue::Resident(transform) => Some(transform.clone()),
+                        CachedTransformValue::Resident { value, .. } => Some(value.clone()),
                         CachedTransformValue::Cleared => None,
-                        CachedTransformValue::Invalidated => {
+                        CachedTransformValue::Invalidated { .. } => {
                             unreachable!("Just made transform cache-resident")
                         }
                     }
@@ -279,29 +281,26 @@ impl TreeTransformsForChildFrame {
             .mutate_latest_at(
                 &query.at(),
                 |time_of_last_update_to_this_frame, pinhole_projection| {
+                    let entity_path =
+                        self.associated_entity_path(*time_of_last_update_to_this_frame);
+
                     // Separate check to work around borrow checker issues.
-                    if pinhole_projection == &CachedTransformValue::Invalidated {
+                    if let CachedTransformValue::Invalidated { row_id, chunk_id } =
+                        pinhole_projection
+                    {
                         let transform = query_and_resolve_pinhole_projection_at_entity(
                             entity_db,
                             missing_chunk_reporter,
-                            self.associated_entity_path(*time_of_last_update_to_this_frame),
-                            self.child_frame,
-                            // Do NOT use the original query time since that may give us information about a different child frame!
-                            &LatestAtQuery::new(
-                                query.timeline(),
-                                *time_of_last_update_to_this_frame,
-                            ),
+                            entity_path,
+                            *chunk_id,
+                            *row_id,
                         );
 
                         *pinhole_projection = match &transform {
-                            Ok(transform) => CachedTransformValue::Resident(transform.clone()),
-
-                            Err(crate::transform_queries::TransformError::MissingTransform {
-                                ..
-                            }) => {
-                                // This can happen if we conservatively added a timepoint before any transform event happened.
-                                CachedTransformValue::Cleared
-                            }
+                            Ok(transform) => CachedTransformValue::Resident {
+                                value: transform.clone(),
+                                row_id: *row_id,
+                            },
 
                             Err(err) => {
                                 // Only warn since we can still work just fine if a transform didn't work.
@@ -312,9 +311,22 @@ impl TreeTransformsForChildFrame {
                     }
 
                     match pinhole_projection {
-                        CachedTransformValue::Resident(transform) => Some(transform.clone()),
+                        CachedTransformValue::Resident { value, .. } => {
+                            Some(ResolvedPinholeProjection {
+                                cached: value.clone(),
+
+                                // TODO(andreas): view coordinates are in a weird limbo state in more than one way.
+                                // Not only are they only _partially_ relevant for the camera's transform (they both name axis & orient cameras),
+                                // we also rely on them too much being latest-at driven and to make matters worse query them from two different archetypes.
+                                view_coordinates: {
+                                    query_view_coordinates(entity_path, entity_db, query).unwrap_or(
+                                        re_sdk_types::archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
+                                    )
+                                },
+                            })
+                        }
                         CachedTransformValue::Cleared => None,
-                        CachedTransformValue::Invalidated => {
+                        CachedTransformValue::Invalidated { .. } => {
                             unreachable!("Just made transform cache-resident")
                         }
                     }
