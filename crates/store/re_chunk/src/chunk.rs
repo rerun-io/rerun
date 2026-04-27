@@ -940,27 +940,82 @@ impl Chunk {
     /// This will fail if the passed in data is malformed in any way -- see [`Self::sanity_check`]
     /// for details.
     ///
-    /// The data is assumed to be sorted in `RowId`-order. Sequential `RowId`s will be generated for each
-    /// row in the chunk.
+    /// The input order will NOT be respected.
+    /// The rows will be stably reordered so that the time columns are non-decreasing
+    /// (lexicographically across timelines, in deterministic timeline-name order).
+    /// Sequential `RowId`s are then assigned to the reordered rows.
+    /// This makes it less likely that we end up with "out-of-order" chunks
+    /// (chunks where some time columns are not sorted with respect to `RowId`).
     pub fn from_auto_row_ids(
         id: ChunkId,
         entity_path: EntityPath,
         timelines: IntMap<TimelineName, TimeColumn>,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
+        re_tracing::profile_function!();
+
         let count = components
             .list_arrays()
             .next()
             .map_or(0, |list_array| list_array.len());
 
-        let row_ids = auto_row_ids(id, count);
+        // Compute a stable permutation that lexicographically sorts the rows by their
+        // time-column values. We pick a deterministic timeline order (sorted by name) so the
+        // result does not depend on `IntMap` iteration order.
+        let timeline_order: Vec<TimelineName> = timelines.keys().copied().sorted().collect();
 
-        Self::new(id, entity_path, Some(true), row_ids, timelines, components)
+        let mut swaps: Vec<usize> = (0..count).collect();
+        swaps.sort_by(|&a, &b| {
+            for name in &timeline_order {
+                let times = timelines[name].times_raw();
+                let ord = times[a].cmp(&times[b]);
+                if ord != std::cmp::Ordering::Equal {
+                    return ord;
+                }
+            }
+            std::cmp::Ordering::Equal
+        });
+
+        // Build the chunk with placeholder sequential row_ids, then permute everything via
+        // `shuffle_with`, then reassign sequential row_ids so the chunk is RowId-sorted again.
+        let placeholder_row_ids = auto_row_ids(id, count);
+        let mut chunk = Self::new(
+            id,
+            entity_path,
+            Some(true),
+            placeholder_row_ids,
+            timelines,
+            components,
+        )?;
+
+        let already_sorted = swaps
+            .iter()
+            .copied()
+            .enumerate()
+            .all(|(to, from)| to == from);
+        if !already_sorted {
+            chunk.shuffle_with(&swaps);
+            chunk.row_ids = auto_row_ids(chunk.id, count);
+            chunk.is_sorted = true;
+
+            #[cfg(debug_assertions)]
+            #[expect(clippy::unwrap_used)] // dev only
+            chunk.sanity_check().unwrap();
+        }
+
+        Ok(chunk)
     }
 
     /// Creates a new [`Chunk`] from columnar data.
     ///
     /// Pass an empty iterator for `timelines` to create static data.
+    ///
+    /// The input order will NOT be respected.
+    /// The rows will be stably reordered so that the time columns are non-decreasing
+    /// (lexicographically across timelines, in deterministic timeline-name order).
+    /// Sequential `RowId`s are then assigned to the reordered rows.
+    /// This makes it less likely that we end up with "out-of-order" chunks
+    /// (chunks where some time columns are not sorted with respect to `RowId`).
     pub fn from_columns(
         entity_path: impl Into<EntityPath>,
         timelines: impl IntoIterator<Item = TimeColumn>,
