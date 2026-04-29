@@ -41,6 +41,22 @@ impl VideoDataDescription {
         let stsd = track.trak(&mp4).mdia.minf.stbl.stsd.clone();
 
         let timescale = Timescale::new(track.timescale);
+
+        let codec = match &stsd.contents {
+            re_mp4::StsdBoxContent::Av01(_) => crate::VideoCodec::AV1,
+            re_mp4::StsdBoxContent::Avc1(_) => crate::VideoCodec::H264,
+            re_mp4::StsdBoxContent::Hvc1(_) | re_mp4::StsdBoxContent::Hev1(_) => {
+                crate::VideoCodec::H265
+            }
+            re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::VP8,
+            re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::VP9,
+            _ => {
+                return Err(VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(
+                    &mp4, track,
+                )));
+            }
+        };
+
         let mut samples =
             StableIndexDeque::<SampleMetadataState>::with_capacity(track.samples.len());
         let mut keyframe_indices = Vec::new();
@@ -71,6 +87,28 @@ impl VideoDataDescription {
                     source_id,
                     byte_span,
                 }));
+            }
+        }
+
+        // VP8/VP9 MP4 files often have incorrect stss (sync sample) boxes,
+        // where the muxer marks non-keyframes as sync samples. Override is_sync
+        // by inspecting the actual bitstream, and rebuild keyframe_indices.
+        if matches!(codec, crate::VideoCodec::VP8 | crate::VideoCodec::VP9) {
+            re_tracing::profile_scope!("fix vp8/vp9 sync flags");
+            keyframe_indices.clear();
+            for (idx, sample_state) in samples.iter_mut().enumerate() {
+                if let Some(sample) = sample_state.sample_mut() {
+                    let data = &bytes[sample.byte_span.range_usize()];
+                    let bitstream_is_sync = match codec {
+                        crate::VideoCodec::VP8 => crate::vp8::vp8_is_keyframe(data),
+                        crate::VideoCodec::VP9 => crate::vp9::vp9_is_keyframe(data),
+                        _ => unreachable!(),
+                    };
+                    sample.is_sync = bitstream_is_sync;
+                    if bitstream_is_sync {
+                        keyframe_indices.push(idx);
+                    }
+                }
             }
         }
 
@@ -124,21 +162,6 @@ impl VideoDataDescription {
         }
 
         let samples_statistics = SamplesStatistics::new(&samples);
-
-        let codec = match &stsd.contents {
-            re_mp4::StsdBoxContent::Av01(_) => crate::VideoCodec::AV1,
-            re_mp4::StsdBoxContent::Avc1(_) => crate::VideoCodec::H264,
-            re_mp4::StsdBoxContent::Hvc1(_) | re_mp4::StsdBoxContent::Hev1(_) => {
-                crate::VideoCodec::H265
-            }
-            re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::VP8,
-            re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::VP9,
-            _ => {
-                return Err(VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(
-                    &mp4, track,
-                )));
-            }
-        };
 
         let video_data_description = Self {
             codec,

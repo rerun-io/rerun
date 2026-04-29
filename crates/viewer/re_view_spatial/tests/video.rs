@@ -243,18 +243,20 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
 
                         (components::VideoCodec::H265, sample_bytes)
                     }
-                    VideoCodec::AV1 => {
-                        // Extract raw sample bytes, under av1 they're OBUs already!
-                        let sample_bytes = sample
+                    VideoCodec::AV1 | VideoCodec::VP8 | VideoCodec::VP9 => {
+                        let chunk = sample
                             .sample()
                             .unwrap()
                             .get(&|_| blob_bytes, sample_idx)
-                            .unwrap()
-                            .data;
-                        (components::VideoCodec::AV1, sample_bytes)
+                            .unwrap();
+                        let sample_bytes = video_data_description
+                            .sample_data_in_stream_format(&chunk)
+                            .unwrap();
+                        let codec =
+                            components::VideoCodec::try_from(video_data_description.codec.clone())
+                                .unwrap();
+                        (codec, sample_bytes)
                     }
-                    VideoCodec::VP9 => panic!("VP9 is not supported for video streams"),
-                    VideoCodec::VP8 => panic!("VP8 is not supported for video streams"),
                     VideoCodec::ImageSequence(_) => panic!("Won't be created from a video"),
                 };
 
@@ -371,11 +373,15 @@ fn test_video_stream_codec_h265() {
     test_video(VideoType::VideoStream, &VideoCodec::H265);
 }
 
-// TODO(#10186): Unsupported codec for VideoStream
-// #[test]
-// fn test_video_stream_codec_vp9() {
-//     test_video(VideoType::VideoStream, VideoCodec::VP9);
-// }
+#[test]
+fn test_video_stream_codec_vp8() {
+    test_video(VideoType::VideoStream, &VideoCodec::VP8);
+}
+
+#[test]
+fn test_video_stream_codec_vp9() {
+    test_video(VideoType::VideoStream, &VideoCodec::VP9);
+}
 
 #[cfg(feature = "nasm")] // Need nasm for Av1 decoding on some platforms otherwise we error.
 #[test]

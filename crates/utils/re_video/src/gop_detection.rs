@@ -1,6 +1,8 @@
 use crate::av1::detect_av1_keyframe_start;
 use crate::h264::detect_h264_annexb_gop;
 use crate::h265::detect_h265_annexb_gop;
+use crate::vp8::detect_vp8_gop;
+use crate::vp9::detect_vp9_gop;
 use crate::{VideoCodec, VideoEncodingDetails};
 
 /// Failure reason for [`detect_gop_start`].
@@ -62,13 +64,12 @@ pub fn detect_gop_start(
     sample_data: &[u8],
     codec: VideoCodec,
 ) -> Result<GopStartDetection, DetectGopStartError> {
-    #[expect(clippy::match_same_arms)]
     match codec {
         VideoCodec::H264 => detect_h264_annexb_gop(sample_data),
         VideoCodec::H265 => detect_h265_annexb_gop(sample_data),
         VideoCodec::AV1 => detect_av1_keyframe_start(sample_data),
-        VideoCodec::VP8 => Err(DetectGopStartError::UnsupportedCodec(codec)),
-        VideoCodec::VP9 => Err(DetectGopStartError::UnsupportedCodec(codec)),
+        VideoCodec::VP8 => Ok(detect_vp8_gop(sample_data)),
+        VideoCodec::VP9 => Ok(detect_vp9_gop(sample_data)),
         VideoCodec::ImageSequence(codec) => {
             // Images are always treated as keyframes.
             // Each meta function checks magic bytes internally and returns

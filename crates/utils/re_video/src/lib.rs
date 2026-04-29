@@ -10,6 +10,8 @@ mod nalu;
 pub mod player;
 mod stable_index_deque;
 mod time;
+mod vp8;
+mod vp9;
 
 pub use av1::{AV1_TEST_INTER_FRAME, AV1_TEST_KEYFRAME};
 pub use decode::{

@@ -9,9 +9,8 @@ impl TryFrom<re_video::VideoCodec> for VideoCodec {
             re_video::VideoCodec::H264 => Ok(Self::H264),
             re_video::VideoCodec::H265 => Ok(Self::H265),
             re_video::VideoCodec::AV1 => Ok(Self::AV1),
-            re_video::VideoCodec::VP8 | re_video::VideoCodec::VP9 => Err(format!(
-                "Video codec {value:?} is not supported for VideoStream yet",
-            )),
+            re_video::VideoCodec::VP8 => Ok(Self::VP8),
+            re_video::VideoCodec::VP9 => Ok(Self::VP9),
             re_video::VideoCodec::ImageSequence(_) => Err("Not a real video".to_owned()),
         }
     }
@@ -24,9 +23,8 @@ impl From<VideoCodec> for re_video::VideoCodec {
             crate::components::VideoCodec::H264 => Self::H264,
             crate::components::VideoCodec::H265 => Self::H265,
             crate::components::VideoCodec::AV1 => Self::AV1,
-            // TODO(#10186): Add support for VP9.
-            // VideoCodec::VP8 => Self::VP8,
-            // VideoCodec::VP9 => Self::VP9,
+            crate::components::VideoCodec::VP8 => Self::VP8,
+            crate::components::VideoCodec::VP9 => Self::VP9,
         }
     }
 }
@@ -38,6 +36,8 @@ impl VideoCodec {
             0x61763031 => Some(Self::AV1),
             0x61766331 => Some(Self::H264),
             0x68657631 => Some(Self::H265),
+            0x76703038 => Some(Self::VP8),
+            0x76703039 => Some(Self::VP9),
             _ => None,
         }
     }

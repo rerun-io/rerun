@@ -304,7 +304,10 @@ pub fn new_decoder(
         }
 
         #[cfg(with_ffmpeg)]
-        crate::VideoCodec::H264 | crate::VideoCodec::H265 => Ok(Box::new(FFmpegCliDecoder::new(
+        crate::VideoCodec::H264
+        | crate::VideoCodec::H265
+        | crate::VideoCodec::VP8
+        | crate::VideoCodec::VP9 => Ok(Box::new(FFmpegCliDecoder::new(
             debug_name.to_owned(),
             video.encoding_details.as_ref(),
             output_sender,
@@ -324,6 +327,7 @@ pub fn new_decoder(
             }
         }
 
+        #[cfg(not(all(feature = "av1", with_ffmpeg)))]
         _ => Err(DecodeError::UnsupportedCodec(
             video.human_readable_codec_string(),
         )),

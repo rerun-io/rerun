@@ -348,14 +348,12 @@ impl VideoDataDescription {
     ///
     /// * H.264/H.265: MP4 stores samples using AVCC/HVCC length-prefixed NALs and relies on container
     ///   metadata for SPS/PPS/VPS. This method makes sure to unpack this.
-    /// * AV1 samples are stored as-is.
-    /// * VP8/VP9: Not yet supported
+    /// * AV1, VP8, and VP9 samples are stored as-is.
     pub fn sample_data_in_stream_format(
         &self,
         chunk: &crate::Chunk,
     ) -> Result<Vec<u8>, SampleConversionError> {
         match self.codec {
-            VideoCodec::AV1 | VideoCodec::ImageSequence(_) => Ok(chunk.data.clone()),
             VideoCodec::H264 => {
                 let stsd = self
                     .encoding_details
@@ -406,9 +404,8 @@ impl VideoDataDescription {
                     .map_err(SampleConversionError::AnnexB)?;
                 Ok(output)
             }
-            VideoCodec::VP8 | VideoCodec::VP9 => {
-                // TODO(#10186): Support VP8/VP9 for the `VideoStream` archetype
-                Err(SampleConversionError::UnsupportedCodec(self.codec.clone()))
+            VideoCodec::AV1 | VideoCodec::VP8 | VideoCodec::VP9 | VideoCodec::ImageSequence(_) => {
+                Ok(chunk.data.clone())
             }
         }
     }
@@ -428,9 +425,6 @@ pub enum SampleConversionError {
 
     #[error("Failed converting sample to Annex-B: {0}")]
     AnnexB(#[from] AnnexBStreamWriteError),
-
-    #[error("Unsupported codec {0:?}")]
-    UnsupportedCodec(VideoCodec),
 }
 
 /// Various information about how the video was encoded.
@@ -637,9 +631,9 @@ impl VideoDataDescription {
     #[inline]
     pub fn human_readable_codec_string(&self) -> String {
         let base_codec_string = match &self.codec {
-            VideoCodec::AV1 => "AV1",
             VideoCodec::H264 => "H.264 AVC1",
             VideoCodec::H265 => "H.265 HEV1",
+            VideoCodec::AV1 => "AV1",
             VideoCodec::VP8 => "VP8",
             VideoCodec::VP9 => "VP9",
             VideoCodec::ImageSequence(_) => {
@@ -1326,11 +1320,9 @@ mod tests {
         let codec_str = match codec {
             VideoCodec::H264 => "h264",
             VideoCodec::H265 => "h265",
-            VideoCodec::VP9 => "vp9",
-            VideoCodec::VP8 => {
-                panic!("We don't have test data for vp8, because Mp4 doesn't support vp8.")
-            }
             VideoCodec::AV1 => "av1",
+            VideoCodec::VP8 => "vp8",
+            VideoCodec::VP9 => "vp9",
             VideoCodec::ImageSequence(_) => panic!("mp4 won't be an image sequence"),
         };
 
@@ -1398,8 +1390,13 @@ mod tests {
 
     #[test]
     fn test_full_video_sampling_all_codecs() {
-        // TODO(#10186): Add VP9 once we have it.
-        for codec in [VideoCodec::H264, VideoCodec::H265, VideoCodec::AV1] {
+        for codec in [
+            VideoCodec::H264,
+            VideoCodec::H265,
+            VideoCodec::AV1,
+            VideoCodec::VP8,
+            VideoCodec::VP9,
+        ] {
             test_video_codec_sampling(&codec, false);
         }
     }

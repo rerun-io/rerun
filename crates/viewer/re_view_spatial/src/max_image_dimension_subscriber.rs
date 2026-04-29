@@ -321,6 +321,8 @@ fn try_size_from_video_stream_sample(
         components::VideoCodec::H264 => re_video::VideoCodec::H264,
         components::VideoCodec::H265 => re_video::VideoCodec::H265,
         components::VideoCodec::AV1 => re_video::VideoCodec::AV1,
+        components::VideoCodec::VP8 => re_video::VideoCodec::VP8,
+        components::VideoCodec::VP9 => re_video::VideoCodec::VP9,
     };
 
     match re_video::detect_gop_start(sample, codec).ok()? {
