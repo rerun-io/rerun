@@ -66,6 +66,11 @@ impl ViewerOpenUrlDescription {
                 target_short: Some(uri.entry_id.to_string()),
             },
 
+            ViewerOpenUrl::RedapFolder(uri) => Self {
+                category: "Folder",
+                target_short: Some(uri.path.clone()),
+            },
+
             ViewerOpenUrl::WebEventListener => Self {
                 category: "Web event listener",
                 target_short: None,

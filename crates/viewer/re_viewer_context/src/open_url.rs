@@ -73,6 +73,9 @@ pub enum ViewerOpenUrl {
     /// A URL that points to a redap entry.
     RedapEntry(re_uri::EntryUri),
 
+    /// A URL that points to a folder (dataset-name prefix) within a redap server.
+    RedapFolder(re_uri::FolderUri),
+
     /// A URL that points to a web event listener.
     ///
     /// This is used only for legacy notebooks.
@@ -111,6 +114,7 @@ impl std::fmt::Debug for ViewerOpenUrl {
             Self::RedapProxy(uri) => write!(f, "RedapProxy({uri})"),
             Self::RedapCatalog(uri) => write!(f, "RedapCatalog({uri})"),
             Self::RedapEntry(uri) => write!(f, "RedapEntry({uri})"),
+            Self::RedapFolder(uri) => write!(f, "RedapFolder({uri})"),
             Self::WebEventListener => write!(f, "WebEventListener"),
             Self::WebViewerUrl {
                 base_url,
@@ -136,6 +140,7 @@ impl From<re_uri::RedapUri> for ViewerOpenUrl {
         match value {
             re_uri::RedapUri::Catalog(uri) => Self::RedapCatalog(uri),
             re_uri::RedapUri::Entry(uri) => Self::RedapEntry(uri),
+            re_uri::RedapUri::Folder(uri) => Self::RedapFolder(uri),
             re_uri::RedapUri::DatasetData(uri) => Self::RedapDatasetSegment(uri),
             re_uri::RedapUri::Proxy(uri) => Self::RedapProxy(uri),
         }
@@ -173,6 +178,8 @@ impl ViewerOpenUrl {
             Ok(Self::RedapCatalog(uri))
         } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
             Ok(Self::RedapEntry(uri))
+        } else if let Ok(uri) = url.parse::<re_uri::FolderUri>() {
+            Ok(Self::RedapFolder(uri))
         } else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
             match selection.parse::<Item>() {
                 Ok(item) => Ok(Self::IntraRecordingSelection(item)),
@@ -390,12 +397,19 @@ impl ViewerOpenUrl {
                 Err(anyhow::anyhow!("Can't share links to local tables."))
             }
 
-            Route::RedapEntry(entry) => Ok(Self::RedapEntry(entry.clone())),
+            Route::RedapEntry { origin, kind } => match kind {
+                crate::RedapEntryKind::Entry(id) => {
+                    Ok(Self::RedapEntry(re_uri::EntryUri::new(origin.clone(), *id)))
+                }
+                crate::RedapEntryKind::Folder(path) => Ok(Self::RedapFolder(
+                    re_uri::FolderUri::new(origin.clone(), path.clone()),
+                )),
+            },
 
-            Route::RedapServer(origin) => {
+            Route::RedapServer(server) => {
                 // `as_url` on the origin gives us an http link.
                 // We want a rerun link here instead.
-                Ok(Self::RedapCatalog(re_uri::CatalogUri::new(origin.clone())))
+                Ok(Self::RedapCatalog(re_uri::CatalogUri::new(server.clone())))
             }
 
             Route::ChunkStoreBrowser {
@@ -455,6 +469,8 @@ impl ViewerOpenUrl {
             }
 
             Self::RedapEntry(entry) => vec1![entry.to_string()],
+
+            Self::RedapFolder(folder) => vec1![folder.to_string()],
 
             Self::WebEventListener => vec1![WEB_EVENT_LISTENER_SCHEME.to_owned()],
 
@@ -524,6 +540,7 @@ impl ViewerOpenUrl {
         match &self {
             Self::RedapCatalog(_)
             | Self::RedapEntry(_)
+            | Self::RedapFolder(_)
             | Self::IntraRecordingSelection(_)
             | Self::Settings
             | Self::ChunkStoreBrowser { .. } => None,
@@ -618,12 +635,24 @@ impl ViewerOpenUrl {
             }
             Self::RedapCatalog(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender
-                    .send_system(SystemCommand::set_selection(Item::RedapServer(uri.origin)));
+                let item = Item::RedapServer(uri.origin);
+                command_sender.send_system(SystemCommand::set_selection(item.clone()));
+                command_sender.send_system(SystemCommand::SetFocus(item.into()));
             }
             Self::RedapEntry(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender.send_system(SystemCommand::set_selection(Item::RedapEntry(uri)));
+                let item = Item::from(uri);
+                command_sender.send_system(SystemCommand::set_selection(item.clone()));
+                command_sender.send_system(SystemCommand::SetFocus(item.into()));
+            }
+            Self::RedapFolder(uri) => {
+                command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+                let item = Item::RedapEntry {
+                    origin: uri.origin,
+                    kind: crate::RedapEntryKind::Folder(uri.path),
+                };
+                command_sender.send_system(SystemCommand::set_selection(item.clone()));
+                command_sender.send_system(SystemCommand::SetFocus(item.into()));
             }
             Self::WebEventListener => {
                 handle_web_event_listener(egui_ctx, command_sender);
@@ -687,6 +716,7 @@ impl ViewerOpenUrl {
             | Self::RedapProxy(..)
             | Self::RedapCatalog(..)
             | Self::RedapEntry(..)
+            | Self::RedapFolder(..)
             | Self::WebEventListener => self,
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -722,6 +752,7 @@ impl ViewerOpenUrl {
             Self::RedapProxy(..) => None,
             Self::RedapCatalog(..) => None,
             Self::RedapEntry(..) => None,
+            Self::RedapFolder(..) => None,
             Self::WebEventListener => None,
             Self::WebViewerUrl {
                 base_url: _,
@@ -1051,14 +1082,29 @@ mod tests {
         );
 
         // RedapEntry
-        let origin = "rerun://localhost:51234".parse().unwrap();
-        let entry_uri = re_uri::EntryUri::new(origin, EntryId::new());
+        let origin: re_uri::Origin = "rerun://localhost:51234".parse().unwrap();
+        let entry_uri = re_uri::EntryUri::new(origin.clone(), EntryId::new());
         assert_eq!(
-            ViewerOpenUrl::from_route(&store_hub, &Route::RedapEntry(entry_uri.clone()),).unwrap(),
+            ViewerOpenUrl::from_route(&store_hub, &Route::from(entry_uri.clone())).unwrap(),
             ViewerOpenUrl::RedapEntry(entry_uri.clone())
         );
 
-        let dummy_mode = Route::RedapEntry(entry_uri);
+        // Folder route round-trips through ViewerOpenUrl + parser.
+        let folder_path = "perception.detection".to_owned();
+        let folder_route = Route::RedapEntry {
+            origin: origin.clone(),
+            kind: crate::RedapEntryKind::Folder(folder_path.clone()),
+        };
+        let folder_url = ViewerOpenUrl::from_route(&store_hub, &folder_route).unwrap();
+        assert_eq!(
+            folder_url,
+            ViewerOpenUrl::RedapFolder(re_uri::FolderUri::new(origin, folder_path)),
+        );
+        // Display → parse round-trip.
+        let serialized = folder_url.sharable_url(None).unwrap();
+        assert_eq!(serialized.parse::<ViewerOpenUrl>().unwrap(), folder_url);
+
+        let dummy_mode = Route::from(entry_uri);
 
         assert_eq!(
             ViewerOpenUrl::from_route(

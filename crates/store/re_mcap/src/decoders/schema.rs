@@ -22,12 +22,17 @@ impl Decoder for McapSchemaDecoder {
         &mut self,
         mcap_bytes: &[u8],
         summary: &mcap::Summary,
+        topic_filter: &super::TopicFilter,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error> {
         let empty_channels = crate::util::collect_empty_channels(mcap_bytes, summary)?;
 
         for channel in summary.channels.values() {
             if empty_channels.contains(&crate::parsers::ChannelId(channel.id)) {
+                continue;
+            }
+
+            if !topic_filter.matches(&channel.topic) {
                 continue;
             }
 

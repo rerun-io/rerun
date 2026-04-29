@@ -1079,7 +1079,7 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
         Item::TableId(_)
         | Item::View(_)
         | Item::Container(_)
-        | Item::RedapEntry(_)
+        | Item::RedapEntry { .. }
         | Item::RedapServer(_) => None,
     }
 }

@@ -5,6 +5,7 @@
 
 mod context;
 mod entries;
+mod folder_card_ui;
 mod server_modal;
 mod servers;
 

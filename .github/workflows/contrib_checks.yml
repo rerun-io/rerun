@@ -138,7 +138,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-ubuntu
+          name: test-results-linux
           path: |
             **/tests/snapshots
             **/tests/failures

@@ -18,13 +18,6 @@ use re_viewer::{
 #[tokio::test(flavor = "multi_thread")]
 pub async fn dataset_ui_test() {
     let (server, _) = TestServer::spawn().await.with_test_data().await;
-    let (server, _) = server
-        .with_named_test_data(
-            "my.dotted.dataset",
-            "287b552b95a5c2f73f37894708825ba6",
-            "recording_in_dotted",
-        )
-        .await;
 
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     let mut snapshot_results = SnapshotResults::new();
@@ -55,23 +48,16 @@ pub async fn dataset_ui_test() {
     harness.get_by_label("Add").click();
     harness.run_ok();
 
-    // Wait for both datasets to appear. Each label appears twice: once in the left panel and
-    // once in the entries table.
+    // Wait for both datasets to appear.
     viewer_test_utils::step_until(
         "Redap server datasets appear",
         &mut harness,
-        |harness| {
-            harness.query_all_by_label_contains("my_dataset").count() == 2
-                && harness
-                    .query_all_by_label_contains("my.dotted.dataset")
-                    .count()
-                    == 2
-        },
+        |harness| harness.query_all_by_label_contains("my_dataset").count() == 2,
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
 
-    // Click the non-dotted dataset (pick the first match, which is in the left panel).
+    // Click the dataset (pick the first match, which is in the left panel).
     harness
         .get_all_by_label("my_dataset")
         .next()
@@ -90,26 +76,6 @@ pub async fn dataset_ui_test() {
         Duration::from_secs(5),
     );
     snapshot_results.add(harness.try_snapshot("dataset_ui_table"));
-
-    // Click the dotted dataset.
-    harness
-        .get_all_by_label("my.dotted.dataset")
-        .next()
-        .expect("my.dotted.dataset label should be present")
-        .click();
-
-    viewer_test_utils::step_until(
-        "Redap recording id appears for dotted dataset",
-        &mut harness,
-        |harness| {
-            harness
-                .query_by_label_contains("recording_in_dotted")
-                .is_some()
-        },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
-    );
-    snapshot_results.add(harness.try_snapshot("dataset_ui_table_dotted_name"));
 }
 
 #[tokio::test(flavor = "multi_thread")]

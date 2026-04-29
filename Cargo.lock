@@ -9067,6 +9067,7 @@ dependencies = [
  "re_ros_msg",
  "re_sdk_types",
  "re_tracing",
+ "regex-lite",
  "saturating_cast",
  "serde",
  "serde_bytes",
@@ -9978,6 +9979,7 @@ dependencies = [
 name = "re_uri"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
+ "percent-encoding",
  "re_log",
  "re_log_types",
  "re_tuid",

@@ -591,7 +591,7 @@ impl AppState {
                         match route {
                             Route::LocalRecording { .. }
                             | Route::LocalTable(..)
-                            | Route::RedapEntry(..)
+                            | Route::RedapEntry { .. }
                             | Route::RedapServer(..)
                             | Route::Loading(..) => {
                                 let show_blueprints = matches!(route, Route::LocalRecording { .. });
@@ -695,11 +695,14 @@ impl AppState {
                                 viewport_ui.viewport_ui(ui, &ctx, view_states);
                             }
 
-                            Route::RedapEntry(entry) => {
+                            Route::RedapEntry {
+                                kind: re_viewer_context::RedapEntryKind::Entry(entry_id),
+                                ..
+                            } => {
                                 redap_servers.entry_ui(
                                     &ctx.active_recording_store_view_context(), // TODO(RR-1127): this makes no sense
                                     ui,
-                                    entry.entry_id,
+                                    *entry_id,
                                 );
                             }
 
@@ -741,6 +744,18 @@ impl AppState {
                                         origin,
                                     );
                                 }
+                            }
+
+                            Route::RedapEntry {
+                                origin,
+                                kind: re_viewer_context::RedapEntryKind::Folder(path_prefix),
+                            } => {
+                                redap_servers.folder_central_panel_ui(
+                                    &ctx.active_recording_store_view_context(),
+                                    ui,
+                                    origin,
+                                    path_prefix,
+                                );
                             }
 
                             Route::Loading(source) => {

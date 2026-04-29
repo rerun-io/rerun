@@ -21,6 +21,7 @@ impl Decoder for McapStatisticDecoder {
         &mut self,
         _mcap_bytes: &[u8],
         summary: &mcap::Summary,
+        _topic_filter: &super::TopicFilter,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error> {
         if let Some(statistics) = summary.stats.as_ref() {

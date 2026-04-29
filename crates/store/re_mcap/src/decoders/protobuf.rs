@@ -952,7 +952,7 @@ mod integration_tests {
 
         let registry = DecoderRegistry::empty().register_message_decoder::<McapProtobufDecoder>();
         registry
-            .plan(buffer, summary)
+            .plan(buffer, summary, &crate::TopicFilter::default())
             .expect("failed to plan")
             .run(buffer, summary, TimeType::TimestampNs, &mut send_chunk)
             .expect("failed to run decoder");

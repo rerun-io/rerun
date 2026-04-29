@@ -463,7 +463,9 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         let node = self.get_by_label(panel_label);
         let is_open = Some(Toggled::True) == node.accesskit_node().data().toggled();
         if is_open != opened {
-            self.click_label(panel_label);
+            // We don't use `click_label` here because it settles internally via `run()`,
+            // which can cause panics.
+            self.get_by_label(panel_label).click();
         }
         self.remove_cursor();
         self.run_ok();

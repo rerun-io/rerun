@@ -150,14 +150,14 @@ class Chunk:
         Parameters
         ----------
         source:
-            A [`ComponentDescriptor`][] or component identifier string for the
+            A `ComponentDescriptor` or component identifier string for the
             input column to transform.
         selector:
-            A [`Selector`][] or selector query string to apply to the component.
+            A [`Selector`][rerun.experimental.Selector] or selector query string to apply to the component.
 
         Returns
         -------
-        A new [`Chunk`][] with the component transformed.
+        A new [`Chunk`][rerun.experimental.Chunk] with the component transformed.
 
         Raises
         ------
@@ -183,7 +183,7 @@ class Chunk:
 
         Each lens matches by input component. Columns not consumed by
         any matching lens are forwarded unchanged as a separate chunk.
-        A single lens with multiple [`LensOutput`][] groups may produce
+        A single lens with multiple [`LensOutput`][rerun.experimental.LensOutput] groups may produce
         multiple output chunks (e.g., with different target entities).
 
         If no lens matches the chunk (including when an empty list of
@@ -192,11 +192,11 @@ class Chunk:
         Parameters
         ----------
         lenses:
-            Zero or more [`Lens`][] objects to apply.
+            Zero or more [`Lens`][rerun.experimental.Lens] objects to apply.
 
         Returns
         -------
-        A list of [`Chunk`][] objects. Contains the original chunk if no
+        A list of [`Chunk`][rerun.experimental.Chunk] objects. Contains the original chunk if no
         lens matched, or one or more transformed chunks (optionally
         preceded by a chunk with the untouched forwarded columns)
         otherwise.

@@ -236,6 +236,9 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"concepts/lenses" = [
+  "cpp", # Not implemented
+]
 "concepts/query-and-transform/dataframe_query_example" = [ # Skips backwards compatibility check, to opt out of _RERUN_TEST_FORCE_SAVE
   "cpp",
   "rust",

@@ -407,6 +407,18 @@ Convert an .mcap file to an .rrd.
 >
 > [Default: `timestamp`]
 
+* `-y, --include-topic-regex <INCLUDE_TOPIC_REGEX>`
+> Include only topics matching this regex (RE2 syntax). Repeatable.
+>
+> If omitted, all topics are included. Patterns are not implicitly anchored; use `^` / `$` if you need anchoring.
+>
+> Example: `-y "^/tf.*" -n ".*depth.*" -y "^/camera/(compressed|camera_info)$"`
+
+* `-n, --exclude-topic-regex <EXCLUDE_TOPIC_REGEX>`
+> Exclude topics matching this regex (RE2 syntax). Repeatable.
+>
+> Applied after includes: a topic is kept only if it matches an include (or no includes are set) AND matches no exclude.
+
 ## rerun rrd
 
 Manipulate the contents of .rrd and .rbl files.

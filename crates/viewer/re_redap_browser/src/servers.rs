@@ -15,6 +15,7 @@ use re_redap_client::{
 use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
+use re_uri::DATASET_HIERARCHY_SEPARATOR;
 use re_viewer_context::{
     AppContext, AsyncRuntimeHandle, EditRedapServerModalCommand, StoreViewContext,
 };
@@ -184,7 +185,78 @@ impl Server {
             .show(viewer_ctx, &self.runtime, ui);
     }
 
-    fn dataset_entry_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, dataset: &Dataset) {
+    fn folder_ui(
+        &self,
+        viewer_ctx: &StoreViewContext<'_>,
+        ui: &mut egui::Ui,
+        origin: &re_uri::Origin,
+        path_prefix: &str,
+    ) {
+        use re_viewer_context::{RedapEntryKind, Route, SystemCommand, SystemCommandSender as _};
+
+        let command_sender = viewer_ctx.command_sender().clone();
+
+        Frame::new().inner_margin(Margin::same(16)).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                // Navigate up one level.
+                if ui
+                    .small_icon_button(&icons::ARROW_UP, "Go to parent folder")
+                    .on_hover_text("Go to parent folder")
+                    .clicked()
+                {
+                    let parent_route = if let Some((parent, _)) =
+                        path_prefix.rsplit_once(DATASET_HIERARCHY_SEPARATOR)
+                    {
+                        Route::RedapEntry {
+                            origin: origin.clone(),
+                            kind: RedapEntryKind::Folder(parent.to_owned()),
+                        }
+                    } else {
+                        Route::RedapServer(origin.clone())
+                    };
+                    if let Some(parent_item) = parent_route.item() {
+                        command_sender.send_system(SystemCommand::set_selection(parent_item));
+                    }
+                    command_sender.send_system(SystemCommand::SetRoute(parent_route));
+                }
+
+                ui.horizontal_centered(|ui| {
+                    ui.heading(RichText::new(path_prefix.to_owned()).strong());
+                });
+            });
+
+            ui.add_space(12.0);
+
+            match self.entries.state() {
+                Poll::Pending => {
+                    ui.loading_indicator("Loading entries…");
+                }
+                Poll::Ready(Err(err)) => {
+                    Alert::error().show_text(
+                        ui,
+                        format!("Error loading entries for folder {path_prefix:?}"),
+                        Some(err.to_string()),
+                    );
+                }
+                Poll::Ready(Ok(entries)) => {
+                    crate::folder_card_ui::folder_cards_ui(
+                        ui,
+                        origin,
+                        entries,
+                        path_prefix,
+                        &command_sender,
+                    );
+                }
+            }
+        });
+    }
+
+    fn dataset_entry_ui(
+        &self,
+        viewer_ctx: &StoreViewContext<'_>,
+        ui: &mut egui::Ui,
+        dataset: &Dataset,
+    ) {
         const RECORDING_LINK_COLUMN_NAME: &str = "recording link";
 
         re_dataframe_ui::DataFusionTableWidget::new(
@@ -238,7 +310,7 @@ impl Server {
             self.origin.clone(),
             dataset.id(),
         )
-        .show(ctx, &self.runtime, ui);
+        .show(viewer_ctx, &self.runtime, ui);
     }
 
     fn table_entry_ui(&self, viewer_ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, table: &Table) {
@@ -777,6 +849,20 @@ impl RedapServers {
                 command_sender: &self.command_sender,
             };
             server.server_ui(viewer_ctx, &ctx, ui, &mut self.inline_login_flow);
+        } else {
+            viewer_ctx.revert_to_default_route();
+        }
+    }
+
+    pub fn folder_central_panel_ui(
+        &self,
+        viewer_ctx: &StoreViewContext<'_>,
+        ui: &mut egui::Ui,
+        origin: &re_uri::Origin,
+        path_prefix: &str,
+    ) {
+        if let Some(server) = self.servers.get(origin) {
+            server.folder_ui(viewer_ctx, ui, origin, path_prefix);
         } else {
             viewer_ctx.revert_to_default_route();
         }

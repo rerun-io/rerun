@@ -164,6 +164,7 @@ impl OutputBuilder {
         })?;
 
         Ok(ast::LensOutput {
+            input_id: input,
             output_components: components,
             output_timelines: self.time_outputs,
         })

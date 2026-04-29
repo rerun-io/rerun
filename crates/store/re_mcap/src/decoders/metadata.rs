@@ -28,6 +28,7 @@ impl Decoder for McapMetadataDecoder {
         &mut self,
         mcap_bytes: &[u8],
         summary: &mcap::Summary,
+        _topic_filter: &super::TopicFilter,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error> {
         if summary.metadata_indexes.is_empty() {
@@ -130,7 +131,7 @@ mod tests {
         let mut chunks = Vec::new();
         let registry = DecoderRegistry::empty().register_file_decoder::<McapMetadataDecoder>();
         registry
-            .plan(buffer, &summary)
+            .plan(buffer, &summary, &crate::TopicFilter::default())
             .expect("failed to plan")
             .run(buffer, &summary, TimeType::TimestampNs, &mut |chunk| {
                 chunks.push(chunk);

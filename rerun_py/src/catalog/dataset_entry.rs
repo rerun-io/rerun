@@ -437,10 +437,10 @@ impl PyDatasetEntryInternal {
         on_duplicate: &str,
     ) -> PyResult<PyRegistrationHandleInternal> {
         let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.register_prefix").entered();
+
         let connection = self_.client.borrow(py).connection().clone();
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
-
-        let _span = read_trace_context_from_python(py, "DatasetEntry.register_prefix").entered();
 
         let results = connection.register_with_dataset_prefix(
             py,

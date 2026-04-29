@@ -169,7 +169,7 @@ impl ApplicationSelectionState {
                 | Item::StoreId(_)
                 | Item::View(_)
                 | Item::Container(_)
-                | Item::RedapEntry(_)
+                | Item::RedapEntry { .. }
                 | Item::RedapServer(_) => current == test,
 
                 Item::ComponentPath(component_path) => match test {
@@ -179,7 +179,7 @@ impl ApplicationSelectionState {
                     | Item::StoreId(_)
                     | Item::View(_)
                     | Item::Container(_)
-                    | Item::RedapEntry(_)
+                    | Item::RedapEntry { .. }
                     | Item::RedapServer(_) => false,
 
                     Item::ComponentPath(test_component_path) => {
@@ -203,7 +203,7 @@ impl ApplicationSelectionState {
                     | Item::ComponentPath(_)
                     | Item::View(_)
                     | Item::Container(_)
-                    | Item::RedapEntry(_)
+                    | Item::RedapEntry { .. }
                     | Item::RedapServer(_) => false,
 
                     Item::InstancePath(instance_path)
@@ -224,7 +224,7 @@ impl ApplicationSelectionState {
                     | Item::ComponentPath(_)
                     | Item::View(_)
                     | Item::Container(_)
-                    | Item::RedapEntry(_)
+                    | Item::RedapEntry { .. }
                     | Item::RedapServer(_) => false,
 
                     Item::InstancePath(instance_path)

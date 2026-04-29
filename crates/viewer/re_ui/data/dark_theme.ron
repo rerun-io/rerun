@@ -13,6 +13,8 @@
 
   "table_grid_view_card_min_width": 350,
   "table_grid_view_card_spacing": 8,
+  "table_grid_view_card_inner_margin": 12,
+  "table_grid_view_card_corner_radius": 12,
 
   "loop_selection_alpha": 0.55, // Multiplied with selection_bg_fill
   "loop_selection_alpha_inactive": 0.20, // Multiplied with selection_bg_fill

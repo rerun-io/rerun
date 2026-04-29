@@ -10,8 +10,8 @@ use re_ui::syntax_highlighting::{
 };
 use re_ui::{SyntaxHighlighting as _, icons};
 use re_viewer_context::{
-    ContainerId, Contents, DataResultInteractionAddress, Item, ViewId, ViewerContext,
-    contents_name_style,
+    ContainerId, Contents, DataResultInteractionAddress, Item, RedapEntryKind, ViewId,
+    ViewerContext, contents_name_style,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -82,7 +82,12 @@ impl ItemTitle {
             }
 
             // TODO(#10566): There should be an `EntryName` in this `Item` arm.
-            Item::RedapEntry(entry) => Self::new(entry.entry_id.to_string(), &icons::DATASET),
+            Item::RedapEntry { kind, .. } => match kind {
+                RedapEntryKind::Entry(id) => Self::new(id.to_string(), &icons::DATASET),
+                RedapEntryKind::Folder(path_prefix) => {
+                    Self::new(path_prefix.clone(), &icons::DATASET)
+                }
+            },
 
             // TODO(lucasmerlin): Icon?
             Item::RedapServer(origin) => Self::new(origin.to_string(), &icons::DATASET),

@@ -835,6 +835,12 @@ def send_arrow_chunk(
         A dictionary mapping component types to their values.
     """
 
+def send_chunk(
+    chunk: ChunkInternal,
+    recording: PyRecordingStream | None = None,
+) -> None:
+    """Send a pre-built chunk to the recording stream."""
+
 def log_file_from_path(
     file_path: str | os.PathLike[str],
     entity_path_prefix: str | None = None,
@@ -1321,6 +1327,7 @@ class CatalogClientInternal:
 class RegistrationHandleInternal:
     def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str, str | None]]: ...
     def wait(self, timeout_secs: int | None = None) -> list[str]: ...
+    def cancel(self) -> None: ...
 
 #####################################################################################################################
 ## VIEWER_CLIENT                                                                                                   ##
@@ -1508,6 +1515,8 @@ class McapReaderInternal:
         timeline_type: str,
         timestamp_offset_ns: int | None,
         decoders: list[str] | None,
+        include_topic_regex: list[str] | None,
+        exclude_topic_regex: list[str] | None,
     ) -> None: ...
     def stream(self) -> LazyChunkStreamInternal: ...
     @property

@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashMap};
 use serde::de::{self, DeserializeSeed};
 
 use crate::deserialize::primitive_array::PrimitiveArraySeed;
-use crate::message_spec::{ComplexType, MessageSpecification, Type};
+use crate::message_spec::{BuiltInType, ComplexType, MessageSpecification, Type};
 
 pub mod primitive;
 pub mod primitive_array;
@@ -199,51 +199,10 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'_, R> {
         D: de::Deserializer<'de>,
     {
         use crate::message_spec::ArraySize::{Bounded, Fixed, Unbounded};
-        use crate::message_spec::BuiltInType::{
-            Bool, Byte, Char, Float32, Float64, Int8, Int16, Int32, Int64, String, UInt8, UInt16,
-            UInt32, UInt64, WString,
-        };
         use crate::message_spec::Type;
 
         match self.ty {
-            Type::BuiltIn(primitive_type) => match primitive_type {
-                Bool => de
-                    .deserialize_bool(PrimitiveVisitor::<bool>::new())
-                    .map(Value::Bool),
-                Byte | UInt8 => de
-                    .deserialize_u8(PrimitiveVisitor::<u8>::new())
-                    .map(Value::U8), // ROS2: octet
-                Char | Int8 => de
-                    .deserialize_i8(PrimitiveVisitor::<i8>::new())
-                    .map(Value::I8), // ROS2: char (int8)
-                Float32 => de
-                    .deserialize_f32(PrimitiveVisitor::<f32>::new())
-                    .map(Value::F32),
-                Float64 => de
-                    .deserialize_f64(PrimitiveVisitor::<f64>::new())
-                    .map(Value::F64),
-                Int16 => de
-                    .deserialize_i16(PrimitiveVisitor::<i16>::new())
-                    .map(Value::I16),
-                Int32 => de
-                    .deserialize_i32(PrimitiveVisitor::<i32>::new())
-                    .map(Value::I32),
-                Int64 => de
-                    .deserialize_i64(PrimitiveVisitor::<i64>::new())
-                    .map(Value::I64),
-                UInt16 => de
-                    .deserialize_u16(PrimitiveVisitor::<u16>::new())
-                    .map(Value::U16),
-                UInt32 => de
-                    .deserialize_u32(PrimitiveVisitor::<u32>::new())
-                    .map(Value::U32),
-                UInt64 => de
-                    .deserialize_u64(PrimitiveVisitor::<u64>::new())
-                    .map(Value::U64),
-                String(_bound) | WString(_bound) => {
-                    de.deserialize_string(StringVisitor).map(Value::String)
-                }
-            },
+            Type::BuiltIn(primitive_type) => deserialize_builtin_type(primitive_type, de),
             Type::Array { ty, size } => match size {
                 Fixed(len) => {
                     // Check if this is a primitive array and use optimized path
@@ -282,9 +241,65 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'_, R> {
                     de::Error::custom(format!("unknown ComplexType: {complex_ty:?}"))
                 })?;
 
+                // Some ROS2 schemas model enums as separate messages containing only constants.
+                // On the wire, fields of those types are encoded as a single primitive value.
+                if let Some(primitive_type) = msg
+                    .underlying_type_if_enum_like()
+                    .map_err(de::Error::custom)?
+                {
+                    return deserialize_builtin_type(primitive_type, de);
+                }
+
                 MessageSeed::new(msg, self.resolver).deserialize(de)
             }
         }
+    }
+}
+
+fn deserialize_builtin_type<'de, D>(primitive_type: &BuiltInType, de: D) -> Result<Value, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    use crate::message_spec::BuiltInType::{
+        Bool, Byte, Char, Float32, Float64, Int8, Int16, Int32, Int64, String, UInt8, UInt16,
+        UInt32, UInt64, WString,
+    };
+
+    match primitive_type {
+        Bool => de
+            .deserialize_bool(PrimitiveVisitor::<bool>::new())
+            .map(Value::Bool),
+        Byte | UInt8 => de
+            .deserialize_u8(PrimitiveVisitor::<u8>::new())
+            .map(Value::U8), // ROS2: octet
+        Char | Int8 => de
+            .deserialize_i8(PrimitiveVisitor::<i8>::new())
+            .map(Value::I8), // ROS2: char (int8)
+        Float32 => de
+            .deserialize_f32(PrimitiveVisitor::<f32>::new())
+            .map(Value::F32),
+        Float64 => de
+            .deserialize_f64(PrimitiveVisitor::<f64>::new())
+            .map(Value::F64),
+        Int16 => de
+            .deserialize_i16(PrimitiveVisitor::<i16>::new())
+            .map(Value::I16),
+        Int32 => de
+            .deserialize_i32(PrimitiveVisitor::<i32>::new())
+            .map(Value::I32),
+        Int64 => de
+            .deserialize_i64(PrimitiveVisitor::<i64>::new())
+            .map(Value::I64),
+        UInt16 => de
+            .deserialize_u16(PrimitiveVisitor::<u16>::new())
+            .map(Value::U16),
+        UInt32 => de
+            .deserialize_u32(PrimitiveVisitor::<u32>::new())
+            .map(Value::U32),
+        UInt64 => de
+            .deserialize_u64(PrimitiveVisitor::<u64>::new())
+            .map(Value::U64),
+        String(_bound) | WString(_bound) => de.deserialize_string(StringVisitor).map(Value::String),
     }
 }
 

@@ -44,7 +44,7 @@ fn item_heading_no_breadcrumbs(
         | Item::TableId(_)
         | Item::Container(_)
         | Item::View(_)
-        | Item::RedapEntry(_)
+        | Item::RedapEntry { .. }
         | Item::RedapServer(_) => {
             let ItemTitle {
                 icon,

@@ -258,6 +258,8 @@ pub struct DesignTokens {
     // Grid view cards
     pub table_grid_view_card_min_width: f32,
     pub table_grid_view_card_spacing: f32,
+    pub table_grid_view_card_inner_margin: f32,
+    pub table_grid_view_card_corner_radius: f32,
     pub table_grid_view_card_fill: Color32,
     pub table_grid_view_card_hover_fill: Color32,
 
@@ -463,6 +465,8 @@ impl DesignTokens {
 
             table_grid_view_card_min_width: get_scalar("table_grid_view_card_min_width")?,
             table_grid_view_card_spacing: get_scalar("table_grid_view_card_spacing")?,
+            table_grid_view_card_inner_margin: get_scalar("table_grid_view_card_inner_margin")?,
+            table_grid_view_card_corner_radius: get_scalar("table_grid_view_card_corner_radius")?,
             table_grid_view_card_fill: get_color("table_grid_view_card_fill"),
             table_grid_view_card_hover_fill: get_color("table_grid_view_card_hover_fill"),
 

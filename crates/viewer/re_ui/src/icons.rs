@@ -187,7 +187,7 @@ pub const VIEW_TEXT: Icon = icon_from_path!("../data/icons/view_text.svg");
 pub const VIEW_TIMESERIES: Icon = icon_from_path!("../data/icons/view_timeseries.svg");
 pub const VIEW_UNKNOWN: Icon = icon_from_path!("../data/icons/view_unknown.svg");
 
-pub const GROUP: Icon = icon_from_path!("../data/icons/group.svg");
+//pub const GROUP: Icon = icon_from_path!("../data/icons/group.svg");
 pub const ENTITY: Icon = icon_from_path!("../data/icons/entity.svg");
 pub const ENTITY_EMPTY: Icon = icon_from_path!("../data/icons/entity_empty.svg");
 pub const ENTITY_RESERVED: Icon = icon_from_path!("../data/icons/entity_reserved.svg");

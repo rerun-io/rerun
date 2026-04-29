@@ -21,6 +21,7 @@ use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use serde::de::DeserializeSeed as _;
 
+use super::ros2::supports_ros2_cdr_channel;
 use crate::parsers::{MessageParser, ParserContext, dds};
 use crate::{DecoderIdentifier, Error, MessageDecoder};
 
@@ -32,6 +33,10 @@ pub fn decode_bytes(top: &MessageSchema, buf: &[u8]) -> anyhow::Result<Value> {
 
     let representation_identifier = dds::RepresentationIdentifier::from_bytes([buf[0], buf[1]])
         .with_context(|| "failed to parse CDR representation identifier")?;
+    anyhow::ensure!(
+        representation_identifier.is_cdr() || representation_identifier.is_cdr2(),
+        "message is not encoded using a CDR representation: {representation_identifier:?}"
+    );
 
     let resolver = MapResolver::new(top.dependencies.iter().map(|dep| (dep.name.clone(), dep)));
 
@@ -55,7 +60,7 @@ struct Ros2ReflectionMessageParser {
 
 #[derive(Debug, thiserror::Error)]
 pub enum Ros2ReflectionError {
-    #[error("Invalid message on channel {channel} for schema {schema}: {source}")]
+    #[error("Invalid message on channel {channel} for schema {schema}: {source:#}")]
     InvalidMessage {
         schema: String,
         channel: String,
@@ -330,31 +335,41 @@ fn arrow_builder_from_type(
     dependencies: &[MessageSpecification],
 ) -> anyhow::Result<Box<dyn ArrayBuilder>> {
     Ok(match ty {
-        Type::BuiltIn(p) => match p {
-            BuiltInType::Bool => Box::new(BooleanBuilder::new()),
-            BuiltInType::Byte | BuiltInType::UInt8 => Box::new(UInt8Builder::new()),
-            BuiltInType::Char | BuiltInType::Int8 => Box::new(Int8Builder::new()),
-            BuiltInType::Int16 => Box::new(Int16Builder::new()),
-            BuiltInType::UInt16 => Box::new(UInt16Builder::new()),
-            BuiltInType::Int32 => Box::new(Int32Builder::new()),
-            BuiltInType::UInt32 => Box::new(UInt32Builder::new()),
-            BuiltInType::Int64 => Box::new(Int64Builder::new()),
-            BuiltInType::UInt64 => Box::new(UInt64Builder::new()),
-            BuiltInType::Float32 => Box::new(Float32Builder::new()),
-            BuiltInType::Float64 => Box::new(Float64Builder::new()),
-            BuiltInType::String(_) | BuiltInType::WString(_) => Box::new(StringBuilder::new()),
-        },
+        Type::BuiltIn(p) => arrow_builder_from_builtin_type(p),
         Type::Complex(complex_type) => {
-            // Look up the message spec in dependencies
             let spec = resolve_complex_type(complex_type, dependencies).ok_or_else(|| {
                 anyhow::anyhow!("Could not resolve complex type: {complex_type:?}")
             })?;
-            Box::new(struct_builder_from_message_spec(spec, dependencies)?)
+            // Some user-defined ROS 2 enum message definitions may only contain
+            // primitive-type constants (of same type) and no data field.
+            // We should use that common primitive type in this special case.
+            if let Some(primitive_type) = spec.underlying_type_if_enum_like()? {
+                arrow_builder_from_builtin_type(primitive_type)
+            } else {
+                Box::new(struct_builder_from_message_spec(spec, dependencies)?)
+            }
         }
         Type::Array { ty, .. } => {
             Box::new(ListBuilder::new(arrow_builder_from_type(ty, dependencies)?))
         }
     })
+}
+
+fn arrow_builder_from_builtin_type(ty: &BuiltInType) -> Box<dyn ArrayBuilder> {
+    match ty {
+        BuiltInType::Bool => Box::new(BooleanBuilder::new()),
+        BuiltInType::Byte | BuiltInType::UInt8 => Box::new(UInt8Builder::new()),
+        BuiltInType::Char | BuiltInType::Int8 => Box::new(Int8Builder::new()),
+        BuiltInType::Int16 => Box::new(Int16Builder::new()),
+        BuiltInType::UInt16 => Box::new(UInt16Builder::new()),
+        BuiltInType::Int32 => Box::new(Int32Builder::new()),
+        BuiltInType::UInt32 => Box::new(UInt32Builder::new()),
+        BuiltInType::Int64 => Box::new(Int64Builder::new()),
+        BuiltInType::UInt64 => Box::new(UInt64Builder::new()),
+        BuiltInType::Float32 => Box::new(Float32Builder::new()),
+        BuiltInType::Float64 => Box::new(Float64Builder::new()),
+        BuiltInType::String(_) | BuiltInType::WString(_) => Box::new(StringBuilder::new()),
+    }
 }
 
 fn arrow_field_from_type(
@@ -370,30 +385,24 @@ fn datatype_from_type(
     dependencies: &[MessageSpecification],
 ) -> anyhow::Result<DataType> {
     Ok(match ty {
-        Type::BuiltIn(p) => match p {
-            BuiltInType::Bool => DataType::Boolean,
-            BuiltInType::Byte | BuiltInType::UInt8 => DataType::UInt8,
-            BuiltInType::Char | BuiltInType::Int8 => DataType::Int8,
-            BuiltInType::Int16 => DataType::Int16,
-            BuiltInType::UInt16 => DataType::UInt16,
-            BuiltInType::Int32 => DataType::Int32,
-            BuiltInType::UInt32 => DataType::UInt32,
-            BuiltInType::Int64 => DataType::Int64,
-            BuiltInType::UInt64 => DataType::UInt64,
-            BuiltInType::Float32 => DataType::Float32,
-            BuiltInType::Float64 => DataType::Float64,
-            BuiltInType::String(_) | BuiltInType::WString(_) => DataType::Utf8, // No wstring in Arrow
-        },
+        Type::BuiltIn(p) => datatype_from_builtin_type(p),
         Type::Complex(complex_type) => {
             let spec = resolve_complex_type(complex_type, dependencies).ok_or_else(|| {
                 anyhow::anyhow!("Could not resolve complex type: {complex_type:?}")
             })?;
-            let fields = spec
-                .fields
-                .iter()
-                .map(|f| arrow_field_from_type(&f.ty, &f.name, dependencies))
-                .collect::<anyhow::Result<Fields>>()?;
-            DataType::Struct(fields)
+            // Some user-defined ROS 2 enum message definitions may only contain
+            // primitive-type constants (of same type) and no data field.
+            // We should use that common primitive type in this special case.
+            if let Some(primitive_type) = spec.underlying_type_if_enum_like()? {
+                datatype_from_builtin_type(primitive_type)
+            } else {
+                let fields = spec
+                    .fields
+                    .iter()
+                    .map(|f| arrow_field_from_type(&f.ty, &f.name, dependencies))
+                    .collect::<anyhow::Result<Fields>>()?;
+                DataType::Struct(fields)
+            }
         }
         Type::Array { ty, size } => match size {
             ArraySize::Fixed(_) | ArraySize::Bounded(_) | ArraySize::Unbounded => {
@@ -401,6 +410,23 @@ fn datatype_from_type(
             }
         },
     })
+}
+
+fn datatype_from_builtin_type(ty: &BuiltInType) -> DataType {
+    match ty {
+        BuiltInType::Bool => DataType::Boolean,
+        BuiltInType::Byte | BuiltInType::UInt8 => DataType::UInt8,
+        BuiltInType::Char | BuiltInType::Int8 => DataType::Int8,
+        BuiltInType::Int16 => DataType::Int16,
+        BuiltInType::UInt16 => DataType::UInt16,
+        BuiltInType::Int32 => DataType::Int32,
+        BuiltInType::UInt32 => DataType::UInt32,
+        BuiltInType::Int64 => DataType::Int64,
+        BuiltInType::UInt64 => DataType::UInt64,
+        BuiltInType::Float32 => DataType::Float32,
+        BuiltInType::Float64 => DataType::Float64,
+        BuiltInType::String(_) | BuiltInType::WString(_) => DataType::Utf8, // No wstring in Arrow
+    }
 }
 
 fn resolve_complex_type<'a>(
@@ -480,9 +506,13 @@ impl MessageDecoder for McapRos2ReflectionDecoder {
             return false;
         }
 
+        if !supports_ros2_cdr_channel(channel) {
+            return false;
+        }
+
         // Check if the semantic decoder would handle this message type
         let semantic_decoder = super::McapRos2Decoder::new();
-        !semantic_decoder.supports_schema(&schema.name)
+        !semantic_decoder.supports_channel(channel)
     }
 
     fn message_parser(
@@ -494,5 +524,61 @@ impl MessageDecoder for McapRos2ReflectionDecoder {
         Some(Box::new(
             Ros2ReflectionMessageParser::new(num_rows, message_schema.clone()).ok()?,
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use arrow::datatypes::DataType;
+    use re_ros_msg::MessageSchema;
+    use re_ros_msg::deserialize::Value;
+
+    use super::*;
+
+    fn enum_schema() -> MessageSchema {
+        MessageSchema::parse(
+            "test/Msg",
+            r#"
+test/DummyEnum enum_value
+bool enabled
+
+================================================================================
+MSG: test/DummyEnum
+int8 FOO=0
+int8 BAR=1
+"#,
+        )
+        .unwrap()
+    }
+
+    /// Tests that constants-only enum-like fields deserialize as primitive values.
+    #[test]
+    fn decodes_constants_only_enum_as_primitive_value() {
+        let schema = enum_schema();
+        let value = decode_bytes(&schema, &[0x00, 0x01, 0x00, 0x00, 2, 1]).unwrap();
+
+        let Value::Message(fields) = value else {
+            panic!("expected message");
+        };
+
+        assert_eq!(fields.get("enum_value"), Some(&Value::I8(2)));
+        assert_eq!(fields.get("enabled"), Some(&Value::Bool(true)));
+    }
+
+    /// Tests that constants-only enum-like fields use their primitive Arrow type.
+    #[test]
+    fn constants_only_enum_uses_primitive_arrow_type() {
+        let schema = enum_schema();
+        let mode = schema
+            .spec
+            .fields
+            .iter()
+            .find(|field| field.name == "enum_value")
+            .unwrap();
+
+        assert_eq!(
+            datatype_from_type(&mode.ty, &schema.dependencies).unwrap(),
+            DataType::Int8
+        );
     }
 }

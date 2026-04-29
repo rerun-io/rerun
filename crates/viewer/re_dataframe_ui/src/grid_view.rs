@@ -43,11 +43,11 @@ pub fn grid_ui(
     let card_min_width = tokens.table_grid_view_card_min_width;
     let card_spacing = tokens.table_grid_view_card_spacing;
 
-    let inner_margin = egui::Margin::same(12);
+    let inner_margin = egui::Margin::same(tokens.table_grid_view_card_inner_margin as i8);
     let card_frame = Frame::new()
         .inner_margin(inner_margin)
         .fill(tokens.table_grid_view_card_fill)
-        .corner_radius(12.0);
+        .corner_radius(tokens.table_grid_view_card_corner_radius);
 
     // Resolve the title column index once for all cards.
     let title_col_index = find_title_column_index(table_blueprint, columns, table_config);

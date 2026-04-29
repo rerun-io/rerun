@@ -122,20 +122,21 @@ exclude = [
   'https://github.com/rerun-io/rerun/issues/\.*', # Ignore links to our own issues.
 
   # Intentionally faked links.
+  'file:///does/not/exist.rrd',
+  'file:///path/to/file',
+  'file:///tmp/droidnano/Fri_Aug_18_09:46:43_2023.rrd',
   'file://foo',
+  'file://path/to/file.rrd',
+  'file://somehost/file/path.rrd',
   'http://foo.*',
+  'http://x/',
   'https://foo.*',
   'https://link.to',
   'https://rerun.rs',
   'https://static.rerun.io/my_screenshot/',
-  'https://your-hosted-asset-url.com/widget.js',
   'https://your-hosted-asset-url.com/re_viewer_bg.wasm',
-  'file:///path/to/file',
+  'https://your-hosted-asset-url.com/widget.js',
   'rerun://localhost:51234/recording/some-recording-id',
-  'file:///does/not/exist.rrd',
-  'file://path/to/file.rrd',
-  'file://somehost/file/path.rrd',
-  'file:///tmp/droidnano/Fri_Aug_18_09:46:43_2023.rrd',
 
   'https://customer.cloud.rerun.io/.*',
   'https://redap.rerun.io',

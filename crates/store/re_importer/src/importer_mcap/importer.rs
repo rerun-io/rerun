@@ -9,7 +9,7 @@ use crossbeam::channel::Sender;
 use re_chunk::RowId;
 use re_lenses::Lenses;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
-use re_mcap::{DecoderIdentifier, DecoderRegistry, SelectedDecoders};
+use re_mcap::{DecoderIdentifier, DecoderRegistry, SelectedDecoders, TopicFilter};
 use re_quota_channel::send_crossbeam;
 
 use crate::{ImportedData, Importer, ImporterError, ImporterSettings, URDF_DECODER_IDENTIFIER};
@@ -33,6 +33,7 @@ pub struct McapImporter {
     selected_decoders: SelectedDecoders,
     // TODO(RR-3491): We don't need the fallback logic anymore; use `OutputMode` instead.
     raw_fallback_enabled: bool,
+    topic_filter: TopicFilter,
     lenses_by_time_type: HashMap<re_log_types::TimeType, Arc<Lenses>>,
 }
 
@@ -58,6 +59,7 @@ impl McapImporter {
         Self {
             selected_decoders: selected_decoders.clone(),
             raw_fallback_enabled: true,
+            topic_filter: TopicFilter::default(),
             lenses_by_time_type,
         }
     }
@@ -65,6 +67,14 @@ impl McapImporter {
     /// Configures whether the raw decoder is used as a fallback for unsupported channels.
     pub fn with_raw_fallback(mut self, raw_fallback_enabled: bool) -> Self {
         self.raw_fallback_enabled = raw_fallback_enabled;
+        self
+    }
+
+    /// Configures a regex-based topic filter.
+    ///
+    /// See [`TopicFilter`] for matching semantics.
+    pub fn with_topic_filter(mut self, topic_filter: TopicFilter) -> Self {
+        self.topic_filter = topic_filter;
         self
     }
 
@@ -134,7 +144,7 @@ impl McapImporter {
 
         DecoderRegistry::all_builtin(self.raw_fallback_enabled)
             .select(&self.selected_decoders)
-            .plan(mcap, &summary)?
+            .plan(mcap, &summary, &self.topic_filter)?
             .run(mcap, &summary, timeline_type, &mut on_chunk_with_transforms)?;
 
         if self
@@ -143,6 +153,7 @@ impl McapImporter {
             && let Err(err) = super::robot_description::extract_urdf_from_robot_descriptions(
                 mcap,
                 &summary,
+                &self.topic_filter,
                 &mut on_chunk_with_transforms,
             )
         {
@@ -304,7 +315,22 @@ fn apply_timestamp_offset(mut chunk: re_chunk::Chunk, offset_ns: Option<i64>) ->
     chunk
 }
 
-fn send_chunk_to_channel(tx: &Sender<ImportedData>, store_id: &StoreId, chunk: re_chunk::Chunk) {
+fn send_chunk_to_channel(
+    tx: &Sender<ImportedData>,
+    store_id: &StoreId,
+    mut chunk: re_chunk::Chunk,
+) {
+    chunk.sort_if_unsorted();
+
+    for (name, column) in chunk.timelines() {
+        if !column.is_sorted() {
+            let entity_path = chunk.entity_path();
+            re_log::warn_once!(
+                "Found unsorted timeline '{name}' for entity '{entity_path}'. This may lead to suboptimal performance.",
+            );
+        }
+    }
+
     if send_crossbeam(
         tx,
         ImportedData::Chunk(MCAP_IMPORTER_NAME.to_owned(), store_id.clone(), chunk),
