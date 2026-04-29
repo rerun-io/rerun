@@ -245,6 +245,10 @@ fn load_video(
 ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
     re_tracing::profile_function!();
 
+    if contents.len() > i32::MAX as usize {
+        return Err(ImporterError::VideoTooLarge(contents.len()));
+    }
+
     let video_timeline = re_log_types::Timeline::new_duration("video");
     timepoint.insert_cell(
         *video_timeline.name(),

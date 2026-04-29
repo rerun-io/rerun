@@ -406,6 +406,10 @@ pub enum ImporterError {
     #[error(transparent)]
     Mcap(#[from] ::mcap::McapError),
 
+    #[error("Video file is too large ({} bytes). \
+             Maximum supported blob size is ~2 GiB due to Arrow i32 offset limits.", .0)]
+    VideoTooLarge(usize),
+
     #[error("{}", re_error::format(.0))]
     Other(#[from] anyhow::Error),
 }
