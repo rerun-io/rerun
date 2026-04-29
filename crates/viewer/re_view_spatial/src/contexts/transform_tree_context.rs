@@ -211,9 +211,11 @@ impl ViewContextSystem for TransformTreeContext {
         }
         self.cache_frame_id_hash_mapping = static_execution_result.frame_id_hash_mapping.clone();
 
-        let results = {
-            re_tracing::profile_scope!("latest-ats");
+        let frame_id_results = {
+            re_tracing::profile_scope!("frame id queries");
             let latest_at_query = ctx.current_query();
+            let transform_frame_id_component =
+                archetypes::CoordinateFrame::descriptor_frame().component;
 
             ctx.query_result
                 .tree
@@ -223,10 +225,6 @@ impl ViewContextSystem for TransformTreeContext {
                     data_result.visible && !data_result.visualizer_instructions.is_empty()
                 })
                 .map(|data_result| {
-                    let transform_frame_id_component =
-                        archetypes::CoordinateFrame::descriptor_frame().component;
-
-                    re_tracing::profile_scope!("latest_at_with_blueprint_resolved_data");
                     latest_at_with_blueprint_resolved_data(
                         ctx,
                         None,
@@ -242,7 +240,7 @@ impl ViewContextSystem for TransformTreeContext {
         // Build a lookup table from entity paths to their transform frame id hashes.
         // Currently, we don't keep it around during the frame, but we may do so in the future.
         self.entity_transform_id_mapping =
-            EntityTransformIdMapping::new(ctx, &results, query.space_origin);
+            EntityTransformIdMapping::new(ctx, &frame_id_results, query.space_origin);
 
         // Target frame - check for blueprint override first, otherwise use space origin's coordinate frame.
         self.target_frame = {
@@ -287,7 +285,7 @@ impl ViewContextSystem for TransformTreeContext {
         {
             re_tracing::profile_scope!("add-overrides");
             // Add overrides to the additional frame id hash map so we can get back the id for errors.
-            for results in results {
+            for results in frame_id_results {
                 let Some(frame) =
                     results.get_mono(archetypes::CoordinateFrame::descriptor_frame().component)
                 else {

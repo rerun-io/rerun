@@ -44,17 +44,17 @@ class LensOutput:
         Parameters
         ----------
         component:
-            A [`ComponentDescriptor`][] or a component identifier string
+            A `ComponentDescriptor` or a component identifier string
             for the output column (e.g. `"Scalars:scalars"`).
             Using a full `ComponentDescriptor` preserves archetype and
             component type metadata in the output.
         selector:
-            A [`Selector`][] or selector query string to apply to the
+            A [`Selector`][rerun.experimental.Selector] or selector query string to apply to the
             input column.
 
         Returns
         -------
-        A new [`LensOutput`][] with the component added.
+        A new [`LensOutput`][rerun.experimental.LensOutput] with the component added.
 
         """
         sel = _normalize_selector(selector)
@@ -81,12 +81,12 @@ class LensOutput:
             Type of the timeline: `"sequence"`, `"duration_ns"`,
             or `"timestamp_ns"`.
         selector:
-            A [`Selector`][] or selector query string to extract time
+            A [`Selector`][rerun.experimental.Selector] or selector query string to extract time
             values (must produce `Int64` arrays).
 
         Returns
         -------
-        A new [`LensOutput`][] with the time column added.
+        A new [`LensOutput`][rerun.experimental.LensOutput] with the time column added.
 
         """
         sel = _normalize_selector(selector)
@@ -143,10 +143,10 @@ class Lens:
         input_component:
             The component identifier to match in input chunks.
         output:
-            A [`LensOutput`][] for the same entity as the input.
+            A [`LensOutput`][rerun.experimental.LensOutput] for the same entity as the input.
             At most one is allowed.
         to_entity:
-            A dict mapping entity paths to [`LensOutput`][] objects
+            A dict mapping entity paths to [`LensOutput`][rerun.experimental.LensOutput] objects
             for writing to explicit target entities.
 
         """

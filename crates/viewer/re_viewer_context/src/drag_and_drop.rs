@@ -304,7 +304,7 @@ impl ItemCounter {
             }
             Item::ComponentPath(_) => self.component_cnt += 1,
             Item::RedapServer(_) => self.redap_server_cnt += 1,
-            Item::RedapEntry(_) => self.redap_entry_cnt += 1,
+            Item::RedapEntry { .. } => self.redap_entry_cnt += 1,
         }
     }
 }

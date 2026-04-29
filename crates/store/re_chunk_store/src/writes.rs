@@ -238,6 +238,15 @@ impl ChunkStore {
             return Err(ChunkStoreError::UnsortedChunk);
         }
 
+        for (timeline, time_column) in chunk.timelines() {
+            if !time_column.is_sorted() {
+                let entity_path = chunk.entity_path();
+                re_log::debug_warn_once!(
+                    "Found chunk for entity '{entity_path}' where timeline '{timeline}' was unsorted (compared to RowId). This may cause performance issues."
+                );
+            }
+        }
+
         re_tracing::profile_function!();
 
         {
@@ -546,21 +555,7 @@ impl ChunkStore {
                 let elected_chunk = self.find_and_elect_compaction_candidate(chunk);
 
                 let chunk_or_compacted = if let Some(elected_chunk) = &elected_chunk {
-                    let chunk_rowid_min = chunk.row_id_range().map(|(min, _)| min);
-                    let elected_rowid_min = elected_chunk.row_id_range().map(|(min, _)| min);
-
-                    let mut compacted = if elected_rowid_min < chunk_rowid_min {
-                        re_tracing::profile_scope!("concat");
-                        elected_chunk.concatenated(chunk)?
-                    } else {
-                        re_tracing::profile_scope!("concat");
-                        chunk.concatenated(elected_chunk)?
-                    };
-
-                    {
-                        re_tracing::profile_scope!("sort");
-                        compacted.sort_if_unsorted();
-                    }
+                    let compacted = Chunk::concat_and_sort(elected_chunk, chunk)?;
 
                     re_log::trace!(
                         "compacted {} ({} rows) and {} ({} rows) together, resulting in {} ({} rows)",

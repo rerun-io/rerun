@@ -44,6 +44,9 @@ pub struct TimeOutput {
 
 #[derive(Clone)]
 pub struct LensOutput {
+    /// Can be used for better errors/warnings.
+    pub input_id: ComponentIdentifier,
+
     /// Component columns that will be created.
     pub output_components: Vec1<ComponentOutput>,
 
@@ -57,25 +60,46 @@ impl LensOutput {
         scatter: bool,
         target_entity: &EntityPath,
         timelines: &ChunkTimelines,
-        input: &SerializedComponentColumn,
+        input_data: &SerializedComponentColumn,
     ) -> Result<Chunk, PartialChunk> {
-        if scatter {
+        let Self {
+            input_id,
+            output_components,
+            output_timelines,
+        } = self;
+
+        let chunk = if scatter {
             apply_one_to_many(
                 target_entity,
                 timelines,
-                &self.output_timelines,
-                &self.output_components,
-                input,
-            )
+                output_timelines,
+                output_components,
+                input_data,
+            )?
         } else {
             apply_one_to_one(
                 target_entity,
                 timelines,
-                &self.output_timelines,
-                &self.output_components,
-                input,
-            )
+                output_timelines,
+                output_components,
+                input_data,
+            )?
+        };
+
+        assert!(
+            chunk.is_sorted(),
+            "Lens produced unsorted chunk. This is a bug. Fix it."
+        );
+
+        for (name, times) in chunk.timelines() {
+            if !times.is_sorted() {
+                re_log::debug_warn_once!(
+                    "Lens for component `{input_id}` produced unsorted time column `{name}` for entity `{target_entity}`"
+                );
+            }
         }
+
+        Ok(chunk)
     }
 }
 

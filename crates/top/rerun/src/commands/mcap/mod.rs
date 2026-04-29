@@ -6,7 +6,7 @@ use clap::Subcommand;
 use clap::builder::TypedValueParser as _;
 use re_log_encoding::Encoder;
 use re_log_types::{LogMsg, RecordingId, TimeType};
-use re_mcap::{DecoderIdentifier, SelectedDecoders};
+use re_mcap::{DecoderIdentifier, SelectedDecoders, TopicFilter};
 use re_sdk::external::re_importer::{McapImporter, supported_mcap_decoder_identifiers};
 use re_sdk::{ApplicationId, ImportedData, Importer, ImporterSettings};
 
@@ -78,6 +78,40 @@ pub struct ConvertCommand {
     /// "duration" creates `DurationNs` timelines (nanosecond durations).
     #[clap(long = "timeline-type", value_parser = possible_timeline_types(), default_value = "timestamp")]
     timeline_type: TimeType,
+
+    /// Include only topics matching this regex (RE2 syntax). Repeatable.
+    ///
+    /// If omitted, all topics are included. Patterns are not implicitly anchored;
+    /// use `^` / `$` if you need anchoring.
+    ///
+    /// Example: `-y "^/tf.*" -n ".*depth.*" -y "^/camera/(compressed|camera_info)$"`
+    #[clap(short = 'y', long = "include-topic-regex")]
+    include_topic_regex: Vec<String>,
+
+    /// Exclude topics matching this regex (RE2 syntax). Repeatable.
+    ///
+    /// Applied after includes: a topic is kept only if it matches an include
+    /// (or no includes are set) AND matches no exclude.
+    #[clap(short = 'n', long = "exclude-topic-regex")]
+    exclude_topic_regex: Vec<String>,
+}
+
+fn compile_topic_filter(include: &[String], exclude: &[String]) -> anyhow::Result<TopicFilter> {
+    for pattern in include {
+        TopicFilter::default()
+            .with_include_patterns(std::slice::from_ref(pattern))
+            .map_err(|err| anyhow::anyhow!("Invalid include topic regex {pattern:?}: {err}"))?;
+    }
+    for pattern in exclude {
+        TopicFilter::default()
+            .with_exclude_patterns(std::slice::from_ref(pattern))
+            .map_err(|err| anyhow::anyhow!("Invalid exclude topic regex {pattern:?}: {err}"))?;
+    }
+
+    TopicFilter::default()
+        .with_include_patterns(include)
+        .and_then(|filter| filter.with_exclude_patterns(exclude))
+        .map_err(|err| anyhow::anyhow!("Invalid topic regex in include/exclude filters: {err}"))
 }
 
 impl ConvertCommand {
@@ -91,7 +125,11 @@ impl ConvertCommand {
             disable_raw_fallback,
             timestamp_offset_ns,
             timeline_type,
+            include_topic_regex,
+            exclude_topic_regex,
         } = self;
+
+        let topic_filter = compile_topic_filter(include_topic_regex, exclude_topic_regex)?;
 
         let start_time = std::time::Instant::now();
 
@@ -117,8 +155,9 @@ impl ConvertCommand {
             )
         };
 
-        let importer: &dyn Importer =
-            &McapImporter::new(&selected_decoders).with_raw_fallback(!*disable_raw_fallback);
+        let importer: &dyn Importer = &McapImporter::new(&selected_decoders)
+            .with_raw_fallback(!*disable_raw_fallback)
+            .with_topic_filter(topic_filter);
 
         // TODO(#10862): This currently loads the entire file into memory.
         let (tx, rx) = crossbeam::channel::bounded::<ImportedData>(1024);

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -123,6 +124,71 @@ def test_timestamp_offset() -> None:
     offset_ts = first_timestamp_ns(McapReader(LOG_MCAP, timestamp_offset_ns=offset_ns).stream().to_chunks())
 
     assert offset_ts - base_ts == offset_ns
+
+
+# ---------------------------------------------------------------------------
+# Topic filter
+# ---------------------------------------------------------------------------
+
+
+def _entity_paths(chunks: list[Chunk]) -> set[str]:
+    return {c.entity_path for c in chunks}
+
+
+def test_topic_filter_include_all() -> None:
+    """A regex matching everything is equivalent to no filter."""
+    baseline = _entity_paths(McapReader(POINT_CLOUD_MCAP).stream().to_chunks())
+    filtered = _entity_paths(McapReader(POINT_CLOUD_MCAP, include_topic_regex=[".*"]).stream().to_chunks())
+    assert filtered == baseline
+
+
+def test_topic_filter_include_none() -> None:
+    """A regex matching no topic produces only file-scoped chunks (no per-topic chunks)."""
+    baseline = _entity_paths(McapReader(POINT_CLOUD_MCAP).stream().to_chunks())
+    filtered = _entity_paths(
+        McapReader(POINT_CLOUD_MCAP, include_topic_regex=["^__definitely_not_a_topic__$"]).stream().to_chunks(),
+    )
+    # Filtered set must be a (proper) subset of baseline; any remaining entries
+    # come from file-scoped decoders (schemas, statistics, recording_info, …)
+    # which are independent of the topic filter.
+    assert filtered.issubset(baseline)
+    assert len(filtered) < len(baseline)
+
+
+def test_topic_filter_include_specific() -> None:
+    """Including one specific topic yields a strict subset containing that topic."""
+    baseline_chunks = McapReader(POINT_CLOUD_MCAP).stream().to_chunks()
+    baseline = _entity_paths(baseline_chunks)
+
+    # Pick the entity path of any non-static chunk — those come from real topics.
+    target = next(c.entity_path for c in baseline_chunks if not c.is_static)
+    # The entity path is constructed from the topic verbatim, so it doubles as a
+    # regex that matches exactly that topic when escaped.
+    pattern = "^" + re.escape(target) + "$"
+
+    filtered = _entity_paths(McapReader(POINT_CLOUD_MCAP, include_topic_regex=[pattern]).stream().to_chunks())
+
+    assert target in filtered
+    assert filtered.issubset(baseline)
+
+
+def test_topic_filter_exclude() -> None:
+    """Excluding one topic drops it from the output."""
+    baseline_chunks = McapReader(POINT_CLOUD_MCAP).stream().to_chunks()
+    target = next(c.entity_path for c in baseline_chunks if not c.is_static)
+    pattern = "^" + re.escape(target) + "$"
+
+    filtered = _entity_paths(McapReader(POINT_CLOUD_MCAP, exclude_topic_regex=[pattern]).stream().to_chunks())
+
+    assert target not in filtered
+
+
+def test_topic_filter_invalid_regex() -> None:
+    """Bad regex syntax raises ValueError naming the offending pattern."""
+    with pytest.raises(ValueError, match="include topic regex"):
+        McapReader(POINT_CLOUD_MCAP, include_topic_regex=["["])
+    with pytest.raises(ValueError, match="exclude topic regex"):
+        McapReader(POINT_CLOUD_MCAP, exclude_topic_regex=["["])
 
 
 # ---------------------------------------------------------------------------

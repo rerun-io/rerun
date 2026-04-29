@@ -163,7 +163,10 @@ impl LogSource {
     /// Same as [`Self::redap_uri`], but strips any extra query or fragment from the uri.
     pub fn stripped_redap_uri(&self) -> Option<RedapUri> {
         self.redap_uri().map(|uri| match uri {
-            RedapUri::Catalog(_) | RedapUri::Entry(_) | RedapUri::Proxy(_) => uri,
+            RedapUri::Catalog(_)
+            | RedapUri::Entry(_)
+            | RedapUri::Folder(_)
+            | RedapUri::Proxy(_) => uri,
             RedapUri::DatasetData(uri) => RedapUri::DatasetData(uri.without_query_and_fragment()),
         })
     }

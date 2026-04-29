@@ -146,6 +146,12 @@ pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
     /// the entire operation under a single trace.
     trace_headers: Option<crate::TraceHeaders>,
 
+    /// The `execute` span, captured at stream creation so that work spawned
+    /// later from `poll_next` (notably `chunk_io_pipeline`) stays nested under
+    /// `execute` instead of surfacing as a sibling when `execute`'s entered
+    /// guard has already been dropped.
+    execute_span: tracing::Span,
+
     /// Server-assigned response trace-id for this scan.
     /// This may or may not match request `trace_headers`.
     server_trace_id: Option<re_redap_client::TraceId>,
@@ -243,7 +249,9 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
             let chunk_infos = this.chunk_infos.clone();
             let pending_analytics = this.pending_analytics.clone();
 
-            let io_span = tracing::info_span!("chunk_io_pipeline");
+            // Parent the IO pipeline under `execute`, not under whichever
+            // caller happens to poll us first.
+            let io_span = tracing::info_span!(parent: &this.execute_span, "chunk_io_pipeline");
 
             this.io_join_handle = Some(
                 io_handle.spawn(
@@ -510,6 +518,7 @@ async fn chunk_store_cpu_worker_thread(
     }
 
     impl CurrentStores {
+        #[tracing::instrument(level = "info", skip_all, fields(segment_id = %segment_id))]
         fn new(
             segment_id: String,
             query_expression: &QueryExpression,
@@ -542,6 +551,7 @@ async fn chunk_store_cpu_worker_thread(
         }
 
         /// Flush all remaining rows from the query handle, respecting the row limit.
+        #[tracing::instrument(level = "info", skip_all, fields(segment_id = %self.segment_id))]
         async fn flush(
             self,
             projected_schema: &Arc<Schema>,
@@ -565,7 +575,14 @@ async fn chunk_store_cpu_worker_thread(
     }
     let mut current_stores: Option<CurrentStores> = None;
     let mut rows_sent: usize = 0;
-    while let Some(chunks_and_segment_ids) = input_channel.recv().await {
+    loop {
+        // Time spent here = `cpu_worker` idle waiting for the IO pipeline to
+        // deliver the next batch of chunks. Short consecutive spans = healthy
+        // stream; one long dominating span = IO-starved worker.
+        let recv_span = tracing::info_span!("waiting_for_chunks");
+        let Some(chunks_and_segment_ids) = input_channel.recv().instrument(recv_span).await else {
+            break;
+        };
         let (segment_id, chunks) = chunks_and_segment_ids?;
 
         if chunks.is_empty() {
@@ -590,10 +607,18 @@ async fn chunk_store_cpu_worker_thread(
             }
         }
 
-        let CurrentStores { store, .. } = current_stores.get_or_insert_with(|| {
+        let CurrentStores {
+            store, segment_id, ..
+        } = current_stores.get_or_insert_with(|| {
             CurrentStores::new(segment_id, &query_expression, &index_values)
         });
 
+        let _insert_span = tracing::info_span!(
+            "insert_chunks",
+            segment_id = %segment_id,
+            n = chunks.len(),
+        )
+        .entered();
         for chunk in chunks {
             store
                 .write()
@@ -1102,7 +1127,8 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
     ) -> datafusion::common::Result<SendableRecordBatchStream> {
         #[cfg(not(target_arch = "wasm32"))]
         let _trace_guard = attach_trace_context(self.trace_headers.as_ref());
-        let _span = tracing::debug_span!("execute", partition).entered();
+        let execute_span = tracing::info_span!("execute", partition);
+        let _entered = execute_span.enter();
 
         let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
 
@@ -1162,6 +1188,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             io_join_handle: None,
             cpu_join_handle,
             cpu_runtime: Arc::clone(&self.worker_runtime),
+            execute_span: execute_span.clone(),
             trace_headers: self.trace_headers.clone(),
             server_trace_id: self.server_trace_id,
             pending_analytics: self.pending_analytics.clone(),

@@ -423,7 +423,26 @@ impl ConnectionRegistryHandle {
                         "Did you mean '{suggested}'? Rerun Cloud endpoints require the 'api.' prefix"
                     )
                 });
-                return Err(ApiError::invalid_server(origin.clone(), hint.as_deref()));
+                // Truncate the body so we don't dump an entire HTML error page into the error.
+                let body_snippet = std::str::from_utf8(&res.bytes)
+                    .ok()
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .map(|s| {
+                        const MAX: usize = 200;
+                        if s.len() > MAX {
+                            format!("{}…", &s[..s.floor_char_boundary(MAX)])
+                        } else {
+                            s.to_owned()
+                        }
+                    });
+                return Err(ApiError::invalid_server_with_response(
+                    origin.clone(),
+                    res.status,
+                    &res.status_text,
+                    body_snippet.as_deref(),
+                    hint.as_deref(),
+                ));
             }
         }
 

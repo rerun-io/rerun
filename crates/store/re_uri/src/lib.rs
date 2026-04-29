@@ -27,12 +27,16 @@
 //!
 //!     // Links to recording on the Data Platform (optionally with timestamp).
 //!     "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid&time_range=timeline@1.23s..72s",
+//!
+//!     // Links to a folder (dataset-name prefix) within the catalog.
+//!     "rerun://rerun.io/folder/perception.detection",
 //! ] {
 //!     assert!(uri.parse::<re_uri::RedapUri>().is_ok());
 //! }
 //!
 //! ```
 
+mod dataset_hierarchy;
 mod endpoints;
 mod error;
 mod fragment;
@@ -41,9 +45,13 @@ mod redap_uri;
 mod scheme;
 mod time_selection;
 
+pub use self::dataset_hierarchy::{
+    DATASET_HIERARCHY_SEPARATOR, dataset_hierarchy_leaf_name, split_dataset_hierarchy_path,
+};
 pub use self::endpoints::catalog::CatalogUri;
 pub use self::endpoints::dataset::DatasetSegmentUri;
 pub use self::endpoints::entry::EntryUri;
+pub use self::endpoints::folder::FolderUri;
 pub use self::endpoints::proxy::ProxyUri;
 pub use self::error::Error;
 pub use self::fragment::Fragment;

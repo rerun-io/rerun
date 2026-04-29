@@ -11,6 +11,40 @@ use crate::{Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
 // ---
 
 impl Chunk {
+    /// Picks the order intelligently, and sorts the result.
+    pub fn concat_and_sort(left: &Self, right: &Self) -> ChunkResult<Self> {
+        re_tracing::profile_function!();
+
+        let left_rowid_min = right.row_id_range().map(|(min, _)| min);
+        let right_rowid_min = left.row_id_range().map(|(min, _)| min);
+        let mut compacted = if right_rowid_min < left_rowid_min {
+            left.concatenated(right)?
+        } else {
+            right.concatenated(left)?
+        };
+
+        compacted.sort_if_unsorted();
+
+        // Sanity check that timelines haven't become unsorted.
+        // If they have, we have an unsorted timeline, which is good to know about.
+
+        for (name, column) in compacted.timelines() {
+            if !column.is_sorted() {
+                let left_was_sorted = left.timelines().get(name).is_none_or(|c| c.is_sorted());
+                let right_was_sorted = right.timelines().get(name).is_none_or(|c| c.is_sorted());
+
+                if left_was_sorted && right_was_sorted {
+                    let entity_path = compacted.entity_path();
+                    re_log::debug_warn_once!(
+                        "Timeline '{name}' became unsorted after concatenation for entity '{entity_path}'. This may cause performance issues."
+                    );
+                }
+            }
+        }
+
+        Ok(compacted)
+    }
+
     /// Concatenates two `Chunk`s into a new one.
     ///
     /// The order of the arguments matter: `self`'s contents will precede `rhs`' contents in the

@@ -183,7 +183,7 @@ impl SelectionChangeItem {
             | Item::AppId(_)
             | Item::ComponentPath(_)
             | Item::DataSource(_)
-            | Item::RedapEntry(_)
+            | Item::RedapEntry { .. }
             | Item::RedapServer(_)
             | Item::TableId(_) => None,
             Item::View(view_id) => Some(Self::View {

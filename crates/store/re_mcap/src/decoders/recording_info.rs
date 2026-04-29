@@ -18,6 +18,7 @@ impl Decoder for McapRecordingInfoDecoder {
         &mut self,
         _mcap_bytes: &[u8],
         summary: &mcap::Summary,
+        _topic_filter: &super::TopicFilter,
         emit: &mut dyn FnMut(Chunk),
     ) -> std::result::Result<(), Error> {
         let properties = summary

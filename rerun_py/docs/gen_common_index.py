@@ -505,7 +505,14 @@ SECTION_TABLE: Final[list[Section]] = [
         show_tables=True,
         mod_path=["rerun.experimental"],
         show_submodules=True,
+        func_list=[
+            "send_chunk",
+        ],
         class_list=[
+            "Chunk",
+            "Lens",
+            "LensOutput",
+            "Selector",
             "ViewerClient",
         ],
     ),

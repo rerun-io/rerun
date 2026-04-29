@@ -314,6 +314,7 @@ impl TimeColumn {
 mod tests {
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
     use re_log_types::{EntityPath, Timeline};
+    use re_types_core::ComponentBatch as _;
 
     use super::*;
     use crate::{ChunkId, RowId};
@@ -603,6 +604,76 @@ mod tests {
                     "expected",
                 ),
             );
+        }
+
+        Ok(())
+    }
+
+    /// `Chunk::from_auto_row_ids` should reorder its inputs so that the time columns become
+    /// sorted as well as possible, to avoid "out-of-order" chunks where some time columns are not sorted with respect to `RowId`.
+    #[test]
+    fn from_auto_row_ids_sorts_lexicographically() -> anyhow::Result<()> {
+        let entity_path: EntityPath = "a/b/c".into();
+
+        // Two timelines named such that "alpha" sorts before "beta".
+        // Construct deliberately unsorted inputs:
+        //   row | alpha | beta | color
+        //   ----|-------|------|------
+        //    0  |   2   |   5  |  100
+        //    1  |   1   |   9  |  200
+        //    2  |   1   |   7  |  300
+        //    3  |   2   |   3  |  400
+        //    4  |   1   |   9  |  500   (duplicate of row 1's key — tests stability)
+        //
+        // After lex-sort by (alpha, beta) the expected row order is:
+        //   2 (1,7,300), 1 (1,9,200), 4 (1,9,500), 3 (2,3,400), 0 (2,5,100)
+        let alpha = TimeColumn::new_sequence("alpha", [2_i64, 1, 1, 2, 1]);
+        let beta = TimeColumn::new_sequence("beta", [5_i64, 9, 7, 3, 9]);
+
+        let colors = vec![
+            MyColor(100),
+            MyColor(200),
+            MyColor(300),
+            MyColor(400),
+            MyColor(500),
+        ];
+        let colors_array = colors.to_arrow_list_array()?;
+
+        // `Chunk::from_columns` uses `Chunk::from_auto_row_ids`.
+        let chunk = Chunk::from_columns(
+            entity_path,
+            [alpha, beta],
+            [(MyPoints::descriptor_colors(), colors_array)],
+        )?;
+
+        eprintln!("{chunk}");
+
+        assert!(chunk.is_sorted());
+        assert!(chunk.is_sorted_uncached());
+
+        let alpha = chunk.timelines().get(&"alpha".into()).unwrap();
+        let beta = chunk.timelines().get(&"beta".into()).unwrap();
+
+        // The primary timeline (alphabetically first) must be globally sorted; the secondary
+        // one is only sorted within each primary-key group.
+        assert!(alpha.is_sorted());
+        assert!(!beta.is_sorted());
+
+        assert_eq!(alpha.times_raw().to_vec(), vec![1, 1, 1, 2, 2]);
+        assert_eq!(beta.times_raw().to_vec(), vec![7, 9, 9, 3, 5]);
+
+        // Verify the components were permuted in lockstep with the time columns,
+        // and that ties (rows 1 and 4) preserved their original order (stable sort).
+        let got_colors: Vec<u32> = chunk
+            .iter_slices::<u32>(MyPoints::descriptor_colors().component)
+            .flat_map(<[u32]>::to_vec)
+            .collect();
+        assert_eq!(got_colors, vec![300, 200, 500, 400, 100]);
+
+        // RowIds must be sequential ascending.
+        let row_ids: Vec<_> = chunk.row_ids().collect();
+        for w in row_ids.windows(2) {
+            assert!(w[0] < w[1], "row_ids must be strictly ascending");
         }
 
         Ok(())

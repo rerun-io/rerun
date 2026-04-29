@@ -1169,6 +1169,13 @@ class RecordingStream:
 
         send_columns(entity_path=entity_path, indexes=indexes, columns=columns, strict=strict, recording=self)
 
+    def send_chunk(self, chunk: rr.experimental.Chunk) -> None:
+        """Send a pre-built [`Chunk`][rerun.experimental.Chunk] to this recording stream."""
+
+        from .experimental._send_chunk import send_chunk
+
+        send_chunk(chunk, recording=self)
+
     def send_record_batch(self, batch: pa.RecordBatch) -> None:
         """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
 

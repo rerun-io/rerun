@@ -92,20 +92,23 @@ impl PoseTransformForEntity {
         poses_per_time
             .mutate_latest_at(&query.at(), |_t, pose_transform| {
                 // Separate check to work around borrow checker issues.
-                if pose_transform == &CachedTransformValue::Invalidated {
-                    *pose_transform =
-                        CachedTransformValue::Resident(query_and_resolve_instance_poses_at_entity(
+                if let CachedTransformValue::Invalidated { row_id, chunk_id } = pose_transform {
+                    *pose_transform = CachedTransformValue::Resident {
+                        value: query_and_resolve_instance_poses_at_entity(
                             entity_db,
                             missing_chunk_reporter,
                             &self.entity_path,
-                            query,
-                        ));
+                            *chunk_id,
+                            *row_id,
+                        ),
+                        row_id: *row_id,
+                    };
                 }
 
                 match pose_transform {
-                    CachedTransformValue::Resident(transform) => transform.clone(),
+                    CachedTransformValue::Resident { value, .. } => value.clone(),
                     CachedTransformValue::Cleared => Vec::new(),
-                    CachedTransformValue::Invalidated => {
+                    CachedTransformValue::Invalidated { .. } => {
                         unreachable!("Just made transform cache-resident")
                     }
                 }
@@ -128,7 +131,17 @@ impl PoseTransformForEntity {
     }
 
     /// Inserts an invalidation point for poses.
-    pub fn invalidate_at(&mut self, time: TimeInt) {
-        add_invalidated_entry_if_not_already_cleared(self.poses_per_time.get_mut(), time);
+    pub fn invalidate_at(
+        &mut self,
+        time: TimeInt,
+        chunk_id: re_sdk_types::ChunkId,
+        row_id: re_sdk_types::RowId,
+    ) {
+        add_invalidated_entry_if_not_already_cleared(
+            self.poses_per_time.get_mut(),
+            time,
+            chunk_id,
+            row_id,
+        );
     }
 }

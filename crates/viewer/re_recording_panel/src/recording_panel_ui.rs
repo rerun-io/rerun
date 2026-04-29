@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use egui::collapsing_header::CollapsingState;
 use egui::{RichText, Widget as _};
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
@@ -8,16 +9,17 @@ use re_log_types::TableId;
 use re_redap_browser::{Command, EXAMPLES_ORIGIN, RedapServers};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
+use re_uri::dataset_hierarchy_leaf_name;
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    EditRedapServerModalCommand, Item, RecordingOrTable, Route, SystemCommand,
+    EditRedapServerModalCommand, Item, RecordingOrTable, RedapEntryKind, Route, SystemCommand,
     SystemCommandSender as _, ViewerContext,
 };
 
 use crate::RecordingPanelCommand;
 use crate::data::{
-    AppIdData, DatasetData, EntryData, FailedEntryData, RecordingPanelData, RemoteTableData,
-    SegmentData, ServerData, ServerEntriesData,
+    AppIdData, DatasetData, EntryData, EntryTreeNode, FailedEntryData, RecordingPanelData,
+    RemoteTableData, SegmentData, ServerData, ServerEntriesData, ServerLeafEntry,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -49,6 +51,10 @@ impl RecordingPanel {
                     shift_through_recordings(ctx, &recording_panel_data, -1);
                 }
             }
+        }
+
+        for item in ctx.selection().iter_items() {
+            expand_parents_for_item(ui.ctx(), &recording_panel_data, item);
         }
 
         ui.panel_content(|ui| {
@@ -211,11 +217,7 @@ fn all_sections_ui(
             .item_response
             .clicked()
         {
-            let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
-                ui.ctx(),
-                id,
-                true,
-            );
+            let mut state = CollapsingState::load_with_default_open(ui.ctx(), id, true);
             state.toggle(ui);
             state.store(ui.ctx());
         }
@@ -325,15 +327,9 @@ fn server_section_ui(
         .header()
         .selected(*is_selected)
         .active(*is_active)
-        .show_hierarchical_with_children(
-            ui,
-            egui::Id::new(origin).with("server_item"),
-            true,
-            content,
-            |ui| {
-                server_entries_ui(ctx, ui, entries_data);
-            },
-        )
+        .show_hierarchical_with_children(ui, server_item_id(origin), true, content, |ui| {
+            server_entries_ui(ctx, ui, entries_data, origin);
+        })
         .item_response
         .on_hover_text(origin.to_string());
 
@@ -350,6 +346,7 @@ fn server_entries_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entries_data: &ServerEntriesData<'_>,
+    origin: &re_uri::Origin,
 ) {
     match entries_data {
         ServerEntriesData::Loading => {
@@ -375,21 +372,68 @@ fn server_entries_ui(
             .on_hover_text(message);
         }
 
-        ServerEntriesData::Loaded {
-            dataset_entries,
-            table_entries,
-            failed_entries,
+        ServerEntriesData::Loaded { entry_tree } => {
+            for node in entry_tree {
+                entry_tree_node_ui(ctx, ui, node, origin);
+            }
+        }
+    }
+}
+
+fn entry_tree_node_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    node: &EntryTreeNode<'_>,
+    origin: &re_uri::Origin,
+) {
+    match node {
+        EntryTreeNode::Entry(ServerLeafEntry::Dataset(dataset)) => {
+            dataset_entry_ui(ctx, ui, dataset);
+        }
+        EntryTreeNode::Entry(ServerLeafEntry::Table(table)) => {
+            remote_table_entry_ui(ctx, ui, table);
+        }
+        EntryTreeNode::Entry(ServerLeafEntry::Failed(failed_entry)) => {
+            failed_entry_ui(ctx, ui, failed_entry);
+        }
+        EntryTreeNode::Folder {
+            name,
+            path_prefix,
+            children,
         } => {
-            for dataset in dataset_entries {
-                dataset_entry_ui(ctx, ui, dataset);
-            }
+            let item = Item::RedapEntry {
+                origin: origin.clone(),
+                kind: re_viewer_context::RedapEntryKind::Folder(path_prefix.clone()),
+            };
+            let route = Route::from_item(&item); // Will always be `Some`, but easy to be defensive.
 
-            for table in table_entries {
-                remote_table_entry_ui(ctx, ui, table);
-            }
+            let is_selected = ctx.selection().contains_item(&item);
+            let is_active = Some(ctx.route()) == route.as_ref();
 
-            for failed_entry in failed_entries {
-                failed_entry_ui(ctx, ui, failed_entry);
+            let content = list_item::LabelContent::new(name.as_str());
+            let id = dataset_group_id(path_prefix);
+
+            let item_response = ui
+                .list_item()
+                .selected(is_selected)
+                .active(is_active)
+                .show_hierarchical_with_children(ui, id, false, content, |ui| {
+                    for child in children {
+                        entry_tree_node_ui(ctx, ui, child, origin);
+                    }
+                })
+                .item_response;
+
+            ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
+            ctx.handle_select_focus_sync(&item_response, item.clone());
+
+            if item_response.clicked() {
+                ctx.command_sender()
+                    .send_system(SystemCommand::set_selection(item));
+                if let Some(route) = route {
+                    ctx.command_sender()
+                        .send_system(SystemCommand::SetRoute(route));
+                }
             }
         }
     }
@@ -416,7 +460,9 @@ fn dataset_entry_ui(
     let item = dataset_entry_data.entry_data.item();
     let list_item = ui.list_item().selected(*is_selected).active(*is_active);
 
-    let mut list_item_content = re_ui::list_item::LabelContent::new(name.as_str()).with_icon(icon);
+    let mut list_item_content =
+        re_ui::list_item::LabelContent::new(dataset_hierarchy_leaf_name(name.as_str()))
+            .with_icon(icon);
 
     let id = ui.make_persistent_id(dataset_entry_data.entry_data.id());
 
@@ -473,7 +519,7 @@ fn dataset_entry_ui(
         ui.label(format!("Dataset: {name:?}"));
     });
 
-    let new_route = Route::RedapEntry(re_uri::EntryUri::new(origin.clone(), *entry_id));
+    let new_route = Route::from(re_uri::EntryUri::new(origin.clone(), *entry_id));
 
     item_response.context_menu(|ui| {
         let url = ViewerOpenUrl::from_route(ctx.store_hub(), &new_route)
@@ -519,8 +565,8 @@ fn remote_table_entry_ui(
     let RemoteTableData {
         entry_data:
             EntryData {
-                origin,
-                entry_id,
+                origin: _,
+                entry_id: _,
                 name,
                 icon,
                 is_selected,
@@ -529,7 +575,7 @@ fn remote_table_entry_ui(
     } = remote_table_data;
 
     let item = remote_table_data.entry_data.item();
-    let text = RichText::new(name.as_str());
+    let text = RichText::new(dataset_hierarchy_leaf_name(name.as_str()));
 
     let list_item = ui.list_item().selected(*is_selected).active(*is_active);
     let list_item_content = LabelContent::new(text).with_icon(icon);
@@ -539,12 +585,12 @@ fn remote_table_entry_ui(
     ctx.handle_select_focus_sync(&item_response, item.clone());
 
     if item_response.clicked() {
+        if let Some(route) = Route::from_item(&item) {
+            ctx.command_sender()
+                .send_system(SystemCommand::SetRoute(route));
+        }
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
-        ctx.command_sender()
-            .send_system(SystemCommand::SetRoute(Route::RedapEntry(
-                re_uri::EntryUri::new(origin.clone(), *entry_id),
-            )));
     }
 }
 
@@ -576,10 +622,9 @@ fn failed_entry_ui(
     if item_response.clicked() {
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
-        ctx.command_sender()
-            .send_system(SystemCommand::SetRoute(Route::RedapEntry(
-                re_uri::EntryUri::new(origin.clone(), *entry_id),
-            )));
+        ctx.command_sender().send_system(SystemCommand::SetRoute(
+            re_uri::EntryUri::new(origin.clone(), *entry_id).into(),
+        ));
     }
 
     item_response.on_hover_text(error);
@@ -740,4 +785,134 @@ fn receiver_ui(
             ui.copy_text(name);
         }
     });
+}
+
+/// Force the server item and all ancestor folder nodes for `item` to be expanded.
+///
+/// Returns `true` once expansion completed (or the item doesn't need any), `false` if a
+/// dependent lookup (entry name) failed because the dataset list isn't loaded yet — in
+/// which case the caller should retry next frame.
+fn expand_parents_for_item(
+    egui_ctx: &egui::Context,
+    recording_panel_data: &RecordingPanelData<'_>,
+    item: &Item,
+) -> bool {
+    let force_open = |id| {
+        let mut state = CollapsingState::load_with_default_open(egui_ctx, id, true);
+        state.set_open(true);
+        state.store(egui_ctx);
+    };
+
+    let expand_folder_path = |path: &str| {
+        for ancestor in ancestor_folder_paths(path) {
+            force_open(dataset_group_id(ancestor));
+        }
+    };
+
+    match item {
+        Item::RedapServer(origin) => {
+            force_open(server_item_id(origin));
+            true
+        }
+        Item::RedapEntry { origin, kind } => {
+            force_open(server_item_id(origin));
+            match kind {
+                RedapEntryKind::Folder(path) => {
+                    expand_folder_path(path);
+                    true
+                }
+                RedapEntryKind::Entry(entry_id) => expand_parent_folders_for_entry(
+                    egui_ctx,
+                    recording_panel_data,
+                    origin,
+                    *entry_id,
+                ),
+            }
+        }
+        _ => true,
+    }
+}
+
+fn server_item_id(origin: &re_uri::Origin) -> egui::Id {
+    egui::Id::new(origin).with("server_item")
+}
+
+fn dataset_group_id(path_prefix: &str) -> egui::Id {
+    egui::Id::new("dataset_group").with(path_prefix)
+}
+
+fn expand_parent_folders_for_entry(
+    egui_ctx: &egui::Context,
+    data: &RecordingPanelData<'_>,
+    origin: &re_uri::Origin,
+    entry_id: re_log_types::EntryId,
+) -> bool {
+    for server in &data.servers {
+        if &server.origin != origin {
+            continue;
+        }
+        let ServerEntriesData::Loaded { entry_tree } = &server.entries_data else {
+            return false;
+        };
+
+        expand_folder_nodes_containing_entry(egui_ctx, entry_tree, entry_id);
+        return true;
+    }
+
+    true
+}
+
+fn expand_folder_nodes_containing_entry(
+    egui_ctx: &egui::Context,
+    nodes: &[EntryTreeNode<'_>],
+    entry_id: re_log_types::EntryId,
+) -> bool {
+    for node in nodes {
+        match node {
+            EntryTreeNode::Entry(entry) => {
+                if entry.entry_id() == entry_id {
+                    return true;
+                }
+            }
+            EntryTreeNode::Folder {
+                path_prefix,
+                children,
+                ..
+            } => {
+                if expand_folder_nodes_containing_entry(egui_ctx, children, entry_id) {
+                    let mut state = CollapsingState::load_with_default_open(
+                        egui_ctx,
+                        dataset_group_id(path_prefix),
+                        true,
+                    );
+                    state.set_open(true);
+                    state.store(egui_ctx);
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Iterate every ancestor folder path of a dotted hierarchy `path`, shallowest first,
+/// including `path` itself. `"a.b.c"` → `"a"`, `"a.b"`, `"a.b.c"`. Allocation-free.
+fn ancestor_folder_paths(path: &str) -> impl Iterator<Item = &str> {
+    path.match_indices(re_uri::DATASET_HIERARCHY_SEPARATOR)
+        .map(|(idx, _)| &path[..idx])
+        .chain(std::iter::once(path))
+        .filter(|s| !s.is_empty())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ancestor_folder_paths;
+
+    #[test]
+    fn ancestor_folder_paths_basic() {
+        let collect = |p| ancestor_folder_paths(p).collect::<Vec<_>>();
+        assert_eq!(collect("a.b.c"), vec!["a", "a.b", "a.b.c"]);
+        assert_eq!(collect("a"), vec!["a"]);
+        assert_eq!(collect(""), Vec::<&str>::new());
+    }
 }

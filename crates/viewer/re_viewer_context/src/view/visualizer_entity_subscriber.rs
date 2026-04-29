@@ -269,7 +269,7 @@ fn process_entity_components(
         VisualizabilityConstraints::AnyBuiltinComponent(relevant_components) => {
             let has_any_component = components
                 .iter()
-                .any(|c| relevant_components.contains(&c.descriptor.component) && c.has_data);
+                .any(|c| relevant_components.contains(&c.descriptor.component));
 
             if has_any_component {
                 re_log::trace!(
@@ -300,8 +300,7 @@ fn process_entity_components(
                     arrow_datatype,
                     c.descriptor.component_type,
                     c.descriptor.component,
-                ) && c.has_data
-                {
+                ) {
                     has_any_datatype = true;
 
                     store_mapping.add_visualizability_reason(
@@ -327,10 +326,6 @@ fn process_entity_components(
 
         VisualizabilityConstraints::BufferAndFormat(constraint) => {
             for c in components {
-                if !c.has_data {
-                    continue;
-                }
-
                 let Some(arrow_datatype) = &c.inner_arrow_datatype else {
                     continue;
                 };
@@ -433,11 +428,13 @@ impl VisualizerEntitySubscriber {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::BufferAndFormatConstraint;
+    use crate::{BufferAndFormatConstraint, SingleRequiredComponentConstraint};
     use re_chunk_store::{
         ChunkStoreDiff, ChunkStoreDiffSchemaAddition, ChunkStoreEvent, ChunkStoreGeneration,
     };
+    use re_log_types::{example_components::MyPoint, example_components::MyPoints};
     use re_sdk_types::ComponentDescriptor;
+    use re_types_core::Loggable as _;
 
     const BUFFER_CTYPE: &str = "test.components.Buffer";
     const FORMAT_CTYPE: &str = "test.components.Format";
@@ -464,6 +461,22 @@ mod tests {
                 relevant_archetype: None,
                 constraints: Arc::new(VisualizabilityConstraints::BufferAndFormat(
                     test_constraint(),
+                )),
+                known_builtin_enum_components: Arc::new(IntSet::default()),
+            },
+            mapping: Default::default(),
+        }
+    }
+
+    fn test_single_required_component_subscriber() -> VisualizerEntitySubscriber {
+        VisualizerEntitySubscriber {
+            config: VisualizerEntityConfig {
+                visualizer: "TestVisualizer".into(),
+                relevant_archetype: MyPoints::descriptor_points().archetype,
+                constraints: Arc::new(VisualizabilityConstraints::SingleRequiredComponent(
+                    SingleRequiredComponentConstraint::new::<MyPoint>(
+                        &MyPoints::descriptor_points(),
+                    ),
                 )),
                 known_builtin_enum_components: Arc::new(IntSet::default()),
             },
@@ -531,7 +544,40 @@ mod tests {
         );
     }
 
+    fn assert_visualizable(subscriber: &VisualizerEntitySubscriber, entity: &EntityPath) {
+        let is_visualizable = subscriber.visualizable_entities().contains_key(entity);
+        assert!(is_visualizable, "entity {entity} should be visualizable");
+    }
+
     // ---- Tests ----
+
+    // Regression test for https://github.com/rerun-io/rerun/issues/12736
+    #[test]
+    fn empty_required_component_is_still_visualizable() {
+        let store_id = test_store_id();
+        let entity: EntityPath = "/test/entity".into();
+        let mut sub = test_single_required_component_subscriber();
+
+        sub.on_events(&[ChunkStoreEvent {
+            store_id: store_id.clone(),
+            store_generation: ChunkStoreGeneration::default(),
+            event_id: 0,
+            diff: ChunkStoreDiff::SchemaAddition(ChunkStoreDiffSchemaAddition {
+                new_columns: vec![re_chunk_store::ChunkMeta {
+                    entity_path: entity.clone(),
+                    components: vec![re_chunk_store::ChunkComponentMeta {
+                        descriptor: MyPoints::descriptor_points(),
+                        inner_arrow_datatype: Some(MyPoint::arrow_datatype()),
+                        has_data: false, // This would happen if someone logs an entity without any rows!
+                        is_static: false,
+                    }],
+                }],
+            }),
+        }]);
+
+        assert!(sub.indicated_entities().contains(&entity));
+        assert_visualizable(&sub, &entity);
+    }
 
     #[test]
     fn both_buffer_and_format_in_one_event() {

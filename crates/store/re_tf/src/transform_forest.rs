@@ -722,12 +722,8 @@ fn pinhole3d_from_image_plane(
     resolved_pinhole_projection: &ResolvedPinholeProjection,
     pinhole_image_plane_distance: f64,
 ) -> glam::DAffine3 {
-    let ResolvedPinholeProjection {
-        parent: _, // TODO(andreas): Make use of this.
-        image_from_camera,
-        resolution: _,
-        view_coordinates,
-    } = resolved_pinhole_projection;
+    let image_from_camera = resolved_pinhole_projection.image_from_camera;
+    let view_coordinates = resolved_pinhole_projection.view_coordinates;
 
     // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
     // Our visualization interprets this as looking at a 2D image plane from a single point (the pinhole).
@@ -861,6 +857,8 @@ mod tests {
     use re_sdk_types::components::TransformFrameId;
     use re_sdk_types::{RowId, archetypes, components};
 
+    use crate::transform_resolution_cache::ResolvedPinholeProjectionCached;
+
     use super::*;
 
     fn test_pinhole() -> archetypes::Pinhole {
@@ -869,12 +867,15 @@ mod tests {
 
     fn test_resolved_pinhole(parent: TransformFrameIdHash) -> ResolvedPinholeProjection {
         ResolvedPinholeProjection {
-            parent,
-            image_from_camera: components::PinholeProjection::from_focal_length_and_principal_point(
-                [1.0, 2.0],
-                [50.0, 100.0],
-            ),
-            resolution: Some([100.0, 200.0].into()),
+            cached: ResolvedPinholeProjectionCached {
+                parent,
+                image_from_camera:
+                    components::PinholeProjection::from_focal_length_and_principal_point(
+                        [1.0, 2.0],
+                        [50.0, 100.0],
+                    ),
+                resolution: Some([100.0, 200.0].into()),
+            },
             view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
         }
     }
@@ -1425,9 +1426,9 @@ mod tests {
                     .build()?,
             ))?;
             let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
-            assert!(!transform_forest.any_missing_chunks());
+            assert!(transform_forest.any_missing_chunks());
 
-            // Forest sees the new relationship despite not having it reported since the cold cache will pick it up.
+            // Forest can't see the new relationship since it hasn't been reported to the cache.
             assert_eq!(
                 transform_forest
                     .transform_from_to(
@@ -1438,12 +1439,9 @@ mod tests {
                     .collect::<Vec<_>>(),
                 vec![(
                     TransformFrameIdHash::from_str("new_top"),
-                    Ok(TreeTransform {
-                        root: TransformFrameIdHash::from_str("new_top"),
-                        target_from_source: glam::DAffine3::from_translation(glam::dvec3(
-                            -5.0, 0.0, 0.0
-                        )),
-                    })
+                    Err(TransformFromToError::UnknownSourceFrame(
+                        TransformFrameIdHash::from_str("new_top")
+                    ))
                 )]
             );
             assert_eq!(
@@ -1459,7 +1457,7 @@ mod tests {
                     Err(TransformFromToError::NoPathBetweenFrames {
                         target: TransformFrameIdHash::from_str("child2"),
                         src: TransformFrameIdHash::from_str("top"),
-                        target_root: TransformFrameIdHash::from_str("new_top"),
+                        target_root: TransformFrameIdHash::from_str("child2"),
                         source_root: TransformFrameIdHash::from_str("root"),
                     })
                 )]

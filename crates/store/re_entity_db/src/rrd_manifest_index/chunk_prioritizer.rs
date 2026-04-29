@@ -259,13 +259,19 @@ pub struct RemainingByteBudget {
     /// Fixed total — used to check if a single chunk is too large to ever fit.
     pub total_bytes_in_memory: u64,
     remaining_bytes_in_memory: u64,
-    remaining_bytes_on_wire: u64,
+
+    /// The amount of bytes left to download on wire.
+    ///
+    /// This is allowed to go in the negatives, since we allow downloading
+    /// chunks larger than the budget. But if it's 0 or less, no more chunks
+    /// will be requested.
+    pub remaining_bytes_on_wire: i64,
 }
 
 impl RemainingByteBudget {
     /// If either the wire budget, or memory budget is filled.
     pub fn full(&self) -> bool {
-        self.remaining_bytes_in_memory == 0 || self.remaining_bytes_on_wire == 0
+        self.remaining_bytes_in_memory == 0 || self.remaining_bytes_on_wire <= 0
     }
 
     /// Create a new budget with the given memory and on-wire limits.
@@ -273,7 +279,7 @@ impl RemainingByteBudget {
         Self {
             total_bytes_in_memory,
             remaining_bytes_in_memory: total_bytes_in_memory,
-            remaining_bytes_on_wire: max_bytes_on_wire,
+            remaining_bytes_on_wire: max_bytes_on_wire.cast_signed(),
         }
     }
 
@@ -309,7 +315,7 @@ impl RemainingByteBudget {
     fn try_fit_on_wire(&mut self, bytes: u64) -> bool {
         let fit_on_wire = self.remaining_bytes_on_wire > 0;
 
-        self.remaining_bytes_on_wire = self.remaining_bytes_on_wire.saturating_sub(bytes);
+        self.remaining_bytes_on_wire = self.remaining_bytes_on_wire.saturating_sub_unsigned(bytes);
 
         fit_on_wire
     }

@@ -99,9 +99,15 @@ impl MessageDecoder for McapRos2Decoder {
     }
 
     fn supports_channel(&self, channel: &mcap::Channel<'_>) -> bool {
-        channel.schema.as_ref().is_some_and(|s| {
-            s.encoding.as_str() == Self::ENCODING && self.registry.contains_key(&s.name)
-        })
+        let Some(schema) = channel.schema.as_ref() else {
+            return false;
+        };
+
+        if !self.registry.contains_key(&schema.name) {
+            return false;
+        }
+
+        supports_ros2_cdr_channel(channel)
     }
 
     fn message_parser(
@@ -125,4 +131,50 @@ impl MessageDecoder for McapRos2Decoder {
             None
         }
     }
+}
+
+fn is_cdr_message_encoding(message_encoding: &str) -> bool {
+    message_encoding.eq_ignore_ascii_case("cdr")
+}
+
+/// Returns true for channels that explicitly advertise CDR payloads.
+pub(super) fn is_cdr_encoded_channel(channel: &mcap::Channel<'_>) -> bool {
+    is_cdr_message_encoding(&channel.message_encoding)
+}
+
+/// Warns once if a ROS2 schema is not encoded as CDR.
+pub(super) fn warn_if_ros2msg_non_cdr_channel(channel: &mcap::Channel<'_>) {
+    // Note: empty encodings have a separate, ROS-independent warning.
+    if channel.message_encoding.trim().is_empty()
+        || is_cdr_message_encoding(&channel.message_encoding)
+    {
+        return;
+    }
+
+    re_log::warn_once!(
+        concat!(
+            "MCAP channel '{}' has a ROS2 message schema, but unknown encoding '{}'. ",
+            "ROS 2 deserialization is only supported for CDR-encoded messages."
+        ),
+        channel.topic,
+        channel.message_encoding,
+    );
+}
+
+/// Returns true if the channel carries a ROS2 message schema with CDR payloads.
+pub(super) fn supports_ros2_cdr_channel(channel: &mcap::Channel<'_>) -> bool {
+    let Some(schema) = channel.schema.as_ref() else {
+        return false;
+    };
+
+    if schema.encoding.as_str() != McapRos2Decoder::ENCODING {
+        return false;
+    }
+
+    if !is_cdr_encoded_channel(channel) {
+        warn_if_ros2msg_non_cdr_channel(channel);
+        return false;
+    }
+
+    true
 }

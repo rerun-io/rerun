@@ -134,6 +134,24 @@ fn rebatch_video_entity(
 ) -> anyhow::Result<Vec<Chunk>> {
     re_tracing::profile_function!();
 
+    for chunk in sample_chunks.values() {
+        let unsorted_timelines: Vec<_> = chunk
+            .timelines()
+            .iter()
+            .filter(|(_, tc)| !tc.is_sorted())
+            .map(|(name, _)| name)
+            .collect();
+        if !unsorted_timelines.is_empty() {
+            // We could try pick one of the timelines _are_ sorted (w/ relation to RowId),
+            // but let's be better safe than sorry for now.
+            anyhow::bail!(
+                "chunk {} for entity '{entity_path}' has unsorted timelines: {:?} (compared to RowId). Video playback on these timelines may already be broken, and rebatching may make things worse",
+                chunk.id(),
+                unsorted_timelines
+            );
+        }
+    }
+
     let timeline_name =
         choose_timeline(sample_chunks).ok_or_else(|| anyhow::anyhow!("no timeline found"))?;
 
@@ -332,7 +350,7 @@ fn chunk_from_gop(
 
         result = Some(match result {
             None => extracted,
-            Some(prev) => prev.concatenated(&extracted)?,
+            Some(prev) => Chunk::concat_and_sort(&prev, &extracted)?,
         });
     }
 
@@ -370,7 +388,7 @@ fn merge_chunks(config: &ChunkStoreConfig, gop_chunks: Vec<Chunk>) -> anyhow::Re
 
         if let Some(acc) = accumulator.take() {
             if accumulator_bytes + gop_bytes <= chunk_max_bytes {
-                let combined = acc.concatenated(&gop)?;
+                let combined = Chunk::concat_and_sort(&acc, &gop)?;
                 accumulator_bytes += gop_bytes;
                 accumulator = Some(combined);
                 continue;

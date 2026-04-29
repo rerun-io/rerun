@@ -20,6 +20,7 @@ re_log_types = { workspace = true, features = ["serde"] }
 re_tuid.workspace = true
 
 # External
+percent-encoding.workspace = true
 serde.workspace = true
 static_assertions.workspace = true
 thiserror.workspace = true

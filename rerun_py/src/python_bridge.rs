@@ -241,6 +241,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_file_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
     m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
+    m.add_function(wrap_pyfunction!(send_chunk, m)?)?;
     m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(send_recording, m)?)?;
 
@@ -2014,6 +2015,29 @@ fn send_arrow_chunk(
         // because the destructor for the arrow data will acquire the GIL
         // in order to call back to pyarrow, and that can cause a deadlock,
         // and the call here may cause that destructor to be invoked.
+        recording.send_chunk(chunk);
+
+        flush_garbage_queue();
+
+        Ok(())
+    })
+}
+
+/// Send a pre-built chunk to the recording stream.
+#[pyfunction]
+#[pyo3(signature = (chunk, recording=None))]
+fn send_chunk(
+    py: Python<'_>,
+    chunk: &crate::chunk::PyChunkInternal,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+
+    let chunk = re_chunk::Chunk::clone(chunk.inner());
+
+    py.detach(|| {
         recording.send_chunk(chunk);
 
         flush_garbage_queue();
