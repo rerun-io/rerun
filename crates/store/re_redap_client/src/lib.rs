@@ -101,8 +101,21 @@ impl std::error::Error for TonicStatusError {
 }
 
 /// Helper function for executing requests or connection attempts with retries.
-#[tracing::instrument(skip(f), level = "trace")]
 pub async fn with_retry<T, F, Fut>(req_name: &str, f: F) -> ApiResult<T>
+where
+    F: Fn() -> Fut,
+    Fut: Future<Output = ApiResult<T>>,
+{
+    use tracing::Instrument as _;
+    let span = tracing::debug_span!(
+        "with_retry",
+        otel.name = format!("{req_name} with_retry"),
+        req_name,
+    );
+    with_retry_inner(req_name, f).instrument(span).await
+}
+
+async fn with_retry_inner<T, F, Fut>(req_name: &str, f: F) -> ApiResult<T>
 where
     F: Fn() -> Fut,
     Fut: Future<Output = ApiResult<T>>,
@@ -121,7 +134,10 @@ where
     let mut last_retryable_err = None;
 
     while attempts <= MAX_ATTEMPTS {
-        let res = f().await;
+        use tracing::Instrument as _;
+        let res = f()
+            .instrument(tracing::debug_span!("attempt", attempts))
+            .await;
 
         match res {
             Err(err) if err.kind.is_retryable() => {

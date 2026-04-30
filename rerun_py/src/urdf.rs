@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError};
 use pyo3::prelude::*;
@@ -6,11 +7,14 @@ use re_sdk::external::re_importer::{UrdfTree, urdf_joint_transform};
 use re_sdk::external::urdf_rs::{Joint, JointType, Link, Mimic};
 use re_sdk::{EntityPath, TimePoint};
 
+use crate::chunk_stream::PyLazyChunkStreamInternal;
+use crate::chunk_stream::stream::LazyChunkStream;
+use crate::chunk_stream::urdf_tree_stream::UrdfTreeStreamFactory;
 use crate::python_bridge::{PyRecordingStream, get_data_recording};
 
 /// A `.urdf` file loaded into memory (excluding any mesh files).
 #[pyclass(name = "_UrdfTreeInternal", module = "rerun_bindings.rerun_bindings")]
-pub struct PyUrdfTree(UrdfTree);
+pub struct PyUrdfTree(Arc<UrdfTree>);
 
 #[pymethods]
 impl PyUrdfTree {
@@ -37,7 +41,7 @@ impl PyUrdfTree {
         if let Some(entity_path) = static_transform_entity_path {
             tree = tree.with_static_transform_entity(entity_path);
         }
-        Ok(Self(tree))
+        Ok(Self(Arc::new(tree)))
     }
 
     /// Name of the robot defined in this URDF.
@@ -128,6 +132,15 @@ impl PyUrdfTree {
         recording.send_chunks(chunks);
 
         Ok(())
+    }
+
+    /// Return a new lazy stream over all chunks emitted from this URDF tree.
+    #[pyo3(signature = (*, include_joint_transforms = true))]
+    pub(crate) fn stream(&self, include_joint_transforms: bool) -> PyLazyChunkStreamInternal {
+        PyLazyChunkStreamInternal::new(LazyChunkStream::from_factory(UrdfTreeStreamFactory::new(
+            Arc::clone(&self.0),
+            include_joint_transforms,
+        )))
     }
 
     fn __repr__(&self) -> String {

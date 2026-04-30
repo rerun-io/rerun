@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import TYPE_CHECKING, overload
 
 from rerun.error_utils import _send_warning_or_raise
@@ -62,6 +63,46 @@ class VersionInfo:
 
     cloud_region: str | None
     """The cloud region (e.g. "us-west-2", "eastus"). None if not deployed on cloud."""
+
+
+@dataclass(frozen=True)
+class BenchmarkResult:
+    """Result of [`CatalogClient.benchmark`][]."""
+
+    rtt: timedelta
+    """Round-trip time to the server."""
+
+    bandwidth: float | None
+    """
+    Estimated download bandwidth from the server, in bytes per second.
+
+    `None` if the bandwidth probe was too small to be measured (e.g. a tiny payload on a fast
+    loopback connection — the elapsed time is dominated by RTT).
+    """
+
+    def __repr__(self) -> str:
+        return f"BenchmarkResult(rtt={_format_duration(self.rtt)}, bandwidth={_format_bandwidth(self.bandwidth)})"
+
+
+def _format_duration(d: timedelta) -> str:
+    seconds = d.total_seconds()
+    if seconds < 1e-3:
+        return f"{seconds * 1e6:.1f} μs"
+    if seconds < 1.0:
+        return f"{seconds * 1e3:.1f} ms"
+    return f"{seconds:.2f} s"
+
+
+def _format_bandwidth(bps: float | None) -> str:
+    if bps is None:
+        return "(too fast to measure)"
+    units = ("B/s", "KiB/s", "MiB/s", "GiB/s", "TiB/s")
+    value = bps
+    idx = 0
+    while value >= 1024.0 and idx + 1 < len(units):
+        value /= 1024.0
+        idx += 1
+    return f"{value:.1f} {units[idx]}"
 
 
 class CatalogClient:
@@ -146,6 +187,35 @@ class CatalogClient:
         """
         version, cloud_provider, cloud_region = self._internal.version_info()
         return VersionInfo(version=version, cloud_provider=cloud_provider, cloud_region=cloud_region)
+
+    def benchmark(self, *, num_bytes: int = 16 * 1024 * 1024, num_pings: int = 5) -> BenchmarkResult:
+        """
+        Measure round-trip time and download bandwidth to the server.
+
+        The RTT is estimated as the minimum elapsed time across `num_pings` 1-byte requests
+        (using the minimum rejects latency spikes from scheduling jitter or transient network
+        congestion). Bandwidth is measured by downloading `num_bytes` of pseudo-random
+        (incompressible) bytes, subtracting the RTT from the elapsed time, and dividing by the
+        payload size.
+
+        Parameters
+        ----------
+        num_bytes
+            Total payload size to download from the server when measuring bandwidth.
+        num_pings
+            How many 1-byte requests to send when estimating RTT.
+
+        Examples
+        --------
+        ```python
+        client = rr.catalog.CatalogClient("…")
+        print(client.benchmark())  # BenchmarkResult(rtt=12.0 ms, bandwidth=112.0 MiB/s)
+        ```
+
+        """
+        rtt_seconds = self._internal.rtt_seconds(num_pings)
+        bandwidth = self._internal.bandwidth_bytes_per_sec(num_bytes, rtt_seconds)
+        return BenchmarkResult(rtt=timedelta(seconds=rtt_seconds), bandwidth=bandwidth)
 
     def entries(self, *, include_hidden: bool = False) -> list[DatasetEntry | TableEntry]:
         """

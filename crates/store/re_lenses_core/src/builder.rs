@@ -1,172 +1,166 @@
 //! Builder API for constructing lenses.
 
-use std::collections::BTreeMap;
-
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::TimeType;
 use re_sdk_types::ComponentDescriptor;
 
-use crate::selector::DynExpr;
-use crate::{LensBuilderError, Selector, ast};
+use vec1::Vec1;
 
-/// Builder for lenses with support for multiple output modes.
+use crate::ast::{
+    ComponentOutput, DeriveSameEntityLens, DeriveSeparateEntityLens, Lens, LensInner, MutateLens,
+    Rows, TimeOutput,
+};
+use crate::selector::DynExpr;
+use crate::{LensBuilderError, Selector};
+
+/// Builder for a derive lens that creates new component/time columns from an input component.
 #[must_use]
-pub struct LensBuilder {
+pub struct DeriveLensBuilder {
     input: ComponentIdentifier,
-    scatter: bool,
-    same_entity_output: Option<ast::LensOutput>,
-    entity_outputs: BTreeMap<EntityPath, ast::LensOutput>,
+    rows: Rows,
+    target_entity: Option<EntityPath>,
+    components: Vec<ComponentOutput>,
+    time_outputs: Vec<TimeOutput>,
 }
 
-impl LensBuilder {
-    pub(crate) fn new(component: impl Into<ComponentIdentifier>) -> Self {
+impl DeriveLensBuilder {
+    pub(crate) fn new(input: impl Into<ComponentIdentifier>) -> Self {
         Self {
-            input: component.into(),
-            scatter: false,
-            same_entity_output: None,
-            entity_outputs: BTreeMap::new(),
+            input: input.into(),
+            rows: Rows::default(),
+            target_entity: None,
+            components: Vec::new(),
+            time_outputs: Vec::new(),
         }
     }
 
-    /// Enables 1:N row mapping (scatter) for this lens.
-    ///
-    /// When scatter is enabled, each input row produces multiple output rows by
-    /// exploding list arrays. The timepoint is replicated/scattered across the
-    /// output rows. Useful for flattening lists or exploding batches.
-    ///
-    /// By default, lenses use 1:1 row mapping where each input row produces
-    /// exactly one output row.
-    pub fn scatter(mut self) -> Self {
-        self.scatter = true;
+    /// Enables 1:N row mapping (scatter/explode), where each input row can
+    /// produce multiple output rows.
+    pub fn scatter_rows(mut self) -> Self {
+        self.rows = Rows::OneToMany;
         self
     }
 
-    /// Adds an output with the same entity as the input.
+    /// Sets the target entity path for the output.
     ///
-    /// Each input row produces exactly one output row (unless `.scatter()` is set on the
-    /// builder). Outputs inherit time columns from the input, plus any additional time
-    /// columns specified via `.time()`.
-    pub fn output_columns(
-        mut self,
-        builder: impl FnOnce(OutputBuilder) -> Result<OutputBuilder, LensBuilderError>,
-    ) -> Result<Self, LensBuilderError> {
-        if self.same_entity_output.is_some() {
-            return Err(LensBuilderError::DuplicateSameEntityOutput);
-        }
-        let output_builder = OutputBuilder::new();
-        let output = builder(output_builder)?.build(self.input)?;
-        self.same_entity_output = Some(output);
-        Ok(self)
-    }
-
-    /// Adds an output targeting an explicit entity path.
-    ///
-    /// Each input row produces exactly one output row (unless `.scatter()` is set on the
-    /// builder). Outputs inherit time columns from the input, plus any additional time
-    /// columns specified via `.time()`.
-    pub fn output_columns_at(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        builder: impl FnOnce(OutputBuilder) -> Result<OutputBuilder, LensBuilderError>,
-    ) -> Result<Self, LensBuilderError> {
-        let entity_path = entity_path.into();
-        if self.entity_outputs.contains_key(&entity_path) {
-            return Err(LensBuilderError::DuplicateTargetEntity {
-                target_entity: entity_path,
-            });
-        }
-        let output_builder = OutputBuilder::new();
-        let output = builder(output_builder)?.build(self.input)?;
-        self.entity_outputs.insert(entity_path, output);
-        Ok(self)
-    }
-
-    /// Finalizes this builder and returns the corresponding lens.
-    pub fn build(self) -> ast::Lens {
-        ast::Lens {
-            input: self.input,
-            scatter: self.scatter,
-            same_entity_output: self.same_entity_output,
-            entity_outputs: self.entity_outputs,
-        }
-    }
-}
-
-// ==================== Output Builder ====================
-
-/// Builder for lens output groups.
-///
-/// Defines the component and time columns that a lens output produces.
-#[must_use]
-pub struct OutputBuilder {
-    components: Vec<ast::ComponentOutput>,
-    time_outputs: Vec<ast::TimeOutput>,
-}
-
-// TODO(RR-3962): Get rid of the `unnecessary_wraps`.
-#[expect(
-    clippy::unnecessary_wraps,
-    reason = "Result return enables `?` chaining in builder closures"
-)]
-impl OutputBuilder {
-    fn new() -> Self {
-        Self {
-            components: vec![],
-            time_outputs: vec![],
-        }
+    /// When set, output is written to this entity instead of the input entity.
+    pub fn output_entity(mut self, entity: impl Into<EntityPath>) -> Self {
+        self.target_entity = Some(entity.into());
+        self
     }
 
     /// Adds a component output column.
-    ///
-    /// # Arguments
-    /// * `component_descr` - The descriptor for the output component
-    /// * `selector` - Selector to apply to the input column
-    pub fn component(
+    #[expect(
+        clippy::wrong_self_convention,
+        reason = "builder pattern: consumes self"
+    )]
+    pub fn to_component(
         mut self,
         component_descr: ComponentDescriptor,
         selector: impl Into<Selector<DynExpr>>,
-    ) -> Result<Self, LensBuilderError> {
-        self.components.push(ast::ComponentOutput {
+    ) -> Self {
+        self.components.push(ComponentOutput {
             component_descr,
             selector: selector.into(),
         });
-        Ok(self)
+        self
     }
 
-    /// Adds a time extraction.
+    /// Adds a time extraction output.
     ///
-    /// Extracts data from the input column to create a new time column for the output rows.
-    ///
-    /// # Arguments
-    /// * `timeline_name` - Name of the timeline to create
-    /// * `timeline_type` - Type of timeline (Sequence or Time)
-    /// * `selector` - Selector to extract time values (must produce [`arrow::array::Int64Array`])
-    pub fn time(
+    /// Extracts data from the input column to create a new time column.
+    #[expect(
+        clippy::wrong_self_convention,
+        reason = "builder pattern: consumes self"
+    )]
+    pub fn to_timeline(
         mut self,
         timeline_name: impl Into<TimelineName>,
         timeline_type: TimeType,
         selector: impl Into<Selector<DynExpr>>,
-    ) -> Result<Self, LensBuilderError> {
-        self.time_outputs.push(ast::TimeOutput {
+    ) -> Self {
+        self.time_outputs.push(TimeOutput {
             timeline_name: timeline_name.into(),
             timeline_type,
             selector: selector.into(),
         });
-        Ok(self)
+        self
     }
 
-    /// Builds a [`ast::LensOutput`], the `input` is passed for providing contextualized errors.
-    fn build(self, input: ComponentIdentifier) -> Result<ast::LensOutput, LensBuilderError> {
-        let components = self.components.try_into().map_err(|_err| {
+    /// Builds the derive lens.
+    ///
+    /// Fails if no component outputs were added, or if the output component
+    /// matches the input on the same entity.
+    pub fn build(self) -> Result<Lens, LensBuilderError> {
+        let output_components = Vec1::try_from_vec(self.components).map_err(|_empty_vec| {
             LensBuilderError::MissingOutputComponent {
-                input_component: input,
+                input_component: self.input,
             }
         })?;
 
-        Ok(ast::LensOutput {
-            input_id: input,
-            output_components: components,
-            output_timelines: self.time_outputs,
+        if self.target_entity.is_none() {
+            for comp in &output_components {
+                if comp.component_descr.component == self.input {
+                    return Err(LensBuilderError::InputEqualsOutput {
+                        component: self.input,
+                    });
+                }
+            }
+        }
+
+        let inner = if let Some(target_entity) = self.target_entity {
+            LensInner::DeriveSeparateEntity(DeriveSeparateEntityLens {
+                input: self.input,
+                rows: self.rows,
+                target_entity,
+                output_components,
+                output_timelines: self.time_outputs,
+            })
+        } else {
+            LensInner::DeriveSameEntity(DeriveSameEntityLens {
+                input: self.input,
+                rows: self.rows,
+                output_components,
+                output_timelines: self.time_outputs,
+            })
+        };
+        Ok(inner.into())
+    }
+}
+
+/// Builder for a mutate lens that modifies the input component in-place.
+#[must_use]
+pub struct MutateLensBuilder {
+    input: ComponentIdentifier,
+    selector: Selector<DynExpr>,
+    keep_row_ids: bool,
+}
+
+impl MutateLensBuilder {
+    pub(crate) fn new(
+        input: impl Into<ComponentIdentifier>,
+        selector: impl Into<Selector<DynExpr>>,
+    ) -> Self {
+        Self {
+            input: input.into(),
+            selector: selector.into(),
+            keep_row_ids: false,
+        }
+    }
+
+    /// Preserves the original `RowIds` in the output chunk.
+    pub fn keep_row_ids(mut self) -> Self {
+        self.keep_row_ids = true;
+        self
+    }
+
+    /// Builds the mutate lens.
+    pub fn build(self) -> Lens {
+        LensInner::Mutate(MutateLens {
+            input: self.input,
+            selector: self.selector,
+            keep_row_ids: self.keep_row_ids,
         })
+        .into()
     }
 }

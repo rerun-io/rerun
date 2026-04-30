@@ -156,6 +156,7 @@ class LazyChunkStream:
         lenses: Sequence[Lens] | Lens,
         *,
         output_mode: Literal["drop_unmatched", "forward_unmatched", "forward_all"] = "drop_unmatched",
+        content: ContentFilter | str | Sequence[str] | None = None,
     ) -> LazyChunkStream:
         """
         Apply lenses to transform chunk data. Consumes this stream.
@@ -166,13 +167,17 @@ class LazyChunkStream:
         Parameters
         ----------
         lenses:
-            One or more [`Lens`][rerun.experimental.Lens] objects describing the transformations.
+            One or more [`Lens`][rerun.experimental.Lens] objects.
         output_mode:
             How to handle unmatched chunks:
 
             - `"forward_all"`: forward both transformed and original data
             - `"forward_unmatched"`: forward transformed if matched, otherwise original
             - `"drop_unmatched"`: only forward transformed data (default)
+        content:
+            Optional entity path filter. When set, lenses are applied only to chunks
+            whose entity path matches; non-matching chunks pass through unchanged
+            regardless of `output_mode`.
 
         """
         if isinstance(lenses, Lens):
@@ -181,6 +186,7 @@ class LazyChunkStream:
             self._internal.lenses(
                 [lens._internal for lens in lenses],
                 output_mode,
+                content=_normalize_content(content),
             )
         )
 

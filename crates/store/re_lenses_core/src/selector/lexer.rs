@@ -76,12 +76,12 @@ impl std::fmt::Display for TokenType {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Token {
+pub(super) struct Token {
     pub typ: TokenType,
     pub line: usize,
 }
 
-pub struct Lexer<'a> {
+pub(super) struct Lexer<'a> {
     chars: std::iter::Peekable<std::str::Chars<'a>>,
     // TODO(grtlr): improve location support, for lexemes in particular
     line: usize,

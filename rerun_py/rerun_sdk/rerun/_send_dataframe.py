@@ -21,6 +21,10 @@ RERUN_KIND = b"rerun:kind"
 RERUN_KIND_CONTROL = b"control"
 RERUN_KIND_INDEX = b"index"
 
+# Root entity path used for recording-scope properties (e.g. `start_time`).
+# Mirrors `re_log_types::EntityPath::properties()` on the Rust side.
+RECORDING_PROPERTIES_PATH = "/__properties"
+
 
 class _RawIndexColumn(TimeColumnLike):
     def __init__(self, metadata: dict[bytes, bytes], col: pa.Array) -> None:

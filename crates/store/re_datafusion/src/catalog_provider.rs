@@ -36,6 +36,7 @@ pub struct RedapCatalogProvider {
     runtime: RuntimeHandle,
 }
 
+#[tracing::instrument(skip_all)]
 fn get_table_refs(
     client: &ConnectionClient,
     runtime: &RuntimeHandle,
@@ -54,6 +55,7 @@ fn get_table_refs(
     })
 }
 
+#[tracing::instrument(skip_all)]
 pub fn get_all_catalog_names(
     client: &ConnectionClient,
     runtime: &RuntimeHandle,

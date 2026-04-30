@@ -290,18 +290,27 @@ pub fn add_axis_arrows(
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X * axis_length)
         .radius(line_radius)
         .color(tokens.axis_color_x)
-        .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
+        .flags(
+            LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE
+                | LineStripFlags::STRIP_FLAG_CAP_START_ROUND,
+        )
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y * axis_length)
         .radius(line_radius)
         .color(tokens.axis_color_y)
-        .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
+        .flags(
+            LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE
+                | LineStripFlags::STRIP_FLAG_CAP_START_ROUND,
+        )
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z * axis_length)
         .radius(line_radius)
         .color(tokens.axis_color_z)
-        .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
+        .flags(
+            LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE
+                | LineStripFlags::STRIP_FLAG_CAP_START_ROUND,
+        )
         .picking_instance_id(picking_instance_id);
 }

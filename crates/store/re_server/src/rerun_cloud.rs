@@ -19,13 +19,13 @@ use re_log_encoding::ToTransport as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, Timeline};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, EntryDetails, EntryKind,
-    FetchChunksRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-    GetDatasetSchemaResponse, GetRrdManifestResponse, GetSegmentTableSchemaResponse,
-    QueryDatasetResponse, QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse,
-    QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
-    RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-    ScanSegmentTableResponse, ScanTableResponse,
+    CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, DoBandwidthTestResponse,
+    EntryDetails, EntryKind, FetchChunksRequest, GetDatasetManifestSchemaRequest,
+    GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse, GetRrdManifestResponse,
+    GetSegmentTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
+    QueryTasksOnCompletionResponse, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
+    RegisterTableResponse, RegisterWithDatasetResponse, ScanDatasetManifestRequest,
+    ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse,
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
@@ -313,6 +313,7 @@ macro_rules! decl_stream {
     };
 }
 
+decl_stream!(DoBandwidthTestResponseStream<rerun_cloud:DoBandwidthTestResponse>);
 decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
 decl_stream!(GetRrdManifestResponseStream<manifest:GetRrdManifestResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
@@ -453,6 +454,24 @@ impl RerunCloudService for RerunCloudHandler {
                 can_read: true,
                 can_write: true,
             },
+        ))
+    }
+
+    type DoBandwidthTestStream = DoBandwidthTestResponseStream;
+
+    async fn do_bandwidth_test(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::DoBandwidthTestRequest>,
+    ) -> tonic::Result<tonic::Response<Self::DoBandwidthTestStream>> {
+        let re_protos::cloud::v1alpha1::DoBandwidthTestRequest { num_bytes } = request.into_inner();
+        let max = re_protos::cloud::v1alpha1::ext::MAX_BANDWIDTH_TEST_BYTES;
+        if num_bytes > max {
+            return Err(Status::invalid_argument(format!(
+                "num_bytes ({num_bytes}) exceeds the maximum of {max}"
+            )));
+        }
+        Ok(tonic::Response::new(
+            Box::pin(bandwidth_test_stream(num_bytes)) as Self::DoBandwidthTestStream,
         ))
     }
 
@@ -2155,4 +2174,14 @@ fn get_chunks_for_query_results(
     }
 
     (all_chunks, all_missing.into_iter().collect())
+}
+
+/// Streams `num_bytes` of pseudo-random (incompressible) bytes back to the client,
+/// split into ~1 MiB chunks.
+fn bandwidth_test_stream(
+    num_bytes: u64,
+) -> impl futures::Stream<Item = tonic::Result<DoBandwidthTestResponse>> + Send {
+    futures::stream::iter(
+        re_protos::cloud::v1alpha1::ext::BandwidthTestPayloadIter::new(num_bytes).map(Ok),
+    )
 }

@@ -152,6 +152,26 @@ impl PyCatalogClientInternal {
         Ok((info.version, info.cloud_provider, info.cloud_region))
     }
 
+    fn rtt_seconds(self_: Py<Self>, py: Python<'_>, num_pings: usize) -> PyResult<f64> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.rtt_seconds").entered();
+        let connection = self_.borrow(py).connection.clone();
+        Ok(connection.rtt(py, num_pings)?.as_secs_f64())
+    }
+
+    fn bandwidth_bytes_per_sec(
+        self_: Py<Self>,
+        py: Python<'_>,
+        num_bytes: u64,
+        rtt_seconds: f64,
+    ) -> PyResult<Option<f64>> {
+        let _span =
+            read_trace_context_from_python(py, "CatalogClient.bandwidth_bytes_per_sec").entered();
+        let connection = self_.borrow(py).connection.clone();
+        let rtt = std::time::Duration::try_from_secs_f64(rtt_seconds)
+            .map_err(|err| PyValueError::new_err(format!("invalid rtt_seconds: {err}")))?;
+        connection.bandwidth_bytes_per_sec(py, num_bytes, rtt)
+    }
+
     /// Get a list of all dataset entries in the catalog.
     fn datasets(
         self_: Py<Self>,
@@ -390,6 +410,7 @@ impl PyCatalogClientInternal {
 }
 
 impl PyCatalogClientInternal {
+    #[tracing::instrument(skip_all)]
     fn update_catalog_providers(&self, py: Python<'_>, force_register: bool) -> Result<(), PyErr> {
         let client = wait_for_future(py, self.connection.client())?;
         let runtime = get_tokio_runtime().handle();

@@ -136,6 +136,21 @@ class Chunk:
         """Convert this chunk to an Arrow RecordBatch."""
         return self._internal.to_record_batch()
 
+    def with_entity_path(self, entity_path: str) -> Chunk:
+        """
+        Return a copy of this chunk with a new entity path.
+
+        A fresh chunk ID is generated to avoid aliasing the original chunk in downstream
+        caches and indices. Row IDs, timelines, and components are preserved as-is.
+
+        Parameters
+        ----------
+        entity_path:
+            The new entity path for the returned chunk (e.g. `"/left/camera/image"`).
+
+        """
+        return Chunk(self._internal.with_entity_path(entity_path))
+
     def apply_selector(
         self,
         source: ComponentDescriptor | str,
@@ -146,6 +161,10 @@ class Chunk:
 
         All other columns (timelines, other components) are preserved unchanged.
         The source component's existing descriptor is preserved.
+
+        For better performance, prefer [`MutateLens`][rerun.experimental.MutateLens]
+        with [`apply_lenses`][rerun.experimental.Chunk.apply_lenses]
+        which processes multiple transformations in a single pass.
 
         Parameters
         ----------
@@ -177,14 +196,15 @@ class Chunk:
 
         return Chunk(self._internal.apply_selector(source_str, selector._internal))
 
-    def apply_lenses(self, lenses: Sequence[Lens] | Lens) -> list[Chunk]:
+    def apply_lenses(
+        self,
+        lenses: Sequence[Lens] | Lens,
+    ) -> list[Chunk]:
         """
         Apply one or more lenses to this chunk, returning transformed chunks.
 
         Each lens matches by input component. Columns not consumed by
         any matching lens are forwarded unchanged as a separate chunk.
-        A single lens with multiple [`LensOutput`][rerun.experimental.LensOutput] groups may produce
-        multiple output chunks (e.g., with different target entities).
 
         If no lens matches the chunk (including when an empty list of
         lenses is passed), the original chunk is returned unchanged.
@@ -192,26 +212,16 @@ class Chunk:
         Parameters
         ----------
         lenses:
-            Zero or more [`Lens`][rerun.experimental.Lens] objects to apply.
+            One or more [`Lens`][rerun.experimental.Lens] objects.
 
         Returns
         -------
-        A list of [`Chunk`][rerun.experimental.Chunk] objects. Contains the original chunk if no
-        lens matched, or one or more transformed chunks (optionally
-        preceded by a chunk with the untouched forwarded columns)
-        otherwise.
-
-        Raises
-        ------
-        ValueError
-            If a lens produces a partial result (e.g., a selector fails
-            to evaluate on the input data, or a lens produces no output
-            columns).
+        A list of [`Chunk`][] objects.
 
         """
-        from ._lens import Lens as LensType
+        from ._lens import Lens
 
-        if isinstance(lenses, LensType):
+        if isinstance(lenses, Lens):
             lenses = [lenses]
         return [Chunk(internal) for internal in self._internal.apply_lenses([lens._internal for lens in lenses])]
 

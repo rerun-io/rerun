@@ -444,7 +444,7 @@ fn setup_target_config(
             viewport_transformation,
             pixels_per_point,
             outline_config: any_outlines.then(|| re_view::outline_config(egui_painter.ctx())),
-            blend_with_background: false,
+            blend_with_background: re_renderer::BlendWithBackground::No,
             picking_config,
         }
     })

@@ -29,7 +29,6 @@ re_sdk_types.workspace = true
 
 ahash.workspace = true
 arrow.workspace = true
-itertools.workspace = true
 nohash-hasher.workspace = true
 thiserror.workspace = true
 vec1.workspace = true

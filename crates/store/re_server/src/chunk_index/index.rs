@@ -496,7 +496,7 @@ fn find_datatypes(
                 crate::store::ResolvedStore::Eager(h) => {
                     h.read().iter_physical_chunks().cloned().collect()
                 }
-                crate::store::ResolvedStore::Lazy(lazy) => lazy.collect_physical_chunks().ok()?,
+                crate::store::ResolvedStore::Lazy(lazy) => lazy.load_all_chunks().ok()?,
             };
             for chunk in chunks {
                 if chunk.entity_path() == entity_path

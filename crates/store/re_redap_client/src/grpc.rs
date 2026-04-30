@@ -166,6 +166,8 @@ pub type RedapClientInner = re_auth::client::AuthService<
                     re_perf_telemetry::external::tower_http::classify::GrpcErrorsAsFailures,
                 >,
                 re_perf_telemetry::GrpcMakeSpan,
+                re_perf_telemetry::external::tower_http::trace::DefaultOnRequest,
+                re_perf_telemetry::ClientOnResponse,
             >,
         >,
         re_protos::headers::RerunVersionInterceptor,
@@ -743,6 +745,11 @@ fn chunk_id_column(batch: &RecordBatch) -> Option<&[ChunkId]> {
 }
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
+#[tracing::instrument(skip_all, fields(
+    num_chunks = tracing::field::Empty,
+    total_size_bytes = tracing::field::Empty,
+    downloaded_bytes = tracing::field::Empty,
+))]
 async fn load_chunks(
     client: &ConnectionClient,
     tx: &re_log_channel::LogSender,
@@ -751,10 +758,21 @@ async fn load_chunks(
     options: &StreamingOptions,
 ) -> ApiResult<ControlFlow<()>> {
     let num_chunks = full_batch.num_rows();
+    let total_size_bytes = total_size_bytes_from_batch(&full_batch);
 
+    let span = tracing::Span::current();
+    span.record("num_chunks", num_chunks);
+    if let Some(total_size_bytes) = total_size_bytes {
+        span.record("total_size_bytes", total_size_bytes);
+    }
+
+    let total_size_str = total_size_bytes
+        .map(|bytes| re_format::format_bytes(bytes as _))
+        .unwrap_or_else(|| "unknown size".to_owned());
     re_log::debug!(
-        "Downloading {} chunks from server…",
-        re_format::format_uint(num_chunks)
+        "Downloading {} chunks ({}) from server…",
+        re_format::format_uint(num_chunks),
+        total_size_str,
     );
     if 25_000 < num_chunks {
         re_log::debug_warn!(
@@ -767,7 +785,6 @@ async fn load_chunks(
 
     // Batch requests in groups of N=32 rows.
     const BATCH_SIZE: usize = 32;
-    let total_size_bytes = total_size_bytes_from_batch(&full_batch);
     let mut futures = FuturesUnordered::new();
 
     for start in (0..num_chunks).step_by(BATCH_SIZE) {
@@ -798,9 +815,12 @@ async fn load_chunks(
         }
     }
 
+    span.record("downloaded_bytes", downloaded_bytes);
+
     re_log::trace!(
-        "Finished downloading {} chunks.",
-        re_format::format_uint(num_chunks)
+        "Finished downloading {} chunks ({}).",
+        re_format::format_uint(num_chunks),
+        re_format::format_bytes(downloaded_bytes as _),
     );
 
     Ok(ControlFlow::Continue(()))
@@ -814,6 +834,11 @@ fn total_size_bytes_from_batch(batch: &RecordBatch) -> Option<u64> {
 }
 
 /// Returns `(control_flow, bytes_downloaded)`.
+#[tracing::instrument(skip_all, fields(
+    num_chunks_in_batch = batch.num_rows(),
+    batch_bytes = tracing::field::Empty,
+    num_chunks_received = tracing::field::Empty,
+))]
 async fn load_small_chunk_batch(
     client: &mut ConnectionClient,
     tx: &re_log_channel::LogSender,
@@ -826,10 +851,12 @@ async fn load_small_chunk_batch(
     let trace_id = chunk_stream.trace_id();
 
     let mut batch_bytes: u64 = 0;
+    let mut num_chunks_received: u64 = 0;
 
     while let Some(chunks) = chunk_stream.next().await {
         for (chunk, _partition_id) in chunks? {
             batch_bytes += chunk.heap_size_bytes();
+            num_chunks_received += 1;
 
             if tx
                 .send(
@@ -849,10 +876,17 @@ async fn load_small_chunk_batch(
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
+                let span = tracing::Span::current();
+                span.record("batch_bytes", batch_bytes);
+                span.record("num_chunks_received", num_chunks_received);
                 return Ok((ControlFlow::Break(()), batch_bytes));
             }
         }
     }
+
+    let span = tracing::Span::current();
+    span.record("batch_bytes", batch_bytes);
+    span.record("num_chunks_received", num_chunks_received);
 
     Ok((ControlFlow::Continue(()), batch_bytes))
 }

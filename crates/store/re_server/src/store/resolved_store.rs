@@ -4,8 +4,8 @@ use std::sync::Arc;
 use arrow::array::RecordBatch;
 use nohash_hasher::IntSet;
 use re_chunk_store::{
-    Chunk, ChunkId, ChunkStore, ChunkStoreHandle, ChunkStoreHandleWeak, ChunkTrackingMode,
-    LazyRrdStore, QueryResults, StoreSchema,
+    ChunkStore, ChunkStoreHandle, ChunkStoreHandleWeak, ChunkTrackingMode, LazyRrdStore,
+    QueryResults, StoreSchema,
 };
 use re_log_encoding::RrdManifest;
 use re_log_types::{EntityPath, StoreId, StoreKind};
@@ -41,13 +41,6 @@ impl ResolvedStore {
         match self {
             Self::Eager(h) => h.read().all_entities(),
             Self::Lazy(l) => l.all_entities(),
-        }
-    }
-
-    pub fn physical_chunk(&self, id: &ChunkId) -> Option<Arc<Chunk>> {
-        match self {
-            Self::Eager(h) => h.read().physical_chunk(id).cloned(),
-            Self::Lazy(l) => l.physical_chunk(id),
         }
     }
 

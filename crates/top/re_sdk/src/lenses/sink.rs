@@ -61,7 +61,7 @@ impl<S: LogSink> LogSink for LensesSink<S> {
                                     // TODO(grtlr): Make this even more contextualized in the future!
                                     re_log::error_once!("Error encountered for lens: {error}");
                                 }
-                                if let Some(chunk) = partial_chunk.take()
+                                if let Some(chunk) = partial_chunk.partial_chunk()
                                     && self.strict
                                 {
                                     self.send_or_log_error(store_id.clone(), &chunk);

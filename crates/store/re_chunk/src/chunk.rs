@@ -527,6 +527,13 @@ impl Chunk {
     pub fn clone_with_new_id(&self) -> Self {
         self.clone_with_id(ChunkId::new())
     }
+
+    #[inline]
+    pub fn clone_with_new_entity_path(&self, entity_path: EntityPath) -> Self {
+        let mut chunk = self.clone_with_id(ChunkId::new());
+        chunk.entity_path = entity_path;
+        chunk
+    }
 }
 
 impl Chunk {

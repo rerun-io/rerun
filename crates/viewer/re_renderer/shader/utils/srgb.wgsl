@@ -6,9 +6,18 @@ fn linear_from_srgb(srgb: vec3f) -> vec3f {
     return mix(under, over, cutoff);
 }
 
-// Converts a color from 0-1 sRGB to 0-1 linear, leaves alpha untouched
-fn linear_from_srgba(srgb_a: vec4f) -> vec4f {
+// Converts a color from 0-1 sRGB to 0-1 linear, assuming no alpha pre-multiplication.
+// Returns a linear color *without* alpha pre-multiplication.
+fn linear_from_srgba_unmultiplied(srgb_a: vec4f) -> vec4f {
     return vec4f(linear_from_srgb(srgb_a.rgb), srgb_a.a);
+}
+
+// Converts a color from 0-1 sRGB to 0-1 linear, assuming pre-multiplied alpha.
+// Returns a linear color with alpha pre-multiplication.
+fn linear_from_srgba_premultiplied(srgba_premultiplied: vec4f) -> vec4f {
+    // Make sure we stay in the 0-1 range, otherwise successive operations may yield incorrect results.
+    let srgb_a = saturate(srgba_premultiplied.rgb / max(srgba_premultiplied.a, 1e-6));
+    return vec4f(linear_from_srgb(srgb_a.rgb) * srgba_premultiplied.a, srgba_premultiplied.a);
 }
 
 // Converts a color from 0-1 linear to 0-1 sRGB

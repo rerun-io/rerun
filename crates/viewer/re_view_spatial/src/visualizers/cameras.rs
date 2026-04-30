@@ -171,12 +171,12 @@ impl CamerasVisualizer {
                     corners[3],
                     glam::Vec3::ZERO,
                 ],
-                LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS,
+                LineStripFlags::STRIP_FLAGS_OUTWARD_EXTENDING_ROUND_CAPS,
             ),
             // Missing piece of the rectangle at the far plane.
             (
                 vec![corners[1], corners[2]],
-                LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS,
+                LineStripFlags::STRIP_FLAGS_OUTWARD_EXTENDING_ROUND_CAPS,
             ),
             // Triangle indicating up direction.
             // Don't extend round caps here, this would reach into the frustum otherwise.

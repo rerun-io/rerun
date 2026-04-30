@@ -286,7 +286,7 @@ pub fn load_keypoint_connections(
                 .add_segment(*a, *b)
                 .radius(line_radius)
                 .color(color)
-                .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
+                .flags(re_renderer::renderer::LineStripFlags::STRIP_FLAG_COLOR_GRADIENT)
                 // Select the entire object when clicking any of the lines.
                 .picking_instance_id(re_renderer::PickingLayerInstanceId(
                     re_log_types::Instance::ALL.get(),

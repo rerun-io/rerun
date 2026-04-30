@@ -16,7 +16,7 @@ use super::{error::Error, transform::Transform};
 /// - `[[1, 2], [3]]` with index 1 → `[2, null]` (second list too short)
 /// - `null` → `null` (null rows produce null results)
 #[derive(Clone, Debug)]
-pub(crate) struct GetIndexList {
+pub struct GetIndexList {
     index: u64,
 }
 

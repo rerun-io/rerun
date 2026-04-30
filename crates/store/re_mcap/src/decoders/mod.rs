@@ -63,21 +63,66 @@ pub trait Decoder {
 
     /// The processing that needs to happen for this decoder.
     ///
-    /// This function has access to the entire MCAP file via `mcap_bytes`.
-    ///
-    /// `topic_filter` is provided so per-channel decoders can skip channels
-    /// the user has filtered out. File-level decoders (those that don't iterate
-    /// channels) may ignore it.
-    // TODO(michael): consider introducing a `DecoderContext` for holding the processing context.
+    /// This function has access to all file-level processing inputs via [`DecoderContext`].
     // TODO(#10862): Consider abstracting over `Summary` to allow more convenient / performant indexing.
     // For example, we probably don't want to store the entire file in memory.
     fn process(
         &mut self,
-        mcap_bytes: &[u8],
-        summary: &::mcap::Summary,
-        topic_filter: &TopicFilter,
+        ctx: &DecoderContext<'_>,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error>;
+}
+
+/// Shared processing context of a decode run.
+pub struct DecoderContext<'a> {
+    mcap_bytes: &'a [u8],
+    summary: &'a ::mcap::Summary,
+    topic_filter: &'a TopicFilter,
+    empty_channels: BTreeSet<ChannelId>,
+}
+
+impl<'a> DecoderContext<'a> {
+    pub fn new(
+        mcap_bytes: &'a [u8],
+        summary: &'a ::mcap::Summary,
+        topic_filter: &'a TopicFilter,
+        empty_channels: BTreeSet<ChannelId>,
+    ) -> Self {
+        Self {
+            mcap_bytes,
+            summary,
+            topic_filter,
+            empty_channels,
+        }
+    }
+
+    pub fn summary(&self) -> &'a ::mcap::Summary {
+        self.summary
+    }
+
+    /// Returns an iterator over all MCAP channels that are relevant for processing
+    /// in this context. I.e. all channels after removing empties, applying filters etc.
+    pub fn relevant_channels(&self) -> impl Iterator<Item = &std::sync::Arc<mcap::Channel<'a>>> {
+        self.summary.channels.values().filter(|channel| {
+            !self.empty_channels.contains(&ChannelId(channel.id))
+                && self.topic_filter.matches(&channel.topic)
+        })
+    }
+
+    /// Iterates metadata records referenced by the summary metadata index.
+    pub fn metadata_records(
+        &self,
+    ) -> impl Iterator<
+        Item = (
+            &'a mcap::records::MetadataIndex,
+            Result<mcap::records::Metadata, mcap::McapError>,
+        ),
+    > + '_ {
+        self.summary
+            .metadata_indexes
+            .iter()
+            .map(|index| (index, mcap::read::metadata(self.mcap_bytes, index)))
+    }
 }
 
 /// Can be used to extract per-message information from an MCAP file.
@@ -335,8 +380,11 @@ impl ExecutionPlan {
         time_type: TimeType,
         emit: &mut dyn FnMut(Chunk),
     ) -> anyhow::Result<()> {
+        let empty_channels = collect_empty_channels(mcap_bytes, summary)?;
+        let ctx = DecoderContext::new(mcap_bytes, summary, &self.topic_filter, empty_channels);
+
         for mut decoder in self.file_decoders {
-            decoder.process(mcap_bytes, summary, &self.topic_filter, emit)?;
+            decoder.process(&ctx, emit)?;
         }
 
         for runner in &mut self.runners {

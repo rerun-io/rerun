@@ -35,15 +35,14 @@ fn test_output_mode_forward_all() {
     let unmatched_chunk = create_test_chunk("other/entity", "other_component");
 
     // Create a lens that only matches the first chunk
-    let lens = Lens::for_input_column("test_component")
-        .output_columns_at("matched/output", |out| {
-            out.component(
-                ComponentDescriptor::partial("transformed"),
-                Selector::parse(".")?,
-            )
-        })
-        .unwrap()
-        .build();
+    let lens = Lens::derive("test_component")
+        .output_entity("matched/output")
+        .to_component(
+            ComponentDescriptor::partial("transformed"),
+            Selector::parse(".").unwrap(),
+        )
+        .build()
+        .unwrap();
 
     let lenses = Lenses::new(OutputMode::ForwardAll)
         .add_lens_with_filter(EntityPathFilter::parse_forgiving("matched/**"), lens);
@@ -83,15 +82,14 @@ fn test_output_mode_forward_unmatched() {
     let unmatched_chunk = create_test_chunk("other/entity", "other_component");
 
     // Create a lens that only matches the first chunk
-    let lens = Lens::for_input_column("test_component")
-        .output_columns_at("matched/output", |out| {
-            out.component(
-                ComponentDescriptor::partial("transformed"),
-                Selector::parse(".")?,
-            )
-        })
-        .unwrap()
-        .build();
+    let lens = Lens::derive("test_component")
+        .output_entity("matched/output")
+        .to_component(
+            ComponentDescriptor::partial("transformed"),
+            Selector::parse(".").unwrap(),
+        )
+        .build()
+        .unwrap();
 
     let lenses = Lenses::new(OutputMode::ForwardUnmatched)
         .add_lens_with_filter(EntityPathFilter::parse_forgiving("matched/**"), lens);
@@ -127,15 +125,14 @@ fn test_output_mode_drop_unmatched() {
     let unmatched_chunk = create_test_chunk("other/entity", "other_component");
 
     // Create a lens that only matches the first chunk
-    let lens = Lens::for_input_column("test_component")
-        .output_columns_at("matched/output", |out| {
-            out.component(
-                ComponentDescriptor::partial("transformed"),
-                Selector::parse(".")?,
-            )
-        })
-        .unwrap()
-        .build();
+    let lens = Lens::derive("test_component")
+        .output_entity("matched/output")
+        .to_component(
+            ComponentDescriptor::partial("transformed"),
+            Selector::parse(".").unwrap(),
+        )
+        .build()
+        .unwrap();
 
     let lenses = Lenses::new(OutputMode::DropUnmatched)
         .add_lens_with_filter(EntityPathFilter::parse_forgiving("matched/**"), lens);
