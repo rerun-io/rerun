@@ -395,7 +395,7 @@ fn create_view_builder(
                 .then(|| re_view::outline_config(egui_ctx)),
 
             // Make sure the map in the background is not completely overwritten
-            blend_with_background: true,
+            blend_with_background: re_renderer::BlendWithBackground::AlphaToCoverage,
 
             picking_config,
         },

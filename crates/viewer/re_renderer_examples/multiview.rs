@@ -99,7 +99,7 @@ fn build_lines(re_ctx: &RenderContext, secs_since_startup: f32) -> anyhow::Resul
         batch
             .add_strip(lorenz_points.into_iter())
             .color(Color32::from_rgb(255, 191, 0))
-            .flags(LineStripFlags::FLAG_COLOR_GRADIENT)
+            .flags(LineStripFlags::STRIP_FLAG_COLOR_GRADIENT)
             .radius(Size::new_ui_points(1.0));
 
         // Green Zig-Zag arrow
@@ -116,9 +116,9 @@ fn build_lines(re_ctx: &RenderContext, secs_since_startup: f32) -> anyhow::Resul
             .color(Color32::GREEN)
             .radius(Size::new_scene_units(0.05))
             .flags(
-                LineStripFlags::FLAG_COLOR_GRADIENT
-                    | LineStripFlags::FLAG_CAP_END_TRIANGLE
-                    | LineStripFlags::FLAG_CAP_START_ROUND,
+                LineStripFlags::STRIP_FLAG_COLOR_GRADIENT
+                    | LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE
+                    | LineStripFlags::STRIP_FLAG_CAP_START_ROUND,
             );
     }
 
@@ -135,7 +135,7 @@ fn build_lines(re_ctx: &RenderContext, secs_since_startup: f32) -> anyhow::Resul
         }))
         .color(Color32::BLUE)
         .radius(Size::new_scene_units(0.1))
-        .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE);
+        .flags(LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE);
 
     Ok(builder.into_draw_data()?)
 }

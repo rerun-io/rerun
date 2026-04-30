@@ -32,7 +32,7 @@ fn decode_color(sampled_value: vec4f) -> vec4f {
     // Convert to linear space
     if rect_info.decode_srgb != 0u {
         if all(vec3f(0.0) <= rgba.rgb) && all(rgba.rgb <= vec3f(1.0)) {
-            rgba = linear_from_srgba(rgba);
+            rgba = linear_from_srgba_unmultiplied(rgba);
         } else {
             rgba = ERROR_RGBA; // out of range
         }

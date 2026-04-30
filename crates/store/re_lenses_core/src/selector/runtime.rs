@@ -13,11 +13,7 @@ pub(super) fn default_runtime() -> Arc<Runtime> {
     static DEFAULT_RUNTIME: OnceLock<Arc<Runtime>> = OnceLock::new();
 
     DEFAULT_RUNTIME
-        .get_or_init(|| {
-            Arc::new(Runtime {
-                function_registry: Arc::new(FunctionRegistry::default()),
-            })
-        })
+        .get_or_init(|| Arc::new(Runtime::new(Arc::new(FunctionRegistry::default()))))
         .clone()
 }
 
@@ -27,7 +23,19 @@ pub(super) fn default_runtime() -> Arc<Runtime> {
 /// needed during evaluation.
 #[derive(Clone)]
 pub struct Runtime {
-    pub function_registry: Arc<FunctionRegistry>,
+    function_registry: Arc<FunctionRegistry>,
+}
+
+impl Runtime {
+    /// Creates a new runtime with the given function registry.
+    pub fn new(function_registry: Arc<FunctionRegistry>) -> Self {
+        Self { function_registry }
+    }
+
+    /// Returns the function registry.
+    pub fn function_registry(&self) -> &FunctionRegistry {
+        &self.function_registry
+    }
 }
 
 impl Runtime {

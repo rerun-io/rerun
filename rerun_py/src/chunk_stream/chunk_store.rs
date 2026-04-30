@@ -32,7 +32,7 @@ use crate::chunk::PyChunkInternal;
 pub struct PyChunkStoreInternal(ChunkStoreInternal);
 
 /// Fully materialized or lazily-backed chunk store.
-//TODO(RR-4341): this is a temporary thing until we have a more general `ChunkProvider` abstraction.
+//TODO(RR-4503): this is a temporary thing until we have a more general `LazyStore` abstraction.
 #[derive(Clone)]
 enum ChunkStoreInternal {
     /// All chunks are in memory.
@@ -125,7 +125,7 @@ impl PyChunkStoreInternal {
             }
 
             ChunkStoreInternal::IndexedRrd(lazy) => lazy
-                .collect_physical_chunks()
+                .load_all_chunks()
                 .map_err(|err| PyRuntimeError::new_err(err.to_string())),
         }
     }
@@ -138,7 +138,7 @@ impl ChunkStreamFactory for PyChunkStoreInternal {
                 handle.read().iter_physical_chunks().cloned().collect()
             }
             ChunkStoreInternal::IndexedRrd(lazy) => {
-                lazy.collect_physical_chunks()
+                lazy.load_all_chunks()
                     .map_err(|err| ChunkPipelineError::RrdRead {
                         path: lazy.rrd_path().to_path_buf(),
                         reason: err.to_string(),

@@ -3,7 +3,7 @@ use re_sdk_types::archetypes::McapStatistics;
 use re_sdk_types::{components, datatypes};
 use saturating_cast::SaturatingCast as _;
 
-use super::{Decoder, DecoderIdentifier};
+use super::{Decoder, DecoderContext, DecoderIdentifier};
 use crate::Error;
 
 /// Extracts [`mcap::records::Statistics`], such as message count, from an MCAP file.
@@ -19,12 +19,10 @@ impl Decoder for McapStatisticDecoder {
 
     fn process(
         &mut self,
-        _mcap_bytes: &[u8],
-        summary: &mcap::Summary,
-        _topic_filter: &super::TopicFilter,
+        ctx: &DecoderContext<'_>,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error> {
-        if let Some(statistics) = summary.stats.as_ref() {
+        if let Some(statistics) = ctx.summary().stats.as_ref() {
             let chunk = Chunk::builder(EntityPath::properties())
                 .with_archetype(
                     RowId::new(),

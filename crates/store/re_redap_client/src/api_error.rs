@@ -239,6 +239,10 @@ impl ApiError {
         }
     }
 
+    pub fn invalid_arguments(message: impl Into<String>) -> Self {
+        Self::new(ApiErrorKind::InvalidArguments, message)
+    }
+
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(ApiErrorKind::Internal, message)
     }

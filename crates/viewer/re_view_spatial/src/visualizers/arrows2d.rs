@@ -91,9 +91,9 @@ impl Arrows2DVisualizer {
                     .radius(radius)
                     .color(color)
                     .flags(
-                        LineStripFlags::FLAG_CAP_END_TRIANGLE
-                            | LineStripFlags::FLAG_CAP_START_ROUND
-                            | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
+                        LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE
+                            | LineStripFlags::STRIP_FLAG_CAP_START_ROUND
+                            | LineStripFlags::STRIP_FLAG_CAP_START_EXTEND_OUTWARDS,
                     )
                     .picking_instance_id(PickingLayerInstanceId(i as _));
 

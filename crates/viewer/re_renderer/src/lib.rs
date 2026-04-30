@@ -56,6 +56,7 @@ mod line_drawable_builder;
 mod point_cloud_builder;
 mod queueable_draw_data;
 mod rect;
+mod shape_builder;
 mod size;
 mod transform;
 pub mod util;
@@ -103,10 +104,11 @@ pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use queueable_draw_data::QueueableDrawData;
 pub use rect::{RectF32, RectInt};
 pub use renderer::gpu_data::PositionRadius;
+pub use shape_builder::ShapeBuilder;
 pub use size::Size;
 pub use texture_info::Texture2DBufferInfo;
 pub use transform::RectTransform;
-pub use view_builder::{RenderMode, ViewBuilder, ViewPickingConfiguration};
+pub use view_builder::{BlendWithBackground, RenderMode, ViewBuilder, ViewPickingConfiguration};
 pub use wgpu_resources::{
     BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
     GpuPipelineLayoutPool, GpuRenderPipelineHandle, GpuRenderPipelinePool,

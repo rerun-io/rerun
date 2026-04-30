@@ -276,7 +276,7 @@ impl SpatialView3D {
                 .highlights
                 .any_outlines()
                 .then(|| re_view::outline_config(ui.ctx())),
-            blend_with_background: false,
+            blend_with_background: re_renderer::BlendWithBackground::No,
             picking_config,
         };
 

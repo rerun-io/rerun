@@ -24,7 +24,7 @@
 
 use super::lexer::{Token, TokenType};
 
-pub struct Parser<I>
+pub(super) struct Parser<I>
 where
     I: Iterator<Item = Token>,
 {

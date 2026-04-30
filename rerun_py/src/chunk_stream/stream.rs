@@ -151,7 +151,13 @@ impl StructuredFilter {
 pub enum PipelineStep {
     Filter(StructuredFilter),
     Drop(StructuredFilter),
-    Lenses(re_lenses_core::Lenses),
+    Lenses {
+        lenses: re_lenses_core::Lenses,
+
+        /// Optional content filter: when set, lenses are applied only to chunks
+        /// whose entity path matches; non-matching chunks pass through unchanged.
+        content: Option<re_log_types::ResolvedEntityPathFilter>,
+    },
     Map(Py<PyAny>),
     FlatMap(Py<PyAny>),
 }
@@ -161,7 +167,10 @@ impl Clone for PipelineStep {
         match self {
             Self::Filter(f) => Self::Filter(f.clone()),
             Self::Drop(f) => Self::Drop(f.clone()),
-            Self::Lenses(l) => Self::Lenses(l.clone()),
+            Self::Lenses { lenses, content } => Self::Lenses {
+                lenses: lenses.clone(),
+                content: content.clone(),
+            },
             Self::Map(c) => Self::Map(Python::attach(|py| c.clone_ref(py))),
             Self::FlatMap(c) => Self::FlatMap(Python::attach(|py| c.clone_ref(py))),
         }
@@ -254,8 +263,12 @@ impl LazyChunkStream {
         self
     }
 
-    pub fn lenses(mut self, lenses: re_lenses_core::Lenses) -> Self {
-        self.steps.push(PipelineStep::Lenses(lenses));
+    pub fn lenses(
+        mut self,
+        lenses: re_lenses_core::Lenses,
+        content: Option<re_log_types::ResolvedEntityPathFilter>,
+    ) -> Self {
+        self.steps.push(PipelineStep::Lenses { lenses, content });
         self
     }
 

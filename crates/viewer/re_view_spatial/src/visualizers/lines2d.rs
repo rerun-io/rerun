@@ -81,7 +81,7 @@ impl Lines2DVisualizer {
                     .color(color)
                     .radius(radius)
                     // Looped lines should be connected with rounded corners, so we always add outward extending caps.
-                    .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
+                    .flags(LineStripFlags::STRIP_FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
                     .picking_instance_id(PickingLayerInstanceId(i as _));
 
                 if let Some(outline_mask_ids) = ent_context

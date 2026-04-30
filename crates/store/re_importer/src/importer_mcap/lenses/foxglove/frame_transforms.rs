@@ -9,32 +9,29 @@ use super::FOXGLOVE_TIMESTAMP;
 ///
 /// [`foxglove.FrameTransforms`]: https://docs.foxglove.dev/docs/sdk/schemas/frame-transforms
 pub fn frame_transforms(time_type: TimeType) -> Result<Lens, LensBuilderError> {
-    Ok(Lens::for_input_column("foxglove.FrameTransforms:message")
-        .scatter()
-        .output_columns(|out| {
-            out.time(
-                FOXGLOVE_TIMESTAMP,
-                time_type,
-                Selector::parse(".transforms[].timestamp")?.pipe(op::timespec_to_nanos()),
-            )?
-            .component(
-                Transform3D::descriptor_parent_frame(),
-                Selector::parse(".transforms[].parent_frame_id")?,
-            )?
-            .component(
-                Transform3D::descriptor_child_frame(),
-                Selector::parse(".transforms[].child_frame_id")?,
-            )?
-            .component(
-                Transform3D::descriptor_translation(),
-                Selector::parse(".transforms[].translation")?
-                    .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z"])),
-            )?
-            .component(
-                Transform3D::descriptor_quaternion(),
-                Selector::parse(".transforms[].rotation")?
-                    .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z", "w"])),
-            )
-        })?
-        .build())
+    Lens::scatter("foxglove.FrameTransforms:message")
+        .to_timeline(
+            FOXGLOVE_TIMESTAMP,
+            time_type,
+            Selector::parse(".transforms[].timestamp")?.pipe(op::timespec_to_nanos()),
+        )
+        .to_component(
+            Transform3D::descriptor_parent_frame(),
+            Selector::parse(".transforms[].parent_frame_id")?,
+        )
+        .to_component(
+            Transform3D::descriptor_child_frame(),
+            Selector::parse(".transforms[].child_frame_id")?,
+        )
+        .to_component(
+            Transform3D::descriptor_translation(),
+            Selector::parse(".transforms[].translation")?
+                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z"])),
+        )
+        .to_component(
+            Transform3D::descriptor_quaternion(),
+            Selector::parse(".transforms[].rotation")?
+                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z", "w"])),
+        )
+        .build()
 }

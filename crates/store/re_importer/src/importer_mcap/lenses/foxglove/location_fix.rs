@@ -13,27 +13,25 @@ use super::FOXGLOVE_TIMESTAMP;
 ///
 /// [`foxglove.LocationFix`]: https://docs.foxglove.dev/docs/sdk/schemas/location-fix
 pub fn location_fix(time_type: TimeType) -> Result<Lens, LensBuilderError> {
-    Ok(Lens::for_input_column("foxglove.LocationFix:message")
-        .output_columns(|out| {
-            out.time(
-                FOXGLOVE_TIMESTAMP,
-                time_type,
-                Selector::parse(".timestamp")?.pipe(op::timespec_to_nanos()),
-            )?
-            // `frame_id` can be missing in old versions of the schema.
-            .component(
-                CoordinateFrame::descriptor_frame(),
-                Selector::parse(".frame_id!")?,
-            )?
-            .component(
-                GeoPoints::descriptor_positions(),
-                Selector::parse(".")?.pipe(lat_lon_struct_to_fixed()),
-            )?
-            // `color` field is optional.
-            .component(
-                GeoPoints::descriptor_colors(),
-                Selector::parse(".color!")?.pipe(op::rgba_struct_to_uint32()),
-            )
-        })?
-        .build())
+    Lens::derive("foxglove.LocationFix:message")
+        .to_timeline(
+            FOXGLOVE_TIMESTAMP,
+            time_type,
+            Selector::parse(".timestamp")?.pipe(op::timespec_to_nanos()),
+        )
+        // `frame_id` can be missing in old versions of the schema.
+        .to_component(
+            CoordinateFrame::descriptor_frame(),
+            Selector::parse(".frame_id!")?,
+        )
+        .to_component(
+            GeoPoints::descriptor_positions(),
+            Selector::parse(".")?.pipe(lat_lon_struct_to_fixed()),
+        )
+        // `color` field is optional.
+        .to_component(
+            GeoPoints::descriptor_colors(),
+            Selector::parse(".color!")?.pipe(op::rgba_struct_to_uint32()),
+        )
+        .build()
 }

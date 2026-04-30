@@ -131,9 +131,7 @@ fn test_runtime() -> Runtime {
     registry.register("prepend", prepend).unwrap();
     registry.register("nullify_gt4", || nullify_gt4).unwrap();
 
-    Runtime {
-        function_registry: Arc::new(registry),
-    }
+    Runtime::new(Arc::new(registry))
 }
 
 // -- Registry unit tests -----------------------------------------------------
@@ -142,7 +140,7 @@ fn test_runtime() -> Runtime {
 fn register_and_get_no_args() {
     let rt = test_runtime();
 
-    assert!(rt.function_registry.get("double", &[]).is_ok());
+    assert!(rt.function_registry().get("double", &[]).is_ok());
 }
 
 #[test]
@@ -150,7 +148,7 @@ fn register_and_get_with_args() {
     let rt = test_runtime();
 
     assert!(
-        rt.function_registry
+        rt.function_registry()
             .get("prepend", &[Literal::String("hello_".into())])
             .is_ok()
     );
@@ -173,7 +171,7 @@ fn get_no_arg_function_with_extra_args() {
     // The zero-arg constructor ignores extra arguments, so this still succeeds.
     // This test documents the current behavior.
     let result = rt
-        .function_registry
+        .function_registry()
         .get("double", &[Literal::String("unexpected".into())]);
     assert!(result.is_ok());
 }
@@ -182,7 +180,7 @@ fn get_no_arg_function_with_extra_args() {
 fn get_one_arg_function_with_no_args() {
     let rt = test_runtime();
 
-    let result = rt.function_registry.get("prepend", &[]);
+    let result = rt.function_registry().get("prepend", &[]);
     assert!(matches!(
         result,
         Err(FunctionRegistryError::WrongArguments { .. })
@@ -193,9 +191,9 @@ fn get_one_arg_function_with_no_args() {
 fn register_multiple_functions() {
     let rt = test_runtime();
 
-    assert!(rt.function_registry.get("double", &[]).is_ok());
+    assert!(rt.function_registry().get("double", &[]).is_ok());
     assert!(
-        rt.function_registry
+        rt.function_registry()
             .get("prepend", &[Literal::String("x_".into())])
             .is_ok()
     );

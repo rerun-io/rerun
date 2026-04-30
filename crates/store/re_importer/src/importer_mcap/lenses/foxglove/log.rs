@@ -11,20 +11,18 @@ use super::FOXGLOVE_TIMESTAMP;
 ///
 /// [`foxglove.Log`]: https://docs.foxglove.dev/docs/sdk/schemas/log
 pub fn log(time_type: TimeType) -> Result<Lens, LensBuilderError> {
-    Ok(Lens::for_input_column("foxglove.Log:message")
-        .output_columns(|out| {
-            out.time(
-                FOXGLOVE_TIMESTAMP,
-                time_type,
-                Selector::parse(".timestamp")?.pipe(op::timespec_to_nanos()),
-            )?
-            .component(TextLog::descriptor_text(), Selector::parse(".message")?)?
-            .component(
-                TextLog::descriptor_level(),
-                Selector::parse(".level.name")?.pipe(foxglove_to_rerun_log_level()),
-            )
-        })?
-        .build())
+    Lens::derive("foxglove.Log:message")
+        .to_timeline(
+            FOXGLOVE_TIMESTAMP,
+            time_type,
+            Selector::parse(".timestamp")?.pipe(op::timespec_to_nanos()),
+        )
+        .to_component(TextLog::descriptor_text(), Selector::parse(".message")?)
+        .to_component(
+            TextLog::descriptor_level(),
+            Selector::parse(".level.name")?.pipe(foxglove_to_rerun_log_level()),
+        )
+        .build()
 }
 
 /// Returns a pipe-compatible function that maps Foxglove log level strings to Rerun

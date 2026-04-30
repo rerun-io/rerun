@@ -108,7 +108,7 @@ jobs:
           pixi run python scripts/ci/crates.py check-git-branch-name
 
           echo Parse the release version from the branch name…
-          #   `prepare-release-0.8.1-meta.N` -> `0.8.1`
+          #   `prepare-release-0.8.1-alpha.N` -> `0.8.1`
           release_version=$(pixi run python scripts/ci/crates.py get-version --from git --finalize)
 
           echo "release_version: $release_version"
@@ -216,7 +216,7 @@ jobs:
               - Otherwise, close the PR without merging. Cherrypick any interesting commit to `main`, but *not* the version bump one (it would introduce bad links).
           - For non-alpha releases:
             - For any added commits, run the release workflow in 'rc' mode again
-            - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'release' mode
+            - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'final' mode
             - Once the final release workflow finishes it will create a GitHub release for you. Then:
               - [ ] Sanity check the build artifacts:
                 - [ ] pip install: does it install and run?

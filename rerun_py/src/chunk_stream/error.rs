@@ -61,6 +61,9 @@ pub enum ChunkPipelineError {
     #[error("Parquet error: {reason}")]
     Parquet { reason: String },
 
+    #[error("URDF error: {reason}")]
+    Urdf { reason: String },
+
     #[error("Failed to add chunk to store: {reason}")]
     ChunkStoreInsert { reason: String },
 
@@ -90,6 +93,7 @@ impl From<ChunkPipelineError> for pyo3::PyErr {
             | ChunkPipelineError::RrdRead { .. }
             | ChunkPipelineError::Mcap { .. }
             | ChunkPipelineError::Parquet { .. }
+            | ChunkPipelineError::Urdf { .. }
             | ChunkPipelineError::ChunkStoreInsert { .. }
             | ChunkPipelineError::Lenses { .. } => PyRuntimeError::new_err(err.to_string()),
         }

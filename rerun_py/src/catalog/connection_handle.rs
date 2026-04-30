@@ -67,6 +67,29 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
+    pub fn rtt(&self, py: Python<'_>, num_pings: usize) -> PyResult<std::time::Duration> {
+        wait_for_future(py, async {
+            self.client().await?.rtt(num_pings).await.map_err(to_py_err)
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn bandwidth_bytes_per_sec(
+        &self,
+        py: Python<'_>,
+        num_bytes: u64,
+        rtt: std::time::Duration,
+    ) -> PyResult<Option<f64>> {
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .bandwidth_bytes_per_sec(num_bytes, rtt)
+                .await
+                .map_err(to_py_err)
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn find_entries(&self, py: Python<'_>, filter: EntryFilter) -> PyResult<Vec<EntryDetails>> {
         wait_for_future(py, async {
             self.client()

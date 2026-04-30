@@ -100,20 +100,19 @@ impl InMemoryStore {
     ///
     /// Important: there is no guarantee on the order of the returned chunks.
     ///
-    /// For Lazy stores, any not-yet-resident chunks are loaded in a single batched call per
-    /// distinct store, amortizing the file-mutex, IPC parse, and store-write-lock overhead that
-    /// per-key loading would pay N times.
+    /// For Lazy stores, chunks are loaded in a single batched call per distinct store,
+    /// amortizing the file-mutex and IPC-parse overhead that per-key loading would pay N times.
+    /// The returned chunks are owned by the caller — no caching happens in the Lazy store.
     pub fn chunks_from_chunk_keys(
         &self,
         chunk_keys: &[ChunkKey],
     ) -> Result<Vec<(StoreId, Arc<Chunk>)>, Error> {
         use crate::store::ResolvedStore;
 
-        // Step 1: resolve every key's store once, and collect the set of missing chunk IDs per
-        // Lazy store. Eager stores that lack a chunk are fatal (no way to load them).
+        // Step 1: resolve every key's store once and group Lazy-store chunk IDs for batched I/O.
         let mut resolved_per_key: Vec<(ResolvedStore, &ChunkKey)> =
             Vec::with_capacity(chunk_keys.len());
-        let mut missing_per_store: HashMap<StoreSlotId, Vec<re_chunk_store::ChunkId>> =
+        let mut ids_per_lazy: HashMap<StoreSlotId, Vec<re_chunk_store::ChunkId>> =
             HashMap::default();
 
         for chunk_key in chunk_keys {
@@ -126,50 +125,60 @@ impl InMemoryStore {
                     ))
                 })?;
 
-            if resolved.physical_chunk(&chunk_key.chunk_id).is_none() {
-                match &resolved {
-                    ResolvedStore::Lazy(_) => {
-                        missing_per_store
-                            .entry(chunk_key.store_slot_id)
-                            .or_default()
-                            .push(chunk_key.chunk_id);
-                    }
-                    ResolvedStore::Eager(_) => {
-                        return Err(Error::InvalidChunkKey(format!(
-                            "chunk id {} not found",
-                            chunk_key.chunk_id
-                        )));
-                    }
-                }
+            if matches!(resolved, ResolvedStore::Lazy(_)) {
+                ids_per_lazy
+                    .entry(chunk_key.store_slot_id)
+                    .or_default()
+                    .push(chunk_key.chunk_id);
             }
 
             resolved_per_key.push((resolved, chunk_key));
         }
 
-        // Step 2: one batched `load_chunks` call per Lazy store, so I/O is more efficient (chunk
-        // spans are merged on read). `load_chunks` filters already-resident chunks internally, so
-        // this also handles the concurrent-load race: if another request loaded a chunk between
-        // step 1 and step 2, we simply load fewer chunks here.
-        for (slot_id, missing_ids) in &missing_per_store {
-            let Some(ResolvedStore::Lazy(lazy)) = self.resolve_store(slot_id) else {
-                // A store that was Lazy in step 1 should still be Lazy here; defensive guard.
+        // Step 2: one batched load per Lazy store. Preserves the existing I/O amortization (file
+        // mutex, IPC parse paid once per store). Concurrent requests for overlapping chunk sets
+        // will each re-read from disk — the OS page cache absorbs the cost.
+        let mut loaded: HashMap<(StoreSlotId, re_chunk_store::ChunkId), Arc<Chunk>> =
+            HashMap::default();
+        for (slot_id, mut ids) in ids_per_lazy {
+            let Some(ResolvedStore::Lazy(lazy)) = self.resolve_store(&slot_id) else {
                 continue;
             };
-            lazy.load_chunks(missing_ids)
+            // Duplicate `ChunkKey`s in the input would otherwise have us decode the same chunk
+            // multiple times.
+            ids.sort_unstable();
+            ids.dedup();
+            let chunks = lazy
+                .load_chunks(&ids)
                 .map_err(|err| Error::InvalidChunkKey(format!("lazy load failed: {err:#}")))?;
+            for chunk in chunks {
+                loaded.insert((slot_id, chunk.id()), chunk);
+            }
         }
 
-        // Step 3: every chunk should now be physical. Pull them from memory.
+        // Step 3: assemble output.
         let mut result = Vec::with_capacity(chunk_keys.len());
         for (resolved, chunk_key) in resolved_per_key {
-            let chunk = resolved
-                .physical_chunk(&chunk_key.chunk_id)
-                .ok_or_else(|| {
-                    Error::InvalidChunkKey(format!(
-                        "chunk id {} not found in manifest",
-                        chunk_key.chunk_id
-                    ))
-                })?;
+            let chunk = match &resolved {
+                // Duplicate `ChunkKey`s in the input clone the `Arc` — same as the previous
+                // `physical_chunk()`-based implementation.
+                ResolvedStore::Lazy(_) => loaded
+                    .get(&(chunk_key.store_slot_id, chunk_key.chunk_id))
+                    .cloned()
+                    .ok_or_else(|| {
+                        Error::InvalidChunkKey(format!(
+                            "chunk id {} not found in manifest",
+                            chunk_key.chunk_id
+                        ))
+                    })?,
+                ResolvedStore::Eager(h) => h
+                    .read()
+                    .physical_chunk(&chunk_key.chunk_id)
+                    .cloned()
+                    .ok_or_else(|| {
+                        Error::InvalidChunkKey(format!("chunk id {} not found", chunk_key.chunk_id))
+                    })?,
+            };
             result.push((resolved.store_id(), chunk));
         }
 

@@ -5,7 +5,7 @@ use crate::renderer::{
     DrawData, DrawDataDrawable, DrawError, DrawInstruction, DrawableCollectionViewInfo, Renderer,
     screen_triangle_vertex_shader,
 };
-use crate::view_builder::ViewBuilder;
+use crate::view_builder::{BlendWithBackground, ViewBuilder};
 use crate::wgpu_resources::{
     BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
     GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
@@ -44,8 +44,8 @@ pub struct CompositorDrawData {
     /// a uniform buffer for describing a tonemapper/compositor configuration.
     bind_group: GpuBindGroup,
 
-    /// If true, the compositor will blend with the image.
-    enable_blending: bool,
+    /// How the compositor should blend with the existing image.
+    blend_with_background: BlendWithBackground,
 }
 
 impl DrawData for CompositorDrawData {
@@ -73,7 +73,7 @@ impl CompositorDrawData {
         color_texture: &GpuTexture,
         outline_final_voronoi: Option<&GpuTexture>,
         outline_config: Option<&OutlineConfig>,
-        enable_blending: bool,
+        blend_with_background: BlendWithBackground,
     ) -> Self {
         let compositor = ctx.renderer::<Compositor>();
 
@@ -90,7 +90,7 @@ impl CompositorDrawData {
                 outline_color_layer_a: outline_config.color_layer_a.into(),
                 outline_color_layer_b: outline_config.color_layer_b.into(),
                 outline_radius_pixel: outline_config.outline_radius_pixel,
-                blend_with_background: enable_blending as u32,
+                blend_with_background: blend_with_background as u32,
                 padding: Default::default(),
                 end_padding: Default::default(),
             },
@@ -115,7 +115,7 @@ impl CompositorDrawData {
                     layout: compositor.bind_group_layout,
                 },
             ),
-            enable_blending,
+            blend_with_background,
         }
     }
 }
@@ -235,13 +235,12 @@ impl Renderer for Compositor {
     ) -> Result<(), DrawError> {
         for DrawInstruction { draw_data, .. } in draw_instructions {
             let pipeline_handle = match phase {
-                DrawPhase::Compositing => {
-                    if draw_data.enable_blending {
+                DrawPhase::Compositing => match draw_data.blend_with_background {
+                    BlendWithBackground::No => self.render_pipeline_opaque,
+                    BlendWithBackground::AlphaToCoverage | BlendWithBackground::Premultiplied => {
                         self.render_pipeline_blended
-                    } else {
-                        self.render_pipeline_opaque
                     }
-                }
+                },
                 DrawPhase::CompositingScreenshot => self.render_pipeline_screenshot,
                 _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
             };

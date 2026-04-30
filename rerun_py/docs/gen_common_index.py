@@ -510,8 +510,9 @@ SECTION_TABLE: Final[list[Section]] = [
         ],
         class_list=[
             "Chunk",
+            "DeriveLens",
             "Lens",
-            "LensOutput",
+            "MutateLens",
             "Selector",
             "ViewerClient",
         ],
