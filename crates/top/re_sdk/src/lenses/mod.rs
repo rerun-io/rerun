@@ -9,8 +9,8 @@ mod sink;
 // Re-exports from re_lenses.
 // We should be careful not to expose too much implementation details here.
 pub use re_lenses::{
-    ChunkExt, Lens, LensBuilder, LensBuilderError, LensRuntimeError, Lenses, OutputBuilder,
-    OutputMode, PartialChunk, op,
+    ChunkExt, DeriveLensBuilder, Lens, LensBuilderError, LensError, LensRuntimeError, Lenses,
+    MutateLensBuilder, OutputMode, op,
 };
 
 pub use re_lenses_core::Selector;

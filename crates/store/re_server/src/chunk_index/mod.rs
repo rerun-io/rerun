@@ -219,7 +219,7 @@ impl DatasetChunkIndexes {
                 h.read().iter_physical_chunks().cloned().collect()
             }
             crate::store::ResolvedStore::Lazy(lazy) => lazy
-                .collect_physical_chunks()
+                .load_all_chunks()
                 .map_err(|err| StoreError::IndexingError(format!("{err:#}")))?,
         };
 
@@ -321,16 +321,15 @@ impl DatasetChunkIndexes {
         let mut backfill = Vec::new();
         for (segment_id, segment) in dataset.segments() {
             for (layer_name, layer) in segment.layers() {
-                let chunks: Vec<std::sync::Arc<re_chunk_store::Chunk>> = match layer
-                    .resolved_store()
-                {
-                    crate::store::ResolvedStore::Eager(h) => {
-                        h.read().iter_physical_chunks().cloned().collect()
-                    }
-                    crate::store::ResolvedStore::Lazy(lazy) => lazy
-                        .collect_physical_chunks()
-                        .map_err(|err| StoreError::IndexingError(format!("{err:#}")))?,
-                };
+                let chunks: Vec<std::sync::Arc<re_chunk_store::Chunk>> =
+                    match layer.resolved_store() {
+                        crate::store::ResolvedStore::Eager(h) => {
+                            h.read().iter_physical_chunks().cloned().collect()
+                        }
+                        crate::store::ResolvedStore::Lazy(lazy) => lazy
+                            .load_all_chunks()
+                            .map_err(|err| StoreError::IndexingError(format!("{err:#}")))?,
+                    };
                 for chunk in chunks {
                     if chunk.entity_path() == entity_path
                         && chunk.components().0.contains_key(component)

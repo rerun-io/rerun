@@ -304,7 +304,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
                         .radius(radius)
                         .picking_instance_id(PickingLayerInstanceId(instance_index as _))
                         // Looped lines should be connected with rounded corners.
-                        .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS);
+                        .flags(LineStripFlags::STRIP_FLAGS_OUTWARD_EXTENDING_ROUND_CAPS);
 
                     if let Some(outline_mask_ids) = ent_context
                         .highlight

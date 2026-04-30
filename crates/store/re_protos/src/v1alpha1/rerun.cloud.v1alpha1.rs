@@ -69,6 +69,41 @@ impl ::prost::Name for WhoAmIResponse {
         "/rerun.cloud.v1alpha1.WhoAmIResponse".into()
     }
 }
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DoBandwidthTestRequest {
+    /// Total number of pseudo-random (incompressible) bytes the server should return,
+    /// summed across all streamed response chunks.
+    #[prost(uint64, tag = "1")]
+    pub num_bytes: u64,
+}
+impl ::prost::Name for DoBandwidthTestRequest {
+    const NAME: &'static str = "DoBandwidthTestRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DoBandwidthTestRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DoBandwidthTestRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DoBandwidthTestResponse {
+    /// A chunk of pseudo-random (incompressible) bytes.
+    ///
+    /// The total length across all streamed chunks equals `DoBandwidthTestRequest.num_bytes`.
+    #[prost(bytes = "bytes", tag = "1")]
+    pub payload: ::prost::bytes::Bytes,
+}
+impl ::prost::Name for DoBandwidthTestResponse {
+    const NAME: &'static str = "DoBandwidthTestResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DoBandwidthTestResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DoBandwidthTestResponse".into()
+    }
+}
 /// Application level error - used as `details` in the `google.rpc.Status` message
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Error {
@@ -2116,6 +2151,36 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Returns a payload of pseudo-random (incompressible) bytes of the requested size.
+        ///
+        /// Intended for measuring round-trip time and bandwidth between client and server:
+        /// * Send a few small requests (e.g. `num_bytes = 1`) to estimate RTT.
+        /// * Send a larger request (e.g. `num_bytes = 1 MiB`), subtract the RTT, and divide
+        ///   `num_bytes` by the remaining time to estimate bandwidth.
+        ///
+        /// The response is streamed as one or more chunks; the total number of bytes across
+        /// all chunks is exactly `num_bytes`.
+        pub async fn do_bandwidth_test(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DoBandwidthTestRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::DoBandwidthTestResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/DoBandwidthTest",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "DoBandwidthTest",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
         pub async fn find_entries(
             &mut self,
             request: impl tonic::IntoRequest<super::FindEntriesRequest>,
@@ -2877,6 +2942,24 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::WhoAmIRequest>,
         ) -> std::result::Result<tonic::Response<super::WhoAmIResponse>, tonic::Status>;
+        /// Server streaming response type for the DoBandwidthTest method.
+        type DoBandwidthTestStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::DoBandwidthTestResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Returns a payload of pseudo-random (incompressible) bytes of the requested size.
+        ///
+        /// Intended for measuring round-trip time and bandwidth between client and server:
+        /// * Send a few small requests (e.g. `num_bytes = 1`) to estimate RTT.
+        /// * Send a larger request (e.g. `num_bytes = 1 MiB`), subtract the RTT, and divide
+        ///   `num_bytes` by the remaining time to estimate bandwidth.
+        ///
+        /// The response is streamed as one or more chunks; the total number of bytes across
+        /// all chunks is exactly `num_bytes`.
+        async fn do_bandwidth_test(
+            &self,
+            request: tonic::Request<super::DoBandwidthTestRequest>,
+        ) -> std::result::Result<tonic::Response<Self::DoBandwidthTestStream>, tonic::Status>;
         async fn find_entries(
             &self,
             request: tonic::Request<super::FindEntriesRequest>,
@@ -3319,6 +3402,50 @@ pub mod rerun_cloud_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/DoBandwidthTest" => {
+                    #[allow(non_camel_case_types)]
+                    struct DoBandwidthTestSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::DoBandwidthTestRequest>
+                        for DoBandwidthTestSvc<T>
+                    {
+                        type Response = super::DoBandwidthTestResponse;
+                        type ResponseStream = T::DoBandwidthTestStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DoBandwidthTestRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::do_bandwidth_test(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DoBandwidthTestSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

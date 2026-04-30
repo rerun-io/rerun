@@ -97,8 +97,6 @@ The fastest way to get an overview of all the patch candidate PRs from both repo
 uv run scripts/fetch_patch_candidates.py
 ```
 
-When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
-
 After cherry-picking a commit into the patch, please make sure to remove the `consider-patch` label.
 
 ### 4. Update [`CHANGELOG.md`](./CHANGELOG.md)
@@ -141,22 +139,25 @@ In the UI:
         This will create a one-off alpha release.
 
     - `rc` if the branch name is `prepare-release-x.y.z`.
-      This will create a pull request for the release, and publish a release candidate.
+      This will publish a release candidate.
 
-    - `final` for the final public release
+    - `final` for the final public release.
+
+In all three cases, the workflow opens (or updates) a release pull request against `main`.
 
 ![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
 
-### 7. Wait for both workflows to finish
+### 7. Wait for the release workflow to finish
 
 Once the release workflow is started, it will create a pull request for the release.
 The pull request description will tell you what to do next.
 
-[The `Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml) will build artifacts and run PR checks.
-Additionally, if the release type is set to `final` or `rc`, it will spawn a second workflow (when the release artifacts have been published to PyPI, crates.io etc.) called [`GitHub Release`](https://github.com/rerun-io/rerun/actions/workflows/on_gh_release.yml).
-This workflow is responsible for creating [the GitHub release draft](https://github.com/rerun-io/rerun/releases) and to publish the artifacts to it.
-**Make sure this workflow also finishes!**.
-Only after it finishes successfully should you un-draft [the GitHub release](https://github.com/rerun-io/rerun/releases).
+[The `Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml) will build artifacts, run PR checks, and publish them to PyPI, crates.io, npm, etc.
+For `rc` and `final` releases it also creates a **draft** [GitHub release](https://github.com/rerun-io/rerun/releases) (in the `tag-release` job) and attaches a comment to the release PR pointing at it.
+
+Once the `Release` workflow has finished successfully and you've sanity-checked the artifacts, edit the GitHub release draft (changelog, header media) and click `Publish release`.
+Publishing the release triggers the [`GitHub Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/on_gh_release.yml), which syncs the binary assets from `build.rerun.io` onto the published GitHub release.
+**Make sure that workflow also finishes successfully** so the release ends up with all of its assets attached.
 
 ### 8. Merge changes to `main`
 

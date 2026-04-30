@@ -105,6 +105,16 @@ impl PyChunkInternal {
         Ok(Self::new(Arc::new(chunk)))
     }
 
+    /// Return a copy of this chunk with a new entity path.
+    ///
+    /// A fresh chunk ID is generated to avoid aliasing the original chunk in downstream
+    /// caches and indices. Row IDs, timelines, and components are preserved as-is.
+    fn with_entity_path(&self, entity_path: &str) -> Self {
+        let entity_path = EntityPath::parse_forgiving(entity_path);
+        let chunk = self.chunk.clone_with_new_entity_path(entity_path);
+        Self::new(Arc::new(chunk))
+    }
+
     /// Create a Chunk from an entity path, timeline arrays, and component arrays.
     ///
     /// This is the low-level entry point called by `Chunk.from_columns()` in Python.
@@ -122,13 +132,13 @@ impl PyChunkInternal {
     /// Apply one or more lenses to this chunk, returning transformed chunks.
     #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned Vec
     #[pyo3(signature = (lenses))]
-    fn apply_lenses(
-        &self,
-        lenses: Vec<PyRef<'_, crate::lenses::PyLensInternal>>,
-    ) -> PyResult<Vec<Self>> {
+    fn apply_lenses(&self, lenses: Vec<crate::lenses::PyLens<'_>>) -> PyResult<Vec<Self>> {
         use re_lenses_core::ChunkExt as _;
 
-        let lenses: Vec<_> = lenses.iter().map(|l| l.inner().clone()).collect();
+        let lenses: Vec<_> = lenses
+            .iter()
+            .map(|l| l.build())
+            .collect::<PyResult<Vec<_>>>()?;
         match self.chunk.apply_lenses(&lenses) {
             Ok(chunks) => Ok(chunks
                 .into_iter()

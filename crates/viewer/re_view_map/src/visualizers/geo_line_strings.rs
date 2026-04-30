@@ -183,7 +183,7 @@ impl GeoLineStringsOutput {
                             .unwrap_or_else(|| walkers::lat_lon(0.0, 0.0)),
                     ))
                     // Looped lines should be connected with rounded corners, so we always add outward extending caps.
-                    .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
+                    .flags(LineStripFlags::STRIP_FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
                     .color(*color)
                     .picking_instance_id(*instance)
                     .outline_mask_ids(

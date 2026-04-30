@@ -6,7 +6,7 @@ use re_sdk_types::{
     datatypes,
 };
 
-use super::{Decoder, DecoderIdentifier};
+use super::{Decoder, DecoderContext, DecoderIdentifier};
 use crate::Error;
 
 /// Extracts [`mcap::records::Metadata`] records from an MCAP file as a single static chunk.
@@ -26,12 +26,10 @@ impl Decoder for McapMetadataDecoder {
 
     fn process(
         &mut self,
-        mcap_bytes: &[u8],
-        summary: &mcap::Summary,
-        _topic_filter: &super::TopicFilter,
+        ctx: &DecoderContext<'_>,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error> {
-        if summary.metadata_indexes.is_empty() {
+        if ctx.summary().metadata_indexes.is_empty() {
             return Ok(());
         }
 
@@ -39,8 +37,8 @@ impl Decoder for McapMetadataDecoder {
         // Collect all metadata records by name, merging key-value pairs from records with the same name.
         let mut metadata_by_name: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
 
-        for index in &summary.metadata_indexes {
-            let metadata = match mcap::read::metadata(mcap_bytes, index) {
+        for (index, metadata) in ctx.metadata_records() {
+            let metadata = match metadata {
                 Ok(metadata) => metadata,
                 Err(err) => {
                     re_log::warn_once!(

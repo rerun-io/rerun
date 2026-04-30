@@ -307,7 +307,9 @@ fn compile_inner(stream: &LazyChunkStream, ctx: &mut CompileContext) -> Box<dyn 
         compiled = match step {
             PipelineStep::Filter(f) => Box::new(FilterStream::new(compiled, f.clone())),
             PipelineStep::Drop(f) => Box::new(DropStream::new(compiled, f.clone())),
-            PipelineStep::Lenses(l) => Box::new(LensesStream::new(compiled, l.clone())),
+            PipelineStep::Lenses { lenses, content } => {
+                Box::new(LensesStream::new(compiled, lenses.clone(), content.clone()))
+            }
             PipelineStep::Map(callable) => {
                 let cloned = Python::attach(|py| callable.clone_ref(py));
                 Box::new(MapStream {
@@ -431,14 +433,20 @@ impl ChunkStream for DropStream {
 struct LensesStream {
     inner: Box<dyn ChunkStream>,
     lenses: re_lenses_core::Lenses,
+    content: Option<re_log_types::ResolvedEntityPathFilter>,
     buffer: std::collections::VecDeque<Arc<Chunk>>,
 }
 
 impl LensesStream {
-    pub fn new(inner: Box<dyn ChunkStream>, lenses: re_lenses_core::Lenses) -> Self {
+    pub fn new(
+        inner: Box<dyn ChunkStream>,
+        lenses: re_lenses_core::Lenses,
+        content: Option<re_log_types::ResolvedEntityPathFilter>,
+    ) -> Self {
         Self {
             inner,
             lenses,
+            content,
             buffer: std::collections::VecDeque::new(),
         }
     }
@@ -456,6 +464,14 @@ impl ChunkStream for LensesStream {
             let Some(chunk) = self.inner.next()? else {
                 return Ok(None);
             };
+
+            // If a content predicate is set and the chunk doesn't match,
+            // pass it through unchanged without consulting the lenses.
+            if let Some(content) = &self.content
+                && !content.matches(chunk.entity_path())
+            {
+                return Ok(Some(chunk));
+            }
 
             // Apply lenses — may produce 0..N output chunks.
             for result in self.lenses.apply(&chunk) {

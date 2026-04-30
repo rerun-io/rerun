@@ -5,6 +5,19 @@
 ### ⚠️ Breaking changes
 - `rerun rrd compact` renamed to `rerun rrd optimize`
 
+## [0.31.4](https://github.com/rerun-io/rerun/compare/0.31.3...0.31.4) - 2026-04-29
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Prompt login on whoami failure [a312a99](https://github.com/rerun-io/rerun/commit/a312a99)
+- Ensure proper `on_new_store` book-keeping for all messages [029e245](https://github.com/rerun-io/rerun/commit/029e245)
+- Fix visualizations not showing up when initial data was empty [c867040a](https://github.com/rerun-io/rerun/commit/c867040a)
+- Fix `follow` not being propagated to `http` URLs with extensions [09d5f94c](https://github.com/rerun-io/rerun/commit/09d5f94c)
+
+#### 🕸️ Web
+- Web view add open options [#12731](https://github.com/rerun-io/rerun/pull/12731)
+
 ## [0.31.3](https://github.com/rerun-io/rerun/compare/0.31.2...0.31.3) - 2026-04-13
 
 ### 🔎 Details

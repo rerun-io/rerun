@@ -317,7 +317,7 @@ impl Eval for Expr {
 
             Self::Function { name, arguments } => {
                 let function = runtime
-                    .function_registry
+                    .function_registry()
                     .get(name, arguments.as_ref().map_or(&[], |v| v.as_slice()))?;
                 match function(&source)? {
                     Some(result) => Ok(Some(EvalResult::flat(result))),

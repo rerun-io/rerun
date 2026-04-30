@@ -19,6 +19,7 @@ workspace = true
 all-features = true
 
 [dependencies]
+re_byte_size.workspace = true
 re_chunk_store.workspace = true
 re_component_ui.workspace = true
 re_format.workspace = true
@@ -38,6 +39,8 @@ ahash.workspace = true
 arrayvec.workspace = true
 egui_plot.workspace = true
 egui.workspace = true
+glam.workspace = true
+macaw.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 rayon.workspace = true

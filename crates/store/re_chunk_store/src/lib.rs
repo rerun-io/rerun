@@ -60,7 +60,7 @@ pub use self::events::{
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::lineage::{ChunkDirectLineage, ChunkDirectLineageReport};
 pub use self::missing_chunk_reporter::MissingChunkReporter;
-pub use self::properties::ExtractPropertiesError;
+pub use self::properties::{ExtractPropertiesError, extract_properties_from_chunks};
 pub use self::query::QueryResults;
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
 pub use self::store::{

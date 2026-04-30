@@ -6,6 +6,11 @@ const RERUN_HTTP_HEADER_ENTRY_ID: &str = "x-rerun-entry-id";
 const RERUN_HTTP_HEADER_CLIENT_VERSION: &str = "x-rerun-client-version";
 const RERUN_HTTP_HEADER_SERVER_VERSION: &str = "x-rerun-server-version";
 
+// Server-injected trace id, returned to the client in response headers.
+// Mirrors `re_protos::trace_id_layer::RERUN_HTTP_HEADER_REQUEST_TRACE_ID`
+// (kept as a string here to avoid the dependency).
+const RERUN_HTTP_HEADER_REQUEST_TRACE_ID: &str = "x-request-trace-id";
+
 // --- Telemetry middlewares ---
 
 /// Implements [`tower_http::trace::MakeSpan`] where the trace name is the gRPC method name.
@@ -144,6 +149,11 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             // The gRPC status code (e.g. "Ok", "AlreadyExists", "DeadlineExceeded").
             // Filled in later by `GrpcOnResponse` or `GrpcOnEos`, depending on the endpoint type (unary vs streaming).
             grpc_status = tracing::field::Empty,
+
+            // The trace id reported back by the server in the `x-request-trace-id` response header.
+            // Filled in client-side by `ClientOnResponse` so we can correlate client spans with the
+            // server-side trace.
+            server_trace_id = tracing::field::Empty,
         );
 
         let size = SpanMetadata::insert_opt(
@@ -750,10 +760,45 @@ pub fn new_server_telemetry_layer(options: TelemetryLayerOptions) -> ServerTelem
         .on_eos(GrpcOnEos::new())
 }
 
+/// Implements a [`tower_http::trace::OnResponse`] middleware for the gRPC client.
+///
+/// Records the server-reported trace id (from the `x-request-trace-id` response header)
+/// onto the client span, so client-side traces can be correlated with the server-side trace.
+#[derive(Debug, Clone, Default)]
+pub struct ClientOnResponse {}
+
+impl ClientOnResponse {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl<B> tower_http::trace::OnResponse<B> for ClientOnResponse {
+    fn on_response(
+        self,
+        response: &http::Response<B>,
+        _latency: std::time::Duration,
+        span: &tracing::Span,
+    ) {
+        if let Some(trace_id) = response
+            .headers()
+            .get(RERUN_HTTP_HEADER_REQUEST_TRACE_ID)
+            .and_then(|v| v.to_str().ok())
+        {
+            span.record("server_trace_id", trace_id);
+        }
+    }
+}
+
 pub type ClientTelemetryLayer = tower::layer::util::Stack<
     tonic::service::interceptor::InterceptorLayer<TracingInjectorInterceptor>,
     tower::layer::util::Stack<
-        tower_http::trace::TraceLayer<tower_http::trace::GrpcMakeClassifier, GrpcMakeSpan>,
+        tower_http::trace::TraceLayer<
+            tower_http::trace::GrpcMakeClassifier,
+            GrpcMakeSpan,
+            tower_http::trace::DefaultOnRequest,
+            ClientOnResponse,
+        >,
         tower::layer::util::Identity,
     >,
 >;
@@ -770,7 +815,8 @@ pub fn new_client_telemetry_layer() -> ClientTelemetryLayer {
         // Note: we're actually disabling all DEBUG level logs for `tower` in re_log, so if you want to enable it
         // you'll need to adjust that as well. See crates/utils/re_log/src/lib.rs
         .on_failure(DefaultOnFailure::new().level(tracing::Level::DEBUG))
-        .make_span_with(GrpcMakeSpan::new());
+        .make_span_with(GrpcMakeSpan::new())
+        .on_response(ClientOnResponse::new());
 
     tower::ServiceBuilder::new()
         .layer(trace_layer)

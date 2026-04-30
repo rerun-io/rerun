@@ -4,7 +4,7 @@ use re_chunk::{Chunk, RowId, TimePoint};
 use re_sdk_types::archetypes::{McapChannel, McapSchema};
 use re_sdk_types::{AsComponents as _, components};
 
-use super::{Decoder, DecoderIdentifier};
+use super::{Decoder, DecoderContext, DecoderIdentifier};
 use crate::Error;
 
 /// Extracts a static summary of channel and schema information.
@@ -20,22 +20,10 @@ impl Decoder for McapSchemaDecoder {
 
     fn process(
         &mut self,
-        mcap_bytes: &[u8],
-        summary: &mcap::Summary,
-        topic_filter: &super::TopicFilter,
+        ctx: &DecoderContext<'_>,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error> {
-        let empty_channels = crate::util::collect_empty_channels(mcap_bytes, summary)?;
-
-        for channel in summary.channels.values() {
-            if empty_channels.contains(&crate::parsers::ChannelId(channel.id)) {
-                continue;
-            }
-
-            if !topic_filter.matches(&channel.topic) {
-                continue;
-            }
-
+        for channel in ctx.relevant_channels() {
             let mut components = from_channel(channel).as_serialized_batches();
             if let Some(schema) = channel.schema.as_ref() {
                 components.extend(

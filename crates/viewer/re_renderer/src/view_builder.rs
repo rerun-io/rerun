@@ -195,6 +195,30 @@ pub enum RenderMode {
     Deterministic,
 }
 
+/// How the `composite` step combines a view's render result with the background.
+///
+/// Discriminants are passed directly to `composite.wgsl` as a `u32` uniform — keep in sync.
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum BlendWithBackground {
+    /// Don't blend; the view's result fully overwrites whatever was there before.
+    #[default]
+    No = 0,
+
+    /// Blend with the background, applying a workaround for alpha-to-coverage MSAA.
+    ///
+    /// Use this for views whose content relies on alpha-to-coverage for anti-aliasing
+    /// (e.g. 3D views with line/point primitives that use ATC).
+    /// See [`ViewBuilder::MAIN_TARGET_ALPHA_TO_COVERAGE_COLOR_STATE`] for context.
+    AlphaToCoverage = 1,
+
+    /// Blend with the background, treating the view's result as already premultiplied alpha.
+    ///
+    /// Use this for views whose content uses regular alpha blending and does not depend on
+    /// alpha-to-coverage (e.g. 2D plots rendered in screen space).
+    Premultiplied = 2,
+}
+
 /// Basic configuration for a target view.
 #[derive(Debug)]
 pub struct TargetConfiguration {
@@ -230,11 +254,8 @@ pub struct TargetConfiguration {
 
     pub outline_config: Option<OutlineConfig>,
 
-    /// If true, the `composite` step will blend the image with the background.
-    ///
-    /// Otherwise, this step will overwrite whatever was there before, drawing the view builder's result
-    /// as an opaque rectangle.
-    pub blend_with_background: bool,
+    /// How the `composite` step combines the view's result with the background.
+    pub blend_with_background: BlendWithBackground,
 
     /// Configuration for the picking layer if any.
     ///
@@ -258,7 +279,7 @@ impl Default for TargetConfiguration {
             viewport_transformation: RectTransform::IDENTITY,
             pixels_per_point: 1.0,
             outline_config: None,
-            blend_with_background: false,
+            blend_with_background: BlendWithBackground::No,
             picking_config: None,
         }
     }

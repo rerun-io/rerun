@@ -1,6 +1,6 @@
 use ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
-use egui_plot::{Line, Plot, PlotPoint, Points};
+use egui_plot::{Plot, PlotPoint};
 use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
@@ -22,8 +22,8 @@ use re_viewer_context::{
     BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, IdentifiedViewSystem as _,
     IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings, RecommendedView,
     RecommendedVisualizers, SingleRequiredComponentMatch, SystemExecutionOutput,
-    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights,
-    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewSystemIdentifier, ViewerContext, VisualizableReason, VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -43,30 +43,36 @@ pub struct TimeSeriesViewState {
     /// The range of the scalar values currently on screen.
     ///
     /// None if no values are on screen right now.
-    pub(crate) scalar_range: Option<Range1D>,
+    pub scalar_range: Option<Range1D>,
 
     /// The combined query range of all entities in this view.
     ///
     /// Only entities that are currently _visible_ are considered,
     /// but for these the entire data range in the store is calculated
     /// (not just what we're currently zoomed in on).
-    pub(crate) full_data_time_range: AbsoluteTimeRange,
+    pub full_data_time_range: AbsoluteTimeRange,
 
     /// We offset the time values of the plot so that unix timestamps don't run out of precision.
     ///
     /// Other parts of the system, such as query clamping, need to be aware of that offset in order
     /// to work properly.
-    pub(crate) time_offset: i64,
+    pub time_offset: i64,
 
     /// Cached disambiguated names for visualizers, used when no label is provided.
-    pub(crate) default_series_name_formats: HashMap<VisualizerInstructionId, String>,
+    pub default_series_name_formats: HashMap<VisualizerInstructionId, String>,
 
     /// The number of time series rendered by each visualizer instruction last frame.
     ///
     /// We track egui-ids here because the number of "series" passed to egui can actually be much higher
     /// since every color change, every discontinuity, etc. creates a new series, sharing the same egui id.
-    pub(crate) num_time_series_last_frame_per_instruction:
+    pub num_time_series_last_frame_per_instruction:
         HashMap<VisualizerInstructionId, IntSet<egui::Id>>,
+
+    /// The plot transform from the previous frame, used by visualizers to map
+    /// data-space points to screen-space for `re_renderer` primitives.
+    ///
+    /// `None` on the first frame (before `plot.show()` has run).
+    pub plot_transform: Option<egui_plot::PlotTransform>,
 
     /// How many time units correspond to a single physical pixel on the plot.
     ///
@@ -74,7 +80,7 @@ pub struct TimeSeriesViewState {
     /// on the next frame to determine aggregation levels.
     /// This avoids relying on `egui_plot::PlotMemory` keyed by view id, which breaks
     /// when the same blueprint view is shown multiple times.
-    pub(crate) time_per_pixel: f64,
+    pub time_per_pixel: f64,
 }
 
 impl Default for TimeSeriesViewState {
@@ -85,6 +91,7 @@ impl Default for TimeSeriesViewState {
             time_offset: 0,
             default_series_name_formats: Default::default(),
             num_time_series_last_frame_per_instruction: Default::default(),
+            plot_transform: None,
             time_per_pixel: 1.0,
         }
     }
@@ -409,11 +416,15 @@ impl ViewClass for TimeSeriesView {
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
-        system_output: SystemExecutionOutput,
+        mut system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
+
+        // Drain draw data from visualizer outputs (accessing field directly to avoid
+        // borrow conflict with view_systems which is borrowed via all_plot_series).
+        let re_renderer_draw_data: Vec<_> = system_output.drain_draw_data().collect();
 
         let line_series =
             system_output.visualizer_data::<SeriesLinesOutput>(SeriesLinesSystem::identifier())?;
@@ -744,15 +755,32 @@ impl ViewClass for TimeSeriesView {
                 // Let the user pick x and y ranges from the blueprint:
                 plot_ui.set_plot_bounds_y(y_range);
                 plot_ui.set_plot_bounds_x(x_range);
-
-                add_series_to_plot(
-                    plot_ui,
-                    &query.highlights,
-                    &all_plot_series,
-                    time_offset,
-                    &mut state.scalar_range,
-                );
             });
+
+            // Merge per-series finite ranges from visible series (used as the
+            // fallback for `ScalarAxis::descriptor_range()`).
+            state.scalar_range = None;
+            for series in &all_plot_series {
+                if !series.visible {
+                    continue;
+                }
+                let Some(series_range) = series.value_range else {
+                    continue;
+                };
+                if let Some(range) = state.scalar_range.as_mut() {
+                    if series_range.start() < range.start() {
+                        *range.start_mut() = series_range.start();
+                    }
+                    if series_range.end() > range.end() {
+                        *range.end_mut() = series_range.end();
+                    }
+                } else {
+                    state.scalar_range = Some(series_range);
+                }
+            }
+
+            // Store the transform for next frame's visualizers to use.
+            state.plot_transform = Some(transform);
 
             // Update time_per_pixel from the plot transform for use by visualizers next frame.
             {
@@ -760,6 +788,9 @@ impl ViewClass for TimeSeriesView {
                 let pixels_per_time = ui.ctx().pixels_per_point() as f64 * points_per_time;
                 state.time_per_pixel = 1.0 / pixels_per_time.max(f64::EPSILON);
             }
+
+            // Render re_renderer draw data (already in screen space) via ViewBuilder.
+            render_re_renderer_draw_data(ctx, ui, &response, re_renderer_draw_data);
 
             // Custom hover detection: find nearest actual data point and show tooltip.
             let hovered_data_result = (!legend_hovered)
@@ -1430,128 +1461,7 @@ fn update_series_visibility_from_legend(
     }
 }
 
-fn add_series_to_plot(
-    plot_ui: &mut egui_plot::PlotUi<'_>,
-    highlights: &ViewHighlights,
-    all_plot_series: &[&crate::PlotSeries],
-    time_offset: i64,
-    scalar_range: &mut Option<Range1D>,
-) {
-    re_tracing::profile_function!();
-
-    *scalar_range = None;
-
-    for series in all_plot_series {
-        if !series.visible {
-            continue;
-        }
-
-        let is_line = match series.kind {
-            PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_) => true,
-            PlotSeriesKind::Scatter(_) | PlotSeriesKind::Clear => false,
-        };
-        let points = if series.visible {
-            series
-                .points
-                .iter()
-                .copied()
-                .map(|(x, y)| {
-                    // Non-finite values (NaN, ±inf) must not hijack the auto-computed range —
-                    // a single ±inf would otherwise blow up the range and flatten all finite data.
-                    if y.is_finite() {
-                        if let Some(scalar_range) = scalar_range.as_mut() {
-                            if y < scalar_range.start() {
-                                *scalar_range.start_mut() = y;
-                            }
-                            if y > scalar_range.end() {
-                                *scalar_range.end_mut() = y;
-                            }
-                        } else {
-                            *scalar_range = Some(Range1D::new(y, y));
-                        }
-                    }
-
-                    [(x.saturating_sub(time_offset)) as _, y]
-                })
-                .collect::<Vec<_>>()
-        } else {
-            continue; // Skip rendering hidden series.
-        };
-
-        // Collect all line points that are completely surrounded by non-finite values.
-        // Note that by handling this late, aggregation still applied earlier, this is intentional
-        // since on line plots we don't want to handle those are clears which would fully abort aggregation.
-        let isolated_line_points = if is_line {
-            let nan_sentinel = [0.0, f64::NAN];
-            let padded = std::iter::once(&nan_sentinel)
-                .chain(points.iter())
-                .chain(std::iter::once(&nan_sentinel));
-
-            padded
-                .tuple_windows()
-                .filter(|([_prev_x, prev_y], [_x, y], [_next_x, next_y])| {
-                    !prev_y.is_finite() && y.is_finite() && !next_y.is_finite()
-                })
-                .map(|(_, p, _)| *p)
-                .collect()
-        } else {
-            Vec::new()
-        };
-
-        let color = series.color;
-
-        let interaction_highlight = highlights
-            .entity_highlight(series.instance_path.entity_path.hash())
-            .index_highlight(
-                series.instance_path.instance,
-                series.visualizer_instruction_id,
-            );
-        let highlight = interaction_highlight.any();
-
-        match series.kind {
-            PlotSeriesKind::Continuous => plot_ui.line(
-                Line::new(&series.label, points)
-                    .color(color)
-                    .width(2.0 * series.radius_ui)
-                    .highlight(highlight)
-                    .id(series.id()),
-            ),
-            PlotSeriesKind::Stepped(mode) => {
-                let stepped_points = to_stepped_points(&points, mode);
-                plot_ui.line(
-                    Line::new(&series.label, stepped_points)
-                        .color(color)
-                        .width(2.0 * series.radius_ui)
-                        .highlight(highlight)
-                        .id(series.id()),
-                );
-            }
-            PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
-                Points::new(&series.label, points)
-                    .color(color)
-                    .radius(series.radius_ui)
-                    .shape(scatter_attrs.marker.into())
-                    .highlight(highlight)
-                    .id(series.id()),
-            ),
-            PlotSeriesKind::Clear => {}
-        }
-
-        // Render isolated points as scatter so they're visible even without line neighbors.
-        if !isolated_line_points.is_empty() {
-            plot_ui.points(
-                Points::new(&series.label, isolated_line_points)
-                    .color(color)
-                    .radius(series.radius_ui)
-                    .shape(egui_plot::MarkerShape::Circle)
-                    .highlight(highlight)
-                    .id(series.id()),
-            );
-        }
-    }
-}
-
-fn to_stepped_points(points: &[[f64; 2]], mode: crate::StepMode) -> Vec<[f64; 2]> {
+pub(crate) fn to_stepped_points(points: &[[f64; 2]], mode: crate::StepMode) -> Vec<[f64; 2]> {
     if points.len() < 2 {
         return points.to_vec();
     }
@@ -1682,10 +1592,79 @@ pub fn make_range_sane(y_range: Range1D) -> Range1D {
 
     if end <= start {
         let center = f64::midpoint(start, end);
-        Range1D::new(center - 1.0, center + 1.0)
+        let margin = f64::max(1.0, center.abs() * 0.01);
+        Range1D::new(center - margin, center + margin)
     } else {
         Range1D::new(start, end)
     }
+}
+
+/// Render `re_renderer` draw data (lines, points) produced by visualizers in screen space.
+///
+/// The visualizers have already transformed points to screen coordinates using `PlotTransform`,
+/// so we use a simple identity orthographic projection matching the screen rect.
+fn render_re_renderer_draw_data(
+    ctx: &ViewerContext<'_>,
+    ui: &egui::Ui,
+    response: &egui::Response,
+    draw_data: Vec<re_renderer::QueueableDrawData>,
+) {
+    if draw_data.is_empty() {
+        return;
+    }
+
+    let render_ctx = ctx.render_ctx();
+    let pixels_per_point = ui.ctx().pixels_per_point();
+
+    // The plot area in screen coordinates.
+    let plot_rect = response.rect;
+
+    // Resolution in physical pixels for the render target.
+    let resolution_in_pixel =
+        re_viewer_context::gpu_bridge::viewport_resolution_in_pixels(plot_rect, pixels_per_point);
+
+    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
+        return;
+    }
+
+    let height = plot_rect.height();
+
+    // Points are already in screen (UI) coordinates from PlotTransform.
+    // Translate so that the plot rect's top-left maps to the origin.
+    let view_from_world = macaw::IsoTransform::from_rotation_translation(
+        glam::Quat::IDENTITY,
+        glam::vec3(-plot_rect.left(), -plot_rect.top(), 0.0),
+    );
+
+    let target_config = re_renderer::view_builder::TargetConfiguration {
+        name: "time_series_plot".into(),
+        resolution_in_pixel,
+        view_from_world,
+        projection_from_view: re_renderer::view_builder::Projection::Orthographic {
+            camera_mode: re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
+            vertical_world_size: height,
+            far_plane_distance: 1000.0,
+        },
+        viewport_transformation: re_renderer::RectTransform::IDENTITY,
+        pixels_per_point,
+        blend_with_background: re_renderer::BlendWithBackground::Premultiplied,
+        ..Default::default()
+    };
+
+    let Ok(mut view_builder) = re_renderer::ViewBuilder::new(render_ctx, target_config) else {
+        return;
+    };
+
+    for dd in draw_data {
+        view_builder.queue_draw(render_ctx, dd);
+    }
+
+    let painter = ui.painter_at(plot_rect);
+    painter.add(re_viewer_context::gpu_bridge::new_renderer_callback(
+        view_builder,
+        plot_rect,
+        re_renderer::Rgba::TRANSPARENT,
+    ));
 }
 
 #[cfg(test)]

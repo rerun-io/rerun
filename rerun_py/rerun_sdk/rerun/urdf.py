@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
     from . import Transform3D
     from ._baseclasses import ComponentColumnList
+    from .experimental import LazyChunkStream
     from .recording_stream import RecordingStream
 
 __all__ = ["UrdfJoint", "UrdfLink", "UrdfMimic", "UrdfTree"]
@@ -353,6 +354,24 @@ class UrdfTree:
 
         """
         self._inner.log(recording.to_native() if recording is not None else None)
+
+    def stream(self, *, include_joint_transforms: bool = True) -> LazyChunkStream:
+        """
+        Return a lazy stream over chunks emitted from this URDF tree.
+
+        !!! warning
+            This method is experimental and returns the experimental
+            `rerun.experimental.LazyChunkStream` API.
+
+        Parameters
+        ----------
+        include_joint_transforms:
+            Whether to include the static joint transforms from the URDF.
+
+        """
+        from .experimental import LazyChunkStream
+
+        return LazyChunkStream(self._inner.stream(include_joint_transforms=include_joint_transforms))
 
     def __repr__(self) -> str:
         return self._inner.__repr__()

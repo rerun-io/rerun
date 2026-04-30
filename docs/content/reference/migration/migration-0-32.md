@@ -59,11 +59,23 @@ rerun-importer-my-format
 
 ## Lenses API (Rust)
 
-### `EntityPathFilter` removed from `Lens`
+The Lenses API has been restructured and simplified.
 
-Entity path filtering is no longer part of the `Lens` itself. A `Lens` now operates purely
-on component columns within a chunk. Entity path filtering is a separate concern handled
-either upstream (e.g. via stream filtering) or at the `Lenses` collection level.
+### Entity path filtering moved to `Lenses`
+
+Entity path filtering is no longer part of the `Lens` itself. Use
+`Lenses::add_lens_with_filter`:
+
+```rust
+let lenses = Lenses::new(OutputMode::DropUnmatched)
+    .add_lens_with_filter(EntityPathFilter::parse_forgiving("sensors/**"), lens);
+```
+
+This makes applying lenses to individual chunks more ergonomic.
+
+### New builder API
+
+Lenses are now created through `Lens::derive()`, `Lens::scatter()`, and `Lens::mutate()`:
 
 ```rust
 // Before
@@ -71,39 +83,22 @@ Lens::for_input_column(EntityPathFilter::all(), "component")
     .output_columns(|out| { /* … */ })?
     .build()
 
-// After
-Lens::for_input_column("component")
-    .output_columns(|out| { /* … */ })?
-    .build()
+// After - derive lens (1:1 row mapping)
+Lens::derive("component")
+    .to_component(component_descr, ".field")
+    .build()?
+
+// After - scatter lens (1:N row mapping)
+Lens::scatter("component")
+    .output_entity("/target")
+    .to_component(component_descr, ".field")
+    .build()?
+
+// After - mutate lens (modifies component in-place)
+Lens::mutate("component", ".field").build()
 ```
 
-If you need entity path filtering, use `Lenses::add_lens_with_filter`:
-
-```rust
-let lenses = Lenses::new(OutputMode::DropUnmatched)
-    .add_lens_with_filter(EntityPathFilter::parse_forgiving("sensors/**"), lens);
-```
-
-### `scatter` moved from `LensOutput` to `Lens`
-
-Scatter (1:N row mapping) is now a property of the `Lens`, not of individual outputs.
-The `output_scatter_columns` and `output_scatter_columns_at` methods have been removed.
-Use `LensBuilder::scatter()` before `output_columns` / `output_columns_at` instead:
-
-```rust
-// Before
-Lens::for_input_column("component")
-    .output_scatter_columns_at("/target", |out| { /* … */ })?
-    .build()
-
-// After
-Lens::for_input_column("component")
-    .scatter()
-    .output_columns_at("/target", |out| { /* … */ })?
-    .build()
-```
-
-Lenses that scatter are only available in Rust.
+To output columns to multiple entities from a single component, multiple lenses can be registered for the same input component.
 
 ## `rerun rrd compact` renamed to `rerun rrd optimize`
 

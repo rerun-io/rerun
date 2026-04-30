@@ -353,6 +353,56 @@ impl ConnectionRegistryHandle {
         }
     }
 
+    /// Probe `{origin}/version` to detect non-Rerun endpoints (e.g. user typed
+    /// `asdf.rerun.io` instead of `api.asdf.rerun.io`).
+    ///
+    /// Returns `Ok(())` if the probe is inconclusive (server responded as expected),
+    /// `Err(_)` with a friendly diagnostic if the origin is clearly not a Rerun server.
+    #[tracing::instrument(level = "info", skip_all)]
+    async fn ensure_is_rerun_server(origin: &re_uri::Origin) -> ApiResult<()> {
+        let res = crate::with_retry("http_version_fetch", || async {
+            ehttp::fetch_async(ehttp::Request::get(format!("{}/version", origin.as_url())))
+                .await
+                .map_err(|err| {
+                    let mut msg = format!("failed to connect to server '{origin}': {err}");
+                    if let Some(suggested) = suggest_api_prefix(origin) {
+                        write!(msg, ". Did you mean '{suggested}'?").ok();
+                    }
+                    ApiError::connection(msg)
+                })
+        })
+        .await?;
+
+        if res.ok {
+            // Server responded as expected — probe is inconclusive about why gRPC failed.
+            return Ok(());
+        }
+
+        let hint = suggest_api_prefix(origin).map(|suggested| {
+            format!("Did you mean '{suggested}'? Rerun Cloud endpoints require the 'api.' prefix")
+        });
+        // Truncate the body so we don't dump an entire HTML error page into the error.
+        let body_snippet = std::str::from_utf8(&res.bytes)
+            .ok()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(|s| {
+                const MAX: usize = 200;
+                if s.len() > MAX {
+                    format!("{}…", &s[..s.floor_char_boundary(MAX)])
+                } else {
+                    s.to_owned()
+                }
+            });
+        Err(ApiError::invalid_server_with_response(
+            origin.clone(),
+            res.status,
+            &res.status_text,
+            body_snippet.as_deref(),
+            hint.as_deref(),
+        ))
+    }
+
     #[tracing::instrument(level = "info", skip_all)]
     async fn create_and_validate_raw_client_with_token(
         origin: re_uri::Origin,
@@ -394,59 +444,17 @@ impl ConnectionRegistryHandle {
                 None => None,
             };
 
-        // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
-        // so if what we're trying to connect to is not a valid Rerun server, then cut out
-        // a layer of noise:
-        {
-            let res = crate::with_retry("http_version_fetch", || async {
-                match ehttp::fetch_async(ehttp::Request::get(format!(
-                    "{}/version",
-                    origin.as_url()
-                )))
-                .await
-                {
-                    Ok(res) => Ok(res),
-                    Err(err) => {
-                        let mut msg = format!("failed to connect to server '{origin}': {err}");
-                        if let Some(suggested) = suggest_api_prefix(&origin) {
-                            write!(msg, ". Did you mean '{suggested}'?").ok();
-                        }
-                        Err(ApiError::connection(msg))
-                    }
-                }
-            })
-            .await?;
+        let mut raw_client = match crate::grpc::client(origin.clone(), provider).await {
+            Ok(client) => client,
+            Err(grpc_err) => {
+                // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
+                // so if what we're trying to connect to is not a valid Rerun server, then cut out
+                // a layer of noise:
+                Self::ensure_is_rerun_server(&origin).await?;
 
-            if !res.ok {
-                let hint = suggest_api_prefix(&origin).map(|suggested| {
-                    format!(
-                        "Did you mean '{suggested}'? Rerun Cloud endpoints require the 'api.' prefix"
-                    )
-                });
-                // Truncate the body so we don't dump an entire HTML error page into the error.
-                let body_snippet = std::str::from_utf8(&res.bytes)
-                    .ok()
-                    .map(|s| s.trim())
-                    .filter(|s| !s.is_empty())
-                    .map(|s| {
-                        const MAX: usize = 200;
-                        if s.len() > MAX {
-                            format!("{}…", &s[..s.floor_char_boundary(MAX)])
-                        } else {
-                            s.to_owned()
-                        }
-                    });
-                return Err(ApiError::invalid_server_with_response(
-                    origin.clone(),
-                    res.status,
-                    &res.status_text,
-                    body_snippet.as_deref(),
-                    hint.as_deref(),
-                ));
+                return Err(grpc_err);
             }
-        }
-
-        let mut raw_client = crate::grpc::client(origin.clone(), provider).await?;
+        };
 
         // Call the WhoAmI endpoint to check that authentication is successful. It's ok to do
         // this since we're caching the client, so we're not spamming such a request unnecessarily.

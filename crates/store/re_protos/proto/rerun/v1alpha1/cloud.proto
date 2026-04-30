@@ -29,6 +29,17 @@ service RerunCloudService {
   // is successful and to retrieve the user's identity.
   rpc WhoAmI(WhoAmIRequest) returns (WhoAmIResponse) {}
 
+  // Returns a payload of pseudo-random (incompressible) bytes of the requested size.
+  //
+  // Intended for measuring round-trip time and bandwidth between client and server:
+  // * Send a few small requests (e.g. `num_bytes = 1`) to estimate RTT.
+  // * Send a larger request (e.g. `num_bytes = 1 MiB`), subtract the RTT, and divide
+  //   `num_bytes` by the remaining time to estimate bandwidth.
+  //
+  // The response is streamed as one or more chunks; the total number of bytes across
+  // all chunks is exactly `num_bytes`.
+  rpc DoBandwidthTest(DoBandwidthTestRequest) returns (stream DoBandwidthTestResponse) {}
+
   // --- Catalog ---
 
   rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
@@ -247,6 +258,19 @@ message WhoAmIResponse {
 
   // Whether the user has write access.
   bool can_write = 3;
+}
+
+message DoBandwidthTestRequest {
+  // Total number of pseudo-random (incompressible) bytes the server should return,
+  // summed across all streamed response chunks.
+  uint64 num_bytes = 1;
+}
+
+message DoBandwidthTestResponse {
+  // A chunk of pseudo-random (incompressible) bytes.
+  //
+  // The total length across all streamed chunks equals `DoBandwidthTestRequest.num_bytes`.
+  bytes payload = 1;
 }
 
 // Application level error - used as `details` in the `google.rpc.Status` message

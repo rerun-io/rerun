@@ -89,9 +89,93 @@ impl VisualizerSystem for SeriesPointsSystem {
         let mut all_series_flat = Vec::new();
         all_series_flat.extend(all_series.into_iter().flatten());
 
-        Ok(output.with_visualizer_data(SeriesPointsOutput {
-            all_series: all_series_flat,
-        }))
+        // Build instanced-mesh draw data for the scatter markers (one mesh per `MarkerShape`).
+        let draw_data = Self::build_draw_data(ctx, query, &all_series_flat);
+
+        Ok(output
+            .with_draw_data(draw_data)
+            .with_visualizer_data(SeriesPointsOutput {
+                all_series: all_series_flat,
+            }))
+    }
+}
+
+impl SeriesPointsSystem {
+    fn build_draw_data(
+        ctx: &ViewContext<'_>,
+        query: &ViewQuery<'_>,
+        all_series: &[PlotSeries],
+    ) -> Vec<re_renderer::QueueableDrawData> {
+        re_tracing::profile_function!();
+
+        let render_ctx = ctx.viewer_ctx.render_ctx();
+
+        let view_state = ctx
+            .view_state
+            .as_any()
+            .downcast_ref::<crate::view_class::TimeSeriesViewState>();
+
+        let time_offset = view_state.map_or(0, |state| state.time_offset);
+        let Some(plot_transform) = view_state.and_then(|state| state.plot_transform) else {
+            // First frame: no transform available yet.
+            return Vec::new();
+        };
+
+        let Some(marker_meshes) = ctx
+            .viewer_ctx
+            .store_context
+            .memoizer(|cache: &mut crate::markers::MarkerMeshCache| cache.get_or_build(render_ctx))
+        else {
+            return Vec::new();
+        };
+
+        let mut instances = Vec::new();
+        for series in all_series {
+            if !series.visible || series.points.is_empty() {
+                continue;
+            }
+            let crate::PlotSeriesKind::Scatter(scatter_attrs) = series.kind else {
+                continue;
+            };
+
+            let mut radius = series.radius_ui;
+            if crate::series_query::is_series_highlighted(query, series) {
+                radius += crate::markers::HIGHLIGHT_RADIUS_EXPANSION;
+            }
+
+            let mesh = marker_meshes.for_shape(scatter_attrs.marker);
+
+            for &(time, value) in &series.points {
+                if !value.is_finite() {
+                    continue;
+                }
+
+                // We don't do gpu transforms since that would transform the shape of things, and we
+                // only want to transform the center position.
+                let center = plot_transform.position_from_point(&egui_plot::PlotPoint::new(
+                    (time.saturating_sub(time_offset)) as f64,
+                    value,
+                ));
+                instances.push(crate::markers::marker_instance(
+                    mesh.clone(),
+                    glam::vec2(center.x, center.y),
+                    radius,
+                    series.color,
+                ));
+            }
+        }
+
+        if instances.is_empty() {
+            return Vec::new();
+        }
+
+        match re_renderer::renderer::MeshDrawData::new(render_ctx, &instances) {
+            Ok(draw_data) => vec![draw_data.into()],
+            Err(err) => {
+                re_log::error_once!("Failed to build scatter marker MeshDrawData: {err}");
+                Vec::new()
+            }
+        }
     }
 }
 
@@ -233,7 +317,7 @@ impl SeriesPointsSystem {
                 let all_marker_shapes_chunks = marker_iter.chunks().iter().collect_vec();
 
                 if all_marker_shapes_chunks.len() == 1
-                    && all_marker_shapes_chunks[0].chunk.is_static()
+                    && all_marker_shapes_chunks[0].chunk.num_rows() == 1
                 {
                     re_tracing::profile_scope!("override/default fast path");
 

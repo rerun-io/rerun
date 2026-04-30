@@ -13,6 +13,7 @@ use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, Timeline};
 use crate::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ChunkStoreResult, ChunkTrackingMode,
     EntityTree, ExtractPropertiesError, LatestAtQuery, QueryResults, RangeQuery, StoreSchema,
+    extract_properties_from_chunks,
 };
 
 /// A [`ChunkStore`] backed by an RRD file, with index loaded but chunks loaded on demand.
@@ -21,13 +22,13 @@ use crate::{
 /// from the `RrdFooter`) is the caller's responsibility.
 ///
 /// On construction, the `ChunkStore`'s virtual index is populated via `insert_rrd_manifest()`.
-/// No physical chunk data is loaded until [`Self::load_chunks`] or [`Self::load_all_chunks`]
-/// is called.
+/// Physical chunks are **never retained** in the inner store — [`Self::load_chunks`] reads from
+/// disk and returns the `Vec<Arc<Chunk>>` to the caller, who is responsible for the resulting
+/// memory. This is deliberately cache-free to keep the OSS server from `OOMing` on large RRDs.
 ///
 /// Holds the RRD file open for the lifetime of the store, so that lazy chunk reads succeed
 /// even if the file is deleted from the filesystem after construction.
-//TODO(RR-4341): this abstraction is very primitive. We need a more general `ChunkProvider`-style
-//  abstraction to cover for the many larger-than-RAM use cases.
+//TODO(RR-4503): this will be generalized to a LazyStore with abstracted backend and caching support
 pub struct LazyRrdStore {
     store: ChunkStoreHandle,
     file: Mutex<File>,
@@ -109,47 +110,28 @@ impl LazyRrdStore {
         result
     }
 
-    /// Load specific chunks from disk into the store.
+    /// Load specific chunks from disk and return them.
     ///
-    /// Chunks that are already physically loaded are skipped.
+    /// The inner [`ChunkStore`] is **not** mutated — it stays purely virtual for the lifetime of
+    /// this store. The caller owns the returned `Vec<Arc<Chunk>>`; dropping it frees the memory.
     /// Returns an error if any chunk ID is not in the manifest.
-    /// All I/O happens without holding any store lock.
     pub fn load_chunks(&self, chunk_ids: &[ChunkId]) -> ChunkStoreResult<Vec<Arc<Chunk>>> {
-        // 1. Filter out chunks that are already physical.
-        let to_load: Vec<ChunkId> = {
-            let guard = self.store.read();
-            chunk_ids
-                .iter()
-                .filter(|id| guard.physical_chunk(id).is_none())
-                .copied()
-                .collect()
-        };
-
-        if to_load.is_empty() {
+        if chunk_ids.is_empty() {
             return Ok(Vec::new());
         }
 
-        // 2. Read from disk — NO store lock held.
-        //    Returns `CodecError::ChunkNotInManifest` if any ID is unknown.
-        let loaded = {
-            let mut file = self.file.lock();
-            re_log_encoding::read_chunks(&mut file, &self.manifest, &to_load)?
-        };
-
-        // 3. Insert into store.
-        let mut store = self.store.write();
-        for chunk in &loaded {
-            // insert_chunk on an already-present ChunkId is a no-op.
-            store.insert_chunk(chunk)?;
-        }
+        // Returns `CodecError::ChunkNotInManifest` if any ID is unknown.
+        let mut file = self.file.lock();
+        let loaded = re_log_encoding::read_chunks(&mut file, &self.manifest, chunk_ids)?;
 
         Ok(loaded)
     }
 
-    /// Load all chunks from the RRD file into the store.
-    pub fn load_all_chunks(&self) -> ChunkStoreResult<()> {
-        self.load_chunks(self.manifest.col_chunk_ids())?;
-        Ok(())
+    /// Load every chunk in the manifest and return them in a single [`Vec`].
+    ///
+    /// Memory cost scales with the full RRD — consider streaming for large stores.
+    pub fn load_all_chunks(&self) -> ChunkStoreResult<Vec<Arc<Chunk>>> {
+        self.load_chunks(self.manifest.col_chunk_ids())
     }
 
     /// The store's schema, populated from the manifest (available without loading chunks).
@@ -166,28 +148,6 @@ impl LazyRrdStore {
     /// The number of chunks described by the manifest (physical + virtual).
     pub fn num_chunks(&self) -> usize {
         self.manifest.num_chunks()
-    }
-
-    /// The number of chunks currently loaded in memory.
-    pub fn num_physical_chunks(&self) -> usize {
-        self.store.read().num_physical_chunks()
-    }
-
-    /// Whether a specific chunk is currently loaded in memory.
-    pub fn has_physical_chunk(&self, chunk_id: &ChunkId) -> bool {
-        self.store.read().physical_chunk(chunk_id).is_some()
-    }
-
-    /// Load all chunks, then return a compacted copy of the store.
-    pub fn compacted(&self, options: &crate::CompactionOptions) -> ChunkStoreResult<ChunkStore> {
-        self.load_all_chunks()?;
-        self.store.read().compacted(options)
-    }
-
-    /// Load all chunks and return them.
-    pub fn collect_physical_chunks(&self) -> ChunkStoreResult<Vec<Arc<Chunk>>> {
-        self.load_all_chunks()?;
-        Ok(self.store.read().iter_physical_chunks().cloned().collect())
     }
 
     /// Path to the source RRD file.
@@ -228,56 +188,27 @@ impl LazyRrdStore {
         self.store.read().all_entities()
     }
 
-    /// Get a physical chunk by ID if it's already loaded. Returns `None` for
-    /// virtual-only chunks — use [`Self::load_chunks`] to materialize them first.
-    pub fn physical_chunk(&self, id: &ChunkId) -> Option<Arc<Chunk>> {
-        self.store.read().physical_chunk(id).cloned()
-    }
-
-    /// Extract properties, automatically loading the required property chunks
-    /// on demand if they are still virtual.
-    //TODO(RR-4458): currently takes one disk round-trip per property entity with virtual
-    // chunks because `ChunkStore::extract_properties` short-circuits on the first missing
-    // entity. Once it reports the full union of missing chunks, this will converge in a
-    // single retry.
+    /// Extract properties in a single pass: query the virtual index for required property
+    /// chunks, load them from disk in one batched read, and run the extraction. The inner
+    /// store is never mutated.
     pub fn extract_properties(&self) -> Result<arrow::array::RecordBatch, ExtractPropertiesError> {
-        self.with_autoload(|store| store.extract_properties())
-    }
+        let per_entity = self.store.read().property_entities_query_results();
 
-    /// Run an operation against the inner [`ChunkStore`], auto-loading any chunks the
-    /// operation reports as missing and retrying until it succeeds or returns a different
-    /// error.
-    ///
-    /// The closure receives `&ChunkStore` rather than `&self`, which structurally prevents
-    /// the read guard from escaping a single iteration — [`Self::load_chunks`] needs the
-    /// write lock, and holding a read guard across that call would deadlock.
-    ///
-    /// A generous fixed attempt cap guards against a bug downstream (e.g. `load_chunks`
-    /// silently no-ops while `MissingData` keeps being reported): exceeding it surfaces
-    /// as an `Internal` error instead of spinning forever. In practice this loop converges
-    /// in a handful of iterations; the cap is a paranoia valve, not a tight bound.
-    fn with_autoload<T, F>(&self, mut op: F) -> Result<T, ExtractPropertiesError>
-    where
-        F: FnMut(&ChunkStore) -> Result<T, ExtractPropertiesError>,
-    {
-        const MAX_AUTOLOAD_ATTEMPTS: usize = 1024;
-        for _ in 0..MAX_AUTOLOAD_ATTEMPTS {
-            // IMPORTANT: bind to a local first so the read-guard temporary from
-            // `self.store.read()` is dropped at this statement's semicolon. Matching on
-            // `op(&self.store.read())` directly would extend the scrutinee's temporaries
-            // through the arms and `self.load_chunks` (write lock) would deadlock.
-            let result = op(&self.store.read());
-            match result {
-                Err(ExtractPropertiesError::MissingData(missing_ids)) => {
-                    self.load_chunks(&missing_ids)
-                        .map_err(|err| ExtractPropertiesError::Internal(err.to_string()))?;
-                }
-                other => return other,
-            }
-        }
-        Err(ExtractPropertiesError::Internal(format!(
-            "autoload did not converge after {MAX_AUTOLOAD_ATTEMPTS} attempts"
-        )))
+        let ids: Vec<ChunkId> = per_entity
+            .iter()
+            .flat_map(|(_, qr)| {
+                qr.chunks
+                    .iter()
+                    .map(|c| c.id())
+                    .chain(qr.missing_virtual.iter().copied())
+            })
+            .collect();
+
+        let chunks = self
+            .load_chunks(&ids)
+            .map_err(|err| ExtractPropertiesError::Internal(err.to_string()))?;
+
+        extract_properties_from_chunks(&per_entity, &chunks)
     }
 
     /// Run a latest-at query against the virtual index.
@@ -401,7 +332,7 @@ mod tests {
 
         let lazy = LazyRrdStore::try_new(file, path, raw).unwrap();
 
-        assert_eq!(lazy.num_physical_chunks(), 0);
+        assert_eq!(lazy.store.read().num_physical_chunks(), 0);
         assert_eq!(
             lazy.manifest().col_chunk_ids().len(),
             chunks.len(),
@@ -435,7 +366,7 @@ mod tests {
         let raw = read_raw_manifest(&mut file, &store_id);
 
         let lazy = LazyRrdStore::try_new(file, path, raw).unwrap();
-        let loaded = lazy.collect_physical_chunks().unwrap();
+        let loaded = lazy.load_all_chunks().unwrap();
         assert_eq!(loaded.len(), chunks.len());
     }
 
@@ -450,8 +381,7 @@ mod tests {
         let loaded = lazy.load_chunks(&[first_chunk_id]).unwrap();
 
         assert_eq!(loaded.len(), 1);
-        assert_eq!(lazy.num_physical_chunks(), 1);
-        assert!(lazy.has_physical_chunk(&first_chunk_id));
+        assert_eq!(loaded[0].id(), first_chunk_id);
 
         // Other chunks are still virtual.
         let total_chunks = chunks.len();
@@ -465,16 +395,102 @@ mod tests {
         let raw = read_raw_manifest(&mut file, &store_id);
 
         let lazy = LazyRrdStore::try_new(file, path, raw).unwrap();
-        lazy.load_all_chunks().unwrap();
 
-        let count_before = lazy.num_physical_chunks();
+        // Calling `load_chunks` twice with the same IDs yields equivalent results, and neither
+        // call retains chunks in the inner store — guard against anyone sneaking a cache back in.
+        let ids = lazy.manifest().col_chunk_ids();
+        let first = lazy.load_chunks(ids).unwrap();
+        let second = lazy.load_chunks(ids).unwrap();
 
-        // Loading again should be a no-op.
-        let loaded = lazy.load_chunks(lazy.manifest().col_chunk_ids()).unwrap();
-        assert!(loaded.is_empty(), "Already-loaded chunks should be skipped");
+        assert_eq!(first.len(), second.len());
+        let mut first_ids: Vec<_> = first.iter().map(|c| c.id()).collect();
+        let mut second_ids: Vec<_> = second.iter().map(|c| c.id()).collect();
+        first_ids.sort();
+        second_ids.sort();
+        assert_eq!(first_ids, second_ids);
 
-        let count_after = lazy.num_physical_chunks();
-        assert_eq!(count_before, count_after);
+        assert_eq!(
+            lazy.store.read().num_physical_chunks(),
+            0,
+            "no-cache: inner store must stay empty across loads"
+        );
+    }
+
+    #[test]
+    fn test_lazy_store_load_does_not_retain() {
+        let dir = tempfile::tempdir().unwrap();
+        let (path, mut file, store_id, _) = create_test_rrd(dir.path(), 2, 3);
+        let raw = read_raw_manifest(&mut file, &store_id);
+
+        let lazy = LazyRrdStore::try_new(file, path, raw).unwrap();
+        let first_chunk_id = lazy.manifest().col_chunk_ids()[0];
+        let loaded = lazy.load_chunks(&[first_chunk_id]).unwrap();
+        assert_eq!(loaded.len(), 1);
+
+        drop(loaded);
+
+        assert_eq!(
+            lazy.store.read().num_physical_chunks(),
+            0,
+            "dropping the returned Vec must free the chunk; inner store is not a cache"
+        );
+    }
+
+    #[test]
+    fn test_lazy_store_extract_properties_without_autoload() {
+        // Build an RRD with a single property entity, extract properties, and assert that the
+        // inner store remains empty afterwards.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("props.rrd");
+        let store_id = StoreId::random(StoreKind::Recording, "props");
+        let store_info = StoreInfo::new(store_id.clone(), StoreSource::Unknown);
+
+        let property_entity = EntityPath::from("/__properties/my_prop");
+        let row_id = RowId::new();
+        let points = MyPoint::from_iter(0..1);
+        let chunk = Chunk::builder(property_entity)
+            .with_sparse_component_batches(
+                row_id,
+                TimePoint::default(),
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            )
+            .build()
+            .unwrap();
+        let chunk = Arc::new(chunk);
+
+        let mut file = std::fs::File::create(&path).unwrap();
+        let mut encoder = re_log_encoding::Encoder::new_eager(
+            re_log_encoding::CrateVersion::LOCAL,
+            EncodingOptions::PROTOBUF_COMPRESSED,
+            &mut file,
+        )
+        .unwrap();
+        encoder
+            .append(&LogMsg::SetStoreInfo(SetStoreInfo {
+                row_id: *RowId::ZERO,
+                info: store_info,
+            }))
+            .unwrap();
+        let arrow_msg = chunk.to_arrow_msg().unwrap();
+        encoder
+            .append(&LogMsg::ArrowMsg(store_id.clone(), arrow_msg))
+            .unwrap();
+        encoder.finish().unwrap();
+
+        let mut file = File::open(&path).unwrap();
+        let raw = read_raw_manifest(&mut file, &store_id);
+
+        let lazy = LazyRrdStore::try_new(file, path, raw).unwrap();
+        let batch = lazy.extract_properties().unwrap();
+        assert!(
+            batch.num_columns() > 0,
+            "properties record batch should contain the property column"
+        );
+        assert_eq!(
+            lazy.store.read().num_physical_chunks(),
+            0,
+            "extract_properties must not retain any chunks"
+        );
     }
 
     #[test]
@@ -500,9 +516,9 @@ mod tests {
         let (path, mut file, store_id, _) = create_test_rrd(dir.path(), 2, 3);
         let raw = read_raw_manifest(&mut file, &store_id);
 
-        // Lazy path: create lazy store, load all chunks.
+        // Lazy path: create lazy store, load all chunks via the no-cache API.
         let lazy = LazyRrdStore::try_new(file, path.clone(), raw).unwrap();
-        lazy.load_all_chunks().unwrap();
+        let lazy_chunks = lazy.load_all_chunks().unwrap();
 
         // Eager path: load the same file fully.
         let eager_stores =
@@ -523,10 +539,11 @@ mod tests {
         let eager_entities = collect_entities(eager_store.entity_tree());
 
         assert_eq!(lazy_entities, eager_entities, "Same entities");
-        assert_eq!(
-            lazy.num_physical_chunks(),
-            eager_store.num_physical_chunks(),
-            "Same number of physical chunks"
-        );
+
+        let mut lazy_ids: Vec<_> = lazy_chunks.iter().map(|c| c.id()).collect();
+        let mut eager_ids: Vec<_> = eager_store.iter_physical_chunks().map(|c| c.id()).collect();
+        lazy_ids.sort();
+        eager_ids.sort();
+        assert_eq!(lazy_ids, eager_ids, "Same set of chunks");
     }
 }

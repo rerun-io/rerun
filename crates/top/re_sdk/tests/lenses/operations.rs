@@ -130,15 +130,16 @@ fn test_destructure_cast() {
     let original_chunk = nullability_chunk();
     println!("{original_chunk}");
 
-    let destructure = Lens::for_input_column("structs")
-        .output_columns_at("nullability/a", |out| {
-            out.component(
-                Scalars::descriptor_scalars(),
-                Selector::parse(".a")?.pipe(op::cast(DataType::Float64)),
-            )
-        })
-        .unwrap()
-        .build();
+    let destructure = Lens::derive("structs")
+        .output_entity("nullability/a")
+        .to_component(
+            Scalars::descriptor_scalars(),
+            Selector::parse(".a")
+                .unwrap()
+                .pipe(op::cast(DataType::Float64)),
+        )
+        .build()
+        .unwrap();
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens_with_filter(
         re_log_types::EntityPathFilter::parse_forgiving("nullability"),
@@ -161,12 +162,14 @@ fn test_destructure() {
     let original_chunk = nullability_chunk();
     println!("{original_chunk}");
 
-    let destructure = Lens::for_input_column("structs")
-        .output_columns_at("nullability/b", |out| {
-            out.component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
-        })
-        .unwrap()
-        .build();
+    let destructure = Lens::derive("structs")
+        .output_entity("nullability/b")
+        .to_component(
+            Scalars::descriptor_scalars(),
+            Selector::parse(".b").unwrap(),
+        )
+        .build()
+        .unwrap();
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens_with_filter(
         re_log_types::EntityPathFilter::parse_forgiving("nullability"),
@@ -226,16 +229,18 @@ fn test_time_column_extraction() {
     println!("{original_chunk}");
 
     // Create a lens that extracts the timestamp as a time column and keeps the original timestamp as a component
-    let time_lens = Lens::for_input_column("my_timestamp")
-        .output_columns(|out| {
-            out.time("my_timeline", TimeType::Sequence, Selector::parse(".")?)?
-                .component(
-                    ComponentDescriptor::partial("extracted_time"),
-                    Selector::parse(".")?,
-                )
-        })
-        .unwrap()
-        .build();
+    let time_lens = Lens::derive("my_timestamp")
+        .to_timeline(
+            "my_timeline",
+            TimeType::Sequence,
+            Selector::parse(".").unwrap(),
+        )
+        .to_component(
+            ComponentDescriptor::partial("extracted_time"),
+            Selector::parse(".").unwrap(),
+        )
+        .build()
+        .unwrap();
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens_with_filter(
         re_log_types::EntityPathFilter::parse_forgiving("timestamped"),
@@ -357,21 +362,19 @@ fn test_scatter_columns() {
     println!("{original_chunk}");
 
     // Create a scatter lens that explodes the nested lists
-    let scatter_lens = Lens::for_input_column("nested_data")
-        .scatter()
-        .output_columns_at("scatter_test/exploded", |out| {
-            out.component(
-                ComponentDescriptor::partial("exploded_strings"),
-                Selector::parse(".value")?,
-            )?
-            .time(
-                "my_timestamp",
-                TimeType::Sequence,
-                Selector::parse(".timestamp")?,
-            )
-        })
-        .unwrap()
-        .build();
+    let scatter_lens = Lens::scatter("nested_data")
+        .output_entity("scatter_test/exploded")
+        .to_component(
+            ComponentDescriptor::partial("exploded_strings"),
+            Selector::parse(".value").unwrap(),
+        )
+        .to_timeline(
+            "my_timestamp",
+            TimeType::Sequence,
+            Selector::parse(".timestamp").unwrap(),
+        )
+        .build()
+        .unwrap();
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
@@ -443,21 +446,19 @@ fn test_scatter_columns_static() {
     println!("{original_chunk}");
 
     // Create a scatter lens that explodes the nested lists
-    let scatter_lens = Lens::for_input_column("nested_data")
-        .scatter()
-        .output_columns_at("scatter_test/exploded", |out| {
-            out.component(
-                ComponentDescriptor::partial("exploded_strings"),
-                Selector::parse(".value")?,
-            )?
-            .time(
-                "my_timestamp",
-                TimeType::Sequence,
-                Selector::parse(".timestamp")?,
-            )
-        })
-        .unwrap()
-        .build();
+    let scatter_lens = Lens::scatter("nested_data")
+        .output_entity("scatter_test/exploded")
+        .to_component(
+            ComponentDescriptor::partial("exploded_strings"),
+            Selector::parse(".value").unwrap(),
+        )
+        .to_timeline(
+            "my_timestamp",
+            TimeType::Sequence,
+            Selector::parse(".timestamp").unwrap(),
+        )
+        .build()
+        .unwrap();
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
@@ -544,12 +545,13 @@ fn test_output_overwrites_same_named_component() {
     )
     .unwrap();
 
-    let lens = Lens::for_input_column("input")
-        .output_columns(|out| {
-            out.component(ComponentDescriptor::partial("value"), Selector::parse(".")?)
-        })
-        .unwrap()
-        .build();
+    let lens = Lens::derive("input")
+        .to_component(
+            ComponentDescriptor::partial("value"),
+            Selector::parse(".").unwrap(),
+        )
+        .build()
+        .unwrap();
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(lens);
 

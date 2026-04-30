@@ -127,7 +127,7 @@ impl McapImporter {
                             for error in partial.errors() {
                                 re_log::error_once!("Lens error: {error}");
                             }
-                            if let Some(c) = partial.take() {
+                            if let Some(c) = partial.partial_chunk() {
                                 emit_chunk(apply_timestamp_offset(c, timestamp_offset_ns));
                             }
                         }

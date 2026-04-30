@@ -15,9 +15,10 @@ use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
 use crate::cloud::v1alpha1::{
-    EntryKind, FetchChunksRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
-    QueryTasksResponse, RegisterWithDatasetResponse, ScanDatasetManifestResponse,
-    ScanSegmentTableResponse, UnregisterFromDatasetResponse, VectorDistanceMetric,
+    DoBandwidthTestResponse, EntryKind, FetchChunksRequest, GetDatasetSchemaResponse,
+    QueryDatasetResponse, QueryTasksResponse, RegisterWithDatasetResponse,
+    ScanDatasetManifestResponse, ScanSegmentTableResponse, UnregisterFromDatasetResponse,
+    VectorDistanceMetric,
 };
 use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
@@ -679,6 +680,67 @@ impl From<DoMaintenanceRequest> for crate::cloud::v1alpha1::DoMaintenanceRequest
             }),
             unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
         }
+    }
+}
+
+// --- Bandwidth test ---
+
+/// Default chunk size used when streaming `DoBandwidthTest` responses.
+pub const BANDWIDTH_TEST_CHUNK_BYTES: u64 = 1024 * 1024;
+
+/// Hard upper bound on `DoBandwidthTestRequest.num_bytes`.
+///
+/// The endpoint is purely diagnostic, so there is no legitimate reason to ask the server for
+/// more than this. Larger requests are rejected with `InvalidArgument` to prevent abuse
+/// (server egress / CPU / long-lived streams).
+pub const MAX_BANDWIDTH_TEST_BYTES: u64 = 32 * 1024 * 1024;
+
+/// Iterator that yields `DoBandwidthTestResponse` chunks of pseudo-random,
+/// incompressible bytes (xorshift64*), summing to exactly `num_bytes`.
+///
+/// Used by both the local `re_server` and the production `redap_frontend` to
+/// implement the `DoBandwidthTest` RPC.
+pub struct BandwidthTestPayloadIter {
+    remaining: u64,
+    chunk_size: u64,
+    state: u64,
+}
+
+impl BandwidthTestPayloadIter {
+    pub fn new(num_bytes: u64) -> Self {
+        Self {
+            remaining: num_bytes,
+            chunk_size: BANDWIDTH_TEST_CHUNK_BYTES,
+            state: 0x9E37_79B9_7F4A_7C15,
+        }
+    }
+}
+
+impl Iterator for BandwidthTestPayloadIter {
+    type Item = DoBandwidthTestResponse;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining == 0 {
+            return None;
+        }
+        let chunk_len = self.remaining.min(self.chunk_size) as usize;
+        let mut buf = vec![0u8; chunk_len];
+        let mut i = 0;
+        while i < chunk_len {
+            let mut x = self.state;
+            x ^= x >> 12;
+            x ^= x << 25;
+            x ^= x >> 27;
+            self.state = x;
+            let v = x.wrapping_mul(0x2545_F491_4F6C_DD1D).to_le_bytes();
+            let n = (chunk_len - i).min(8);
+            buf[i..i + n].copy_from_slice(&v[..n]);
+            i += n;
+        }
+        self.remaining -= chunk_len as u64;
+        Some(DoBandwidthTestResponse {
+            payload: buf.into(),
+        })
     }
 }
 

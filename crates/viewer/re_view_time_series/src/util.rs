@@ -148,19 +148,22 @@ pub fn points_to_series(
             kind = PlotSeriesKind::Scatter(ScatterAttrs::default());
         }
 
-        all_series.push(PlotSeries {
+        let mut series = PlotSeries {
             instance_path,
             visible,
             label: series_label,
             color: points[0].attrs.color,
             radius_ui: points[0].attrs.radius_ui,
             kind,
-            points: vec![(points[0].time, points[0].value)],
+            points: Vec::with_capacity(1),
+            value_range: None,
             aggregator,
             aggregation_factor,
             min_time,
             visualizer_instruction_id,
-        });
+        };
+        series.push_point(points[0].time, points[0].value);
+        all_series.push(series);
     } else {
         add_series_runs(
             instance_path,
@@ -266,6 +269,7 @@ fn add_series_runs(
         color: attrs.color,
         radius_ui: attrs.radius_ui,
         points: Vec::with_capacity(num_points),
+        value_range: None,
         kind: attrs.kind,
         aggregator,
         aggregation_factor,
@@ -277,7 +281,7 @@ fn add_series_runs(
         #[expect(clippy::branches_sharing_code)]
         if p.attrs == attrs {
             // Same attributes, just add to the current series.
-            series.points.push((p.time, p.value));
+            series.push_point(p.time, p.value);
         } else {
             // Attributes changed since last point, break up the current run into a
             // its own series, and start the next one.
@@ -293,6 +297,7 @@ fn add_series_runs(
                     radius_ui: attrs.radius_ui,
                     kind: attrs.kind,
                     points: Vec::with_capacity(num_points - i),
+                    value_range: None,
                     aggregator,
                     aggregation_factor,
                     min_time,
@@ -317,11 +322,11 @@ fn add_series_runs(
             // too, then we want the 2 segments to appear continuous even though they
             // are actually split from a data standpoint.
             if cur_continuous && prev_continuous {
-                series.points.push(prev_point);
+                series.push_point(prev_point.0, prev_point.1);
             }
 
             // Add the point that triggered the split to the new segment.
-            series.points.push((p.time, p.value));
+            series.push_point(p.time, p.value);
         }
     }
 

@@ -1,10 +1,8 @@
-use std::collections::BTreeMap;
-
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
 
-use re_lenses_core::{DynExpr, Lens, LensBuilder, OutputMode, Selector};
+use re_lenses_core::{DynExpr, Lens, OutputMode, Selector};
 use re_types_core::{ComponentDescriptor, ComponentIdentifier};
 
 use crate::python_bridge::PyComponentDescriptor;
@@ -12,53 +10,62 @@ use crate::selector::PySelectorInternal;
 
 /// Register lens classes.
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PyLensOutputInternal>()?;
-    m.add_class::<PyLensInternal>()?;
+    m.add_class::<PyDeriveLensInternal>()?;
+    m.add_class::<PyMutateLensInternal>()?;
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// LensOutputInternal
-// ---------------------------------------------------------------------------
-
-/// Describes one output group of a lens.
+/// A derive lens that creates new component/time columns from an input component.
+///
+/// In Python, `scatter=True` maps to `Lens::Scatter` internally.
 #[pyclass(
     frozen,
-    name = "LensOutputInternal",
+    name = "DeriveLensInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
-pub struct PyLensOutputInternal {
+pub struct PyDeriveLensInternal {
     components: Vec<(ComponentDescriptor, Selector<DynExpr>)>,
     times: Vec<(String, re_log_types::TimeType, Selector<DynExpr>)>,
+    input_component: ComponentIdentifier,
+    output_entity: Option<String>,
+    scatter: bool,
 }
 
 #[pymethods]
-impl PyLensOutputInternal {
+impl PyDeriveLensInternal {
     #[new]
-    #[pyo3(text_signature = "(self)")]
-    fn new() -> Self {
+    #[pyo3(
+        signature = (input_component, *, output_entity = None, scatter = false),
+        text_signature = "(self, input_component, *, output_entity=None, scatter=False)"
+    )]
+    fn new(input_component: &str, output_entity: Option<String>, scatter: bool) -> Self {
         Self {
             components: Vec::new(),
             times: Vec::new(),
+            input_component: input_component.into(),
+            output_entity,
+            scatter,
         }
     }
 
-    /// Add a component output column. Returns a new LensOutput with the component added.
+    /// Add a component output column. Returns a new instance with the component added.
     fn to_component(
         &self,
         component: PyComponentDescriptor,
         selector: &PySelectorInternal,
     ) -> Self {
-        let descr = component.0;
         let mut components = self.components.clone();
-        components.push((descr, selector.selector().clone()));
+        components.push((component.0, selector.selector().clone()));
         Self {
             components,
             times: self.times.clone(),
+            input_component: self.input_component,
+            output_entity: self.output_entity.clone(),
+            scatter: self.scatter,
         }
     }
 
-    /// Add a time extraction column. Returns a new LensOutput with the time added.
+    /// Add a time extraction column. Returns a new instance with the time added.
     fn to_timeline(
         &self,
         timeline_name: &str,
@@ -75,91 +82,102 @@ impl PyLensOutputInternal {
         Ok(Self {
             components: self.components.clone(),
             times,
+            input_component: self.input_component,
+            output_entity: self.output_entity.clone(),
+            scatter: self.scatter,
         })
     }
 }
 
-// ---------------------------------------------------------------------------
-// LensInternal
-// ---------------------------------------------------------------------------
-
-#[pyclass(
-    frozen,
-    name = "LensInternal",
-    module = "rerun_bindings.rerun_bindings"
-)]
-pub struct PyLensInternal {
-    inner: Lens,
+impl PyDeriveLensInternal {
+    /// Build the Rust `Lens` from this internal representation.
+    pub fn build(&self) -> PyResult<Lens> {
+        let mut builder = if self.scatter {
+            Lens::scatter(self.input_component)
+        } else {
+            Lens::derive(self.input_component)
+        };
+        if let Some(ref entity) = self.output_entity {
+            builder = builder.output_entity(entity.as_str());
+        }
+        for (descr, selector) in &self.components {
+            builder = builder.to_component(descr.clone(), selector.clone());
+        }
+        for (name, timeline_type, selector) in &self.times {
+            builder = builder.to_timeline(name.as_str(), *timeline_type, selector.clone());
+        }
+        builder
+            .build()
+            .map_err(|err| PyValueError::new_err(err.to_string()))
+    }
 }
 
-impl PyLensInternal {
-    pub fn inner(&self) -> &Lens {
-        &self.inner
-    }
+/// A mutate lens that modifies the input component in-place.
+#[pyclass(
+    frozen,
+    name = "MutateLensInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+pub struct PyMutateLensInternal {
+    input_component: ComponentIdentifier,
+    selector: Selector<DynExpr>,
+    keep_row_ids: bool,
 }
 
 #[pymethods]
-impl PyLensInternal {
+impl PyMutateLensInternal {
     #[new]
     #[pyo3(
-        signature = (input_component, output = None, *, to_entity = None),
-        text_signature = "(self, input_component, output=None, *, to_entity=None)"
+        signature = (input_component, selector, *, keep_row_ids = false),
+        text_signature = "(self, input_component, selector, *, keep_row_ids=False)"
     )]
-    #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned arguments
-    fn new(
-        py: Python<'_>,
-        input_component: &str,
-        output: Option<PyRef<'_, PyLensOutputInternal>>,
-        to_entity: Option<BTreeMap<String, Py<PyLensOutputInternal>>>,
-    ) -> PyResult<Self> {
-        if output.is_none() && to_entity.as_ref().is_none_or(BTreeMap::is_empty) {
-            return Err(PyValueError::new_err(
-                "At least one of `output` or `to_entity` must be provided",
-            ));
+    fn new(input_component: &str, selector: &PySelectorInternal, keep_row_ids: bool) -> Self {
+        Self {
+            input_component: input_component.into(),
+            selector: selector.selector().clone(),
+            keep_row_ids,
         }
-
-        let component: ComponentIdentifier = input_component.into();
-        let mut builder = Lens::for_input_column(component);
-
-        if let Some(ref out) = output {
-            builder = build_output(builder, out, None)?;
-        }
-
-        if let Some(ref to_entity) = to_entity {
-            for (entity_path, out) in to_entity {
-                let out = out.borrow(py);
-                builder = build_output(builder, &out, Some(entity_path.as_str()))?;
-            }
-        }
-
-        Ok(Self {
-            inner: builder.build(),
-        })
     }
 }
 
-/// Build one output group from its description, appending it to the lens builder.
-fn build_output(
-    builder: LensBuilder,
-    desc: &PyLensOutputInternal,
-    target_entity: Option<&str>,
-) -> PyResult<LensBuilder> {
-    let build_fn = |mut out: re_lenses_core::OutputBuilder| {
-        for (descr, selector) in &desc.components {
-            out = out.component(descr.clone(), selector.clone())?;
+impl PyMutateLensInternal {
+    /// Build the Rust `Lens` from this internal representation.
+    pub fn build(&self) -> Lens {
+        let mut builder = Lens::mutate(self.input_component, self.selector.clone());
+        if self.keep_row_ids {
+            builder = builder.keep_row_ids();
         }
-        for (name, timeline_type, selector) in &desc.times {
-            out = out.time(name.as_str(), *timeline_type, selector.clone())?;
+        builder.build()
+    }
+}
+
+/// Extracts a `Lens` from either derive or mutate Python lens types.
+pub enum PyLens<'py> {
+    Derive(PyRef<'py, PyDeriveLensInternal>),
+    Mutate(PyRef<'py, PyMutateLensInternal>),
+}
+
+impl PyLens<'_> {
+    pub fn build(&self) -> PyResult<Lens> {
+        match self {
+            Self::Derive(d) => d.build(),
+            Self::Mutate(i) => Ok(i.build()),
         }
-        Ok(out)
-    };
+    }
+}
 
-    let result = match target_entity {
-        None => builder.output_columns(build_fn),
-        Some(target) => builder.output_columns_at(target, build_fn),
-    };
-
-    result.map_err(|err| PyValueError::new_err(err.to_string()))
+impl<'py> FromPyObject<'py> for PyLens<'py> {
+    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
+        if let Ok(d) = ob.downcast::<PyDeriveLensInternal>() {
+            Ok(Self::Derive(d.borrow()))
+        } else if let Ok(i) = ob.downcast::<PyMutateLensInternal>() {
+            Ok(Self::Mutate(i.borrow()))
+        } else {
+            Err(PyValueError::new_err(
+                "Expected a DeriveLensInternal or MutateLensInternal instance",
+            ))
+        }
+    }
 }
 
 fn parse_timeline_type(s: &str) -> PyResult<re_log_types::TimeType> {

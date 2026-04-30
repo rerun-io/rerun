@@ -518,7 +518,7 @@ async fn chunk_store_cpu_worker_thread(
     }
 
     impl CurrentStores {
-        #[tracing::instrument(level = "info", skip_all, fields(segment_id = %segment_id))]
+        #[tracing::instrument(level = "trace", skip_all, fields(segment_id = %segment_id))]
         fn new(
             segment_id: String,
             query_expression: &QueryExpression,
@@ -551,7 +551,7 @@ async fn chunk_store_cpu_worker_thread(
         }
 
         /// Flush all remaining rows from the query handle, respecting the row limit.
-        #[tracing::instrument(level = "info", skip_all, fields(segment_id = %self.segment_id))]
+        #[tracing::instrument(level = "trace", skip_all, fields(segment_id = %self.segment_id))]
         async fn flush(
             self,
             projected_schema: &Arc<Schema>,
@@ -579,7 +579,7 @@ async fn chunk_store_cpu_worker_thread(
         // Time spent here = `cpu_worker` idle waiting for the IO pipeline to
         // deliver the next batch of chunks. Short consecutive spans = healthy
         // stream; one long dominating span = IO-starved worker.
-        let recv_span = tracing::info_span!("waiting_for_chunks");
+        let recv_span = tracing::trace_span!("waiting_for_chunks");
         let Some(chunks_and_segment_ids) = input_channel.recv().instrument(recv_span).await else {
             break;
         };
@@ -613,7 +613,7 @@ async fn chunk_store_cpu_worker_thread(
             CurrentStores::new(segment_id, &query_expression, &index_values)
         });
 
-        let _insert_span = tracing::info_span!(
+        let _insert_span = tracing::trace_span!(
             "insert_chunks",
             segment_id = %segment_id,
             n = chunks.len(),

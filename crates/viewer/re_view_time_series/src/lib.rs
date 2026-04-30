@@ -7,6 +7,7 @@
 mod aggregation;
 mod fallbacks;
 mod line_visualizer_system;
+mod markers;
 mod naming;
 mod point_visualizer_system;
 mod series_query;
@@ -16,7 +17,7 @@ mod visualizer_ui;
 
 use re_sdk_types::{
     blueprint::components::VisualizerInstructionId,
-    components::{AggregationPolicy, MarkerShape},
+    components::{AggregationPolicy, MarkerShape, Range1D},
 };
 use re_viewer_context::external::re_entity_db::InstancePath;
 pub use view_class::TimeSeriesView;
@@ -105,6 +106,15 @@ pub struct PlotSeries {
     pub kind: PlotSeriesKind,
     pub points: Vec<(i64, f64)>,
 
+    /// Range of finite y-values across [`PlotSeries::points`].
+    ///
+    /// `None` if the series has no finite values. Non-finite values (NaN, ±inf)
+    /// are excluded so a single ±inf can't blow up the range and flatten all
+    /// finite data.
+    ///
+    /// This is automatically updated via [`PlotSeries::push_point`].
+    pub value_range: Option<Range1D>,
+
     /// Earliest time an entity was recorded at on the current timeline.
     pub min_time: i64,
 
@@ -125,5 +135,23 @@ impl PlotSeries {
     /// so we use the instance path number as an additional differentiator.
     pub fn id(&self) -> egui::Id {
         egui::Id::new((&self.visualizer_instruction_id, self.instance_path.instance))
+    }
+
+    /// Push a point and update [`PlotSeries::value_range`] if `value` is finite.
+    pub fn push_point(&mut self, time: i64, value: f64) {
+        self.points.push((time, value));
+        if value.is_finite() {
+            match &mut self.value_range {
+                Some(range) => {
+                    if value < range.start() {
+                        *range.start_mut() = value;
+                    }
+                    if value > range.end() {
+                        *range.end_mut() = value;
+                    }
+                }
+                None => self.value_range = Some(Range1D::new(value, value)),
+            }
+        }
     }
 }

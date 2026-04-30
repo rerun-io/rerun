@@ -10,7 +10,7 @@ use re_log_types::external::arrow::datatypes::UInt32Type;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, archetypes, components};
 use re_view::clamped_or_nothing;
-use re_viewer_context::VisualizerReportSeverity;
+use re_viewer_context::{ViewQuery, VisualizerReportSeverity};
 
 use crate::{MAX_NUM_SERIES_FOR_REMAPPED_SCALARS, PlotPoint, PlotSeriesKind};
 
@@ -192,7 +192,7 @@ pub fn collect_colors(
     let color_iter = query_results.iter_optional(color_descriptor.component);
     let all_color_chunks = color_iter.chunks().iter().collect_vec();
 
-    if all_color_chunks.len() == 1 && all_color_chunks[0].chunk.is_static() {
+    if all_color_chunks.len() == 1 && all_color_chunks[0].chunk.num_rows() == 1 {
         re_tracing::profile_scope!("override/default fast path");
 
         if let Some(colors) = all_color_chunks[0].iter_slices::<u32>().next() {
@@ -350,7 +350,7 @@ pub fn collect_radius_ui(
         let radius_iter = query_results.iter_optional(radius_descriptor.component);
         let all_radius_chunks = radius_iter.chunks().iter().collect_vec();
 
-        if all_radius_chunks.len() == 1 && all_radius_chunks[0].chunk.is_static() {
+        if all_radius_chunks.len() == 1 && all_radius_chunks[0].chunk.num_rows() == 1 {
             re_tracing::profile_scope!("override/default fast path");
 
             if let Some(radius) = all_radius_chunks[0].iter_slices::<f32>().next() {
@@ -364,7 +364,7 @@ pub fn collect_radius_ui(
                     }
                 }
             }
-        } else {
+        } else if !all_radius_chunks.is_empty() {
             re_tracing::profile_scope!("standard path");
 
             let all_radii = all_radius_chunks.iter().flat_map(|chunk| {
@@ -411,4 +411,19 @@ pub fn all_scalars_indices<'a>(
         .flat_map(|chunk| chunk.iter_component_indices(*query.timeline()))
         // That is just so we can satisfy the `range_zip` contract later on.
         .map(|index| (index, ()))
+}
+
+/// Returns true if `series` should be drawn with the highlighted (hovered/selected) style.
+///
+/// Used by both the line visualizer (to thicken the stroke) and the marker painter (to grow
+/// the markers), so the visual highlight stays consistent across line and scatter series.
+pub(crate) fn is_series_highlighted(query: &ViewQuery<'_>, series: &crate::PlotSeries) -> bool {
+    query
+        .highlights
+        .entity_highlight(series.instance_path.entity_path.hash())
+        .index_highlight(
+            series.instance_path.instance,
+            series.visualizer_instruction_id,
+        )
+        .any()
 }

@@ -2,7 +2,7 @@ use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_sdk_types::archetypes::RecordingInfo;
 use saturating_cast::SaturatingCast as _;
 
-use super::Decoder;
+use super::{Decoder, DecoderContext};
 use crate::Error;
 
 /// Build the [`RecordingInfo`] chunk using the message statistics from a [`mcap::Summary`].
@@ -16,12 +16,11 @@ impl Decoder for McapRecordingInfoDecoder {
 
     fn process(
         &mut self,
-        _mcap_bytes: &[u8],
-        summary: &mcap::Summary,
-        _topic_filter: &super::TopicFilter,
+        ctx: &DecoderContext<'_>,
         emit: &mut dyn FnMut(Chunk),
     ) -> std::result::Result<(), Error> {
-        let properties = summary
+        let properties = ctx
+            .summary()
             .stats
             .as_ref()
             .map(|s| {
