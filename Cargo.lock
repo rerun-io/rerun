@@ -9836,6 +9836,7 @@ dependencies = [
  "ordered-float 5.3.0",
  "parking_lot",
  "pathdiff",
+ "ply-rs-bw",
  "pollster",
  "profiling",
  "re_build_tools",

@@ -36,7 +36,7 @@ ignored = [
 
 
 [features]
-default = ["import-dae", "import-gltf", "import-obj", "import-stl"]
+default = ["import-dae", "import-gltf", "import-obj", "import-ply", "import-stl"]
 
 ## Support importing .dae files
 import-dae = ["dep:dae-parser"]
@@ -46,6 +46,9 @@ import-gltf = ["dep:gltf"]
 
 ## Support importing .obj files
 import-obj = ["dep:tobj"]
+
+## Support importing .ply files
+import-ply = ["dep:ply-rs-bw"]
 
 ## Support importing binary & ascii .stl files
 import-stl = ["dep:stl_io"]
@@ -90,6 +93,7 @@ wgpu.workspace = true
 
 # optional
 gltf = { workspace = true, optional = true }
+ply-rs-bw = { workspace = true, optional = true }
 stl_io = { workspace = true, optional = true }
 tobj = { workspace = true, optional = true }
 

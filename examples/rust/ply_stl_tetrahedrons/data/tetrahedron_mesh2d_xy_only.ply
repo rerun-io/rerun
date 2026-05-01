@@ -1,6 +1,6 @@
 ply
 format ascii 1.0
-comment XY-only tetrahedron mesh, flattened to z=0 by Mesh3D
+comment XY-only tetrahedron mesh, flattened to z=0 by the viewer
 element vertex 4
 property float x
 property float y
