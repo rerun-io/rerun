@@ -50,6 +50,18 @@ impl<T: Send + 'static> ApiResponseStream<T> {
         let trace_id = extract_trace_id(response.metadata());
         let stream = response.into_inner().map(move |item| {
             item.map_err(|err| {
+                // Warn-log transport-level stream failures with the gRPC code so that
+                // connection teardowns (Cancelled/Unavailable from HTTP/2 keep-alive
+                // timeout, peer GOAWAY, etc.) are visible client-side instead of just
+                // being mapped silently into `ApiError`. We log here — not at every
+                // call-site — because this is the single funnel for streaming RPCs.
+                tracing::warn!(
+                    endpoint,
+                    grpc_code = %err.code(),
+                    error = %err,
+                    trace_id = trace_id.map(|t| t.to_string()).as_deref(),
+                    "gRPC streaming response failed"
+                );
                 ApiError::tonic(err, format!("{endpoint} stream failed")).with_trace_id(trace_id)
             })
         });

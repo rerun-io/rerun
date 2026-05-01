@@ -2,7 +2,7 @@ use std::any::Any;
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::Debug;
 use std::pin::Pin;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use crate::analytics::{QueryErrorKind, TaskFetchStats};
@@ -11,10 +11,10 @@ use crate::chunk_fetcher::{
     fetch_batch_group_via_grpc, split_batch_by_direct_url,
 };
 use crate::dataframe_query_common::{
-    DataframeClientAPI, IndexValuesMap, group_chunk_infos_by_segment_id,
-    prepend_string_column_schema,
+    DEFAULT_BATCH_BYTES, DEFAULT_BATCH_ROWS, DataframeClientAPI, IndexValuesMap, force_grpc,
+    group_chunk_infos_by_segment_id, prepend_string_column_schema,
 };
-use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray, UInt64Array};
+use arrow::array::{Array, ArrayRef, RecordBatch, RecordBatchOptions, StringArray, UInt64Array};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{Schema, SchemaRef};
 use datafusion::common::hash_utils::HashValue as _;
@@ -30,6 +30,7 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use futures::StreamExt as _;
 use futures_util::{FutureExt as _, Stream};
+use re_arrow_util::concat_arrays;
 use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::utils::align_record_batch_to_schema;
@@ -66,13 +67,6 @@ const GRPC_BATCH_SIZE: usize = 12;
 /// Max batch-level futures in-flight at once in the IO pipeline.
 /// This bounds both concurrency and the reorder buffer size.
 const IO_PIPELINE_BUFFER: usize = 24;
-
-/// Environment variable to force the client to go through the `FetchChunks` data fetching path.
-static CHUNK_STRATEGY: LazyLock<String> = LazyLock::new(|| {
-    std::env::var("RERUN_CHUNK_STRATEGY")
-        .unwrap_or_default()
-        .to_ascii_lowercase()
-});
 
 /// Helper to attach parent trace context if available.
 /// Returns a guard that must be kept alive for the duration of the traced scope.
@@ -416,8 +410,22 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
     }
 }
 
+/// Per-batch caps used by `send_next_row_batch`.
+///
+/// `re_dataframe::QueryHandle::next_row` yields a single index value per call;
+/// emitting one `RecordBatch` per row is dominated by per-call overhead (alloc,
+/// schema align, async channel send). Accumulating up to `DEFAULT_BATCH_ROWS`
+/// rows or `DEFAULT_BATCH_BYTES` bytes (whichever first) amortises that
+/// overhead while keeping batch memory bounded for wide columns
+/// (e.g. images, large lists).
+///
+/// These mirror the values used by `SizedCoalesceBatchesExec` so that the
+/// downstream coalescer is mostly a pass-through.
+const FLUSH_BATCH_ROWS: usize = DEFAULT_BATCH_ROWS;
+const FLUSH_BATCH_BYTES: usize = DEFAULT_BATCH_BYTES as usize;
+
 #[tracing::instrument(level = "trace", skip_all)]
-async fn send_next_row(
+async fn send_next_row_batch(
     query_handle: &QueryHandle<StorageEngine>,
     segment_id: &str,
     target_schema: &Arc<Schema>,
@@ -430,28 +438,64 @@ async fn send_next_row(
         return Ok(None);
     }
 
+    let max_rows_this_batch = limit
+        .map(|l| l.saturating_sub(*rows_sent).min(FLUSH_BATCH_ROWS))
+        .unwrap_or(FLUSH_BATCH_ROWS);
+    if max_rows_this_batch == 0 {
+        return Ok(None);
+    }
+
     let query_schema = Arc::clone(query_handle.schema());
     let num_fields = query_schema.fields.len();
 
-    let Some(mut next_row) = query_handle.next_row() else {
-        return Ok(None);
-    };
+    // Accumulate rows from the in-memory store until either the row cap is
+    // hit, the byte budget is hit, or the query is exhausted. The byte
+    // budget keeps memory bounded for wide columns (images, large lists)
+    // where 2048 rows can far exceed `FLUSH_BATCH_BYTES`.
+    let mut row_groups: Vec<Vec<ArrayRef>> = Vec::with_capacity(max_rows_this_batch);
+    let mut total_rows = 0usize;
+    let mut total_bytes = 0usize;
 
-    if next_row.is_empty() {
-        // Should not happen
+    while total_rows < max_rows_this_batch && total_bytes < FLUSH_BATCH_BYTES {
+        let Some(row) = query_handle.next_row() else {
+            break;
+        };
+        if row.is_empty() {
+            // Should not happen
+            break;
+        }
+        if num_fields != row.len() {
+            return Err(ApiError::internal(
+                "Unexpected number of columns returned from query",
+            ));
+        }
+        total_rows += row[0].len();
+        total_bytes += row.iter().map(|a| a.get_array_memory_size()).sum::<usize>();
+        row_groups.push(row);
+    }
+
+    if row_groups.is_empty() {
         return Ok(None);
     }
-    if num_fields != next_row.len() {
-        return Err(ApiError::internal(
-            "Unexpected number of columns returned from query",
-        ));
+
+    // Concatenate per-column arrays across the accumulated row groups.
+    let mut columns: Vec<ArrayRef> = Vec::with_capacity(num_fields + 1);
+    for col_idx in 0..num_fields {
+        let parts: Vec<&dyn Array> = row_groups.iter().map(|r| r[col_idx].as_ref()).collect();
+        let combined = concat_arrays(&parts).map_err(|err| {
+            ApiError::deserialization_with_source(
+                None,
+                err,
+                "concatenating per-column arrays for batched output",
+            )
+        })?;
+        columns.push(combined);
     }
 
-    let num_rows = next_row[0].len();
+    // Single segment-id `StringArray` of length `total_rows` for the whole batch.
     let sid_array =
-        Arc::new(StringArray::from(vec![segment_id.to_owned(); num_rows])) as Arc<dyn Array>;
-
-    next_row.insert(0, sid_array);
+        Arc::new(StringArray::from(vec![segment_id.to_owned(); total_rows])) as ArrayRef;
+    columns.insert(0, sid_array);
 
     let batch_schema = Arc::new(prepend_string_column_schema(
         &query_schema,
@@ -460,8 +504,8 @@ async fn send_next_row(
 
     let batch = RecordBatch::try_new_with_options(
         batch_schema,
-        next_row,
-        &RecordBatchOptions::default().with_row_count(Some(num_rows)),
+        columns,
+        &RecordBatchOptions::default().with_row_count(Some(total_rows)),
     )
     .map_err(|err| {
         ApiError::deserialization_with_source(
@@ -477,7 +521,9 @@ async fn send_next_row(
         ApiError::internal_with_source(None, err, "DataFusion schema mismatch error")
     })?;
 
-    // Slice the batch to respect the row limit
+    // Slice the batch to respect the row limit. We pre-cap `max_rows_this_batch`
+    // by the limit, but a single `next_row()` call can return more than one row
+    // (see `_next_row` for multi-row index values), so a final trim is needed.
     let output_batch = if let Some(limit) = limit {
         let remaining = limit.saturating_sub(*rows_sent);
         if remaining == 0 {
@@ -559,7 +605,7 @@ async fn chunk_store_cpu_worker_thread(
             rows_sent: &mut usize,
             limit: Option<usize>,
         ) -> ApiResult<()> {
-            while send_next_row(
+            while send_next_row_batch(
                 &self.query_handle,
                 &self.segment_id,
                 projected_schema,
@@ -797,11 +843,13 @@ fn split_large_segments(
     }
 
     tracing::debug!(
-        "Split large segment '{}' ({} bytes) into {} requests",
+        "Split large segment '{}' ({}) into {} requests",
         segment_id,
-        (0..chunk_info.num_rows())
-            .map(|i| chunk_sizes.value(i))
-            .sum::<u64>(),
+        re_format::format_bytes(
+            (0..chunk_info.num_rows())
+                .map(|i| chunk_sizes.value(i))
+                .sum::<u64>() as _
+        ),
         result_batches.len()
     );
 
@@ -871,6 +919,8 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
     global_segment_order: &[String],
     output_channel: &Sender<ApiResult<SortedChunksWithSegment>>,
 ) -> ApiResult<()> {
+    let total_batches = batches.len();
+    let mut batches_completed = 0usize;
     for batch_group in batches.chunks(GRPC_BATCH_SIZE) {
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -878,7 +928,20 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
             crate::chunk_fetcher::metrics::record_grpc_no_direct_urls(bytes);
         }
         let all_chunks = fetch_batch_group_via_grpc(batch_group, client).await?;
+        batches_completed += batch_group.len();
         if !send_sorted_chunks(all_chunks, global_segment_order, output_channel).await {
+            // Consumer (CPU worker) hung up — typically because a row LIMIT was hit
+            // or the surrounding plan was cancelled. Any remaining batches will go
+            // unfetched. Log at `info` (not `debug`) so the cancellation is visible
+            // in production logs alongside the matching server-side
+            // `terminated_by="cancelled"` analytics; not a `warn` because this is
+            // expected when the caller actually wanted to stop.
+            tracing::info!(
+                total_batches,
+                batches_completed,
+                batches_skipped = total_batches.saturating_sub(batches_completed),
+                "FetchChunks IO loop short-circuited: downstream consumer closed (likely LIMIT or plan cancellation)"
+            );
             return Ok(());
         }
     }
@@ -902,7 +965,7 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
 #[tracing::instrument(
     level = "info",
     skip_all,
-    fields(n_chunks, n_batches, n_segments, fetch_strategy,)
+    fields(n_chunks, n_batches, n_segments, fetch_strategy)
 )]
 async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     client: T,
@@ -912,7 +975,8 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
 ) -> ApiResult<()> {
     let target_size_bytes = TARGET_BATCH_SIZE_BYTES as u64;
 
-    let n_chunks = chunk_infos.len();
+    // One row per chunk in each `RecordBatch` of chunk-info.
+    let n_chunks: usize = chunk_infos.iter().map(|rb| rb.num_rows()).sum();
     let (request_batches, global_segment_order) =
         create_request_batches(chunk_infos, target_size_bytes)?;
 
@@ -928,7 +992,7 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     );
 
     // Allow overriding the fetch strategy via environment variable.
-    let force_grpc = *CHUNK_STRATEGY == "grpc";
+    let force_grpc = force_grpc();
 
     // Fast path: if no batches contain direct URLs (or gRPC is forced), fetch everything via gRPC.
     if force_grpc || !request_batches.iter().any(batch_has_any_direct_urls) {
@@ -1002,6 +1066,10 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     re_log::debug!("Fetch tasks: {n_direct} direct, {n_grpc} gRPC fallback");
 
     let http_client = reqwest::Client::new();
+
+    // `work_items` may differ from `request_batches.len()` when a batch is split
+    // into a direct part + a gRPC part. Track the count we'll actually iterate.
+    let total_tasks = work_items.len();
 
     let fetch_stream = futures::stream::iter(work_items.into_iter().enumerate())
         .map(|(task_idx, task)| {
@@ -1080,6 +1148,21 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
         // Drain contiguous completed tasks in order
         while let Some(chunks) = reorder_buf.remove(&next_to_emit) {
             if !send_sorted_chunks(chunks, &global_segment_order, &output_channel).await {
+                // Consumer hung up — record what's still outstanding so we can
+                // see in logs whether the cancel happened early or late, and how
+                // much in-flight work the `buffer_unordered` is about to drop
+                // (those streams will be RST_STREAM'd cleanly by hyper). Log at
+                // `info` so this is visible in production logs (matches the
+                // server-side `terminated_by="cancelled"` analytics).
+                tracing::info!(
+                    total_tasks,
+                    next_to_emit,
+                    in_reorder_buf = reorder_buf.len(),
+                    in_flight_or_pending = total_tasks
+                        .saturating_sub(next_to_emit)
+                        .saturating_sub(reorder_buf.len()),
+                    "FetchChunks IO loop short-circuited (hybrid path): downstream consumer closed (likely LIMIT or plan cancellation)"
+                );
                 return Ok(());
             }
             next_to_emit += 1;

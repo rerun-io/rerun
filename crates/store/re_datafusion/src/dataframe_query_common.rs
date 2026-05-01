@@ -38,8 +38,31 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr as _;
 use std::sync::Arc;
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::LazyLock;
 use tracing::Instrument as _;
 use web_time::Instant;
+
+/// Environment variable to force the client to go through the `FetchChunks` data fetching path.
+#[cfg(not(target_arch = "wasm32"))]
+static CHUNK_STRATEGY: LazyLock<String> = LazyLock::new(|| {
+    std::env::var("RERUN_CHUNK_STRATEGY")
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+});
+
+/// True when `RERUN_CHUNK_STRATEGY=grpc` — the client should fetch all chunks via
+/// `FetchChunks` gRPC and the server should skip direct-URL generation.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn force_grpc() -> bool {
+    *CHUNK_STRATEGY == "grpc"
+}
+
+/// On Wasm there are no environment variables, so gRPC is never forced via env.
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn force_grpc() -> bool {
+    false
+}
 
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
 /// The default for Data Fusion is 8192, which leads to a 256Kb record batch on average for
@@ -269,7 +292,10 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
                 columns: FetchChunksRequest::required_column_names(),
                 ..Default::default()
             }),
-            generate_direct_urls: true,
+            // Skip server-side URL signing when the client is forced to fetch via gRPC —
+            // signing would be wasted work and, on Azure, can fail outright with a 403
+            // before the gRPC fetch path is ever reached.
+            generate_direct_urls: !force_grpc(),
         };
 
         let schema = Arc::new(prepend_string_column_schema(
@@ -508,6 +534,14 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                         .next();
             }
 
+            // `SegmentStreamExec` already emits batches sized by
+            // `DEFAULT_BATCH_ROWS` / `DEFAULT_BATCH_BYTES` directly in
+            // `dataframe_query_provider::send_next_row_batch`. We still wrap
+            // it in `SizedCoalesceBatchesExec`: with the source-side sizing
+            // the coalescer is mostly a pass-through, but it acts as a
+            // physical-plan boundary that DataFusion's optimizer relies on
+            // (removing it has been observed to confuse downstream sort /
+            // projection nodes that reference `rerun_segment_id`).
             crate::SegmentStreamExec::try_new(
                 &self.schema,
                 self.sort_index,

@@ -319,7 +319,7 @@ class CatalogClient:
         """
         from . import DatasetEntry
 
-        return DatasetEntry(self._internal.get_dataset(self._resolve_name_or_id(id, name)))
+        return DatasetEntry(self._internal.get_dataset(self._resolve_name_or_id(id, name, entry_kind="dataset")))
 
     @overload
     def get_table(self, *, id: EntryId | str) -> TableEntry: ...
@@ -343,7 +343,7 @@ class CatalogClient:
         """
         from . import TableEntry
 
-        return TableEntry(self._internal.get_table(self._resolve_name_or_id(id, name)))
+        return TableEntry(self._internal.get_table(self._resolve_name_or_id(id, name, entry_kind="table")))
 
     # ---
 
@@ -438,7 +438,13 @@ class CatalogClient:
 
     # ---
 
-    def _resolve_name_or_id(self, id: EntryId | str | None = None, name: str | None = None) -> EntryId:
+    def _resolve_name_or_id(
+        self,
+        id: EntryId | str | None = None,
+        name: str | None = None,
+        *,
+        entry_kind: str = "entry",
+    ) -> EntryId:
         """Helper method to resolve either ID or name. Returns the id or throw an error."""
 
         match id, name:
@@ -453,7 +459,10 @@ class CatalogClient:
                 return EntryId(id)
 
             case (None, str(name)):
-                return self._internal._entry_id_from_entry_name(name)
+                try:
+                    return self._internal._entry_id_from_entry_name(name)
+                except LookupError:
+                    raise LookupError(f"No {entry_kind} found with name {name!r}") from None
 
             case _:
                 raise ValueError("Only one of 'id' or 'name' must be provided.")

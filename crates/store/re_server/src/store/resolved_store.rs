@@ -4,10 +4,10 @@ use std::sync::Arc;
 use arrow::array::RecordBatch;
 use nohash_hasher::IntSet;
 use re_chunk_store::{
-    ChunkStore, ChunkStoreHandle, ChunkStoreHandleWeak, ChunkTrackingMode, LazyRrdStore,
-    QueryResults, StoreSchema,
+    ChunkStore, ChunkStoreHandle, ChunkStoreHandleWeak, ChunkTrackingMode, LazyStore, QueryResults,
+    StoreSchema,
 };
-use re_log_encoding::RrdManifest;
+use re_log_encoding::{RrdChunkProvider, RrdManifest};
 use re_log_types::{EntityPath, StoreId, StoreKind};
 
 /// A store backend: either an in-memory eager store or a file-backed lazy store.
@@ -19,7 +19,7 @@ pub enum ResolvedStore {
     Eager(ChunkStoreHandle),
 
     /// File-backed store with on-demand chunk loading.
-    Lazy(Arc<LazyRrdStore>),
+    Lazy(Arc<LazyStore>),
 }
 
 impl ResolvedStore {
@@ -124,7 +124,7 @@ impl ResolvedStore {
         let mut file = std::fs::File::open(path)?;
 
         if let Ok(Some(footer)) = re_log_encoding::read_rrd_footer(&mut file) {
-            // The footer-reading handle is no longer needed — each `LazyRrdStore` holds its own.
+            // The footer-reading handle is no longer needed — each `LazyStore` holds its own.
             drop(file);
 
             let mut out = Vec::with_capacity(footer.manifests.len());
@@ -133,10 +133,11 @@ impl ResolvedStore {
                     continue;
                 }
                 let store_file = std::fs::File::open(path)?;
-                let lazy = Arc::new(
-                    LazyRrdStore::try_new(store_file, path.to_owned(), Arc::new(raw_manifest))
+                let provider = Arc::new(
+                    RrdChunkProvider::try_new(store_file, Arc::new(raw_manifest))
                         .map_err(|err| super::Error::RrdLoadingError(err.into()))?,
                 );
+                let lazy = Arc::new(LazyStore::new(provider));
                 out.push((store_id, Self::Lazy(lazy)));
             }
             Ok(out)
@@ -160,7 +161,7 @@ impl ResolvedStore {
 /// Weak counterpart of [`ResolvedStore`], held by [`StorePool`](super::store_pool::StorePool).
 pub(crate) enum ResolvedStoreWeak {
     Eager(ChunkStoreHandleWeak),
-    Lazy(std::sync::Weak<LazyRrdStore>),
+    Lazy(std::sync::Weak<LazyStore>),
 }
 
 impl ResolvedStoreWeak {

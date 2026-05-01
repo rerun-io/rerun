@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use pyo3::exceptions::PyRuntimeError;
@@ -5,7 +6,7 @@ use pyo3::prelude::*;
 
 use re_byte_size::SizeBytes as _;
 use re_chunk::Chunk;
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle, LazyRrdStore};
+use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle, LazyStore};
 use re_log_types::{StoreId, StoreKind};
 use re_sorbet::ChunkColumnDescriptors;
 
@@ -32,21 +33,25 @@ use crate::chunk::PyChunkInternal;
 pub struct PyChunkStoreInternal(ChunkStoreInternal);
 
 /// Fully materialized or lazily-backed chunk store.
-//TODO(RR-4503): this is a temporary thing until we have a more general `LazyStore` abstraction.
+//TODO(RR-4503): unify with segment-backed stores once segment provider lands.
 #[derive(Clone)]
 enum ChunkStoreInternal {
     /// All chunks are in memory.
     InMemory(ChunkStoreHandle),
 
     /// Index loaded from RRD footer, chunks loaded on demand.
-    IndexedRrd(Arc<LazyRrdStore>),
+    ///
+    /// Carries the source RRD path alongside the store, for diagnostic messages on lazy-load
+    /// failure.
+    //TODO(ab): get rid of this PathBuf when we generalize over dataset segment
+    IndexedRrd(Arc<LazyStore>, PathBuf),
 }
 
 impl ChunkStoreInternal {
     fn schema(&self) -> ChunkColumnDescriptors {
         match self {
             Self::InMemory(handle) => handle.read().schema().chunk_column_descriptors(),
-            Self::IndexedRrd(lazy) => lazy.schema().chunk_column_descriptors(),
+            Self::IndexedRrd(lazy, _) => lazy.schema().chunk_column_descriptors(),
         }
     }
 }
@@ -56,8 +61,8 @@ impl PyChunkStoreInternal {
         Self(ChunkStoreInternal::InMemory(ChunkStoreHandle::new(store)))
     }
 
-    pub fn indexed_rrd(lazy: LazyRrdStore) -> Self {
-        Self(ChunkStoreInternal::IndexedRrd(Arc::new(lazy)))
+    pub fn indexed_rrd(lazy: LazyStore, rrd_path: PathBuf) -> Self {
+        Self(ChunkStoreInternal::IndexedRrd(Arc::new(lazy), rrd_path))
     }
 }
 
@@ -89,7 +94,7 @@ impl PyChunkStoreInternal {
     fn num_chunks(&self) -> usize {
         match &self.0 {
             ChunkStoreInternal::InMemory(handle) => handle.read().num_physical_chunks(),
-            ChunkStoreInternal::IndexedRrd(lazy) => lazy.manifest().num_chunks(),
+            ChunkStoreInternal::IndexedRrd(lazy, _) => lazy.manifest().num_chunks(),
         }
     }
 
@@ -124,7 +129,7 @@ impl PyChunkStoreInternal {
                 Ok(handle.read().iter_physical_chunks().cloned().collect())
             }
 
-            ChunkStoreInternal::IndexedRrd(lazy) => lazy
+            ChunkStoreInternal::IndexedRrd(lazy, _) => lazy
                 .load_all_chunks()
                 .map_err(|err| PyRuntimeError::new_err(err.to_string())),
         }
@@ -137,10 +142,10 @@ impl ChunkStreamFactory for PyChunkStoreInternal {
             ChunkStoreInternal::InMemory(handle) => {
                 handle.read().iter_physical_chunks().cloned().collect()
             }
-            ChunkStoreInternal::IndexedRrd(lazy) => {
+            ChunkStoreInternal::IndexedRrd(lazy, rrd_path) => {
                 lazy.load_all_chunks()
                     .map_err(|err| ChunkPipelineError::RrdRead {
-                        path: lazy.rrd_path().to_path_buf(),
+                        path: rrd_path.clone(),
                         reason: err.to_string(),
                     })?
             }

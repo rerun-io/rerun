@@ -34,11 +34,12 @@ re_analytics.workspace = true
 re_arrow_util.workspace = true
 re_backoff.workspace = true
 re_dataframe.workspace = true
-re_log.workspace = true
+re_format.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder"] }
-re_redap_client.workspace = true
 re_log_types.workspace = true
+re_log.workspace = true
 re_protos.workspace = true
+re_redap_client.workspace = true
 re_sorbet.workspace = true
 re_uri.workspace = true
 

@@ -22,7 +22,7 @@ pub mod entity_tree;
 mod events;
 mod gc;
 #[cfg(not(target_arch = "wasm32"))]
-mod lazy_rrd_store;
+mod lazy_store;
 mod lineage;
 mod missing_chunk_reporter;
 mod properties;
@@ -73,7 +73,7 @@ pub use self::subscribers::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use self::lazy_rrd_store::LazyRrdStore;
+pub use self::lazy_store::LazyStore;
 
 pub(crate) use self::store::ColumnMetadataState;
 
@@ -93,6 +93,9 @@ pub enum ChunkStoreError {
 
     #[error("Failed to load data, parsing error: {0:#}")]
     Codec(#[from] re_log_encoding::CodecError),
+
+    #[error(transparent)]
+    Provider(#[from] re_log_encoding::ChunkProviderError),
 
     #[error("Failed to load data, semantic error: {0:#}")]
     Sorbet(#[from] re_sorbet::SorbetError),

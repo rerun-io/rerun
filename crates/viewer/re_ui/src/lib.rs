@@ -176,6 +176,14 @@ fn set_themes(egui_ctx: &egui::Context) {
     for theme in [egui::Theme::Dark, egui::Theme::Light] {
         let mut style = std::sync::Arc::unwrap_or_clone(egui_ctx.style_of(theme));
         design_tokens_of(theme).apply(&mut style);
+
+        // Disable `warn_if_rect_changes_id`.
+        // We have widgets with expected ID changes per rect (e.g. scrolling tables).
+        #[cfg(debug_assertions)]
+        {
+            style.debug.warn_if_rect_changes_id = false;
+        }
+
         egui_ctx.set_style_of(theme, style);
     }
 }

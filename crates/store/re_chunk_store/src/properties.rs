@@ -61,7 +61,7 @@ impl ChunkStore {
     /// lazy stores.
     pub fn property_entities_query_results(&self) -> Vec<(EntityPath, QueryResults)> {
         // Sweep all property entities first and collect the union of missing virtual chunks
-        // across all of them. This way callers that auto-load (e.g. `LazyRrdStore::extract_properties`)
+        // across all of them. This way callers that auto-load (e.g. `LazyStore::extract_properties`)
         // see the full batch in one shot and converge in a single retry instead of one disk
         // round-trip per entity.
         self.all_entities()

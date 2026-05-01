@@ -5,7 +5,8 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use re_chunk::Chunk;
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, LazyRrdStore};
+use re_chunk_store::{ChunkStore, ChunkStoreConfig, LazyStore};
+use re_log_encoding::RrdChunkProvider;
 use re_log_types::{LogMsg, StoreId, StoreInfo, StoreKind};
 
 use super::chunk_store::PyChunkStoreInternal;
@@ -87,13 +88,15 @@ impl PyRrdReaderInternal {
             match re_log_encoding::read_rrd_footer(&mut file) {
                 Ok(Some(rrd_footer)) => {
                     let raw = pick_first_recording_manifest(&rrd_footer, &path)?;
-                    let lazy = LazyRrdStore::try_new(file, path.clone(), Arc::new(raw)).map_err(
-                        |err| ChunkPipelineError::RrdRead {
-                            path,
-                            reason: format!("Invalid RRD manifest: {err}"),
-                        },
-                    )?;
-                    Ok(PyChunkStoreInternal::indexed_rrd(lazy))
+                    let provider =
+                        Arc::new(RrdChunkProvider::try_new(file, Arc::new(raw)).map_err(
+                            |err| ChunkPipelineError::RrdRead {
+                                path: path.clone(),
+                                reason: format!("Invalid RRD manifest: {err}"),
+                            },
+                        )?);
+                    let lazy = LazyStore::new(provider);
+                    Ok(PyChunkStoreInternal::indexed_rrd(lazy, path))
                 }
                 Ok(None) => {
                     // No footer (legacy RRD) — eager fallback.
