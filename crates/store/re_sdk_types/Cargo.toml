@@ -55,6 +55,7 @@ re_rvl.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
+re_ply.workspace = true
 re_tracing.workspace = true
 re_sorbet.workspace = true
 re_types_core.workspace = true

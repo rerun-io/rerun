@@ -7818,6 +7818,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ply_stl_tetrahedrons"
+version = "0.32.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "rerun",
+]
+
+[[package]]
 name = "png"
 version = "0.17.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9181,7 +9189,6 @@ dependencies = [
  "memmap2 0.9.11",
  "parking_lot",
  "parquet",
- "ply-rs-bw",
  "rayon",
  "re_arrow_util",
  "re_chunk",
@@ -9197,6 +9204,7 @@ dependencies = [
  "re_mcap",
  "re_mp4_reader",
  "re_parquet",
+ "re_ply",
  "re_quota_channel",
  "re_sdk_types",
  "re_tracing",
@@ -9564,6 +9572,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_ply"
+version = "0.35.0-alpha.1+dev"
+dependencies = [
+ "ply-rs-bw",
+]
+
+[[package]]
 name = "re_protos"
 version = "0.35.0-alpha.1+dev"
 dependencies = [
@@ -9844,6 +9859,7 @@ dependencies = [
  "re_error",
  "re_log",
  "re_mutex",
+ "re_ply",
  "re_quota_channel",
  "re_tracing",
  "re_video",
@@ -9978,6 +9994,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_ply",
  "re_rvl",
  "re_sorbet",
  "re_tracing",

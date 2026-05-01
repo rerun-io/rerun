@@ -3,16 +3,6 @@ use std::collections::BTreeSet;
 use super::{Points2D, Points3D};
 use crate::components::{Color, Position2D, Position3D, Radius, Text};
 
-const PROP_X: &str = "x";
-const PROP_Y: &str = "y";
-const PROP_Z: &str = "z";
-const PROP_RED: &str = "red";
-const PROP_GREEN: &str = "green";
-const PROP_BLUE: &str = "blue";
-const PROP_ALPHA: &str = "alpha";
-const PROP_RADIUS: &str = "radius";
-const PROP_LABEL: &str = "label";
-
 // Gaussian splatting using models from e.g. https://poly.cam/tools/gaussian-splatting
 const PROP_SCALE_X: &str = "scale_0";
 const PROP_SCALE_Y: &str = "scale_1";
@@ -21,6 +11,7 @@ const PROP_SH_DC_0: &str = "f_dc_0";
 const PROP_SH_DC_1: &str = "f_dc_1";
 const PROP_SH_DC_2: &str = "f_dc_2";
 const PROP_OPACITY: &str = "opacity";
+
 
 const SEEN_X: u16 = 1 << 0;
 const SEEN_Y: u16 = 1 << 1;
@@ -49,13 +40,6 @@ const SEEN_GAUSSIAN: u16 = SEEN_SCALE_X
     | SEEN_OPACITY;
 const SEEN_ALL_KNOWN_PROPS: u16 =
     SEEN_X | SEEN_Y | SEEN_Z | SEEN_COLORS | SEEN_RADIUS | SEEN_LABEL | SEEN_GAUSSIAN;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum PlyVertexLayout {
-    Xy,
-    Xyz,
-    Other,
-}
 
 struct Vertex2D {
     position: Position2D,
@@ -95,15 +79,15 @@ struct ParsedVertex {
 impl ParsedVertex {
     fn note_ignored_props_for(seen_props: u16, ignored_props: &mut BTreeSet<String>, mask: u16) {
         for (name, bit) in [
-            (PROP_X, SEEN_X),
-            (PROP_Y, SEEN_Y),
-            (PROP_Z, SEEN_Z),
-            (PROP_RED, SEEN_RED),
-            (PROP_GREEN, SEEN_GREEN),
-            (PROP_BLUE, SEEN_BLUE),
-            (PROP_ALPHA, SEEN_ALPHA),
-            (PROP_RADIUS, SEEN_RADIUS),
-            (PROP_LABEL, SEEN_LABEL),
+            (re_ply::PROP_X, SEEN_X),
+            (re_ply::PROP_Y, SEEN_Y),
+            (re_ply::PROP_Z, SEEN_Z),
+            (re_ply::PROP_RED, SEEN_RED),
+            (re_ply::PROP_GREEN, SEEN_GREEN),
+            (re_ply::PROP_BLUE, SEEN_BLUE),
+            (re_ply::PROP_ALPHA, SEEN_ALPHA),
+            (re_ply::PROP_RADIUS, SEEN_RADIUS),
+            (re_ply::PROP_LABEL, SEEN_LABEL),
             (PROP_SCALE_X, SEEN_SCALE_X),
             (PROP_SCALE_Y, SEEN_SCALE_Y),
             (PROP_SCALE_Z, SEEN_SCALE_Z),
@@ -284,7 +268,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
         use ply_rs_bw::ply::PropertyAccessResult;
 
         match property_name {
-            PROP_X => {
+            re_ply::PROP_X => {
                 if let Some(value) = property.to_f32_lossy() {
                     self.seen_props |= SEEN_X;
                     self.x = Some(value);
@@ -293,7 +277,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
                     PropertyAccessResult::UnsupportedType
                 }
             }
-            PROP_Y => {
+            re_ply::PROP_Y => {
                 if let Some(value) = property.to_f32_lossy() {
                     self.seen_props |= SEEN_Y;
                     self.y = Some(value);
@@ -302,7 +286,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
                     PropertyAccessResult::UnsupportedType
                 }
             }
-            PROP_Z => {
+            re_ply::PROP_Z => {
                 if let Some(value) = property.to_f32_lossy() {
                     self.seen_props |= SEEN_Z;
                     self.z = Some(value);
@@ -311,7 +295,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
                     PropertyAccessResult::UnsupportedType
                 }
             }
-            PROP_RED => {
+            re_ply::PROP_RED => {
                 self.seen_props |= SEEN_RED;
 
                 if let Some(value) = property.to_u8_color_lossy() {
@@ -321,7 +305,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
                     PropertyAccessResult::Ignored
                 }
             }
-            PROP_GREEN => {
+            re_ply::PROP_GREEN => {
                 self.seen_props |= SEEN_GREEN;
 
                 if let Some(value) = property.to_u8_color_lossy() {
@@ -331,7 +315,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
                     PropertyAccessResult::Ignored
                 }
             }
-            PROP_BLUE => {
+            re_ply::PROP_BLUE => {
                 self.seen_props |= SEEN_BLUE;
 
                 if let Some(value) = property.to_u8_color_lossy() {
@@ -341,7 +325,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
                     PropertyAccessResult::Ignored
                 }
             }
-            PROP_ALPHA => {
+            re_ply::PROP_ALPHA => {
                 self.seen_props |= SEEN_ALPHA;
 
                 if let Some(value) = property.to_u8_color_lossy() {
@@ -351,7 +335,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
                     PropertyAccessResult::Ignored
                 }
             }
-            PROP_RADIUS => {
+            re_ply::PROP_RADIUS => {
                 self.seen_props |= SEEN_RADIUS;
 
                 if let Some(value) = property.to_f32_lossy() {
@@ -361,7 +345,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
                     PropertyAccessResult::Ignored
                 }
             }
-            PROP_LABEL => {
+            re_ply::PROP_LABEL => {
                 self.seen_props |= SEEN_LABEL;
 
                 if let Some(value) = property_to_text(&property) {
@@ -448,21 +432,9 @@ fn property_to_text(property: &ply_rs_bw::ply::Property) -> Option<Text> {
 }
 
 struct ParsedPly {
-    vertex_layout: PlyVertexLayout,
+    vertex_layout: re_ply::PlyVertexLayout,
     vertices: Vec<ParsedVertex>,
     ignored_props: BTreeSet<String>,
-}
-
-fn classify_vertex_layout(element_def: &ply_rs_bw::ply::ElementDef) -> PlyVertexLayout {
-    let has_x = element_def.properties.contains_key(PROP_X);
-    let has_y = element_def.properties.contains_key(PROP_Y);
-    let has_z = element_def.properties.contains_key(PROP_Z);
-
-    match (has_x, has_y, has_z) {
-        (true, true, false) => PlyVertexLayout::Xy,
-        (true, true, true) => PlyVertexLayout::Xyz,
-        _ => PlyVertexLayout::Other,
-    }
 }
 
 fn parse_ply_vertices<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<ParsedPly> {
@@ -480,29 +452,28 @@ fn parse_ply_vertices<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Pa
             .map_err(std::io::Error::from)?;
         let vertex_layout = header
             .elements
-            .get("vertex")
-            .map(classify_vertex_layout)
-            .unwrap_or(PlyVertexLayout::Other);
+            .get(re_ply::ELEMENT_VERTEX)
+            .map(re_ply::classify_vertex_layout)
+            .unwrap_or(re_ply::PlyVertexLayout::Other);
         let vertex_unknown_props = header
             .elements
-            .get("vertex")
+            .get(re_ply::ELEMENT_VERTEX)
             .map(|element_def| {
                 element_def
                     .properties
                     .keys()
                     .filter(|name| {
-                        !matches!(
-                            name.as_str(),
-                            PROP_X
-                                | PROP_Y
-                                | PROP_Z
-                                | PROP_RED
-                                | PROP_GREEN
-                                | PROP_BLUE
-                                | PROP_ALPHA
-                                | PROP_RADIUS
-                                | PROP_LABEL
-                        )
+                        !re_ply::is_point_vertex_property(name.as_str())
+                            && !matches!(
+                                name.as_str(),
+                                PROP_SCALE_X
+                                    | PROP_SCALE_Y
+                                    | PROP_SCALE_Z
+                                    | PROP_SH_DC_0
+                                    | PROP_SH_DC_1
+                                    | PROP_SH_DC_2
+                                    | PROP_OPACITY
+                            )
                     })
                     .cloned()
                     .collect::<BTreeSet<_>>()
@@ -521,7 +492,7 @@ fn parse_ply_vertices<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Pa
     re_tracing::profile_scope!("read_ply_payload");
 
     for (_key, element_def) in &header.elements {
-        if element_def.name == "vertex" {
+        if element_def.name == re_ply::ELEMENT_VERTEX {
             let vertices = vertex_parser
                 .read_payload_for_element(&mut payload_reader, element_def, &header)
                 .map_err(std::io::Error::from)?;
@@ -552,7 +523,7 @@ fn from_ply_reader_2d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Po
         mut ignored_props,
     } = parse_ply_vertices(reader)?;
 
-    if vertex_layout != PlyVertexLayout::Xy {
+    if vertex_layout != re_ply::PlyVertexLayout::Xy {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             "expected .ply vertex properties \"x\" and \"y\" without \"z\"",
