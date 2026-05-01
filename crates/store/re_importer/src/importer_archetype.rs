@@ -349,71 +349,24 @@ fn load_ply(
 ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
     re_tracing::profile_function!();
 
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    enum PlyKind {
-        Points2D,
-        Points3D,
-        Asset3D,
-    }
-
-    fn has_mesh_topology(element_def: &ply_rs_bw::ply::ElementDef) -> bool {
-        element_def.count > 0
-    }
-
-    fn detect_ply_kind(contents: &[u8]) -> anyhow::Result<PlyKind> {
-        let parser = ply_rs_bw::parser::Parser::<ply_rs_bw::ply::DefaultElement>::new();
-        let mut reader =
-            ply_rs_bw::parser::Reader::new(std::io::BufReader::new(std::io::Cursor::new(contents)));
-        let header = parser
-            .read_header(&mut reader)
-            .map_err(std::io::Error::from)?;
-
-        let has_mesh_topology = header.elements.get("face").is_some_and(has_mesh_topology);
-        if has_mesh_topology {
-            return Ok(PlyKind::Asset3D);
-        }
-
-        let Some(vertex_element) = header.elements.get("vertex") else {
-            return Err(anyhow::anyhow!(
-                "PLY file is missing required \"vertex\" element"
-            ));
-        };
-
-        let has_x = vertex_element.properties.contains_key("x");
-        let has_y = vertex_element.properties.contains_key("y");
-        let has_z = vertex_element.properties.contains_key("z");
-
-        if !has_x || !has_y {
-            return Err(anyhow::anyhow!(
-                "PLY vertex element must contain at least \"x\" and \"y\""
-            ));
-        }
-
-        Ok(if has_z {
-            PlyKind::Points3D
-        } else {
-            PlyKind::Points2D
-        })
-    }
-
     let rows = [
         {
-            match detect_ply_kind(contents)? {
-                PlyKind::Points2D => {
+            match re_ply::classify_geometry_from_bytes(contents).map_err(anyhow::Error::from)? {
+                re_ply::PlyGeometryClass::Points2D => {
                     let points2d = re_sdk_types::archetypes::Points2D::from_file_contents(contents)
                         .map_err(anyhow::Error::from)?;
                     Chunk::builder(entity_path)
                         .with_archetype(RowId::new(), timepoint, &points2d)
                         .build()?
                 }
-                PlyKind::Points3D => {
+                re_ply::PlyGeometryClass::Points3D => {
                     let points3d = re_sdk_types::archetypes::Points3D::from_file_contents(contents)
                         .map_err(anyhow::Error::from)?;
                     Chunk::builder(entity_path)
                         .with_archetype(RowId::new(), timepoint, &points3d)
                         .build()?
                 }
-                PlyKind::Asset3D => {
+                re_ply::PlyGeometryClass::MeshOrAsset3D => {
                     let asset3d = re_sdk_types::archetypes::Asset3D::from_file_contents(
                         contents.to_vec(),
                         Some(re_sdk_types::components::MediaType::ply()),
