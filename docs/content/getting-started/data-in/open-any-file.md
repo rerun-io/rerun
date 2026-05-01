@@ -24,15 +24,16 @@ The following data types have built-in support in the Rerun Viewer and SDK:
 -   Text files: `md`, `txt`
 -   [LeRobot](https://huggingface.co/docs/lerobot/index) datasets: `directory`
 
-PLY files are auto-detected based on their contents:
+Once a `.ply` file is selected, its header is inspected to determine how to log it:
 
--   if the header declares a non-empty `face` element with `vertex_indices` or `vertex_index`, we attempt to load it as a `Mesh3D`
+-   if the header declares a non-empty `face` element, it is logged as an `Asset3D`
 -   otherwise, if the vertices contain `x`, `y`, and `z`, it is loaded as a `Points3D`
 -   otherwise, if the vertices contain `x` and `y`, it is loaded as a `Points2D`
 
-For mesh PLY files, only `x` and `y` are required on vertices. If `z` is missing, the mesh is still loaded as `Mesh3D` and flattened onto the `z=0` plane.
+The Viewer renders PLY `Asset3D` data as a mesh when the face topology uses `vertex_indices` or `vertex_index`.
+For those topology-bearing PLY files, only `x` and `y` are required on vertices. If `z` is missing, the Viewer renders the mesh flattened onto the `z=0` plane.
 
-In practice, this means `.ply` is read as a mesh whenever it is actually a mesh, and only falls back to point data when it has no mesh topology.
+In practice, this means `.ply` is preserved as `Asset3D` whenever it declares topology, and rendered as a mesh when that topology is supported. Topology-free PLY files are loaded as point data.
 
 With the exception of `rrd` files that can be streamed from an HTTP URL (e.g. `rerun https://demo.rerun.io/version/latest/examples/dna/data.rrd`), we only support loading files from the local filesystem for now, with [plans to make this generic over any URI and protocol in the future](https://github.com/rerun-io/rerun/issues/4525).
 
