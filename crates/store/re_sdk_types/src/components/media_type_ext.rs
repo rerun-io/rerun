@@ -233,6 +233,10 @@ impl MediaType {
             Some("stl") => {
                 return Some(Self::stl());
             }
+            // `mime_guess2` doesn't know about PLY, but we use `application/x-ply`.
+            Some("ply") => {
+                return Some(Self::ply());
+            }
             _ => {}
         }
 
@@ -401,8 +405,17 @@ fn test_media_type_extension() {
     assert_eq!(MediaType::markdown().file_extension(), Some("md"));
     assert_eq!(MediaType::plain_text().file_extension(), Some("txt"));
     assert_eq!(MediaType::png().file_extension(), Some("png"));
+    assert_eq!(MediaType::ply().file_extension(), Some("ply"));
     assert_eq!(MediaType::rvl().file_extension(), Some("rvl"));
     assert_eq!(MediaType::stl().file_extension(), Some("stl"));
+}
+
+#[test]
+fn test_guess_from_path_ply() {
+    assert_eq!(
+        MediaType::guess_from_path("mesh.ply"),
+        Some(MediaType::ply())
+    );
 }
 
 #[test]

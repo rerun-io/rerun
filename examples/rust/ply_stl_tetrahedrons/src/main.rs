@@ -2,8 +2,8 @@
 //!
 //! The example logs:
 //! - a 3D PLY point cloud,
-//! - a 3D PLY mesh,
-//! - an `x/y`-only PLY mesh, which `Mesh3D` flattens onto `z=0`,
+//! - a 3D PLY mesh asset,
+//! - an `x/y`-only PLY mesh asset, which the viewer flattens onto `z=0`,
 //! - an `x/y`-only PLY point cloud,
 //! - and an ASCII STL mesh asset.
 
@@ -12,18 +12,23 @@ use std::path::{Path, PathBuf};
 use rerun::external::re_log;
 
 fn main() -> anyhow::Result<()> {
+    let main_thread_token = rerun::MainThreadToken::i_promise_i_am_on_the_main_thread();
     re_log::setup_logging();
 
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_ply_stl_tetrahedrons").spawn()?;
-    run(&rec)
+    let (rec, storage) =
+        rerun::RecordingStreamBuilder::new("rerun_example_ply_stl_tetrahedrons").memory()?;
+    run(&rec)?;
+
+    rerun::native_viewer::show(main_thread_token, storage.take())?;
+    Ok(())
 }
 
 fn run(rec: &rerun::RecordingStream) -> anyhow::Result<()> {
     rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP())?;
 
     let ply_points3d = rerun::Points3D::from_file_path(&data_path("tetrahedron_points3d.ply"))?;
-    let ply_mesh3d = rerun::Mesh3D::from_file_path(&data_path("tetrahedron_mesh3d.ply"))?;
-    let ply_mesh2d = rerun::Mesh3D::from_file_path(&data_path("tetrahedron_mesh2d_xy_only.ply"))?;
+    let ply_mesh3d = rerun::Asset3D::from_file_path(data_path("tetrahedron_mesh3d.ply"))?;
+    let ply_mesh2d = rerun::Asset3D::from_file_path(data_path("tetrahedron_mesh2d_xy_only.ply"))?;
     let ply_points2d =
         rerun::Points2D::from_file_path(&data_path("tetrahedron_points2d_xy_only.ply"))?;
     let stl_mesh = rerun::Asset3D::from_file_path(data_path("tetrahedron.stl"))?;

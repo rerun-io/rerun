@@ -68,6 +68,7 @@ pub struct Asset3D {
     /// * `model/gltf-binary`
     /// * `model/gltf+json`
     /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
+    /// * `application/x-ply`
     /// * `model/stl`
     ///
     /// If omitted, the viewer will try to guess from the data blob.
@@ -339,6 +340,7 @@ impl Asset3D {
     /// * `model/gltf-binary`
     /// * `model/gltf+json`
     /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
+    /// * `application/x-ply`
     /// * `model/stl`
     ///
     /// If omitted, the viewer will try to guess from the data blob.
