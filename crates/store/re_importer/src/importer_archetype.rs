@@ -342,14 +342,8 @@ fn load_ply(
         Asset3D,
     }
 
-    const PLY_FACE_VERTEX_INDEX: &str = "vertex_index";
-    const PLY_FACE_VERTEX_INDICES: &str = "vertex_indices";
-
     fn has_mesh_topology(element_def: &ply_rs_bw::ply::ElementDef) -> bool {
-        // `load_ply` should only route to `Asset3D` when the face section declares usable topology.
         element_def.count > 0
-            && (element_def.properties.contains_key(PLY_FACE_VERTEX_INDICES)
-                || element_def.properties.contains_key(PLY_FACE_VERTEX_INDEX))
     }
 
     fn detect_ply_kind(contents: &[u8]) -> anyhow::Result<PlyKind> {
@@ -759,7 +753,7 @@ end_header
     }
 
     #[test]
-    fn ply_xy_auxiliary_faces_load_as_points2d() {
+    fn ply_nonempty_unsupported_faces_load_as_asset3d() {
         let contents = br#"ply
 format ascii 1.0
 element vertex 4
@@ -780,33 +774,7 @@ end_header
 
         let chunk = load_single_chunk(contents);
 
-        assert!(
-            chunk
-                .components()
-                .contains_component(Points2D::descriptor_positions().component)
-        );
-        assert!(
-            !chunk
-                .components()
-                .contains_component(Mesh3D::descriptor_vertex_positions().component)
-        );
-        assert!(
-            !chunk
-                .components()
-                .contains_component(Asset3D::descriptor_blob().component)
-        );
-
-        let expected = Chunk::builder(EntityPath::from("points"))
-            .with_archetype(
-                RowId::new(),
-                TimePoint::default(),
-                &Points2D::new([(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)])
-                    .with_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF]),
-            )
-            .build()
-            .unwrap();
-
-        ChunkComponents::ensure_similar(expected.components(), chunk.components()).unwrap();
+        assert_ply_asset3d_chunk(&chunk, "points", contents);
     }
 
     #[test]
@@ -860,10 +828,25 @@ end_header
     }
 
     #[test]
-    fn ply_without_vertex_element_is_rejected() {
+    fn ply_nonempty_unsupported_faces_load_as_asset3d_without_point_validation() {
         let contents = br#"ply
 format ascii 1.0
 element face 1
+property int material_index
+end_header
+7
+"#;
+
+        let chunk = load_single_chunk(contents);
+
+        assert_ply_asset3d_chunk(&chunk, "points", contents);
+    }
+
+    #[test]
+    fn ply_without_vertex_element_or_topology_is_rejected() {
+        let contents = br#"ply
+format ascii 1.0
+element material 1
 property int material_index
 end_header
 7

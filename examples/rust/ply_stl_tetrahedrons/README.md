@@ -1,9 +1,11 @@
 <!--[metadata]
-title = "PLY And STL Tetrahedrons"
+title = "Asset3D PLY Mesh Rendering"
 tags = ["PLY", "STL", "Points3D", "Points2D", "Asset3D"]
 -->
 
-This example loads a handful of tiny ASCII geometry files and logs them with the Rust SDK.
+This example logs raw `.ply` mesh files as [`Asset3D`](https://www.rerun.io/docs/reference/types/archetypes/asset3d) with the Rust SDK and relies on the Viewer to render them as meshes.
+
+It also includes point-cloud PLY files and an STL mesh for comparison.
 
 It demonstrates:
 

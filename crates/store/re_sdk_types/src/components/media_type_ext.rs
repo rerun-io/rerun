@@ -85,7 +85,7 @@ impl MediaType {
     pub const MCAP: &'static str = "application/x-mcap";
 
     // -------------------------------------------------------
-    // Point clouds:
+    // Geometry:
 
     /// [PLY (Polygon File Format)](https://en.wikipedia.org/wiki/PLY_(file_format)): `application/x-ply`.
     ///
@@ -195,7 +195,7 @@ impl MediaType {
     }
 
     // -------------------------------------------------------
-    // Point clouds:
+    // Geometry:
 
     /// `application/x-ply`
     ///
