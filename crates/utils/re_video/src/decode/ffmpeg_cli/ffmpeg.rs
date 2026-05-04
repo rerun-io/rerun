@@ -1082,8 +1082,10 @@ enum CodecMeta {
         fourcc: [u8; 4],
         width: u16,
         height: u16,
+
         /// Whether we already wrote the 32-byte file header to `FFmpeg`'s stdin.
         file_header_written: bool,
+
         /// Frame counter used as the per-frame IVF PTS.
         ///
         /// `FFmpeg` is run with `-fps_mode passthrough`, so absolute PTS values

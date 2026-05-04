@@ -30,7 +30,7 @@ pub fn detect_vp8_gop(data: &[u8]) -> GopStartDetection {
     GopStartDetection::StartOfGop(VideoEncodingDetails {
         codec_string,
         coded_dimensions: [width, height],
-        // VP8 is always 8-bit YUV 4:2:0.  See RFC 6386 §2.
+        // VP8 is always 8-bit YUV 4:2:0. See RFC 6386 §2.
         bit_depth: Some(8),
         chroma_subsampling: Some(crate::ChromaSubsamplingModes::Yuv420),
         stsd: None,

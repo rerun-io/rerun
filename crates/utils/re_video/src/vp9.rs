@@ -7,7 +7,7 @@ pub fn detect_vp9_gop(data: &[u8]) -> GopStartDetection {
 
     // VP9 uncompressed header has no level; `10` (= Level 1) is a safe placeholder
     // that all WebCodecs implementations accept.
-    // See https://github.com/webmproject/vp9-dash/blob/master/VPCodecISOMediaFileFormatBinding.md
+    // See <https://www.webmproject.org/vp9/mp4/>.
     let codec_string = format!("vp09.{:02}.10.{:02}", header.profile, header.bit_depth);
     let chroma_subsampling = match (header.subsampling_x, header.subsampling_y) {
         // 4:0:0 (monochrome) is signalled at the container level, not the bitstream;
@@ -142,7 +142,7 @@ impl<'a> BitReader<'a> {
 
 /// Returns `true` if the raw VP9 frame data begins with a keyframe.
 ///
-/// Checks the frame marker (2 bits == 0b10) and the ``frame_type`` bit (0 == keyframe).
+/// Checks the frame marker (2 bits == 0b10) and the `frame_type` bit (0 == keyframe).
 /// See VP9 bitstream spec §6.2.
 pub fn vp9_is_keyframe(data: &[u8]) -> bool {
     if data.is_empty() {
