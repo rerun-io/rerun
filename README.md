@@ -16,7 +16,7 @@
 
 Log, query, visualize, and stream to training on shared columnar storage built for multimodal data.
 
-Rerun ingests multi-rate, multimodal data (images, point clouds, transforms, time series, joint states, video) from many sources and formats (robot logs, human-data rigs, sim, web video; MCAP, rrd, LeRobot). The built-in viewer renders everything in sync, in realtime: scrub episodes, compare sensors side-by-side, watch CV pipelines run live. The same data is queryable with [dataframes](https://rerun.io/docs/howto/query-and-transform/get-data-out) or SQL, and streams directly into training. Built in Rust on column-chunk storage purpose-built for multi-rate physical data. SDKs in Python, Rust, and C++.
+**What it does:** Rerun ingests multi-rate, multimodal data (images, point clouds, transforms, time series, joint states, video) from many sources and formats (robot logs, human-data rigs, sim, web video; MCAP, rrd, LeRobot). The built-in viewer renders everything in sync, in realtime: scrub episodes, compare sensors side-by-side, watch CV pipelines run live. The same data is queryable with [dataframes](https://rerun.io/docs/howto/query-and-transform/get-data-out) or SQL, and streams directly into training. Built in Rust on column-chunk storage purpose-built for multi-rate physical data. SDKs in Python, Rust, and C++.
 
 **Quickstart:** `pip install rerun-sdk` — log your first multimodal data and see it in the viewer in under 2 minutes.
 
