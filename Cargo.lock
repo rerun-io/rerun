@@ -9110,16 +9110,16 @@ dependencies = [
 
 [[package]]
 name = "re_mp4"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02cf24563b952aa0d55031cca30e58c11f853e59806ba5ac2a28054caffc3eb5"
+checksum = "62fda65f84bc3fc10f07d2969f2146376d791406dddc357ac42f0bba4dbd33a2"
 dependencies = [
  "byteorder",
  "bytes",
  "num-rational",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -12745,7 +12745,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c5f7c95348f20c1c913d72157b3c6dee6ea3e30b3d19502c5a7f6d3f160dacbf"
 dependencies = [
  "cc",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
