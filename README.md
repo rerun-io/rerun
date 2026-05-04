@@ -12,19 +12,26 @@
   <a href="https://discord.gg/Gcm8BbTaAj">                              <img alt="Rerun Discord"  src="https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord"> </a>
 </h1>
 
-# Time-aware multimodal data stack and visualizations
-Rerun is building the multimodal data stack to model, ingest, store, query and view robotics-style data.
-It's used in areas like robotics, spatial and embodied AI, generative media, industrial processing, simulation, security, and health.
+# The data layer for physical AI
 
-Rerun is easy to use!
-Use the Rerun SDK (available for C++, Python and Rust) to log data like images, tensors, point clouds, and text.
-Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
-You can also query the logged data through [our dataframe API](https://rerun.io/docs/howto/query-and-transform/get-data-out).
+Log, query, visualize, and stream to training on shared columnar storage built for multimodal data.
 
-[Get started](#getting-started) in minutes – no account needed.
+Rerun ingests multi-rate, multimodal data (images, point clouds, transforms, time series, joint states, video) from many sources and formats (robot logs, human-data rigs, sim, web video; MCAP, rrd, LeRobot). The built-in viewer renders everything in sync, in realtime: scrub episodes, compare sensors side-by-side, watch CV pipelines run live. The same data is queryable with [dataframes](https://rerun.io/docs/howto/query-and-transform/get-data-out) or SQL, and streams directly into training. Built in Rust on column-chunk storage purpose-built for multi-rate physical data. SDKs in Python, Rust, and C++.
+
+**Quickstart:** `pip install rerun-sdk` — log your first multimodal data and see it in the viewer in under 2 minutes.
 
 * [Run the Rerun Viewer in your browser](https://www.rerun.io/viewer)
 * [Read about what Rerun is and who it is for](https://www.rerun.io/docs/overview/what-is-rerun)
+
+### Use cases
+- Ingest robot logs, egocentric/UMI rigs, sim, and web video into one substrate
+- Run CV pipelines (SLAM, hand tracking, motion retargeting) as table edits
+- Query raw, intermediate, and derived data with dataframes or SQL
+- Visualize multi-rate, multimodal sequences across the pipeline
+- Stream dataset mixes directly to training — no export jobs, no stale copies
+
+### Data types
+Multi-rate, multimodal, spatial: images, point clouds, time series, tensors, transforms, joint states, video. Preserved end-to-end.
 
 ### A short taste
 ```py
