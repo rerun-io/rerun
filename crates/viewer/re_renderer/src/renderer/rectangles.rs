@@ -162,14 +162,25 @@ impl ColormappedTexture {
     /// RGBA textures pass through to [`Self::from_unorm_rgba`]. Single-channel textures
     /// splat `.r` onto `.rgb` via [`ColorMapper::OffGrayscale`], since
     /// [`Self::from_unorm_rgba`]'s `OffRGB` mapper is invalid for one-component inputs.
-    pub fn from_video_frame(texture: GpuTexture2D) -> Self {
+    ///
+    /// `bit_depth` scales non-normalized integer formats (e.g. a 10-bit PNG in an
+    /// `R16Uint` texture maps to `[0, 1023]`). `None` falls back to the full texture range.
+    pub fn from_video_frame(texture: GpuTexture2D, bit_depth: Option<u8>) -> Self {
         let format = texture.format();
         if format.components() != 1 {
             return Self::from_unorm_rgba(texture);
         }
 
+        // Non-normalized integer formats carry raw integer values; scale by `bit_depth`
+        // so that e.g. 10-bit data in an `R16Uint` texture normalizes to [0, 1].
+        let range = match (format, bit_depth) {
+            (wgpu::TextureFormat::R8Unorm, _) => [0.0, 1.0],
+            (_, Some(bd)) => [0.0, ((1u64 << bd) - 1) as f32],
+            _ => crate::texture_info::sample_value_range(format),
+        };
+
         Self {
-            range: crate::texture_info::sample_value_range(format),
+            range,
             texture,
             decode_srgb: true,
             texture_alpha: TextureAlpha::Opaque,

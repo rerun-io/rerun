@@ -1,6 +1,6 @@
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::EncodedImage;
-use re_sdk_types::components::Blob;
+use re_sdk_types::components::{Blob, MediaType};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
@@ -8,7 +8,7 @@ use re_viewer_context::{
 };
 
 use super::SpatialViewVisualizerData;
-use crate::visualizers::video::execute_video_stream_like;
+use crate::visualizers::video::{VideoStreamCtx, execute_video_stream_like};
 
 #[derive(Default)]
 pub struct EncodedImageVisualizer;
@@ -44,47 +44,37 @@ impl VisualizerSystem for EncodedImageVisualizer {
 
         let mut data = SpatialViewVisualizerData::default();
 
-        let arch_name = EncodedImage::name();
-        let sample_component = EncodedImage::descriptor_blob().component;
-        let opacity_component = EncodedImage::descriptor_opacity().component;
-
         let get_codec: &crate::visualizers::video::GetCodecFn =
             &|ctx, latest_at, data_result, instruction, output| {
                 let codec_component = EncodedImage::descriptor_media_type().component;
-                let codec_result_wrapped = re_view::BlueprintResolvedResults::LatestAt(
-                    latest_at.clone(),
-                    data_result.latest_at_with_blueprint_resolved_data_for_component(
-                        ctx,
-                        latest_at,
-                        codec_component,
-                        Some(instruction),
-                    ),
+                let results = data_result.latest_at_with_blueprint_resolved_data_for_component(
+                    ctx,
+                    latest_at,
+                    codec_component,
+                    Some(instruction),
                 );
-                let codec_result = re_view::VisualizerInstructionQueryResults::new(
-                    instruction,
-                    &codec_result_wrapped,
-                    output,
-                );
+                if results.any_missing_chunks() {
+                    output.set_missing_chunks();
+                }
 
-                let all_codecs = codec_result.iter_optional(codec_component);
-                let codec = all_codecs
-                    .slice::<String>()
-                    .next()
-                    .and_then(|((_time, _row_id), codec)| Some(codec.first()?.to_string()));
-
+                let codec = results
+                    .get_mono::<MediaType>(codec_component)
+                    .map(|m| m.to_string());
                 Ok(re_video::VideoCodec::ImageSequence(codec))
             };
 
-        execute_video_stream_like(
+        let ctx = VideoStreamCtx::new(
             ctx,
             view_query,
             context_systems,
             &mut data,
             Self::identifier(),
-            arch_name,
-            sample_component,
-            opacity_component,
+            EncodedImage::name(),
+            EncodedImage::descriptor_blob().component,
             &get_codec,
         )
+        .with_opacity_component(EncodedImage::descriptor_opacity().component);
+
+        execute_video_stream_like(ctx)
     }
 }

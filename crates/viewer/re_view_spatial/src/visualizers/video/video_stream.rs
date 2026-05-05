@@ -9,7 +9,7 @@ use re_viewer_context::{
 };
 
 use crate::visualizers::SpatialViewVisualizerData;
-use crate::visualizers::video::execute_video_stream_like;
+use crate::visualizers::video::{VideoStreamCtx, execute_video_stream_like};
 
 #[derive(Default)]
 pub struct VideoStreamVisualizer;
@@ -45,7 +45,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
 
         let mut data = SpatialViewVisualizerData::default();
 
-        execute_video_stream_like(
+        let ctx = VideoStreamCtx::new(
             ctx,
             view_query,
             context_systems,
@@ -53,35 +53,26 @@ impl VisualizerSystem for VideoStreamVisualizer {
             Self::identifier(),
             VideoStream::name(),
             VideoStream::descriptor_sample().component,
-            VideoStream::descriptor_opacity().component,
             &|ctx, latest_at, data_result, instruction, output| {
                 let codec_component = VideoStream::descriptor_codec().component;
-                let codec_result_wrapped = re_view::BlueprintResolvedResults::LatestAt(
-                    latest_at.clone(),
-                    data_result.latest_at_with_blueprint_resolved_data_for_component(
-                        ctx,
-                        latest_at,
-                        codec_component,
-                        Some(instruction),
-                    ),
+                let results = data_result.latest_at_with_blueprint_resolved_data_for_component(
+                    ctx,
+                    latest_at,
+                    codec_component,
+                    Some(instruction),
                 );
-                let codec_result = re_view::VisualizerInstructionQueryResults::new(
-                    instruction,
-                    &codec_result_wrapped,
-                    output,
-                );
+                if results.any_missing_chunks() {
+                    output.set_missing_chunks();
+                }
 
-                let all_codecs = codec_result.iter_optional(codec_component);
-                let codec = all_codecs
-                    .slice::<u32>()
-                    .next()
-                    .and_then(|((_time, _row_id), codec)| {
-                        re_sdk_types::components::VideoCodec::try_from_u32(*codec.first()?)
-                    })
+                let codec = results
+                    .get_mono::<VideoCodec>(codec_component)
                     .ok_or(VideoStreamProcessingError::MissingCodec)?;
-
                 Ok(codec.into())
             },
         )
+        .with_opacity_component(VideoStream::descriptor_opacity().component);
+
+        execute_video_stream_like(ctx)
     }
 }

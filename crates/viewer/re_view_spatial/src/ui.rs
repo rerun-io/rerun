@@ -101,7 +101,7 @@ impl SpatialViewState {
                         ImageKind::Color => self.image_counts_last_frame.color += 1,
                         ImageKind::Depth => self.image_counts_last_frame.depth += 1,
                     },
-                    PickableRectSourceData::Video => {
+                    PickableRectSourceData::Video { .. } => {
                         self.image_counts_last_frame.color += 1;
                     }
                     PickableRectSourceData::Placeholder => {}

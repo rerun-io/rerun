@@ -15,7 +15,9 @@ use crate::visualizers::DepthImageProcessResult;
 use crate::{
     PickableRectSourceData, PickableTexturedRect,
     picking::{PickableUiRect, PickingContext, PickingHitType},
-    picking_ui_pixel::{PickedPixelInfo, textured_rect_hover_ui},
+    picking_ui_pixel::{
+        PickedPixelInfo, TextureInteractionId, depth_value_from_gpu_texture, textured_rect_hover_ui,
+    },
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{
@@ -108,17 +110,39 @@ pub fn picking(
         }
 
         response = if let Some(picked_pixel) = get_pixel_picking_info(system_output, hit) {
-            if let PickableRectSourceData::Image {
-                depth_meter: Some(meter),
-                image,
-            } = &picked_pixel.source_data
-            {
-                let [x, y] = picked_pixel.pixel_coordinates;
-                if let Some(raw_value) = image.get_xyc(x, y, 0) {
-                    let raw_value = raw_value.as_f64();
-                    let depth_in_meters = raw_value / *meter.0 as f64;
-                    depth_at_pointer = Some(depth_in_meters as f32);
+            match &picked_pixel.source_data {
+                PickableRectSourceData::Image {
+                    depth_meter: Some(meter),
+                    image,
+                } => {
+                    let [x, y] = picked_pixel.pixel_coordinates;
+                    if let Some(raw_value) = image.get_xyc(x, y, 0) {
+                        let raw_value = raw_value.as_f64();
+                        let depth_in_meters = raw_value / *meter.0 as f64;
+                        depth_at_pointer = Some(depth_in_meters as f32);
+                    }
                 }
+                PickableRectSourceData::Video {
+                    depth_meter: Some(meter),
+                } => {
+                    // For video-decoded depth images, read the depth value back from the GPU.
+                    let interaction_id = TextureInteractionId {
+                        entity_path: &instance_path.entity_path,
+                        interaction_idx: hit_idx as u32,
+                    };
+                    let [x, y] = picked_pixel.pixel_coordinates;
+                    if let Some(raw_value) = depth_value_from_gpu_texture(
+                        ctx.egui_ctx(),
+                        ctx.render_ctx(),
+                        &picked_pixel.texture.texture,
+                        &interaction_id,
+                        [x, y],
+                    ) {
+                        let depth_in_meters = raw_value / *meter.0 as f64;
+                        depth_at_pointer = Some(depth_in_meters as f32);
+                    }
+                }
+                _ => {}
             }
 
             response
@@ -298,15 +322,26 @@ fn get_pixel_picking_info(
                 .get(&hit.instance_path_hash.entity_path_hash)
         })
     {
+        let width = image_info
+            .as_ref()
+            .map(|i| i.width())
+            .unwrap_or_else(|| colormap.width_height()[0]);
         let pixel_coordinates = hit
             .instance_path_hash
             .instance
-            .to_2d_image_coordinate(image_info.width());
-        Some(PickedPixelInfo {
-            source_data: PickableRectSourceData::Image {
-                image: image_info.clone(),
+            .to_2d_image_coordinate(width);
+        let source_data = if let Some(image) = image_info {
+            PickableRectSourceData::Image {
+                image: image.clone(),
                 depth_meter: Some(*depth_meter),
-            },
+            }
+        } else {
+            PickableRectSourceData::Video {
+                depth_meter: Some(*depth_meter),
+            }
+        };
+        Some(PickedPixelInfo {
+            source_data,
             texture: colormap.clone(),
             pixel_coordinates,
         })

@@ -15,14 +15,30 @@ pub fn update_video_texture_with_frame(
         info: _,
     } = source_frame;
 
+    let expected_width = source_content.width();
+    let expected_height = source_content.height();
+    let expected_format = gpu_texture_format_for_frame_content(source_content);
+
+    if let Some(target_texture) = target_video_texture.texture.as_ref() {
+        let size_mismatch =
+            target_texture.width() != expected_width || target_texture.height() != expected_height;
+
+        let format_mismatch = target_texture.format() != expected_format;
+
+        // Recreate the texture if size or format aren't what's expected.
+        if size_mismatch || format_mismatch {
+            target_video_texture.texture = None;
+        }
+    }
+
     // Ensure that we have a texture to copy to.
     let gpu_texture = target_video_texture.texture.get_or_insert_with(|| {
         alloc_video_frame_texture(
             &render_ctx.device,
             &render_ctx.gpu_resources.textures,
-            source_content.width(),
-            source_content.height(),
-            gpu_texture_format_for_frame_content(source_content),
+            expected_width,
+            expected_height,
+            expected_format,
         )
     });
 
