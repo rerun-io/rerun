@@ -25,8 +25,7 @@ fn main() {
     println!("Decoding {video_path}");
 
     let video_blob = std::fs::read(video_path).expect("failed to read video");
-    let source_id = re_tuid::Tuid::new();
-    let video = re_video::VideoDataDescription::load_mp4(&video_blob, video_path, source_id)
+    let video = re_video::VideoDataDescription::load_mp4(&video_blob, video_path)
         .expect("failed to load video");
 
     println!(
@@ -84,7 +83,15 @@ fn main() {
             continue;
         };
 
-        let chunk = sample.get(&|_| &video_blob, sample_idx).unwrap();
+        let chunk = sample
+            .get(
+                &|source| match source {
+                    re_video::VideoSource::Span(span) => &video_blob[span.range_usize()],
+                    re_video::VideoSource::Id { .. } => &[],
+                },
+                sample_idx,
+            )
+            .unwrap();
         decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
     decoder.end_of_video().expect("Failed to end of video");

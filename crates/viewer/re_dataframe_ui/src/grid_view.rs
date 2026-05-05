@@ -1,7 +1,7 @@
 use egui::{Frame, RichText, Ui};
 
-use re_ui::UiExt as _;
 use re_ui::egui_ext::card_layout::CardLayout;
+use re_ui::{UiExt as _, UiLayout};
 use re_viewer_context::StoreViewContext;
 
 use crate::DisplayRecordBatch;
@@ -156,13 +156,7 @@ fn card_content_ui(
             },
         );
 
-        // Footer: remaining visible columns as "label: value" pairs.
-        // Tighter spacing (8px) between column name and its value,
-        // wider spacing (20px) between separate columns.
         ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing.x = 8.0;
-
-            let mut is_first_column = true;
             for col_idx in table_config.visible_column_indexes() {
                 if Some(col_idx) == title_col_index {
                     continue; // already shown as the title
@@ -173,15 +167,10 @@ fn card_content_ui(
                     .map_or_else(String::new, |c| c.display_name());
 
                 if let Some(column) = display_record_batch.columns().get(col_idx) {
-                    if !is_first_column {
-                        // 20px total between columns: 8px item_spacing is already
-                        // pending, so add the remaining 12px explicitly.
-                        ui.add_space(12.0);
-                    }
-                    is_first_column = false;
-
+                    ui.spacing_mut().item_spacing.x = 8.0;
                     ui.label(RichText::new(&col_name).monospace());
-                    column.data_ui(ctx, ui, batch_index, None);
+                    ui.spacing_mut().item_spacing.x = 20.0;
+                    column.data_ui(ctx, ui, batch_index, None, UiLayout::Inline);
                 }
             }
         });

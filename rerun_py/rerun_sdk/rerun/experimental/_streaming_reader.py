@@ -12,8 +12,9 @@ class StreamingReader(Protocol):
     Protocol for readers that produce a sequential stream of chunks.
 
     All readers provide `stream() -> LazyChunkStream`. Readers for indexable
-    formats will additionally satisfy `IndexedReader` (future) and provide
-    `store() -> ChunkStore`.
+    formats will additionally satisfy
+    [`IndexedReader`][rerun.experimental.IndexedReader], which adds
+    `store() -> LazyStore` and `load() -> ChunkStore`.
     """
 
     def stream(self) -> LazyChunkStream:

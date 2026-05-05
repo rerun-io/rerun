@@ -15,7 +15,7 @@ use re_log_types::{EntryId, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::menu::menu_style;
-use re_ui::{UiExt as _, icons};
+use re_ui::{UiExt as _, UiLayout, icons};
 use re_viewer_context::{
     AsyncRuntimeHandle, StoreViewContext, SystemCommand, SystemCommandSender as _,
 };
@@ -1148,7 +1148,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
         {
             let column = &display_record_batch.columns()[col_index];
 
-            column.data_ui(self.ctx, ui, batch_index, None);
+            column.data_ui(self.ctx, ui, batch_index, None, UiLayout::List);
         }
     }
 

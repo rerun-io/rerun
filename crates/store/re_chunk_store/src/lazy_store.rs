@@ -128,6 +128,11 @@ impl LazyStore {
         self.provider.manifest()
     }
 
+    /// Human-readable source identifier of the underlying provider, for diagnostics.
+    pub fn source(&self) -> String {
+        self.provider.source()
+    }
+
     /// The raw manifest as-parsed from the RRD footer, before validation/extraction.
     ///
     /// Kept around so the server can synthesize `GetRrdManifest` responses without materializing
@@ -299,9 +304,13 @@ mod tests {
     }
 
     /// Construct a `LazyStore` from an open RRD file, via `RrdChunkProvider`.
-    fn build_test_lazy_store(file: File, raw_manifest: Arc<RawRrdManifest>) -> LazyStore {
+    fn build_test_lazy_store(
+        path: &Path,
+        file: File,
+        raw_manifest: Arc<RawRrdManifest>,
+    ) -> LazyStore {
         let provider = Arc::new(
-            re_log_encoding::RrdChunkProvider::try_new(file, raw_manifest)
+            re_log_encoding::RrdChunkProvider::try_from_file(file, path, raw_manifest)
                 .expect("test rrd provider"),
         );
         LazyStore::new(provider)
@@ -310,10 +319,11 @@ mod tests {
     #[test]
     fn test_lazy_store_no_physical_chunks() {
         let dir = tempfile::tempdir().unwrap();
-        let (mut file, store_id, chunks) = create_test_rrd(&dir.path().join("test.rrd"), 2, 3);
+        let path = dir.path().join("test.rrd");
+        let (mut file, store_id, chunks) = create_test_rrd(&path, 2, 3);
         let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = build_test_lazy_store(file, raw);
+        let lazy = build_test_lazy_store(&path, file, raw);
 
         assert_eq!(lazy.store.read().num_physical_chunks(), 0);
         assert_eq!(
@@ -326,10 +336,11 @@ mod tests {
     #[test]
     fn test_lazy_store_entities_visible() {
         let dir = tempfile::tempdir().unwrap();
-        let (mut file, store_id, _) = create_test_rrd(&dir.path().join("test.rrd"), 3, 2);
+        let path = dir.path().join("test.rrd");
+        let (mut file, store_id, _) = create_test_rrd(&path, 3, 2);
         let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = build_test_lazy_store(file, raw);
+        let lazy = build_test_lazy_store(&path, file, raw);
         let entity_tree = lazy.entity_tree();
 
         let mut entities = Vec::new();
@@ -345,10 +356,11 @@ mod tests {
     #[test]
     fn test_lazy_store_load_all() {
         let dir = tempfile::tempdir().unwrap();
-        let (mut file, store_id, chunks) = create_test_rrd(&dir.path().join("test.rrd"), 2, 3);
+        let path = dir.path().join("test.rrd");
+        let (mut file, store_id, chunks) = create_test_rrd(&path, 2, 3);
         let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = build_test_lazy_store(file, raw);
+        let lazy = build_test_lazy_store(&path, file, raw);
         let loaded = lazy.load_all_chunks().unwrap();
         assert_eq!(loaded.len(), chunks.len());
     }
@@ -356,10 +368,11 @@ mod tests {
     #[test]
     fn test_lazy_store_load_single_chunk() {
         let dir = tempfile::tempdir().unwrap();
-        let (mut file, store_id, chunks) = create_test_rrd(&dir.path().join("test.rrd"), 2, 3);
+        let path = dir.path().join("test.rrd");
+        let (mut file, store_id, chunks) = create_test_rrd(&path, 2, 3);
         let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = build_test_lazy_store(file, raw);
+        let lazy = build_test_lazy_store(&path, file, raw);
         let first_chunk_id = lazy.manifest().col_chunk_ids()[0];
         let loaded = lazy.load_chunks(&[first_chunk_id]).unwrap();
 
@@ -374,10 +387,11 @@ mod tests {
     #[test]
     fn test_lazy_store_load_idempotent() {
         let dir = tempfile::tempdir().unwrap();
-        let (mut file, store_id, _) = create_test_rrd(&dir.path().join("test.rrd"), 1, 3);
+        let path = dir.path().join("test.rrd");
+        let (mut file, store_id, _) = create_test_rrd(&path, 1, 3);
         let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = build_test_lazy_store(file, raw);
+        let lazy = build_test_lazy_store(&path, file, raw);
 
         // Calling `load_chunks` twice with the same IDs yields equivalent results, and neither
         // call retains chunks in the inner store — guard against anyone sneaking a cache back in.
@@ -402,10 +416,11 @@ mod tests {
     #[test]
     fn test_lazy_store_load_does_not_retain() {
         let dir = tempfile::tempdir().unwrap();
-        let (mut file, store_id, _) = create_test_rrd(&dir.path().join("test.rrd"), 2, 3);
+        let path = dir.path().join("test.rrd");
+        let (mut file, store_id, _) = create_test_rrd(&path, 2, 3);
         let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = build_test_lazy_store(file, raw);
+        let lazy = build_test_lazy_store(&path, file, raw);
         let first_chunk_id = lazy.manifest().col_chunk_ids()[0];
         let loaded = lazy.load_chunks(&[first_chunk_id]).unwrap();
         assert_eq!(loaded.len(), 1);
@@ -463,7 +478,7 @@ mod tests {
         let mut file = File::open(&path).unwrap();
         let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = build_test_lazy_store(file, raw);
+        let lazy = build_test_lazy_store(&path, file, raw);
         let batch = lazy.extract_properties().unwrap();
         assert!(
             batch.num_columns() > 0,
@@ -479,10 +494,11 @@ mod tests {
     #[test]
     fn test_lazy_store_schema() {
         let dir = tempfile::tempdir().unwrap();
-        let (mut file, store_id, _) = create_test_rrd(&dir.path().join("test.rrd"), 2, 3);
+        let path = dir.path().join("test.rrd");
+        let (mut file, store_id, _) = create_test_rrd(&path, 2, 3);
         let raw = read_raw_manifest(&mut file, &store_id);
 
-        let lazy = build_test_lazy_store(file, raw);
+        let lazy = build_test_lazy_store(&path, file, raw);
         let schema = lazy.schema();
 
         // Schema should be non-empty even without physical chunks.
@@ -494,6 +510,12 @@ mod tests {
     }
 
     #[test]
+    fn arc_lazy_store_is_send_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<std::sync::Arc<LazyStore>>();
+    }
+
+    #[test]
     fn test_lazy_vs_eager_equivalence() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
@@ -501,7 +523,7 @@ mod tests {
         let raw = read_raw_manifest(&mut file, &store_id);
 
         // Lazy path: create lazy store, load all chunks via the no-cache API.
-        let lazy = build_test_lazy_store(file, raw);
+        let lazy = build_test_lazy_store(&path, file, raw);
         let lazy_chunks = lazy.load_all_chunks().unwrap();
 
         // Eager path: load the same file fully.

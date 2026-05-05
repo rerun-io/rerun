@@ -44,6 +44,18 @@ impl std::fmt::Debug for DynExpr {
     }
 }
 
+impl DynExpr {
+    /// `true` if this expression contains no anonymous functions, and can
+    /// therefore be rendered as a parseable query string.
+    pub fn is_serializable(&self) -> bool {
+        match self {
+            Self::Expr(_) => true,
+            Self::Pipe { left, right } => left.is_serializable() && right.is_serializable(),
+            Self::Function(_) => false,
+        }
+    }
+}
+
 impl Selector<DynExpr> {
     /// Returns a human-readable string representation of this selector.
     ///
@@ -59,6 +71,12 @@ impl Selector<DynExpr> {
             }
         }
         fmt(&self.expr)
+    }
+
+    /// Render this selector as a parseable query string, or `None` if it
+    /// contains an anonymous function (which has no string representation).
+    pub fn try_to_string(&self) -> Option<String> {
+        self.expr.is_serializable().then(|| self.to_string_lossy())
     }
 }
 

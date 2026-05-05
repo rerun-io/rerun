@@ -59,6 +59,11 @@ pub enum RrdCommands {
     ///
     /// Reads from standard input if no paths are specified.
     ///
+    /// If any input is a directory, the command switches to **directory mirror mode**:
+    /// every `.rrd`/`.rbl` file under the input is optimized independently, and written
+    /// to the output path while preserving the input folder structure. In this mode the
+    /// output (`-o`) must be set and is treated as a directory root.
+    ///
     /// Uses the usual environment variables to control the compaction thresholds:
     /// `RERUN_CHUNK_MAX_ROWS`,
     /// `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`,
@@ -73,9 +78,17 @@ pub enum RrdCommands {
     ///
     /// Examples:
     ///
-    /// * `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun rrd optimize /my/recordings/*.rrd -o output.rrd`
+    /// * Optimize a single recording into one optimized file (`-o`):
+    ///   `rerun rrd optimize my.rrd -o my-compacted.rrd`
     ///
-    /// * `rerun rrd optimize --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > output.rrd`
+    /// * Merge many recordings into one optimized file:
+    ///   `rerun rrd optimize --max-size 2MiB /my/recordings/*.rrd -o output.rrd`
+    ///
+    /// * Pipe through stdin/stdout, overriding both row and size thresholds:
+    ///   `cat my.rrd | rerun rrd optimize --max-rows 4096 --max-size 2MiB > output.rrd`
+    ///
+    /// * Directory mirror mode — optimize every `.rrd`/`.rbl` under a tree, preserving structure:
+    ///   `rerun rrd optimize --max-size 2MiB /my/recordings -o /my/recordings-compacted`
     Optimize(OptimizeCommand),
 
     /// Deprecated: renamed to `optimize`.

@@ -125,7 +125,7 @@ fn instance_path_ui(
         .sum::<usize>();
 
     match ui_layout {
-        UiLayout::List => {
+        UiLayout::List | UiLayout::Inline => {
             ui_layout.label(
                 ui,
                 format!(

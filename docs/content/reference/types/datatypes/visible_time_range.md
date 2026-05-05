@@ -43,4 +43,18 @@ Struct(
  * 🐍 [Python API docs for `VisibleTimeRange`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.VisibleTimeRange)
  * 🦀 [Rust API docs for `VisibleTimeRange`](https://docs.rs/rerun/latest/rerun/datatypes/struct.VisibleTimeRange.html)
 
+## Example
+
+### Time-windowed trails (e.g. Trajectories)
+
+snippet: archetypes/line_strips3d_time_window
+
+<picture data-inline-viewer="snippets/archetypes/line_strips3d_time_window">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1200w.png">
+  <img src="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/full.png">
+</picture>
+
 

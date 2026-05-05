@@ -189,7 +189,6 @@ impl SorbetBatch {
     ///
     /// Non-Rerun metadata will be preserved (both at batch-level and column-level).
     /// Rerun metadata will be updated and added to the batch if needed.
-    #[tracing::instrument(level = "trace", skip_all)]
     pub fn try_from_record_batch(
         batch: &ArrowRecordBatch,
         batch_type: crate::BatchType,

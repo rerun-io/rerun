@@ -73,7 +73,7 @@ Pass `--num-segments 0` to train on all segments in the dataset.
 ### 4b. Train with traces
 
 ```sh
-TELEMETRY_ENABLED=true OTEL_SDK_ENABLED=true uv run python train.py
+TELEMETRY_ENABLED=true OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4317 uv run python train.py
 ```
 
 ### Iterable vs. Map-style dataset

@@ -35,6 +35,11 @@ where
     use tracing::Instrument as _;
     let runtime: &Runtime = get_tokio_runtime();
     let f = f.in_current_span();
+    // Read the active `tracing_session()` id once here (GIL still held) and stash
+    // it in a tokio task_local for the duration of `f`. Every gRPC injection
+    // inside `f` then reads the cached value without touching Python.
+    #[cfg(feature = "perf_telemetry")]
+    let f = re_perf_telemetry::with_current_tracing_session(f);
     py.detach(|| runtime.block_on(f))
 }
 

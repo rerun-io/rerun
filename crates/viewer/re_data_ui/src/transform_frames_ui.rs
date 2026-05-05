@@ -138,7 +138,7 @@ impl TransformFramesUi {
     ) {
         match layout {
             UiLayout::Tooltip => {} // Don't show in tooltips.
-            UiLayout::List | UiLayout::SelectionPanel => {
+            UiLayout::List | UiLayout::SelectionPanel | UiLayout::Inline => {
                 ui.collapsing("Transform frame parents", |ui| {
                     egui::Frame::new()
                         .corner_radius(ui.visuals().menu_corner_radius)
@@ -182,7 +182,7 @@ impl TransformFramesUi {
         ui.vertical_centered(|ui| {
             let show_amount = match layout {
                 UiLayout::Tooltip => MAX_SHOWN_ANCESTORS_TOOLTIP,
-                UiLayout::SelectionPanel | UiLayout::List => MAX_SHOWN_ANCESTORS,
+                UiLayout::SelectionPanel | UiLayout::List | UiLayout::Inline => MAX_SHOWN_ANCESTORS,
             };
             let more = *more || frames.len() > show_amount;
 
@@ -225,7 +225,7 @@ fn transform_ui(
         UiLayout::Tooltip => {
             ui.label(transform.frame_id.as_str());
         }
-        UiLayout::List | UiLayout::SelectionPanel => {
+        UiLayout::List | UiLayout::SelectionPanel | UiLayout::Inline => {
             let response = ui
                 .add_enabled(
                     transform.source_entity.is_some(),

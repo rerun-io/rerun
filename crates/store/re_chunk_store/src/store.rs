@@ -127,8 +127,26 @@ impl re_byte_size::SizeBytes for ChunkStoreConfig {
     }
 }
 
+impl std::fmt::Display for ChunkStoreConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            enable_changelog,
+            chunk_max_bytes,
+            chunk_max_rows,
+            chunk_max_rows_if_unsorted,
+        } = self;
+        write!(
+            f,
+            "ChunkStoreConfig {{ enable_changelog: {enable_changelog}, chunk_max_bytes: {}, chunk_max_rows: {}, chunk_max_rows_if_unsorted: {} }}",
+            re_format::format_bytes(*chunk_max_bytes as _),
+            re_format::format_uint(*chunk_max_rows),
+            re_format::format_uint(*chunk_max_rows_if_unsorted),
+        )
+    }
+}
+
 impl ChunkStoreConfig {
-    /// Default configuration, applicable to most use cases, according to empirical testing.
+    /// Default configuration for the embedded (in-memory) chunkstore in the viewer.
     pub const DEFAULT: Self = Self {
         enable_changelog: true,
 

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
     import datafusion
 
+    from rerun.experimental import LazyStore
     from rerun.recording import Recording
 
     from . import (
@@ -204,7 +205,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         if blueprint_dataset is None:
             raise LookupError("a blueprint dataset is not configured for this dataset")
 
-        segment_id = blueprint_dataset.register(uri, on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+        segment_id = (
+            blueprint_dataset.register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+        )
 
         if set_default:
             self.set_default_blueprint(segment_id)
@@ -368,7 +371,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
     def register(
         self,
-        recording_uri: str | Sequence[str],
+        # NOTE: this can't be Sequence[str], because `str` IS a `Sequence[str]`, and we would thus get no helpful typechecking
+        recording_uri: list[str],
         *,
         layer_name: str | Sequence[str] = "base",
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
@@ -379,10 +383,13 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         This method initiates the registration of recordings to the dataset, and returns
         a handle that can be used to wait for completion or iterate over results.
 
+        Prefer batching many URIs into a single `register` call rather than calling
+        `register` repeatedly in a loop, which is much slower.
+
         Parameters
         ----------
         recording_uri:
-            The URI(s) of the RRD(s) to register. Can be a single URI string or a sequence of URIs.
+            The URIs of the RRDs to register, as a sequence of strings.
 
         layer_name:
             The layer(s) to which the recordings will be registered to.
@@ -400,9 +407,18 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             A handle to track and wait on the registration tasks.
 
         """
+        from rerun.error_utils import _send_warning_or_raise
+
         from ._registration_handle import RegistrationHandle
 
         if isinstance(recording_uri, str):
+            _send_warning_or_raise(
+                "`DatasetEntry.register` was called with a single string for `recording_uri`. "
+                "This is deprecated: pass a sequence of URIs instead, and prefer batching "
+                "many URIs into a single call rather than calling `register` in a loop.",
+                depth_to_user_code=2,
+                warning_type=DeprecationWarning,
+            )
             recording_uris = [recording_uri]
         else:
             recording_uris = list(recording_uri)
@@ -511,6 +527,19 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         from rerun.recording import Recording
 
         return Recording(self._internal.download_segment(segment_id))
+
+    def segment_store(self, segment_id: str) -> LazyStore:
+        """
+        Open a remote segment as a [`LazyStore`][rerun.experimental.LazyStore].
+
+        The manifest is fetched immediately; chunk data is loaded on demand
+        via [`LazyStore.stream`][rerun.experimental.LazyStore.stream]. To fully
+        materialize into a [`ChunkStore`][rerun.experimental.ChunkStore], call
+        `lazy.stream().collect()`.
+        """
+        from rerun.experimental import LazyStore
+
+        return LazyStore(self._internal.segment_store(segment_id))
 
     @with_tracing("DatasetEntry.filter_segments")
     def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:

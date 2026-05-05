@@ -40,6 +40,7 @@ dev = [
   "colorama>=0.4",
   "types-colorama>=0.4.15",
   "Pillow>=12.2.0,<13", # has py.typed, no stubs needed
+  "types-psutil>=7.0", # Stubs for `psutil`, used by `rerun.tracing_session()`.
   # Typed packages needed for linting scripts/examples
   "attrs>=23.1.0",
   "semver>=3.0,<3.1",

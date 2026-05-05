@@ -20,9 +20,6 @@ default = []
 ## If set, `TELEMETRY_ENABLED` will be `true` by default.
 enabled = []
 
-## If set, `OTEL_SDK_ENABLED` will be `true` by default.
-otel_enabled = []
-
 ## If set, `TRACY_ENABLED` will be `true` by default.
 tracy_enabled = []
 

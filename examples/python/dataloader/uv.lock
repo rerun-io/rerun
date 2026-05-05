@@ -2088,6 +2088,7 @@ dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pillow" },
+    { name = "psutil" },
     { name = "pyarrow" },
     { name = "typing-extensions" },
 ]
@@ -2132,6 +2133,7 @@ requires-dist = [
     { name = "pillow", specifier = ">=8.0.0" },
     { name = "pillow", marker = "extra == 'dataloader'", specifier = ">=8.0.0" },
     { name = "polars", marker = "extra == 'tests'", specifier = "==1.36.1" },
+    { name = "psutil", specifier = ">=7.0" },
     { name = "pyarrow", specifier = ">=18.0.0" },
     { name = "pytest", marker = "extra == 'tests'", specifier = "==8.4.2" },
     { name = "rerun-notebook", marker = "extra == 'all'", editable = "../../../rerun_notebook" },

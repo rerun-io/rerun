@@ -6,6 +6,12 @@ mod connection_client;
 mod connection_registry;
 mod grpc;
 
+#[cfg(not(target_arch = "wasm32"))]
+mod segment_chunk_provider;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::segment_chunk_provider::SegmentChunkProvider;
+
 pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 
 pub use self::api_response_stream::ApiResponseStream;

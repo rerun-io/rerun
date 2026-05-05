@@ -14,7 +14,9 @@ use crate::dataframe_query_common::{
     DEFAULT_BATCH_BYTES, DEFAULT_BATCH_ROWS, DataframeClientAPI, IndexValuesMap, force_grpc,
     group_chunk_infos_by_segment_id, prepend_string_column_schema,
 };
-use arrow::array::{Array, ArrayRef, RecordBatch, RecordBatchOptions, StringArray, UInt64Array};
+use arrow::array::{
+    Array as _, ArrayRef, RecordBatch, RecordBatchOptions, StringArray, UInt64Array,
+};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{Schema, SchemaRef};
 use datafusion::common::hash_utils::HashValue as _;
@@ -30,7 +32,6 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use futures::StreamExt as _;
 use futures_util::{FutureExt as _, Stream};
-use re_arrow_util::concat_arrays;
 use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::utils::align_record_batch_to_schema;
@@ -412,19 +413,16 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
 
 /// Per-batch caps used by `send_next_row_batch`.
 ///
-/// `re_dataframe::QueryHandle::next_row` yields a single index value per call;
-/// emitting one `RecordBatch` per row is dominated by per-call overhead (alloc,
-/// schema align, async channel send). Accumulating up to `DEFAULT_BATCH_ROWS`
-/// rows or `DEFAULT_BATCH_BYTES` bytes (whichever first) amortises that
-/// overhead while keeping batch memory bounded for wide columns
-/// (e.g. images, large lists).
+/// Accumulating up to `DEFAULT_BATCH_ROWS` rows or `DEFAULT_BATCH_BYTES` bytes
+/// (whichever first) amortises per-batch overhead (alloc, schema align, async
+/// channel send) while keeping batch memory bounded for wide columns
+/// (e.g. images, large lists, replicated video blobs from retrofill).
 ///
 /// These mirror the values used by `SizedCoalesceBatchesExec` so that the
 /// downstream coalescer is mostly a pass-through.
 const FLUSH_BATCH_ROWS: usize = DEFAULT_BATCH_ROWS;
 const FLUSH_BATCH_BYTES: usize = DEFAULT_BATCH_BYTES as usize;
 
-#[tracing::instrument(level = "trace", skip_all)]
 async fn send_next_row_batch(
     query_handle: &QueryHandle<StorageEngine>,
     segment_id: &str,
@@ -448,66 +446,27 @@ async fn send_next_row_batch(
     let query_schema = Arc::clone(query_handle.schema());
     let num_fields = query_schema.fields.len();
 
-    // Accumulate rows from the in-memory store until either the row cap is
-    // hit, the byte budget is hit, or the query is exhausted. The byte
-    // budget keeps memory bounded for wide columns (images, large lists)
-    // where 2048 rows can far exceed `FLUSH_BATCH_BYTES`.
-    let mut row_groups: Vec<Vec<ArrayRef>> = Vec::with_capacity(max_rows_this_batch);
-    let mut total_rows = 0usize;
-    let mut total_bytes = 0usize;
-
-    {
-        re_tracing::profile_scope!("accumulate_rows");
-        while total_rows < max_rows_this_batch && total_bytes < FLUSH_BATCH_BYTES {
-            let Some(row) = query_handle.next_row() else {
-                break;
-            };
-            if row.is_empty() {
-                // Should not happen
-                break;
-            }
-            if num_fields != row.len() {
-                return Err(ApiError::internal(
-                    "Unexpected number of columns returned from query",
-                ));
-            }
-            total_rows += row[0].len();
-            total_bytes += row.iter().map(|a| a.get_array_memory_size()).sum::<usize>();
-            row_groups.push(row);
-        }
-    }
-
-    if row_groups.is_empty() {
+    // `_next_n_rows` carries its own `profile_function!`, so no extra scope here.
+    // Wrapping the `.await` in a `profile_scope!` would hold a non-`Send` guard
+    // across the suspension point and break `Handle::spawn`'s `Send` bound.
+    let next = query_handle
+        .next_n_rows_async(max_rows_this_batch, FLUSH_BATCH_BYTES)
+        .await;
+    if next.num_rows == 0 {
         return Ok(None);
     }
-
-    // Concatenate per-column arrays across the accumulated row groups.
-    let mut columns: Vec<ArrayRef> = Vec::with_capacity(num_fields + 1);
-    {
-        re_tracing::profile_scope!(
-            "concat_columns",
-            format!(
-                "num_fields={num_fields} num_row_groups={}",
-                row_groups.len()
-            )
-        );
-        for col_idx in 0..num_fields {
-            let parts: Vec<&dyn Array> = row_groups.iter().map(|r| r[col_idx].as_ref()).collect();
-            let combined = concat_arrays(&parts).map_err(|err| {
-                ApiError::deserialization_with_source(
-                    None,
-                    err,
-                    "concatenating per-column arrays for batched output",
-                )
-            })?;
-            columns.push(combined);
-        }
+    if num_fields != next.columns.len() {
+        return Err(ApiError::internal(
+            "Unexpected number of columns returned from query",
+        ));
     }
+    let total_rows = next.num_rows;
 
-    // Single segment-id `StringArray` of length `total_rows` for the whole batch.
+    let mut columns: Vec<ArrayRef> = Vec::with_capacity(num_fields + 1);
     let sid_array =
         Arc::new(StringArray::from(vec![segment_id.to_owned(); total_rows])) as ArrayRef;
-    columns.insert(0, sid_array);
+    columns.push(sid_array);
+    columns.extend(next.columns);
 
     let output_batch = {
         re_tracing::profile_scope!("build_and_align_batch");
@@ -610,7 +569,6 @@ async fn chunk_store_cpu_worker_thread(
         }
 
         /// Flush all remaining rows from the query handle, respecting the row limit.
-        #[tracing::instrument(level = "trace", skip_all, fields(segment_id = %self.segment_id))]
         async fn flush(
             self,
             projected_schema: &Arc<Schema>,

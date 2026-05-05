@@ -131,7 +131,7 @@ class GraphView(View):
         visual_bounds:
             Everything within these bounds is guaranteed to be visible.
 
-            Somethings outside of these bounds may also be visible due to letterboxing.
+            Some things outside of these bounds may also be visible due to letterboxing.
         force_link:
             Allows to control the interaction between two nodes connected by an edge.
         force_many_body:

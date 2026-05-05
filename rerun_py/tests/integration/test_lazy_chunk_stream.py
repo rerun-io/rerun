@@ -352,7 +352,7 @@ def test_lenses_identity(test_rrd_path: Path) -> None:
 
     store = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).collect()
     assert store.summary() == inline_snapshot(
-        "/sensors/imu rows=2 bytes=1.6 KiB static=False timelines=['my_index'] cols=['Imu:accel', 'my_index']"
+        "/sensors/imu rows=2 static=False timelines=['my_index'] cols=['Imu:accel', 'my_index']"
     )
 
 
@@ -363,7 +363,7 @@ def test_lenses_field_selector(test_rrd_path: Path) -> None:
 
     store = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).collect()
     assert store.summary() == inline_snapshot(
-        "/sensors/imu rows=2 bytes=1.5 KiB static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']"
+        "/sensors/imu rows=2 static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']"
     )
 
     # Verify the extracted values are correct
@@ -383,8 +383,8 @@ def test_lenses_multiple_outputs(test_rrd_path: Path) -> None:
 
     store = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lenses).collect()
     assert store.summary() == inline_snapshot("""\
-/out/x rows=2 bytes=1.5 KiB static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']
-/out/z rows=2 bytes=1.5 KiB static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']\
+/out/x rows=2 static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']
+/out/z rows=2 static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']\
 """)
 
 
@@ -412,10 +412,10 @@ def test_lenses_forward_unmatched(test_rrd_path: Path) -> None:
         .collect()
     )
     assert store.summary() == inline_snapshot("""\
-/cameras/front rows=1 bytes=1.5 KiB static=False timelines=['my_index'] cols=['TextLog:text', 'my_index']
-/config rows=1 bytes=1.1 KiB static=True timelines=[] cols=['TextLog:text']
-/robots/arm rows=2 bytes=1.6 KiB static=False timelines=['my_index', 'other_timeline'] cols=['Points3D:colors', 'Points3D:positions', 'my_index', 'other_timeline']
-/transformed rows=2 bytes=1.5 KiB static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']\
+/cameras/front rows=1 static=False timelines=['my_index'] cols=['TextLog:text', 'my_index']
+/config rows=1 static=True timelines=[] cols=['TextLog:text']
+/robots/arm rows=2 static=False timelines=['my_index', 'other_timeline'] cols=['Points3D:colors', 'Points3D:positions', 'my_index', 'other_timeline']
+/transformed rows=2 static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']\
 """)
 
 
@@ -434,11 +434,11 @@ def test_lenses_forward_all(test_rrd_path: Path) -> None:
         .collect()
     )
     assert store.summary() == inline_snapshot("""\
-/cameras/front rows=1 bytes=1.5 KiB static=False timelines=['my_index'] cols=['TextLog:text', 'my_index']
-/config rows=1 bytes=1.1 KiB static=True timelines=[] cols=['TextLog:text']
-/robots/arm rows=2 bytes=1.6 KiB static=False timelines=['my_index', 'other_timeline'] cols=['Points3D:colors', 'Points3D:positions', 'my_index', 'other_timeline']
-/sensors/imu rows=2 bytes=1.6 KiB static=False timelines=['my_index'] cols=['Imu:accel', 'my_index']
-/transformed rows=2 bytes=1.5 KiB static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']\
+/cameras/front rows=1 static=False timelines=['my_index'] cols=['TextLog:text', 'my_index']
+/config rows=1 static=True timelines=[] cols=['TextLog:text']
+/robots/arm rows=2 static=False timelines=['my_index', 'other_timeline'] cols=['Points3D:colors', 'Points3D:positions', 'my_index', 'other_timeline']
+/sensors/imu rows=2 static=False timelines=['my_index'] cols=['Imu:accel', 'my_index']
+/transformed rows=2 static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']\
 """)
 
 
@@ -461,7 +461,7 @@ def test_lenses_chained_with_filter(test_rrd_path: Path) -> None:
 
     store = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).collect()
     assert store.summary() == inline_snapshot(
-        "/sensors/imu rows=2 bytes=1.5 KiB static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']"
+        "/sensors/imu rows=2 static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']"
     )
 
 
@@ -482,10 +482,10 @@ def test_lenses_content_filter_match(test_rrd_path: Path) -> None:
     # /sensors/imu was matched by content -> lens applied -> produced /transformed.
     # All other chunks pass through unchanged regardless of `drop_unmatched`.
     assert store.summary() == inline_snapshot("""\
-/cameras/front rows=1 bytes=1.5 KiB static=False timelines=['my_index'] cols=['TextLog:text', 'my_index']
-/config rows=1 bytes=1.1 KiB static=True timelines=[] cols=['TextLog:text']
-/robots/arm rows=2 bytes=1.6 KiB static=False timelines=['my_index', 'other_timeline'] cols=['Points3D:colors', 'Points3D:positions', 'my_index', 'other_timeline']
-/transformed rows=2 bytes=1.5 KiB static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']\
+/cameras/front rows=1 static=False timelines=['my_index'] cols=['TextLog:text', 'my_index']
+/config rows=1 static=True timelines=[] cols=['TextLog:text']
+/robots/arm rows=2 static=False timelines=['my_index', 'other_timeline'] cols=['Points3D:colors', 'Points3D:positions', 'my_index', 'other_timeline']
+/transformed rows=2 static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']\
 """)
 
 
@@ -533,7 +533,7 @@ def test_lenses_time_extraction(test_rrd_path: Path) -> None:
 
     store = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).collect()
     assert store.summary() == inline_snapshot(
-        "/sensors/imu rows=2 bytes=1.5 KiB static=False timelines=['my_index', 'sensor_time'] cols=['Scalars:scalars', 'my_index', 'sensor_time']"
+        "/sensors/imu rows=2 static=False timelines=['my_index', 'sensor_time'] cols=['Scalars:scalars', 'my_index', 'sensor_time']"
     )
 
     chunks = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).to_chunks()
@@ -554,7 +554,7 @@ def test_lenses_dynamic_selector(test_rrd_path: Path) -> None:
 
     store = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).collect()
     assert store.summary() == inline_snapshot(
-        "/sensors/imu rows=2 bytes=1.5 KiB static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']"
+        "/sensors/imu rows=2 static=False timelines=['my_index'] cols=['Scalars:scalars', 'my_index']"
     )
 
     chunks = RrdReader(test_rrd_path).stream().filter(content="/sensors/**").lenses(lens).to_chunks()

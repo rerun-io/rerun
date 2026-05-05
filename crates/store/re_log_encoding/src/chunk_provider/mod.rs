@@ -32,6 +32,10 @@ pub trait ChunkProvider: Send + Sync {
     /// handler) can re-serialize without re-validating.
     fn raw_manifest(&self) -> &Arc<RawRrdManifest>;
 
+    /// Human-readable identifier for this provider's backing source, used in diagnostic messages
+    /// (e.g. an RRD path or a segment id). Not parsed; format is purely for display.
+    fn source(&self) -> String;
+
     /// Load chunks by id.
     fn load_chunks(&self, ids: &[ChunkId]) -> Result<Vec<Arc<Chunk>>, ChunkProviderError>;
 }

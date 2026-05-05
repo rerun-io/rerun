@@ -25,6 +25,7 @@ mod gc;
 mod lazy_store;
 mod lineage;
 mod missing_chunk_reporter;
+mod profile;
 mod properties;
 mod query;
 mod rebatch_videos;
@@ -60,6 +61,7 @@ pub use self::events::{
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::lineage::{ChunkDirectLineage, ChunkDirectLineageReport};
 pub use self::missing_chunk_reporter::MissingChunkReporter;
+pub use self::profile::OptimizationProfile;
 pub use self::properties::{ExtractPropertiesError, extract_properties_from_chunks};
 pub use self::query::QueryResults;
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};

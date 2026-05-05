@@ -12,6 +12,7 @@ use h264_reader::nal::UnitType;
 use re_log::debug_assert;
 use re_quota_channel::{Receiver, SendError, Sender};
 
+use super::ivf::write_chunk_to_ivf_stream;
 use super::version::FFmpegVersionParseError;
 use crate::decode::ffmpeg_cli::{
     FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion,
@@ -294,6 +295,7 @@ impl FFmpegProcessAndListener {
         let codec_str = match codec {
             crate::VideoCodec::H264 => "h264",
             crate::VideoCodec::H265 => "hevc",
+            crate::VideoCodec::VP8 | crate::VideoCodec::VP9 => "ivf",
             _ => unreachable!(),
         };
 
@@ -372,10 +374,7 @@ impl FFmpegProcessAndListener {
             })
             .expect("Failed to spawn ffmpeg listener thread");
 
-        let codec_meta = encoding_details
-            .and_then(|e| e.stsd.as_ref())
-            .and_then(CodecMeta::from_stsd)
-            .unwrap_or(CodecMeta::RawBytestream);
+        let mut codec_meta = CodecMeta::for_decoder(codec, encoding_details);
 
         // Writes video data to the ffmpeg process:
         let write_thread = std::thread::Builder::new()
@@ -392,7 +391,7 @@ impl FFmpegProcessAndListener {
                         &mut ffmpeg_stdin,
                         &frame_data_rx,
                         &output_sender,
-                        &codec_meta,
+                        &mut codec_meta,
                     );
                 }
             })
@@ -516,24 +515,13 @@ fn write_ffmpeg_input(
     ffmpeg_stdin: &mut dyn std::io::Write,
     frame_data_rx: &Receiver<FFmpegFrameData>,
     output_sender: &OutputSender,
-    codec_meta: &CodecMeta,
+    codec_meta: &mut CodecMeta,
 ) {
-    let mut state = AnnexBStreamState::default();
-
     while let Ok(data) = frame_data_rx.recv() {
         let chunk = match data {
             FFmpegFrameData::Chunk(chunk) => chunk,
             FFmpegFrameData::Quit => {
-                // Try to flush out the last frames from ffmpeg with an EndSequence/EndStream NAL units.
-                // Unfortunatelt this doesn't help, at least not for https://github.com/rerun-io/rerun/issues/8073
-                let end_nals: Vec<u8> = [
-                    ANNEXB_NAL_START_CODE,
-                    &[UnitType::EndOfSeq.id()],
-                    ANNEXB_NAL_START_CODE,
-                    &[UnitType::EndOfStream.id()],
-                ]
-                .concat();
-                write_bytes(ffmpeg_stdin, &end_nals).ok();
+                codec_meta.write_end_of_stream(ffmpeg_stdin).ok();
 
                 // NOTE(emilk): I've also tried writing `NalUnitType::AccessUnitDelimiter` here, but to no avail.
 
@@ -543,17 +531,7 @@ fn write_ffmpeg_input(
             }
         };
 
-        let write_result = match codec_meta {
-            CodecMeta::Avc(avcc) => {
-                write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state)
-                    .map_err(Error::from)
-            }
-            CodecMeta::Hevc(hvcc) => {
-                write_hevc_chunk_to_nalu_stream(hvcc, ffmpeg_stdin, &chunk, &mut state)
-                    .map_err(Error::from)
-            }
-            CodecMeta::RawBytestream => write_bytes(ffmpeg_stdin, &chunk.data),
-        };
+        let write_result = codec_meta.write_chunk(ffmpeg_stdin, &chunk);
 
         if let Err(err) = write_result {
             let write_error = matches!(err, Error::FailedToWriteToFfmpeg(_));
@@ -1079,22 +1057,149 @@ fn sanitize_ffmpeg_log_message(msg: &str) -> String {
     msg
 }
 
-#[derive(Clone)]
 enum CodecMeta {
-    RawBytestream, // generic “pass-through” label for any format that’s ready to feed to the decoder as-is.
-    Avc(re_mp4::Avc1Box),
-    Hevc(re_mp4::HevcBox),
+    /// Pass `chunk.data` through verbatim. Used for streamed H.264/H.265 (already Annex-B),
+    /// or any format that is ready to feed to the decoder as-is.
+    RawBytestream,
+
+    /// H.264 in MP4: prepend SPS/PPS to each IDR, otherwise length-prefix → Annex-B.
+    Avc {
+        avcc: re_mp4::Avc1Box,
+        state: AnnexBStreamState,
+    },
+
+    /// H.265 in MP4: prepend VPS/SPS/PPS to each IRAP, otherwise length-prefix → Annex-B.
+    Hevc {
+        hvcc: re_mp4::HevcBox,
+        state: AnnexBStreamState,
+    },
+
+    /// VP8 / VP9: wrap each chunk in an IVF file/frame header, since their raw bitstream
+    /// has no self-delimiting framing and `FFmpeg` has no `vp8`/`vp9` raw demuxer.
+    /// See <https://wiki.multimedia.cx/index.php/IVF>.
+    Ivf {
+        /// `b"VP80"` for VP8, `b"VP90"` for VP9.
+        fourcc: [u8; 4],
+        width: u16,
+        height: u16,
+
+        /// Whether we already wrote the 32-byte file header to `FFmpeg`'s stdin.
+        file_header_written: bool,
+
+        /// Frame counter used as the per-frame IVF PTS.
+        ///
+        /// `FFmpeg` is run with `-fps_mode passthrough`, so absolute PTS values
+        /// are immaterial as long as they are monotonically increasing.
+        frame_idx: u64,
+    },
 }
 
 impl CodecMeta {
+    fn for_decoder(
+        codec: &crate::VideoCodec,
+        encoding_details: Option<&VideoEncodingDetails>,
+    ) -> Self {
+        match codec {
+            crate::VideoCodec::VP8 | crate::VideoCodec::VP9 => {
+                let fourcc = if matches!(codec, crate::VideoCodec::VP8) {
+                    *b"VP80"
+                } else {
+                    *b"VP90"
+                };
+                let (width, height) = encoding_details
+                    .map(|e| (e.coded_dimensions[0], e.coded_dimensions[1]))
+                    .unwrap_or((0, 0));
+                Self::Ivf {
+                    fourcc,
+                    width,
+                    height,
+                    file_header_written: false,
+                    frame_idx: 0,
+                }
+            }
+            _ => encoding_details
+                .and_then(|e| e.stsd.as_ref())
+                .and_then(Self::from_stsd)
+                .unwrap_or(Self::RawBytestream),
+        }
+    }
+
     fn from_stsd(stsd: &re_mp4::StsdBox) -> Option<Self> {
-        use re_mp4::StsdBoxContent::{Avc1, Hev1, Hvc1};
-
         match &stsd.contents {
-            Avc1(avc) => Some(Self::Avc(avc.clone())),
-            Hev1(hevc) | Hvc1(hevc) => Some(Self::Hevc(hevc.clone())),
-
+            re_mp4::StsdBoxContent::Avc1(avcc) => Some(Self::Avc {
+                avcc: avcc.clone(),
+                state: AnnexBStreamState::default(),
+            }),
+            re_mp4::StsdBoxContent::Hev1(hvcc) | re_mp4::StsdBoxContent::Hvc1(hvcc) => {
+                Some(Self::Hevc {
+                    hvcc: hvcc.clone(),
+                    state: AnnexBStreamState::default(),
+                })
+            }
+            re_mp4::StsdBoxContent::Vp08(vp8) => Some(Self::Ivf {
+                fourcc: *b"VP80",
+                width: vp8.width,
+                height: vp8.height,
+                file_header_written: false,
+                frame_idx: 0,
+            }),
+            re_mp4::StsdBoxContent::Vp09(vp9) => Some(Self::Ivf {
+                fourcc: *b"VP90",
+                width: vp9.width,
+                height: vp9.height,
+                file_header_written: false,
+                frame_idx: 0,
+            }),
             _ => None,
+        }
+    }
+
+    fn write_chunk(&mut self, out: &mut dyn std::io::Write, chunk: &Chunk) -> Result<(), Error> {
+        match self {
+            Self::RawBytestream => write_bytes(out, &chunk.data),
+
+            Self::Avc { avcc, state } => {
+                write_avc_chunk_to_nalu_stream(avcc, out, chunk, state).map_err(Error::from)
+            }
+
+            Self::Hevc { hvcc, state } => {
+                write_hevc_chunk_to_nalu_stream(hvcc, out, chunk, state).map_err(Error::from)
+            }
+
+            Self::Ivf {
+                fourcc,
+                width,
+                height,
+                file_header_written,
+                frame_idx,
+            } => write_chunk_to_ivf_stream(
+                fourcc,
+                width,
+                height,
+                file_header_written,
+                frame_idx,
+                out,
+                chunk,
+            ),
+        }
+    }
+
+    fn write_end_of_stream(&self, out: &mut dyn std::io::Write) -> Result<(), Error> {
+        match self {
+            Self::Ivf { .. } => Ok(()),
+            Self::RawBytestream | Self::Avc { .. } | Self::Hevc { .. } => {
+                // Try to flush out the last frames from ffmpeg with EndSequence/EndStream NAL units.
+                // Unfortunately this doesn't help, at least not for https://github.com/rerun-io/rerun/issues/8073
+                let end_nals: Vec<u8> = [
+                    ANNEXB_NAL_START_CODE,
+                    &[UnitType::EndOfSeq.id()],
+                    ANNEXB_NAL_START_CODE,
+                    &[UnitType::EndOfStream.id()],
+                ]
+                .concat();
+
+                write_bytes(out, &end_nals)
+            }
         }
     }
 }

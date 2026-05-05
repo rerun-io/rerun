@@ -128,7 +128,7 @@ fn annotation_info(
 impl DataUi for AnnotationContext {
     fn data_ui(&self, _ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         match ui_layout {
-            UiLayout::List | UiLayout::Tooltip => {
+            UiLayout::List | UiLayout::Tooltip | UiLayout::Inline => {
                 let text = if self.0.len() == 1 {
                     let descr = &self.0[0].class_description;
 

@@ -11,7 +11,7 @@ use tracing_subscriber::{EnvFilter, Layer as _};
 
 use crate::shared_reader::SharedManualReader;
 use crate::trace_id_format::TraceIdFormat;
-use crate::{BenchmarkIdLayer, LogFormat, SpanMetadataCleanupLayer, TelemetryArgs};
+use crate::{LogFormat, SpanMetadataCleanupLayer, TelemetryArgs};
 
 // ---
 
@@ -129,7 +129,6 @@ impl Telemetry {
         let TelemetryArgs {
             tracy_enabled,
             enabled,
-            otel_enabled,
             service_name,
             attributes,
             log_filter,
@@ -142,11 +141,26 @@ impl Telemetry {
             trace_endpoint,
             trace_sampler,
             trace_sampler_args,
-            tracestate,
             metric_endpoint,
             metric_interval,
             metrics_listen_address: _, // TelemetryArgs only, used at the caller site
         } = args;
+
+        // Resolve the umbrella `OTEL_EXPORTER_OTLP_ENDPOINT` as a fallback for any
+        // signal-specific endpoint that wasn't set. Mirrors the OTel SDK convention.
+        let umbrella_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+            .ok()
+            .filter(|s| !s.is_empty());
+        let resolve_endpoint = |signal: String| -> String {
+            if !signal.is_empty() {
+                signal
+            } else {
+                umbrella_endpoint.clone().unwrap_or_default()
+            }
+        };
+        let log_endpoint = resolve_endpoint(log_endpoint);
+        let trace_endpoint = resolve_endpoint(trace_endpoint);
+        let metric_endpoint = resolve_endpoint(metric_endpoint);
 
         if !enabled {
             if tracy_enabled {
@@ -183,12 +197,22 @@ impl Telemetry {
         // For these things, all we need to do is make sure that the right OTEL env var is set.
         // All the downstream libraries will do the right thing if they are.
         //
+        // Endpoint env vars are only set when we actually have an endpoint to point at;
+        // overwriting them with empty strings would prevent the OTLP SDK builders from
+        // reading values that may have been set externally.
+        //
         // Safety: anything touching the env is unsafe, tis what it is.
         #[expect(unsafe_code)]
         unsafe {
-            std::env::set_var("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT", log_endpoint);
-            std::env::set_var("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", metric_endpoint);
-            std::env::set_var("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", trace_endpoint);
+            if !log_endpoint.is_empty() {
+                std::env::set_var("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT", &log_endpoint);
+            }
+            if !metric_endpoint.is_empty() {
+                std::env::set_var("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", &metric_endpoint);
+            }
+            if !trace_endpoint.is_empty() {
+                std::env::set_var("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", &trace_endpoint);
+            }
             std::env::set_var("OTEL_METRIC_EXPORT_INTERVAL", metric_interval);
             std::env::set_var("OTEL_RESOURCE_ATTRIBUTES", attributes);
             std::env::set_var("OTEL_SERVICE_NAME", &service_name);
@@ -290,7 +314,7 @@ impl Telemetry {
             layer.with_filter(create_filter(&log_filter, "warn")?)
         };
 
-        let (logger_provider, layer_logs_otlp) = if otel_enabled && log_otlp_enabled {
+        let (logger_provider, layer_logs_otlp) = if log_otlp_enabled && !log_endpoint.is_empty() {
             use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 
             let exporter = opentelemetry_otlp::LogExporter::builder()
@@ -326,41 +350,47 @@ impl Telemetry {
         //
         // * Spans that contains error logs will properly be marked as failed, and easily findable.
 
-        let (tracer_provider, layer_traces_otlp) = if otel_enabled {
-            let exporter = opentelemetry_otlp::SpanExporter::builder()
-                .with_tonic() // There's no good reason to use HTTP for traces (at the moment, that is)
-                .with_compression(opentelemetry_otlp::Compression::Gzip) // use gzip compression to reduce bandwidth
-                .build()?;
+        // The `TracerProvider` is always built when telemetry is enabled, so propagators
+        // and `current_trace_id()` keep working. The OTLP `BatchSpanProcessor` is only
+        // attached when an endpoint was provided (per-signal or via the
+        // `OTEL_EXPORTER_OTLP_ENDPOINT` umbrella). With no endpoint, spans flow through
+        // the in-process pipeline and are dropped at the end — no exporter chatter.
+        let (tracer_provider, layer_traces_otlp) = {
+            let mut builder = SdkTracerProvider::builder();
+            if !trace_endpoint.is_empty() {
+                let exporter = opentelemetry_otlp::SpanExporter::builder()
+                    .with_tonic() // There's no good reason to use HTTP for traces (at the moment, that is)
+                    .with_compression(opentelemetry_otlp::Compression::Gzip) // use gzip compression to reduce bandwidth
+                    .build()?;
 
-            // we customize batch exporter config to ensure more optimal span exporting
-            let batch_config = BatchConfigBuilder::default()
-                // increase max queue size from default 2048 to ensure we don't drop spans during high throughput
-                .with_max_queue_size(8192)
-                // export more spans per batch to reduce number of requests (default is 512)
-                // together with queue size this help ensure more robust exporting under high throughput
-                .with_max_export_batch_size(2048)
-                .build();
+                // we customize batch exporter config to ensure more optimal span exporting
+                let batch_config = BatchConfigBuilder::default()
+                    // increase max queue size from default 2048 to ensure we don't drop spans during high throughput
+                    .with_max_queue_size(8192)
+                    // export more spans per batch to reduce number of requests (default is 512)
+                    // together with queue size this help ensure more robust exporting under high throughput
+                    .with_max_export_batch_size(2048)
+                    .build();
 
-            let batch_processor = BatchSpanProcessor::builder(exporter)
-                .with_batch_config(batch_config)
-                .build();
+                let batch_processor = BatchSpanProcessor::builder(exporter)
+                    .with_batch_config(batch_config)
+                    .build();
 
-            let provider = SdkTracerProvider::builder()
-                .with_span_processor(batch_processor)
-                .build();
-
-            // This will be used by the `TracingInjectorInterceptor` to encode the trace information into the request headers.
-            // Additional `tracestate` can be added through the relevant env var and the custom enricher below.
-            let mut propagators: Vec<
-                Box<dyn opentelemetry::propagation::TextMapPropagator + Send + Sync>,
-            > = vec![Box::new(
-                opentelemetry_sdk::propagation::TraceContextPropagator::new(),
-            )];
-
-            if !tracestate.is_empty() {
-                let enricher = crate::tracestate::TraceStateEnricher::new(&tracestate);
-                propagators.push(Box::new(enricher));
+                builder = builder.with_span_processor(batch_processor);
             }
+
+            let provider = builder.build();
+
+            // Used by `TracingInjectorInterceptor` to encode the trace information into the
+            // outbound request headers. `TraceStateEnricher` runs after the W3C propagator
+            // and merges `rerun_session_id=<id>` into `tracestate` whenever a Python
+            // `tracing_session()` scope is active. With no active scope it is a no-op.
+            let propagators: Vec<
+                Box<dyn opentelemetry::propagation::TextMapPropagator + Send + Sync>,
+            > = vec![
+                Box::new(opentelemetry_sdk::propagation::TraceContextPropagator::new()),
+                Box::new(crate::tracestate::TraceStateEnricher),
+            ];
 
             opentelemetry::global::set_text_map_propagator(
                 opentelemetry::propagation::TextMapCompositePropagator::new(propagators),
@@ -377,8 +407,6 @@ impl Telemetry {
                 .boxed();
 
             (Some(provider), Some(layer))
-        } else {
-            (None, None)
         };
 
         // Metric strategy
@@ -393,7 +421,10 @@ impl Telemetry {
         //
         // Both ways use the same data for actual metrics.
         //
-        let (metric_provider, metrics_reader) = if otel_enabled {
+        // The `MeterProvider` is always built so the `start_metrics_listener()` Prometheus
+        // path keeps working; the OTLP push exporter is only attached when an endpoint is
+        // configured (per-signal or via the umbrella).
+        let (metric_provider, metrics_reader) = {
             let mut builder = SdkMeterProvider::builder();
 
             // Use base-2 exponential histograms (OTel equivalent of Prometheus native
@@ -422,12 +453,14 @@ impl Telemetry {
                 }
             });
 
-            // OTLP exporter for push-based metrics
-            let otlp_exporter = opentelemetry_otlp::MetricExporter::builder()
-                .with_temporality(opentelemetry_sdk::metrics::Temporality::Cumulative)
-                .with_http()
-                .build()?;
-            builder = builder.with_periodic_exporter(otlp_exporter);
+            if !metric_endpoint.is_empty() {
+                // OTLP exporter for push-based metrics
+                let otlp_exporter = opentelemetry_otlp::MetricExporter::builder()
+                    .with_temporality(opentelemetry_sdk::metrics::Temporality::Cumulative)
+                    .with_http()
+                    .build()?;
+                builder = builder.with_periodic_exporter(otlp_exporter);
+            }
 
             // Always add a ManualReader for potential metrics listener
             // We use SharedManualReader to share the same reader instance between
@@ -447,8 +480,6 @@ impl Telemetry {
             tracing::info!("metric provider created with manual reader support");
 
             (Some(provider), Some(reader_for_telemetry))
-        } else {
-            (None, None)
         };
 
         if tracy_enabled {
@@ -462,7 +493,6 @@ impl Telemetry {
                     .with(layer_logs_otlp)
                     .with(layer_logs_and_traces_stdio)
                     .with(layer_traces_otlp)
-                    .with(BenchmarkIdLayer::default())
                     .with(SpanMetadataCleanupLayer::default())
                     .with(self::tracy::tracy_layer())
                     .try_init()?;
@@ -477,7 +507,6 @@ impl Telemetry {
                 .with(layer_logs_otlp)
                 .with(layer_logs_and_traces_stdio)
                 .with(layer_traces_otlp)
-                .with(BenchmarkIdLayer::default())
                 .with(SpanMetadataCleanupLayer::default())
                 .try_init()?;
         }
@@ -527,7 +556,7 @@ impl Telemetry {
         let reader = self.metrics_reader.as_ref()
             .ok_or_else(|| anyhow::anyhow!(
                 "Cannot start metrics listener: telemetry was not initialized with metrics support. \
-                Ensure TELEMETRY_ENABLED=true and OTEL_SDK_ENABLED=true"
+                Ensure TELEMETRY_ENABLED=true"
             ))?;
 
         // Clone the Arc to pass to the server

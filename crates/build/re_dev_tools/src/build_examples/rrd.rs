@@ -122,7 +122,7 @@ impl Example {
         cmd.arg("rrd");
         cmd.arg("optimize");
         // Small chunks for better streaming:
-        cmd.arg("--max-bytes").arg((128 * 1024).to_string());
+        cmd.arg("--max-size").arg("128KiB");
         cmd.arg(&initial_rrd_path);
         cmd.arg("-o").arg(&final_rrd_path);
 

@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 
 from rerun_bindings import RrdReaderInternal
 
-from ._chunk_store import ChunkStore
 from ._lazy_chunk_stream import LazyChunkStream
+from ._lazy_store import LazyStore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -27,12 +27,17 @@ class RrdReader:
 
     def stream(self) -> LazyChunkStream:
         """Return a lazy stream over all chunks in the RRD file."""
-        # TODO(RR-4321): this should probably be self.store().stream() instead, when `ChunkStore` is lazily loaded
         return LazyChunkStream(self._internal.stream())
 
-    def store(self) -> ChunkStore:
-        """Load the entire RRD into a fully materialized ChunkStore."""
-        return ChunkStore(self._internal.store())
+    def store(self) -> LazyStore:
+        """
+        Open the RRD as a [`LazyStore`][rerun.experimental.LazyStore].
+
+        Reads the manifest immediately; chunk data is loaded on demand.
+        Legacy RRDs without a footer/manifest are not supported here — use
+        `RrdReader(...).stream().collect()` for those.
+        """
+        return LazyStore(self._internal.store())
 
     @property
     def application_id(self) -> str | None:

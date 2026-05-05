@@ -48,7 +48,7 @@ with rr.RecordingStream("rerun_example_layer", recording_id=segment_id) as rec:
     rec.set_time("log_time", timestamp=second_to_last_timestamp)
     rec.log("/events", rr.AnyValues(flag=True))
 
-dataset.register(Path(RRD_PATH).as_uri(), layer_name="event_layer")
+dataset.register([Path(RRD_PATH).as_uri()], layer_name="event_layer")
 
 # Read dataframe including new sparse layer
 df_with_flag = dataset.filter_contents(["/compressed_images/**", "/raw_images/**", "/events/**"]).reader(

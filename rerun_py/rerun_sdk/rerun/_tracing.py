@@ -7,8 +7,9 @@ create a Python OpenTelemetry span and bridge the trace context into Rerun's
 Rust SDK so `#[instrument]` spans on the Rust side become children of the
 Python span.
 
-Active only when `TELEMETRY_ENABLED=true` and `OTEL_SDK_ENABLED=true` are set in
-the environment. Otherwise both helpers are pass-throughs.
+Active only when `TELEMETRY_ENABLED=true` is set in the environment AND an OTLP
+endpoint is configured via `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` (or the umbrella
+`OTEL_EXPORTER_OTLP_ENDPOINT`). Otherwise both helpers are pass-throughs.
 
 This module is private — external callers should re-export these helpers from
 the consumer package rather than importing `rerun._tracing` directly.
@@ -45,7 +46,7 @@ def _init_once() -> None:
         return
     _initialized = True
 
-    if not _env_bool("TELEMETRY_ENABLED") or not _env_bool("OTEL_SDK_ENABLED"):
+    if not _env_bool("TELEMETRY_ENABLED"):
         return
 
     try:
@@ -58,8 +59,14 @@ def _init_once() -> None:
         logger.warning("`with_tracing` is a no-op: install OpenTelemetry via `pip install rerun-sdk[tracing]`")
         return
 
+    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+    if not endpoint:
+        logger.info(
+            "`with_tracing` is a no-op: set OTEL_EXPORTER_OTLP_TRACES_ENDPOINT or OTEL_EXPORTER_OTLP_ENDPOINT to enable",
+        )
+        return
+
     service_name = os.environ.get("OTEL_SERVICE_NAME") or "rerun-py"
-    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") or "http://localhost:4317"
 
     provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
     provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
@@ -150,7 +157,8 @@ def tracing_scope(name: str) -> Iterator[None]:
     function. Any Rust-side `#[instrument]` spans triggered from within will be
     parented under this span in Jaeger.
 
-    No-op unless `TELEMETRY_ENABLED=true` and `OTEL_SDK_ENABLED=true`.
+    No-op unless `TELEMETRY_ENABLED=true` and an OTLP endpoint is configured
+    (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` or `OTEL_EXPORTER_OTLP_ENDPOINT`).
 
     Examples
     --------
@@ -188,7 +196,8 @@ def with_tracing(name: str) -> Callable[[F], F]:
     For ad-hoc blocks that don't belong in a dedicated function, use
     [`tracing_scope`][rerun._tracing.tracing_scope] instead.
 
-    No-op unless `TELEMETRY_ENABLED=true` and `OTEL_SDK_ENABLED=true`.
+    No-op unless `TELEMETRY_ENABLED=true` and an OTLP endpoint is configured
+    (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` or `OTEL_EXPORTER_OTLP_ENDPOINT`).
     """
 
     def decorator(func: F) -> F:

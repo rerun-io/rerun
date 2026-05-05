@@ -13,7 +13,7 @@ use re_dataframe_ui::{ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchErr
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
-use re_ui::UiExt as _;
+use re_ui::{UiExt as _, UiLayout};
 use re_viewer_context::{StoreViewContext, TimeControlCommand, ViewId};
 
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
@@ -509,7 +509,13 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                 // This is called when data actually needs to be drawn (as opposed to summaries like
                 // "N instances" or "N more…").
                 let data_content = |ui: &mut egui::Ui| {
-                    column.data_ui(&ctx_at_time, ui, batch_row_idx, instance_index);
+                    column.data_ui(
+                        &ctx_at_time,
+                        ui,
+                        batch_row_idx,
+                        instance_index,
+                        UiLayout::List,
+                    );
                 };
 
                 // Draw the cell content with some margin.

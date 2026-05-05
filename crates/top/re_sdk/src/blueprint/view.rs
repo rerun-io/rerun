@@ -5,7 +5,9 @@ use uuid::Uuid;
 
 use re_log_types::EntityPath;
 use re_sdk_types::blueprint::archetypes::{
-    ActiveVisualizers, MapBackground, ViewBlueprint, ViewContents, VisualizerInstruction,
+    ActiveVisualizers, ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition,
+    GraphBackground, MapBackground, ViewBlueprint, ViewContents, VisualBounds2D,
+    VisualizerInstruction,
 };
 use re_sdk_types::blueprint::components::{QueryExpression, ViewClass};
 use re_sdk_types::components::{Name, Visible};
@@ -397,6 +399,113 @@ impl MapView {
     ) -> Self {
         self.0
             .add_property("MapBackground", &MapBackground::new(provider));
+        self
+    }
+}
+
+/// Graph view for visualizing directed or undirected graphs.
+pub struct GraphView(pub(crate) View);
+
+impl GraphView {
+    /// Create a new graph view.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(View {
+            class_identifier: "Graph".into(),
+            name: Some(name.into()),
+            ..Default::default()
+        })
+    }
+
+    /// Set the origin entity path.
+    pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
+        self.0.origin = origin.into();
+        self
+    }
+
+    /// Set the contents query expressions.
+    pub fn with_contents(mut self, queries: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.0.contents = queries.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Set visibility.
+    pub fn with_visible(mut self, visible: bool) -> Self {
+        self.0.visible = Some(visible);
+        self
+    }
+
+    /// Add a default archetype that applies to all entities in the view.
+    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
+        self.0.add_defaults(archetype);
+        self
+    }
+
+    /// Add a visualizer override for a specific entity.
+    pub fn with_override(
+        self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl Into<Visualizer>,
+    ) -> Self {
+        self.with_overrides(entity_path, [visualizers])
+    }
+
+    /// Add visualizer overrides for a specific entity.
+    pub fn with_overrides(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
+    ) -> Self {
+        self.0.add_overrides(entity_path, visualizers);
+        self
+    }
+
+    /// Configure the background of the graph.
+    pub fn with_background(mut self, background: &GraphBackground) -> Self {
+        self.0.add_property("GraphBackground", background);
+        self
+    }
+
+    /// Set the visual bounds of the graph.
+    ///
+    /// Everything within these bounds is guaranteed to be visible. Some things outside of
+    /// these bounds may also be visible due to letterboxing.
+    pub fn with_visual_bounds(mut self, visual_bounds: &VisualBounds2D) -> Self {
+        self.0.add_property("VisualBounds2D", visual_bounds);
+        self
+    }
+
+    /// Configure the link force, which controls the interaction between two nodes connected by an edge.
+    pub fn with_force_link(mut self, force_link: &ForceLink) -> Self {
+        self.0.add_property("ForceLink", force_link);
+        self
+    }
+
+    /// Configure the many-body force, a force between each pair of nodes that resembles an electrical charge.
+    pub fn with_force_many_body(mut self, force_many_body: &ForceManyBody) -> Self {
+        self.0.add_property("ForceManyBody", force_many_body);
+        self
+    }
+
+    /// Configure the position force, which pulls nodes towards a specific position (similar to gravity).
+    pub fn with_force_position(mut self, force_position: &ForcePosition) -> Self {
+        self.0.add_property("ForcePosition", force_position);
+        self
+    }
+
+    /// Configure the collision radius force, which resolves collisions between bounding circles
+    /// according to the radius of the nodes.
+    pub fn with_force_collision_radius(
+        mut self,
+        force_collision_radius: &ForceCollisionRadius,
+    ) -> Self {
+        self.0
+            .add_property("ForceCollisionRadius", force_collision_radius);
+        self
+    }
+
+    /// Configure the center force, which tries to move the center of mass of the graph to the origin.
+    pub fn with_force_center(mut self, force_center: &ForceCenter) -> Self {
+        self.0.add_property("ForceCenter", force_center);
         self
     }
 }

@@ -1402,6 +1402,19 @@ impl Chunk {
         self.row_ids_slice().iter().copied()
     }
 
+    /// Find the row index of the given [`RowId`] in this chunk, if it is present.
+    ///
+    /// Uses a binary search on sorted chunks (the common case), falling back to
+    /// a linear scan otherwise.
+    #[inline]
+    pub fn row_index_of(&self, row_id: RowId) -> Option<usize> {
+        if self.is_sorted() {
+            self.row_ids_slice().binary_search(&row_id).ok()
+        } else {
+            self.row_ids_slice().iter().position(|r| *r == row_id)
+        }
+    }
+
     /// Returns an iterator over the [`RowId`]s of a [`Chunk`], for a given component.
     ///
     /// This is different than [`Self::row_ids`]: it will only yield `RowId`s for rows at which

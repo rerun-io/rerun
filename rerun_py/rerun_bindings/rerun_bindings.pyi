@@ -253,6 +253,18 @@ def load_recording(path_to_rrd: str | os.PathLike[str]) -> RecordingInternal:
 def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchiveInternal:
     """Load a rerun archive from an RRD file."""
 
+def _optimization_profile_values(name: str) -> dict[str, object]:
+    """
+    Test-only: return a dict of the Rust `OptimizationProfile::<NAME>` field values.
+
+    Used by the Python parity test to confirm that
+    `OptimizationProfile.{LIVE,DATAPLATFORM}` on the Python side stays in sync
+    with the Rust constants this module forwards into `ChunkStoreConfig` /
+    `CompactionOptions` above.
+
+    Names: `"LIVE"`, `"DATAPLATFORM"`.
+    """
+
 # AI generated stubs for `PyRecordingStream` related class and functions
 # TODO(#9187): this will be entirely replaced when `RecordingStream` is itself written in Rust
 class PyRecordingStream:
@@ -1014,6 +1026,7 @@ class DatasetEntryInternal:
     # ---
 
     def download_segment(self, segment_id: str) -> RecordingInternal: ...
+    def segment_store(self, segment_id: str) -> LazyStoreInternal: ...
 
     # ---
 
@@ -1355,6 +1368,7 @@ class SelectorInternal:
     def execute(self, source: pa.Array) -> pa.Array | None: ...
     def execute_per_row(self, source: pa.Array) -> pa.Array | None: ...
     def pipe(self, func: Any) -> SelectorInternal: ...
+    def try_to_string(self) -> str | None: ...
     def __repr__(self) -> str: ...
     def __str__(self) -> str: ...
 
@@ -1491,6 +1505,50 @@ def _get_trace_context_var() -> Any:
     Returns `None` when `perf_telemetry` is disabled.
     """
 
+def _get_tracing_session_var() -> Any:
+    """
+    Return the `ContextVar` carrying the active rerun session id.
+
+    Set by the `tracing_session()` context manager and read on every outbound
+    gRPC call to merge `rerun_session_id=<id>` into the W3C `tracestate` header.
+
+    Returns `None` when `perf_telemetry` is disabled.
+    """
+
+def _is_telemetry_active() -> bool:
+    """
+    Return `True` if the rerun telemetry stack initialized successfully.
+
+    `tracing_session()` requires this to be true; otherwise the W3C propagator
+    is not registered and the session id has no transport.
+    """
+
+def _inc_active_tracing_sessions() -> None:
+    """Increment the process-wide active-tracing-session gate. Called by `tracing_session().__enter__`."""
+
+def _dec_active_tracing_sessions() -> None:
+    """Decrement the process-wide active-tracing-session gate. Called by `tracing_session().__exit__`."""
+
+def _log_tracing_session_started(rerun_session_id: str) -> None:
+    """Emit `rerun tracing session started: <rerun_session_id>` through the Rust `tracing` stack at INFO level."""
+
+def _log_tracing_session_finished(
+    rerun_session_id: str,
+    elapsed_s: float,
+    cpu_user_s: float | None,
+    cpu_system_s: float | None,
+    cpu_iowait_s: float | None,
+    net_rx_mb: float | None,
+) -> None:
+    """
+    Emit a single structured INFO event summarizing the tracing session at scope exit.
+
+    `Option<f64>` fields are `None` when the host platform or runtime can't supply
+    the metric (psutil missing, or `iowait` unavailable on macOS/Windows). Routed
+    through the Rust `tracing` stack so it follows `RUST_LOG` and the fmt-layer
+    pipeline like `_log_tracing_session_started`.
+    """
+
 #####################################################################################################################
 ## PIPELINE APIS                                                                                                   ##
 #####################################################################################################################
@@ -1505,12 +1563,20 @@ class ChunkStoreInternal:
     def summary(self) -> str: ...
     def stream(self) -> LazyChunkStreamInternal: ...
 
+class LazyStoreInternal:
+    """Internal implementation. Use LazyStore from rerun.experimental instead."""
+
+    def schema(self) -> SchemaInternal: ...
+    def num_chunks(self) -> int: ...
+    def summary(self) -> str: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+
 class RrdReaderInternal:
     """Internal implementation. Use RrdReader from rerun.experimental instead."""
 
     def __init__(self, path: str) -> None: ...
     def stream(self) -> LazyChunkStreamInternal: ...
-    def store(self) -> ChunkStoreInternal: ...
+    def store(self) -> LazyStoreInternal: ...
     @property
     def application_id(self) -> str | None: ...
     @property

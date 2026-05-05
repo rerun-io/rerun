@@ -192,14 +192,14 @@ impl Video {
     ///
     /// The time is specified in seconds since the start of the video.
     ///
-    /// `get_video_buffer` is used both to read data for frames internally, and as a way to request
+    /// `get_video_chunk` is used both to read data for frames internally, and as a way to request
     /// what data should be loaded.
     pub fn frame_at<'a>(
         &self,
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
         video_time: re_video::Time,
-        get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
+        get_video_chunk: &dyn Fn(re_video::VideoSource) -> &'a [u8],
     ) -> FrameDecodingOutput {
         re_tracing::profile_function!();
 
@@ -234,7 +234,7 @@ impl Video {
             &mut |texture, frame| {
                 chunk_decoder::update_video_texture_with_frame(render_context, texture, frame)
             },
-            get_video_buffer,
+            get_video_chunk,
         );
 
         let output = decoder_entry.player.output();

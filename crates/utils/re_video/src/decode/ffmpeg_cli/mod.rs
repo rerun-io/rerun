@@ -1,4 +1,5 @@
 mod ffmpeg;
+mod ivf;
 mod version;
 
 pub use ffmpeg::{Error, FFmpegCliDecoder};

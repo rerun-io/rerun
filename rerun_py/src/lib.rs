@@ -32,6 +32,7 @@ mod recording;
 mod selector;
 mod server;
 mod trace_context;
+mod tracing_session;
 mod urdf;
 mod utils;
 mod video;

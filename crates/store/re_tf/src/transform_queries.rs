@@ -54,11 +54,7 @@ fn lookup_chunk_row<'a>(
         return None;
     };
 
-    let index = if chunk.is_sorted() {
-        chunk.row_ids_slice().binary_search(&row_id).ok()?
-    } else {
-        chunk.row_ids_slice().iter().position(|r| *r == row_id)?
-    };
+    let index = chunk.row_index_of(row_id)?;
 
     Some((chunk, index))
 }

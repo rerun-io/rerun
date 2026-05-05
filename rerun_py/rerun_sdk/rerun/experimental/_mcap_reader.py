@@ -42,7 +42,8 @@ class McapReader:
             Optional offset in nanoseconds to add to all `TimestampNs` time columns.
         decoders:
             Optional list of MCAP decoder identifiers to enable. If omitted, all
-            available decoders are enabled. Use [`McapReader.available_decoders`][]
+            available decoders are enabled. Use
+            [`McapReader.available_decoders`][rerun.experimental.McapReader.available_decoders]
             to enumerate them.
         include_topic_regex:
             Optional list of regex patterns. If provided, only topics matching at

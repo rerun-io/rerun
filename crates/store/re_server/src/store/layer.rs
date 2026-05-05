@@ -352,7 +352,8 @@ mod tests {
             .unwrap();
         let raw_manifest = Arc::new(footer.manifests[&store_id].clone());
         let store_file = std::fs::File::open(&rrd_path).unwrap();
-        let provider = Arc::new(RrdChunkProvider::try_new(store_file, raw_manifest).unwrap());
+        let provider =
+            Arc::new(RrdChunkProvider::try_from_file(store_file, &rrd_path, raw_manifest).unwrap());
         let lazy = Arc::new(LazyStore::new(provider));
         let lazy_layer = Layer::new(StoreSlotId::new(), ResolvedStore::Lazy(lazy));
 

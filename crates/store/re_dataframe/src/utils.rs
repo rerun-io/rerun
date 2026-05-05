@@ -33,7 +33,6 @@ use re_arrow_util::format_field_datatype;
 /// `Union` is the one exception: `try_merge` *does* recursively widen Union children, which the
 /// aligner has no branch for. It's rejected at registration by
 /// [`re_arrow_util::reject_unsupported_widenings`] so it never reaches any of the above logic.
-#[tracing::instrument(level = "trace", skip_all)]
 pub fn align_record_batch_to_schema(
     batch: &RecordBatch,
     target_schema: &Arc<Schema>,

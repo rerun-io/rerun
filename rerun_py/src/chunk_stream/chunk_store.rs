@@ -1,26 +1,21 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 
-use re_byte_size::SizeBytes as _;
 use re_chunk::Chunk;
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle, LazyStore};
+use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_types::{StoreId, StoreKind};
-use re_sorbet::ChunkColumnDescriptors;
 
 use super::error::ChunkPipelineError;
 use super::py_stream::PyLazyChunkStreamInternal;
 use super::stream::LazyChunkStream;
+use super::summary::{SummaryRow, format_summary};
 use super::{ChunkStream, ChunkStreamFactory};
 use crate::catalog::PySchemaInternal;
 use crate::chunk::PyChunkInternal;
 
-/// A chunk store, either fully materialized or lazily backed by an RRD file.
-///
-/// This is a newtype around [`ChunkStoreInternal`] because PyO3 cannot derive
-/// `#[pyclass]` on enums whose variants hold non-PyO3 types.
+/// A fully-materialized, in-memory chunk store.
 ///
 /// Implements [`ChunkStreamFactory`] so `stream()` can hand `self.clone()`
 /// straight to [`LazyChunkStream::from_factory`] -- no intermediate wrapper.
@@ -30,39 +25,15 @@ use crate::chunk::PyChunkInternal;
     module = "rerun_bindings.rerun_bindings"
 )]
 #[derive(Clone)]
-pub struct PyChunkStoreInternal(ChunkStoreInternal);
-
-/// Fully materialized or lazily-backed chunk store.
-//TODO(RR-4503): unify with segment-backed stores once segment provider lands.
-#[derive(Clone)]
-enum ChunkStoreInternal {
-    /// All chunks are in memory.
-    InMemory(ChunkStoreHandle),
-
-    /// Index loaded from RRD footer, chunks loaded on demand.
-    ///
-    /// Carries the source RRD path alongside the store, for diagnostic messages on lazy-load
-    /// failure.
-    //TODO(ab): get rid of this PathBuf when we generalize over dataset segment
-    IndexedRrd(Arc<LazyStore>, PathBuf),
-}
-
-impl ChunkStoreInternal {
-    fn schema(&self) -> ChunkColumnDescriptors {
-        match self {
-            Self::InMemory(handle) => handle.read().schema().chunk_column_descriptors(),
-            Self::IndexedRrd(lazy, _) => lazy.schema().chunk_column_descriptors(),
-        }
-    }
+pub struct PyChunkStoreInternal {
+    handle: ChunkStoreHandle,
 }
 
 impl PyChunkStoreInternal {
-    pub fn in_memory(store: ChunkStore) -> Self {
-        Self(ChunkStoreInternal::InMemory(ChunkStoreHandle::new(store)))
-    }
-
-    pub fn indexed_rrd(lazy: LazyStore, rrd_path: PathBuf) -> Self {
-        Self(ChunkStoreInternal::IndexedRrd(Arc::new(lazy), rrd_path))
+    pub fn new(store: ChunkStore) -> Self {
+        Self {
+            handle: ChunkStoreHandle::new(store),
+        }
     }
 }
 
@@ -79,39 +50,67 @@ impl PyChunkStoreInternal {
                 .insert_chunk(py_chunk.inner())
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
         }
-        Ok(Self::in_memory(store))
+        Ok(Self::new(store))
     }
 
     /// The schema describing all columns in this store.
     fn schema(&self) -> PySchemaInternal {
         PySchemaInternal {
-            columns: self.0.schema().into(),
+            columns: self
+                .handle
+                .read()
+                .schema()
+                .chunk_column_descriptors()
+                .into(),
             metadata: Default::default(),
         }
     }
 
     /// The total number of chunks in this store (virtual and physical).
     fn num_chunks(&self) -> usize {
-        match &self.0 {
-            ChunkStoreInternal::InMemory(handle) => handle.read().num_physical_chunks(),
-            ChunkStoreInternal::IndexedRrd(lazy, _) => lazy.manifest().num_chunks(),
-        }
+        self.handle.read().num_physical_chunks()
     }
 
     /// Compact, deterministic summary of every chunk in the store for snapshot testing.
     ///
     /// Each line describes one chunk:
-    /// `{entity_path} rows={n} bytes={…} static={bool} timelines=[…] cols=[…]`
+    /// `{entity_path} rows={n} static={bool} timelines=[…] cols=[…]`
     ///
     /// Chunks are sorted by `(entity_path, !is_static)`. The `cols` list
-    /// combines timeline and component column names (sorted), excluding
-    /// `rerun.controls` columns.
-    ///
-    /// For lazily-loaded stores, this forces loading all chunk data from disk.
-    //TODO(ab): should that be implemented on `re_chunk_store::ChunkStore` directly?
-    fn summary(&self) -> PyResult<String> {
-        let chunks = self.collect_all_chunks()?;
-        Ok(summary_from_chunks(&chunks))
+    /// combines timeline and component column names (sorted).
+    fn summary(&self) -> String {
+        let store = self.handle.read();
+        let chunks: Vec<Arc<Chunk>> = store.iter_physical_chunks().cloned().collect();
+        let rows = chunks.iter().map(|chunk| {
+            let mut timelines: Vec<String> = chunk
+                .timelines()
+                .keys()
+                .map(|t| t.as_str().to_owned())
+                .collect();
+            timelines.sort();
+
+            let mut cols: Vec<String> = chunk
+                .timelines()
+                .keys()
+                .map(|t| t.as_str().to_owned())
+                .chain(
+                    chunk
+                        .components()
+                        .component_descriptors()
+                        .map(|d| d.display_name().to_owned()),
+                )
+                .collect();
+            cols.sort();
+
+            SummaryRow {
+                entity_path: chunk.entity_path().to_string(),
+                num_rows: chunk.num_rows() as u64,
+                is_static: chunk.is_static(),
+                timelines,
+                cols,
+            }
+        });
+        format_summary(rows)
     }
 
     /// Return a lazy stream over all chunks in this store.
@@ -121,87 +120,11 @@ impl PyChunkStoreInternal {
     }
 }
 
-impl PyChunkStoreInternal {
-    /// Collect all chunks from either variant, loading lazily if needed.
-    fn collect_all_chunks(&self) -> PyResult<Vec<Arc<Chunk>>> {
-        match &self.0 {
-            ChunkStoreInternal::InMemory(handle) => {
-                Ok(handle.read().iter_physical_chunks().cloned().collect())
-            }
-
-            ChunkStoreInternal::IndexedRrd(lazy, _) => lazy
-                .load_all_chunks()
-                .map_err(|err| PyRuntimeError::new_err(err.to_string())),
-        }
-    }
-}
-
 impl ChunkStreamFactory for PyChunkStoreInternal {
     fn create(&self) -> Result<Box<dyn ChunkStream>, ChunkPipelineError> {
-        let chunks = match &self.0 {
-            ChunkStoreInternal::InMemory(handle) => {
-                handle.read().iter_physical_chunks().cloned().collect()
-            }
-            ChunkStoreInternal::IndexedRrd(lazy, rrd_path) => {
-                lazy.load_all_chunks()
-                    .map_err(|err| ChunkPipelineError::RrdRead {
-                        path: rrd_path.clone(),
-                        reason: err.to_string(),
-                    })?
-            }
-        };
+        let chunks = self.handle.read().iter_physical_chunks().cloned().collect();
         Ok(Box::new(VecChunkStream { chunks, pos: 0 }))
     }
-}
-
-/// Build a summary from a list of chunks.
-fn summary_from_chunks(chunks: &[Arc<Chunk>]) -> String {
-    let mut chunks: Vec<&Chunk> = chunks.iter().map(|c| c.as_ref()).collect();
-    chunks.sort_by(|a, b| {
-        a.entity_path()
-            .cmp(b.entity_path())
-            .then_with(|| a.is_static().cmp(&b.is_static()).reverse())
-    });
-
-    let mut lines = Vec::new();
-    for chunk in &chunks {
-        let mut timelines: Vec<&str> = chunk.timelines().keys().map(|t| t.as_str()).collect();
-        timelines.sort();
-
-        let mut cols: Vec<&str> = chunk
-            .timelines()
-            .keys()
-            .map(|t| t.as_str())
-            .chain(
-                chunk
-                    .components()
-                    .component_descriptors()
-                    .map(|d| d.display_name()),
-            )
-            .collect();
-        cols.sort();
-
-        let timelines_str = timelines
-            .iter()
-            .map(|t| format!("'{t}'"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        let cols_str = cols
-            .iter()
-            .map(|c| format!("'{c}'"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        let is_static = if chunk.is_static() { "True" } else { "False" };
-        let bytes = re_format::format_bytes(chunk.total_size_bytes() as f64);
-
-        lines.push(format!(
-            "{entity_path} rows={rows} bytes={bytes} static={is_static} timelines=[{timelines_str}] cols=[{cols_str}]",
-            entity_path = chunk.entity_path(),
-            rows = chunk.num_rows(),
-        ));
-    }
-
-    lines.join("\n")
 }
 
 // --- Streaming ---
@@ -212,7 +135,6 @@ struct VecChunkStream {
     pos: usize,
 }
 
-// Vec<Arc<Chunk>> + usize are Send.
 impl ChunkStream for VecChunkStream {
     fn next(&mut self) -> Result<Option<Arc<Chunk>>, ChunkPipelineError> {
         if self.pos < self.chunks.len() {

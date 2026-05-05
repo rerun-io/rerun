@@ -33,11 +33,9 @@ fn video_test_file_mp4(codec: &VideoCodec, need_dts_equal_pts: bool) -> std::pat
     let codec_str = match codec {
         VideoCodec::H264 => "h264",
         VideoCodec::H265 => "h265",
-        VideoCodec::VP9 => "vp9",
-        VideoCodec::VP8 => {
-            panic!("We don't have test data for vp8, because Mp4 doesn't support vp8.")
-        }
         VideoCodec::AV1 => "av1",
+        VideoCodec::VP8 => "vp8",
+        VideoCodec::VP9 => "vp9",
         VideoCodec::ImageSequence(_) => panic!("mp4 can't be an image sequence"),
     };
 
@@ -112,16 +110,19 @@ fn snapshot_options_for_codec(codec: &VideoCodec, viewport_size: egui::Vec2) -> 
     match codec {
         // Despite version pinning, ffmpeg's results are quite different depending on the platform
         // and seemingly even between runs!
-        VideoCodec::H264 | VideoCodec::H265 => SnapshotOptions::new()
-            .threshold(2.2)
-            .failed_pixel_count_threshold(300),
-
+        VideoCodec::H264 | VideoCodec::H265 | VideoCodec::VP8 | VideoCodec::VP9 => {
+            SnapshotOptions::new()
+                .threshold(2.2)
+                .failed_pixel_count_threshold(300)
+        }
         // AV1 has this problem as well but to a lesser extent.
         VideoCodec::AV1 => SnapshotOptions::new()
             .threshold(1.2)
             .failed_pixel_count_threshold(100),
 
-        _ => re_ui::testing::default_snapshot_options_for_3d(viewport_size),
+        VideoCodec::ImageSequence(_) => {
+            re_ui::testing::default_snapshot_options_for_3d(viewport_size)
+        }
     }
 }
 
@@ -172,12 +173,10 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
             let blob_bytes =
                 datatypes::Blob::serialized_blob_as_slice(video_asset.blob.as_ref().unwrap())
                     .unwrap();
-            let tuid = re_log_types::external::re_tuid::Tuid::new();
             let video_data_description = VideoDataDescription::load_from_bytes(
                 blob_bytes,
                 MediaType::mp4().as_str(),
                 video_path.to_str().unwrap(),
-                tuid,
             )
             .unwrap();
 
@@ -210,7 +209,15 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
                             &sample
                                 .sample()
                                 .unwrap()
-                                .get(&|_| blob_bytes, sample_idx)
+                                .get(
+                                    &|source| match source {
+                                        re_video::VideoSource::Span(span) => {
+                                            &blob_bytes[span.range_usize()]
+                                        }
+                                        re_video::VideoSource::Id { .. } => &[],
+                                    },
+                                    sample_idx,
+                                )
                                 .unwrap(),
                             &mut annexb_stream_state,
                         )
@@ -237,7 +244,15 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
                             &sample
                                 .sample()
                                 .unwrap()
-                                .get(&|_| blob_bytes, sample_idx)
+                                .get(
+                                    &|source| match source {
+                                        re_video::VideoSource::Span(span) => {
+                                            &blob_bytes[span.range_usize()]
+                                        }
+                                        re_video::VideoSource::Id { .. } => &[],
+                                    },
+                                    sample_idx,
+                                )
                                 .unwrap(),
                             &mut annexb_stream_state,
                         )
@@ -245,18 +260,28 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
 
                         (components::VideoCodec::H265, sample_bytes)
                     }
-                    VideoCodec::AV1 => {
-                        // Extract raw sample bytes, under av1 they're OBUs already!
-                        let sample_bytes = sample
+                    VideoCodec::AV1 | VideoCodec::VP8 | VideoCodec::VP9 => {
+                        let chunk = sample
                             .sample()
                             .unwrap()
-                            .get(&|_| blob_bytes, sample_idx)
-                            .unwrap()
-                            .data;
-                        (components::VideoCodec::AV1, sample_bytes)
+                            .get(
+                                &|source| match source {
+                                    re_video::VideoSource::Span(span) => {
+                                        &blob_bytes[span.range_usize()]
+                                    }
+                                    re_video::VideoSource::Id { .. } => &[],
+                                },
+                                sample_idx,
+                            )
+                            .unwrap();
+                        let sample_bytes = video_data_description
+                            .sample_data_in_stream_format(&chunk)
+                            .unwrap();
+                        let codec =
+                            components::VideoCodec::try_from(video_data_description.codec.clone())
+                                .unwrap();
+                        (codec, sample_bytes)
                     }
-                    VideoCodec::VP9 => panic!("VP9 is not supported for video streams"),
-                    VideoCodec::VP8 => panic!("VP8 is not supported for video streams"),
                     VideoCodec::ImageSequence(_) => panic!("Won't be created from a video"),
                 };
 
@@ -348,6 +373,11 @@ fn test_video_asset_codec_h265() {
 }
 
 #[test]
+fn test_video_asset_codec_vp8() {
+    test_video(VideoType::AssetVideo, &VideoCodec::VP8);
+}
+
+#[test]
 fn test_video_asset_codec_vp9() {
     test_video(VideoType::AssetVideo, &VideoCodec::VP9);
 }
@@ -368,11 +398,15 @@ fn test_video_stream_codec_h265() {
     test_video(VideoType::VideoStream, &VideoCodec::H265);
 }
 
-// TODO(#10186): Unsupported codec for VideoStream
-// #[test]
-// fn test_video_stream_codec_vp9() {
-//     test_video(VideoType::VideoStream, VideoCodec::VP9);
-// }
+#[test]
+fn test_video_stream_codec_vp8() {
+    test_video(VideoType::VideoStream, &VideoCodec::VP8);
+}
+
+#[test]
+fn test_video_stream_codec_vp9() {
+    test_video(VideoType::VideoStream, &VideoCodec::VP9);
+}
 
 #[cfg(feature = "nasm")] // Need nasm for Av1 decoding on some platforms otherwise we error.
 #[test]

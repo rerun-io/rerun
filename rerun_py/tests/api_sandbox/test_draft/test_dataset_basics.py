@@ -93,10 +93,10 @@ def test_dataset_register(rrd_paths: list[Path]) -> None:
         ds = client.create_dataset("dataset")
 
         # Single RRD, default layer name
-        ds.register(rrd_paths[0].as_uri()).wait()
+        ds.register([rrd_paths[0].as_uri()]).wait()
 
         # Single RRD, override layer name
-        ds.register(rrd_paths[1].as_uri(), layer_name="extra").wait()
+        ds.register([rrd_paths[1].as_uri()], layer_name="extra").wait()
 
         # Multiple RRDs, multiple layer names
         ds.register([p.as_uri() for p in rrd_paths[2:4]], layer_name=["fiz", "fuz"]).wait()

@@ -11,13 +11,13 @@ use crate::Error;
 
 /// Extracts [`mcap::records::Metadata`] records from an MCAP file as a single static chunk.
 ///
-/// Outputs a single `McapMetadata` archetype at [`EntityPath::properties()`],
-/// with one [`components::KeyValuePairs`] component per metadata record.
+/// Outputs a single `McapMetadata` archetype at `__mcap_metadata`, with one
+/// [`components::KeyValuePairs`] component per metadata record.
 #[derive(Debug, Default)]
 pub struct McapMetadataDecoder;
 
 const ARCHETYPE_NAME: &str = "McapMetadata";
-const ROSBAG2_METADATA_NAME: &str = "rosbag2";
+const MCAP_METADATA_ENTITY_PATH: &str = "__mcap_metadata";
 
 impl Decoder for McapMetadataDecoder {
     fn identifier() -> DecoderIdentifier {
@@ -48,18 +48,6 @@ impl Decoder for McapMetadataDecoder {
                     continue;
                 }
             };
-
-            if metadata.name == ROSBAG2_METADATA_NAME {
-                // "rosbag2" is a dump of the metadata YAML file that is specific to ROS2's rosbag2 tool.
-                // It's mainly a backwards-compatibility feature for conversion to the legacy SQL rosbag format,
-                // so we can safely ignore it (it is potentially large).
-                // See also: https://docs.ros.org/en/kilted/Releases/Release-Jazzy-Jalisco.html#store-serialized-metadata-in-bag-files-directly
-                re_log::debug_once!(
-                    "Skipping ROS MCAP metadata record '{}' as it is not relevant for Rerun.",
-                    ROSBAG2_METADATA_NAME
-                );
-                continue;
-            }
 
             re_log::debug!(
                 "Processing MCAP metadata record '{}' with {} entries",
@@ -96,7 +84,7 @@ impl Decoder for McapMetadataDecoder {
         }
 
         if !batches.is_empty() {
-            let chunk = Chunk::builder(EntityPath::properties())
+            let chunk = Chunk::builder(EntityPath::from(MCAP_METADATA_ENTITY_PATH))
                 .with_serialized_batches(RowId::new(), TimePoint::STATIC, batches)
                 .build()?;
             emit(chunk);
@@ -164,7 +152,10 @@ mod tests {
         assert_eq!(chunks.len(), 1, "all metadata in a single chunk");
 
         let chunk = &chunks[0];
-        assert_eq!(chunk.entity_path(), &EntityPath::properties());
+        assert_eq!(
+            chunk.entity_path(),
+            &EntityPath::from(MCAP_METADATA_ENTITY_PATH)
+        );
         assert!(chunk.is_static());
         assert_eq!(chunk.num_components(), 3);
     }

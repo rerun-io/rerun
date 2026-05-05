@@ -6,7 +6,7 @@ use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::types::PyAnyMethods as _;
 use pyo3::{Bound, Py, PyAny, PyErr, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
-use re_chunk_store::{ChunkStore, ChunkStoreHandle};
+use re_chunk_store::{ChunkStore, ChunkStoreHandle, LazyStore};
 use re_datafusion::{DatasetManifestProvider, SearchResultsTableProvider, SegmentTableProvider};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::{
@@ -17,9 +17,9 @@ use re_protos::cloud::v1alpha1::{
     InvertedIndexQuery, ListIndexesRequest, SearchDatasetRequest, VectorIndexQuery,
     index_query_properties,
 };
-use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior};
+use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_redap_client::fetch_chunks_response_to_chunk_and_segment_id;
+use re_redap_client::{SegmentChunkProvider, fetch_chunks_response_to_chunk_and_segment_id};
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 use tokio_stream::StreamExt as _;
 
@@ -30,9 +30,10 @@ use super::{
 };
 use crate::catalog::entry::set_entry_name;
 use crate::catalog::{AnyComponentColumn, PyIndexColumnSelector, PySchemaInternal};
+use crate::chunk_stream::lazy_store::PyLazyStoreInternal;
 use crate::recording::PyRecordingInternal;
 use crate::trace_context::read_trace_context_from_python;
-use crate::utils::wait_for_future;
+use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// A dataset entry in the catalog.
 #[pyclass(
@@ -517,6 +518,33 @@ impl PyDatasetEntryInternal {
             store: handle,
             store_info: None,
         })
+    }
+
+    /// Open a remote segment as a [`LazyStore`][rerun.experimental.LazyStore].
+    ///
+    /// One round-trip on construction (the manifest); chunks are fetched on
+    /// demand.
+    fn segment_store(self_: PyRef<'_, Self>, segment_id: String) -> PyResult<PyLazyStoreInternal> {
+        let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.segment_store").entered();
+        let connection = self_.client.borrow(py).connection().clone();
+        let dataset_id = self_.entry_details.id;
+        let segment_id = SegmentId::from(segment_id);
+
+        let provider = wait_for_future(py, async {
+            SegmentChunkProvider::try_new(
+                get_tokio_runtime().handle().clone(),
+                connection.connection_registry().clone(),
+                connection.origin().clone(),
+                dataset_id,
+                segment_id,
+            )
+            .await
+            .map_err(to_py_err)
+        })?;
+
+        let lazy = LazyStore::new(Arc::new(provider));
+        Ok(PyLazyStoreInternal::new(lazy))
     }
 
     // TODO(RR-2824): we should have a generic `create_index(PyIndexConfig)`

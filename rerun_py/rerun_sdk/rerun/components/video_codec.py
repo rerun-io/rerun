@@ -75,6 +75,24 @@ class VideoCodec(Enum):
     Enum value is the fourcc for 'hev1' (the WebCodec string assigned to this codec) in big endian.
     """
 
+    VP8 = 0x76703038
+    """
+    VP8
+
+    See <https://en.wikipedia.org/wiki/VP8>
+
+    Enum value is the fourcc for 'vp08' (the WebCodec string assigned to this codec) in big endian.
+    """
+
+    VP9 = 0x76703039
+    """
+    VP9
+
+    See <https://en.wikipedia.org/wiki/VP9>
+
+    Enum value is the fourcc for 'vp09' (the WebCodec string assigned to this codec) in big endian.
+    """
+
     @classmethod
     def auto(cls, val: str | int | VideoCodec) -> VideoCodec:
         """Best-effort converter, including a case-insensitive string matcher."""
@@ -96,11 +114,14 @@ class VideoCodec(Enum):
         return self.name
 
 
-VideoCodecLike = VideoCodec | Literal["AV1", "H264", "H265", "av1", "h264", "h265"] | int
+VideoCodecLike = VideoCodec | Literal["AV1", "H264", "H265", "VP8", "VP9", "av1", "h264", "h265", "vp8", "vp9"] | int
 """A type alias for any VideoCodec-like object."""
 
 VideoCodecArrayLike = (
-    VideoCodec | Literal["AV1", "H264", "H265", "av1", "h264", "h265"] | int | Sequence[VideoCodecLike]
+    VideoCodec
+    | Literal["AV1", "H264", "H265", "VP8", "VP9", "av1", "h264", "h265", "vp8", "vp9"]
+    | int
+    | Sequence[VideoCodecLike]
 )
 """A type alias for any VideoCodec-like array object."""
 

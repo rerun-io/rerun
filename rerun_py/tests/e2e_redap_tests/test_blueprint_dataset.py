@@ -41,7 +41,7 @@ def test_configure_blueprint_dataset(entry_factory: EntryFactory, tmp_path: Path
     ds = entry_factory.create_dataset("my_new_dataset")
 
     # Register our recording to the dataset
-    ds.register(rrd_path.absolute().as_uri()).wait()
+    ds.register([rrd_path.absolute().as_uri()]).wait()
 
     # Register our blueprint to the corresponding blueprint dataset
     bds = ds.blueprint_dataset()
@@ -86,7 +86,7 @@ def test_reregister_same_blueprint(entry_factory: EntryFactory, tmp_path: Path) 
     ds = entry_factory.create_dataset("reregister_blueprint_dataset")
 
     # Register our recording to the dataset
-    ds.register(rrd_path.absolute().as_uri()).wait()
+    ds.register([rrd_path.absolute().as_uri()]).wait()
 
     # Register the blueprint
     ds.register_blueprint(rbl_path.absolute().as_uri())

@@ -219,6 +219,7 @@ impl DisplayComponentColumn {
         ui: &mut egui::Ui,
         row_index: usize,
         instance_index: Option<u64>,
+        ui_layout: UiLayout,
     ) {
         // handle null columns
         if self.component_data.is_null() {
@@ -278,7 +279,7 @@ impl DisplayComponentColumn {
                 ctx.component_ui_registry().variant_ui_raw(
                     ctx,
                     ui,
-                    UiLayout::List,
+                    ui_layout,
                     variant_name,
                     &self.component_descr,
                     row_id,
@@ -288,7 +289,7 @@ impl DisplayComponentColumn {
                 ctx.component_ui_registry().component_ui_raw(
                     ctx,
                     ui,
-                    UiLayout::List,
+                    ui_layout,
                     &self.entity_path,
                     &self.component_descr,
                     row_id,
@@ -376,6 +377,7 @@ impl DisplayColumn {
         ui: &mut egui::Ui,
         row_index: usize,
         instance_index: Option<u64>,
+        ui_layout: UiLayout,
     ) {
         if let Some(instance_index) = instance_index
             && instance_index >= self.instance_count(row_index)
@@ -426,7 +428,7 @@ impl DisplayColumn {
             }
 
             Self::Component(component_column) => {
-                component_column.data_ui(ctx, ui, row_index, instance_index);
+                component_column.data_ui(ctx, ui, row_index, instance_index, ui_layout);
             }
         }
     }

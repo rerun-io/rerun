@@ -115,3 +115,12 @@ class Selector:
 
     def __str__(self) -> str:
         return str(self._internal)
+
+    def __reduce__(self) -> tuple[type[Selector], tuple[str]]:
+        query = self._internal.try_to_string()
+        if query is None:
+            raise TypeError(
+                "Cannot pickle Selector containing a Python callable from .pipe(); "
+                "pass a Selector to .pipe() instead, or use a pure-string selector.",
+            )
+        return (type(self), (query,))

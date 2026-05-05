@@ -10,6 +10,8 @@ mod nalu;
 pub mod player;
 mod stable_index_deque;
 mod time;
+mod vp8;
+mod vp9;
 
 pub use av1::{AV1_TEST_INTER_FRAME, AV1_TEST_KEYFRAME};
 pub use decode::{
@@ -20,7 +22,7 @@ pub use decode::{
 pub use demux::{
     ChromaSubsamplingModes, KeyframeIndex, SampleIndex, SampleMetadata, SampleMetadataState,
     SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod, VideoEncodingDetails,
-    VideoLoadError,
+    VideoLoadError, VideoSource,
 };
 pub use gop_detection::{
     DetectGopStartError, GopStartDetection, detect_gop_start, is_start_of_gop,

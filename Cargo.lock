@@ -3147,9 +3147,9 @@ checksum = "d6add3b8cff394282be81f3fc1a0605db594ed69890078ca6e2cab1c408bcf04"
 
 [[package]]
 name = "ecolor"
-version = "0.34.0"
+version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbb993f120d46ca077a18f166175b94c6edeb994d812cbd07a4a03cfced2713c"
+checksum = "55f6cc0cb3b84a21232c468db972ebcddd34decbf1ff02cdebffd807c13bbd81"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -3165,9 +3165,9 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 
 [[package]]
 name = "eframe"
-version = "0.34.0"
+version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fd6562766ec6b921232ceb960acdb405f91971f59c17604840fd9485fee0dc3"
+checksum = "fea3080bfd001aee2223dcb2228d9de7d31f41d7cfb99e8cd70df3ae8083a42f"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3204,9 +3204,9 @@ dependencies = [
 
 [[package]]
 name = "egui"
-version = "0.34.0"
+version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b71aaacbe69e214aebf7b8d5eacd6256d0d2ca5ff9525c28d1dd7f377f430a9"
+checksum = "3cbe28ac1a9c0761319aafb9ad37737720cc49d99c13a4a6b990768fa01ffe67"
 dependencies = [
  "accesskit",
  "ahash",
@@ -3225,9 +3225,9 @@ dependencies = [
 
 [[package]]
 name = "egui-wgpu"
-version = "0.34.0"
+version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "111e54ac54bf9d767ce8970a454f720878875bca1f2e63f781c722e98f466971"
+checksum = "2f311c0b9cdd8a38821ae6f245fbe6e1a3d7d157c77b7d22344f205b317232c8"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3245,9 +3245,9 @@ dependencies = [
 
 [[package]]
 name = "egui-winit"
-version = "0.34.0"
+version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ed6af7dad7dd045b77731fe6dc291b835489a104d3cd2428a945e71e2265df3"
+checksum = "e8e97625c2fe0fadc8b92ec690fbf515e15e2efd67ca50e063ad3302ec8ee626"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -3314,9 +3314,9 @@ dependencies = [
 
 [[package]]
 name = "egui_extras"
-version = "0.34.0"
+version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8844ef47969c00cc186e06e9721ac952758c0e5cd5f579468037f19c7f49566d"
+checksum = "8c609fc87f6c70ffd3afd679cbb294985096d2fc0be33e762ad5614bde4925bc"
 dependencies = [
  "ahash",
  "egui",
@@ -3332,9 +3332,9 @@ dependencies = [
 
 [[package]]
 name = "egui_glow"
-version = "0.34.0"
+version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91c5dea15932abd0a953fefc8d8490002204808a2e087147aac48608eea9ef79"
+checksum = "6caa4eca47cc2358e2c5ae60843a94118e338f87099c6af4170e6e968e8d77cb"
 dependencies = [
  "bytemuck",
  "egui",
@@ -3349,9 +3349,9 @@ dependencies = [
 
 [[package]]
 name = "egui_kittest"
-version = "0.34.0"
+version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1077ec995dbc754f22afcca9bbab1329071737d749a953e7b430d9b825d40c32"
+checksum = "48bca6ff2e8a8929519287d5fe8eb99f579b7d45b6ced9e9dc21824965896b57"
 dependencies = [
  "dify",
  "eframe",
@@ -3429,9 +3429,9 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
 name = "emath"
-version = "0.34.0"
+version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8490360fc83eb3a2b20aba120457f7d91c3042d7c628e4f90b43a97b6adf1255"
+checksum = "a74fbbf7501c430b89df62d102b6bfa02162faaf3e155512c677c9d20f5708d1"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3556,9 +3556,9 @@ dependencies = [
 
 [[package]]
 name = "epaint"
-version = "0.34.0"
+version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d76f9fdbf72eaf0dc3198d90e7bff267b45866f660f8cf49caeb9dcab93342e0"
+checksum = "92b452e348c2758115288802ca25f86ee286ce2cfae6643711ce116662311310"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3580,9 +3580,9 @@ dependencies = [
 
 [[package]]
 name = "epaint_default_fonts"
-version = "0.34.0"
+version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a1a65f42685d25419a67fd3175e11dfecdd268b0478aaba76785b0a896884e0"
+checksum = "1644e25dbe3d663fd9c2a4181772c64b23361e377e550c10422ecc3a7de1c3c2"
 
 [[package]]
 name = "equivalent"
@@ -8396,7 +8396,6 @@ dependencies = [
  "re_types_core",
  "similar-asserts",
  "thiserror 2.0.18",
- "tracing",
 ]
 
 [[package]]
@@ -9112,16 +9111,16 @@ dependencies = [
 
 [[package]]
 name = "re_mp4"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02cf24563b952aa0d55031cca30e58c11f853e59806ba5ac2a28054caffc3eb5"
+checksum = "62fda65f84bc3fc10f07d2969f2146376d791406dddc357ac42f0bba4dbd33a2"
 dependencies = [
  "byteorder",
  "bytes",
  "num-rational",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -9461,7 +9460,6 @@ dependencies = [
  "re_mutex",
  "re_quota_channel",
  "re_tracing",
- "re_tuid",
  "re_video",
  "regex-lite",
  "serde",
@@ -10816,6 +10814,7 @@ dependencies = [
  "tokio",
  "unindent",
  "url",
+ "walkdir",
 ]
 
 [[package]]
@@ -10887,12 +10886,10 @@ dependencies = [
  "re_auth",
  "re_build_info",
  "re_build_tools",
- "re_byte_size",
  "re_chunk",
  "re_chunk_store",
  "re_datafusion",
  "re_error",
- "re_format",
  "re_grpc_client",
  "re_grpc_server",
  "re_importer",
@@ -12748,7 +12745,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c5f7c95348f20c1c913d72157b3c6dee6ea3e30b3d19502c5a7f6d3f160dacbf"
 dependencies = [
  "cc",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]

@@ -57,7 +57,7 @@ impl DataUi for LatestAtInstanceResult<'_> {
 
         // in some cases, we don't want to display all instances
         let max_row = match ui_layout {
-            UiLayout::List => 0,
+            UiLayout::List | UiLayout::Inline => 0,
             UiLayout::Tooltip => num_instances.at_most(4), // includes "…x more" if any
             UiLayout::SelectionPanel => num_instances,
         };

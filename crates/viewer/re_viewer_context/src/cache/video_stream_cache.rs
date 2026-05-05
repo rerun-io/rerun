@@ -495,7 +495,7 @@ fn handle_deletion(
                 video_data.samples.min_index(),
             ),
             |(mut count, mut other_min, mut other_max), (idx, sample)| {
-                if sample.source_id() == deleted_chunk.id().as_tuid() {
+                if sample.source_primary_id() == Some(deleted_chunk.id().as_tuid()) {
                     count += 1;
                 } else {
                     other_min = other_min.min(idx);
@@ -572,7 +572,7 @@ fn handle_deletion(
                 break 'outer;
             };
 
-            if sample.source_id() != deleted_chunk.id().as_tuid() {
+            if sample.source_primary_id() != Some(deleted_chunk.id().as_tuid()) {
                 continue;
             }
 
@@ -652,7 +652,7 @@ fn handle_compacted_chunk_addition(
             video_data
                 .samples
                 .iter_index_range_clamped_mut(&range.idx_range())
-                .filter(|(_, s)| s.source_id() == chunk.id().as_tuid())
+                .filter(|(_, s)| s.source_primary_id() == Some(chunk.id().as_tuid()))
                 .find(|(_, s)| s.is_unloaded())
                 .map(|(idx, _)| idx)
         })
@@ -686,11 +686,11 @@ fn handle_compacted_chunk_addition(
         for (idx, sample) in video_data
             .samples
             .iter_index_range_clamped_mut(&range.idx_range())
-            .filter(|(_, s)| s.source_id() == reused_chunk.id().as_tuid())
+            .filter(|(_, s)| s.source_primary_id() == Some(reused_chunk.id().as_tuid()))
         {
             update_min_max(idx);
 
-            *sample.source_id_mut() = compacted_chunk.id().as_tuid();
+            sample.set_source_primary_id(compacted_chunk.id().as_tuid());
         }
     }
 
@@ -704,7 +704,7 @@ fn handle_compacted_chunk_addition(
         for mut sample in chunk_samples.samples {
             // Use the compacted chunk's source_id so that `read_samples_from_known_chunk`
             // can find these samples when filtering by the compacted chunk's id.
-            *sample.source_id_mut() = compacted_chunk.id().as_tuid();
+            sample.set_source_primary_id(compacted_chunk.id().as_tuid());
 
             let idx = video_data.samples.next_index();
 
@@ -781,7 +781,7 @@ fn handle_split_chunk_addition(
     let mut samples = video_data
         .samples
         .iter_index_range_clamped_mut(&old_known_range.idx_range())
-        .filter(|(_, s)| s.source_id() == original_chunk.id().as_tuid());
+        .filter(|(_, s)| s.source_primary_id() == Some(original_chunk.id().as_tuid()));
 
     flatten_chunk_samples(
         std::iter::once(split_chunk)
@@ -1054,9 +1054,9 @@ fn read_samples_from_known_chunk(
 
     let mut samples_iter = samples
         .iter_index_range_clamped_mut(&load_range.idx_range())
-        .filter(|(_, c)| c.source_id() == chunk.id().as_tuid());
+        .filter(|(_, c)| c.source_primary_id() == Some(chunk.id().as_tuid()));
 
-    for (component_offset, (time, _row_id)) in chunk
+    for (component_offset, (time, row_id)) in chunk
         .iter_component_offsets(sample_component)
         .zip(chunk.iter_component_indices(timeline, sample_component))
         .filter(|(component_offset, _)| component_offset.len > 0)
@@ -1083,16 +1083,14 @@ fn read_samples_from_known_chunk(
         // Do **not** use the `component_offset.start` for determining the sample index
         // as it is only for the offset in the underlying arrow arrays which means that
         // it may in theory step arbitrarily through the data.
-        let byte_span = Span {
+        // We only use `buffer_span` to peek at the sample bytes for keyframe
+        // detection; the player resolves the bytes from `(chunk_id, row_id)` at
+        // decode time, so we don't need to store any byte offset here.
+        let buffer_span = Span {
             start: offsets[component_offset.start] as usize,
             len: lengths[component_offset.start],
         };
-        let sample_bytes = &values[byte_span.range()];
-
-        let Some(byte_span) = byte_span.try_cast::<u32>() else {
-            re_log::warn_once!("Video byte range does not fit in u32: {byte_span:?}");
-            continue;
-        };
+        let sample_bytes = &values[buffer_span.range()];
 
         // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
         // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
@@ -1115,8 +1113,7 @@ fn read_samples_from_known_chunk(
             // Filled out later for everything but the last frame.
             duration: None,
 
-            source_id: chunk.id().as_tuid(),
-            byte_span,
+            source: re_video::VideoSource::id(chunk.id().as_tuid(), row_id.as_tuid()),
         });
     }
 
@@ -1124,7 +1121,7 @@ fn read_samples_from_known_chunk(
         let _samples_iter = samples_iter;
         re_log::debug_assert_eq!(
             _samples_iter
-                .map(|(idx, s)| (idx, s.source_id()))
+                .map(|(idx, s)| (idx, s.source_primary_id()))
                 .collect::<Vec<_>>()
                 .as_slice(),
             &[],
@@ -1325,7 +1322,7 @@ fn read_samples_from_new_chunk(
             .iter_component_offsets(sample_component)
             .zip(chunk.iter_component_indices(timeline, sample_component))
             .enumerate()
-            .filter_map(move |(idx, (component_offset, (time, _row_id)))| {
+            .filter_map(move |(idx, (component_offset, (time, row_id)))| {
                 if component_offset.len == 0 {
                     // Ignore empty samples.
                     return None;
@@ -1342,16 +1339,14 @@ fn read_samples_from_new_chunk(
                 // it may in theory step arbitrarily through the data.
                 let sample_idx = sample_base_idx + idx;
 
-                let byte_span = Span {
+                // Peek at the sample bytes for keyframe detection. The player
+                // resolves the bytes from `(chunk_id, row_id)` at decode time,
+                // so we don't need to store any byte offset here.
+                let buffer_span = Span {
                     start: offsets[component_offset.start] as usize,
                     len: lengths[component_offset.start],
                 };
-                let sample_bytes = &values[byte_span.range()];
-
-                let Some(byte_span) = byte_span.try_cast::<u32>() else {
-                    re_log::warn_once!("Video byte range does not fit in u32: {byte_span:?}");
-                    return None;
-                };
+                let sample_bytes = &values[buffer_span.range()];
 
                 // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
                 // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
@@ -1382,8 +1377,7 @@ fn read_samples_from_new_chunk(
                     // Filled out later for everything but the last frame.
                     duration: None,
 
-                    source_id: chunk_id.as_tuid(),
-                    byte_span,
+                    source: re_video::VideoSource::id(chunk_id.as_tuid(), row_id.as_tuid()),
                 }))
             }),
     );
@@ -1625,12 +1619,13 @@ impl ChunkSampleIterators {
         mut handle_sample: impl FnMut(SampleMetadataState) -> usize,
     ) {
         while let Some(sample) = self.next_if(&predicate) {
-            let id = sample.source_id();
+            let chunk_id = sample.source_primary_id();
             // This is loaded, but will be populated later.
             let idx = handle_sample(sample);
 
+            let Some(chunk_id) = chunk_id else { continue };
             known_chunk_ranges
-                .entry(ChunkId::from_tuid(id))
+                .entry(ChunkId::from_tuid(chunk_id))
                 .and_modify(|range| {
                     range.add_sample(idx);
                 })
@@ -1786,7 +1781,7 @@ fn find_affected_sample_range(
         .position(|idx| {
             video_descr.samples.get(*idx).is_some_and(|s| {
                 // Don't trust timepoints of the conflicting chunk.
-                s.source_id() == conflicting_chunk.id().as_tuid()
+                s.source_primary_id() == Some(conflicting_chunk.id().as_tuid())
                     || s.decode_timestamp() > affected_range_min
             })
         })
@@ -1809,7 +1804,7 @@ fn find_affected_sample_range(
     // Find the index range we have to re-order.
     for (idx, sample) in video_descr.samples.iter_index_range_clamped(&range) {
         // Skip the conflicting samples if there are any.
-        if sample.source_id() == conflicting_chunk.id().as_tuid() {
+        if sample.source_primary_id() == Some(conflicting_chunk.id().as_tuid()) {
             if start_sample.is_none() {
                 start_sample = Some(idx);
             }
@@ -1896,7 +1891,10 @@ fn handle_out_of_order_chunk(
         .samples
         .iter_index_range_clamped(&(*sample_range.start()..sample_range.end() + 1))
     {
-        let id = ChunkId::from_tuid(sample.source_id());
+        let Some(primary_id) = sample.source_primary_id() else {
+            continue;
+        };
+        let id = ChunkId::from_tuid(primary_id);
 
         // Skip samples from the conflicting chunk. They'll be added again
         // via `conflicting_chunk_samples` which has the latest data.

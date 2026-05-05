@@ -49,14 +49,12 @@ For more details on how to query and decode video streams from Rerun, see our [q
 Current limitations of `VideoStream`:
 * [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
   This can cause increased latency and in some cases may even stop video playback.
-* [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../../reference/types/archetypes/video_stream.md) only supports H.264, H.265, AV1 at this point.
 * [#10090](https://github.com/rerun-io/rerun/issues/10090): B-frames are not yet supported for [`VideoStream`](../../reference/types/archetypes/video_stream.md).
 * [#10422](https://github.com/rerun-io/rerun/issues/10422): [`VideoFrameReference`](../../reference/types/archetypes/video_frame_reference.md) does not yet work with [`VideoStream`](../../reference/types/archetypes/video_stream.md).
 
 <!--
 Discoverable for scripts/zombie_todos.py:
 TODO(#9815): fix above if ticket is outdated.
-TODO(#10186): fix above if ticket is outdated.
 TODO(#10090): fix above if ticket is outdated.
 TODO(#10422): fix above if ticket is outdated.
 -->
@@ -94,16 +92,11 @@ Codec support varies in the web & native viewer:
 
 |            | Browser | Native |
 | ---------- | ------- | ------ |
-| AV1        | ✅       | 🟧      |
-| H.264/avc  | ✅       | ✅      |
-| H.265/hevc | 🟧       | ✅      |
-| VP9        | ✅       | ❌      |
-
-<!--
-for web codecs see https://www.w3.org/TR/webcodecs-codec-registry/#video-codec-registry
-VP8 is only not in the list because VP9 doesn't support MP4 as a container and that's
-today the only container we take.
--->
+| AV1        | ✅      | 🟧     |
+| H.264/avc  | ✅      | ✅     |
+| H.265/hevc | 🟧      | ✅     |
+| VP8        | ✅      | ✅     |
+| VP9        | ✅      | ✅     |
 
 Details see below.
 
@@ -127,9 +120,9 @@ Discoverable for scripts/zombie_todos.py:
 TODO(#7755): fix above if ticket is outdated.
 -->
 
-#### H.264/avc & H.265/hevc
+#### H.264/avc, H.265/hevc, VP8 & VP9
 
-H.264/avc and H.265/hevc are supported via a separately installed `FFmpeg` binary, requiring a minimum version of `5.1`.
+H.264/avc, H.265/hevc, VP8, and VP9 are supported via a separately installed `FFmpeg` binary, requiring a minimum version of `5.1`.
 
 The viewer does intentionally not come bundled with `FFmpeg` to avoid licensing issues.
 By default rerun will look for a system installed `FFmpeg` installation in `PATH`,
@@ -158,11 +151,13 @@ We tested the following codecs in more detail:
 | AV1        | ✅             | ✅                | ✅             | ✅            | 🚧[^3]        | ✅               | ✅                  |
 | H.264/avc  | ✅             | ✅                | ✅             | ✅            | ✅            | ✅               | ✅                  |
 | H.265/hevc | ❌             | ❌                | ❌             | ✅            | 🚧[^4]        | ❌               | 🚧[^5]              |
+| VP8        | ✅             | ✅                | ✅             | ✅            | ❌            |                  |                     |
+| VP9        | ✅             | ✅                | ✅             | ✅            | ❌            |                  |                     |
 
 [^1]: Any Chromium-based browser should work, but we don't test all of them.
 [^2]: Chrome on Windows has been observed to stutter on playback. It can be mitigated by [using software decoding](https://rerun.io/docs/overview/installing-rerun/troubleshooting#video-stuttering), but this may lead to high memory usage. See [#7595](https://github.com/rerun-io/rerun/issues/7595).
 [^3]: Safari/WebKit does not support AV1 decoding except on [Apple Silicon devices with hardware support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
-[^4]: Safari/WebKit has been observed suttering when playing `hvc1` but working fine with `hevc1`. Despite support being advertised Safari 16.5 has been observed not support H.265 decoding.
+[^4]: Safari/WebKit has been observed stuttering when playing `hvc1` but working fine with `hevc1`. Despite support being advertised Safari 16.5 has been observed not support H.265 decoding.
 [^5]: Only supported if hardware encoding is available. Therefore always affected by Windows stuttering issues, see above.
 
 Beyond this, for best compatibility we recommend:

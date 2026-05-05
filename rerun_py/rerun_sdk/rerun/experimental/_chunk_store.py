@@ -15,13 +15,13 @@ if TYPE_CHECKING:
 
 class ChunkStore:
     """
-    A chunk store.
+    A fully-materialized, in-memory chunk store.
 
-    TODO(RR-4321): currently, this is fully materialized, in-memory.
-
-    Obtain a ChunkStore from an IndexedReader, e.g.:
-
-        store = RrdReader("recording.rrd").store()
+    Build one from chunks via
+    [`ChunkStore.from_chunks`][rerun.experimental.ChunkStore.from_chunks], or
+    fully materialize an [`IndexedReader`][rerun.experimental.IndexedReader]
+    via `reader.stream().collect()`.
+    For lazy, on-demand chunk loading, see [`LazyStore`][rerun.experimental.LazyStore].
 
     Use `stream()` to process chunks through the lazy pipeline, or
     `write_rrd()` to persist to disk.
@@ -52,11 +52,9 @@ class ChunkStore:
 
         Each line describes one chunk:
 
-            {entity_path}  rows={n}  bytes={…}  static={True|False}  timelines=[…]  cols=[…]
+            {entity_path}  rows={n}  static={True|False}  timelines=[…]  cols=[…]
 
         Useful for snapshot testing.
-
-        **Important**: For lazily-loaded stores, this forces loading all chunk data from disk.
         """
         return self._internal.summary()
 

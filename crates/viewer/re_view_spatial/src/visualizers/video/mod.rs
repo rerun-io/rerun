@@ -184,29 +184,37 @@ fn execute_video_stream_like(
             }
 
             let storage_engine = ctx.viewer_ctx.store_context.recording.storage_engine();
-            let get_chunk_array = |id| {
-                let chunk = storage_engine.store().use_chunk_or_report_missing(&id);
-
-                let Some(chunk) = chunk else {
-                    output.set_missing_chunks(); // Make sure we show a view-wide loading indicator
+            // Both real fetches and "mark in use" calls go through here: the
+            // `use_chunk_or_report_missing` call marks the chunk in use either
+            // way; if `sub_id` is `None` we stop there.
+            let lookup = |id: re_log_types::external::re_tuid::Tuid,
+                          sub_id: Option<re_log_types::external::re_tuid::Tuid>|
+             -> Option<&[u8]> {
+                let Some(chunk) = storage_engine
+                    .store()
+                    .use_chunk_or_report_missing(&re_sdk_types::ChunkId::from_tuid(id))
+                else {
+                    output.set_missing_chunks(); // view-wide loading indicator
                     return None;
                 };
-
-                let (_, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
+                let sub_id = sub_id?;
+                let (offsets, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
                     chunk.raw_component_array(sample_component)?,
                 )?;
-
-                Some(buffer)
+                let row_idx = chunk.row_index_of(re_sdk_types::RowId::from_tuid(sub_id))?;
+                let start = offsets[row_idx] as usize;
+                let end = offsets[row_idx + 1] as usize;
+                Some(&buffer.as_slice()[start..end])
             };
 
             video.video_renderer.frame_at(
                 ctx.viewer_ctx.render_ctx(),
                 video_stream_id(entity_path, sample_component, AT_TIME_CURSOR_SALT),
                 video_stream_time_from_query(&query_context.query),
-                &|id| {
-                    let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
-
-                    buffer.map(|b| b.as_slice()).unwrap_or(&[])
+                &|source| match source {
+                    re_video::VideoSource::Id { id, sub_id } => lookup(id, sub_id).unwrap_or(&[]),
+                    // No `Span` sources for video streams.
+                    re_video::VideoSource::Span(_) => &[],
                 },
             )
         };

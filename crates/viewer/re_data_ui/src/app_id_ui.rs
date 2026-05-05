@@ -38,7 +38,7 @@ impl crate::AppUi for ApplicationId {
             .collect();
 
         match ui_layout {
-            UiLayout::List => {
+            UiLayout::List | UiLayout::Inline => {
                 // Too little space for anything else
             }
             UiLayout::Tooltip => {

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from rerun_bindings import ChunkInternal, ComponentDescriptor
 
     from ._chunk_store import ChunkStore
-    from ._optimization_settings import OptimizationSettings
+    from ._optimization_profile import OptimizationProfile
 
 
 class LazyChunkStream:
@@ -270,16 +270,16 @@ class LazyChunkStream:
     def collect(
         self,
         *,
-        optimize: OptimizationSettings | None = None,
+        optimize: OptimizationProfile | None = None,
     ) -> ChunkStore:
         """
         Consume the stream and materialize all chunks into a ChunkStore.
 
         By default, only the single-pass compaction that happens naturally
-        during chunk insertion is applied. Pass `optimize=OptimizationSettings(...)`
-        to run additional optimization (extra convergence passes, video GoP
-        rebatching); the defaults for [`OptimizationSettings`][rerun.experimental.OptimizationSettings]
-        mirror those of the `rerun rrd optimize` CLI.
+        during chunk insertion is applied. Pass `optimize=OptimizationProfile.LIVE`
+        or `optimize=OptimizationProfile.DATAPLATFORM` to run additional
+        optimization (extra convergence passes, video GoP rebatching) tuned for
+        the chosen target.
 
         Parameters
         ----------
@@ -287,14 +287,14 @@ class LazyChunkStream:
             If `None` (default), no extra optimization is performed beyond
             the single pass that happens on insert.
 
-            Otherwise, apply the given settings after insertion.
+            Otherwise, apply the given profile after insertion.
 
         Examples
         --------
-        Run optimization with default settings (matches `rerun rrd optimize`):
+        Run with the Data Platform-tuned profile:
 
         ```python
-        store = reader.stream().collect(optimize=OptimizationSettings())
+        store = reader.stream().collect(optimize=OptimizationProfile.DATAPLATFORM)
         ```
 
         """

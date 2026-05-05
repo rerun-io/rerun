@@ -226,13 +226,19 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
     response: crate::FetchChunksResponseStream,
 ) -> crate::ApiResponseStream<ChunksWithSegment> {
     let trace_id = response.trace_id();
+    // `spawn_blocking` runs on the blocking thread pool with no tracing context.
+    // Capture the caller's span here so the decode/migration spans nested inside
+    // are parented under the SDK call instead of becoming orphan roots in Jaeger.
+    let parent_span = tracing::Span::current();
     let stream = response
         .then(move |resp| {
             let trace_id = trace_id;
+            let parent_span = parent_span.clone();
             // We want to make sure to offload that compute-heavy work to the compute worker pool: it's
             // not going to make this one single pipeline any faster, but it will prevent starvation of
             // the Tokio runtime (which would slow down every other futures currently scheduled!).
             tokio::task::spawn_blocking(move || {
+                let _parent_guard = parent_span.enter();
                 let r = resp?;
                 let _span =
                     tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = r.chunks.len())

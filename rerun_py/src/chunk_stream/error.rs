@@ -55,6 +55,11 @@ pub enum ChunkPipelineError {
     #[error("Failed to read RRD file at {path}: {reason}")]
     RrdRead { path: PathBuf, reason: String },
 
+    #[error(
+        "Legacy RRD without footer: {path}. Use RrdReader.stream().collect() to read it eagerly into a ChunkStore."
+    )]
+    RrdNoManifest { path: PathBuf },
+
     #[error("MCAP error: {reason}")]
     Mcap { reason: String },
 
@@ -69,6 +74,9 @@ pub enum ChunkPipelineError {
 
     #[error("Lenses error: {reason}")]
     Lenses { reason: String },
+
+    #[error("Failed to load chunks from {from}: {reason}")]
+    IndexedLoad { from: String, reason: String },
 
     #[error("{0}")]
     PythonIterator(PythonException),
@@ -91,11 +99,13 @@ impl From<ChunkPipelineError> for pyo3::PyErr {
 
             ChunkPipelineError::RrdChunkDecode { .. }
             | ChunkPipelineError::RrdRead { .. }
+            | ChunkPipelineError::RrdNoManifest { .. }
             | ChunkPipelineError::Mcap { .. }
             | ChunkPipelineError::Parquet { .. }
             | ChunkPipelineError::Urdf { .. }
             | ChunkPipelineError::ChunkStoreInsert { .. }
-            | ChunkPipelineError::Lenses { .. } => PyRuntimeError::new_err(err.to_string()),
+            | ChunkPipelineError::Lenses { .. }
+            | ChunkPipelineError::IndexedLoad { .. } => PyRuntimeError::new_err(err.to_string()),
         }
     }
 }

@@ -347,6 +347,10 @@ backwards_check = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
+"archetypes/line_strips3d_time_window" = [
+  "cpp", # Python-only blueprint example
+  "rust", # Python-only blueprint example
+]
 "archetypes/pinhole_projections" = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust

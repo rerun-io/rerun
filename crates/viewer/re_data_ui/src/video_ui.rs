@@ -286,8 +286,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
                         decode_timestamp,
                         presentation_timestamp,
                         duration,
-                        source_id: _,
-                        byte_span,
+                        source,
                     } = *sample;
 
                     row.col(|ui| {
@@ -326,8 +325,13 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
                             ui.monospace("unknown");
                         }
                     });
-                    row.col(|ui| {
-                        ui.monospace(re_format::format_bytes(byte_span.len as _));
+                    row.col(|ui| match source {
+                        re_video::VideoSource::Span(span) => {
+                            ui.monospace(re_format::format_bytes(span.len as _));
+                        }
+                        re_video::VideoSource::Id { .. } => {
+                            ui.monospace("N/A");
+                        }
                     });
                 },
             );
@@ -356,7 +360,7 @@ fn decoded_frame_ui<'a>(
     video: &re_renderer::video::Video,
     video_time: re_video::Time,
     stream_kind: StreamKind,
-    get_video_buffer: &dyn Fn(re_log_types::external::re_tuid::Tuid) -> &'a [u8],
+    get_video_chunk: &dyn Fn(re_video::VideoSource) -> &'a [u8],
 ) {
     let player_stream_id = re_video::player::VideoPlayerStreamId(
         ui.id().with(format!("{stream_kind}_player")).value(),
@@ -366,7 +370,7 @@ fn decoded_frame_ui<'a>(
         ctx.render_ctx,
         player_stream_id,
         video_time,
-        get_video_buffer,
+        get_video_chunk,
     );
 
     if let Some(VideoFrameTexture {
@@ -837,14 +841,23 @@ impl VideoUi {
                 video_stream_result_ui(ui, ui_layout, video_stream_result, *stream_kind);
 
                 let storage_engine = ctx.db.storage_engine();
-                let get_chunk_array = |id| {
-                    let chunk = storage_engine.store().use_chunk_or_report_missing(&id)?;
-
-                    let (_, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
+                // Both real fetches and "mark in use" calls go through here:
+                // the `use_chunk_or_report_missing` call marks the chunk in use
+                // either way; if `sub_id` is `None` we stop there.
+                let lookup = |id: re_log_types::external::re_tuid::Tuid,
+                              sub_id: Option<re_log_types::external::re_tuid::Tuid>|
+                 -> Option<&[u8]> {
+                    let chunk = storage_engine
+                        .store()
+                        .use_chunk_or_report_missing(&re_sdk_types::ChunkId::from_tuid(id))?;
+                    let sub_id = sub_id?;
+                    let (offsets, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
                         chunk.raw_component_array(*sample_component)?,
                     )?;
-
-                    Some(buffer)
+                    let row_idx = chunk.row_index_of(re_sdk_types::RowId::from_tuid(sub_id))?;
+                    let start = offsets[row_idx] as usize;
+                    let end = offsets[row_idx + 1] as usize;
+                    Some(&buffer.as_slice()[start..end])
                 };
 
                 if let Ok(video) = video_stream_result {
@@ -857,10 +870,11 @@ impl VideoUi {
                         &video.video_renderer,
                         time,
                         *stream_kind,
-                        &|id| {
-                            let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
-
-                            buffer.map(|b| b.as_slice()).unwrap_or(&[])
+                        &|source| match source {
+                            re_video::VideoSource::Id { id, sub_id } => {
+                                lookup(id, sub_id).unwrap_or(&[])
+                            }
+                            re_video::VideoSource::Span(_) => &[],
                         },
                     );
                 }
@@ -897,7 +911,10 @@ impl VideoUi {
                         video,
                         video_time,
                         StreamKind::Video,
-                        &|_| blob,
+                        &|source| match source {
+                            re_video::VideoSource::Span(span) => &blob[span.range_usize()],
+                            re_video::VideoSource::Id { .. } => &[],
+                        },
                     );
                 }
             }

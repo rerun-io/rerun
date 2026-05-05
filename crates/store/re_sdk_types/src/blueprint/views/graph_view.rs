@@ -31,7 +31,7 @@ pub struct GraphView {
 
     /// Everything within these bounds is guaranteed to be visible.
     ///
-    /// Somethings outside of these bounds may also be visible due to letterboxing.
+    /// Some things outside of these bounds may also be visible due to letterboxing.
     pub visual_bounds: crate::blueprint::archetypes::VisualBounds2D,
 
     /// Allows to control the interaction between two nodes connected by an edge.

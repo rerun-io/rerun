@@ -85,7 +85,7 @@ with rr.RecordingStream(
     rec.send_columns("/video_stream", indexes=[time_column], columns=[*content])
 
 # Register the layer with the dataset
-dataset.register(layer_path.as_uri(), layer_name="keyframes")
+dataset.register([layer_path.as_uri()], layer_name="keyframes")
 print(f"Registered keyframe layer at {layer_path}")
 # endregion: add_keyframe_column
 

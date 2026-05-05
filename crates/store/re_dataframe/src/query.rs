@@ -3,10 +3,11 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use arrow::array::{
-    ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
-    PrimitiveArray as ArrowPrimitiveArray, RecordBatch as ArrowRecordBatch, RecordBatchOptions,
+    Array as _, ArrayData, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
+    MutableArrayData, PrimitiveArray as ArrowPrimitiveArray, RecordBatch as ArrowRecordBatch,
+    RecordBatchOptions, make_array,
 };
-use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
+use arrow::buffer::{NullBuffer, ScalarBuffer as ArrowScalarBuffer};
 use arrow::datatypes::{
     DataType as ArrowDataType, Fields as ArrowFields, Schema as ArrowSchema,
     SchemaRef as ArrowSchemaRef,
@@ -33,6 +34,61 @@ use re_types_core::arrow_helpers::as_array_ref;
 use re_types_core::{Loggable as _, SerializedComponentColumn, archetypes};
 
 // ---
+
+/// Streaming-join state for a single component column on a single row.
+#[derive(Debug)]
+struct StreamingJoinStateEntry<'a> {
+    /// Which `Chunk` is this?
+    chunk: &'a Chunk,
+
+    /// How far are we into this `Chunk`?
+    cursor: u64,
+
+    /// What's the `RowId` at the current cursor?
+    row_id: RowId,
+}
+
+/// Streaming-join state for a single component column on a single row.
+///
+/// Possibly retrofilled, see [`QueryExpression::sparse_fill_strategy`].
+#[derive(Debug)]
+enum StreamingJoinState<'a> {
+    /// Incoming data for the current iteration.
+    StreamingJoinState(StreamingJoinStateEntry<'a>),
+
+    /// Data retrofilled through an extra query.
+    ///
+    /// See [`QueryExpression::sparse_fill_strategy`].
+    Retrofilled(UnitChunkShared),
+}
+
+/// Per-row index data resolved by [`QueryHandle::_resolve_one_row`]: the max value
+/// seen on each timeline for this row.
+type ResolvedRow = IntMap<TimelineName, (TimeInt, ArrowScalarBuffer<i64>)>;
+
+/// Output of [`QueryHandle::next_n_rows`] / [`QueryHandle::next_n_rows_async`].
+///
+/// `columns` always has length equal to `schema().fields().len()`. `num_rows` is the number
+/// of rows actually appended (≤ requested `max_rows`; 0 means the query is exhausted).
+#[derive(Debug)]
+pub struct NextNRowsOutput {
+    pub columns: Vec<ArrowArrayRef>,
+    pub num_rows: usize,
+}
+
+/// Per-output-column extend record for the deferred-replay finaliser in `_next_n_rows`.
+#[derive(Debug, Clone, Copy)]
+enum ColumnExtend {
+    /// Append `len` rows from `src_idx` starting at `start`.
+    Range {
+        src_idx: usize,
+        start: usize,
+        len: usize,
+    },
+
+    /// Append `len` null rows.
+    Nulls { len: usize },
+}
 
 // TODO(cmc): (no specific order) (should we make issues for these?)
 // * [x] basic thing working
@@ -697,7 +753,6 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// the chunk's time range contains the `index_value`.
     ///
     /// I.e.: it's pretty cheap already.
-    #[tracing::instrument(level = "trace", skip_all)]
     #[inline]
     pub fn seek_to_row(&self, row_idx: usize) {
         let state = self.init();
@@ -873,42 +928,119 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         })
     }
 
-    #[tracing::instrument(level = "trace", skip_all)]
     pub fn _next_row(&self, store: &ChunkStore, cache: &QueryCache) -> Option<Vec<ArrowArrayRef>> {
         // re_tracing::profile_function!(); // too many and short-lived
 
-        /// Temporary state used to resolve the streaming join for the current iteration.
-        #[derive(Debug)]
-        struct StreamingJoinStateEntry<'a> {
-            /// Which `Chunk` is this?
-            chunk: &'a Chunk,
-
-            /// How far are we into this `Chunk`?
-            cursor: u64,
-
-            /// What's the `RowId` at the current cursor?
-            row_id: RowId,
-        }
-
-        /// Temporary state used to resolve the streaming join for the current iteration.
-        ///
-        /// Possibly retrofilled, see [`QueryExpression::sparse_fill_strategy`].
-        #[derive(Debug)]
-        enum StreamingJoinState<'a> {
-            /// Incoming data for the current iteration.
-            StreamingJoinState(StreamingJoinStateEntry<'a>),
-
-            /// Data retrofilled through an extra query.
-            ///
-            /// See [`QueryExpression::sparse_fill_strategy`].
-            Retrofilled(UnitChunkShared),
-        }
-
-        // Although that's a synchronous lock, we probably don't need to worry about it until
-        // there is proof to the contrary: we are in a specific `QueryHandle` after all, there's
-        // really no good reason to be contending here in the first place.
         let state = self.state.get_or_init(move || self.init_(store, cache));
 
+        let mut scratch: Vec<Option<StreamingJoinState<'_>>> =
+            Vec::with_capacity(state.view_chunks.len());
+        let resolved = self._resolve_one_row(state, cache, &mut scratch)?;
+
+        // NOTE: Non-component entries have no data to slice, hence the optional layer.
+        //
+        // TODO(cmc): no point in slicing arrays that are not selected.
+        let view_sliced_arrays: Vec<Option<_>> = scratch
+            .iter()
+            .enumerate()
+            .map(|(view_idx, streaming_state)| {
+                // NOTE: Reminder: the only reason the streaming state could be `None` here is
+                // because this column does not have data for the current index value (i.e. `null`).
+                let streaming_state = streaming_state.as_ref()?;
+                let list_array = match streaming_state {
+                    StreamingJoinState::StreamingJoinState(s) => {
+                        debug_assert!(
+                            s.chunk.components().iter().count() <= 1,
+                            "cannot possibly get more than one component with this query"
+                        );
+
+                        s.chunk
+                            .components()
+                            .list_arrays()
+                            .next()
+                            .map(|list_array| list_array.slice(s.cursor as usize, 1))
+                    }
+
+                    StreamingJoinState::Retrofilled(unit) => {
+                        let component = state
+                            .view_contents
+                            .get_index_or_component(view_idx)
+                            .and_then(|col| {
+                                if let ColumnDescriptor::Component(descr) = col {
+                                    if let Some(component_type) = descr.component_type {
+                                        component_type.sanity_check();
+                                    }
+                                    Some(descr.component)
+                                } else {
+                                    None
+                                }
+                            })?;
+                        unit.components().get_array(component).cloned()
+                    }
+                };
+
+                debug_assert!(
+                    list_array.is_some(),
+                    "This must exist or the chunk wouldn't have been sliced/retrofilled to start with."
+                );
+
+                // NOTE: This cannot possibly return None, see assert above.
+                list_array
+            })
+            .collect();
+
+        // TODO(cmc): It would likely be worth it to allocate all these possible
+        // null-arrays ahead of time, and just return a pointer to those in the failure
+        // case here.
+        let selected_arrays = state
+            .selected_contents
+            .iter()
+            .map(|(view_idx, column)| match column {
+                ColumnDescriptor::RowId(_) => state
+                    .view_chunks
+                    .first()
+                    .and_then(|vec| vec.first()) // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
+                    .map(|(row_idx, chunk)| {
+                        as_array_ref(
+                            chunk
+                                .row_ids_array()
+                                .slice(row_idx.load(Ordering::Acquire) as _, 1),
+                        )
+                    })
+                    .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
+
+                ColumnDescriptor::Time(descr) => resolved.get(descr.timeline().name()).map_or_else(
+                    || arrow::array::new_null_array(&column.arrow_datatype(), 1),
+                    |(_time, time_sliced)| {
+                        descr.timeline().typ().make_arrow_array(time_sliced.clone())
+                    },
+                ),
+
+                ColumnDescriptor::Component(_descr) => view_sliced_arrays
+                    .get(*view_idx)
+                    .cloned()
+                    .flatten()
+                    .map(into_arrow_ref)
+                    .unwrap_or_else(|| arrow::array::new_null_array(&column.arrow_datatype(), 1)),
+            })
+            .collect_vec();
+
+        debug_assert_eq!(state.arrow_schema.fields.len(), selected_arrays.len());
+
+        Some(selected_arrays)
+    }
+
+    /// Resolve the streaming-join state for a single row.
+    ///
+    /// Returns `None` once the query is exhausted. On success, `view_streaming_state` holds the
+    /// per-view-column resolved state for this row (component chunks, retrofills, statics) and
+    /// the returned [`ResolvedRow`] holds the max value seen on each timeline.
+    fn _resolve_one_row<'state>(
+        &self,
+        state: &'state QueryHandleState,
+        cache: &QueryCache,
+        view_streaming_state: &mut Vec<Option<StreamingJoinState<'state>>>,
+    ) -> Option<ResolvedRow> {
         let row_idx = state.cur_row.fetch_add(1, Ordering::Relaxed);
         let cur_index_value = state.unique_index_values.get(row_idx as usize)?;
 
@@ -916,15 +1048,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // what is their index value for the current row?
         //
         // NOTE: Non-component columns don't have a streaming state, hence the optional layer.
-        let mut view_streaming_state: Vec<Option<StreamingJoinStateEntry<'_>>> =
-            // NOTE: cannot use vec![], it has limitations with non-cloneable options.
-            // vec![None; state.view_chunks.len()];
-            std::iter::repeat(())
-                .map(|()| None)
-                .take(state.view_chunks.len())
-                .collect();
+        view_streaming_state.clear();
+        view_streaming_state.resize_with(state.view_chunks.len(), || None);
         for (view_column_idx, view_chunks) in state.view_chunks.iter().enumerate() {
-            let streaming_state = &mut view_streaming_state[view_column_idx];
+            let mut entry: Option<StreamingJoinStateEntry<'state>> = None;
 
             'overlaps: for (cur_cursor, cur_chunk) in view_chunks {
                 // TODO(cmc): This can easily be optimized by looking ahead and breaking as soon as chunks
@@ -986,38 +1113,28 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                 debug_assert_eq!(index_value, *cur_index_value);
 
-                if let Some(streaming_state) = streaming_state.as_mut() {
-                    let StreamingJoinStateEntry {
-                        chunk,
-                        cursor,
-                        row_id,
-                    } = streaming_state;
-
-                    if cur_row_id > *row_id {
-                        *chunk = cur_chunk;
-                        *cursor = cur_cursor_value;
-                        *row_id = cur_row_id;
+                if let Some(existing) = entry.as_mut() {
+                    if cur_row_id > existing.row_id {
+                        existing.chunk = cur_chunk;
+                        existing.cursor = cur_cursor_value;
+                        existing.row_id = cur_row_id;
                     }
                 } else {
-                    *streaming_state = Some(StreamingJoinStateEntry {
+                    entry = Some(StreamingJoinStateEntry {
                         chunk: cur_chunk,
                         cursor: cur_cursor_value,
                         row_id: cur_row_id,
                     });
                 }
             }
-        }
 
-        let mut view_streaming_state = view_streaming_state
-            .into_iter()
-            .map(|streaming_state| streaming_state.map(StreamingJoinState::StreamingJoinState))
-            .collect_vec();
+            view_streaming_state[view_column_idx] =
+                entry.map(StreamingJoinState::StreamingJoinState);
+        }
 
         // Static always wins, no matter what.
         for (selected_idx, static_state) in state.selected_static_values.iter().enumerate() {
-            if let static_state @ Some(_) =
-                static_state.clone().map(StreamingJoinState::Retrofilled)
-            {
+            if let Some(unit) = static_state.clone() {
                 let Some(view_idx) = state
                     .selected_contents
                     .get(selected_idx)
@@ -1032,7 +1149,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     continue;
                 };
 
-                *streaming_state = static_state;
+                *streaming_state = Some(StreamingJoinState::Retrofilled(unit));
             }
         }
 
@@ -1099,152 +1216,465 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // * etc
         let mut max_value_per_index: IntMap<TimelineName, (TimeInt, ArrowScalarBuffer<i64>)> =
             IntMap::default();
-        {
-            view_streaming_state
-                .iter()
-                .flatten()
-                .flat_map(|streaming_state| {
-                    match streaming_state {
-                        StreamingJoinState::StreamingJoinState(s) => s.chunk.timelines(),
-                        StreamingJoinState::Retrofilled(unit) => unit.timelines(),
-                    }
-                    .values()
-                    // NOTE: Cannot fail, just want to stay away from unwraps.
-                    .filter_map(move |time_column| {
-                        let cursor = match streaming_state {
-                            StreamingJoinState::StreamingJoinState(s) => s.cursor as usize,
-                            StreamingJoinState::Retrofilled(_) => 0,
-                        };
-                        time_column
-                            .times_raw()
-                            .get(cursor)
-                            .copied()
-                            .map(TimeInt::new_temporal)
-                            .map(|time| {
-                                (
-                                    *time_column.timeline(),
-                                    (time, time_column.times_buffer().slice(cursor, 1)),
-                                )
-                            })
-                    })
-                })
-                .for_each(|(timeline, (time, time_sliced))| {
-                    max_value_per_index
-                        .entry(*timeline.name())
-                        .and_modify(|(max_time, max_time_sliced)| {
-                            if time > *max_time {
-                                *max_time = time;
-                                *max_time_sliced = time_sliced.clone();
-                            }
+        view_streaming_state
+            .iter()
+            .flatten()
+            .flat_map(|streaming_state| {
+                match streaming_state {
+                    StreamingJoinState::StreamingJoinState(s) => s.chunk.timelines(),
+                    StreamingJoinState::Retrofilled(unit) => unit.timelines(),
+                }
+                .values()
+                // NOTE: Cannot fail, just want to stay away from unwraps.
+                .filter_map(move |time_column| {
+                    let cursor = match streaming_state {
+                        StreamingJoinState::StreamingJoinState(s) => s.cursor as usize,
+                        StreamingJoinState::Retrofilled(_) => 0,
+                    };
+                    time_column
+                        .times_raw()
+                        .get(cursor)
+                        .copied()
+                        .map(TimeInt::new_temporal)
+                        .map(|time| {
+                            (
+                                *time_column.timeline(),
+                                (time, time_column.times_buffer().slice(cursor, 1)),
+                            )
                         })
-                        .or_insert((time, time_sliced));
+                })
+            })
+            .for_each(|(timeline, (time, time_sliced))| {
+                max_value_per_index
+                    .entry(*timeline.name())
+                    .and_modify(|(max_time, max_time_sliced)| {
+                        if time > *max_time {
+                            *max_time = time;
+                            *max_time_sliced = time_sliced.clone();
+                        }
+                    })
+                    .or_insert((time, time_sliced));
+            });
+
+        if !cur_index_value.is_static() {
+            // The current index value (if temporal) should be the one returned for the
+            // queried index, no matter what.
+            max_value_per_index.insert(
+                state.filtered_index,
+                (
+                    *cur_index_value,
+                    ArrowScalarBuffer::from(vec![cur_index_value.as_i64()]),
+                ),
+            );
+        }
+
+        Some(max_value_per_index)
+    }
+
+    /// Append up to `max_rows` rows of data into freshly allocated per-column arrays.
+    ///
+    /// Throughput-oriented sibling of [`Self::next_row`]: shares the streaming-join machinery but
+    /// amortises per-row allocation by batching `MutableArrayData` extends and only finalising
+    /// to `ArrayRef` once per call.
+    ///
+    /// The returned [`NextNRowsOutput::columns`] strictly follows the schema specified by
+    /// [`Self::schema`], with `num_rows == 0` signalling exhaustion.
+    ///
+    /// `max_bytes` caps the estimated output-buffer footprint of the batch (sum of
+    /// per-row source-array bytes, computed from `ArrayData::get_array_memory_size /
+    /// len`). Pass `usize::MAX` to disable the byte cap. The first row is always
+    /// admitted regardless of the cap, so a single wide row can exceed `max_bytes`.
+    #[inline]
+    pub fn next_n_rows(&self, max_rows: usize, max_bytes: usize) -> NextNRowsOutput {
+        self.engine
+            .with(|store, cache| self._next_n_rows(store, cache, max_rows, max_bytes))
+    }
+
+    /// Asynchronous sibling of [`Self::next_n_rows`].
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn next_n_rows_async(
+        &self,
+        max_rows: usize,
+        max_bytes: usize,
+    ) -> impl std::future::Future<Output = NextNRowsOutput> + use<'_, E>
+    where
+        E: 'static + Send + Clone,
+    {
+        // Retry on every poll: if `try_with` initially fails because a writer
+        // holds the lock, the rayon-spawned `engine.with(..)` re-acquires the
+        // lock and wakes us, but only a fresh `try_with` call here can actually
+        // make progress. Capturing the result once at function entry would let
+        // the future spin forever on a permanent `None`.
+        std::future::poll_fn(move |cx| {
+            let res = self
+                .engine
+                .try_with(|store, cache| self._next_n_rows(store, cache, max_rows, max_bytes));
+
+            if let Some(out) = res {
+                std::task::Poll::Ready(out)
+            } else {
+                rayon::spawn({
+                    let engine = self.engine.clone();
+                    let waker = cx.waker().clone();
+                    move || {
+                        engine.with(|_store, _cache| {
+                            waker.wake();
+                        });
+                    }
                 });
 
-            if !cur_index_value.is_static() {
-                // The current index value (if temporal) should be the one returned for the
-                // queried index, no matter what.
-                max_value_per_index.insert(
-                    state.filtered_index,
-                    (
-                        *cur_index_value,
-                        ArrowScalarBuffer::from(vec![cur_index_value.as_i64()]),
-                    ),
-                );
+                std::task::Poll::Pending
+            }
+        })
+    }
+
+    #[tracing::instrument(level = "debug", skip_all, fields(max_rows, max_bytes))]
+    fn _next_n_rows(
+        &self,
+        store: &ChunkStore,
+        cache: &QueryCache,
+        max_rows: usize,
+        max_bytes: usize,
+    ) -> NextNRowsOutput {
+        re_tracing::profile_function!();
+
+        let state = self.state.get_or_init(move || self.init_(store, cache));
+        let n_selected = state.selected_contents.len();
+
+        if max_rows == 0 {
+            return NextNRowsOutput {
+                columns: Vec::new(),
+                num_rows: 0,
+            };
+        }
+
+        // Per-output-column emission state.
+        //
+        // `source_bpr[i]` is the estimated bytes-per-row for `sources[i]`, computed as
+        // `get_array_memory_size() / len()` at registration time. Cheap (one division per
+        // distinct source per batch) and lets the walk amortise the byte budget without
+        // inspecting `MutableArrayData` until freeze.
+        enum SelectedEmitter {
+            Source {
+                sources: Vec<ArrayData>,
+                source_ids: Vec<usize>,
+                source_bpr: Vec<usize>,
+                extends: Vec<ColumnExtend>,
+            },
+            Time {
+                values: Vec<i64>,
+                valid: Vec<bool>,
+            },
+        }
+
+        impl SelectedEmitter {
+            fn ensure_source(
+                sources: &mut Vec<ArrayData>,
+                source_ids: &mut Vec<usize>,
+                source_bpr: &mut Vec<usize>,
+                id: usize,
+                data: impl FnOnce() -> ArrayData,
+            ) -> usize {
+                if let Some(idx) = source_ids.iter().position(|x| *x == id) {
+                    idx
+                } else {
+                    let idx = sources.len();
+                    let d = data();
+                    let bpr = d.get_array_memory_size().checked_div(d.len()).unwrap_or(0);
+                    sources.push(d);
+                    source_ids.push(id);
+                    source_bpr.push(bpr);
+                    idx
+                }
+            }
+
+            /// Append a `Range` extend, merging with the previous entry when it is
+            /// a `Range` from the same source whose end abuts `start`. Coalescing
+            /// turns long runs of single-row extends into a handful of multi-row
+            /// extends, shrinking the replay loop in the finaliser.
+            fn push_range(extends: &mut Vec<ColumnExtend>, src_idx: usize, start: usize) {
+                if let Some(ColumnExtend::Range {
+                    src_idx: prev_src,
+                    start: prev_start,
+                    len: prev_len,
+                }) = extends.last_mut()
+                    && *prev_src == src_idx
+                    && *prev_start + *prev_len == start
+                {
+                    *prev_len += 1;
+                    return;
+                }
+                extends.push(ColumnExtend::Range {
+                    src_idx,
+                    start,
+                    len: 1,
+                });
+            }
+
+            /// Append a single null row, merging with a trailing `Nulls` entry.
+            fn push_null(extends: &mut Vec<ColumnExtend>) {
+                if let Some(ColumnExtend::Nulls { len }) = extends.last_mut() {
+                    *len += 1;
+                    return;
+                }
+                extends.push(ColumnExtend::Nulls { len: 1 });
             }
         }
 
-        // NOTE: Non-component entries have no data to slice, hence the optional layer.
-        //
-        // TODO(cmc): no point in slicing arrays that are not selected.
-        let view_sliced_arrays: Vec<Option<_>> = view_streaming_state
+        // Clamp the up-front capacity hint: callers can legitimately pass a very
+        // large `max_rows` (e.g. `usize::MAX` when only `max_bytes` is meant to
+        // cap the batch) and `Vec::with_capacity(usize::MAX)` aborts with
+        // "capacity overflow". 8192 covers every realistic batch size while
+        // keeping the pre-allocation small; the vectors grow as needed.
+        let cap_hint = max_rows.min(8192);
+
+        let mut emitters: Vec<SelectedEmitter> = state
+            .selected_contents
             .iter()
-            .enumerate()
-            .map(|(view_idx, streaming_state)| {
-                // NOTE: Reminder: the only reason the streaming state could be `None` here is
-                // because this column does not have data for the current index value (i.e. `null`).
-                let streaming_state = streaming_state.as_ref()?;
-                let list_array = match streaming_state {
-                    StreamingJoinState::StreamingJoinState(s) => {
-                        debug_assert!(
-                            s.chunk.components().iter().count() <= 1,
-                            "cannot possibly get more than one component with this query"
-                        );
-
-                        s.chunk
-                            .components()
-                            .list_arrays()
-                            .next()
-                            .map(|list_array| list_array.slice(s.cursor as usize, 1))
-
+            .map(|(_view_idx, col)| match col {
+                ColumnDescriptor::Component(_) | ColumnDescriptor::RowId(_) => {
+                    SelectedEmitter::Source {
+                        sources: Vec::new(),
+                        source_ids: Vec::new(),
+                        source_bpr: Vec::new(),
+                        extends: Vec::with_capacity(cap_hint),
                     }
-
-                    StreamingJoinState::Retrofilled(unit) => {
-                        let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| if let ColumnDescriptor::Component(descr) = col {
-                            if let Some(component_type) = descr.component_type  { component_type.sanity_check(); }
-                            Some(re_types_core::ComponentDescriptor {
-                                component_type: descr.component_type,
-                                archetype: descr.archetype,
-                                component: descr.component,
-                            })
-                        } else {
-                            None
-                        })?;
-                        unit.components().get_array(component_desc.component).cloned()
-                    }
-                };
-
-
-                debug_assert!(
-                    list_array.is_some(),
-                    "This must exist or the chunk wouldn't have been sliced/retrofilled to start with."
-                );
-
-                // NOTE: This cannot possibly return None, see assert above.
-                list_array
+                }
+                ColumnDescriptor::Time(_) => SelectedEmitter::Time {
+                    values: Vec::with_capacity(cap_hint),
+                    valid: Vec::with_capacity(cap_hint),
+                },
             })
             .collect();
 
-        // TODO(cmc): It would likely be worth it to allocate all these possible
-        // null-arrays ahead of time, and just return a pointer to those in the failure
-        // case here.
-        let selected_arrays = state
-            .selected_contents
-            .iter()
-            .map(|(view_idx, column)| match column {
-                ColumnDescriptor::RowId(_) => state
-                    .view_chunks
-                    .first()
-                    .and_then(|vec| vec.first()) // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
-                    .map(|(row_idx, chunk)| {
-                        as_array_ref(
-                            chunk
-                                .row_ids_array()
-                                .slice(row_idx.load(Ordering::Acquire) as _, 1),
-                        )
-                    })
-                    .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
+        let mut scratch: Vec<Option<StreamingJoinState<'_>>> =
+            Vec::with_capacity(state.view_chunks.len());
 
-                ColumnDescriptor::Time(descr) => max_value_per_index
-                    .get(descr.timeline().name())
-                    .map_or_else(
-                        || arrow::array::new_null_array(&column.arrow_datatype(), 1),
-                        |(_time, time_sliced)| {
-                            descr.timeline().typ().make_arrow_array(time_sliced.clone())
-                        },
-                    ),
+        let mut num_rows = 0usize;
+        let mut total_bytes = 0usize;
+        loop {
+            if num_rows >= max_rows {
+                break;
+            }
+            // Always admit the first row so an empty batch is impossible while the
+            // query has data (callers rely on `num_rows == 0` meaning exhausted).
+            if num_rows > 0 && total_bytes >= max_bytes {
+                break;
+            }
 
-                ColumnDescriptor::Component(_descr) => view_sliced_arrays
-                    .get(*view_idx)
-                    .cloned()
-                    .flatten()
-                    .map(into_arrow_ref)
-                    .unwrap_or_else(|| arrow::array::new_null_array(&column.arrow_datatype(), 1)),
-            })
-            .collect_vec();
+            let Some(resolved) = self._resolve_one_row(state, cache, &mut scratch) else {
+                break;
+            };
 
-        debug_assert_eq!(state.arrow_schema.fields.len(), selected_arrays.len());
+            for (selected_idx, (view_idx, column)) in state.selected_contents.iter().enumerate() {
+                match column {
+                    ColumnDescriptor::RowId(_) => {
+                        let SelectedEmitter::Source {
+                            sources,
+                            source_ids,
+                            source_bpr,
+                            extends,
+                        } = &mut emitters[selected_idx]
+                        else {
+                            debug_panic!("Source emitter expected for RowId column");
+                            continue;
+                        };
 
-        Some(selected_arrays)
+                        if let Some((cursor, chunk)) =
+                            state.view_chunks.first().and_then(|v| v.first())
+                        {
+                            // TODO(#9922): verify that using the row:ids from the first chunk
+                            // always makes sense.
+                            let id = std::ptr::from_ref::<Chunk>(chunk) as usize;
+                            let pos = cursor.load(Ordering::Acquire) as usize;
+                            let src_idx = SelectedEmitter::ensure_source(
+                                sources,
+                                source_ids,
+                                source_bpr,
+                                id,
+                                || chunk.row_ids_array().to_data(),
+                            );
+                            SelectedEmitter::push_range(extends, src_idx, pos);
+                            total_bytes = total_bytes.saturating_add(source_bpr[src_idx]);
+                        } else {
+                            SelectedEmitter::push_null(extends);
+                        }
+                    }
+
+                    ColumnDescriptor::Time(descr) => {
+                        let SelectedEmitter::Time { values, valid } = &mut emitters[selected_idx]
+                        else {
+                            debug_panic!("Time emitter expected for Time column");
+                            continue;
+                        };
+
+                        if let Some((time, _)) = resolved.get(descr.timeline().name()) {
+                            values.push(time.as_i64());
+                            valid.push(true);
+                        } else {
+                            values.push(0);
+                            valid.push(false);
+                        }
+                        total_bytes = total_bytes.saturating_add(std::mem::size_of::<i64>());
+                    }
+
+                    ColumnDescriptor::Component(_) => {
+                        let SelectedEmitter::Source {
+                            sources,
+                            source_ids,
+                            source_bpr,
+                            extends,
+                        } = &mut emitters[selected_idx]
+                        else {
+                            debug_panic!("Source emitter expected for Component column");
+                            continue;
+                        };
+
+                        let streaming_state = scratch.get(*view_idx).and_then(|s| s.as_ref());
+                        match streaming_state {
+                            Some(StreamingJoinState::StreamingJoinState(s)) => {
+                                let list_array_data = s
+                                    .chunk
+                                    .components()
+                                    .list_arrays()
+                                    .next()
+                                    .map(|la| la.to_data());
+                                if let Some(data) = list_array_data {
+                                    let id = std::ptr::from_ref::<Chunk>(s.chunk) as usize;
+                                    let src_idx = SelectedEmitter::ensure_source(
+                                        sources,
+                                        source_ids,
+                                        source_bpr,
+                                        id,
+                                        || data,
+                                    );
+                                    SelectedEmitter::push_range(
+                                        extends,
+                                        src_idx,
+                                        s.cursor as usize,
+                                    );
+                                    total_bytes = total_bytes.saturating_add(source_bpr[src_idx]);
+                                } else {
+                                    SelectedEmitter::push_null(extends);
+                                }
+                            }
+                            Some(StreamingJoinState::Retrofilled(unit)) => {
+                                let component = state
+                                    .view_contents
+                                    .get_index_or_component(*view_idx)
+                                    .and_then(|col| {
+                                        if let ColumnDescriptor::Component(descr) = col {
+                                            if let Some(component_type) = descr.component_type {
+                                                component_type.sanity_check();
+                                            }
+                                            Some(descr.component)
+                                        } else {
+                                            None
+                                        }
+                                    });
+                                let component_data = component.and_then(|c| {
+                                    unit.components()
+                                        .get_array(c)
+                                        .cloned()
+                                        .map(|arr| arr.to_data())
+                                });
+                                if let Some(data) = component_data {
+                                    // UnitChunkShared derefs to Chunk; underlying address is
+                                    // Arc-stable.
+                                    let id = std::ptr::from_ref::<Chunk>(&**unit) as usize;
+                                    let src_idx = SelectedEmitter::ensure_source(
+                                        sources,
+                                        source_ids,
+                                        source_bpr,
+                                        id,
+                                        || data,
+                                    );
+                                    SelectedEmitter::push_range(extends, src_idx, 0);
+                                    total_bytes = total_bytes.saturating_add(source_bpr[src_idx]);
+                                } else {
+                                    SelectedEmitter::push_null(extends);
+                                }
+                            }
+                            None => SelectedEmitter::push_null(extends),
+                        }
+                    }
+                }
+            }
+
+            num_rows += 1;
+        }
+
+        if num_rows == 0 {
+            return NextNRowsOutput {
+                columns: Vec::new(),
+                num_rows: 0,
+            };
+        }
+
+        // Finalise each output column.
+        let mut columns: Vec<ArrowArrayRef> = Vec::with_capacity(n_selected);
+        for (selected_idx, emitter) in emitters.into_iter().enumerate() {
+            let (_, column) = &state.selected_contents[selected_idx];
+            let datatype = state.arrow_schema.field(selected_idx).data_type();
+            match emitter {
+                SelectedEmitter::Source {
+                    sources,
+                    extends,
+                    source_ids: _,
+                    source_bpr: _,
+                } => {
+                    if sources.is_empty() {
+                        columns.push(arrow::array::new_null_array(datatype, num_rows));
+                        continue;
+                    }
+                    let src_refs: Vec<&ArrayData> = sources.iter().collect();
+                    let mut mutable = MutableArrayData::new(src_refs, true, num_rows);
+                    for ext in &extends {
+                        match ext {
+                            ColumnExtend::Range {
+                                src_idx,
+                                start,
+                                len,
+                            } => mutable.extend(*src_idx, *start, *start + *len),
+                            ColumnExtend::Nulls { len } => mutable.extend_nulls(*len),
+                        }
+                    }
+                    columns.push(make_array(mutable.freeze()));
+                }
+                SelectedEmitter::Time { values, valid } => {
+                    // The schema field's datatype is the source of truth. An
+                    // `IndexColumnDescriptor::new_null` produces `datatype = Null`
+                    // even though `descr.timeline().typ()` returns the placeholder
+                    // `Sequence` (Int64); mirror `_next_row`, which falls back to
+                    // `new_null_array(&column.arrow_datatype(), 1)` and therefore
+                    // emits a `Null` array whenever the schema says so.
+                    if matches!(datatype, ArrowDataType::Null) {
+                        columns.push(arrow::array::new_null_array(datatype, num_rows));
+                        continue;
+                    }
+                    let ColumnDescriptor::Time(descr) = column else {
+                        debug_panic!("Time emitter on non-Time column");
+                        columns.push(arrow::array::new_null_array(datatype, num_rows));
+                        continue;
+                    };
+                    let nulls = if valid.iter().all(|v| *v) {
+                        None
+                    } else {
+                        Some(valid.iter().copied().collect::<NullBuffer>())
+                    };
+                    columns.push(
+                        descr
+                            .timeline()
+                            .typ()
+                            .make_arrow_array_with_nulls(ArrowScalarBuffer::from(values), nulls),
+                    );
+                }
+            }
+        }
+
+        debug_assert_eq!(columns.len(), state.arrow_schema.fields.len());
+
+        NextNRowsOutput { columns, num_rows }
     }
 
     /// Calls [`Self::next_row`] and wraps the result in a [`ArrowRecordBatch`].
@@ -2500,6 +2930,91 @@ mod tests {
         drop(engine_guard);
 
         handle_queries.await??;
+
+        Ok(())
+    }
+
+    /// Verifies that `next_n_rows` produces the same data as repeated `next_row` calls,
+    /// across all sparse-fill strategies and a representative selection of queries.
+    #[test]
+    fn next_n_rows_matches_next_row() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
+
+        let filtered_index = Some(TimelineName::new("frame_nr"));
+
+        // Cover: static, temporal, range-filtered, and LatestAtGlobal sparse fill.
+        let queries = [
+            QueryExpression::default(),
+            QueryExpression {
+                filtered_index,
+                ..Default::default()
+            },
+            QueryExpression {
+                filtered_index,
+                filtered_index_range: Some(AbsoluteTimeRange::new(30, 60)),
+                ..Default::default()
+            },
+            QueryExpression {
+                filtered_index,
+                sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
+                ..Default::default()
+            },
+        ];
+
+        for query in queries {
+            // Reference path: row-by-row via existing `next_row`.
+            let reference_handle = query_engine.query(query.clone());
+            let reference_rows: Vec<_> = reference_handle.iter().collect();
+            let total_rows = reference_rows.len();
+            let n_fields = reference_handle.schema().fields.len();
+
+            // Candidate path: many `next_n_rows` calls of size 64.
+            let candidate_handle = query_engine.query(query.clone());
+            let mut candidate_rows = 0usize;
+            let mut candidate_columns: Vec<Vec<ArrowArrayRef>> =
+                (0..n_fields).map(|_| Vec::new()).collect();
+            loop {
+                let out = candidate_handle.next_n_rows(64, usize::MAX);
+                if out.num_rows == 0 {
+                    break;
+                }
+                candidate_rows += out.num_rows;
+                for (col_idx, arr) in out.columns.into_iter().enumerate() {
+                    candidate_columns[col_idx].push(arr);
+                }
+            }
+
+            assert_eq!(
+                total_rows, candidate_rows,
+                "row count mismatch for query {query:?}"
+            );
+
+            // Concatenate row-by-row reference into per-column arrays and compare.
+            for (col_idx, candidate_parts) in candidate_columns.iter().enumerate() {
+                let ref_parts: Vec<&dyn arrow::array::Array> = reference_rows
+                    .iter()
+                    .map(|row| row[col_idx].as_ref())
+                    .collect();
+                let cand_parts: Vec<&dyn arrow::array::Array> =
+                    candidate_parts.iter().map(|a| a.as_ref()).collect();
+                if ref_parts.is_empty() && cand_parts.is_empty() {
+                    continue;
+                }
+                let reference =
+                    re_arrow_util::concat_arrays(&ref_parts).expect("ref concat failed");
+                let candidate =
+                    re_arrow_util::concat_arrays(&cand_parts).expect("cand concat failed");
+                assert_eq!(
+                    reference.to_data(),
+                    candidate.to_data(),
+                    "column {col_idx} mismatch for query {query:?}",
+                );
+            }
+        }
 
         Ok(())
     }

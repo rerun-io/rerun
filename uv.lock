@@ -4699,6 +4699,7 @@ dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pillow" },
+    { name = "psutil" },
     { name = "pyarrow" },
     { name = "typing-extensions" },
 ]
@@ -4768,6 +4769,7 @@ requires-dist = [
     { name = "pillow", specifier = ">=8.0.0" },
     { name = "pillow", marker = "extra == 'dataloader'", specifier = ">=8.0.0" },
     { name = "polars", marker = "extra == 'tests'", specifier = "==1.36.1" },
+    { name = "psutil", specifier = ">=7.0" },
     { name = "pyarrow", specifier = ">=18.0.0" },
     { name = "pytest", marker = "extra == 'tests'", specifier = "==8.4.2" },
     { name = "rerun-notebook", marker = "extra == 'all'", editable = "rerun_notebook" },
@@ -4828,6 +4830,7 @@ dev = [
     { name = "ty" },
     { name = "types-colorama" },
     { name = "types-protobuf" },
+    { name = "types-psutil" },
     { name = "types-pyyaml" },
     { name = "types-requests" },
     { name = "types-tabulate" },
@@ -4946,6 +4949,7 @@ dev = [
     { name = "ty", specifier = "==0.0.31" },
     { name = "types-colorama", specifier = ">=0.4.15" },
     { name = "types-protobuf" },
+    { name = "types-psutil", specifier = ">=7.0" },
     { name = "types-pyyaml", specifier = ">=6.0" },
     { name = "types-requests", specifier = "==2.32.4.20250913" },
     { name = "types-tabulate", specifier = ">=0.9.0" },
@@ -5953,6 +5957,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c2/59/c743a842911887cd96d56aa8936522b0cd5f7a7f228c96e81b59fced45be/types_protobuf-6.32.1.20251210.tar.gz", hash = "sha256:c698bb3f020274b1a2798ae09dc773728ce3f75209a35187bd11916ebfde6763", size = 63900, upload-time = "2025-12-10T03:14:25.451Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/aa/43/58e75bac4219cbafee83179505ff44cae3153ec279be0e30583a73b8f108/types_protobuf-6.32.1.20251210-py3-none-any.whl", hash = "sha256:2641f78f3696822a048cfb8d0ff42ccd85c25f12f871fbebe86da63793692140", size = 77921, upload-time = "2025-12-10T03:14:24.477Z" },
+]
+
+[[package]]
+name = "types-psutil"
+version = "7.2.2.20260408"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/44/14/279fd5defebbd560ede04aecd38f7651cccee7336f2264d0889d8c9a9d43/types_psutil-7.2.2.20260408.tar.gz", hash = "sha256:e8053450685965b8cd52afb62569073d00ea9967ae78bb45dff5f606847f97f2", size = 26556, upload-time = "2026-04-08T04:27:44.349Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/40/2fd92a4a1ee088c4dbcc44c977908d9869838d9cd2a2fa2e001352f56694/types_psutil-7.2.2.20260408-py3-none-any.whl", hash = "sha256:0c334f6f6bc9e9c24fca5c7d1f0b6971c961a0a2e3956dc5ce704722c01f9762", size = 32861, upload-time = "2026-04-08T04:27:42.929Z" },
 ]
 
 [[package]]

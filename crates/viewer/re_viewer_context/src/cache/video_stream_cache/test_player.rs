@@ -102,14 +102,17 @@ impl TestVideoPlayer {
     }
 
     fn play(&mut self, range: Range<f64>, time_step: f64) -> Result<(), VideoPlayerError> {
-        self.play_with_buffer(range, time_step, &|_| &[])
+        // The fake decoder doesn't inspect the bytes, but `SampleMetadata::get`
+        // returns `None` for empty buffers (treats it as "sample not found"),
+        // so hand back a one-byte placeholder.
+        self.play_with_buffer(range, time_step, &|_| &[0])
     }
 
     fn play_with_buffer<'a>(
         &mut self,
         range: Range<f64>,
         time_step: f64,
-        get_buffer: &dyn Fn(Tuid) -> &'a [u8],
+        get_buffer: &dyn Fn(re_video::VideoSource) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
         if let Some(source) = &self.video_descr_source {
             self.video_descr = source();
@@ -128,7 +131,7 @@ impl TestVideoPlayer {
     fn frame_at<'a>(
         &mut self,
         time: f64,
-        get_buffer: &dyn Fn(Tuid) -> &'a [u8],
+        get_buffer: &dyn Fn(re_video::VideoSource) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
         self.video.frame_at(
             Time::from_secs(time, re_video::Timescale::NANOSECOND),
@@ -217,8 +220,7 @@ fn frame(time: f64) -> SampleMetadataState {
         duration: None,
 
         // Not relevant for these tests.
-        source_id: Tuid::new(),
-        byte_span: re_video::Span { start: 0, len: 0 },
+        source: re_video::VideoSource::id(Tuid::new(), Tuid::new()),
     })
 }
 
@@ -234,8 +236,7 @@ fn keyframe(time: f64) -> SampleMetadataState {
         duration: None,
 
         // Not relevant for these tests.
-        source_id: Tuid::new(),
-        byte_span: re_video::Span { start: 0, len: 0 },
+        source: re_video::VideoSource::id(Tuid::new(), Tuid::new()),
     })
 }
 
@@ -478,32 +479,35 @@ fn player_fetching_unloaded() {
 
     let fetched = parking_lot::RwLock::new(Vec::new());
     assert_loading(video.play_with_buffer(2.0..4.0, 1.0, &|source| {
-        fetched.write().push(source);
+        fetched.write().push(source.primary_id());
 
-        &[]
+        &[0]
     }));
     assert_eq!(
         fetched.read().as_slice(),
-        &[samples[2].source_id(), samples[1].source_id()]
+        &[
+            samples[2].source_primary_id(),
+            samples[1].source_primary_id()
+        ]
     );
 
     video.expect_decoded_samples(None);
 
     fetched.write().clear();
     assert_loading(video.play_with_buffer(4.0..6.0, 1.0, &|source| {
-        fetched.write().push(source);
+        fetched.write().push(source.primary_id());
 
-        &[]
+        &[0]
     }));
     assert_eq!(
         fetched.read().as_slice(),
         &[
             // First keyframe at 4.0 from `request_keyframe_before`
-            samples[4].source_id(),
+            samples[4].source_primary_id(),
             // Then again keyframe at 4.0 when enqueueing it
-            samples[4].source_id(),
+            samples[4].source_primary_id(),
             // Then unloaded when pre-loading
-            samples[5].source_id()
+            samples[5].source_primary_id()
         ]
     );
 
@@ -511,25 +515,25 @@ fn player_fetching_unloaded() {
 
     fetched.write().clear();
     assert_loading(video.play_with_buffer(10.0..12.0, 1.0, &|source| {
-        fetched.write().push(source);
+        fetched.write().push(source.primary_id());
 
-        &[]
+        &[0]
     }));
     assert_eq!(
         fetched.read().as_slice(),
         &[
             // in `request_keyframe_before` (reversed)
-            samples[10].source_id(),
-            samples[9].source_id(),
-            samples[8].source_id(),
-            samples[7].source_id(),
+            samples[10].source_primary_id(),
+            samples[9].source_primary_id(),
+            samples[8].source_primary_id(),
+            samples[7].source_primary_id(),
             // in `enqueue_sample_range`
-            samples[7].source_id(),
-            samples[8].source_id(),
-            samples[9].source_id(),
-            samples[10].source_id(),
+            samples[7].source_primary_id(),
+            samples[8].source_primary_id(),
+            samples[9].source_primary_id(),
+            samples[10].source_primary_id(),
             // Then unloaded when pre-loading
-            samples[11].source_id(),
+            samples[11].source_primary_id(),
         ]
     );
 
@@ -537,9 +541,10 @@ fn player_fetching_unloaded() {
 
     fetched.write().clear();
     assert_loading(video.play_with_buffer(12.0..14.0, 1.0, &|source| {
+        let primary_id = source.primary_id();
         let i = samples
             .iter()
-            .position(|c| c.source_id() == source)
+            .position(|c| c.source_primary_id() == primary_id)
             .unwrap();
         eprintln!(
             "\n#{i}\n{}",
@@ -550,14 +555,17 @@ fn player_fetching_unloaded() {
                 .collect::<Vec<_>>()
                 .join("\n")
         );
-        fetched.write().push(source);
+        fetched.write().push(primary_id);
 
-        &[]
+        &[0]
     }));
     assert_eq!(
         fetched.read().as_slice(),
         // Both in `request_keyframe_before` (reversed).
-        &[samples[12].source_id(), samples[11].source_id()]
+        &[
+            samples[12].source_primary_id(),
+            samples[11].source_primary_id()
+        ]
     );
 
     video.expect_decoded_samples(None);
@@ -571,22 +579,28 @@ impl TestVideoPlayer {
         store: &re_entity_db::EntityDb,
     ) -> Result<(), VideoPlayerError> {
         let storage_engine = store.storage_engine();
-        self.play_with_buffer(range, time_step, &|tuid| {
-            let buffer = storage_engine
+        let lookup = |source: re_video::VideoSource| -> Option<&[u8]> {
+            let re_video::VideoSource::Id {
+                id,
+                sub_id: Some(sub_id),
+            } = source
+            else {
+                return None;
+            };
+            let chunk = storage_engine
                 .store()
-                .physical_chunk(&re_chunk::ChunkId::from_tuid(tuid))
-                .and_then(|chunk| {
-                    let raw = chunk.raw_component_array(
-                        re_sdk_types::archetypes::VideoStream::descriptor_sample().component,
-                    )?;
+                .physical_chunk(&re_chunk::ChunkId::from_tuid(id))?;
+            let raw = chunk.raw_component_array(
+                re_sdk_types::archetypes::VideoStream::descriptor_sample().component,
+            )?;
+            let (offsets, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(raw)?;
 
-                    let (_offsets, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(raw)?;
-
-                    Some(buffer.as_slice())
-                });
-
-            buffer.unwrap_or(&[])
-        })
+            let row_idx = chunk.row_index_of(re_chunk::RowId::from_tuid(sub_id))?;
+            let start = offsets[row_idx] as usize;
+            let end = offsets[row_idx + 1] as usize;
+            Some(&buffer.as_slice()[start..end])
+        };
+        self.play_with_buffer(range, time_step, &|source| lookup(source).unwrap_or(&[]))
     }
 }
 

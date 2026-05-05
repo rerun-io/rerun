@@ -88,6 +88,9 @@ from ._send_dataframe import (
     send_dataframe as send_dataframe,
     send_record_batch as send_record_batch,
 )
+from ._tracing_session import (
+    tracing_session as tracing_session,
+)
 from .any_batch_value import (
     AnyBatchValue as AnyBatchValue,
     ComponentValueLike as ComponentValueLike,

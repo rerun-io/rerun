@@ -3,13 +3,16 @@ use std::sync::Arc;
 
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
 use re_log_types::{
     EntityPathFilter, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
 use re_types_core::ComponentIdentifier;
 
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, CompactionOptions, IsStartOfGop};
+use re_chunk_store::{
+    ChunkStore, ChunkStoreConfig, CompactionOptions, IsStartOfGop, OptimizationProfile,
+};
 
 use super::ChunkStream;
 use super::chunk_store::PyChunkStoreInternal;
@@ -243,7 +246,7 @@ impl PyLazyChunkStreamInternal {
                 }
             })?;
 
-            Ok(PyChunkStoreInternal::in_memory(store))
+            Ok(PyChunkStoreInternal::new(store))
         })
         .map_err(PyErr::from)
     }
@@ -383,4 +386,36 @@ fn write_rrd_compiled(
 
     encoder.finish()?;
     Ok(())
+}
+
+/// Test-only: return a dict of the Rust `OptimizationProfile::<NAME>` field values.
+///
+/// Used by the Python parity test to confirm that
+/// `OptimizationProfile.{LIVE,DATAPLATFORM}` on the Python side stays in sync
+/// with the Rust constants this module forwards into `ChunkStoreConfig` /
+/// `CompactionOptions` above.
+///
+/// Names: `"LIVE"`, `"DATAPLATFORM"`.
+#[pyfunction]
+pub fn _optimization_profile_values<'py>(
+    py: Python<'py>,
+    name: &str,
+) -> PyResult<Bound<'py, PyDict>> {
+    let p = match name {
+        "LIVE" => OptimizationProfile::LIVE,
+        "DATAPLATFORM" => OptimizationProfile::DATAPLATFORM,
+        other => {
+            return Err(PyValueError::new_err(format!(
+                "unknown profile name: {other}"
+            )));
+        }
+    };
+    let d = PyDict::new(py);
+    d.set_item("chunk_max_bytes", p.chunk_max_bytes)?;
+    d.set_item("chunk_max_rows", p.chunk_max_rows)?;
+    d.set_item("chunk_max_rows_if_unsorted", p.chunk_max_rows_if_unsorted)?;
+    d.set_item("num_extra_passes", p.num_extra_passes)?;
+    d.set_item("gop_batching", p.gop_batching)?;
+    d.set_item("split_size_ratio", p.split_size_ratio)?;
+    Ok(d)
 }

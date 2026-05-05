@@ -62,6 +62,24 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             prop.extract(&opentelemetry_http::HeaderExtractor(request.headers()))
         });
 
+        // Pull the rerun session id out of the inbound `tracestate` (if any) so we can
+        // record it directly as a span field at construction time, instead of relying on
+        // a separate `tracing_subscriber::Layer` that records into a pre-declared field.
+        //
+        // Recording the value here means the field is populated before the span is exported,
+        // and we sidestep the "silent no-op when the field wasn't pre-declared on the span"
+        // pitfall of `Span::record`.
+        let rerun_session_id = {
+            use opentelemetry::trace::TraceContextExt as _;
+            parent_ctx
+                .span()
+                .span_context()
+                .trace_state()
+                .get(crate::RERUN_SESSION_TRACESTATE_KEY)
+                .and_then(crate::RerunTracingSessionId::parse)
+                .map(String::from)
+        };
+
         // This replaces the current tracing context with the extracted one, and it ensures that
         // any spans created within this scope will be children of the extracted context.
         // Note on the guard: guard must stay alive until after span creation so that tracing::span!()
@@ -133,18 +151,11 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             rpc.service = %rpc_service,
             rpc.method = %rpc_method,
 
-            // Record benchmark_id as a top level span field.
-            //
-            // At this stage we may not know yet the actual value (depending on whether
-            // we're generating a new trace or continuing an existing one). However,
-            // we need to pre-declare the field if we want to record a value for it later.
-            //
-            // The field will be filled in by a separate [`tracing_subscriber::Layer`] (see
-            // [`BenchmarkIdLayer`]).
-            //
-            // This will only be filled if we have a benchmark_id in the tracestate.
-            // That's OK, it won't be printed if empty.
-            benchmark_id = tracing::field::Empty,
+            // The rerun session id, recorded as a top-level span field so it is queryable
+            // in Tempo as `{ .rerun_session_id = "…" }`. Extracted from the inbound
+            // `tracestate` header above. Empty when no `tracing_session()` is active on
+            // the client.
+            rerun_session_id = rerun_session_id.as_deref(),
 
             // The gRPC status code (e.g. "Ok", "AlreadyExists", "DeadlineExceeded").
             // Filled in later by `GrpcOnResponse` or `GrpcOnEos`, depending on the endpoint type (unary vs streaming).
@@ -874,53 +885,11 @@ impl tonic::service::Interceptor for TracingInjectorInterceptor {
 
 // ---
 
-use opentelemetry::trace::TraceContextExt as _;
 use tower_http::trace::DefaultOnFailure;
+use tracing::Subscriber;
 use tracing::span::Id;
-use tracing::{Span, Subscriber};
-use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 use tracing_subscriber::Layer;
 use tracing_subscriber::layer::Context;
-
-/// A `tracing_subscriber::Layer` that injects the opentelemetry `benchmark_id` as a
-/// top level field on every span that pre-declares it.
-///
-/// The `benchmark_id` is extracted from the W3C `tracestate` header.
-#[derive(Default)]
-pub struct BenchmarkIdLayer {
-    _private: (),
-}
-
-// Just a marker to avoid injecting multiple times per span.
-struct BenchmarkIdInjected;
-
-impl<S> Layer<S> for BenchmarkIdLayer
-where
-    S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
-{
-    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
-        if let Some(span_ref) = ctx.span(id) {
-            if span_ref.extensions().get::<BenchmarkIdInjected>().is_some() {
-                return;
-            }
-
-            let current_span = Span::current();
-            let otel_cx = current_span.context();
-            let otel_span = otel_cx.span();
-            let span_cx = otel_span.span_context();
-
-            if span_cx.is_valid() {
-                let trace_state = span_cx.trace_state();
-                if let Some(benchmark_id) = trace_state.get("benchmark_id") {
-                    current_span.record("benchmark_id", benchmark_id.to_owned());
-                }
-                span_ref.extensions_mut().insert(BenchmarkIdInjected);
-            }
-        }
-    }
-}
-
-// ---
 
 /// A [`tracing_subscriber::Layer`] that cleans up `SpanMetadata` entries when spans close.
 ///

@@ -151,6 +151,7 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
 
             let runtime = crate::utils::get_tokio_runtime(); // telemetry must be init in a Tokio context
             runtime.block_on(async {
+                let enabled = args.enabled;
                 let telemetry = re_perf_telemetry::Telemetry::init(
                     args,
                     // NOTE: It's a static in this case, so it's never dropped anyhow.
@@ -158,10 +159,29 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
                 )
                 // Perf telemetry is a developer tool, it's not compiled into final user builds.
                 .expect("could not start perf telemetry");
+                // Only flip the flag when telemetry actually wired up the OTel stack.
+                // `Telemetry::init` returns an inert `Self` when `TELEMETRY_ENABLED` is
+                // false, in which case `tracing_session()` cannot work either.
+                if enabled {
+                    TELEMETRY_ACTIVE.store(true, std::sync::atomic::Ordering::Release);
+                }
                 parking_lot::Mutex::new(telemetry)
             })
         })
         .lock()
+}
+
+/// Tracks whether `init_perf_telemetry` has finished setting up the OTel pipeline.
+///
+/// Read by [`telemetry_active`] from the `tracing_session()` Python bridge to fail
+/// fast with a helpful error when telemetry is not active.
+#[cfg(feature = "perf_telemetry")]
+static TELEMETRY_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Returns `true` if `init_perf_telemetry` ran successfully.
+#[cfg(feature = "perf_telemetry")]
+pub(crate) fn telemetry_active() -> bool {
+    TELEMETRY_ACTIVE.load(std::sync::atomic::Ordering::Acquire)
 }
 
 /// The python module is called "rerun_bindings".
@@ -304,6 +324,32 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // tracing bridge: connect Python tracing spans to Rust
     m.add_function(wrap_pyfunction!(
         crate::trace_context::get_trace_context_var,
+        m
+    )?)?;
+
+    // tracing_session(): customer-facing context manager for support correlation.
+    m.add_function(wrap_pyfunction!(
+        crate::tracing_session::get_tracing_session_var,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        crate::tracing_session::is_telemetry_active,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        crate::tracing_session::inc_active_tracing_sessions,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        crate::tracing_session::dec_active_tracing_sessions,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        crate::tracing_session::log_tracing_session_started,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        crate::tracing_session::log_tracing_session_finished,
         m
     )?)?;
 

@@ -152,7 +152,6 @@ impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
     /// * Will automatically wrap data columns in `ListArrays` if they are not already
     /// * Will reorder columns so that Row ID comes before timelines, which come before data
     /// * Will migrate component descriptors to colon-based notation
-    #[tracing::instrument(level = "trace", skip_all)]
     fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {
         re_tracing::profile_function!();
 
@@ -167,7 +166,6 @@ impl TryFrom<SorbetBatch> for ChunkBatch {
     type Error = SorbetError;
 
     /// Will automatically wrap data columns in `ListArrays` if they are not already.
-    #[tracing::instrument(level = "trace", skip_all)]
     fn try_from(sorbet_batch: SorbetBatch) -> Result<Self, Self::Error> {
         re_tracing::profile_function!();
 

@@ -19,7 +19,7 @@ pub use self::external::re_log_types::{
 pub use self::external::re_query::{QueryCache, QueryCacheHandle, StorageEngine};
 #[doc(no_inline)]
 pub use self::external::re_types_core::{ComponentDescriptor, ComponentType};
-pub use self::query::QueryHandle;
+pub use self::query::{NextNRowsOutput, QueryHandle};
 
 pub mod external {
     pub use {arrow, re_chunk, re_chunk_store, re_log_types, re_query, re_types_core};

@@ -83,12 +83,11 @@ impl VideoAssetCache {
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
+                let _ = blob_row_id; // used to be the source id, now unused
                 let video = re_video::VideoDataDescription::load_from_bytes(
                     video_buffer,
                     &media_type,
                     &debug_name,
-                    // For video assets we use the row-id as the source identifier.
-                    blob_row_id.as_tuid(),
                 )
                 .map(|data| Video::load(debug_name.clone(), data, decode_settings));
                 Entry {

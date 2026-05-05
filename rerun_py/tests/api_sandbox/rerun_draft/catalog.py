@@ -204,9 +204,7 @@ class DatasetEntry(Entry):
     ) -> str:
         return self._inner.segment_url(segment_id, timeline, start, end)
 
-    def register(
-        self, recording_uri: str | Sequence[str], *, layer_name: str | Sequence[str] = "base"
-    ) -> RegistrationHandle:
+    def register(self, recording_uri: list[str], *, layer_name: str | Sequence[str] = "base") -> RegistrationHandle:
         return self._inner.register(recording_uri, layer_name=layer_name)
 
     def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandle:

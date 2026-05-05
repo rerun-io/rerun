@@ -4,25 +4,23 @@ use opentelemetry::Context;
 use opentelemetry::propagation::{Extractor, Injector, TextMapPropagator};
 use opentelemetry::trace::TraceContextExt as _;
 
-/// A propagator that enriches `tracestate` with additional key-value pairs
-#[derive(Debug, Clone)]
-pub struct TraceStateEnricher {
-    additional_entries: Vec<(String, String)>,
-}
-
-impl TraceStateEnricher {
-    pub fn new(tracestate_str: &str) -> Self {
-        Self {
-            additional_entries: parse_pairs(tracestate_str).into_iter().collect(),
-        }
-    }
-}
+/// Propagator that enriches the outbound `tracestate` header with the active
+/// `rerun_session_id`, if any.
+///
+/// The id source is resolved on every injection by [`crate::current_rerun_session_id`]:
+/// the Python `tracing_session()` `ContextVar` (when built with `pyo3`). When no scope
+/// is active, this propagator is a no-op.
+///
+/// Registered alongside `TraceContextPropagator` in the global propagator stack;
+/// runs after it, so the existing tracestate (if any) is preserved and merged.
+#[derive(Debug, Default, Clone)]
+pub struct TraceStateEnricher;
 
 impl TextMapPropagator for TraceStateEnricher {
     fn inject_context(&self, cx: &Context, injector: &mut dyn Injector) {
-        if self.additional_entries.is_empty() {
+        let Some(session_id) = crate::current_rerun_session_id() else {
             return;
-        }
+        };
 
         let span = cx.span();
         let span_context = span.span_context();
@@ -30,15 +28,10 @@ impl TextMapPropagator for TraceStateEnricher {
             return;
         }
 
-        // Start with existing `tracestate` from span context
-        let mut trace_state = span_context.trace_state().clone();
-
-        // Add our additional entries
-        for (key, value) in &self.additional_entries {
-            trace_state = trace_state
-                .insert(key.clone(), value.clone())
-                .unwrap_or(trace_state);
-        }
+        let trace_state = span_context.trace_state().clone();
+        let trace_state = trace_state
+            .insert(crate::RERUN_SESSION_TRACESTATE_KEY.to_owned(), session_id)
+            .unwrap_or(trace_state);
 
         let header = trace_state.header();
         if !header.is_empty() {
@@ -47,7 +40,7 @@ impl TextMapPropagator for TraceStateEnricher {
     }
 
     fn extract_with_context(&self, cx: &Context, _extractor: &dyn Extractor) -> Context {
-        // Don't modify extraction - let TraceContextPropagator handle it
+        // Don't modify extraction - let `TraceContextPropagator` handle it.
         cx.clone()
     }
 
@@ -88,7 +81,65 @@ pub fn parse_pairs(input: &str) -> HashMap<String, String> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
+    use opentelemetry::trace::{
+        SpanContext, SpanId, TraceContextExt as _, TraceFlags, TraceId, TraceState,
+    };
+
     use super::*;
+
+    /// Test injector that records all `set` calls into a map.
+    #[derive(Default)]
+    struct MapInjector {
+        entries: HashMap<String, String>,
+    }
+
+    impl Injector for MapInjector {
+        fn set(&mut self, key: &str, value: String) {
+            self.entries.insert(key.to_owned(), value);
+        }
+    }
+
+    fn ctx_with_state(state: TraceState) -> Context {
+        let span_cx = SpanContext::new(
+            TraceId::from_bytes([
+                0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab,
+                0xcd, 0xef,
+            ]),
+            SpanId::from_bytes([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]),
+            TraceFlags::SAMPLED,
+            false,
+            state,
+        );
+        Context::new().with_remote_span_context(span_cx)
+    }
+
+    #[test]
+    fn enricher_no_session_is_noop() {
+        let cx = ctx_with_state(TraceState::default());
+        let mut injector = MapInjector::default();
+
+        // No `pyo3` ContextVar populated in this test → `current_rerun_session_id` returns None.
+        TraceStateEnricher.inject_context(&cx, &mut injector);
+
+        assert!(
+            injector.entries.is_empty(),
+            "expected no header writes, got {:?}",
+            injector.entries
+        );
+    }
+
+    #[test]
+    fn enricher_invalid_span_context_is_noop() {
+        // Default Context has no valid span context.
+        let cx = Context::new();
+        let mut injector = MapInjector::default();
+
+        TraceStateEnricher.inject_context(&cx, &mut injector);
+
+        assert!(injector.entries.is_empty());
+    }
 
     #[test]
     fn test_parse_pairs_resilient() {

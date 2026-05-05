@@ -30,6 +30,8 @@ table TimeRange (
 }
 
 /// Visible time range bounds for a specific timeline.
+///
+/// \example archetypes/line_strips3d_time_window missing="cpp,rs" title="Time-windowed trails (e.g. Trajectories)" image="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1200w.png"
 // Has to be a table because flatbuffer doesn't support strings in structs.
 table VisibleTimeRange (
   "attr.rust.derive": "PartialEq, Eq",

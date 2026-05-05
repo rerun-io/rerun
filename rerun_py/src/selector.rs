@@ -133,4 +133,10 @@ impl PySelectorInternal {
     fn __str__(&self) -> String {
         self.selector.to_string_lossy()
     }
+
+    /// Render this selector as a query string, or `None` if it contains
+    /// a Python callable from `.pipe()` (which cannot be serialized).
+    fn try_to_string(&self) -> Option<String> {
+        self.selector.try_to_string()
+    }
 }

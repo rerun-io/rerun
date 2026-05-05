@@ -149,9 +149,11 @@ impl Transform for StringToVideoCodecUInt32 {
                                 "h264" => VideoCodec::H264,
                                 "h265" => VideoCodec::H265,
                                 "av1" => VideoCodec::AV1,
+                                "vp8" => VideoCodec::VP8,
+                                "vp9" => VideoCodec::VP9,
                                 _ => {
                                     return Err(Error::UnexpectedValue {
-                                        expected: &["h264", "h265", "av1"],
+                                        expected: &["h264", "h265", "av1", "vp8", "vp9"],
                                         actual: codec_str.to_owned(),
                                     });
                                 }
@@ -524,6 +526,10 @@ mod tests {
             Some("h264"),
             Some("H265"),
             Some("aV1"),
+            Some("vp8"),
+            Some("vp9"),
+            Some("Vp8"),
+            Some("vP9"),
         ]);
         assert_eq!(input_array.null_count(), 1);
         let output_array = StringToVideoCodecUInt32::default()
@@ -536,6 +542,10 @@ mod tests {
             Some(VideoCodec::H264 as u32),
             Some(VideoCodec::H265 as u32),
             Some(VideoCodec::AV1 as u32),
+            Some(VideoCodec::VP8 as u32),
+            Some(VideoCodec::VP9 as u32),
+            Some(VideoCodec::VP8 as u32),
+            Some(VideoCodec::VP9 as u32),
         ]);
         assert_eq!(output_array, expected_array);
 
@@ -545,7 +555,7 @@ mod tests {
     /// Tests that we return the correct error when an unsupported codec is in the data.
     #[test]
     fn test_string_to_codec_uint32_unsupported() {
-        let unsupported_codecs = ["vp9"];
+        let unsupported_codecs = ["vp08", "vp09"];
         for &bad_codec in &unsupported_codecs {
             let input_array = StringArray::from(vec![Some("h264"), Some(bad_codec)]);
             let result = StringToVideoCodecUInt32::default().transform(&input_array);

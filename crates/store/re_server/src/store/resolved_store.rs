@@ -134,7 +134,7 @@ impl ResolvedStore {
                 }
                 let store_file = std::fs::File::open(path)?;
                 let provider = Arc::new(
-                    RrdChunkProvider::try_new(store_file, Arc::new(raw_manifest))
+                    RrdChunkProvider::try_from_file(store_file, path, Arc::new(raw_manifest))
                         .map_err(|err| super::Error::RrdLoadingError(err.into()))?,
                 );
                 let lazy = Arc::new(LazyStore::new(provider));

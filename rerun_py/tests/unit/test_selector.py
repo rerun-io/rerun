@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pickle
+
 import pyarrow as pa
 import pyarrow.compute as pc
 import pytest
@@ -109,3 +111,36 @@ def test_pipe_chaining() -> None:
     result = Selector(".data").pipe(Selector(".val")).pipe(lambda a: pc.add(a, 1)).execute(outer)
     assert result is not None
     assert result == pa.array([6.0, 11.0])
+
+
+def test_pickle_roundtrip_simple() -> None:
+    arr = pa.StructArray.from_arrays(
+        [pa.array([1.0, 2.0, 3.0])],
+        names=["x"],
+    )
+    original = Selector(".x")
+    restored = pickle.loads(pickle.dumps(original))
+    assert isinstance(restored, Selector)
+    assert str(restored) == str(original)
+    assert restored.execute(arr) == pa.array([1.0, 2.0, 3.0])
+
+
+def test_pickle_roundtrip_piped_selectors() -> None:
+    inner = pa.StructArray.from_arrays(
+        [pa.array([10, 20])],
+        names=["value"],
+    )
+    outer = pa.StructArray.from_arrays(
+        [inner],
+        names=["nested"],
+    )
+    original = Selector(".nested").pipe(Selector(".value"))
+    restored = pickle.loads(pickle.dumps(original))
+    assert isinstance(restored, Selector)
+    assert restored.execute(outer) == pa.array([10, 20])
+
+
+def test_pickle_rejects_callable_pipe() -> None:
+    sel = Selector(".x").pipe(lambda a: pc.multiply(a, 2))
+    with pytest.raises(TypeError, match="Cannot pickle Selector"):
+        pickle.dumps(sel)

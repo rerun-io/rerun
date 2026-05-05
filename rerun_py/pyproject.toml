@@ -18,6 +18,7 @@ dependencies = [
   "attrs>=23.1.0",
   "numpy>=2",
   "pillow>=8.0.0", # Used for JPEG encoding. 8.0.0 added the `format` arguments to `Image.open`
+  "psutil>=7.0", # Used by `tracing_session()` to capture per-session CPU and network metrics.
   "pyarrow>=18.0.0",
   "typing_extensions>=4.5",
 ]
@@ -61,7 +62,8 @@ dataplatform = [ # NOLINT
 # PyTorch `Dataset` for the Rerun Data Platform.
 dataloader = ["torch>=2.5", "torchvision", "av", "pillow>=8.0.0"]
 
-# Client-side OpenTelemetry export, enabled by `TELEMETRY_ENABLED=true OTEL_SDK_ENABLED=true`.
+# Client-side OpenTelemetry export, enabled by setting `TELEMETRY_ENABLED=true`
+# along with an OTLP endpoint env var (e.g. `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=...`).
 # Only needed for developers profiling the SDK — see `rerun._tracing`.
 tracing = ["opentelemetry-api", "opentelemetry-sdk", "opentelemetry-exporter-otlp-proto-grpc"]
 

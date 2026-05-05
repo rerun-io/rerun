@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::path::Path;
 use std::sync::Arc;
 
 use parking_lot::Mutex;
@@ -12,6 +13,9 @@ pub struct RrdChunkProvider {
     file: Mutex<File>,
     manifest: Arc<RrdManifest>,
     raw_manifest: Arc<RawRrdManifest>,
+
+    /// Human-readable source identifier for diagnostics a.k.a. the file path.
+    source: String,
 }
 
 impl RrdChunkProvider {
@@ -19,12 +23,33 @@ impl RrdChunkProvider {
     ///
     /// The caller must have read and selected the appropriate raw manifest from the footer (e.g. by
     /// `StoreKind::Recording`); byte offsets in the manifest must come from the same file.
-    pub fn try_new(file: File, raw_manifest: Arc<RawRrdManifest>) -> CodecResult<Self> {
+    pub fn try_from_path(
+        path: impl AsRef<Path>,
+        raw_manifest: Arc<RawRrdManifest>,
+    ) -> CodecResult<Self> {
+        let path = path.as_ref();
+        let file = File::open(path)?;
+        Self::try_from_file(file, path, raw_manifest)
+    }
+
+    /// Build a chunk provider from an already-open file handle.
+    ///
+    /// Use this when the caller has already opened the file (e.g. to read the footer): reusing the
+    /// handle avoids a drop-and-reopen race window. `path` is used purely for the diagnostic
+    /// `source()` string and need not be re-opened by this function.
+    ///
+    /// The file's cursor position is irrelevant; chunk reads seek to absolute manifest offsets.
+    pub fn try_from_file(
+        file: File,
+        path: impl AsRef<Path>,
+        raw_manifest: Arc<RawRrdManifest>,
+    ) -> CodecResult<Self> {
         let manifest = Arc::new(RrdManifest::try_new(&raw_manifest)?);
         Ok(Self {
             file: Mutex::new(file),
             manifest,
             raw_manifest,
+            source: path.as_ref().display().to_string(),
         })
     }
 }
@@ -36,6 +61,10 @@ impl ChunkProvider for RrdChunkProvider {
 
     fn raw_manifest(&self) -> &Arc<RawRrdManifest> {
         &self.raw_manifest
+    }
+
+    fn source(&self) -> String {
+        self.source.clone()
     }
 
     fn load_chunks(&self, ids: &[ChunkId]) -> Result<Vec<Arc<Chunk>>, ChunkProviderError> {
@@ -132,7 +161,7 @@ mod tests {
         drop(footer_file);
 
         let store_file = File::open(&path).unwrap();
-        let provider = RrdChunkProvider::try_new(store_file, raw).unwrap();
+        let provider = RrdChunkProvider::try_from_file(store_file, &path, raw).unwrap();
 
         assert_eq!(provider.manifest().col_chunk_ids().len(), chunks.len());
 

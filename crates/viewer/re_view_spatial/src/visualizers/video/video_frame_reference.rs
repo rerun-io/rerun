@@ -192,8 +192,13 @@ impl VideoFrameReferenceVisualizer {
                     );
 
                     let frame_output =
-                        video.frame_at(ctx.render_ctx(), player_stream_id, video_time, &|_| {
-                            &video_buffer
+                        video.frame_at(ctx.render_ctx(), player_stream_id, video_time, &|source| {
+                            match source {
+                                re_video::VideoSource::Span(span) => {
+                                    &video_buffer[span.range_usize()]
+                                }
+                                re_video::VideoSource::Id { .. } => &[],
+                            }
                         });
 
                     #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.

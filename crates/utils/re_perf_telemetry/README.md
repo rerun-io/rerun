@@ -10,9 +10,8 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 In and out of process telemetry and profiling utilities for Rerun & Redap.
 
 Performance telemetry is always disabled by default. It is gated both by a feature flag (`perf_telemetry`) and runtime configuration in the form of environment variables:
-* `TELEMETRY_ENABLED`: is performance telemetry enabled at all (default: `false`)?
+* `TELEMETRY_ENABLED`: is performance telemetry enabled at all (default: `false`)? When on, the OpenTelemetry SDK is initialized; individual exporters (logs/traces/metrics) only fire when their endpoint env var (or the umbrella `OTEL_EXPORTER_OTLP_ENDPOINT`) is set.
 * `TRACY_ENABLED`: is the tracy integration enabled (default: `false`)? works even if `TELEMETRY_ENABLED=false`, to reduce noise in measurements.
-* `OTEL_SDK_ENABLED`: is the OpenTelemetry enabled (default: `false`)? does nothing if `TELEMETRY_ENABLED=false`.
 
 Note that despite the name, this crate also hands all log output to the telemetry backend.
 
@@ -63,8 +62,8 @@ print(df.count())
   # install the tracing extra so the OpenTelemetry Python packages are available:
   $ pixi run uv pip install 'rerun-sdk[tracing]'
 
-  # Run your script with both telemetry and the OpenTelemetry integration enabled:
-  $ TELEMETRY_ENABLED=true OTEL_SDK_ENABLED=true <your_script>
+  # Run your script with telemetry enabled and traces pointed at the local Jaeger:
+  $ TELEMETRY_ENABLED=true OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4317 <your_script>
 
   # Go to the Jaeger UI (http://localhost:16686/search) to look at the results
   ```

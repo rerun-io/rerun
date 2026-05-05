@@ -1,0 +1,11 @@
+# serializer version: 1
+# name: test_summary_format
+  '''
+  /__properties rows=1 static=True timelines=[] cols=['RecordingInfo:start_time']
+  /entity_0 rows=10 static=False timelines=['frame'] cols=['Scalars:scalars', 'frame']
+  /entity_1 rows=10 static=False timelines=['frame'] cols=['Scalars:scalars', 'frame']
+  /entity_2 rows=10 static=False timelines=['frame'] cols=['Scalars:scalars', 'frame']
+  /entity_3 rows=10 static=False timelines=['frame'] cols=['Scalars:scalars', 'frame']
+  /entity_4 rows=10 static=False timelines=['frame'] cols=['Scalars:scalars', 'frame']
+  '''
+# ---

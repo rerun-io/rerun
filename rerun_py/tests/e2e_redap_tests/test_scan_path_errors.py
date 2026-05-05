@@ -61,7 +61,7 @@ def test_datafusion_error_surfaces_to_python_with_trace_id(grpc_method: str, exp
             client = server.client()
 
             ds = client.create_dataset(f"scan_error_test_{grpc_method}")
-            handle = ds.register(rrd_path.absolute().as_uri())
+            handle = ds.register([rrd_path.absolute().as_uri()])
             handle.wait(timeout_secs=10)
 
             # Verify the normal query path works before injecting the error.

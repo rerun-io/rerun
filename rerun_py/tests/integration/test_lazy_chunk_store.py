@@ -1,4 +1,4 @@
-"""Integration tests for lazy ChunkStore loading."""
+"""Integration tests for LazyStore."""
 
 from __future__ import annotations
 
@@ -7,12 +7,15 @@ from typing import TYPE_CHECKING
 import pytest
 import rerun as rr
 from rerun.experimental import (
-    OptimizationSettings,
+    LazyStore,
+    OptimizationProfile,
     RrdReader,
 )
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from syrupy.assertion import SnapshotAssertion
 
 LAZY_RRD_APPLICATION_ID = "rerun_example_lazy_test_app"
 LAZY_RRD_RECORDING_ID = "lazy-rrd-rec-id"
@@ -35,6 +38,12 @@ def lazy_rrd_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
             )
 
     return rrd_path
+
+
+def test_store_returns_lazy_store(lazy_rrd_path: Path) -> None:
+    """RrdReader.store() returns a LazyStore."""
+    store = RrdReader(lazy_rrd_path).store()
+    assert isinstance(store, LazyStore)
 
 
 def test_lazy_store_has_schema(lazy_rrd_path: Path) -> None:
@@ -89,10 +98,30 @@ def test_lazy_store_filter(lazy_rrd_path: Path) -> None:
 def test_lazy_store_collect_optimize(lazy_rrd_path: Path) -> None:
     """Collecting a lazy store with optimization settings produces a materialized store."""
     store = RrdReader(lazy_rrd_path).store()
-    optimized = store.stream().collect(optimize=OptimizationSettings())
+    optimized = store.stream().collect(optimize=OptimizationProfile())
 
     chunks = optimized.stream().to_chunks()
     assert len(chunks) > 0
+
+
+def test_summary_round_trip(lazy_rrd_path: Path) -> None:
+    """
+    `lazy.summary()` matches `lazy.stream().collect().summary()` byte-for-byte.
+
+    Caveat: `collect()` runs single-pass insert-time compaction at default config,
+    so this only holds when the source RRD is already optimized (no chunks
+    mergeable under default `ChunkStoreConfig`). The `lazy_rrd_path` fixture
+    uses one `send_columns` call per entity, producing exactly one chunk each
+    — already as merged as collect can make them.
+    """
+    lazy = RrdReader(lazy_rrd_path).store()
+    assert lazy.summary() == lazy.stream().collect().summary()
+
+
+def test_summary_format(lazy_rrd_path: Path, snapshot: SnapshotAssertion) -> None:
+    """Snapshot the manifest-derived summary so the format stays stable."""
+    lazy = RrdReader(lazy_rrd_path).store()
+    assert lazy.summary() == snapshot
 
 
 def test_multiple_store_calls(lazy_rrd_path: Path) -> None:

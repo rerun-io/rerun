@@ -139,7 +139,6 @@ async fn test_grid_view_flagging() {
 ///
 /// Creates 30 rows with varying content lengths — some with long multi-word notes
 /// that wrap, some with short or missing values — so cards end up at different heights.
-/// TODO(RR-4405): This looks bad right now.
 #[tokio::test(flavor = "multi_thread")] // `multi_thread` required because `ConnectionRegistryHandle::credentials` uses `block_in_place`.
 async fn test_grid_view_non_uniform_cards() {
     let (session_context, table_ref) = setup_non_uniform_table();
