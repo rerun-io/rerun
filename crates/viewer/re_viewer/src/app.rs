@@ -196,6 +196,8 @@ impl App {
     ) -> Self {
         re_tracing::profile_function!();
 
+        let is_test = app_env.is_test();
+
         let connection_registry = connection_registry
             .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
 
@@ -445,7 +447,11 @@ impl App {
             state,
             background_tasks: Default::default(),
             store_hub: Some(StoreHub::new(
-                blueprint_loader(),
+                if is_test {
+                    noop_blueprint_loader()
+                } else {
+                    blueprint_loader()
+                },
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
@@ -3638,6 +3644,12 @@ impl App {
 #[cfg(target_arch = "wasm32")]
 fn blueprint_loader() -> BlueprintPersistence {
     // TODO(#2579): implement persistence for web
+    noop_blueprint_loader()
+}
+
+/// No-op blueprint persistence used on wasm. Also used in tests so that on-disk blueprints from
+/// the developer's running viewer don't leak into the test environment.
+fn noop_blueprint_loader() -> BlueprintPersistence {
     BlueprintPersistence {
         loader: None,
         saver: None,
@@ -3675,7 +3687,6 @@ fn blueprint_loader() -> BlueprintPersistence {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn save_blueprint_to_disk(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<()> {
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
 

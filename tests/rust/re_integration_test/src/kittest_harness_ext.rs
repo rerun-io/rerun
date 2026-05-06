@@ -270,7 +270,6 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         store_hub
             .add_chunk_for_tests(&recording_id, &chunk)
             .expect("chunk should be successfully added");
-        self.run_ok();
     }
 
     fn init_recording(&mut self) {
