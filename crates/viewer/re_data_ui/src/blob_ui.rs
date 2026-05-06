@@ -237,11 +237,10 @@ impl BlobUi {
                 file_name.push_str(file_extension);
             }
 
-            ctx.command_sender.save_file_dialog(
+            ctx.command_sender.save_files_dialog(
                 re_capabilities::MainThreadToken::i_promise_i_am_on_the_main_thread(),
-                &file_name,
-                "Save blob".to_owned(),
-                self.blob.to_vec(),
+                "Save blob",
+                vec![(file_name, self.blob.to_vec())],
             );
         })
     }

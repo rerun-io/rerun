@@ -453,11 +453,10 @@ impl ImageUi {
                         .map_or("image", |name| name.unescaped_str())
                         .to_owned()
                 );
-                ctx.command_sender.save_file_dialog(
+                ctx.command_sender.save_files_dialog(
                     main_thread_token,
-                    &file_name,
-                    "Save image".to_owned(),
-                    png_bytes,
+                    "Save image",
+                    vec![(file_name, png_bytes)],
                 );
             }
             Err(err) => {

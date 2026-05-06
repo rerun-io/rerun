@@ -43,14 +43,43 @@ impl ContextMenuAction for ScreenshotAction {
         })
     }
 
-    fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
+    fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
         match self {
             Self::CopyScreenshot => "Copy screenshot".to_owned(),
-            Self::SaveScreenshot => "Save screenshot…".to_owned(),
+            Self::SaveScreenshot => {
+                if ctx.selection.len() > 1 {
+                    "Save screenshots…".to_owned()
+                } else {
+                    "Save screenshot…".to_owned()
+                }
+            }
         }
     }
 
+    /// Processes screenshots for all selected views together.
+    fn process_selection(&self, ctx: &ContextMenuContext<'_>) {
+        let mut view_ids = Vec::new();
+
+        ctx.selection.iter().for_each(|(item, _)| {
+            if let Item::View(view_id) = item {
+                view_ids.push(*view_id);
+            }
+        });
+
+        self.process_views(ctx, view_ids);
+    }
+
     fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
+        self.process_views(ctx, vec![*view_id]);
+    }
+}
+
+impl ScreenshotAction {
+    fn process_views(&self, ctx: &ContextMenuContext<'_>, view_ids: Vec<ViewId>) {
+        if view_ids.is_empty() {
+            return;
+        }
+
         let target = match self {
             Self::CopyScreenshot => ScreenshotTarget::CopyToClipboard,
             Self::SaveScreenshot => ScreenshotTarget::SaveToPathFromFileDialog,
@@ -59,7 +88,7 @@ impl ContextMenuAction for ScreenshotAction {
             .command_sender()
             .send_system(SystemCommand::SaveScreenshot {
                 target,
-                view_id: Some(*view_id),
+                view_ids: Some(view_ids),
             });
     }
 }

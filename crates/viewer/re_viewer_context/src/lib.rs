@@ -89,6 +89,8 @@ pub use self::component_ui_registry::{
 };
 pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
 pub use self::drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload};
+#[cfg(target_arch = "wasm32")]
+pub use self::file_dialog::async_save_files_dialog_wasm;
 pub use self::file_dialog::sanitize_file_name;
 pub use self::focus_target::FocusTarget;
 pub use self::heuristics::suggest_view_for_each_entity;
@@ -190,12 +192,10 @@ pub fn contents_name_style(name: &ContentsName) -> re_ui::LabelStyle {
 /// Specified what we are screenshotting.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScreenshotInfo {
-    /// What portion of the UI to take a screenshot of (in ui points).
-    pub ui_rect: Option<egui::Rect>,
-    pub pixels_per_point: f32,
+    /// What portions of the UI to take a screenshot of (in ui points).
+    pub ui_rects: Vec<(String, Option<egui::Rect>)>, // (name, ui_rect)
 
-    /// Name of the screenshot (e.g. view name), excluding file extension.
-    pub name: String,
+    pub pixels_per_point: f32,
 
     /// Where to put the screenshot.
     pub target: ScreenshotTarget,

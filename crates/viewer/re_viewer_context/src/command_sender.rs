@@ -171,9 +171,9 @@ pub enum SystemCommand {
         /// Where to save the screenshot.
         target: ScreenshotTarget,
 
-        /// Optional view id to screenshot a specific view.
+        /// Optional view ids to screenshot specific views.
         /// If None, screenshots the entire viewer.
-        view_id: Option<ViewId>,
+        view_ids: Option<Vec<ViewId>>,
     },
 }
 

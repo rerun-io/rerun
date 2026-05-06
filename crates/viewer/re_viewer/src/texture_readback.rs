@@ -39,11 +39,10 @@ impl TextureReadbacks {
                 ) {
                     re_log::error!("Failed to encode preview image as PNG: {err}");
                 } else {
-                    command_sender.save_file_dialog(
+                    command_sender.save_files_dialog(
                         re_capabilities::MainThreadToken::from_egui_ui(ui),
-                        "preview.png",
-                        "Preview Image".to_owned(),
-                        png_bytes,
+                        "Preview Image",
+                        vec![("preview.png".to_owned(), png_bytes)],
                     );
                 }
 

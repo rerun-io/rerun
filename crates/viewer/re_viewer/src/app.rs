@@ -1399,42 +1399,53 @@ impl App {
                     _ => true,
                 });
             }
-            SystemCommand::SaveScreenshot { target, view_id } => {
-                if let Some(view_id) = view_id {
-                    // Screenshot a specific view
-                    if let Some(view_info) = self.egui_ctx.memory_mut(|mem| {
-                        mem.caches
-                            .cache::<re_viewer_context::ViewRectPublisher>()
-                            .get(&view_id)
-                            .cloned()
-                    }) {
-                        let re_viewer_context::PublishedViewInfo { name, rect } = view_info;
-                        let rect = rect.shrink(2.5); // Hacky: Shrink so we don't accidentally include the border of the view.
-                        if !rect.is_positive() {
-                            re_log::warn!("View too small for a screenshot");
-                            return;
-                        }
+            SystemCommand::SaveScreenshot { target, view_ids } => {
+                // collect ui_rects for all view_ids
+                let mut ui_rects = Vec::new(); // (name, ui_rect)
 
-                        self.egui_ctx
-                            .send_viewport_cmd(egui::ViewportCommand::Screenshot(
-                                egui::UserData::new(re_viewer_context::ScreenshotInfo {
-                                    ui_rect: Some(rect),
-                                    pixels_per_point: self.egui_ctx.pixels_per_point(),
-                                    name,
-                                    target,
-                                }),
-                            ));
-                    } else {
-                        re_log::warn!("View {view_id} not found for screenshot");
+                // Screenshot specific views
+                if let Some(view_ids) = view_ids {
+                    let view_infos = self.egui_ctx.memory_mut(|mem| {
+                        view_ids
+                            .iter()
+                            .map(|view_id| {
+                                (
+                                    view_id,
+                                    mem.caches
+                                        .cache::<re_viewer_context::ViewRectPublisher>()
+                                        .get(view_id)
+                                        .cloned(),
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                    });
+
+                    for (view_id, view_info) in view_infos {
+                        if let Some(view_info) = view_info {
+                            let re_viewer_context::PublishedViewInfo { name, rect } = view_info;
+                            let rect = rect.shrink(2.5); // Hacky: Shrink so we don't accidentally include the border of the view.
+                            if !rect.is_positive() {
+                                re_log::warn!("View too small for a screenshot");
+                                continue;
+                            }
+
+                            ui_rects.push((name, Some(rect)));
+                        } else {
+                            re_log::warn!("View {view_id} not found for screenshot");
+                        }
                     }
-                } else {
-                    // Screenshot the entire viewer
+                }
+                // Screenshot the entire viewer
+                else {
+                    ui_rects.push(("screenshot".to_owned(), None));
+                }
+
+                if !ui_rects.is_empty() {
                     self.egui_ctx
                         .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
                             re_viewer_context::ScreenshotInfo {
-                                ui_rect: None,
+                                ui_rects,
                                 pixels_per_point: self.egui_ctx.pixels_per_point(),
-                                name: "screenshot".to_owned(),
                                 target,
                             },
                         )));
@@ -2952,9 +2963,9 @@ impl App {
             }
 
             DataSourceUiCommand::SaveScreenshot { file_path, view_id } => {
-                let view_id = if let Some(view_id) = view_id {
+                let view_ids = if let Some(view_id) = view_id {
                     if let Ok(view_id) = uuid::Uuid::parse_str(&view_id) {
-                        Some(view_id.into())
+                        Some(vec![view_id.into()])
                     } else {
                         re_log::error!(
                             "Failed to parse view id from {view_id:?}. Expected a UUID."
@@ -2968,7 +2979,7 @@ impl App {
                 self.command_sender
                     .send_system(SystemCommand::SaveScreenshot {
                         target: re_viewer_context::ScreenshotTarget::SaveToPath(file_path),
-                        view_id,
+                        view_ids,
                     });
             }
         }
@@ -3333,54 +3344,87 @@ impl App {
             .and_then(|data| data.downcast_ref::<ScreenshotInfo>())
         {
             let ScreenshotInfo {
-                ui_rect,
+                ui_rects,
                 pixels_per_point,
-                name,
                 target,
-            } = (*info).clone();
+            } = info;
 
-            let rgba = if let Some(ui_rect) = ui_rect {
-                Arc::new(image.region(&ui_rect, Some(pixels_per_point)))
-            } else {
-                image.clone()
-            };
+            if ui_rects.is_empty() {
+                re_log::error!("No UI rectangles to screenshot");
+                return;
+            }
+
+            fn get_rect_image(
+                image: &Arc<egui::ColorImage>,
+                ui_rect: Option<&egui::Rect>,
+                pixels_per_point: &f32,
+            ) -> Arc<egui::ColorImage> {
+                if let Some(ui_rect) = ui_rect {
+                    Arc::new(image.region(ui_rect, Some(*pixels_per_point)))
+                } else {
+                    (*image).clone()
+                }
+            }
 
             match target {
                 re_viewer_context::ScreenshotTarget::CopyToClipboard => {
-                    self.egui_ctx.copy_image((*rgba).clone());
-                }
-
-                re_viewer_context::ScreenshotTarget::SaveToPathFromFileDialog => {
-                    use image::ImageEncoder as _;
-                    let mut png_bytes: Vec<u8> = Vec::new();
-                    if let Err(err) = image::codecs::png::PngEncoder::new(&mut png_bytes)
-                        .write_image(
-                            rgba.as_raw(),
-                            rgba.width() as u32,
-                            rgba.height() as u32,
-                            image::ExtendedColorType::Rgba8,
-                        )
-                    {
-                        re_log::error!("Failed to encode screenshot as PNG: {err}");
-                    } else {
-                        let file_name = format!("{name}.png");
-                        self.command_sender.save_file_dialog(
-                            self.main_thread_token,
-                            &file_name,
-                            "Save screenshot".to_owned(),
-                            png_bytes,
+                    if ui_rects.len() > 1 {
+                        re_log::error!(
+                            "Copying multiple screenshots to clipboard is not supported"
                         );
+                        return;
                     }
-                }
 
+                    let (_, ui_rect) = ui_rects[0];
+                    let rect_image = get_rect_image(image, ui_rect.as_ref(), pixels_per_point);
+                    self.egui_ctx.copy_image((*rect_image).clone());
+                }
+                re_viewer_context::ScreenshotTarget::SaveToPathFromFileDialog => {
+                    let mut png_files = Vec::new();
+
+                    for (name, ui_rect) in ui_rects {
+                        let rect_image = get_rect_image(image, ui_rect.as_ref(), pixels_per_point);
+
+                        use image::ImageEncoder as _;
+                        let mut png_bytes: Vec<u8> = Vec::new();
+                        if let Err(err) = image::codecs::png::PngEncoder::new(&mut png_bytes)
+                            .write_image(
+                                rect_image.as_raw(),
+                                rect_image.width() as u32,
+                                rect_image.height() as u32,
+                                image::ExtendedColorType::Rgba8,
+                            )
+                        {
+                            re_log::error!("Failed to encode screenshot as PNG: {err}");
+                        } else {
+                            let file_name = format!("{name}.png");
+                            png_files.push((file_name, png_bytes));
+                        }
+                    }
+
+                    self.command_sender.save_files_dialog(
+                        self.main_thread_token,
+                        "Save screenshot",
+                        png_files,
+                    );
+                }
                 re_viewer_context::ScreenshotTarget::SaveToPath(file_path) => {
                     #[cfg(not(target_arch = "wasm32"))]
                     {
-                        let rgba = rgba.clone();
+                        if ui_rects.len() > 1 {
+                            re_log::error!(
+                                "Saving multiple screenshots to the same path is not supported"
+                            );
+                            return;
+                        }
+
+                        let (_, ui_rect) = ui_rects[0];
+                        let rect_image = get_rect_image(image, ui_rect.as_ref(), pixels_per_point);
+
                         let Some(rgba_image) = image::RgbaImage::from_vec(
-                            rgba.width() as _,
-                            rgba.height() as _,
-                            bytemuck::pod_collect_to_vec(&rgba.pixels),
+                            rect_image.width() as _,
+                            rect_image.height() as _,
+                            bytemuck::pod_collect_to_vec(&rect_image.pixels),
                         ) else {
                             re_log::error!("Failed to create image from screenshot data");
                             return;
@@ -3397,10 +3441,11 @@ impl App {
                             Err(err) => {
                                 re_log::error!(?file_path, "Failed to save screenshot: {err}");
                                 // Image library has the bad habit of creating the file even when it fails e.g. due to unsupported format. Remove it again.
-                                std::fs::remove_file(&file_path).ok();
+                                std::fs::remove_file(file_path).ok();
                             }
                         }
                     }
+
                     #[cfg(target_arch = "wasm32")]
                     {
                         re_log::error!(
@@ -4365,7 +4410,7 @@ fn save_profile_trace(view: &re_tracing::reexports::puffin::FrameView) -> anyhow
     Ok(())
 }
 
-// TODO(emilk): unify this with `ViewerContext::save_file_dialog`
+// TODO(emilk): unify this with `ViewerContext::save_files_dialog`
 #[allow(clippy::allow_attributes, clippy::needless_pass_by_ref_mut)] // `app` is only used on native
 #[allow(clippy::unnecessary_wraps)] // cannot return error on web
 fn save_entity_db(
@@ -4390,8 +4435,18 @@ fn save_entity_db(
     #[cfg(target_arch = "wasm32")]
     {
         wasm_bindgen_futures::spawn_local(async move {
+            let options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
+            let mut data = Vec::new();
             if let Err(err) =
-                async_save_dialog(rrd_version, &file_name, &title, messages.into_iter()).await
+                re_log_encoding::Encoder::encode_into(rrd_version, options, messages, &mut data)
+            {
+                re_log::error!("Failed to encode messages: {err}");
+                return;
+            }
+
+            if let Err(err) =
+                re_viewer_context::async_save_files_dialog_wasm(title, vec![(file_name, data)])
+                    .await
             {
                 re_log::error!("File saving failed: {err}");
             }
@@ -4417,31 +4472,6 @@ fn save_entity_db(
     }
 
     Ok(())
-}
-
-#[cfg(target_arch = "wasm32")]
-async fn async_save_dialog(
-    rrd_version: CrateVersion,
-    file_name: &str,
-    title: &str,
-    messages: impl Iterator<Item = re_chunk::ChunkResult<LogMsg>>,
-) -> anyhow::Result<()> {
-    use anyhow::Context as _;
-
-    let file_handle = rfd::AsyncFileDialog::new()
-        .set_file_name(file_name)
-        .set_title(title)
-        .save_file()
-        .await;
-
-    let Some(file_handle) = file_handle else {
-        return Ok(()); // aborted
-    };
-
-    let options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
-    let mut bytes = Vec::new();
-    re_log_encoding::Encoder::encode_into(rrd_version, options, messages, &mut bytes)?;
-    file_handle.write(&bytes).await.context("Failed to save")
 }
 
 /// Propagates [`re_viewer_context::TimeControlResponse`] to [`ViewerEventDispatcher`].
