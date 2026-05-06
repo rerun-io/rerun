@@ -1938,14 +1938,18 @@ impl App {
                 egui_ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
 
-            UICommand::OpenWebHelp => {
+            UICommand::OpenWebsite => {
                 egui_ctx.open_url(egui::output::OpenUrl {
-                    url: "https://www.rerun.io/docs/getting-started/navigating-the-viewer"
-                        .to_owned(),
+                    url: "https://rerun.io/".to_owned(),
                     new_tab: true,
                 });
             }
-
+            UICommand::OpenWebHelp => {
+                egui_ctx.open_url(egui::output::OpenUrl {
+                    url: "https://rerun.io/docs/getting-started/navigating-the-viewer".to_owned(),
+                    new_tab: true,
+                });
+            }
             UICommand::OpenRerunDiscord => {
                 egui_ctx.open_url(egui::output::OpenUrl {
                     url: "https://discord.gg/PXtCgFBSmH".to_owned(),

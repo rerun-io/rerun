@@ -36,8 +36,6 @@ PATH_PREFIXES_ALLOWED_TO_CONTAIN_NON_LFS_PNGS = (
     "crates/viewer/re_ui/data/icons/",
     "crates/viewer/re_ui/data/logo_dark_mode.png",
     "crates/viewer/re_ui/data/logo_light_mode.png",
-    "crates/viewer/re_viewer/data/app_icon_mac.png",
-    "crates/viewer/re_viewer/data/app_icon_windows.png",
     "docs/snippets/all/archetypes/ferris.png",
     "docs/snippets/all/archetypes/encoded_depth.png",
     "docs/snippets/src/snippets/ferris.png",

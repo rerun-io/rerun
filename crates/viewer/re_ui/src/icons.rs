@@ -116,9 +116,7 @@ macro_rules! icon_from_path {
     };
 }
 
-pub const RERUN_MENU: Icon = icon_from_path!("../data/icons/rerun_menu.svg");
-
-pub const RERUN_IO_TEXT: Icon = icon_from_path!("../data/icons/rerun_io.svg");
+pub const RERUN_WORDMARK: Icon = icon_from_path!("../data/icons/rerun_wordmark.svg");
 
 pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
 
