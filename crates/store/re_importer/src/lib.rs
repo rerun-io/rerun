@@ -636,6 +636,7 @@ fn test_supported_mcap_decoder_identifiers() {
     // Check that expected identifiers are present.
     assert!(as_strings.contains(&FOXGLOVE_LENSES_IDENTIFIER.to_owned()));
     assert!(as_strings.contains(&URDF_DECODER_IDENTIFIER.to_owned()));
+    assert!(as_strings.contains(&"attachments".to_owned()));
     assert!(as_strings.contains(&"raw".to_owned()));
     assert!(as_strings.contains(&"protobuf".to_owned()));
     assert!(as_strings.contains(&"ros2msg".to_owned()));

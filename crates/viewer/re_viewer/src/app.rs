@@ -196,6 +196,8 @@ impl App {
     ) -> Self {
         re_tracing::profile_function!();
 
+        let is_test = app_env.is_test();
+
         let connection_registry = connection_registry
             .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
 
@@ -282,6 +284,10 @@ impl App {
 
         if app_env.is_test() {
             state.app_options = AppOptions::test();
+        }
+
+        if startup_options.enable_experimental_status_view {
+            state.app_options.experimental.enable_status_view = true;
         }
 
         if startup_options.enable_experimental_status_view {
@@ -445,7 +451,11 @@ impl App {
             state,
             background_tasks: Default::default(),
             store_hub: Some(StoreHub::new(
-                blueprint_loader(),
+                if is_test {
+                    noop_blueprint_loader()
+                } else {
+                    blueprint_loader()
+                },
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
@@ -682,6 +692,29 @@ impl App {
         &self.rx_log
     }
 
+    /// The registry of component UIs used by the viewer.
+    pub fn component_ui_registry_mut(&mut self) -> &mut ComponentUiRegistry {
+        &mut self.component_ui_registry
+    }
+
+    /// Registers runtime reflection metadata for a custom archetype.
+    pub fn add_archetype_reflection(
+        &mut self,
+        archetype_name: re_sdk_types::ArchetypeName,
+        archetype_reflection: re_sdk_types::reflection::ArchetypeReflection,
+    ) {
+        for field in &archetype_reflection.fields {
+            let descriptor = field.component_descriptor(archetype_name);
+            self.reflection
+                .component_identifiers
+                .insert(descriptor.component, descriptor);
+        }
+
+        self.reflection
+            .archetypes
+            .insert(archetype_name, archetype_reflection);
+    }
+
     /// Adds a new view class to the viewer.
     pub fn add_view_class<T: ViewClass + Default + 'static>(
         &mut self,
@@ -882,7 +915,8 @@ impl App {
                 | LogSource::JsChannel { .. }
                 | LogSource::Sdk
                 | LogSource::Stdin
-                | LogSource::MessageProxy(_) => false,
+                | LogSource::MessageProxy(_)
+                | LogSource::EmbeddedTableBlueprint => false,
             };
 
             if should_close {
@@ -1035,7 +1069,8 @@ impl App {
                     | LogSource::Sdk
                     | LogSource::RedapGrpcStream { .. }
                     | LogSource::MessageProxy { .. }
-                    | LogSource::Stdin => true,
+                    | LogSource::Stdin
+                    | LogSource::EmbeddedTableBlueprint => true,
                 });
             }
 
@@ -1448,6 +1483,13 @@ impl App {
                 // For now we do a focus switch but this isn't ideal since it breaks the flow of programmatic screenshot taking.
                 self.egui_ctx
                     .send_viewport_cmd(egui::ViewportCommand::Focus);
+            }
+
+            SystemCommand::RegisterTableBlueprint {
+                table_id,
+                blueprint,
+            } => {
+                store_hub.insert_table_blueprint(table_id, *blueprint);
             }
         }
     }
@@ -3245,15 +3287,15 @@ impl App {
                     return true; // We expect data soon, so fade-in
                 }
 
-                LogSource::MessageProxy { .. } => {
-                    // We start a gRPC server by default in native rerun, i.e. when just running `rerun`,
-                    // and in that case fading in the welcome screen would be slightly annoying.
-                    // However, we also use the gRPC server for sending data from the logging SDKs
-                    // when they call `spawn()`, and in that case we really want to fade in the welcome screen.
-                    // Therefore `spawn()` uses the special `--expect-data-soon` flag
-                    // (handled earlier in this function), so here we know we are in the other case:
-                    // a user calling `rerun` in their terminal (don't fade in).
-                }
+                LogSource::EmbeddedTableBlueprint
+                // We start a gRPC server by default in native rerun, i.e. when just running `rerun`,
+                // and in that case fading in the welcome screen would be slightly annoying.
+                // However, we also use the gRPC server for sending data from the logging SDKs
+                // when they call `spawn()`, and in that case we really want to fade in the welcome screen.
+                // Therefore `spawn()` uses the special `--expect-data-soon` flag
+                // (handled earlier in this function), so here we know we are in the other case:
+                // a user calling `rerun` in their terminal (don't fade in).
+                | LogSource::MessageProxy { .. } => {}
             }
         }
 
@@ -3559,7 +3601,32 @@ impl App {
                 continue;
             };
 
-            let time_cursor = self.state.time_cursor_for(recording.store_id());
+            let time_cursor = match open_kind {
+                RecordingOpenKind::Active => self.state.time_cursor_for(recording.store_id()),
+                RecordingOpenKind::Preview => {
+                    let timelines = recording.timelines();
+                    let timeline =
+                        re_chunk::Timeline::pick_best_timeline(timelines.values(), |t| {
+                            recording.num_temporal_rows_on_timeline(t.name())
+                        });
+
+                    Some(re_entity_db::PrefetchTimeCursor {
+                        time_cursor: re_log_types::TimelinePoint {
+                            name: *timeline.name(),
+                            typ: timeline.typ(),
+                            // TODO(RR-4257): Don't hack mid-point time
+                            time: recording
+                                .rrd_manifest_index()
+                                .timeline_range(timeline.name())
+                                .map(|r| r.center())
+                                .unwrap_or(re_chunk::TimeInt::ZERO),
+                        },
+                        speed_if_unpaused: 1.0,
+                        loop_range: None,
+                    })
+                }
+                RecordingOpenKind::Inactive => None,
+            };
             if let Some(redap_uri) = recording.redap_uri() {
                 let store_id = recording.store_id().clone();
                 recordings_info.insert(
@@ -3593,6 +3660,12 @@ impl App {
 #[cfg(target_arch = "wasm32")]
 fn blueprint_loader() -> BlueprintPersistence {
     // TODO(#2579): implement persistence for web
+    noop_blueprint_loader()
+}
+
+/// No-op blueprint persistence used on wasm. Also used in tests so that on-disk blueprints from
+/// the developer's running viewer don't leak into the test environment.
+fn noop_blueprint_loader() -> BlueprintPersistence {
     BlueprintPersistence {
         loader: None,
         saver: None,
@@ -3630,7 +3703,6 @@ fn blueprint_loader() -> BlueprintPersistence {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn save_blueprint_to_disk(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<()> {
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
 

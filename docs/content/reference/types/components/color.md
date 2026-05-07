@@ -44,4 +44,5 @@ UInt32
 * [`Points3D`](../archetypes/points3d.md)
 * [`SeriesLines`](../archetypes/series_lines.md)
 * [`SeriesPoints`](../archetypes/series_points.md)
+* [`StatusConfiguration`](../archetypes/status_configuration.md?speculative-link)
 * [`TextLog`](../archetypes/text_log.md)

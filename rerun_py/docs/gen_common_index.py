@@ -321,7 +321,7 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Status",
-        class_list=["archetypes.Status"],
+        class_list=["archetypes.Status", "archetypes.StatusConfiguration"],
         gen_page=False,
     ),
     Section(

@@ -54,6 +54,17 @@ table VideoStream (
 
     // --- Optional ---
 
+    /// Whether the corresponding [components.VideoSample] contains a keyframe.
+    ///
+    /// A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+    /// start decoding the stream with no prior decoder state. See [components.IsKeyframe]
+    /// and [components.VideoCodec] for the codec-specific definition.
+    ///
+    /// This field is optional. It does not change how the stream itself is decoded: it is
+    /// metadata that travels with the sample and can be inspected when querying the data
+    /// back, for example to locate sync points or build a frame index.
+    is_keyframe: rerun.components.IsKeyframe ("attr.rerun.component_optional", nullable, order: 2100);
+
     // TODO(#3982): add orientation.
 
     /// Opacity of the video stream, useful for layering several media.

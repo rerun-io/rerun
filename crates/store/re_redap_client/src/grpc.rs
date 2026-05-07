@@ -70,7 +70,15 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
             .and_then(|ep| ep.tls_config(tls_config))
             .map_err(|err| ApiError::connection_with_source(None, err, "connecting to server"))?
             .http2_adaptive_window(true) // Optimize for throughput
-            .connect_timeout(std::time::Duration::from_secs(10));
+            .connect_timeout(std::time::Duration::from_secs(10))
+            // Send HTTP/2 PINGs every 30s to keep connections alive across NATs / cloud LBs
+            // that silently drop idle TCP. Without a client-side keep-alive, idle long-lived
+            // channels were torn down only when one side's keep-alive eventually fired,
+            // surfacing as confusing "slow" requests on the next call.
+            .http2_keep_alive_interval(std::time::Duration::from_secs(30))
+            .keep_alive_timeout(std::time::Duration::from_secs(20))
+            .keep_alive_while_idle(true)
+            .tcp_keepalive(Some(std::time::Duration::from_secs(30)));
 
         if false {
             // NOTE: Tried it, had no noticeable effects in any of my benchmarks.
@@ -221,6 +229,7 @@ pub(crate) async fn client(
 // in practice.
 pub type ChunksWithSegment = Vec<(Chunk, Option<String>)>;
 
+#[tracing::instrument(level = "debug", skip_all)]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn fetch_chunks_response_to_chunk_and_segment_id(
     response: crate::FetchChunksResponseStream,
@@ -240,9 +249,12 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
             tokio::task::spawn_blocking(move || {
                 let _parent_guard = parent_span.enter();
                 let r = resp?;
-                let _span =
-                    tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = r.chunks.len())
-                        .entered();
+                let _span = tracing::trace_span!(
+                    parent: &parent_span,
+                    "fetch_chunks::batch_decode",
+                    num_chunks = r.chunks.len(),
+                )
+                .entered();
 
                 r.chunks
                     .into_iter()
@@ -635,7 +647,7 @@ async fn stream_segment_from_server(
                 include_temporal_data: true,
                 query: Some(
                     re_protos::cloud::v1alpha1::ext::Query::latest_at_range(
-                        time_selection.timeline.name(),
+                        *time_selection.timeline.name(),
                         time_selection.range,
                     )
                     .into(),

@@ -175,7 +175,7 @@ Configure in the selection panel:
         let (view_columns, selection) = view_query.apply_column_selection(ctx, &view_columns)?;
         dataframe_query.selection = Some(selection);
 
-        let query_handle = query_engine.query(dataframe_query);
+        let mut query_handle = query_engine.query(dataframe_query);
 
         // Time cursor row — always computed when timelines match (for the visual indicator)
         let timelines_match = timeline.name() == ctx.time_ctrl.timeline_name();
@@ -204,7 +204,7 @@ Configure in the selection panel:
         let hide_column_actions = dataframe_ui(
             &ctx.active_recording_store_view_context(),
             ui,
-            &query_handle,
+            &mut query_handle,
             &mut state.expanded_rows_cache,
             &query.view_id,
             time_cursor_row,

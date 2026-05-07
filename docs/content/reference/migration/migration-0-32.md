@@ -130,6 +130,8 @@ This replaces the model-dependent entity path of previous versions, and improves
 
 A custom entity path can be now also configured in the `UrdfTree` API in Python and Rust, if desired.
 
-## MCAP metadata
+## MCAP metadata and statistics
 
-In MCAP to RRD conversion, metadata records are now saved at a dedicated [reserved entity path](../../concepts/logging-and-ingestion/entity-path.md#reserved-paths) `__mcap_metadata` instead of RRD properties (`__properties`).
+In MCAP to RRD conversion, metadata records, statistics, and recording info are now saved at dedicated [reserved entity paths](../../concepts/logging-and-ingestion/entity-path.md#reserved-paths) instead of RRD properties (`__properties`).
+
+Metadata records are saved under `__mcap_metadata`, and MCAP statistics and recording info are saved under `__mcap_properties`.

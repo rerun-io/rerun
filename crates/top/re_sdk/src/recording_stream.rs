@@ -798,6 +798,9 @@ struct RecordingStreamInner {
     batcher: ChunkBatcher,
     batcher_to_sink_handle: Option<std::thread::JoinHandle<()>>,
 
+    /// Mirror of the batcher's currently active configuration.
+    current_batcher_config: Mutex<ChunkBatcherConfig>,
+
     /// It true, any new sink will update the batcher's configuration (as far as possible).
     sink_dependent_batcher_config: bool,
 
@@ -859,6 +862,38 @@ fn resolve_batcher_config(
     }
 }
 
+/// Warns once if `sink` defers finalization to shutdown (e.g. a file sink) and is paired with a
+/// flush-on-every-row batcher config such as [`ChunkBatcherConfig::ALWAYS_TEST_ONLY`].
+///
+/// These sinks have to keep per-chunk metadata in memory until the footer can be written at
+/// process exit. A flush-on-every-row config produces one chunk per row, so for long-running
+/// recordings this can drive memory usage through the roof.
+fn warn_if_problematic_file_sink_config(config: &ChunkBatcherConfig, sink: &dyn LogSink) {
+    if !sink.defers_finalization_to_shutdown() {
+        return;
+    }
+
+    if !config.always_flushes() {
+        return;
+    }
+
+    // Snippet-roundtrip tests intentionally pair this config with a forced file sink in order to
+    // exercise the per-row serialization path. The warning is correct in principle but noisy
+    // (and fatal under `RERUN_PANIC_ON_WARN`) for that controlled setup, so suppress it.
+    if forced_sink_path().is_some() {
+        return;
+    }
+
+    re_log::warn_once!(
+        "ChunkBatcherConfig::ALWAYS_TEST_ONLY (or an equivalent flush-on-every-row config) is \
+         being used with a file sink. This produces one chunk per row, and the file's footer \
+         cannot be written until the SDK process exits — so per-chunk metadata accumulates in \
+         memory for the entire lifetime of the recording, which can blow up memory usage. \
+         Use the default `ChunkBatcherConfig` for production workloads, or \
+         `ChunkBatcherConfig::LOW_LATENCY` if you need fast flushing."
+    );
+}
+
 impl RecordingStreamInner {
     fn new(
         store_info: StoreInfo,
@@ -869,6 +904,8 @@ impl RecordingStreamInner {
     ) -> RecordingStreamResult<Self> {
         let sink_dependent_batcher_config = batcher_config.is_none();
         let batcher_config = resolve_batcher_config(batcher_config, &*sink);
+
+        warn_if_problematic_file_sink_config(&batcher_config, &*sink);
 
         let on_release = batcher_hooks.on_release.clone();
         let batcher = ChunkBatcher::new(batcher_config, batcher_hooks)?;
@@ -927,6 +964,7 @@ impl RecordingStreamInner {
             cmds_tx,
             batcher,
             batcher_to_sink_handle: Some(batcher_to_sink_handle),
+            current_batcher_config: Mutex::new(batcher_config),
             sink_dependent_batcher_config,
             importer_handles: Mutex::new(Vec::new()),
             pid_at_creation: std::process::id(),
@@ -1821,7 +1859,10 @@ impl RecordingStream {
             if inner.sink_dependent_batcher_config {
                 let batcher_config = resolve_batcher_config(None, &*new_sink);
                 inner.batcher.update_config(batcher_config);
+                *inner.current_batcher_config.lock() = batcher_config;
             }
+
+            warn_if_problematic_file_sink_config(&inner.current_batcher_config.lock(), &*new_sink);
 
             // Swap the sink, which will internally make sure to re-ingest the backlog if needed
             inner
@@ -2312,6 +2353,7 @@ impl fmt::Debug for RecordingStream {
                 cmds_tx: _,
                 batcher: _,
                 batcher_to_sink_handle: _,
+                current_batcher_config,
                 sink_dependent_batcher_config,
                 importer_handles,
                 pid_at_creation,
@@ -2321,6 +2363,7 @@ impl fmt::Debug for RecordingStream {
                 .field("store_info", &store_info)
                 .field("recording_info", &recording_info)
                 .field("tick", &tick)
+                .field("current_batcher_config", &*current_batcher_config.lock())
                 .field(
                     "sink_dependent_batcher_config",
                     &sink_dependent_batcher_config,
@@ -2752,7 +2795,7 @@ mod tests {
     fn always_flush() {
         let rec = RecordingStreamBuilder::new("rerun_example_always_flush")
             .enabled(true)
-            .batcher_config(ChunkBatcherConfig::ALWAYS)
+            .batcher_config(ChunkBatcherConfig::ALWAYS_TEST_ONLY)
             .buffered()
             .unwrap();
 
@@ -2898,7 +2941,7 @@ mod tests {
     fn disabled() {
         let (rec, storage) = RecordingStreamBuilder::new("rerun_example_disabled")
             .enabled(false)
-            .batcher_config(ChunkBatcherConfig::ALWAYS)
+            .batcher_config(ChunkBatcherConfig::ALWAYS_TEST_ONLY)
             .memory()
             .unwrap();
 
@@ -3226,7 +3269,7 @@ mod tests {
 
         // Changing the sink should have no effect since an explicit config is in place.
         rec.set_sink(Box::new(BatcherConfigTestSink {
-            config: ChunkBatcherConfig::ALWAYS,
+            config: ChunkBatcherConfig::ALWAYS_TEST_ONLY,
         }));
         // Don't want to stall the test for CONFIG_CHANGE_TIMEOUT here.
         let new_config_recv_result = rx.recv_timeout(std::time::Duration::from_millis(100));

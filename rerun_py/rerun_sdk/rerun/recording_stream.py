@@ -515,7 +515,13 @@ class RecordingStream:
 
         connect_grpc(url, default_blueprint=default_blueprint, recording=self)
 
-    def save(self, path: str | Path, default_blueprint: BlueprintLike | None = None) -> None:
+    def save(
+        self,
+        path: str | Path,
+        default_blueprint: BlueprintLike | None = None,
+        *,
+        write_footer: bool = True,
+    ) -> None:
         """
         Stream all log-data to a file.
 
@@ -534,14 +540,26 @@ class RecordingStream:
             already has an active blueprint, the new blueprint won't become active until the user
             clicks the "reset blueprint" button. If you want to activate the new blueprint
             immediately, instead use the [`rerun.send_blueprint`][] API.
+        write_footer:
+            Whether to emit a complete RRD footer (including a manifest of every chunk) at the
+            end of the stream. Defaults to `True`. See [`rerun.save`][] for details and
+            trade-offs (notably memory usage in long-running streaming sessions).
+
+            *Warning*: lack of footer will significantly hurt random-access performance and some
+            tools (e.g. LazyStore) may not work properly.
 
         """
 
         from .sinks import save
 
-        save(path, default_blueprint, recording=self)
+        save(path, default_blueprint, recording=self, write_footer=write_footer)
 
-    def stdout(self, default_blueprint: BlueprintLike | None = None) -> None:
+    def stdout(
+        self,
+        default_blueprint: BlueprintLike | None = None,
+        *,
+        write_footer: bool = True,
+    ) -> None:
         """
         Stream all log-data to stdout.
 
@@ -559,12 +577,18 @@ class RecordingStream:
             already has an active blueprint, the new blueprint won't become active until the user
             clicks the "reset blueprint" button. If you want to activate the new blueprint
             immediately, instead use the [`rerun.send_blueprint`][] API.
+        write_footer:
+            Whether to emit a complete RRD footer (including a manifest of every chunk) at the
+            end of the stream. Defaults to `True`. See [`rerun.save`][] for details.
+
+            *Warning*: lack of footer will significantly hurt random-access performance and some
+            tools (e.g. LazyStore) may not work properly.
 
         """
 
         from .sinks import stdout
 
-        stdout(default_blueprint, recording=self)
+        stdout(default_blueprint, recording=self, write_footer=write_footer)
 
     def memory_recording(self) -> MemoryRecording:
         """

@@ -667,7 +667,7 @@ mod integration_tests {
     use re_log_types::TimeType;
 
     use crate::DecoderRegistry;
-    use crate::decoders::McapProtobufDecoder;
+    use crate::decoders::{McapProtobufDecoder, TestEmitter};
 
     fn format_chunk(chunk: &Chunk) -> String {
         let batch = chunk.to_record_batch().expect("failed to convert chunk");
@@ -944,20 +944,16 @@ mod integration_tests {
     }
 
     fn run_decoder(summary: &mcap::Summary, buffer: &[u8]) -> Vec<Chunk> {
-        let mut chunks = Vec::new();
-
-        let mut send_chunk = |chunk| {
-            chunks.push(chunk);
-        };
+        let emitter = TestEmitter::default();
 
         let registry = DecoderRegistry::empty().register_message_decoder::<McapProtobufDecoder>();
         registry
             .plan(buffer, summary, &crate::TopicFilter::default())
             .expect("failed to plan")
-            .run(buffer, summary, TimeType::TimestampNs, &mut send_chunk)
+            .run(buffer, summary, TimeType::TimestampNs, &*emitter)
             .expect("failed to run decoder");
 
-        chunks
+        emitter.finish()
     }
 
     /// Helper to create test messages with various field combinations.

@@ -673,6 +673,7 @@ impl AppState {
                                         ui,
                                         table_id,
                                         store,
+                                        view_states,
                                     );
                                 } else {
                                     re_log::error_once!(
@@ -703,6 +704,7 @@ impl AppState {
                                     &ctx.active_recording_store_view_context(), // TODO(RR-1127): this makes no sense
                                     ui,
                                     *entry_id,
+                                    view_states,
                                 );
                             }
 
@@ -742,6 +744,7 @@ impl AppState {
                                         &ctx.active_recording_store_view_context(), // TODO(RR-3033): server_central_panel_ui should not know about any recording/blueprint
                                         ui,
                                         origin,
+                                        view_states,
                                     );
                                 }
                             }
@@ -914,10 +917,12 @@ fn table_ui(
     ui: &mut Ui,
     table_id: &TableId,
     store: &TableStore,
+    view_states: &mut ViewStates,
 ) {
     re_dataframe_ui::DataFusionTableWidget::new(store.session_context(), TableStore::TABLE_NAME)
+        .table_id(table_id.clone())
         .title(table_id.as_str())
-        .show(ctx, runtime, ui);
+        .show(ctx, runtime, ui, view_states);
 }
 
 pub(crate) fn create_time_control_for<'cfgs>(
@@ -935,7 +940,9 @@ pub(crate) fn create_time_control_for<'cfgs>(
                 LogSource::File { follow, .. } | LogSource::HttpStream { follow, .. } => *follow,
 
                 // Not live data:
-                LogSource::RedapGrpcStream { .. } | LogSource::RrdWebEvent => false,
+                LogSource::RedapGrpcStream { .. }
+                | LogSource::RrdWebEvent
+                | LogSource::EmbeddedTableBlueprint => false,
 
                 // Live data:
                 LogSource::Sdk

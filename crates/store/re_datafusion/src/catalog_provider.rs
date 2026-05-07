@@ -8,10 +8,11 @@ use datafusion::catalog::{CatalogProvider, SchemaProvider, TableProvider};
 use datafusion::common::{DataFusionError, Result as DataFusionResult, TableReference, exec_err};
 use parking_lot::Mutex;
 use re_redap_client::ConnectionClient;
+use re_uri::Origin;
 use tokio::runtime::Handle as RuntimeHandle;
 
 use crate::IntoDfError as _;
-use crate::TableEntryTableProvider;
+use crate::{TableEntryTableProvider, TableQueryCaller};
 
 // These are to match the defaults in datafusion.
 pub const DEFAULT_CATALOG_NAME: &str = "datafusion";
@@ -34,6 +35,10 @@ pub struct RedapCatalogProvider {
     client: ConnectionClient,
     schemas: Mutex<HashMap<Option<String>, Arc<RedapSchemaProvider>>>,
     runtime: RuntimeHandle,
+
+    /// When set, table-scan analytics are emitted to this cloud origin for any
+    /// table resolved through this catalog. `None` ⇒ no analytics.
+    analytics_origin: Option<Origin>,
 }
 
 #[tracing::instrument(skip_all)]
@@ -70,6 +75,27 @@ pub fn get_all_catalog_names(
 
 impl RedapCatalogProvider {
     pub fn new(name: Option<&str>, client: ConnectionClient, runtime: RuntimeHandle) -> Self {
+        Self::new_inner(name, client, runtime, None)
+    }
+
+    /// Same as [`Self::new`] but also enables per-scan analytics. Each table
+    /// resolved through this catalog will emit a `cloud_scan_table` OTLP span
+    /// to `origin` on completion.
+    pub fn new_with_analytics(
+        name: Option<&str>,
+        client: ConnectionClient,
+        runtime: RuntimeHandle,
+        origin: Origin,
+    ) -> Self {
+        Self::new_inner(name, client, runtime, Some(origin))
+    }
+
+    fn new_inner(
+        name: Option<&str>,
+        client: ConnectionClient,
+        runtime: RuntimeHandle,
+        analytics_origin: Option<Origin>,
+    ) -> Self {
         let name = if let Some(inner_name) = name
             && inner_name == DEFAULT_CATALOG_NAME
         {
@@ -83,6 +109,7 @@ impl RedapCatalogProvider {
             client: client.clone(),
             runtime: runtime.clone(),
             in_memory_tables: Default::default(),
+            analytics_origin: analytics_origin.clone(),
         });
         let schemas: HashMap<_, _> = iter::once((None, default_schema)).collect();
 
@@ -91,6 +118,7 @@ impl RedapCatalogProvider {
             client,
             schemas: Mutex::new(schemas),
             runtime,
+            analytics_origin,
         }
     }
 
@@ -114,6 +142,7 @@ impl RedapCatalogProvider {
                     client: self.client.clone(),
                     runtime: self.runtime.clone(),
                     in_memory_tables: Default::default(),
+                    analytics_origin: self.analytics_origin.clone(),
                 }
                 .into(),
             );
@@ -183,6 +212,10 @@ struct RedapSchemaProvider {
     client: ConnectionClient,
     runtime: RuntimeHandle,
     in_memory_tables: Mutex<HashMap<String, Arc<dyn TableProvider>>>,
+
+    /// Inherited from `RedapCatalogProvider`. `Some` ⇒ enable analytics for
+    /// providers constructed by `table()`.
+    analytics_origin: Option<Origin>,
 }
 
 #[async_trait]
@@ -230,10 +263,16 @@ impl SchemaProvider for RedapSchemaProvider {
             (None, Some(schema_name)) => format!("{schema_name}.{table_name}"),
             _ => table_name.to_owned(),
         };
-        TableEntryTableProvider::new(self.client.clone(), table_name, Some(self.runtime.clone()))
-            .into_provider()
-            .await
-            .map(Some)
+        let mut provider = TableEntryTableProvider::new(
+            self.client.clone(),
+            table_name,
+            Some(self.runtime.clone()),
+        )
+        .with_caller(TableQueryCaller::CatalogResolver);
+        if let Some(origin) = self.analytics_origin.clone() {
+            provider = provider.with_analytics(origin);
+        }
+        provider.into_provider().await.map(Some)
     }
 
     fn register_table(

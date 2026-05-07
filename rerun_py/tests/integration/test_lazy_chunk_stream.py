@@ -24,8 +24,10 @@ if TYPE_CHECKING:
 
 def test_rrd_reader_properties(test_rrd_path: Path) -> None:
     reader = RrdReader(test_rrd_path)
-    assert reader.application_id == APP_ID
-    assert reader.recording_id == RECORDING_ID
+    recs = reader.recordings()
+    assert len(recs) == 1
+    assert recs[0].application_id == APP_ID
+    assert recs[0].recording_id == RECORDING_ID
 
 
 def test_rrd_reader_file_not_found(tmp_path: Path) -> None:

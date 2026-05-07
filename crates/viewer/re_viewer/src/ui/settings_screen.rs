@@ -159,6 +159,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     {
         let ExperimentalAppOptions {
             enable_status_view,
+            table_blueprints,
             table_grid_view,
         } = experimental;
         separator_with_some_space(ui);
@@ -166,6 +167,11 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         ui.re_checkbox(enable_status_view, "Enable Status view (requires restart)")
             .on_hover_text(
                 "Show the experimental Status view for visualizing status transitions over time.",
+            );
+        ui.re_checkbox(table_blueprints, "Table blueprints")
+            .on_hover_text(
+                "Enable table blueprints embedded in Arrow schema metadata.\n\n\
+                 When enabled, tables can carry inline view definitions for segment previews.",
             );
         ui.re_checkbox(table_grid_view, "Table grid view")
             .on_hover_text(

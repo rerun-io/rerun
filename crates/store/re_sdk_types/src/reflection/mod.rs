@@ -129,6 +129,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ColumnName as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The name of a column in a table.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: ColumnName::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: ColumnName::verify_arrow_array,
+            },
+        ),
+        (
             <ColumnOrder as Component>::name(),
             ComponentReflection {
                 docstring_md: "The order of component columns (which remain always grouped by entity path) in the dataframe view.\n\nEntities not in this list are appended at the end in their default order.\nEntities in this list that are not present in the view are ignored.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -951,6 +962,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 datatype: InterpolationMode::arrow_datatype(),
                 is_enum: true,
                 verify_arrow_array: InterpolationMode::verify_arrow_array,
+            },
+        ),
+        (
+            <IsKeyframe as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether a [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample) contains a keyframe (also known as a sync sample or IDR).\n\nA keyframe in this sense must be _decoder re-entrant_: a decoder must be able to start\ndecoding the stream from this sample alone, with no prior decoder state.\nNot every intra-coded frame qualifies. Some codecs have intra-only frames that may\nstill reference existing decoder state and are therefore not valid sync points.\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec) for the codec-specific definition of a keyframe.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: IsKeyframe::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: IsKeyframe::verify_arrow_array,
             },
         ),
         (
@@ -3426,6 +3448,45 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.StatusConfiguration"),
+            ArchetypeReflection {
+                display_name: "Status configuration",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["StatusView"],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "values",
+                        display_name: "Values",
+                        component_type: "rerun.components.Text".into(),
+                        docstring_md: "The raw status values that this configuration applies to.\n\nEach entry defines a known status value. The order determines the mapping to\n`labels`, `colors`, and `visible` (by index).",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "labels",
+                        display_name: "Labels",
+                        component_type: "rerun.components.Text".into(),
+                        docstring_md: "Display labels for each status value.\n\nIf provided, the label at index `i` is shown instead of the raw value at index `i`.\nIf not provided or shorter than `values`, the raw value is used as the label.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "colors",
+                        display_name: "Colors",
+                        component_type: "rerun.components.Color".into(),
+                        docstring_md: "Colors for each status value.\n\nIf provided, the color at index `i` is used for the status at index `i`.\nIf not provided, colors are assigned automatically from a built-in palette.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "visible",
+                        display_name: "Visible",
+                        component_type: "rerun.components.Visible".into(),
+                        docstring_md: "Visibility for each status value.\n\nIf provided, the visibility at index `i` controls whether the status at index `i` is shown.\nIf not provided, all status values are visible.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.Tensor"),
             ArchetypeReflection {
                 display_name: "Tensor",
@@ -3658,6 +3719,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Sample",
                         component_type: "rerun.components.VideoSample".into(),
                         docstring_md: "Video sample data (also known as \"video chunk\").\n\nThe current timestamp is used as presentation timestamp (PTS) for all data in this sample.\nThere is currently no way to log differing decoding timestamps, meaning\nthat there is no support for B-frames.\nSee <https://github.com/rerun-io/rerun/issues/10090> for more details.\n\nRerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,\nbut may cause the video playback in the Viewer to reset.\nIt is recommended to have all chunks for a video stream to be ordered temporally order.\n\nLogging separate videos on the same entity is allowed iff they share the exact same\ncodec parameters & resolution.\n\nThe samples are expected to be encoded using the `codec` field.\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nUnless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image))\nnever log this component as static data as this means that you loose all information of\nprevious samples which may be required to decode an image.\n\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec) for codec specific requirements.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "is_keyframe",
+                        display_name: "Is keyframe",
+                        component_type: "rerun.components.IsKeyframe".into(),
+                        docstring_md: "Whether the corresponding [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample) contains a keyframe.\n\nA keyframe (also known as a sync sample or IDR) is a frame from which a decoder can\nstart decoding the stream with no prior decoder state. See [`components.IsKeyframe`](https://rerun.io/docs/reference/types/components/is_keyframe?speculative-link)\nand [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec) for the codec-specific definition.\n\nThis field is optional. It does not change how the stream itself is decoded: it is\nmetadata that travels with the sample and can be inspected when querying the data\nback, for example to locate sync points or build a frame index.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -4326,6 +4394,45 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.TableBlueprint"),
+            ArchetypeReflection {
+                display_name: "Table blueprint",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "segment_preview_column",
+                        display_name: "Segment preview column",
+                        component_type: "rerun.blueprint.components.ColumnName".into(),
+                        docstring_md: "The name of the column that contains recording URIs for segment previews.\n\nEvery row can at most preview a single segment.\n\nFor the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,\nmeaning that the regular structure of archetypes.ViewportBlueprint, and archetypes.ViewBlueprint structure applies.\nHowever, this mostly ignores layout container types as well as automatic spawning.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "flag_column",
+                        display_name: "Flag column",
+                        component_type: "rerun.blueprint.components.ColumnName".into(),
+                        docstring_md: "The name of the boolean column used for flag/annotation toggles.\n\nMust be set for flagging to be available. The named column must exist in the\ntable and be of boolean type.\nAdditionally, the table must be remote and have another column with\n`rerun:is_table_index` metadata since flag changes are persisted to the server\nvia upsert.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "grid_view_card_title",
+                        display_name: "Grid view card title",
+                        component_type: "rerun.blueprint.components.ColumnName".into(),
+                        docstring_md: "The name of the column to use as the card title in grid view.\n\nIf unset, the first visible string column is used as the title.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "url_column",
+                        display_name: "Url column",
+                        component_type: "rerun.blueprint.components.ColumnName".into(),
+                        docstring_md: "The name of the column containing URLs to open when a card is clicked in grid view.\n\nIf unset, defaults to the first URL column in the table that points to the same\nRerun server. If no such column exists, no URL is associated with cards and\nclicking them does not navigate anywhere.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.TensorScalarMapping"),
             ArchetypeReflection {
                 display_name: "Tensor scalar mapping",
@@ -4411,6 +4518,31 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md: "How the image is scaled to fit the view.",
                     flags: ArchetypeFieldFlags::UI_EDITABLE,
                 }],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TextDocumentFormat"),
+            ArchetypeReflection {
+                display_name: "Text document format",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "monospace",
+                        display_name: "Monospace",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether to use a monospace font for the document body.\n\nDefaults to disabled.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "word_wrap",
+                        display_name: "Word wrap",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether to wrap long lines in the document body.\n\nDefaults to enabled.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
             },
         ),
         (

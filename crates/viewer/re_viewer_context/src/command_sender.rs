@@ -175,6 +175,12 @@ pub enum SystemCommand {
         /// If None, screenshots the entire viewer.
         view_id: Option<ViewId>,
     },
+
+    /// Register a decoded table blueprint in the [`StoreHub`](crate::StoreHub).
+    RegisterTableBlueprint {
+        table_id: re_log_types::TableId,
+        blueprint: Box<re_entity_db::EntityDb>,
+    },
 }
 
 impl SystemCommand {

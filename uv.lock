@@ -58,6 +58,8 @@ members = [
     "shared-recording",
     "stdio",
     "structure-from-motion",
+    "table-blueprints",
+    "table-grid-with-flags",
     "table-zoo",
     "template",
     "using-index-values",
@@ -5601,6 +5603,36 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c1/90/1a442d21527009d4b40f37fe50b606ebb68a6407142c2b5cc508c34b696b/syrupy-5.0.0.tar.gz", hash = "sha256:3282fe963fa5d4d3e47231b16d1d4d0f4523705e8199eeb99a22a1bc9f5942f2", size = 48881, upload-time = "2025-09-28T21:15:12.783Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9d/9a/6c68aad2ccfce6e2eeebbf5bb709d0240592eb51ff142ec4c8fbf3c2460a/syrupy-5.0.0-py3-none-any.whl", hash = "sha256:c848e1a980ca52a28715cd2d2b4d434db424699c05653bd1158fb31cf56e9546", size = 49087, upload-time = "2025-09-28T21:15:11.639Z" },
+]
+
+[[package]]
+name = "table-blueprints"
+version = "0.1.0"
+source = { editable = "examples/python/table_blueprints" }
+dependencies = [
+    { name = "pyarrow" },
+    { name = "rerun-sdk" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pyarrow" },
+    { name = "rerun-sdk", editable = "rerun_py" },
+]
+
+[[package]]
+name = "table-grid-with-flags"
+version = "0.1.0"
+source = { editable = "examples/python/table_grid_with_flags" }
+dependencies = [
+    { name = "pyarrow" },
+    { name = "rerun-sdk" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pyarrow" },
+    { name = "rerun-sdk", editable = "rerun_py" },
 ]
 
 [[package]]

@@ -198,4 +198,7 @@ pub struct ExperimentalAppOptions {
     /// When enabled, a list/grid toggle appears in the table title bar,
     /// allowing users to switch between the traditional table and a card-based grid layout.
     pub table_grid_view: bool,
+
+    /// Enable table blueprints embedded in Arrow schema metadata.
+    pub table_blueprints: bool,
 }

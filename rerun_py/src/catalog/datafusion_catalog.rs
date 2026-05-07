@@ -26,9 +26,11 @@ impl PartialEq for PyDataFusionCatalogProvider {
 }
 
 impl PyDataFusionCatalogProvider {
-    pub fn new(name: Option<String>, client: ConnectionClient) -> Self {
+    pub fn new(name: Option<&str>, client: ConnectionClient, origin: re_uri::Origin) -> Self {
         let runtime = get_tokio_runtime().handle().clone();
-        let provider = Arc::new(RedapCatalogProvider::new(name.as_deref(), client, runtime));
+        let provider = Arc::new(RedapCatalogProvider::new_with_analytics(
+            name, client, runtime, origin,
+        ));
         Self { provider }
     }
 }

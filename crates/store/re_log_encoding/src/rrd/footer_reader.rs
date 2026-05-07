@@ -1,8 +1,13 @@
 use std::fs::File;
 use std::io::{Read as _, Seek as _, SeekFrom};
 
-use crate::rrd::{CodecError, Decodable as _, StreamFooter, StreamHeader};
-use crate::{RrdFooter, ToApplication as _};
+use re_log_types::{LogMsg, StoreId};
+
+use crate::rrd::{
+    CodecError, Decodable as _, DecoderEntrypoint as _, MessageHeader, MessageKind, StreamFooter,
+    StreamHeader,
+};
+use crate::{CachingApplicationIdInjector, RrdFooter, ToApplication as _};
 
 /// Read the full RRD footer from an open file using seek-based I/O.
 ///
@@ -80,6 +85,93 @@ pub fn read_rrd_footer(file: &mut File) -> Result<Option<RrdFooter>, CodecError>
     Ok(Some(rrd_footer))
 }
 
+/// Enumerate all [`StoreId`]s present in an RRD file, without reading chunk data.
+///
+/// - **With footer** (modern RRDs): reads the footer and returns the keys of its manifests map.
+///   Cheap: 3 seeks, no chunk data read. All stores are visible regardless of message ordering.
+/// - **Without footer** (legacy RRDs): walks message frames, decoding only `SetStoreInfo`
+///   payloads and seeking past everything else. All `SetStoreInfo`s are discovered regardless
+///   of how they interleave with `ArrowMsg`s.
+///
+/// The file position is moved during reading. The returned list is sorted by [`StoreId`]'s
+/// natural order for determinism.
+pub fn enumerate_rrd_stores(file: &mut File) -> Result<Vec<StoreId>, CodecError> {
+    // Try footer first (cheap: 3 seeks, no chunk data read).
+    if let Some(footer) = read_rrd_footer(file)? {
+        let mut store_ids: Vec<StoreId> = footer.manifests.into_keys().collect();
+        store_ids.sort();
+        return Ok(store_ids);
+    }
+
+    enumerate_legacy_stores(file)
+}
+
+/// Legacy (no-footer) enumeration: walk message frames without decoding chunk data.
+///
+/// We read each 16-byte [`MessageHeader`], decode only `SetStoreInfo` payloads, and
+/// `seek()` past `ArrowMsg` / `BlueprintActivationCommand` payloads. Cost is
+/// `O(num_messages * 16 bytes)` of frame reads + small `SetStoreInfo` payload decodes.
+/// No Arrow IPC decoding ever happens.
+///
+/// The same `StoreId` can appear in multiple `SetStoreInfo` messages (e.g. after a
+/// flush/reconnect); the returned list is deduplicated.
+fn enumerate_legacy_stores(file: &mut File) -> Result<Vec<StoreId>, CodecError> {
+    // `read_rrd_footer` already moved the file position — seek back to start.
+    file.seek(SeekFrom::Start(0))?;
+
+    // Read and validate the StreamHeader; it also carries the crate version we need when
+    // decoding individual message payloads (for version-dependent migrations).
+    let mut stream_header_buf = [0u8; StreamHeader::ENCODED_SIZE_BYTES];
+    file.read_exact(&mut stream_header_buf)?;
+    let stream_header = StreamHeader::from_rrd_bytes(&stream_header_buf)?;
+    let (version, _options) = stream_header.to_version_and_options()?;
+
+    let mut store_ids = Vec::new();
+    let mut app_id_cache = CachingApplicationIdInjector::default();
+
+    loop {
+        let mut msg_header_buf = [0u8; MessageHeader::ENCODED_SIZE_BYTES];
+        match file.read_exact(&mut msg_header_buf) {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(err) => return Err(CodecError::Io(err)),
+        }
+        let header = MessageHeader::from_rrd_bytes(&msg_header_buf)?;
+
+        match header.kind {
+            MessageKind::End => break,
+
+            MessageKind::SetStoreInfo => {
+                let payload_len = usize::try_from(header.len).map_err(CodecError::Overflow)?;
+                let mut payload = vec![0u8; payload_len];
+                file.read_exact(&mut payload)?;
+                let byte_span = re_chunk::Span {
+                    start: 0,
+                    len: header.len,
+                };
+                if let Some(LogMsg::SetStoreInfo(set_store_info)) = LogMsg::decode(
+                    bytes::Bytes::from(payload),
+                    byte_span,
+                    MessageKind::SetStoreInfo,
+                    &mut app_id_cache,
+                    Some(version),
+                )? {
+                    store_ids.push(set_store_info.info.store_id);
+                }
+            }
+
+            MessageKind::ArrowMsg | MessageKind::BlueprintActivationCommand => {
+                let offset = i64::try_from(header.len).map_err(CodecError::Overflow)?;
+                file.seek(SeekFrom::Current(offset))?;
+            }
+        }
+    }
+
+    store_ids.sort();
+    store_ids.dedup();
+    Ok(store_ids)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -108,6 +200,202 @@ mod tests {
 
         let footer = read_rrd_footer(&mut File::open(file.path()).unwrap()).unwrap();
         assert!(footer.is_none(), "Legacy RRD should have no footer");
+    }
+
+    #[test]
+    fn test_enumerate_rrd_stores_footer_path() {
+        let chunks = make_test_chunks(5);
+        let (file, store_id) = encode_test_rrd(&chunks);
+
+        let ids = enumerate_rrd_stores(&mut File::open(file.path()).unwrap()).unwrap();
+        assert_eq!(ids, vec![store_id]);
+    }
+
+    #[test]
+    fn test_enumerate_rrd_stores_legacy_path() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        let chunks = make_test_chunks(3);
+        encode_test_rrd_to_file(file.path(), &chunks, false);
+
+        let ids = enumerate_rrd_stores(&mut File::open(file.path()).unwrap()).unwrap();
+        assert_eq!(
+            ids.len(),
+            1,
+            "Legacy RRD should have its single store discovered"
+        );
+    }
+
+    /// Cross-check: the legacy (frame-scan) and modern (footer) paths must return identical
+    /// results on the same logical RRD content.
+    #[test]
+    fn test_enumerate_rrd_stores_footer_vs_legacy_agree() {
+        let chunks = make_test_chunks(5);
+        let store_id =
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "cross_check");
+
+        let with_footer = tempfile::NamedTempFile::new().unwrap();
+        let without_footer = tempfile::NamedTempFile::new().unwrap();
+        crate::rrd::test_util::encode_test_rrd_to_file_with_options(
+            with_footer.path(),
+            &chunks,
+            &store_id,
+            true,
+            crate::EncodingOptions::PROTOBUF_COMPRESSED,
+        );
+        crate::rrd::test_util::encode_test_rrd_to_file_with_options(
+            without_footer.path(),
+            &chunks,
+            &store_id,
+            false,
+            crate::EncodingOptions::PROTOBUF_COMPRESSED,
+        );
+
+        let ids_footer =
+            enumerate_rrd_stores(&mut File::open(with_footer.path()).unwrap()).unwrap();
+        let ids_legacy =
+            enumerate_rrd_stores(&mut File::open(without_footer.path()).unwrap()).unwrap();
+
+        assert_eq!(ids_footer, vec![store_id]);
+        assert_eq!(
+            ids_footer, ids_legacy,
+            "footer path and legacy path must agree on the same content"
+        );
+    }
+
+    /// Legacy RRD where the *same* `StoreId` is announced by several `SetStoreInfo`
+    /// messages (can happen e.g. after a flush/reconnect). Enumeration must dedup.
+    #[test]
+    fn test_enumerate_rrd_stores_legacy_duplicate_set_store_info() {
+        use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+
+        let chunks = make_test_chunks(2);
+        let store_id = StoreId::random(StoreKind::Recording, "dup_test");
+
+        let file = tempfile::NamedTempFile::new().unwrap();
+        {
+            let mut out = std::fs::File::create(file.path()).unwrap();
+            let mut encoder = crate::Encoder::new_eager(
+                re_build_info::CrateVersion::LOCAL,
+                crate::EncodingOptions::PROTOBUF_COMPRESSED,
+                &mut out,
+            )
+            .unwrap();
+            encoder.do_not_emit_footer();
+
+            let info = StoreInfo::new(store_id.clone(), StoreSource::Unknown);
+            // Three SetStoreInfos for the same store, interleaved with chunks.
+            encoder
+                .append(&LogMsg::SetStoreInfo(SetStoreInfo {
+                    row_id: *re_chunk::RowId::ZERO,
+                    info: info.clone(),
+                }))
+                .unwrap();
+            let arrow_msg_0 = chunks[0].to_arrow_msg().unwrap();
+            encoder
+                .append(&LogMsg::ArrowMsg(store_id.clone(), arrow_msg_0))
+                .unwrap();
+            encoder
+                .append(&LogMsg::SetStoreInfo(SetStoreInfo {
+                    row_id: *re_chunk::RowId::ZERO,
+                    info: info.clone(),
+                }))
+                .unwrap();
+            let arrow_msg_1 = chunks[1].to_arrow_msg().unwrap();
+            encoder
+                .append(&LogMsg::ArrowMsg(store_id.clone(), arrow_msg_1))
+                .unwrap();
+            encoder
+                .append(&LogMsg::SetStoreInfo(SetStoreInfo {
+                    row_id: *re_chunk::RowId::ZERO,
+                    info,
+                }))
+                .unwrap();
+            encoder.finish().unwrap();
+        }
+
+        let ids = enumerate_rrd_stores(&mut File::open(file.path()).unwrap()).unwrap();
+        assert_eq!(
+            ids,
+            vec![store_id],
+            "duplicate SetStoreInfos for the same StoreId must be deduped"
+        );
+    }
+
+    /// Two-store RRD with `SetStoreInfo` messages interleaved with `ArrowMsg`s. Both the
+    /// legacy (no-footer) path and the modern (footer) path must discover both stores and
+    /// return the same result.
+    #[test]
+    fn test_enumerate_rrd_stores_interleaved_footer_vs_legacy() {
+        use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+
+        let chunks_a = make_test_chunks(2);
+        let chunks_b = make_test_chunks(2);
+        let store_a = StoreId::random(StoreKind::Recording, "test_a");
+        let store_b = StoreId::random(StoreKind::Recording, "test_b");
+
+        // Writes interleaved content: SetStoreInfo(A), chunks(A), SetStoreInfo(B), chunks(B).
+        let write_interleaved = |path: &std::path::Path, with_footer: bool| {
+            let mut out = std::fs::File::create(path).unwrap();
+            let mut encoder = crate::Encoder::new_eager(
+                re_build_info::CrateVersion::LOCAL,
+                crate::EncodingOptions::PROTOBUF_COMPRESSED,
+                &mut out,
+            )
+            .unwrap();
+            if !with_footer {
+                encoder.do_not_emit_footer();
+            }
+
+            let info_a = StoreInfo::new(store_a.clone(), StoreSource::Unknown);
+            encoder
+                .append(&LogMsg::SetStoreInfo(SetStoreInfo {
+                    row_id: *re_chunk::RowId::ZERO,
+                    info: info_a,
+                }))
+                .unwrap();
+            for chunk in &chunks_a {
+                let arrow_msg = chunk.to_arrow_msg().unwrap();
+                encoder
+                    .append(&LogMsg::ArrowMsg(store_a.clone(), arrow_msg))
+                    .unwrap();
+            }
+            let info_b = StoreInfo::new(store_b.clone(), StoreSource::Unknown);
+            encoder
+                .append(&LogMsg::SetStoreInfo(SetStoreInfo {
+                    row_id: *re_chunk::RowId::ZERO,
+                    info: info_b,
+                }))
+                .unwrap();
+            for chunk in &chunks_b {
+                let arrow_msg = chunk.to_arrow_msg().unwrap();
+                encoder
+                    .append(&LogMsg::ArrowMsg(store_b.clone(), arrow_msg))
+                    .unwrap();
+            }
+            encoder.finish().unwrap();
+        };
+
+        let with_footer = tempfile::NamedTempFile::new().unwrap();
+        let without_footer = tempfile::NamedTempFile::new().unwrap();
+        write_interleaved(with_footer.path(), true);
+        write_interleaved(without_footer.path(), false);
+
+        let ids_footer =
+            enumerate_rrd_stores(&mut File::open(with_footer.path()).unwrap()).unwrap();
+        let ids_legacy =
+            enumerate_rrd_stores(&mut File::open(without_footer.path()).unwrap()).unwrap();
+
+        let mut expected = vec![store_a, store_b];
+        expected.sort();
+        assert_eq!(ids_footer, expected, "footer path must find both stores");
+        assert_eq!(
+            ids_legacy, expected,
+            "legacy path must find both stores despite interleaving"
+        );
+        assert_eq!(
+            ids_footer, ids_legacy,
+            "footer and legacy paths must agree on the same content"
+        );
     }
 
     #[test]

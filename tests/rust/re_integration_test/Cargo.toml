@@ -43,6 +43,8 @@ re_view_time_series.workspace = true
 
 insta.workspace = true
 ndarray.workspace = true
+reqwest = { workspace = true, features = ["json"] }
+serde.workspace = true
 
 [lints]
 workspace = true

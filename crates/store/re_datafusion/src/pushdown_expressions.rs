@@ -1,7 +1,7 @@
 use arrow::datatypes::SchemaRef;
 use datafusion::common::{DataFusionError, ScalarValue, exec_err};
 use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPushDown};
-use re_log_types::{AbsoluteTimeRange, TimeInt};
+use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_sorbet::metadata::RERUN_KIND;
@@ -378,15 +378,13 @@ fn replace_time_in_query(
     op: Operator,
 ) -> Result<QueryDatasetRequest, DataFusionError> {
     let mut query_clone = dataset_query.clone();
-    let latest_at = Some(QueryLatestAt {
-        index: Some(index.to_owned()),
-        at: time,
-    });
+    let timeline: TimelineName = index.into();
+    let latest_at = Some(QueryLatestAt::global(Some(timeline), time));
 
     let (latest_at, range) = match op {
         Operator::Eq => {
             let range = QueryRange {
-                index: index.to_owned(),
+                index: timeline,
                 index_range: AbsoluteTimeRange {
                     min: time,
                     max: time,
@@ -396,7 +394,7 @@ fn replace_time_in_query(
         }
         Operator::Gt | Operator::GtEq => {
             let range = QueryRange {
-                index: index.to_owned(),
+                index: timeline,
                 index_range: AbsoluteTimeRange {
                     min: time,
                     max: TimeInt::MAX,
@@ -406,7 +404,7 @@ fn replace_time_in_query(
         }
         Operator::Lt | Operator::LtEq => {
             let range = QueryRange {
-                index: index.to_owned(),
+                index: timeline,
                 index_range: AbsoluteTimeRange {
                     min: TimeInt::MIN,
                     max: time,
@@ -437,10 +435,7 @@ fn replace_time_in_query(
 }
 
 fn latest_at_from_range(range: &QueryRange) -> QueryLatestAt {
-    QueryLatestAt {
-        index: Some(range.index.clone()),
-        at: range.index_range.min,
-    }
+    QueryLatestAt::global(Some(range.index), range.index_range.min)
 }
 
 fn compute_range_overlap(
@@ -457,7 +452,7 @@ fn compute_range_overlap(
     }
 
     Ok(QueryRange {
-        index: left.index.clone(),
+        index: left.index,
         index_range: AbsoluteTimeRange {
             min: left.index_range.min.max(right.index_range.min),
             max: left.index_range.max.min(right.index_range.max),
@@ -950,14 +945,14 @@ mod tests {
     #[test]
     fn test_non_overlapping_time_ranges_error() {
         let left = QueryRange {
-            index: "frame_nr".to_owned(),
+            index: "frame_nr".into(),
             index_range: AbsoluteTimeRange {
                 min: TimeInt::new_temporal(0),
                 max: TimeInt::new_temporal(100),
             },
         };
         let right = QueryRange {
-            index: "frame_nr".to_owned(),
+            index: "frame_nr".into(),
             index_range: AbsoluteTimeRange {
                 min: TimeInt::new_temporal(200),
                 max: TimeInt::new_temporal(300),
@@ -971,14 +966,14 @@ mod tests {
     #[test]
     fn test_different_index_names_error() {
         let left = QueryRange {
-            index: "frame_nr".to_owned(),
+            index: "frame_nr".into(),
             index_range: AbsoluteTimeRange {
                 min: TimeInt::new_temporal(0),
                 max: TimeInt::new_temporal(100),
             },
         };
         let right = QueryRange {
-            index: "log_time".to_owned(),
+            index: "log_time".into(),
             index_range: AbsoluteTimeRange {
                 min: TimeInt::new_temporal(50),
                 max: TimeInt::new_temporal(150),
@@ -1090,14 +1085,14 @@ mod tests {
     #[test]
     fn test_compute_range_overlap_success() {
         let left = QueryRange {
-            index: "frame_nr".to_owned(),
+            index: "frame_nr".into(),
             index_range: AbsoluteTimeRange {
                 min: TimeInt::new_temporal(0),
                 max: TimeInt::new_temporal(100),
             },
         };
         let right = QueryRange {
-            index: "frame_nr".to_owned(),
+            index: "frame_nr".into(),
             index_range: AbsoluteTimeRange {
                 min: TimeInt::new_temporal(50),
                 max: TimeInt::new_temporal(150),
@@ -1113,14 +1108,14 @@ mod tests {
     #[test]
     fn test_compute_range_overlap_touching_boundaries() {
         let left = QueryRange {
-            index: "frame_nr".to_owned(),
+            index: "frame_nr".into(),
             index_range: AbsoluteTimeRange {
                 min: TimeInt::new_temporal(0),
                 max: TimeInt::new_temporal(100),
             },
         };
         let right = QueryRange {
-            index: "frame_nr".to_owned(),
+            index: "frame_nr".into(),
             index_range: AbsoluteTimeRange {
                 min: TimeInt::new_temporal(100),
                 max: TimeInt::new_temporal(200),

@@ -20,8 +20,10 @@ all-features = true
 
 [dependencies]
 re_chunk_store.workspace = true
+re_component_ui.workspace = true
 re_log_types.workspace = true
 re_sdk_types.workspace = true
+re_selection_panel.workspace = true
 re_tracing.workspace = true
 re_ui.workspace = true
 re_view.workspace = true

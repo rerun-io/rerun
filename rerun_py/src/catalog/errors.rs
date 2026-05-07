@@ -189,9 +189,9 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::NotFound => NotFoundError::new_err(err.to_string()),
                 ApiErrorKind::AlreadyExists => AlreadyExistsError::new_err(err.to_string()),
                 ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),
-                ApiErrorKind::Unimplemented | ApiErrorKind::Internal => {
-                    PyRuntimeError::new_err(err.to_string())
-                }
+                ApiErrorKind::Unimplemented
+                | ApiErrorKind::Internal
+                | ApiErrorKind::FailedPrecondition => PyRuntimeError::new_err(err.to_string()),
             },
 
             ExternalError::ArrowError(err) => PyValueError::new_err(format!("Arrow error: {err}")),

@@ -27,7 +27,7 @@ impl Decoder for McapMetadataDecoder {
     fn process(
         &mut self,
         ctx: &DecoderContext<'_>,
-        emit: &mut dyn FnMut(Chunk),
+        emit: &(dyn Fn(Chunk) + Send + Sync),
     ) -> Result<(), Error> {
         if ctx.summary().metadata_indexes.is_empty() {
             return Ok(());
@@ -104,6 +104,7 @@ mod tests {
     use re_log_types::TimeType;
 
     use crate::DecoderRegistry;
+    use crate::decoders::TestEmitter;
 
     use super::*;
 
@@ -114,16 +115,16 @@ mod tests {
             .expect("failed to read summary")
             .expect("no summary found");
 
-        let mut chunks = Vec::new();
+        let emitter = TestEmitter::default();
+
         let registry = DecoderRegistry::empty().register_file_decoder::<McapMetadataDecoder>();
         registry
             .plan(buffer, &summary, &crate::TopicFilter::default())
             .expect("failed to plan")
-            .run(buffer, &summary, TimeType::TimestampNs, &mut |chunk| {
-                chunks.push(chunk);
-            })
+            .run(buffer, &summary, TimeType::TimestampNs, &*emitter)
             .expect("failed to run decoder");
-        chunks
+
+        emitter.finish()
     }
 
     /// Tests that multiple metadata records are merged into a single chunk with one component per metadata.

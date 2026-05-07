@@ -426,24 +426,26 @@ impl DatastoreUi {
 
                         for timeline in all_timelines.values() {
                             row.col(|ui| {
-                                if chunk
-                                    .timelines()
-                                    .get(timeline.name())
-                                    .is_some_and(|t| !t.is_sorted())
-                                {
-                                    ui.label(ui.warning_text("Unsorted")).on_hover_text(
-                                        "This timeline is unordered relative to RowId",
-                                    );
-                                }
-                                if let Some(time_range) = timeline_ranges.get(timeline.name()) {
-                                    ui.label(format_time_range(
-                                        timeline,
-                                        time_range,
-                                        timestamp_format,
-                                    ));
-                                } else {
-                                    ui.label("-");
-                                }
+                                ui.horizontal(|ui| {
+                                    if chunk
+                                        .timelines()
+                                        .get(timeline.name())
+                                        .is_some_and(|t| !t.is_sorted())
+                                    {
+                                        ui.label(ui.warning_text("Unsorted")).on_hover_text(
+                                            "This timeline is unordered relative to RowId",
+                                        );
+                                    }
+                                    if let Some(time_range) = timeline_ranges.get(timeline.name()) {
+                                        ui.label(format_time_range(
+                                            timeline,
+                                            time_range,
+                                            timestamp_format,
+                                        ));
+                                    } else {
+                                        ui.label("-");
+                                    }
+                                });
                             });
                         }
 

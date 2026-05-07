@@ -82,7 +82,7 @@ pub mod external {
     pub use {
         eframe, egui, parking_lot, re_chunk, re_chunk_store, re_data_ui, re_entity_db, re_log,
         re_log_channel, re_log_types, re_memory, re_renderer, re_sdk_types, re_ui, re_view,
-        re_view_spatial, re_viewer_context, re_viewport,
+        re_view_spatial, re_viewer_context, re_viewport, re_viewport_blueprint,
     };
 }
 
@@ -324,10 +324,5 @@ pub fn reset_viewer_persistence() -> anyhow::Result<()> {
 /// Hook into [`re_log`] to receive copies of text log messages on a channel,
 /// which we will then show in the notification panel.
 pub fn register_text_log_receiver() -> crossbeam::channel::Receiver<re_log::LogMsg> {
-    let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
-    if re_log::add_boxed_logger(Box::new(logger)).is_err() {
-        // This can happen when users wrap re_viewer in their own eframe app.
-        re_log::info!("re_log not initialized. You won't see log messages as GUI notifications.");
-    }
-    text_log_rx
+    re_log::add_log_msg_receiver(re_log::LevelFilter::INFO)
 }

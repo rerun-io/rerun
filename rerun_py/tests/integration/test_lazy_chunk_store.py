@@ -139,8 +139,10 @@ def test_multiple_store_calls(lazy_rrd_path: Path) -> None:
 def test_store_properties(lazy_rrd_path: Path) -> None:
     """Application and recording IDs should be accessible."""
     reader = RrdReader(lazy_rrd_path)
-    assert reader.application_id == LAZY_RRD_APPLICATION_ID
-    assert reader.recording_id == LAZY_RRD_RECORDING_ID
+    recs = reader.recordings()
+    assert len(recs) == 1
+    assert recs[0].application_id == LAZY_RRD_APPLICATION_ID
+    assert recs[0].recording_id == LAZY_RRD_RECORDING_ID
 
     # Store should also work.
     store = reader.store()

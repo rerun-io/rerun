@@ -153,7 +153,8 @@ pub fn open_recording(
     let data_source = entity_db.data_source.as_ref().map(|v| match v {
         re_log_channel::LogSource::File { .. } => Some("file"), // .rrd, .png, .glb, …
         re_log_channel::LogSource::HttpStream { .. } => Some("http"),
-        re_log_channel::LogSource::RedapGrpcStream { .. } => None,
+        re_log_channel::LogSource::RedapGrpcStream { .. }
+        | re_log_channel::LogSource::EmbeddedTableBlueprint => None,
         re_log_channel::LogSource::MessageProxy { .. } => Some("grpc"),
         // vvv spawn(), connect() vvv
         re_log_channel::LogSource::RrdWebEvent => Some("web_event"),

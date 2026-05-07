@@ -19,5 +19,6 @@ from ._parquet_reader import ColumnRule as ColumnRule, ParquetReader as ParquetR
 from ._rrd_reader import RrdReader as RrdReader
 from ._selector import Selector as Selector
 from ._send_chunk import send_chunk as send_chunk
+from ._store_entry import StoreEntry as StoreEntry
 from ._streaming_reader import StreamingReader as StreamingReader
 from ._viewer_client import ViewerClient as ViewerClient

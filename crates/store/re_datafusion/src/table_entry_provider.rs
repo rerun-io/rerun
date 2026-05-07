@@ -26,8 +26,11 @@ use tokio::runtime::Handle;
 use tracing::instrument;
 
 use crate::IntoDfError as _;
+use crate::analytics::TableQueryInfo;
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;
+use crate::{ConnectionAnalytics, PendingTableQueryAnalytics, TableKind, TableQueryCaller};
+use re_uri::Origin;
 
 #[derive(Clone)]
 pub struct TableEntryTableProvider {
@@ -41,6 +44,17 @@ pub struct TableEntryTableProvider {
     /// Captured at construction so DataFusion-spawned execution tasks can re-attach
     /// the caller's tracing span — otherwise gRPC spans below surface as root traces.
     parent_span: tracing::Span,
+
+    /// Per-connection analytics sink. `None` ⇒ no analytics emitted for this provider.
+    analytics: Option<ConnectionAnalytics>,
+
+    /// What initiated this provider's scans. Defaults to `CatalogResolver`; should
+    /// be set explicitly via [`Self::with_caller`] when the caller is known.
+    caller: TableQueryCaller,
+
+    /// Underlying provider variant for analytics. Defaults to `Unknown`; set via
+    /// [`Self::with_table_kind`] when the caller already has the `ProviderDetails`.
+    table_kind: TableKind,
 }
 
 impl std::fmt::Debug for TableEntryTableProvider {
@@ -64,11 +78,69 @@ impl TableEntryTableProvider {
             table_id: None,
             runtime,
             parent_span: tracing::Span::current(),
+            analytics: None,
+            caller: TableQueryCaller::CatalogResolver,
+            table_kind: TableKind::Unknown,
         }
     }
 
     pub fn new_entry_list(client: ConnectionClient, runtime: Option<Handle>) -> Self {
         Self::new(client, "__entries", runtime)
+            .with_caller(TableQueryCaller::EntriesTable)
+            .with_table_kind(TableKind::SystemEntries)
+    }
+
+    /// Enable per-scan analytics for this provider.
+    ///
+    /// `origin` identifies the cloud the analytics should be sent to. The
+    /// caller already holds it (via `ConnectionRegistryHandle::client(origin)`
+    /// or similar), so we take it directly to avoid exposing the internal
+    /// `ConnectionAnalytics` type.
+    ///
+    /// Without this call no `cloud_scan_table` span will be emitted.
+    pub fn with_analytics(mut self, origin: Origin) -> Self {
+        let analytics = ConnectionAnalytics::new(origin);
+
+        // Lazy-fetch the server version so subsequent spans can be filtered by
+        // cloud build. Same pattern as `DataframeQueryTableProvider::new`.
+        let analytics_bg = analytics.clone();
+        let mut client_bg = self.client.clone();
+        let fetch_fut = async move {
+            match client_bg.version_info().await {
+                Ok(response) => {
+                    analytics_bg.set_server_version(Some(response.version));
+                }
+                Err(err) => {
+                    re_log::debug_once!("Failed to fetch server version for analytics: {err}");
+                    analytics_bg.set_server_version(None);
+                }
+            }
+        };
+
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(fetch_fut);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle.spawn(fetch_fut);
+        }
+
+        self.analytics = Some(analytics);
+        self
+    }
+
+    /// Set the caller identity recorded in the analytics span. Has no effect
+    /// unless [`Self::with_analytics`] is also set.
+    pub fn with_caller(mut self, caller: TableQueryCaller) -> Self {
+        self.caller = caller;
+        self
+    }
+
+    /// Set the underlying table kind recorded in the analytics span. Has no
+    /// effect unless [`Self::with_analytics`] is also set.
+    pub fn with_table_kind(mut self, table_kind: TableKind) -> Self {
+        self.table_kind = table_kind;
+        self
     }
 
     /// This is a convenience function
@@ -216,6 +288,41 @@ impl GrpcStreamToTable for TableEntryTableProvider {
                     "failed decoding /ScanTable response",
                 )
             })
+    }
+
+    fn begin_scan_analytics(
+        &self,
+        schema: &SchemaRef,
+        projection: Option<&Vec<usize>>,
+        limit: Option<usize>,
+    ) -> Option<PendingTableQueryAnalytics> {
+        let analytics = self.analytics.as_ref()?;
+
+        // `table_id` is `None` until the first `scan()` resolves it. For
+        // name-based providers this is normally cached by the time we get
+        // here (the schema fetch in `prepare()` calls `table_id()`).
+        let table_id = match (&self.table_id, &self.table) {
+            (Some(id), _) | (None, EntryIdOrName::Id(id)) => id.to_string(),
+            (None, EntryIdOrName::Name(name)) => name.clone(),
+        };
+
+        let schema_total_columns = schema.fields().len() as u32;
+        let projected_columns = projection
+            .map(|p| p.len() as u32)
+            .unwrap_or(schema_total_columns);
+
+        let info = TableQueryInfo {
+            table_id,
+            table_kind: self.table_kind,
+            caller: self.caller,
+            schema_total_columns,
+            projected_columns,
+            has_limit: limit.is_some(),
+            limit_value: limit.map(|v| v as u64),
+            time_range: web_time::SystemTime::now()..web_time::SystemTime::now(),
+        };
+
+        Some(analytics.begin_table_query(info, web_time::Instant::now()))
     }
 
     async fn insert_into(

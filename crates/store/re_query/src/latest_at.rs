@@ -406,7 +406,7 @@ impl LatestAtResults {
     /// Logs an error if the data cannot be deserialized.
     #[inline]
     pub fn component_batch<C: Component>(&self, component: ComponentIdentifier) -> Option<Vec<C>> {
-        self.component_batch_with_log_level(re_log::Level::Error, component)
+        self.component_batch_with_log_level(re_log::Level::ERROR, component)
     }
 
     /// Returns the deserialized data for the specified component.
@@ -448,7 +448,7 @@ impl LatestAtResults {
         component: ComponentIdentifier,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
-        self.component_instance_raw_with_log_level(re_log::Level::Error, component, instance_index)
+        self.component_instance_raw_with_log_level(re_log::Level::ERROR, component, instance_index)
     }
 
     /// Returns the raw data for the specified component at the given instance index.
@@ -490,7 +490,7 @@ impl LatestAtResults {
         instance_index: usize,
         component: ComponentIdentifier,
     ) -> Option<C> {
-        self.component_instance_with_log_level(re_log::Level::Error, instance_index, component)
+        self.component_instance_with_log_level(re_log::Level::ERROR, instance_index, component)
     }
 
     /// Returns the deserialized data for the specified component at the given instance index.
@@ -526,7 +526,7 @@ impl LatestAtResults {
     /// Returns an error if the underlying batch is not of unit length.
     #[inline]
     pub fn component_mono_raw(&self, component: ComponentIdentifier) -> Option<ArrowArrayRef> {
-        self.component_mono_raw_with_log_level(re_log::Level::Error, component)
+        self.component_mono_raw_with_log_level(re_log::Level::ERROR, component)
     }
 
     /// Returns the raw data for the specified component, assuming a mono-batch.
@@ -560,7 +560,7 @@ impl LatestAtResults {
     /// Logs an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
     #[inline]
     pub fn component_mono<C: Component>(&self, component: ComponentIdentifier) -> Option<C> {
-        self.component_mono_with_log_level(component, re_log::Level::Error)
+        self.component_mono_with_log_level(component, re_log::Level::ERROR)
     }
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.

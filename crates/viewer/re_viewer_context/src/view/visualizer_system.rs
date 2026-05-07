@@ -366,6 +366,23 @@ pub trait VisualizerSystem: Send + Sync + std::any::Any {
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError>;
+
+    /// Optional custom UI shown in the selection panel for this visualizer instruction.
+    ///
+    /// Returns `true` if the custom UI replaces the default per-component value UI.
+    /// Visualizers that need source-mapping selectors render them themselves as part of
+    /// this UI. Returns `false` to fall back to the default per-component UI; the default
+    /// impl renders nothing and returns `false`.
+    fn selection_ui(
+        &self,
+        _ctx: &ViewContext<'_>,
+        _ui: &mut egui::Ui,
+        _data_result: &crate::DataResult,
+        _instruction: &crate::VisualizerInstruction,
+        _type_report: Option<&crate::VisualizerTypeReport>,
+    ) -> bool {
+        false
+    }
 }
 
 pub struct VisualizerCollection {

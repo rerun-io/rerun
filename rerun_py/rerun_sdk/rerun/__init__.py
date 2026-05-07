@@ -137,6 +137,7 @@ from .archetypes import (
     SeriesLines as SeriesLines,
     SeriesPoints as SeriesPoints,
     Status as Status,
+    StatusConfiguration as StatusConfiguration,
     Tensor as Tensor,
     TextDocument as TextDocument,
     TextLog as TextLog,

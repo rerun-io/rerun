@@ -35,7 +35,12 @@ async fn test_grid_view() {
                 test_context.run_recording(&ui.ctx().clone(), |ctx| {
                     DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                         .title("Grid view test")
-                        .show(ctx, &runtime_handle, ui);
+                        .show(
+                            ctx,
+                            &runtime_handle,
+                            ui,
+                            &mut test_context.view_states.lock(),
+                        );
                 });
             });
 
@@ -68,7 +73,12 @@ async fn test_grid_view_resize() {
                 test_context.run_recording(&ui.ctx().clone(), |ctx| {
                     DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                         .title("Grid resize test")
-                        .show(ctx, &runtime_handle, ui);
+                        .show(
+                            ctx,
+                            &runtime_handle,
+                            ui,
+                            &mut test_context.view_states.lock(),
+                        );
                 });
             });
 
@@ -113,7 +123,12 @@ async fn test_grid_view_flagging() {
                     DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                         .title("Flag test")
                         .remote_table(remote_uri.clone())
-                        .show(ctx, &runtime_handle, ui);
+                        .show(
+                            ctx,
+                            &runtime_handle,
+                            ui,
+                            &mut test_context.view_states.lock(),
+                        );
                 });
             });
 
@@ -152,7 +167,12 @@ async fn test_grid_view_non_uniform_cards() {
             test_context.run_recording(&ui.ctx().clone(), |ctx| {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Non-uniform cards")
-                    .show(ctx, &runtime_handle, ui);
+                    .show(
+                        ctx,
+                        &runtime_handle,
+                        ui,
+                        &mut test_context.view_states.lock(),
+                    );
             });
         });
 

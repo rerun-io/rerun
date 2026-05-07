@@ -1,9 +1,9 @@
 use re_log_types::{EntityPath, TimeCell, TimeReal, TimeType, TimelineName, TimestampFormat};
 use re_ui::{Help, icons};
 use re_viewer_context::{
-    IdentifiedViewSystem as _, TimeControlCommand, ViewClass, ViewClassLayoutPriority,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewerContext,
+    DataResultInteractionAddress, IdentifiedViewSystem as _, Item, TimeControlCommand, ViewClass,
+    ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 
 use crate::data::{StatusLane, StatusLanesData};
@@ -22,14 +22,17 @@ const TOP_MARGIN: f32 = 4.0;
 struct StatusViewState {
     /// Visible time range: (min, max) in timeline units.
     /// `None` means "fit all data".
+    /// TODO(RR-4291): use the same timeline code as the timeline panel
     time_range: Option<(f64, f64)>,
 
     /// The timeline we last rendered. When the active timeline changes,
     /// we reset `time_range` so the view auto-fits to the new data.
     active_timeline: Option<TimelineName>,
 
-    /// `true` while the user is dragging the time cursor.
-    dragging_cursor: bool,
+    /// `true` if the current primary-button press landed on a phase rectangle.
+    /// A phase press selects the phase's entity and does NOT move the time cursor;
+    /// a press on empty space drags the time cursor.
+    press_on_phase: bool,
 }
 
 impl ViewState for StatusViewState {
@@ -170,13 +173,6 @@ impl ViewClass for StatusView {
             return Ok(());
         }
 
-        // Handle select / hover on the view itself.
-        ctx.handle_select_hover_drag_interactions(
-            &response,
-            re_viewer_context::Item::View(query.view_id),
-            false,
-        );
-
         // Lane drawing area (above the time axis).
         let lanes_rect = egui::Rect::from_min_max(
             rect.left_top(),
@@ -187,35 +183,51 @@ impl ViewClass for StatusView {
             rect.right_bottom(),
         );
 
-        // Detect cursor drag vs pan: if drag started near the cursor, drag the cursor.
         // TODO(RR-4433): the implementation is incomplete and inconsistent with the time series view.
         let current_time = query.latest_at.as_i64() as f64;
         let cursor_x = time_to_x(current_time, rect, t_min, t_max);
-        const CURSOR_GRAB_RADIUS: f32 = 6.0;
 
-        if response.drag_started() {
-            state.dragging_cursor = ui
-                .input(|i| i.pointer.press_origin())
-                .is_some_and(|pos| (pos.x - cursor_x).abs() <= CURSOR_GRAB_RADIUS);
-        }
-        if !response.dragged() {
-            state.dragging_cursor = false;
+        // On primary press, remember whether it landed on a phase. A phase press
+        // selects the entity; a press on empty space drags the time cursor.
+        if ui.input(|i| i.pointer.primary_pressed()) {
+            state.press_on_phase = response
+                .interact_pointer_pos()
+                .is_some_and(|pos| hit_test_phase(pos, lanes_rect, &all_lanes, t_min, t_max));
         }
 
-        if state.dragging_cursor {
-            // Drag the time cursor.
-            if let Some(pos) = response.interact_pointer_pos() {
-                let frac = ((pos.x - rect.left()) / rect.width()) as f64;
-                let drag_time = t_min + frac * (t_max - t_min);
-                ctx.send_time_commands([
-                    TimeControlCommand::Pause,
-                    TimeControlCommand::SetTime(TimeReal::from(drag_time)),
-                ]);
-            }
-        } else {
-            // Pan & zoom.
-            handle_pan_zoom(ui, &response, rect, &mut t_min, &mut t_max);
+        // While the primary button is active on the view and the press started on
+        // empty space, move the time cursor to the pointer. Using primary_pressed /
+        // primary_down / primary_released mirrors `re_time_panel` so that the cursor
+        // jumps on press and then follows during a drag.
+        let primary_active = response.hovered()
+            && ui.input(|i| {
+                i.pointer.primary_pressed()
+                    || i.pointer.primary_down()
+                    || i.pointer.primary_released()
+            });
+        let dragging_cursor = primary_active && !state.press_on_phase;
+        if dragging_cursor && let Some(pos) = response.interact_pointer_pos() {
+            let frac = ((pos.x - rect.left()) / rect.width()) as f64;
+            let new_time = t_min + frac * (t_max - t_min);
+            ctx.send_time_commands([
+                TimeControlCommand::Pause,
+                TimeControlCommand::SetTime(TimeReal::from(new_time)),
+            ]);
         }
+
+        // Right- or middle-click + drag to pan.
+        if response.dragged_by(egui::PointerButton::Secondary)
+            || response.dragged_by(egui::PointerButton::Middle)
+        {
+            let dx = response.drag_delta().x;
+            let dt = -(dx as f64 / rect.width() as f64) * (t_max - t_min);
+            t_min += dt;
+            t_max += dt;
+            ui.ctx().set_cursor_icon(egui::CursorIcon::AllScroll);
+        }
+
+        // Ctrl/Cmd + scroll to zoom.
+        handle_zoom(ui, &response, rect, &mut t_min, &mut t_max);
         state.time_range = Some((t_min, t_max));
 
         // Background.
@@ -257,38 +269,31 @@ impl ViewClass for StatusView {
             weak_color,
         );
 
-        // Draw time cursor as a full-height vertical line.
-        if current_time >= t_min && current_time <= t_max {
-            let cursor_hovered = ui
-                .input(|i| i.pointer.hover_pos())
-                .is_some_and(|pos| (pos.x - cursor_x).abs() <= CURSOR_GRAB_RADIUS);
-            let stroke = ui.visuals().widgets.inactive.fg_stroke;
-            if cursor_hovered || state.dragging_cursor {
-                ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
-            }
-            let width_multiplier = if cursor_hovered || state.dragging_cursor {
-                3.0
-            } else {
-                1.5
-            };
-            painter.vline(
-                cursor_x,
-                rect.top()..=rect.bottom(),
-                egui::Stroke::new(width_multiplier * stroke.width, stroke.color),
-            );
-        }
+        // Handle selection: determine what's under the pointer (lane entity or view).
+        let hover_pos = ui.input(|i| i.pointer.hover_pos());
+        let hovered_lane = hover_pos.and_then(|pos| hovered_lane(pos, lanes_rect, &all_lanes));
 
-        // Click to set time cursor.
-        if response.clicked()
-            && let Some(pos) = response.interact_pointer_pos()
-        {
-            let frac = ((pos.x - rect.left()) / rect.width()) as f64;
-            let click_time = t_min + frac * (t_max - t_min);
-            ctx.send_time_commands([
-                TimeControlCommand::Pause,
-                TimeControlCommand::SetTime(TimeReal::from(click_time)),
-            ]);
-        }
+        paint_time_cursor(
+            ui,
+            &painter,
+            rect,
+            cursor_x,
+            current_time,
+            t_min,
+            t_max,
+            dragging_cursor,
+            hovered_lane.is_some(),
+        );
+
+        let interacted_item = if let Some(entity_path) = hovered_lane {
+            Item::DataResult(DataResultInteractionAddress::from_entity_path(
+                query.view_id,
+                entity_path.clone(),
+            ))
+        } else {
+            Item::View(query.view_id)
+        };
+        ctx.handle_select_hover_drag_interactions(&response, interacted_item, false);
 
         Ok(())
     }
@@ -320,8 +325,8 @@ fn time_to_x(t: f64, rect: egui::Rect, t_min: f64, t_max: f64) -> f32 {
     egui::lerp(rect.left()..=rect.right(), frac)
 }
 
-/// Handle drag-to-pan and scroll-to-zoom interactions.
-fn handle_pan_zoom(
+/// Handle Cmd/Ctrl + scroll to zoom centered on the pointer.
+fn handle_zoom(
     ui: &egui::Ui,
     response: &egui::Response,
     rect: egui::Rect,
@@ -330,19 +335,10 @@ fn handle_pan_zoom(
 ) {
     let range = *t_max - *t_min;
 
-    // Drag to pan.
-    if response.dragged() {
-        let dx = response.drag_delta().x;
-        let dt = -(dx as f64 / rect.width() as f64) * range;
-        *t_min += dt;
-        *t_max += dt;
-    }
-
-    // Cmd/Ctrl + scroll to zoom (egui routes Cmd+scroll to zoom_delta).
+    // egui routes Cmd+scroll to zoom_delta.
     let zoom_delta = ui.input(|i| i.zoom_delta());
     if zoom_delta != 1.0 && response.hovered() {
         let zoom_factor = zoom_delta as f64;
-        // Zoom centered on the mouse position.
         let mouse_x = ui
             .input(|i| i.pointer.hover_pos())
             .map(|p| p.x)
@@ -353,6 +349,58 @@ fn handle_pan_zoom(
         *t_min = pivot - (pivot - *t_min) / zoom_factor;
         *t_max = pivot + (*t_max - pivot) / zoom_factor;
     }
+}
+
+/// Returns the entity path of the lane under `pos`, if any.
+fn hovered_lane<'a>(
+    pos: egui::Pos2,
+    lanes_rect: egui::Rect,
+    lanes: &'a [&'a StatusLane],
+) -> Option<&'a EntityPath> {
+    lanes.iter().enumerate().find_map(|(lane_idx, lane)| {
+        let y_top =
+            lanes_rect.top() + TOP_MARGIN + lane_idx as f32 * LANE_TOTAL_HEIGHT + LANE_LABEL_HEIGHT;
+        let y_bottom = y_top + LANE_BAND_HEIGHT;
+        (pos.y >= y_top && pos.y <= y_bottom).then_some(&lane.entity_path)
+    })
+}
+
+/// Returns `true` if `pos` lies inside any visible phase rectangle.
+fn hit_test_phase(
+    pos: egui::Pos2,
+    lanes_rect: egui::Rect,
+    lanes: &[&StatusLane],
+    t_min: f64,
+    t_max: f64,
+) -> bool {
+    for (lane_idx, lane) in lanes.iter().enumerate() {
+        let y_top = lanes_rect.top() + TOP_MARGIN + lane_idx as f32 * LANE_TOTAL_HEIGHT;
+        let band_y_top = y_top + LANE_LABEL_HEIGHT;
+        let band_y_bottom = band_y_top + LANE_BAND_HEIGHT;
+        if pos.y < band_y_top || pos.y > band_y_bottom {
+            continue;
+        }
+        for (i, phase) in lane.phases.iter().enumerate() {
+            if !phase.visible {
+                continue;
+            }
+            let x_start =
+                time_to_x(phase.start_time as f64, lanes_rect, t_min, t_max).max(lanes_rect.left());
+            let x_end = if let Some(next) = lane.phases.get(i + 1) {
+                time_to_x(next.start_time as f64, lanes_rect, t_min, t_max)
+            } else {
+                lanes_rect.right()
+            }
+            .min(lanes_rect.right());
+            if x_end <= x_start {
+                continue;
+            }
+            if pos.x >= x_start && pos.x <= x_end {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 /// Paint a single lane (label + colored band of phases) and show tooltips on hover.
@@ -390,6 +438,9 @@ fn paint_lane(
 
     // Phases.
     for (i, phase) in lane.phases.iter().enumerate() {
+        if !phase.visible {
+            continue;
+        }
         let x_start = time_to_x(phase.start_time as f64, lanes_rect, t_min, t_max);
         let next_phase = lane.phases.get(i + 1);
         let x_end = if let Some(next) = next_phase {
@@ -482,6 +533,44 @@ fn readable_text_color(bg: egui::Color32) -> egui::Color32 {
     } else {
         egui::Color32::WHITE
     }
+}
+
+/// Paint the time cursor as a full-height vertical line, thickened when hovered or dragged.
+#[expect(clippy::too_many_arguments)]
+#[expect(clippy::fn_params_excessive_bools)]
+fn paint_time_cursor(
+    ui: &egui::Ui,
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    cursor_x: f32,
+    current_time: f64,
+    t_min: f64,
+    t_max: f64,
+    dragging_cursor: bool,
+    pointer_on_lane: bool,
+) {
+    const CURSOR_GRAB_RADIUS: f32 = 6.0;
+
+    if current_time < t_min || current_time > t_max {
+        return;
+    }
+
+    let cursor_hovered = ui
+        .input(|i| i.pointer.hover_pos())
+        .is_some_and(|pos| (pos.x - cursor_x).abs() <= CURSOR_GRAB_RADIUS);
+    let active = cursor_hovered || dragging_cursor;
+    // Don't override the cursor when the pointer is over a lane band — clicking
+    // there selects the entity rather than scrubbing the time cursor.
+    if active && !pointer_on_lane {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+    }
+    let stroke = ui.visuals().widgets.inactive.fg_stroke;
+    let width_multiplier = if active { 3.0 } else { 1.5 };
+    painter.vline(
+        cursor_x,
+        rect.top()..=rect.bottom(),
+        egui::Stroke::new(width_multiplier * stroke.width, stroke.color),
+    );
 }
 
 /// Paint the time axis with tick marks and labels.

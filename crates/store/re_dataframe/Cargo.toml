@@ -46,7 +46,18 @@ tracing.workspace = true
 [dev-dependencies]
 re_sdk_types.workspace = true
 # External dependencies:
+criterion.workspace = true
 insta.workspace = true
+mimalloc.workspace = true
 similar-asserts.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
 tokio-stream.workspace = true
+
+
+[lib]
+bench = false
+
+
+[[bench]]
+name = "next_row"
+harness = false

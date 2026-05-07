@@ -176,6 +176,8 @@ def save(
     path: str | pathlib.Path,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
+    *,
+    write_footer: bool = True,
 ) -> None:
     """
     Stream all log-data to a file.
@@ -199,6 +201,17 @@ def save(
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    write_footer:
+        Whether to emit a complete RRD footer (including a manifest of every chunk) at the
+        end of the stream. Defaults to `True`.
+
+        Producing a footer keeps per-chunk metadata in memory for the lifetime of the sink,
+        which grows linearly with the number of chunks logged. Pass `write_footer=False` for
+        long-running streaming sessions; the resulting file is still a valid RRD and a footer
+        can be added after the fact via `rerun rrd optimize`.
+
+        *Warning*: lack of footer will significantly hurt random-access performance and some
+        tools (e.g. LazyStore) may not work properly.
 
     """
 
@@ -226,10 +239,16 @@ def save(
         path=str(path),
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
+        write_footer=write_footer,
     )
 
 
-def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingStream | None = None) -> None:
+def stdout(
+    default_blueprint: BlueprintLike | None = None,
+    recording: RecordingStream | None = None,
+    *,
+    write_footer: bool = True,
+) -> None:
     """
     Stream all log-data to stdout.
 
@@ -251,6 +270,12 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    write_footer:
+        Whether to emit a complete RRD footer (including a manifest of every chunk) at the
+        end of the stream. Defaults to `True`. See [`rerun.save`][] for details and trade-offs.
+
+        *Warning*: lack of footer will significantly hurt random-access performance and some
+        tools (e.g. LazyStore) may not work properly.
 
     """
 
@@ -277,6 +302,7 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
     bindings.stdout(
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
+        write_footer=write_footer,
     )
 
 

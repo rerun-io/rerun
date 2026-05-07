@@ -29,6 +29,12 @@ pub struct ReTable<'a> {
     ///
     /// We remember the original so it doesn't affect the cell contents.
     original_style: Arc<egui::Style>,
+
+    /// Number of preview views to fit into the sticky preview column, if present.
+    ///
+    /// When present, this column is passed through to the inner delegate as column index 0.
+    /// Data column indices are offset accordingly.
+    num_preview_views: Option<usize>,
 }
 
 impl<'a> ReTable<'a> {
@@ -52,7 +58,17 @@ impl<'a> ReTable<'a> {
             num_rows,
             table_style: TableStyle::Spacious,
             original_style: Arc::new(egui::Style::default()), // Will be set in show().
+            num_preview_views: None,
         }
+    }
+
+    /// Add a sticky preview column between the row number column and the data columns.
+    ///
+    /// This column is passed through to the inner delegate as column index 0.
+    /// Data column indices are offset by one.
+    pub fn preview_column(mut self, num_preview_views: Option<usize>) -> Self {
+        self.num_preview_views = num_preview_views;
+        self
     }
 
     fn row_number_text(row: u64) -> WidgetText {
@@ -104,9 +120,14 @@ impl<'a> ReTable<'a> {
         self.original_style = ui.style().clone();
         apply_table_style_fixes(ui.style_mut());
 
+        // 1 for row number + optional preview column are sticky.
+        let num_sticky_cols = 1 + self.num_preview_views.is_some() as usize;
+        let preview_column_width =
+            self.inner.default_row_height() * self.num_preview_views.unwrap_or(1).max(1) as f32;
+
         egui_table::Table::new()
             .id_salt(self.session_id)
-            .num_sticky_cols(1) // Row number column is sticky.
+            .num_sticky_cols(num_sticky_cols)
             .columns(
                 iter::once(
                     egui_table::Column::new(row_number_cell_width)
@@ -114,6 +135,12 @@ impl<'a> ReTable<'a> {
                         .range(Rangef::new(row_number_cell_width, row_number_cell_width))
                         .id(Id::new("row_number")),
                 )
+                .chain(self.num_preview_views.is_some().then(|| {
+                    egui_table::Column::new(preview_column_width)
+                        .resizable(false)
+                        .range(Rangef::new(preview_column_width, preview_column_width))
+                        .id(Id::new("segment_preview"))
+                }))
                 .chain(
                     self.config
                         .visible_column_ids()
@@ -139,12 +166,14 @@ impl egui_table::TableDelegate for ReTable<'_> {
 
     fn header_cell_ui(&mut self, ui: &mut Ui, cell: &HeaderCellInfo) {
         let table_style = self.table_style;
+        let num_preview_columns = self.num_preview_views.is_some() as usize;
 
         header_ui(ui, table_style, cell.group_index != 0, |ui| {
             ui.set_style(self.original_style.clone());
             ui.set_truncate_style();
 
             if cell.group_index == 0 {
+                // Row number / checkbox header.
                 let hovered = ui.rect_contains_pointer(
                     ui.max_rect().expand(ui.style().interaction.interact_radius),
                 );
@@ -170,13 +199,20 @@ impl egui_table::TableDelegate for ReTable<'_> {
                         ui.label("#");
                     });
                 }
+            } else if cell.group_index <= num_preview_columns {
+                // Extra prefix column header -- delegate to inner with index starting at 0.
+                let mut header_cell_info = cell.clone();
+                header_cell_info.group_index = cell.group_index - 1;
+                self.inner.header_cell_ui(ui, &header_cell_info);
             } else {
-                // Offset by one for the row number column.
-                let column_index = cell.group_index - 1;
+                // Data column headers.
+                let column_index = cell.group_index - 1 - num_preview_columns;
 
                 if let Some(col_index) = self.config.visible_column_indexes().nth(column_index) {
                     let mut header_cell_info = cell.clone();
-                    header_cell_info.group_index = col_index;
+                    // Offset by num_preview_columns so the delegate sees extra prefix indices 0..num_preview_columns
+                    // and data indices starting at num_preview_columns.
+                    header_cell_info.group_index = num_preview_columns + col_index;
 
                     self.inner.header_cell_ui(ui, &header_cell_info);
                 }
@@ -185,10 +221,12 @@ impl egui_table::TableDelegate for ReTable<'_> {
     }
 
     fn cell_ui(&mut self, ui: &mut Ui, cell: &CellInfo) {
-        cell_ui(ui, self.table_style, false, |ui| {
-            ui.set_truncate_style();
-            if cell.col_nr == 0 {
-                // This is the row number column.
+        let num_preview_columns = self.num_preview_views.is_some() as usize;
+
+        if cell.col_nr == 0 {
+            // Row number column.
+            cell_ui(ui, self.table_style, false, |ui| {
+                ui.set_truncate_style();
                 let show_checkbox = self.previous_selection.all_hovered
                     || self.previous_selection.hovered_row == Some(cell.row_nr);
                 if show_checkbox {
@@ -209,16 +247,24 @@ impl egui_table::TableDelegate for ReTable<'_> {
                         ui.label(Self::row_number_text(cell.row_nr));
                     });
                 }
-            } else {
-                // Offset by one for the row number column.
-                let col_index = cell.col_nr - 1;
+            });
+        } else if cell.col_nr <= num_preview_columns {
+            // Extra prefix column -- pass through to delegate with index starting at 0.
+            let mut cell_info = cell.clone();
+            cell_info.col_nr = cell.col_nr - 1;
+            self.inner.cell_ui(ui, &cell_info);
+        } else {
+            // Data column.
+            cell_ui(ui, self.table_style, false, |ui| {
+                ui.set_truncate_style();
+                let col_index = cell.col_nr - 1 - num_preview_columns;
                 if let Some(col_index) = self.config.visible_column_indexes().nth(col_index) {
                     let mut cell_info = cell.clone();
-                    cell_info.col_nr = col_index;
+                    cell_info.col_nr = num_preview_columns + col_index;
                     self.inner.cell_ui(ui, &cell_info);
                 }
-            }
-        });
+            });
+        }
     }
 
     fn row_ui(&mut self, ui: &mut Ui, row_nr: u64) {

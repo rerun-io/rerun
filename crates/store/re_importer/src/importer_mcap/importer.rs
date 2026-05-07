@@ -112,13 +112,13 @@ impl McapImporter {
         mcap: &[u8],
         timeline_type: re_log_types::TimeType,
         timestamp_offset_ns: Option<i64>,
-        emit_chunk: &mut dyn FnMut(re_chunk::Chunk),
+        emit_chunk: &(dyn Fn(re_chunk::Chunk) + Send + Sync),
     ) -> Result<(), ImporterError> {
         re_tracing::profile_function!();
 
         let lenses = self.lenses_for(timeline_type);
 
-        let mut on_chunk_with_transforms = |chunk: re_chunk::Chunk| {
+        let on_chunk_with_transforms = |chunk: re_chunk::Chunk| {
             if let Some(ref lenses) = lenses {
                 for result in lenses.apply(&chunk) {
                     match result {
@@ -145,7 +145,7 @@ impl McapImporter {
         DecoderRegistry::all_builtin(self.raw_fallback_enabled)
             .select(&self.selected_decoders)
             .plan(mcap, &summary, &self.topic_filter)?
-            .run(mcap, &summary, timeline_type, &mut on_chunk_with_transforms)?;
+            .run(mcap, &summary, timeline_type, &on_chunk_with_transforms)?;
 
         if self
             .selected_decoders
@@ -154,7 +154,7 @@ impl McapImporter {
                 mcap,
                 &summary,
                 &self.topic_filter,
-                &mut on_chunk_with_transforms,
+                &on_chunk_with_transforms,
             )
         {
             re_log::warn_once!("Failed to extract URDF from robot_description topics: {err}");
@@ -293,7 +293,7 @@ impl McapImporter {
             mcap,
             settings.timeline_type,
             settings.timestamp_offset_ns,
-            &mut |chunk| {
+            &|chunk| {
                 send_chunk_to_channel(tx, &store_id, chunk);
             },
         )

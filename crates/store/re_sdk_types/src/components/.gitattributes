@@ -30,6 +30,7 @@ image_format.rs linguist-generated=true
 image_plane_distance.rs linguist-generated=true
 interactive.rs linguist-generated=true
 interpolation_mode.rs linguist-generated=true
+is_keyframe.rs linguist-generated=true
 key_value_pairs.rs linguist-generated=true
 keypoint_id.rs linguist-generated=true
 lat_lon.rs linguist-generated=true

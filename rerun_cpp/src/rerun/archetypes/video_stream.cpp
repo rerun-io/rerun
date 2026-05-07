@@ -12,6 +12,9 @@ namespace rerun::archetypes {
             ComponentBatch::empty<rerun::components::VideoCodec>(Descriptor_codec).value_or_throw();
         archetype.sample = ComponentBatch::empty<rerun::components::VideoSample>(Descriptor_sample)
                                .value_or_throw();
+        archetype.is_keyframe =
+            ComponentBatch::empty<rerun::components::IsKeyframe>(Descriptor_is_keyframe)
+                .value_or_throw();
         archetype.opacity =
             ComponentBatch::empty<rerun::components::Opacity>(Descriptor_opacity).value_or_throw();
         archetype.draw_order =
@@ -22,12 +25,15 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> VideoStream::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
+        columns.reserve(5);
         if (codec.has_value()) {
             columns.push_back(codec.value().partitioned(lengths_).value_or_throw());
         }
         if (sample.has_value()) {
             columns.push_back(sample.value().partitioned(lengths_).value_or_throw());
+        }
+        if (is_keyframe.has_value()) {
+            columns.push_back(is_keyframe.value().partitioned(lengths_).value_or_throw());
         }
         if (opacity.has_value()) {
             columns.push_back(opacity.value().partitioned(lengths_).value_or_throw());
@@ -44,6 +50,9 @@ namespace rerun::archetypes {
         }
         if (sample.has_value()) {
             return columns(std::vector<uint32_t>(sample.value().length(), 1));
+        }
+        if (is_keyframe.has_value()) {
+            return columns(std::vector<uint32_t>(is_keyframe.value().length(), 1));
         }
         if (opacity.has_value()) {
             return columns(std::vector<uint32_t>(opacity.value().length(), 1));
@@ -62,13 +71,16 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(4);
+        cells.reserve(5);
 
         if (archetype.codec.has_value()) {
             cells.push_back(archetype.codec.value());
         }
         if (archetype.sample.has_value()) {
             cells.push_back(archetype.sample.value());
+        }
+        if (archetype.is_keyframe.has_value()) {
+            cells.push_back(archetype.is_keyframe.value());
         }
         if (archetype.opacity.has_value()) {
             cells.push_back(archetype.opacity.value());

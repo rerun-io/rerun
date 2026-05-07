@@ -74,9 +74,11 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
         let chunk_infos = self.chunk_infos.iter().map(Into::into).collect::<Vec<_>>();
         let fetch_chunks_request = FetchChunksRequest { chunk_infos };
 
+        let mut req = fetch_chunks_request.into_request();
+        req.set_timeout(re_redap_client::FETCH_CHUNKS_DEADLINE);
         let response = self
             .client
-            .fetch_chunks(fetch_chunks_request.into_request())
+            .fetch_chunks(req)
             .await
             .map_err(|err| ApiError::tonic(err, "fetch_chunks"))?;
 
@@ -289,7 +291,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
 
 #[tracing::instrument(level = "trace", skip_all)]
 fn create_next_row(
-    query_handle: &QueryHandle<StorageEngine>,
+    query_handle: &mut QueryHandle<StorageEngine>,
     segment_id: &str,
     target_schema: &Arc<Schema>,
 ) -> ApiResult<Option<RecordBatch>> {

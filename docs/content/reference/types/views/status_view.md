@@ -28,4 +28,5 @@ snippet: views/status
 ## Visualized archetypes
 
 * [`Status`](../archetypes/status.md)
+* [`StatusConfiguration`](../archetypes/status_configuration.md)
 

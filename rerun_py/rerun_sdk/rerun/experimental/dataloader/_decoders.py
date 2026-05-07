@@ -113,7 +113,7 @@ def _is_list_type(t: pa.DataType) -> bool:
 
 
 def _flatten_blob(arr: pa.Array, row: int) -> np.ndarray:
-    """Extract row *row* bytes from a `list<list<uint8>>` or `list<binary>` array."""
+    """Extract row *row* bytes from a `list<list<uint8>>` or `list<binary | large_binary>` array."""
     outer_offsets = arr.offsets.to_numpy()
     lo, hi = int(outer_offsets[row]), int(outer_offsets[row + 1])
     inner = arr.values.slice(lo, hi - lo)
@@ -152,11 +152,13 @@ def _is_annex_b(data: bytes) -> bool:
 
 def _is_av1_keyframe_packet(sample: bytes) -> bool:
     """
-    True if *sample* starts with an AV1 OBU that begins a random-access point.
+    Heuristic: True if *sample*'s first OBU is `OBU_SEQUENCE_HEADER` (type 1) or `OBU_TEMPORAL_DELIMITER` (type 2).
 
-    A keyframe packet's first OBU is either `OBU_SEQUENCE_HEADER` (type 1)
-    or `OBU_TEMPORAL_DELIMITER` (type 2); non-keyframe packets start with
-    `OBU_FRAME` (type 6) or `OBU_FRAME_HEADER` (type 3).
+    libdav1d rejects a non-keyframe as the first packet, so we use this to skip leading non-keyframe
+    samples until something keyframe-like appears.
+
+    Assumes the upstream encoder emits TDs only at random-access points,
+    for streams where every TU starts with a TD this check is a no-op and the first sample is always treated as a keyframe.
     """
     if not sample:
         return False
@@ -168,19 +170,19 @@ class VideoFrameDecoder(ColumnDecoder):
     """
     Compressed video random access via context-aware fetching.
 
-    Strategy:
+    `context_range(N)` asks the prefetcher to pull the previous
+    `keyframe_interval` samples (counted directly for integer indices,
+    converted to `keyframe_interval / fps_estimate` seconds for
+    timestamp indices). `decode()` runs the codec over those samples
+    in order and returns the final frame.
 
-    - `context_range(N)` returns `(N - keyframe_interval, N)`, telling
-      the prefetcher to fetch a few extra frames before the target.
-    - `decode()` receives the context data (keyframe through target),
-      decodes sequentially, returns only the final frame.
+    `keyframe_interval` must be greater than or equal to the actual GOP
+    length; for timestamp indices `fps_estimate` must also be close to
+    the true frame rate. If the fetched window misses a keyframe,
+    `decode()` raises `RuntimeError`.
 
-    The *keyframe_interval* is a conservative estimate. Fetching a few
-    extra frames beyond the actual keyframe is cheap (small Arrow rows).
-    Under-estimating means a decode failure -> fallback to wider fetch.
-
-    Samples may be raw H.264 AVC1/AVCC (length-prefixed NAL units) or
-    Annex B; the format is detected automatically per sample.
+    H.264 samples may be AVC1/AVCC (length-prefixed NAL units) or Annex B;
+    the format is detected per sample.
     """
 
     def __init__(
@@ -267,7 +269,7 @@ class VideoFrameDecoder(ColumnDecoder):
         return target_tensor
 
     def _decode_packets(self, samples: list[bytes]) -> Iterator[av.VideoFrame]:
-        """Decode raw packet bytes directly via a per-call CodecContext — no container."""
+        """Decode raw packet bytes via a per-call CodecContext (no container)."""
         ctx = cast("av.VideoCodecContext", av.CodecContext.create(self._decoder_name, "r"))
         for sample in samples:
             for frame in ctx.decode(av.Packet(sample)):

@@ -32,6 +32,8 @@ use opentelemetry_proto::tonic::{
     trace::v1::{ResourceSpans, ScopeSpans, Span, span::Link, span::SpanKind},
 };
 use re_dataframe::QueryExpression;
+use re_protos::cloud::v1alpha1::SystemTableKind;
+use re_protos::cloud::v1alpha1::ext::ProviderDetails;
 use re_uri::Origin;
 use tokio::sync::OnceCell;
 use web_time::{Duration, SystemTime};
@@ -121,6 +123,29 @@ impl ConnectionAnalytics {
                 scan_start,
                 time_to_first_chunk: OnceLock::new(),
                 direct_terminal_reason: OnceLock::new(),
+                error_kind: OnceLock::new(),
+            }),
+        }
+    }
+
+    /// Begin tracking analytics for a table scan.
+    ///
+    /// Returns a [`PendingTableQueryAnalytics`] that accumulates stats across the
+    /// scan. The analytics event is sent when the last clone is dropped.
+    pub fn begin_table_query(
+        &self,
+        info: TableQueryInfo,
+        scan_start: web_time::Instant,
+    ) -> PendingTableQueryAnalytics {
+        PendingTableQueryAnalytics {
+            inner: Arc::new(PendingTableInner {
+                connection: self.clone(),
+                info,
+                stats: SharedTableScanStats::default(),
+                scan_start,
+                time_to_first_response: OnceLock::new(),
+                time_to_first_batch: OnceLock::new(),
+                trace_id: OnceLock::new(),
                 error_kind: OnceLock::new(),
             }),
         }
@@ -467,6 +492,10 @@ pub(crate) enum DirectFetchFailureReason {
     Http5xx,
     Connection,
     Decode,
+
+    /// The source object on the blob store changed since the dataset was
+    /// registered.
+    SourceChanged,
     Other,
 }
 
@@ -479,6 +508,7 @@ impl DirectFetchFailureReason {
             Self::Http5xx => "http_5xx",
             Self::Connection => "connection",
             Self::Decode => "decode",
+            Self::SourceChanged => "source_changed",
             Self::Other => "other",
         }
     }
@@ -804,6 +834,393 @@ impl Drop for PendingInner {
 }
 
 // ----------------------------------------------------------------------------
+// Table-scan analytics
+//
+// Mirrors the dataset-query analytics above but for `ScanTable` calls, which
+// flow through `TableEntryTableProvider` / `GrpcStreamProvider`. Lance and
+// other server-side scan stats (rows_scanned, fragments_*, …) are not
+// reachable from the client today and will be added via server-side OTLP
+// span enrichment in a follow-up.
+
+/// Underlying provider variant of a table entry.
+///
+/// Bounded so the analytics dimension cardinality stays low. Add a variant if
+/// the Data Platform exposes a new system or storage backend.
+#[derive(Clone, Copy, Debug)]
+pub enum TableKind {
+    /// User-registered Lance-backed table.
+    Lance,
+
+    /// `__entries`: the catalog's entry list.
+    SystemEntries,
+
+    /// `__namespaces`: not currently used.
+    SystemNamespaces,
+
+    /// Caller did not (or could not) determine the kind without an extra RPC.
+    Unknown,
+}
+
+impl TableKind {
+    /// Stable string label emitted into the analytics span.
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Lance => "lance",
+            Self::SystemEntries => "system_entries",
+            Self::SystemNamespaces => "system_namespaces",
+            Self::Unknown => "unknown",
+        }
+    }
+}
+
+impl From<&ProviderDetails> for TableKind {
+    fn from(details: &ProviderDetails) -> Self {
+        match details {
+            ProviderDetails::LanceTable(_) => Self::Lance,
+            ProviderDetails::SystemTable(t) => match t.kind {
+                SystemTableKind::Entries => Self::SystemEntries,
+                SystemTableKind::Namespaces => Self::SystemNamespaces,
+                SystemTableKind::Unspecified => Self::Unknown,
+            },
+        }
+    }
+}
+
+/// Where a table scan was initiated from.
+///
+/// Bounded enum to keep the analytics dimension cardinality low. Each new
+/// caller (e.g. a future programmatic API) should add a variant.
+#[derive(Clone, Copy, Debug)]
+pub enum TableQueryCaller {
+    /// `RedapCatalogProvider` resolving a name through DataFusion's `SessionContext`.
+    /// Typically fires from SQL queries issued via the Python SDK.
+    CatalogResolver,
+
+    /// `__entries` system-table scan (catalog browsing).
+    EntriesTable,
+
+    /// Viewer table-detail UI in `re_redap_browser`.
+    BrowserDetailView,
+}
+
+impl TableQueryCaller {
+    /// Stable string label emitted into the analytics span.
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::CatalogResolver => "catalog_resolver",
+            Self::EntriesTable => "entries_table",
+            Self::BrowserDetailView => "browser_detail_view",
+        }
+    }
+}
+
+/// Information about the table-scan planning phase, collected in `scan()`.
+#[derive(Clone, Debug)]
+pub struct TableQueryInfo {
+    /// Server-assigned id of the table being scanned. Stringified so it
+    /// matches `dataset_id` formatting on the dataset-query span.
+    pub table_id: String,
+
+    /// Underlying table kind. See [`TableKind`].
+    pub table_kind: TableKind,
+
+    /// What initiated this scan. See [`TableQueryCaller`].
+    pub caller: TableQueryCaller,
+
+    /// Number of fields in the table's full schema.
+    pub schema_total_columns: u32,
+
+    /// Number of columns DataFusion asked the provider to produce. Equal to
+    /// `schema_total_columns` when no projection is requested.
+    pub projected_columns: u32,
+
+    /// `true` iff DataFusion provided a `LIMIT` to the scan.
+    pub has_limit: bool,
+
+    /// The `LIMIT` value, when present.
+    pub limit_value: Option<u64>,
+
+    /// Wall-clock start..end of the scan. End is set at `Drop` time.
+    pub time_range: Range<SystemTime>,
+}
+
+/// Accumulates per-scan counters from the streaming-provider IO loop.
+///
+/// Not contended in practice today (one stream per scan) but kept atomic for
+/// consistency with [`SharedFetchStats`] and to leave room for parallelism.
+#[derive(Default)]
+pub(crate) struct SharedTableScanStats {
+    grpc_requests: AtomicU64,
+    batches: AtomicU64,
+    rows_returned: AtomicU64,
+    bytes_returned: AtomicU64,
+}
+
+/// Snapshot of [`SharedTableScanStats`] taken at span-build time.
+///
+/// Pulled out so [`build_table_query_span`] can be a pure, easily-testable
+/// function with no atomic loads of its own.
+#[derive(Default, Clone, Copy)]
+pub(crate) struct TableScanStatsSnapshot {
+    pub grpc_requests: u64,
+    pub batches: u64,
+    pub rows_returned: u64,
+    pub bytes_returned: u64,
+}
+
+impl SharedTableScanStats {
+    /// Take a snapshot of the counters using relaxed atomic loads.
+    fn snapshot(&self) -> TableScanStatsSnapshot {
+        TableScanStatsSnapshot {
+            grpc_requests: self.grpc_requests.load(Ordering::Relaxed),
+            batches: self.batches.load(Ordering::Relaxed),
+            rows_returned: self.rows_returned.load(Ordering::Relaxed),
+            bytes_returned: self.bytes_returned.load(Ordering::Relaxed),
+        }
+    }
+}
+
+/// Tracks a table scan in progress. Cheap to clone (wraps an `Arc`).
+///
+/// The analytics event is emitted when the last clone is dropped.
+#[derive(Clone)]
+pub(crate) struct PendingTableQueryAnalytics {
+    inner: Arc<PendingTableInner>,
+}
+
+impl std::fmt::Debug for PendingTableQueryAnalytics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PendingTableQueryAnalytics")
+            .finish_non_exhaustive()
+    }
+}
+
+struct PendingTableInner {
+    connection: ConnectionAnalytics,
+    info: TableQueryInfo,
+    stats: SharedTableScanStats,
+
+    /// Monotonic start time of the scan, for computing elapsed durations.
+    scan_start: web_time::Instant,
+
+    /// Time from `scan_start` until the first `ScanTableResponse` arrives.
+    time_to_first_response: OnceLock<Duration>,
+
+    /// Time from `scan_start` until the first `RecordBatch` is yielded to
+    /// DataFusion. In today's streaming-provider path this is essentially the
+    /// same point as `time_to_first_response`; both fields are kept so the
+    /// analytics schema stays meaningful if batch coalescing changes.
+    time_to_first_batch: OnceLock<Duration>,
+
+    /// Server-side trace id from the `x-request-trace-id` response header on
+    /// the `ScanTable` response.
+    trace_id: OnceLock<opentelemetry::TraceId>,
+
+    /// Error classification, if the scan failed. `None` ⇒ success.
+    /// Stored as `&'static str` from [`QueryErrorKind::as_str`] so emission is zero-copy.
+    error_kind: OnceLock<&'static str>,
+}
+
+impl PendingTableQueryAnalytics {
+    /// Record the server-side trace id from the `ScanTable` response. Only the
+    /// first call has effect.
+    pub fn record_trace_id(&self, trace_id: opentelemetry::TraceId) {
+        #[expect(clippy::let_underscore_must_use)]
+        let _ = self.inner.trace_id.set(trace_id);
+    }
+
+    /// Record that the first `ScanTableResponse` has arrived from gRPC. Only
+    /// the first call has effect.
+    pub fn record_first_response(&self) {
+        self.inner
+            .time_to_first_response
+            .get_or_init(|| self.inner.scan_start.elapsed());
+    }
+
+    /// Record that the first `RecordBatch` has been yielded to DataFusion.
+    /// Only the first call has effect.
+    pub fn record_first_batch(&self) {
+        self.inner
+            .time_to_first_batch
+            .get_or_init(|| self.inner.scan_start.elapsed());
+    }
+
+    /// Record one received gRPC message and its decoded record batch.
+    pub fn record_batch(&self, num_rows: u64, num_bytes: u64) {
+        self.inner
+            .stats
+            .grpc_requests
+            .fetch_add(1, Ordering::Relaxed);
+        self.inner.stats.batches.fetch_add(1, Ordering::Relaxed);
+        if num_rows != 0 {
+            self.inner
+                .stats
+                .rows_returned
+                .fetch_add(num_rows, Ordering::Relaxed);
+        }
+        if num_bytes != 0 {
+            self.inner
+                .stats
+                .bytes_returned
+                .fetch_add(num_bytes, Ordering::Relaxed);
+        }
+    }
+
+    /// Mark the scan as failed with the given error kind. Only the first call
+    /// has effect.
+    pub fn record_error(&self, kind: QueryErrorKind) {
+        #[expect(clippy::let_underscore_must_use)]
+        let _ = self.inner.error_kind.set(kind.as_str());
+    }
+
+    /// Build the OTLP span using the current accumulated state, without
+    /// dropping the analytics. Lets end-to-end tests inspect the post-stream
+    /// span before the [`Drop`] impl runs.
+    #[cfg(test)]
+    pub(crate) fn build_span_for_test(&self) -> Span {
+        self.inner.build_span()
+    }
+}
+
+impl PendingTableInner {
+    /// Snapshot the inner state and produce the OTLP span. Used both by
+    /// [`Drop`] and by tests (via `PendingTableQueryAnalytics::build_span_for_test()`).
+    ///
+    /// Reads `scan_start.elapsed()` for `total_duration_us` and `SystemTime::now()`
+    /// for the span end time, so calling this twice produces slightly different
+    /// timing values — that's fine, it's how Drop already behaves.
+    fn build_span(&self) -> Span {
+        let total_duration = self.scan_start.elapsed();
+        let scan_end_wall = web_time::SystemTime::now();
+        let stats = self.stats.snapshot();
+        build_table_query_span(
+            &self.info,
+            stats,
+            self.info.time_range.start..scan_end_wall,
+            total_duration,
+            self.time_to_first_response.get().copied(),
+            self.time_to_first_batch.get().copied(),
+            self.trace_id.get().copied(),
+            self.error_kind.get().copied(),
+            self.connection.server_version().as_deref(),
+        )
+    }
+}
+
+impl Drop for PendingTableInner {
+    fn drop(&mut self) {
+        let span = self.build_span();
+        let trace_id = self.trace_id.get().copied();
+        self.connection.send_span(span, trace_id);
+    }
+}
+
+/// Build the OTLP `cloud_scan_table` span from collected per-scan data.
+///
+/// Pure function — no I/O, no time reads. Extracted from `Drop for
+/// PendingTableInner` so the exact attribute set the analytics pipeline relies
+/// on can be locked down by unit tests; if a future change accidentally drops
+/// or renames a field, the tests fail.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "pure builder fn; grouping these would be churn without clarity"
+)]
+pub(crate) fn build_table_query_span(
+    info: &TableQueryInfo,
+    stats: TableScanStatsSnapshot,
+    wall_clock_range: Range<SystemTime>,
+    total_duration: Duration,
+    time_to_first_response: Option<Duration>,
+    time_to_first_batch: Option<Duration>,
+    trace_id: Option<opentelemetry::TraceId>,
+    error_kind: Option<&'static str>,
+    server_version: Option<&str>,
+) -> Span {
+    let TableQueryInfo {
+        ref table_id,
+        table_kind,
+        caller,
+        schema_total_columns,
+        projected_columns,
+        has_limit,
+        limit_value,
+        time_range: _,
+    } = *info;
+
+    let start_time_unix_nano = nanos_since_epoch(&wall_clock_range.start);
+    let end_time_unix_nano = nanos_since_epoch(&wall_clock_range.end);
+
+    #[expect(
+        clippy::cast_possible_wrap,
+        reason = "OTLP proto uses i64 for int values"
+    )]
+    let mut attributes = vec![
+        // Identification
+        kv_string("table_id", table_id),
+        kv_string("table_kind", table_kind.as_str()),
+        kv_string("caller", caller.as_str()),
+        // Schema / projection
+        kv_int("schema_total_columns", i64::from(schema_total_columns)),
+        kv_int("projected_columns", i64::from(projected_columns)),
+        // Limit
+        kv_bool("has_limit", has_limit),
+        // Outcome
+        kv_bool("is_success", error_kind.is_none()),
+        // Timing
+        kv_int("total_duration_us", total_duration.as_micros() as i64),
+        // gRPC
+        kv_int("fetch_grpc_requests", stats.grpc_requests as i64),
+        // Result size
+        kv_int("num_record_batches", stats.batches as i64),
+        kv_int("rows_returned", stats.rows_returned as i64),
+        kv_int("bytes_returned", stats.bytes_returned as i64),
+    ];
+
+    if let Some(value) = limit_value {
+        #[expect(
+            clippy::cast_possible_wrap,
+            reason = "OTLP proto uses i64 for int values"
+        )]
+        attributes.push(kv_int("limit_value", value as i64));
+    }
+
+    if let Some(ttfr) = time_to_first_response {
+        attributes.push(kv_int("time_to_first_response_us", ttfr.as_micros() as i64));
+    }
+
+    if let Some(ttfb) = time_to_first_batch {
+        attributes.push(kv_int("time_to_first_batch_us", ttfb.as_micros() as i64));
+    }
+
+    if let Some(kind) = error_kind {
+        attributes.push(kv_string("error_kind", kind));
+    }
+
+    if let Some(version) = server_version {
+        attributes.push(kv_string("server_version", version));
+    }
+
+    let links = trace_id
+        .map(|id| {
+            vec![Link {
+                trace_id: id.to_bytes().to_vec(),
+                ..Default::default()
+            }]
+        })
+        .unwrap_or_default();
+
+    Span {
+        name: "cloud_scan_table".to_owned(),
+        kind: SpanKind::Client.into(),
+        start_time_unix_nano,
+        end_time_unix_nano,
+        attributes,
+        links,
+        ..Default::default()
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 fn nanos_since_epoch(time: &SystemTime) -> u64 {
     time.duration_since(SystemTime::UNIX_EPOCH)
@@ -844,5 +1261,410 @@ fn kv_double(key: &str, value: f64) -> KeyValue {
         value: Some(AnyValue {
             value: Some(Value::DoubleValue(value)),
         }),
+    }
+}
+
+#[cfg(test)]
+mod table_query_tests {
+    use std::collections::HashSet;
+
+    use re_protos::cloud::v1alpha1::ext::{LanceTable, ProviderDetails, SystemTable};
+
+    use super::*;
+
+    fn lance_provider_details() -> ProviderDetails {
+        // Construct via the protobuf type so we don't need a direct `url`
+        // dependency in this crate just for tests.
+        let proto = re_protos::cloud::v1alpha1::LanceTable {
+            table_url: "s3://bucket/path".to_owned(),
+        };
+        ProviderDetails::LanceTable(LanceTable::try_from(proto).unwrap())
+    }
+
+    // ---- helpers ----
+
+    fn dummy_table_query_info() -> TableQueryInfo {
+        TableQueryInfo {
+            table_id: "tbl-42".to_owned(),
+            table_kind: TableKind::Lance,
+            caller: TableQueryCaller::BrowserDetailView,
+            schema_total_columns: 12,
+            projected_columns: 5,
+            has_limit: false,
+            limit_value: None,
+            time_range: SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+        }
+    }
+
+    fn empty_stats() -> TableScanStatsSnapshot {
+        TableScanStatsSnapshot::default()
+    }
+
+    fn attribute_keys(span: &Span) -> HashSet<&str> {
+        let keys: HashSet<_> = span.attributes.iter().map(|kv| kv.key.as_str()).collect();
+        assert_eq!(
+            keys.len(),
+            span.attributes.len(),
+            "span contains duplicate attribute keys"
+        );
+        keys
+    }
+
+    fn find_int(span: &Span, key: &str) -> Option<i64> {
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::IntValue(i) => Some(*i),
+                _ => None,
+            })
+    }
+
+    fn find_string<'a>(span: &'a Span, key: &str) -> Option<&'a str> {
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::StringValue(s) => Some(s.as_str()),
+                _ => None,
+            })
+    }
+
+    fn find_bool(span: &Span, key: &str) -> Option<bool> {
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::BoolValue(b) => Some(*b),
+                _ => None,
+            })
+    }
+
+    /// Required attributes that must always be emitted, regardless of scan
+    /// outcome. Adding/removing one of these is a breaking change for the
+    /// analytics pipeline (`PostHog` dashboards, server-side enrichment, etc.).
+    const REQUIRED_KEYS: &[&str] = &[
+        "table_id",
+        "table_kind",
+        "caller",
+        "schema_total_columns",
+        "projected_columns",
+        "has_limit",
+        "is_success",
+        "total_duration_us",
+        "fetch_grpc_requests",
+        "num_record_batches",
+        "rows_returned",
+        "bytes_returned",
+    ];
+
+    // ---- builder shape ----
+
+    #[test]
+    fn build_table_query_span_minimal_emits_only_required_attributes() {
+        let info = dummy_table_query_info();
+
+        let span = build_table_query_span(
+            &info,
+            empty_stats(),
+            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+            Duration::from_micros(500),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+
+        // Span shape
+        assert_eq!(span.name, "cloud_scan_table");
+        assert_eq!(span.kind, i32::from(SpanKind::Client));
+        assert!(span.links.is_empty());
+
+        // Attribute key set is exactly the required keys — no optional keys leaked.
+        let expected: HashSet<&str> = REQUIRED_KEYS.iter().copied().collect();
+        let actual = attribute_keys(&span);
+        assert_eq!(
+            actual,
+            expected,
+            "extra/missing attribute keys: {:?}",
+            actual.symmetric_difference(&expected).collect::<Vec<_>>()
+        );
+
+        // Spot-check key values from the dummy info.
+        assert_eq!(find_string(&span, "table_id"), Some("tbl-42"));
+        assert_eq!(find_string(&span, "table_kind"), Some("lance"));
+        assert_eq!(find_string(&span, "caller"), Some("browser_detail_view"));
+        assert_eq!(find_int(&span, "schema_total_columns"), Some(12));
+        assert_eq!(find_int(&span, "projected_columns"), Some(5));
+        assert_eq!(find_bool(&span, "has_limit"), Some(false));
+        assert_eq!(find_bool(&span, "is_success"), Some(true));
+        assert_eq!(find_int(&span, "total_duration_us"), Some(500));
+    }
+
+    #[test]
+    fn build_table_query_span_records_scan_stats() {
+        let info = dummy_table_query_info();
+        let stats = TableScanStatsSnapshot {
+            grpc_requests: 7,
+            batches: 7,
+            rows_returned: 12_345,
+            bytes_returned: 4_567_890,
+        };
+
+        let span = build_table_query_span(
+            &info,
+            stats,
+            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+            Duration::from_micros(2_000),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+
+        assert_eq!(find_int(&span, "fetch_grpc_requests"), Some(7));
+        assert_eq!(find_int(&span, "num_record_batches"), Some(7));
+        assert_eq!(find_int(&span, "rows_returned"), Some(12_345));
+        assert_eq!(find_int(&span, "bytes_returned"), Some(4_567_890));
+    }
+
+    #[test]
+    fn build_table_query_span_emits_optional_attributes_when_present() {
+        let trace_id = opentelemetry::TraceId::from_bytes([3u8; 16]);
+        let mut info = dummy_table_query_info();
+        info.has_limit = true;
+        info.limit_value = Some(500);
+
+        let span = build_table_query_span(
+            &info,
+            empty_stats(),
+            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+            Duration::from_micros(1_000),
+            Some(Duration::from_micros(50)),
+            Some(Duration::from_micros(75)),
+            Some(trace_id),
+            Some(QueryErrorKind::Decode.as_str()),
+            Some("redap-9.9.9"),
+        );
+
+        // All optional keys are present.
+        let optional = [
+            "limit_value",
+            "time_to_first_response_us",
+            "time_to_first_batch_us",
+            "error_kind",
+            "server_version",
+        ];
+        let keys = attribute_keys(&span);
+        for k in optional {
+            assert!(keys.contains(k), "missing optional attribute: {k}");
+        }
+
+        // is_success flips to false when error_kind is set.
+        assert_eq!(find_bool(&span, "is_success"), Some(false));
+
+        assert_eq!(find_int(&span, "limit_value"), Some(500));
+        assert_eq!(find_int(&span, "time_to_first_response_us"), Some(50));
+        assert_eq!(find_int(&span, "time_to_first_batch_us"), Some(75));
+        assert_eq!(find_string(&span, "error_kind"), Some("decode"));
+        assert_eq!(find_string(&span, "server_version"), Some("redap-9.9.9"));
+
+        // Trace id flows into span.links.
+        assert_eq!(span.links.len(), 1);
+        assert_eq!(span.links[0].trace_id, trace_id.to_bytes().to_vec());
+    }
+
+    #[test]
+    fn build_table_query_span_uses_wall_clock_range() {
+        let info = dummy_table_query_info();
+        let start = SystemTime::UNIX_EPOCH + Duration::from_millis(2_000);
+        let end = SystemTime::UNIX_EPOCH + Duration::from_millis(2_500);
+
+        let span = build_table_query_span(
+            &info,
+            empty_stats(),
+            start..end,
+            Duration::from_micros(0),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+
+        assert_eq!(span.start_time_unix_nano, 2_000_000_000);
+        assert_eq!(span.end_time_unix_nano, 2_500_000_000);
+    }
+
+    #[test]
+    fn build_table_query_span_records_table_kind_and_caller_strings() {
+        // Walk every variant — protects the bounded-enum string mapping from
+        // accidental changes that would silently rename PostHog dimensions.
+        let cases = [
+            (TableKind::Lance, "lance"),
+            (TableKind::SystemEntries, "system_entries"),
+            (TableKind::SystemNamespaces, "system_namespaces"),
+            (TableKind::Unknown, "unknown"),
+        ];
+        for (kind, expected) in cases {
+            let mut info = dummy_table_query_info();
+            info.table_kind = kind;
+            let span = build_table_query_span(
+                &info,
+                empty_stats(),
+                SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH,
+                Duration::ZERO,
+                None,
+                None,
+                None,
+                None,
+                None,
+            );
+            assert_eq!(find_string(&span, "table_kind"), Some(expected));
+        }
+
+        let cases = [
+            (TableQueryCaller::CatalogResolver, "catalog_resolver"),
+            (TableQueryCaller::EntriesTable, "entries_table"),
+            (TableQueryCaller::BrowserDetailView, "browser_detail_view"),
+        ];
+        for (caller, expected) in cases {
+            let mut info = dummy_table_query_info();
+            info.caller = caller;
+            let span = build_table_query_span(
+                &info,
+                empty_stats(),
+                SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH,
+                Duration::ZERO,
+                None,
+                None,
+                None,
+                None,
+                None,
+            );
+            assert_eq!(find_string(&span, "caller"), Some(expected));
+        }
+    }
+
+    #[test]
+    fn build_table_query_span_no_limit_value_when_no_limit() {
+        // has_limit defaults to false, limit_value to None — the optional
+        // `limit_value` attribute must NOT be emitted.
+        let info = dummy_table_query_info();
+        let span = build_table_query_span(
+            &info,
+            empty_stats(),
+            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH,
+            Duration::ZERO,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        assert!(!attribute_keys(&span).contains("limit_value"));
+    }
+
+    // ---- TableKind::from(&ProviderDetails) ----
+
+    #[test]
+    fn table_kind_from_lance_provider() {
+        assert!(matches!(
+            TableKind::from(&lance_provider_details()),
+            TableKind::Lance
+        ));
+    }
+
+    #[test]
+    fn table_kind_from_system_entries_provider() {
+        let pd = ProviderDetails::SystemTable(SystemTable {
+            kind: SystemTableKind::Entries,
+        });
+        assert!(matches!(TableKind::from(&pd), TableKind::SystemEntries));
+    }
+
+    #[test]
+    fn table_kind_from_system_namespaces_provider() {
+        let pd = ProviderDetails::SystemTable(SystemTable {
+            kind: SystemTableKind::Namespaces,
+        });
+        assert!(matches!(TableKind::from(&pd), TableKind::SystemNamespaces));
+    }
+
+    #[test]
+    fn table_kind_from_system_unspecified_falls_back_to_unknown() {
+        let pd = ProviderDetails::SystemTable(SystemTable {
+            kind: SystemTableKind::Unspecified,
+        });
+        assert!(matches!(TableKind::from(&pd), TableKind::Unknown));
+    }
+
+    // ---- record_* idempotence ----
+    //
+    // All `record_*` setters are advertised as "only the first call has effect".
+    // These tests pin that contract; subsequent calls must not overwrite.
+
+    fn make_pending() -> PendingTableQueryAnalytics {
+        let origin: Origin = "rerun+http://localhost:51234".parse().unwrap();
+        let analytics = ConnectionAnalytics::new(origin);
+        analytics.begin_table_query(dummy_table_query_info(), web_time::Instant::now())
+    }
+
+    #[test]
+    fn record_first_response_is_once_only() {
+        let pending = make_pending();
+        pending.record_first_response();
+        let first = pending.inner.time_to_first_response.get().copied().unwrap();
+        std::thread::sleep(Duration::from_millis(2));
+        pending.record_first_response();
+        let second = pending.inner.time_to_first_response.get().copied().unwrap();
+        assert_eq!(first, second, "second call must not overwrite");
+    }
+
+    #[test]
+    fn record_first_batch_is_once_only() {
+        let pending = make_pending();
+        pending.record_first_batch();
+        let first = pending.inner.time_to_first_batch.get().copied().unwrap();
+        std::thread::sleep(Duration::from_millis(2));
+        pending.record_first_batch();
+        let second = pending.inner.time_to_first_batch.get().copied().unwrap();
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn record_error_is_once_only() {
+        let pending = make_pending();
+        pending.record_error(QueryErrorKind::GrpcFetch);
+        pending.record_error(QueryErrorKind::Decode);
+        assert_eq!(
+            pending.inner.error_kind.get().copied(),
+            Some(QueryErrorKind::GrpcFetch.as_str())
+        );
+    }
+
+    #[test]
+    fn record_trace_id_is_once_only() {
+        let pending = make_pending();
+        let first = opentelemetry::TraceId::from_bytes([1u8; 16]);
+        let second = opentelemetry::TraceId::from_bytes([2u8; 16]);
+        pending.record_trace_id(first);
+        pending.record_trace_id(second);
+        assert_eq!(pending.inner.trace_id.get().copied(), Some(first));
+    }
+
+    #[test]
+    fn record_batch_accumulates_across_calls() {
+        let pending = make_pending();
+        pending.record_batch(100, 1_000);
+        pending.record_batch(50, 500);
+        pending.record_batch(0, 0); // empty batch — still counts a request/batch
+        let stats = pending.inner.stats.snapshot();
+        assert_eq!(stats.grpc_requests, 3);
+        assert_eq!(stats.batches, 3);
+        assert_eq!(stats.rows_returned, 150);
+        assert_eq!(stats.bytes_returned, 1_500);
     }
 }

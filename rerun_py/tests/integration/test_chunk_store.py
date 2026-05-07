@@ -34,14 +34,14 @@ def fragmented_rrd_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
     smaller than DATAPLATFORM's `max_rows=65_536`, so the splitter behaves
     visibly differently under the two profiles.
 
-    Uses `ChunkBatcherConfig.ALWAYS()` so the microbatcher cannot coalesce
+    Uses `ChunkBatcherConfig.ALWAYS_TEST_ONLY()` so the microbatcher cannot coalesce
     sends behind our back: each `send_columns` becomes its own chunk.
     """
     rrd_path = tmp_path_factory.mktemp("compact") / "fragmented.rrd"
     with rr.RecordingStream(
         "rerun_example_compact_test",
         recording_id="compact-test-id",
-        batcher_config=rr.ChunkBatcherConfig.ALWAYS(),
+        batcher_config=rr.ChunkBatcherConfig.ALWAYS_TEST_ONLY(),
     ) as rec:
         rec.save(rrd_path)
         for i in range(FRAGMENTED_NUM_ROWS):
@@ -213,11 +213,13 @@ def test_write_rrd_metadata(test_rrd_path: Path, tmp_path: Path) -> None:
     """write_rrd() writes the provided application_id and recording_id."""
     store = RrdReader(test_rrd_path).stream().collect()
     out = tmp_path / "meta.rrd"
-    store.write_rrd(out, application_id="my-app", recording_id="my-rec")
+    store.write_rrd(out, application_id="rerun_example_my_app", recording_id="my-rec")
 
     reader = RrdReader(out)
-    assert reader.application_id == "my-app"
-    assert reader.recording_id == "my-rec"
+    recs = reader.recordings()
+    assert len(recs) == 1
+    assert recs[0].application_id == "rerun_example_my_app"
+    assert recs[0].recording_id == "my-rec"
 
 
 # ---------------------------------------------------------------------------

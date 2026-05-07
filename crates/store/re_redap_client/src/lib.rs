@@ -33,6 +33,47 @@ pub use opentelemetry::TraceId;
 
 const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
+/// Per-call deadline for `FetchChunks` requests sent via this client.
+///
+/// Server-streaming `FetchChunks` calls have no natural cap; without a deadline
+/// a stuck stream pegs an HTTP/2 stream slot indefinitely until the caller
+/// cancels the surrounding query. Set as the `grpc-timeout` header on every
+/// `tonic::Request`, so the server returns `DeadlineExceeded` if a single call
+/// exceeds this.
+///
+/// # Relationship with HTTP/2 keep-alive
+///
+/// This is **not** the same thing as the HTTP/2 keep-alive on the underlying
+/// transport (~50s combined PING interval + ack timeout, configured on both
+/// client and server). The two mechanisms are orthogonal:
+///
+/// - **Keep-alive** is a connection-level liveness probe. It only fires when
+///   the connection has been **silent** for a while (no DATA/HEADERS frames),
+///   and tears the connection down only if the peer fails to ack a PING. An
+///   active `FetchChunks` stream that's emitting chunks keeps the connection
+///   non-silent, so keep-alive never fires for it. Its job is to recycle
+///   already-dead connections (typically idle TCP killed by a NAT / cloud LB
+///   between calls).
+///
+/// - **This deadline** is a per-call budget. It applies regardless of how
+///   chatty the stream is, and bounds the lifetime of an individual call so
+///   one runaway server-side handler can't sit on an HTTP/2 stream slot
+///   forever.
+///
+/// Concretely:
+///
+/// | Situation                                            | Keep-alive (~50s)        | Deadline (this) |
+/// |------------------------------------------------------|--------------------------|-----------------|
+/// | Healthy stream, frames every few s                   | doesn't fire             | doesn't hit     |
+/// | Stream silent for 30s+ but TCP path alive            | PINGs acked, no teardown | runs to deadline → `DeadlineExceeded` |
+/// | Stream active but TCP path silently dropped          | teardown at +50s         | moot, conn died first |
+/// | Idle between calls, NAT drops TCP                    | teardown at +50s         | not applicable  |
+///
+/// The value is sized to be a hard cap above observed real `FetchChunks` p95
+/// (≈ 250s for large queries on production traffic), so it kills stuck calls
+/// without truncating legitimate large fetches.
+pub const FETCH_CHUNKS_DEADLINE: std::time::Duration = std::time::Duration::from_secs(300);
+
 /// Responses from the Data Platform can optionally include this header to communicate back the trace id of the request.
 const GRPC_RESPONSE_TRACEID_HEADER: &str = "x-request-trace-id";
 

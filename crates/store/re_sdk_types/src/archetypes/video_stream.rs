@@ -64,6 +64,17 @@ pub struct VideoStream {
     /// See [`components::VideoCodec`][crate::components::VideoCodec] for codec specific requirements.
     pub sample: Option<SerializedComponentBatch>,
 
+    /// Whether the corresponding [`components::VideoSample`][crate::components::VideoSample] contains a keyframe.
+    ///
+    /// A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+    /// start decoding the stream with no prior decoder state. See [`components::IsKeyframe`][crate::components::IsKeyframe]
+    /// and [`components::VideoCodec`][crate::components::VideoCodec] for the codec-specific definition.
+    ///
+    /// This field is optional. It does not change how the stream itself is decoded: it is
+    /// metadata that travels with the sample and can be inspected when querying the data
+    /// back, for example to locate sync points or build a frame index.
+    pub is_keyframe: Option<SerializedComponentBatch>,
+
     /// Opacity of the video stream, useful for layering several media.
     ///
     /// Defaults to 1.0 (fully opaque).
@@ -101,6 +112,18 @@ impl VideoStream {
         }
     }
 
+    /// Returns the [`ComponentDescriptor`] for [`Self::is_keyframe`].
+    ///
+    /// The corresponding component is [`crate::components::IsKeyframe`].
+    #[inline]
+    pub fn descriptor_is_keyframe() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.VideoStream".into()),
+            component: "VideoStream:is_keyframe".into(),
+            component_type: Some("rerun.components.IsKeyframe".into()),
+        }
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
     ///
     /// The corresponding component is [`crate::components::Opacity`].
@@ -132,27 +155,29 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
     std::sync::LazyLock::new(|| [VideoStream::descriptor_sample()]);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
+            VideoStream::descriptor_is_keyframe(),
             VideoStream::descriptor_opacity(),
             VideoStream::descriptor_draw_order(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
     std::sync::LazyLock::new(|| {
         [
             VideoStream::descriptor_codec(),
             VideoStream::descriptor_sample(),
+            VideoStream::descriptor_is_keyframe(),
             VideoStream::descriptor_opacity(),
             VideoStream::descriptor_draw_order(),
         ]
     });
 
 impl VideoStream {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 impl ::re_types_core::Archetype for VideoStream {
@@ -199,6 +224,11 @@ impl ::re_types_core::Archetype for VideoStream {
         let sample = arrays_by_descr
             .get(&Self::descriptor_sample())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_sample()));
+        let is_keyframe = arrays_by_descr
+            .get(&Self::descriptor_is_keyframe())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_is_keyframe())
+            });
         let opacity = arrays_by_descr
             .get(&Self::descriptor_opacity())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_opacity()));
@@ -210,6 +240,7 @@ impl ::re_types_core::Archetype for VideoStream {
         Ok(Self {
             codec,
             sample,
+            is_keyframe,
             opacity,
             draw_order,
         })
@@ -223,6 +254,7 @@ impl ::re_types_core::AsComponents for VideoStream {
         [
             self.codec.clone(),
             self.sample.clone(),
+            self.is_keyframe.clone(),
             self.opacity.clone(),
             self.draw_order.clone(),
         ]
@@ -248,6 +280,7 @@ impl VideoStream {
         Self {
             codec: try_serialize_field(Self::descriptor_codec(), [codec]),
             sample: None,
+            is_keyframe: None,
             opacity: None,
             draw_order: None,
         }
@@ -271,6 +304,10 @@ impl VideoStream {
             sample: Some(SerializedComponentBatch::new(
                 crate::components::VideoSample::arrow_empty(),
                 Self::descriptor_sample(),
+            )),
+            is_keyframe: Some(SerializedComponentBatch::new(
+                crate::components::IsKeyframe::arrow_empty(),
+                Self::descriptor_is_keyframe(),
             )),
             opacity: Some(SerializedComponentBatch::new(
                 crate::components::Opacity::arrow_empty(),
@@ -308,6 +345,9 @@ impl VideoStream {
             self.sample
                 .map(|sample| sample.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.is_keyframe
+                .map(|is_keyframe| is_keyframe.partitioned(_lengths.clone()))
+                .transpose()?,
             self.opacity
                 .map(|opacity| opacity.partitioned(_lengths.clone()))
                 .transpose()?,
@@ -328,11 +368,13 @@ impl VideoStream {
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_codec = self.codec.as_ref().map(|b| b.array.len());
         let len_sample = self.sample.as_ref().map(|b| b.array.len());
+        let len_is_keyframe = self.is_keyframe.as_ref().map(|b| b.array.len());
         let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
         let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_codec)
             .or(len_sample)
+            .or(len_is_keyframe)
             .or(len_opacity)
             .or(len_draw_order)
             .unwrap_or(0);
@@ -403,6 +445,37 @@ impl VideoStream {
         self
     }
 
+    /// Whether the corresponding [`components::VideoSample`][crate::components::VideoSample] contains a keyframe.
+    ///
+    /// A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+    /// start decoding the stream with no prior decoder state. See [`components::IsKeyframe`][crate::components::IsKeyframe]
+    /// and [`components::VideoCodec`][crate::components::VideoCodec] for the codec-specific definition.
+    ///
+    /// This field is optional. It does not change how the stream itself is decoded: it is
+    /// metadata that travels with the sample and can be inspected when querying the data
+    /// back, for example to locate sync points or build a frame index.
+    #[inline]
+    pub fn with_is_keyframe(
+        mut self,
+        is_keyframe: impl Into<crate::components::IsKeyframe>,
+    ) -> Self {
+        self.is_keyframe = try_serialize_field(Self::descriptor_is_keyframe(), [is_keyframe]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::IsKeyframe`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_is_keyframe`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_is_keyframe(
+        mut self,
+        is_keyframe: impl IntoIterator<Item = impl Into<crate::components::IsKeyframe>>,
+    ) -> Self {
+        self.is_keyframe = try_serialize_field(Self::descriptor_is_keyframe(), is_keyframe);
+        self
+    }
+
     /// Opacity of the video stream, useful for layering several media.
     ///
     /// Defaults to 1.0 (fully opaque).
@@ -454,6 +527,7 @@ impl ::re_byte_size::SizeBytes for VideoStream {
     fn heap_size_bytes(&self) -> u64 {
         self.codec.heap_size_bytes()
             + self.sample.heap_size_bytes()
+            + self.is_keyframe.heap_size_bytes()
             + self.opacity.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
     }

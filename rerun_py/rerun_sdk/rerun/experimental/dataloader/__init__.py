@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rerun._tracing import tracing_scope, with_tracing
 
-from ._config import Column, DataSource
+from ._config import DataSource, Field
 from ._decoders import ColumnDecoder, ImageDecoder, NumericDecoder, VideoFrameDecoder
 from ._iterable_dataset import RerunIterableDataset
 from ._map_dataset import RerunMapDataset
@@ -15,9 +15,9 @@ from ._sample_index import (
 )
 
 __all__ = [
-    "Column",
     "ColumnDecoder",
     "DataSource",
+    "Field",
     "FixedRateSampling",
     "ImageDecoder",
     "NumericDecoder",

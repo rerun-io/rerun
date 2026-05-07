@@ -10,6 +10,7 @@ from .auto_layout import AutoLayout, AutoLayoutBatch
 from .auto_scroll import AutoScroll, AutoScrollBatch
 from .auto_views import AutoViews, AutoViewsBatch
 from .background_kind import BackgroundKind, BackgroundKindArrayLike, BackgroundKindBatch, BackgroundKindLike
+from .column_name import ColumnName, ColumnNameBatch
 from .column_order import ColumnOrder, ColumnOrderArrayLike, ColumnOrderBatch, ColumnOrderLike
 from .column_share import ColumnShare, ColumnShareBatch
 from .component_column_selector import ComponentColumnSelector, ComponentColumnSelectorBatch
@@ -75,6 +76,8 @@ __all__ = [
     "BackgroundKindArrayLike",
     "BackgroundKindBatch",
     "BackgroundKindLike",
+    "ColumnName",
+    "ColumnNameBatch",
     "ColumnOrder",
     "ColumnOrderArrayLike",
     "ColumnOrderBatch",

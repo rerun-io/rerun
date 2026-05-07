@@ -173,8 +173,10 @@ def tracing_session() -> Iterator[str]:
                     cpu_user_s = cpu1.user - cpu0.user
                     cpu_system_s = cpu1.system - cpu0.system
                     # `iowait` is Linux-only on psutil's Process.cpu_times().
-                    if hasattr(cpu1, "iowait") and hasattr(cpu0, "iowait"):
-                        cpu_iowait_s = cpu1.iowait - cpu0.iowait
+                    iowait1 = getattr(cpu1, "iowait", None)
+                    iowait0 = getattr(cpu0, "iowait", None)
+                    if iowait1 is not None and iowait0 is not None:
+                        cpu_iowait_s = iowait1 - iowait0
                 except Exception:
                     cpu_user_s = cpu_system_s = cpu_iowait_s = None
             if net0 is not None:

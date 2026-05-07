@@ -29,6 +29,8 @@ use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
+use std::sync::Arc;
+use tokio::sync::OnceCell;
 use tokio_stream::{Stream, StreamExt as _};
 use tonic::IntoStreamingRequest as _;
 use tonic::codegen::{Body, StdError};
@@ -72,7 +74,18 @@ pub struct SegmentQueryParams {
 //TODO(ab): this should NOT be `Clone`, to discourage callsites from holding on to a client for too
 //long. However we have a bunch of places that needs to be fixed before we can do that.
 #[derive(Debug, Clone)]
-pub struct GenericConnectionClient<T>(RerunCloudServiceClient<T>);
+pub struct GenericConnectionClient<T> {
+    inner: RerunCloudServiceClient<T>,
+
+    /// Cached `VersionResponse.features` list. Populated lazily on the first
+    /// `supports_feature` call and reused for the lifetime of this client
+    /// (and any clones — `Arc` ensures clones share the same cache).
+    ///
+    /// Server features are stable per connection; if the server restarts
+    /// with a different feature set, callers reconnect and get a fresh
+    /// client (and a fresh cache).
+    features: Arc<OnceCell<Vec<String>>>,
+}
 
 impl<T> GenericConnectionClient<T> {
     /// Create a new [`Self`].
@@ -80,14 +93,17 @@ impl<T> GenericConnectionClient<T> {
     /// This should not be used in the viewer, use [`crate::ConnectionRegistryHandle::client`]
     /// instead.
     pub fn new(client: RerunCloudServiceClient<T>) -> Self {
-        Self(client)
+        Self {
+            inner: client,
+            features: Arc::new(OnceCell::new()),
+        }
     }
 
     /// Get a mutable reference to the underlying `RedapClient`.
     //TODO(#10188): this should disappear once we have wrapper for all endpoints and the client code
     //is using them.
     pub fn inner(&mut self) -> &mut RerunCloudServiceClient<T> {
-        &mut self.0
+        &mut self.inner
     }
 }
 
@@ -120,6 +136,41 @@ where
             .map_err(|err| ApiError::tonic(err, "/Version failed"))?
             .into_inner();
         Ok(response.into())
+    }
+
+    /// Checks whether the server advertises a given feature flag in its
+    /// `VersionResponse.features` list.
+    ///
+    /// Returns `Ok(false)` for both "feature genuinely not supported" and
+    /// "old server returned an empty `features` list" — callers should
+    /// treat these the same and fall back to the pre-feature path. That
+    /// invariant is what lets the empty-list-from-old-server case be
+    /// indistinguishable from a feature opt-out without breaking callers.
+    ///
+    /// The `features` list is fetched once via `/Version` on the first
+    /// invocation and cached on the client (shared across clones via
+    /// `Arc<OnceCell<_>>`). Subsequent calls do not hit the wire.
+    pub async fn supports_feature(&mut self, feature: &str) -> ApiResult<bool> {
+        // `OnceCell::get_or_try_init` single-flights the fetch: concurrent
+        // first calls produce a single Version RPC; later calls return the
+        // cached list directly.
+        let features_cache;
+        let features = if let Some(features) = self.features.get() {
+            features
+        } else {
+            // We can't pass `&mut self` into the async closure (the `OnceCell`
+            // borrow on `self.features` is immutable, but `version_info` needs
+            // `&mut self`), so we clone the `Arc<OnceCell<_>>` and call
+            // `version_info` outside the closure when the cell is empty.
+            features_cache = self.features.clone();
+            features_cache
+                .get_or_try_init(|| async {
+                    let info = self.version_info().await?;
+                    Ok(info.features)
+                })
+                .await?
+        };
+        Ok(features.iter().any(|f| f == feature))
     }
 
     /// Calls the `/WhoAmI` endpoint to verify authentication and retrieve the user's identity
@@ -749,9 +800,11 @@ where
             chunk_infos: vec![DataframePart::from(record_batch)],
         };
 
+        let mut req = tonic::Request::new(fetch_chunks_request);
+        req.set_timeout(crate::FETCH_CHUNKS_DEADLINE);
         let response = self
             .inner()
-            .fetch_chunks(fetch_chunks_request)
+            .fetch_chunks(req)
             .await
             // NOTE: `ApiError::tonic` already extracts the trace-id from the error metadata.
             .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?;
@@ -801,9 +854,11 @@ where
             chunk_infos: chunk_info_batches,
         };
 
+        let mut req = tonic::Request::new(fetch_chunks_request);
+        req.set_timeout(crate::FETCH_CHUNKS_DEADLINE);
         let response = self
             .inner()
-            .fetch_chunks(fetch_chunks_request)
+            .fetch_chunks(req)
             .await
             .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?;
 
@@ -1273,5 +1328,92 @@ where
             })?
             .try_into()
             .map_err(|err| ApiError::internal_with_source(trace_id, err, "/CreateTable failed"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// When the `features` cell is already populated, `supports_feature`
+    /// must answer from the cache without going through the gRPC transport.
+    ///
+    /// We construct a `GenericConnectionClient` against a lazy channel
+    /// pointing at an unrouteable address: any RPC against it would error
+    /// (or hang past our test timeout). The test pre-populates the cell
+    /// and then issues three `supports_feature` calls. If the cache is
+    /// honored, all three return immediately; if it's bypassed, the
+    /// transport call fails the test.
+    #[tokio::test]
+    async fn supports_feature_short_circuits_when_cache_is_populated() {
+        // `connect_lazy` succeeds without doing any I/O; the failure
+        // would only surface when an RPC actually flows through.
+        let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
+        let mut client = GenericConnectionClient::new(RerunCloudServiceClient::new(channel));
+
+        // Prime the cache exactly as a successful first-call would.
+        client
+            .features
+            .set(vec![
+                "per_segment_index_values".to_owned(),
+                "future_X".to_owned(),
+            ])
+            .expect("freshly-constructed cell is empty");
+
+        // Each of these must hit only the cache. If any of them attempts
+        // an RPC, the unrouteable transport will error and fail the test.
+        assert!(
+            client
+                .supports_feature("per_segment_index_values")
+                .await
+                .unwrap()
+        );
+        assert!(client.supports_feature("future_X").await.unwrap());
+        assert!(!client.supports_feature("nonexistent").await.unwrap());
+    }
+
+    /// The cache is shared across clones via `Arc<OnceCell<_>>` — populating
+    /// the cell on one clone makes it observable on the other.
+    #[tokio::test]
+    async fn features_cache_is_shared_across_clones() {
+        let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
+        let client_a = GenericConnectionClient::new(RerunCloudServiceClient::new(channel));
+        let mut client_b = client_a.clone();
+
+        client_a
+            .features
+            .set(vec!["per_segment_index_values".to_owned()])
+            .expect("freshly-constructed cell is empty");
+
+        // The clone observes the same cached features and answers without
+        // the transport.
+        assert!(
+            client_b
+                .supports_feature("per_segment_index_values")
+                .await
+                .unwrap()
+        );
+        assert!(!client_b.supports_feature("nonexistent").await.unwrap());
+    }
+
+    /// Old server returns an empty `features` list. `supports_feature`
+    /// must answer `Ok(false)` — never error — so callers can fall back
+    /// to the pre-feature path.
+    #[tokio::test]
+    async fn supports_feature_returns_false_for_empty_features_list() {
+        let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
+        let mut client = GenericConnectionClient::new(RerunCloudServiceClient::new(channel));
+
+        client
+            .features
+            .set(vec![])
+            .expect("freshly-constructed cell is empty");
+
+        assert!(
+            !client
+                .supports_feature("per_segment_index_values")
+                .await
+                .unwrap()
+        );
     }
 }

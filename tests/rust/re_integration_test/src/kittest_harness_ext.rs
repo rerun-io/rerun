@@ -25,6 +25,37 @@ use re_viewport_blueprint::ViewportBlueprint;
 // use crate::GetSection as _;
 use crate::ViewerSection;
 
+/// Returns true if `s` contains a `YYYY-MM-DD` or `HH:MM:SS` substring.
+///
+/// Both date and time use jiff's zero-padded `%Y-%m-%d` / `%H:%M:%S`
+/// format, so fixed 10/8-byte sliding windows are sufficient.
+fn contains_date_or_time_pattern(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    let has_date = bytes.windows(10).any(|w| {
+        w[0].is_ascii_digit()
+            && w[1].is_ascii_digit()
+            && w[2].is_ascii_digit()
+            && w[3].is_ascii_digit()
+            && w[4] == b'-'
+            && w[5].is_ascii_digit()
+            && w[6].is_ascii_digit()
+            && w[7] == b'-'
+            && w[8].is_ascii_digit()
+            && w[9].is_ascii_digit()
+    });
+    let has_time = bytes.windows(8).any(|w| {
+        w[0].is_ascii_digit()
+            && w[1].is_ascii_digit()
+            && w[2] == b':'
+            && w[3].is_ascii_digit()
+            && w[4].is_ascii_digit()
+            && w[5] == b':'
+            && w[6].is_ascii_digit()
+            && w[7].is_ascii_digit()
+    });
+    has_date || has_time
+}
+
 // Kittest harness utilities specific to the Rerun app.
 pub trait HarnessExt<'h> {
     // Initializes the chunk store with a new, empty recording and blueprint.
@@ -80,6 +111,15 @@ pub trait HarnessExt<'h> {
 
     // Takes a snapshot of the current app state with good-enough snapshot options.
     fn snapshot_app(&mut self, snapshot_name: &str);
+
+    /// Mask every accessibility node whose label or value contains a
+    /// `YYYY-MM-DD` or `HH:MM:SS` substring.
+    ///
+    /// Useful before snapshotting UIs that display recording timestamps:
+    /// the rendered text drifts as the calendar day rolls over and as the
+    /// test machine's timezone changes, which would silently break
+    /// snapshots over time.
+    fn mask_dates(&mut self);
 
     // Prints the current viewer state.
     fn debug_viewer_state(&mut self);
@@ -230,7 +270,6 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         store_hub
             .add_chunk_for_tests(&recording_id, &chunk)
             .expect("chunk should be successfully added");
-        self.run_ok();
     }
 
     fn init_recording(&mut self) {
@@ -423,6 +462,24 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
     fn snapshot_app(&mut self, snapshot_name: &str) {
         self.run_ok();
         self.snapshot(snapshot_name);
+    }
+
+    fn mask_dates(&mut self) {
+        let rects: Vec<egui::Rect> = self
+            .query_all_by(|node| {
+                node.role() != Role::TextRun // Don't mask labels twice
+                    && (node
+                        .label()
+                        .is_some_and(|l| contains_date_or_time_pattern(&l))
+                    || node
+                        .value()
+                        .is_some_and(|l| contains_date_or_time_pattern(&l)))
+            })
+            .map(|node| node.rect())
+            .collect();
+        for rect in rects {
+            self.mask(rect);
+        }
     }
 
     fn add_blueprint_container(

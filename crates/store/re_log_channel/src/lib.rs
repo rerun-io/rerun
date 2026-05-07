@@ -100,6 +100,9 @@ pub enum LogSource {
 
     /// The data is streaming in via a message proxy.
     MessageProxy(re_uri::ProxyUri),
+
+    /// A blueprint embedded in Arrow schema metadata for a table.
+    EmbeddedTableBlueprint,
 }
 
 impl std::fmt::Display for LogSource {
@@ -113,6 +116,7 @@ impl std::fmt::Display for LogSource {
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
             Self::Stdin => "stdin".fmt(f),
+            Self::EmbeddedTableBlueprint => "embedded table blueprint".fmt(f),
         }
     }
 }
@@ -124,7 +128,11 @@ impl LogSource {
 
     pub fn is_network(&self) -> bool {
         match self {
-            Self::File { .. } | Self::Sdk | Self::RrdWebEvent | Self::Stdin => false,
+            Self::File { .. }
+            | Self::Sdk
+            | Self::RrdWebEvent
+            | Self::Stdin
+            | Self::EmbeddedTableBlueprint => false,
             Self::HttpStream { .. }
             | Self::JsChannel { .. }
             | Self::RedapGrpcStream { .. }
@@ -140,7 +148,8 @@ impl LogSource {
             | Self::Stdin
             | Self::HttpStream { .. }
             | Self::JsChannel { .. }
-            | Self::MessageProxy { .. } => RecordingOpenBehavior::OpenAndSelect,
+            | Self::MessageProxy { .. }
+            | Self::EmbeddedTableBlueprint => RecordingOpenBehavior::OpenAndSelect,
 
             Self::RedapGrpcStream { open_behavior, .. } => *open_behavior,
         }
@@ -156,7 +165,8 @@ impl LogSource {
             | Self::RrdWebEvent
             | Self::Stdin
             | Self::HttpStream { .. }
-            | Self::JsChannel { .. } => None,
+            | Self::JsChannel { .. }
+            | Self::EmbeddedTableBlueprint => None,
         }
     }
 
@@ -186,7 +196,8 @@ impl LogSource {
             | Self::JsChannel { .. }
             | Self::MessageProxy { .. }
             | Self::Sdk
-            | Self::Stdin => {
+            | Self::Stdin
+            | Self::EmbeddedTableBlueprint => {
                 // For all of these sources we're not actively loading data, but rather waiting for data to be sent.
                 // These show up in the top panel - see `top_panel.rs`.
                 None
@@ -215,6 +226,7 @@ impl LogSource {
             }
             Self::RrdWebEvent | Self::JsChannel { .. } => "Waiting for logging data…".to_owned(),
             Self::Sdk => "Waiting for logging data from SDK".to_owned(),
+            Self::EmbeddedTableBlueprint => "Loading embedded table blueprint…".to_owned(),
         }
     }
 

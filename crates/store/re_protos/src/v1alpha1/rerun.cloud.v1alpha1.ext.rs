@@ -303,7 +303,7 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(Self {
+        let result = Self {
             segment_ids,
 
             chunk_ids: value
@@ -340,7 +340,61 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
             query: value.query.map(|q| q.try_into()).transpose()?,
 
             generate_direct_urls: value.generate_direct_urls,
-        })
+        };
+
+        if let Some(query) = result.query.as_ref()
+            && let Some(la) = query.latest_at.as_ref()
+            && !la.per_segment_values.is_empty()
+        {
+            // Per `cloud.proto`: `per_segment_values` is mutually exclusive
+            // with both `latest_at.at` and `query.range`, and requires
+            // `latest_at.index` to be set. The server reconstructs global
+            // bounds internally from the per-segment values, so a
+            // caller-supplied `at` or `range` would be ambiguous, and a
+            // missing `index` would leave the per-segment values without a
+            // timeline to apply to. Without these checks, the two backends
+            // diverged: dataplatform errored on missing `index` while OSS
+            // silently degraded to a static-only fallback (and OSS kept
+            // `range` while dataplatform overwrote it) — same illegal
+            // request, backend-divergent behavior.
+            if la.index.is_none() {
+                return Err(tonic::Status::invalid_argument(
+                    "`latest_at.index` must be set when `per_segment_values` is non-empty",
+                ));
+            }
+            if la.at != re_log_types::TimeInt::STATIC {
+                return Err(tonic::Status::invalid_argument(
+                    "`latest_at.at` must be unset when `per_segment_values` is non-empty",
+                ));
+            }
+            if query.range.is_some() {
+                return Err(tonic::Status::invalid_argument(
+                    "`query.range` must be unset when `per_segment_values` is non-empty",
+                ));
+            }
+            if result.segment_ids.is_empty() {
+                return Err(tonic::Status::invalid_argument(
+                    "`per_segment_values` requires `segment_ids` to be non-empty",
+                ));
+            }
+            if la.per_segment_values.len() != result.segment_ids.len() {
+                return Err(tonic::Status::invalid_argument(format!(
+                    "`per_segment_values.len()` ({}) must equal `segment_ids.len()` ({})",
+                    la.per_segment_values.len(),
+                    result.segment_ids.len(),
+                )));
+            }
+            let mut seen = std::collections::HashSet::with_capacity(result.segment_ids.len());
+            for sid in &result.segment_ids {
+                if !seen.insert(sid) {
+                    return Err(tonic::Status::invalid_argument(
+                        "`segment_ids` must contain no duplicates when `per_segment_values` is set",
+                    ));
+                }
+            }
+        }
+
+        Ok(result)
     }
 }
 
@@ -355,10 +409,31 @@ impl QueryDatasetResponse {
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
+
+    /// Byte offset of the chunk within the source object.
+    ///
+    /// **Deprecated**: this is a denormalized projection of
+    /// [`RrdChunkLocation::offset`](crate::cloud::v1alpha1::ext::RrdChunkLocation),
+    /// which the OSS client now decodes directly out of `FIELD_CHUNK_KEY`.
+    /// Still emitted by the server for compatibility with old clients; new
+    /// code should not read it.
     pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
+
+    /// Byte length of the chunk within the source object.
+    ///
+    /// **Deprecated**: see [`FIELD_CHUNK_BYTE_OFFSET`](Self::FIELD_CHUNK_BYTE_OFFSET).
+    /// Decode `FIELD_CHUNK_KEY` instead.
     pub const FIELD_CHUNK_BYTE_LENGTH: &str = "chunk_byte_len";
+
     pub const FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED: &str = "chunk_byte_size_uncompressed";
+
+    /// Direct (presigned) URL for fetching the source object.
+    ///
+    /// **Note**: server policy field. Presence indicates the server expects
+    /// the client to fetch this row via direct HTTP Range; absence routes the
+    /// row through gRPC `FetchChunks`.
     pub const FIELD_DIRECT_URL: &str = "rerun_layer_direct_url";
+
     pub const FIELD_DIRECT_URL_EXPIRES_AT: &str = "rerun_layer_direct_url_expires_at";
 
     pub fn field_chunk_id() -> FieldRef {
@@ -1693,16 +1768,13 @@ pub struct Query {
 impl Query {
     /// Create a query that returns everything that is needed to view every time point
     /// in the given range with latest-at semantics.
-    pub fn latest_at_range(timeline_name: &TimelineName, time_range: AbsoluteTimeRange) -> Self {
+    pub fn latest_at_range(timeline_name: TimelineName, time_range: AbsoluteTimeRange) -> Self {
         Self {
             // So that we can show the state at the start:
-            latest_at: Some(QueryLatestAt {
-                index: Some(timeline_name.to_string()),
-                at: time_range.min,
-            }),
+            latest_at: Some(QueryLatestAt::global(Some(timeline_name), time_range.min)),
             // Show we can show everything in the range:
             range: Some(QueryRange {
-                index: timeline_name.to_string(),
+                index: timeline_name,
                 index_range: time_range.into(),
             }),
             ..Self::default()
@@ -1720,11 +1792,16 @@ impl TryFrom<crate::cloud::v1alpha1::Query> for Query {
                 Ok::<QueryLatestAt, tonic::Status>(QueryLatestAt {
                     index: latest_at
                         .index
-                        .and_then(|index| index.timeline.map(|timeline| timeline.name)),
+                        .and_then(|index| index.timeline.map(|timeline| timeline.name.into())),
                     at: latest_at
                         .at
                         .map(|at| TimeInt::new_temporal(at))
                         .unwrap_or_else(|| TimeInt::STATIC),
+                    per_segment_values: latest_at
+                        .per_segment_values
+                        .into_iter()
+                        .map(|ivl| ivl.values)
+                        .collect(),
                 })
             })
             .transpose()?;
@@ -1746,7 +1823,8 @@ impl TryFrom<crate::cloud::v1alpha1::Query> for Query {
                         .and_then(|index| index.timeline.map(|timeline| timeline.name))
                         .ok_or_else(|| {
                             tonic::Status::invalid_argument("index is required for range query")
-                        })?,
+                        })?
+                        .into(),
                 })
             })
             .transpose()?;
@@ -1792,20 +1870,35 @@ pub struct QueryLatestAt {
     /// Index name (timeline) to query.
     ///
     /// Use `None` for static only data.
-    pub index: Option<String>,
+    pub index: Option<TimelineName>,
 
-    /// The timestamp to query at.
+    /// Global query value — applied to all segments.
     ///
     /// Use `TimeInt::STATIC` to query for static only data.
+    /// Mutually exclusive with `per_segment_values`.
     pub at: TimeInt,
+
+    /// Per-segment index values, positionally matched to
+    /// `QueryDatasetRequest.segment_ids`.
+    ///
+    /// When non-empty, `at` and `Query.range` must be unset — the server
+    /// reconstructs global bounds from these values.
+    pub per_segment_values: Vec<Vec<i64>>,
 }
 
 impl QueryLatestAt {
-    pub fn new_static() -> Self {
+    /// Construct a global `QueryLatestAt` (single value applied to all segments,
+    /// no per-segment values).
+    pub fn global(index: Option<TimelineName>, at: TimeInt) -> Self {
         Self {
-            index: None,
-            at: TimeInt::STATIC,
+            index,
+            at,
+            per_segment_values: Vec::new(),
         }
+    }
+
+    pub fn new_static() -> Self {
+        Self::global(None, TimeInt::STATIC)
     }
 
     pub fn is_static(&self) -> bool {
@@ -1815,19 +1908,32 @@ impl QueryLatestAt {
 
 impl From<QueryLatestAt> for crate::cloud::v1alpha1::QueryLatestAt {
     fn from(value: QueryLatestAt) -> Self {
+        // Map `TimeInt::STATIC` (sentinel for "unset") to `None` on the wire
+        // so the receiving side's `at.map(TimeInt::new_temporal).unwrap_or(STATIC)`
+        // round-trips correctly.
+        let at = if value.at == TimeInt::STATIC {
+            None
+        } else {
+            Some(value.at.as_i64())
+        };
         crate::cloud::v1alpha1::QueryLatestAt {
             index: value.index.map(|index| {
                 let timeline: TimelineName = index.into();
                 timeline.into()
             }),
-            at: Some(value.at.as_i64()),
+            at,
+            per_segment_values: value
+                .per_segment_values
+                .into_iter()
+                .map(|values| crate::cloud::v1alpha1::IndexValueList { values })
+                .collect(),
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct QueryRange {
-    pub index: String,
+    pub index: TimelineName,
     pub index_range: re_log_types::AbsoluteTimeRange,
 }
 
@@ -2885,6 +2991,18 @@ pub struct VersionResponse {
     pub version: String,
     pub cloud_provider: Option<String>,
     pub cloud_region: Option<String>,
+    /// Server-supported feature flags. See `crate::cloud::v1alpha1::features`
+    /// for known feature names. An empty list means the server is older than
+    /// the client and feature-gated paths must fall back.
+    pub features: Vec<String>,
+}
+
+impl VersionResponse {
+    /// Whether the server advertises a given feature flag. Empty `features`
+    /// (old server) returns false — callers must treat that as "fall back".
+    pub fn has_feature(&self, feature: &str) -> bool {
+        self.features.iter().any(|f| f == feature)
+    }
 }
 
 impl From<crate::cloud::v1alpha1::VersionResponse> for VersionResponse {
@@ -2894,11 +3012,10 @@ impl From<crate::cloud::v1alpha1::VersionResponse> for VersionResponse {
             version: value.version,
             cloud_provider: value.cloud_provider,
             cloud_region: value.cloud_region,
+            features: value.features,
         }
     }
 }
-
-// ---
 
 #[cfg(test)]
 mod tests {
@@ -2954,6 +3071,170 @@ mod tests {
             size_bytes,
         )
         .unwrap();
+    }
+
+    #[test]
+    fn test_query_latest_at_per_segment_values_round_trip() {
+        let ext = QueryLatestAt {
+            index: Some("frame".into()),
+            at: TimeInt::STATIC,
+            per_segment_values: vec![vec![1, 2, 3], vec![10], vec![]],
+        };
+        let wire: crate::cloud::v1alpha1::QueryLatestAt = ext.clone().into();
+        assert!(wire.at.is_none(), "STATIC must serialize as None");
+        assert_eq!(wire.per_segment_values.len(), 3);
+        assert_eq!(wire.per_segment_values[0].values, vec![1, 2, 3]);
+        assert_eq!(wire.per_segment_values[1].values, vec![10]);
+        assert!(wire.per_segment_values[2].values.is_empty());
+    }
+
+    #[test]
+    fn test_query_dataset_request_per_segment_values_length_validates() {
+        // Mismatched lengths → invalid_argument
+        let req = crate::cloud::v1alpha1::QueryDatasetRequest {
+            segment_ids: vec![
+                crate::common::v1alpha1::SegmentId {
+                    id: Some("00000000-0000-0000-0000-000000000001".to_owned()),
+                },
+                crate::common::v1alpha1::SegmentId {
+                    id: Some("00000000-0000-0000-0000-000000000002".to_owned()),
+                },
+            ],
+            query: Some(crate::cloud::v1alpha1::Query {
+                latest_at: Some(crate::cloud::v1alpha1::QueryLatestAt {
+                    index: Some(re_log_types::TimelineName::new("log_time").into()),
+                    at: None,
+                    per_segment_values: vec![crate::cloud::v1alpha1::IndexValueList {
+                        values: vec![1],
+                    }],
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let err = QueryDatasetRequest::try_from(req).unwrap_err();
+        assert_eq!(err.code(), tonic::Code::InvalidArgument);
+        assert!(err.message().contains("per_segment_values.len()"));
+    }
+
+    #[test]
+    fn test_query_dataset_request_per_segment_values_requires_segment_ids() {
+        let req = crate::cloud::v1alpha1::QueryDatasetRequest {
+            segment_ids: vec![],
+            query: Some(crate::cloud::v1alpha1::Query {
+                latest_at: Some(crate::cloud::v1alpha1::QueryLatestAt {
+                    index: Some(re_log_types::TimelineName::new("log_time").into()),
+                    at: None,
+                    per_segment_values: vec![crate::cloud::v1alpha1::IndexValueList {
+                        values: vec![1],
+                    }],
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let err = QueryDatasetRequest::try_from(req).unwrap_err();
+        assert_eq!(err.code(), tonic::Code::InvalidArgument);
+        assert!(err.message().contains("segment_ids"));
+    }
+
+    #[test]
+    fn test_query_dataset_request_per_segment_values_rejects_duplicate_segments() {
+        let dup = crate::common::v1alpha1::SegmentId {
+            id: Some("00000000-0000-0000-0000-000000000007".to_owned()),
+        };
+        let req = crate::cloud::v1alpha1::QueryDatasetRequest {
+            segment_ids: vec![dup.clone(), dup],
+            query: Some(crate::cloud::v1alpha1::Query {
+                latest_at: Some(crate::cloud::v1alpha1::QueryLatestAt {
+                    index: Some(re_log_types::TimelineName::new("log_time").into()),
+                    at: None,
+                    per_segment_values: vec![
+                        crate::cloud::v1alpha1::IndexValueList { values: vec![1] },
+                        crate::cloud::v1alpha1::IndexValueList { values: vec![2] },
+                    ],
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let err = QueryDatasetRequest::try_from(req).unwrap_err();
+        assert_eq!(err.code(), tonic::Code::InvalidArgument);
+        assert!(err.message().contains("duplicates"));
+    }
+
+    #[test]
+    fn test_query_dataset_request_per_segment_values_empty_is_allowed() {
+        // per_segment_values absent → no validation triggered
+        let req = crate::cloud::v1alpha1::QueryDatasetRequest {
+            segment_ids: vec![],
+            query: Some(crate::cloud::v1alpha1::Query::default()),
+            ..Default::default()
+        };
+        QueryDatasetRequest::try_from(req).expect("empty per_segment_values must be accepted");
+    }
+
+    #[test]
+    fn test_query_dataset_request_per_segment_values_requires_index() {
+        // Regression: previously the dataplatform handler errored on a missing
+        // `latest_at.index` while OSS silently degraded to a static-only
+        // fallback. Both backends must now reject identically at request decode.
+        let req = crate::cloud::v1alpha1::QueryDatasetRequest {
+            segment_ids: vec![crate::common::v1alpha1::SegmentId {
+                id: Some("00000000-0000-0000-0000-000000000001".to_owned()),
+            }],
+            query: Some(crate::cloud::v1alpha1::Query {
+                latest_at: Some(crate::cloud::v1alpha1::QueryLatestAt {
+                    index: None,
+                    at: None,
+                    per_segment_values: vec![crate::cloud::v1alpha1::IndexValueList {
+                        values: vec![1],
+                    }],
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let err = QueryDatasetRequest::try_from(req).unwrap_err();
+        assert_eq!(err.code(), tonic::Code::InvalidArgument);
+        assert!(err.message().contains("latest_at.index"));
+    }
+
+    #[test]
+    fn test_version_response_has_feature() {
+        let resp = VersionResponse {
+            build_info: None,
+            version: "1.2.3".to_owned(),
+            cloud_provider: None,
+            cloud_region: None,
+            features: vec!["per_segment_index_values".to_owned(), "future_X".to_owned()],
+        };
+        assert!(resp.has_feature(crate::cloud::v1alpha1::features::PER_SEGMENT_INDEX_VALUES));
+        assert!(resp.has_feature("future_X"));
+        assert!(!resp.has_feature("nonexistent"));
+    }
+
+    #[test]
+    fn test_version_response_old_server_empty_features() {
+        // Old server returns features=vec![] (default for unknown field).
+        let resp = VersionResponse {
+            build_info: None,
+            version: "0.5.0".to_owned(),
+            cloud_provider: None,
+            cloud_region: None,
+            features: vec![],
+        };
+        assert!(!resp.has_feature(crate::cloud::v1alpha1::features::PER_SEGMENT_INDEX_VALUES));
+    }
+
+    #[test]
+    fn test_features_constants_self_consistent() {
+        // The advertise list must contain every constant we publish, and only those.
+        let advertised = crate::cloud::v1alpha1::features::all_supported_features();
+        assert!(
+            advertised
+                .contains(&crate::cloud::v1alpha1::features::PER_SEGMENT_INDEX_VALUES.to_owned())
+        );
     }
 
     /// Ensure `crate_dataframe` implementation is consistent with `schema()`

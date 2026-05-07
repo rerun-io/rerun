@@ -21,5 +21,6 @@ Boolean
 
 * [`ClearIsRecursive`](../components/clear_is_recursive.md)
 * [`Interactive`](../components/interactive.md)
+* [`IsKeyframe`](../components/is_keyframe.md?speculative-link)
 * [`ShowLabels`](../components/show_labels.md)
 * [`Visible`](../components/visible.md)

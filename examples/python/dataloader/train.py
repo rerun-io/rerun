@@ -3,7 +3,7 @@
 Demonstrates how to stream robot trajectory data from Rerun's catalog
 into an imitation learning policy (Action Chunking Transformers).
 
-The Rerun dataloader's Column.window feature fetches future action chunks in a single query per batch.
+The Rerun dataloader's Field.window feature fetches future action chunks in a single query per batch.
 """
 
 from __future__ import annotations
@@ -22,8 +22,8 @@ from torch.utils.data import DataLoader
 from rerun._tracing import tracing_scope, with_tracing
 from rerun.catalog import CatalogClient
 from rerun.experimental.dataloader import (
-    Column,
     DataSource,
+    Field,
     NumericDecoder,
     RerunIterableDataset,
     RerunMapDataset,
@@ -120,22 +120,22 @@ def main() -> None:
 
     source = DataSource(dataset_entry, segments=segments)
 
-    columns = {
-        "state": Column("/observation.state:Scalars:scalars", decode=NumericDecoder()),
-        "action": Column(
+    fields = {
+        "state": Field("/observation.state:Scalars:scalars", decode=NumericDecoder()),
+        "action": Field(
             "/action:Scalars:scalars",
             decode=NumericDecoder(),
             window=(1, CHUNK_SIZE),
         ),
-        "image_laptop": Column(
+        "image_laptop": Field(
             "/observation.images.laptop:VideoStream:sample",
             decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
         ),
-        "image_phone": Column(
+        "image_phone": Field(
             "/observation.images.phone:VideoStream:sample",
             decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
         ),
-        "image_side": Column(
+        "image_side": Field(
             "/observation.images.side:VideoStream:sample",
             decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
         ),
@@ -143,9 +143,9 @@ def main() -> None:
 
     ds: RerunIterableDataset | RerunMapDataset
     if args.dataset_style == "map":
-        ds = RerunMapDataset(source=source, index="frame_index", columns=columns)
+        ds = RerunMapDataset(source=source, index="frame_index", fields=fields)
     else:
-        ds = RerunIterableDataset(source=source, index="frame_index", columns=columns, fetch_size=512)
+        ds = RerunIterableDataset(source=source, index="frame_index", fields=fields, fetch_size=512)
     print(f"Using {args.dataset_style} dataset with {len(ds)} samples (after window trimming)")
 
     # IterableDataset doesn't support indexing, so probe shape via iteration.

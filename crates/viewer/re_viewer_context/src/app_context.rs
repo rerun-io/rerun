@@ -21,6 +21,7 @@ use crate::{
 /// This context, in difference to [`crate::ViewerContext`] can exist for
 /// any arbitrary state of the viewer. And not only when there is an open
 /// recording.
+#[derive(Clone)]
 pub struct AppContext<'a> {
     /// Set during tests (e.g. snapshot tests).
     ///

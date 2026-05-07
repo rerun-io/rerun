@@ -53,9 +53,9 @@ impl NotificationLevel {
 impl From<re_log::Level> for NotificationLevel {
     fn from(value: re_log::Level) -> Self {
         match value {
-            re_log::Level::Trace | re_log::Level::Debug | re_log::Level::Info => Self::Info,
-            re_log::Level::Warn => Self::Warning,
-            re_log::Level::Error => Self::Error,
+            re_log::Level::TRACE | re_log::Level::DEBUG | re_log::Level::INFO => Self::Info,
+            re_log::Level::WARN => Self::Warning,
+            re_log::Level::ERROR => Self::Error,
         }
     }
 }
@@ -68,7 +68,7 @@ fn is_relevant(target: &str, level: re_log::Level) -> bool {
 
     matches!(
         level,
-        re_log::Level::Warn | re_log::Level::Error | re_log::Level::Info
+        re_log::Level::WARN | re_log::Level::ERROR | re_log::Level::INFO
     )
 }
 
@@ -131,6 +131,14 @@ impl Notification {
             toast_ttl: base_ttl(),
             is_unread: true,
         }
+    }
+
+    pub fn level(&self) -> NotificationLevel {
+        self.level
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
     }
 
     pub fn with_details(mut self, details: impl Into<String>) -> Self {
@@ -208,6 +216,10 @@ impl NotificationUi {
 
     pub fn unread_notification_level(&self) -> Option<NotificationLevel> {
         self.unread_notification_level
+    }
+
+    pub fn notifications(&self) -> &[Notification] {
+        &self.notifications
     }
 
     /// Given that the log is relevant this creates a notification

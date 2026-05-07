@@ -263,10 +263,7 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
         (Some(Query::default()), vec![], "default"),
         (
             Some(Query {
-                latest_at: Some(QueryLatestAt {
-                    index: Some("frame_nr".to_owned()),
-                    at: TimeInt::MAX,
-                }),
+                latest_at: Some(QueryLatestAt::global(Some("frame_nr".into()), TimeInt::MAX)),
                 range: None,
                 ..Default::default()
             }),
@@ -279,7 +276,7 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
             Some(Query {
                 latest_at: None,
                 range: Some(QueryRange {
-                    index: "frame_nr".to_owned(),
+                    index: "frame_nr".into(),
                     index_range: AbsoluteTimeRange {
                         min: TimeInt::MIN,
                         max: TimeInt::MAX,

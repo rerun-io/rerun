@@ -3542,19 +3542,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "env_logger"
-version = "0.11.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2daee4ea451f429a58296525ddf28b45a3b64f1acf6587e2067437bb11e218d"
-dependencies = [
- "anstream",
- "anstyle",
- "env_filter",
- "jiff",
- "log",
-]
-
-[[package]]
 name = "epaint"
 version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8585,8 +8572,10 @@ version = "0.32.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "criterion",
  "insta",
  "itertools 0.14.0",
+ "mimalloc",
  "nohash-hasher",
  "rayon",
  "re_arrow_util",
@@ -8612,6 +8601,7 @@ dependencies = [
  "ahash",
  "arrow",
  "async-trait",
+ "base64 0.22.1",
  "cfg-if",
  "crossbeam",
  "datafusion",
@@ -8623,10 +8613,14 @@ dependencies = [
  "insta",
  "itertools 0.14.0",
  "jiff",
+ "nohash-hasher",
  "ordered-float 5.1.0",
  "re_arrow_util",
+ "re_chunk_store",
  "re_component_ui",
+ "re_data_source",
  "re_dataframe",
+ "re_entity_db",
  "re_format",
  "re_log",
  "re_log_types",
@@ -8642,6 +8636,8 @@ dependencies = [
  "re_ui",
  "re_uri",
  "re_viewer_context",
+ "re_viewport",
+ "re_viewport_blueprint",
  "serde",
  "static_assertions",
  "strum",
@@ -8663,12 +8659,14 @@ dependencies = [
  "futures-util",
  "getrandom 0.3.4",
  "http",
+ "jiff",
  "opentelemetry",
  "opentelemetry-proto",
  "parking_lot",
  "re_analytics",
  "re_arrow_util",
  "re_backoff",
+ "re_byte_size",
  "re_dataframe",
  "re_format",
  "re_log",
@@ -8905,6 +8903,8 @@ dependencies = [
  "re_viewer",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "reqwest",
+ "serde",
  "tempfile",
  "tokio",
 ]
@@ -8942,14 +8942,13 @@ name = "re_log"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
- "env_filter",
- "env_logger",
- "js-sys",
  "log",
  "log-once",
  "parking_lot",
  "tracing",
- "wasm-bindgen",
+ "tracing-log",
+ "tracing-subscriber",
+ "tracing-web",
 ]
 
 [[package]]
@@ -9061,10 +9060,12 @@ dependencies = [
  "insta",
  "mcap",
  "prost-reflect",
+ "rayon",
  "re_arrow_util",
  "re_chunk",
  "re_log",
  "re_log_types",
+ "re_quota_channel",
  "re_ros_msg",
  "re_sdk_types",
  "re_tracing",
@@ -10214,8 +10215,10 @@ version = "0.32.0-alpha.1+dev"
 dependencies = [
  "egui",
  "re_chunk_store",
+ "re_component_ui",
  "re_log_types",
  "re_sdk_types",
+ "re_selection_panel",
  "re_test_context",
  "re_test_viewport",
  "re_tracing",
@@ -11740,6 +11743,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "status_example"
 version = "0.31.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "rerun",
 ]
 
@@ -12725,6 +12729,19 @@ dependencies = [
  "tracing-core",
  "tracing-subscriber",
  "tracy-client",
+]
+
+[[package]]
+name = "tracing-web"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9e6a141feebd51f8d91ebfd785af50fca223c570b86852166caa3b141defe7c"
+dependencies = [
+ "js-sys",
+ "tracing-core",
+ "tracing-subscriber",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

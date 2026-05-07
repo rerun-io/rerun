@@ -18,7 +18,7 @@ pub(crate) fn extract_urdf_from_robot_descriptions(
     mcap_bytes: &[u8],
     summary: &mcap::Summary,
     topic_filter: &re_mcap::TopicFilter,
-    emit: &mut dyn FnMut(re_chunk::Chunk),
+    emit: &(dyn Fn(re_chunk::Chunk) + Send + Sync),
 ) -> anyhow::Result<()> {
     let robot_desc_channels: Vec<u16> = summary
         .channels

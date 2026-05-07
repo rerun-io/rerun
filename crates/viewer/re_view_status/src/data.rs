@@ -10,6 +10,9 @@ pub struct StatusLane {
     /// Display name for this lane (typically the entity path).
     pub label: String,
 
+    /// The entity path this lane belongs to.
+    pub entity_path: re_log_types::EntityPath,
+
     /// Ordered list of phases. Each phase starts at `start_time` and implicitly ends
     /// where the next phase begins (or at the right edge of the visible range).
     pub phases: Vec<StatusLanePhase>,
@@ -26,4 +29,7 @@ pub struct StatusLanePhase {
 
     /// Display color for this phase.
     pub color: egui::Color32,
+
+    /// Whether this phase should be drawn.
+    pub visible: bool,
 }

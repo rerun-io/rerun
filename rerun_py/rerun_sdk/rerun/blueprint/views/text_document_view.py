@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 __all__ = ["TextDocumentView"]
 
 
+from .. import archetypes as blueprint_archetypes
 from ..api import View, ViewContentsLike, VisualizerLike
 
 if TYPE_CHECKING:
@@ -104,6 +105,7 @@ class TextDocumentView(View):
         visible: datatypes.BoolLike | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
+        format_options: blueprint_archetypes.TextDocumentFormat | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TextDocumentView view.
@@ -142,9 +144,17 @@ class TextDocumentView(View):
             do not yet support `$origin` relative paths or glob expressions.
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
 
+        format_options:
+            Formatting options for the text document view.
+
         """
 
         properties: dict[str, AsComponents] = {}
+        if format_options is not None:
+            if not isinstance(format_options, blueprint_archetypes.TextDocumentFormat):
+                format_options = blueprint_archetypes.TextDocumentFormat(format_options)
+            properties["TextDocumentFormat"] = format_options
+
         super().__init__(
             class_identifier="TextDocument",
             origin=origin,

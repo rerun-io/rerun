@@ -30,6 +30,7 @@ use crate::{
     RecordBatchTestExt as _, TempPath, TuidPrefix, create_nasty_recording,
     create_recording_with_embeddings, create_recording_with_properties,
     create_recording_with_scalars, create_recording_with_text, create_simple_recording,
+    create_simple_recording_one_chunk_per_frame,
 };
 
 /// Extension trait for the most common test setup tasks.
@@ -272,6 +273,13 @@ pub enum LayerType {
         time_type: TimeType,
     },
 
+    /// See [`crate::utils::rerun::create_simple_recording_one_chunk_per_frame`]
+    SimpleOneChunkPerFrame {
+        entities: &'static [&'static str],
+        start_time: i64,
+        time_type: TimeType,
+    },
+
     /// See [`crate::create_nasty_recording`]
     Nasty { entities: &'static [&'static str] },
 
@@ -325,6 +333,18 @@ impl LayerType {
         }
     }
 
+    pub fn simple_one_chunk_per_frame_with_time(
+        entities: &'static [&'static str],
+        start_time: i64,
+        time_type: TimeType,
+    ) -> Self {
+        Self::SimpleOneChunkPerFrame {
+            entities,
+            start_time,
+            time_type,
+        }
+    }
+
     pub fn nasty(entities: &'static [&'static str]) -> Self {
         Self::Nasty { entities }
     }
@@ -371,6 +391,18 @@ impl LayerType {
                 start_time,
                 time_type,
             } => create_simple_recording(tuid_prefix, segment_id, entities, start_time, time_type),
+
+            Self::SimpleOneChunkPerFrame {
+                entities,
+                start_time,
+                time_type,
+            } => create_simple_recording_one_chunk_per_frame(
+                tuid_prefix,
+                segment_id,
+                entities,
+                start_time,
+                time_type,
+            ),
 
             Self::Nasty { entities } => create_nasty_recording(tuid_prefix, segment_id, entities),
 
@@ -441,6 +473,24 @@ impl LayerDefinition {
             segment_id,
             layer_name: None,
             layer_type: LayerType::simple_with_time(entities, start_time, time_type),
+        }
+    }
+
+    /// A simple layer that emits one temporal chunk per frame (4 temporal +
+    /// 1 static chunk per entity), suitable for tests that need to prove a
+    /// chunk-level filter actually narrows the result set.
+    pub fn simple_one_chunk_per_frame_with_time(
+        segment_id: &'static str,
+        entities: &'static [&'static str],
+        start_time: i64,
+        time_type: TimeType,
+    ) -> Self {
+        Self {
+            segment_id,
+            layer_name: None,
+            layer_type: LayerType::simple_one_chunk_per_frame_with_time(
+                entities, start_time, time_type,
+            ),
         }
     }
 

@@ -2,6 +2,7 @@
 
 use rerun::external::{re_crash_handler, re_grpc_server, re_log, re_memory, re_viewer, tokio};
 
+mod color_coordinate_config;
 mod points3d_color_view;
 mod points3d_color_visualizer;
 
@@ -59,7 +60,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             app.add_log_receiver(rx);
 
-            // Register the custom view
+            // Register reflection + component UI for our hand-written blueprint property.
+            let color_coordinates_archetype =
+                <color_coordinate_config::ColorCoordinatesConfiguration as rerun::Archetype>::name(
+                );
+            app.add_archetype_reflection(
+                color_coordinates_archetype,
+                color_coordinate_config::ColorCoordinatesConfiguration::reflection(),
+            );
+            app.component_ui_registry_mut()
+                .add_singleline_edit_or_view::<color_coordinate_config::ColorCoordinatesMode>(
+                    |_ctx, ui, value| {
+                        color_coordinate_config::edit_view_color_coordinates_mode(ui, value)
+                    },
+                );
+
+            // Register the custom view class and its visualizer/fallbacks.
             app.add_view_class::<points3d_color_view::ColorCoordinatesView>()
                 .unwrap();
 

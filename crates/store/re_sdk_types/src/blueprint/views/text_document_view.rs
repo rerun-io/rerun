@@ -25,7 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug)]
-pub struct TextDocumentView {}
+pub struct TextDocumentView {
+    /// Formatting options for the text document view.
+    pub format_options: crate::blueprint::archetypes::TextDocumentFormat,
+}
 
 impl ::re_types_core::View for TextDocumentView {
     #[inline]
@@ -34,14 +37,45 @@ impl ::re_types_core::View for TextDocumentView {
     }
 }
 
+impl<T: Into<crate::blueprint::archetypes::TextDocumentFormat>> From<T> for TextDocumentView {
+    fn from(v: T) -> Self {
+        Self {
+            format_options: v.into(),
+        }
+    }
+}
+
+impl std::borrow::Borrow<crate::blueprint::archetypes::TextDocumentFormat> for TextDocumentView {
+    #[inline]
+    fn borrow(&self) -> &crate::blueprint::archetypes::TextDocumentFormat {
+        &self.format_options
+    }
+}
+
+impl std::ops::Deref for TextDocumentView {
+    type Target = crate::blueprint::archetypes::TextDocumentFormat;
+
+    #[inline]
+    fn deref(&self) -> &crate::blueprint::archetypes::TextDocumentFormat {
+        &self.format_options
+    }
+}
+
+impl std::ops::DerefMut for TextDocumentView {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::TextDocumentFormat {
+        &mut self.format_options
+    }
+}
+
 impl ::re_byte_size::SizeBytes for TextDocumentView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        0
+        self.format_options.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        true
+        <crate::blueprint::archetypes::TextDocumentFormat>::is_pod()
     }
 }

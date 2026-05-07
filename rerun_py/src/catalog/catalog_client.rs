@@ -434,8 +434,9 @@ impl PyCatalogClientInternal {
                 }
 
                 let catalog_provider = PyDataFusionCatalogProvider::new(
-                    Some(provider_name.to_owned()),
+                    Some(provider_name),
                     client.clone(),
+                    self.origin.clone(),
                 );
 
                 ctx.call_method1(

@@ -39,6 +39,7 @@ pub use py_stream::PyLazyChunkStreamInternal;
 /// Register chunk pipeline classes into the module.
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<rrd_reader::PyRrdReaderInternal>()?;
+    m.add_class::<rrd_reader::PyStoreEntryInternal>()?;
     m.add_class::<mcap_reader::PyMcapReaderInternal>()?;
     m.add_class::<parquet_reader::PyParquetReaderInternal>()?;
     m.add_class::<py_stream::PyLazyChunkStreamInternal>()?;

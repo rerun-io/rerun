@@ -602,8 +602,16 @@ impl PyChunkBatcherConfig {
     #[expect(non_snake_case)]
     #[staticmethod]
     /// Always flushes ASAP.
-    fn ALWAYS() -> Self {
-        Self(ChunkBatcherConfig::ALWAYS)
+    ///
+    /// !!! warning
+    ///     Test-only configuration. Produces an unrealistically large number of chunks and is
+    ///     not suitable for production workloads. With a file sink in particular, per-chunk
+    ///     metadata is accumulated in memory until the SDK process ends and the file footer
+    ///     can be written, which can drive memory usage through the roof. Use
+    ///     [`LOW_LATENCY`][rerun_bindings.ChunkBatcherConfig.LOW_LATENCY] instead for fast
+    ///     flushing in real applications.
+    fn ALWAYS_TEST_ONLY() -> Self {
+        Self(ChunkBatcherConfig::ALWAYS_TEST_ONLY)
     }
 
     #[expect(non_snake_case)]
@@ -1104,19 +1112,23 @@ impl PyGrpcSink {
 #[derive(PartialEq, Hash)]
 struct PyFileSink {
     path: PathBuf,
+    write_footer: bool,
 }
 
 #[pymethods]
 impl PyFileSink {
     #[new]
-    #[pyo3(signature = (path))]
-    #[pyo3(text_signature = "(self, path)")]
-    fn new(path: PathBuf) -> Self {
-        Self { path }
+    #[pyo3(signature = (path, *, write_footer = true))]
+    #[pyo3(text_signature = "(self, path, *, write_footer=True)")]
+    fn new(path: PathBuf, write_footer: bool) -> Self {
+        Self { path, write_footer }
     }
 
     pub fn __repr__(&self) -> String {
-        format!("FileSink({:#?})", self.path)
+        format!(
+            "FileSink({:#?}, write_footer={})",
+            self.path, self.write_footer
+        )
     }
 }
 
@@ -1146,8 +1158,13 @@ fn set_sinks<'py>(
             resolved_sinks.push(Box::new(sink));
         } else if let Ok(sink) = sink.downcast::<PyFileSink>() {
             let sink = sink.get();
-            let sink = re_sdk::sink::FileSink::new(sink.path.clone())
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            let sink = re_sdk::sink::FileSink::with_options(
+                sink.path.clone(),
+                re_sdk::sink::FileSinkOptions {
+                    write_footer: sink.write_footer,
+                },
+            )
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             resolved_sinks.push(Box::new(sink));
         } else if let Ok(storage) = sink.downcast::<PyBinarySinkStorage>() {
             // Direct PyBinarySinkStorage
@@ -1267,11 +1284,12 @@ fn connect_grpc_blueprint(
 
 /// Save the recording stream to a file.
 #[pyfunction]
-#[pyo3(signature = (path, default_blueprint = None, recording = None))]
+#[pyo3(signature = (path, default_blueprint = None, recording = None, *, write_footer = true))]
 fn save(
     path: &str,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
+    write_footer: bool,
     py: Python<'_>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
@@ -1288,8 +1306,11 @@ fn save(
     py.detach(|| {
         // We create the sink manually so we can send the default blueprint
         // first before the rest of the current recording stream.
-        let sink = re_sdk::sink::FileSink::new(path)
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+        let sink = re_sdk::sink::FileSink::with_options(
+            path,
+            re_sdk::sink::FileSinkOptions { write_footer },
+        )
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
         if let Some(default_blueprint) = default_blueprint {
             send_mem_sink_as_default_blueprint(&sink, default_blueprint);
@@ -1339,10 +1360,11 @@ fn save_blueprint(
 
 /// Save to stdout.
 #[pyfunction]
-#[pyo3(signature = (default_blueprint = None, recording = None))]
+#[pyo3(signature = (default_blueprint = None, recording = None, *, write_footer = true))]
 fn stdout(
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
+    write_footer: bool,
     py: Python<'_>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
@@ -1362,8 +1384,10 @@ fn stdout(
             Box::new(re_sdk::sink::BufferedSink::new())
         } else {
             Box::new(
-                re_sdk::sink::FileSink::stdout()
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                re_sdk::sink::FileSink::stdout_with_options(re_sdk::sink::FileSinkOptions {
+                    write_footer,
+                })
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
             )
         };
 

@@ -188,14 +188,23 @@ pub fn visualizer_ui_impl(
                         }
                     }
 
-                    visualizer_components(
+                    let has_custom_ui_for_components = visualizer.selection_ui(
                         ctx,
                         ui,
                         data_result,
-                        visualizer,
                         visualizer_instruction,
                         per_type_visualizer_reports.get(&visualizer_type),
                     );
+                    if !has_custom_ui_for_components {
+                        visualizer_components(
+                            ctx,
+                            ui,
+                            data_result,
+                            visualizer,
+                            visualizer_instruction,
+                            per_type_visualizer_reports.get(&visualizer_type),
+                        );
+                    }
                 } else {
                     ui.list_item_flat_noninteractive(
                         list_item::LabelContent::new(format!(
@@ -380,10 +389,12 @@ fn visualizer_components(
             // Source component (if available).
             source_component_ui(
                 ui,
+                "Source",
                 &mapping_ctx,
                 &query_result,
                 &entity_components_with_datatype,
                 &query_info,
+                true,
                 component_reports
                     .iter()
                     .find(|report| report.severity == VisualizerReportSeverity::Error)
@@ -447,6 +458,138 @@ fn visualizer_components(
         for report in &component_reports {
             show_visualizer_report(ui, report);
         }
+    }
+}
+
+/// Helper struct to render component source selector UI from `VisualizerSystem::selection_ui`.
+///
+/// Created once per `selection_ui` call; the precomputed query result and entity component
+/// list are reused across each [`Self::render`] call.
+pub struct SourceSelectorContext<'a> {
+    ctx: &'a ViewContext<'a>,
+    data_result: &'a DataResult,
+    instruction: &'a VisualizerInstruction,
+    type_report: Option<&'a re_viewer_context::VisualizerTypeReport>,
+    store_query: re_chunk_store::LatestAtQuery,
+    query_info: VisualizerQueryInfo,
+    query_result: re_view::BlueprintResolvedLatestAtResults<'a>,
+    entity_components_with_datatype: Vec<(ComponentIdentifier, DataType)>,
+}
+
+impl<'a> SourceSelectorContext<'a> {
+    pub fn new(
+        ctx: &'a ViewContext<'a>,
+        data_result: &'a DataResult,
+        instruction: &'a VisualizerInstruction,
+        visualizer: &dyn VisualizerSystem,
+        type_report: Option<&'a re_viewer_context::VisualizerTypeReport>,
+    ) -> Self {
+        let query_info = visualizer.visualizer_query_info(ctx.viewer_ctx.app_options());
+        let store_query = ctx.current_query();
+
+        let query_result = latest_at_with_blueprint_resolved_data(
+            ctx,
+            None,
+            &store_query,
+            data_result,
+            query_info.queried_components(),
+            Some(instruction),
+        );
+
+        let entity_components_with_datatype = {
+            let engine = ctx.viewer_ctx.recording_engine();
+            let store = engine.store();
+            let components = store
+                .schema()
+                .all_components_for_entity(&data_result.entity_path);
+            components
+                .into_iter()
+                .flatten()
+                .filter_map(|&component_id| {
+                    let component_type = store
+                        .schema()
+                        .lookup_component_type(&data_result.entity_path, component_id);
+                    component_type.map(|(_, arrow_datatype)| (component_id, arrow_datatype))
+                })
+                .collect::<Vec<_>>()
+        };
+
+        Self {
+            ctx,
+            data_result,
+            instruction,
+            type_report,
+            store_query,
+            query_info,
+            query_result,
+            entity_components_with_datatype,
+        }
+    }
+
+    /// Render a source-selector combo box for a single component.
+    ///
+    /// Set `show_default_and_override` to `false` for components whose value comes
+    /// from a time-ranged query rather than a single latest-at value — "View default"
+    /// and "Add custom" are then hidden because they wouldn't correspond to anything
+    /// meaningful.
+    pub fn render(
+        &self,
+        ui: &mut egui::Ui,
+        target_component_descr: &ComponentDescriptor,
+        show_default_and_override: bool,
+    ) {
+        let target_component = target_component_descr.component;
+        let viewer_ctx = self.ctx.viewer_ctx;
+
+        let is_ui_editable = viewer_ctx
+            .reflection()
+            .field_reflection(target_component_descr)
+            .is_some_and(|field| field.is_ui_editable());
+
+        let raw_default = {
+            let query_ctx = self.ctx.query_context(
+                self.data_result,
+                self.store_query.clone(),
+                self.instruction.id,
+            );
+            if is_ui_editable {
+                raw_default_or_fallback(&query_ctx, &self.query_result, target_component_descr)
+            } else {
+                raw_default_without_fallback(&self.query_result, target_component_descr)
+                    .unwrap_or_else(|| Arc::new(arrow::array::NullArray::new(0)))
+            }
+        };
+
+        let component_reports: Vec<_> = self
+            .type_report
+            .into_iter()
+            .flat_map(|r| r.reports_for_component(&self.instruction.id, target_component))
+            .collect();
+
+        let mapping_ctx = SourceMappingContext {
+            data_result: self.data_result,
+            query_ctx: self.query_result.query_context(),
+            target_component_descr,
+            is_ui_editable,
+            instruction: self.instruction,
+            raw_default: &raw_default,
+        };
+
+        ui.push_id(target_component, |ui| {
+            source_component_ui(
+                ui,
+                target_component_descr.archetype_field_name(),
+                &mapping_ctx,
+                &self.query_result,
+                &self.entity_components_with_datatype,
+                &self.query_info,
+                show_default_and_override,
+                component_reports
+                    .iter()
+                    .find(|report| report.severity == VisualizerReportSeverity::Error)
+                    .map(|report| report.summary.clone()),
+            );
+        });
     }
 }
 
@@ -538,8 +681,18 @@ fn collect_source_component_options(
             std::iter::once(target_component_reflection.datatype.clone()).collect()
         };
 
+    // Components queried by this visualizer (other than the target) should not appear as
+    // source options — they serve a different role in the same visualizer.
+    let other_queried: Vec<ComponentIdentifier> = query_info
+        .queried
+        .iter()
+        .map(|d| d.component)
+        .filter(|c| *c != component_descr.component)
+        .collect();
+
     entity_components_with_datatype
         .iter()
+        .filter(|(source_component, _)| !other_queried.contains(source_component))
         .flat_map(|(source_component, datatype)| {
             use itertools::Either;
 
@@ -595,12 +748,15 @@ impl<'a> SourceMappingContext<'a> {
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 fn source_component_ui(
     ui: &mut egui::Ui,
+    label: &str,
     mapping_ctx: &SourceMappingContext<'_>,
     query_result: &re_view::BlueprintResolvedLatestAtResults<'_>,
     entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
     query_info: &VisualizerQueryInfo,
+    show_default_and_override: bool,
     current_selection_error: Option<String>,
 ) {
     let current = current_component_source(
@@ -610,7 +766,7 @@ fn source_component_ui(
     );
 
     ui.push_id("source_component", |ui| {
-        ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Source").value_fn(
+        ui.list_item_flat_noninteractive(list_item::PropertyContent::new(label).value_fn(
             |ui, _| {
                 let response = egui::ComboBox::new("source_component_combo_box", "")
                     .selected_text(component_source_string(&current))
@@ -621,6 +777,7 @@ fn source_component_ui(
                             mapping_ctx,
                             entity_components_with_datatype,
                             query_info,
+                            show_default_and_override,
                             &current,
                             current_selection_error,
                         );
@@ -643,6 +800,7 @@ fn source_component_items_ui(
     mapping_ctx: &SourceMappingContext<'_>,
     entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
     query_info: &VisualizerQueryInfo,
+    show_default_and_override: bool,
     current: &VisualizerComponentSource,
     mut current_selection_error: Option<String>,
 ) {
@@ -654,7 +812,7 @@ fn source_component_items_ui(
         mapping_ctx.target_component(),
     );
 
-    if mapping_ctx.is_ui_editable {
+    if mapping_ctx.is_ui_editable && show_default_and_override {
         options.push(VisualizerComponentSource::Default);
 
         // Show the override only if we have one already.
@@ -722,6 +880,7 @@ fn source_component_items_ui(
         });
     if raw_override.is_none()
         && mapping_ctx.is_ui_editable
+        && show_default_and_override
         && has_editor
         && ui.add(ComboItem::new("Add custom")).clicked()
     {

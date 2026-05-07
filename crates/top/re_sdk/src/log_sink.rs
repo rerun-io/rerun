@@ -102,6 +102,15 @@ pub trait LogSink: Send + Sync + 'static + std::any::Any {
     fn default_batcher_config(&self) -> ChunkBatcherConfig {
         ChunkBatcherConfig::DEFAULT
     }
+
+    /// True if this sink can only finalize its on-disk format at process shutdown (i.e. file-like
+    /// sinks that write a footer at the end).
+    ///
+    /// Used to surface warnings when a batcher config would cause unbounded memory growth, since
+    /// these sinks have to keep per-chunk metadata around until the footer can be written.
+    fn defers_finalization_to_shutdown(&self) -> bool {
+        false
+    }
 }
 
 // ----------------------------------------------------------------------------

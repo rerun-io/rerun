@@ -77,9 +77,38 @@ impl Drop for FileSink {
     }
 }
 
+/// Configuration for a [`FileSink`].
+#[derive(Debug, Clone, Copy)]
+pub struct FileSinkOptions {
+    /// Whether to emit a complete RRD footer (including a manifest of every chunk) at the end
+    /// of the stream. Default: `true`.
+    ///
+    /// To produce a footer, the encoder accumulates per-chunk metadata in memory for the entire
+    /// lifetime of the sink. For long-running streaming sessions with many chunks this
+    /// grows unboundedly. Set to `false` to opt out: the resulting file is still valid RRD,
+    /// but without the manifest which may hurt random-access performance.
+    ///
+    /// A footer can be added after the fact via `rerun rrd optimize`.
+    pub write_footer: bool,
+}
+
+impl Default for FileSinkOptions {
+    fn default() -> Self {
+        Self { write_footer: true }
+    }
+}
+
 impl FileSink {
-    /// Start writing log messages to a file at the given path.
+    /// Start writing log messages to a file at the given path, with default options.
     pub fn new(path: impl Into<std::path::PathBuf>) -> Result<Self, FileSinkError> {
+        Self::with_options(path, FileSinkOptions::default())
+    }
+
+    /// Start writing log messages to a file at the given path, with the given [`FileSinkOptions`].
+    pub fn with_options(
+        path: impl Into<std::path::PathBuf>,
+        options: FileSinkOptions,
+    ) -> Result<Self, FileSinkError> {
         // We always compress on disk
         let encoding_options = crate::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
 
@@ -97,8 +126,20 @@ impl FileSink {
             path: path.clone(),
             source: err,
         })?;
-        let encoder =
+        let mut encoder =
             crate::Encoder::new_eager(re_build_info::CrateVersion::LOCAL, encoding_options, file)?;
+        if !options.write_footer {
+            // The SDK's `FileSink` may stream for the entire lifetime of the host process.
+            // The footer's RRD manifest accumulates per-chunk metadata in memory and is only
+            // serialized when the encoder is dropped, so leaving it enabled here grows the heap
+            // unboundedly (see #12623).
+            re_log::warn!(
+                "FileSink at {path:?}: `write_footer=false` — the resulting .rrd will not \
+                 contain a manifest, which will significantly hurt random-access performance \
+                 and some tools (e.g. LazyStore) may not work properly."
+            );
+            encoder.do_not_emit_footer();
+        }
         let join_handle = spawn_and_stream(Some(&path), encoder, rx)?;
 
         Ok(Self {
@@ -108,19 +149,33 @@ impl FileSink {
         })
     }
 
-    /// Start writing log messages to standard output.
+    /// Start writing log messages to standard output, with default options.
     pub fn stdout() -> Result<Self, FileSinkError> {
+        Self::stdout_with_options(FileSinkOptions::default())
+    }
+
+    /// Start writing log messages to standard output, with the given [`FileSinkOptions`].
+    pub fn stdout_with_options(options: FileSinkOptions) -> Result<Self, FileSinkError> {
         let encoding_options = crate::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
 
         let (tx, rx) = crossbeam::channel::bounded(1024);
 
         re_log::debug!("Writing to stdout…");
 
-        let encoder = crate::Encoder::new_eager(
+        let mut encoder = crate::Encoder::new_eager(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
             std::io::stdout(),
         )?;
+        if !options.write_footer {
+            // See `Self::with_options` for why we disable footer emission on streaming sinks.
+            re_log::warn!(
+                "FileSink (stdout): `write_footer=false` — the resulting stream will not \
+                 contain a manifest, which will significantly hurt random-access performance \
+                 and some tools (e.g. LazyStore) may not work properly."
+            );
+            encoder.do_not_emit_footer();
+        }
         let join_handle = spawn_and_stream(None, encoder, rx)?;
 
         Ok(Self {

@@ -13,25 +13,28 @@ import torch.utils.data
 from rerun._tracing import tracing_scope
 
 from ._sample_index import FixedRateSampling, SampleIndex
-from ._utils import Target, _decode_iter, _fetch_arrow, _WorkerConnection
+from ._utils import Target, _decode_iter, _fetch_arrow, _warn_if_fork_unsafe, _WorkerConnection
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
     import pyarrow as pa
 
-    from ._config import Column, DataSource
+    from ._config import DataSource, Field
 
 
 class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tensor]]):
     """
     Iterable dataset backed by the Rerun Data Platform.
 
-    Internally fetches data in large chunks (`fetch_size` samples per server query) and yields individual samples.
-    This amortizes the fixed per-query overhead over many samples while letting the `DataLoader` control the training batch size independently.
+    Fetches `fetch_size` samples per server query and yields individual
+    samples, so per-query overhead is amortized across many samples while
+    the `DataLoader` controls the training batch size independently.
 
-    Shuffling is handled internally: each epoch shuffles the full index list, then partitions it across workers.
-    Use `set_epoch` to re-seed the shuffle between epochs.
+    The index list is partitioned across DDP ranks and DataLoader workers
+    internally. With `shuffle=True` (default), the full list is shuffled
+    once per epoch before partitioning; call `set_epoch` to re-seed
+    between epochs.
 
     Parameters
     ----------
@@ -39,12 +42,12 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         The dataset to read from (with optional segment filter).
     index
         Timeline to iterate (e.g. `"frame_nr"`).
-    columns
-        Output fields, keyed by output name.
+    fields
+        Sample fields, keyed by output name.
     timeline_sampling
         Required when `index` is a timestamp timeline; ignored for
-        integer indices. Pass [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling] to sample on
-        a fixed grid (e.g. 30 Hz).
+        integer indices. Pass [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling]
+        to sample on a fixed grid (e.g. 30 Hz).
     fetch_size
         Number of samples to fetch per server query. Larger values
         amortize network overhead but use more memory. Defaults to 128.
@@ -57,7 +60,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         self,
         source: DataSource,
         index: str,
-        columns: dict[str, Column],
+        fields: dict[str, Field],
         *,
         timeline_sampling: FixedRateSampling | None = None,
         fetch_size: int = 128,
@@ -65,7 +68,9 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
     ) -> None:
         super().__init__()
 
-        self._columns = columns
+        _warn_if_fork_unsafe(stacklevel=3)
+
+        self._fields = fields
         self._index = index
         self._fetch_size = fetch_size
         self._shuffle = shuffle
@@ -74,19 +79,19 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         self._sample_index = SampleIndex.build(
             source,
             index,
-            self._columns,
+            self._fields,
             timeline_sampling=timeline_sampling,
         )
 
         self._connection = _WorkerConnection(
             catalog_url=source.dataset.catalog.url,
             dataset_name=source.dataset.name,
-            columns=columns,
+            fields=fields,
         )
 
     @property
     def sample_index(self) -> SampleIndex:
-        """The underlying [`SampleIndex`][rerun.experimental.dataloader.SampleIndex] — useful for diagnostics."""
+        """The underlying [`SampleIndex`][rerun.experimental.dataloader.SampleIndex]."""
         return self._sample_index
 
     def __len__(self) -> int:
@@ -99,11 +104,10 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
 
     def __iter__(self) -> Iterator[dict[str, torch.Tensor]]:
         """
-        Yield individual samples as they're decoded.
+        Yield individual samples as they are decoded.
 
-        Pipeline: the arrow fetch for chunk N+1 runs on a background
-        thread while chunk N is being decoded and yielded, so samples
-        stream out during decode instead of waiting for the full chunk.
+        The arrow fetch for chunk N+1 runs on a background thread while
+        chunk N is being decoded, so samples stream out during decode.
         """
         with tracing_scope("RerunIterableDataset.__iter__"):
             view, decoders = self._connection.ensure()
@@ -126,7 +130,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                         _fetch_arrow,
                         view=view,
                         index=self._index,
-                        columns=self._columns,
+                        fields=self._fields,
                         decoders=decoders,
                         sample_index=self._sample_index,
                         indices=chunk,
@@ -144,7 +148,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                         targets=targets,
                         seg_tables=seg_tables,
                         index=self._index,
-                        columns=self._columns,
+                        fields=self._fields,
                         decoders=decoders,
                     )
             finally:
@@ -160,9 +164,8 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
             rng.shuffle(all_indices)
 
         # Partition across distributed ranks first (DDP), then across
-        # DataLoader workers within this rank. Contiguous blocks (not
-        # interleaved) so workers hit their fetch boundaries at different
-        # times.
+        # DataLoader workers within this rank. Contiguous (not interleaved)
+        # so each worker touches a smaller set of segments per fetch chunk.
         if torch.distributed.is_available() and torch.distributed.is_initialized():
             all_indices = _contiguous_shard(
                 all_indices,

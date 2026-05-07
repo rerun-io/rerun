@@ -41,6 +41,7 @@ segmentation_image.py linguist-generated=true
 series_lines.py linguist-generated=true
 series_points.py linguist-generated=true
 status.py linguist-generated=true
+status_configuration.py linguist-generated=true
 tensor.py linguist-generated=true
 text_document.py linguist-generated=true
 text_log.py linguist-generated=true

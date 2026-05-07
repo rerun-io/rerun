@@ -1,0 +1,52 @@
+namespace rerun.archetypes;
+
+/// Define the style and mapping for status values in a Status view.
+///
+/// This archetype provides configuration for how status values are displayed.
+/// It maps raw status values to display labels, colors, and visibility.
+///
+/// `values`, `labels`, `colors`, and `visible` are parallel arrays: the entry
+/// at index `i` of each describes the same status value, and only the
+/// per-index pairing is meaningful. The four arrays should have matching
+/// length; any secondary array (`labels`, `colors`, `visible`) that is shorter
+/// than `values` falls back to defaults for the missing entries.
+///
+/// It's generally recommended to log this type as static.
+///
+/// The underlying data needs to be logged to the same entity path using [archetypes.Status].
+///
+/// \example archetypes/status_configuration title="Status with a custom style"
+table StatusConfiguration (
+  "attr.docs.category": "Plotting",
+  "attr.docs.unreleased",
+  "attr.docs.view_types": "StatusView",
+  "attr.rerun.state": "unstable",
+  "attr.rerun.visualizer": "StatusVisualizer",
+  "attr.rust.derive": "PartialEq"
+) {
+  // --- Optional ---
+
+  /// The raw status values that this configuration applies to.
+  ///
+  /// Each entry defines a known status value. The order determines the mapping to
+  /// `labels`, `colors`, and `visible` (by index).
+  values: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 100);
+
+  /// Display labels for each status value.
+  ///
+  /// If provided, the label at index `i` is shown instead of the raw value at index `i`.
+  /// If not provided or shorter than `values`, the raw value is used as the label.
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 200);
+
+  /// Colors for each status value.
+  ///
+  /// If provided, the color at index `i` is used for the status at index `i`.
+  /// If not provided, colors are assigned automatically from a built-in palette.
+  colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 300);
+
+  /// Visibility for each status value.
+  ///
+  /// If provided, the visibility at index `i` controls whether the status at index `i` is shown.
+  /// If not provided, all status values are visible.
+  visible: [rerun.components.Visible] ("attr.rerun.component_optional", nullable, order: 400);
+}

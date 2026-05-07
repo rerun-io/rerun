@@ -106,7 +106,7 @@ fn maybe_apply<M: Migration>(
 }
 
 /// Migrate a sorbet record batch of unknown version to the latest version.
-#[tracing::instrument(level = "debug", skip_all)]
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn migrate_record_batch(mut batch: RecordBatch, batch_type: BatchType) -> RecordBatch {
     batch = migrate_record_batch_impl(batch);
 

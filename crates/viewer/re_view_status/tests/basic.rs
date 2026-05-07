@@ -259,6 +259,55 @@ fn test_status_timeline_switch() {
     ));
 }
 
+/// `StatusConfiguration` overrides the label, color, and visibility per raw status value.
+///
+/// This test logs three raw values, then logs a `StatusConfiguration` that renames two of them,
+/// recolors one, and hides another. The snapshot verifies the overrides apply end-to-end.
+#[test]
+fn test_status_configuration() {
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<StatusView>();
+
+    let timeline = Timeline::log_tick();
+
+    let state_data: Vec<(i64, &str)> =
+        vec![(0, "Idle"), (10, "Moving"), (25, "Hidden"), (40, "Idle")];
+    for (tick, status) in &state_data {
+        let timepoint = TimePoint::from([(timeline, *tick)]);
+        test_context.log_entity("state/robot_mode", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint,
+                &re_sdk_types::archetypes::Status::new().with_status(*status),
+            )
+        });
+    }
+
+    // Configure labels/colors/visibility. `Hidden` is marked not visible and
+    // should not be drawn; `Moving` is relabeled and recolored.
+    test_context.log_entity("state/robot_mode", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::STATIC,
+            &re_sdk_types::archetypes::StatusConfiguration::new()
+                .with_values(["Idle", "Moving", "Hidden"])
+                .with_labels(["At rest", "In motion", "Hidden"])
+                .with_colors([0x4CAF50FFu32, 0x42A5F5FFu32, 0xAB47BCFFu32])
+                .with_visible([true, true, false]),
+        )
+    });
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "status_configuration",
+        egui::vec2(500.0, 120.0),
+        None,
+    ));
+}
+
 /// Cmd+scroll over the Status view should zoom in around the pointer.
 #[test]
 fn test_status_zoom() {

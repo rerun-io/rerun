@@ -9,7 +9,7 @@ This example shows how to:
 
 - register a LeRobot dataset (from HuggingFace Hub) to a local Rerun Data Platform instance
 - build a `RerunDataset` that decodes video frames and scalar columns on the fly
-- use the `Column.window` feature to fetch future action chunks in a single query per batch
+- use the `Field.window` feature to fetch future action chunks in a single query per batch
 - train an [ACT](https://tonyzhaozh.github.io/aloha/) (Action Chunking Transformer) policy on the resulting batches
 
 ## Run the code

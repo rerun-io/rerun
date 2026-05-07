@@ -228,7 +228,7 @@ impl ToApplication for re_protos::log_msg::v1alpha1::RrdManifest {
 /// `SetStoreInfo` message.
 ///
 /// The provided [`ApplicationIdInjector`] must be shared across all calls for the same stream.
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "debug", skip_all)]
 fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
     app_id_injector: &mut I,
     message: &re_protos::log_msg::v1alpha1::log_msg::Msg,
@@ -305,7 +305,7 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
 }
 
 /// Converts a transport-level `ArrowMsg` to its application-level counterpart.
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "debug", skip_all)]
 fn arrow_msg_transport_to_app(
     arrow_msg: &re_protos::log_msg::v1alpha1::ArrowMsg,
 ) -> Result<re_log_types::ArrowMsg, CodecError> {

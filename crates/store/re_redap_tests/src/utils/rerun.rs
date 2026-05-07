@@ -168,6 +168,103 @@ pub fn create_simple_recording_in(
     Ok(tmp_path)
 }
 
+/// Like [`create_simple_recording`], but emits one temporal chunk per frame.
+///
+/// Used by per-segment chunk-filter regression tests that need multiple
+/// temporal chunks per `(segment, entity)` to prove a filter actually
+/// narrows the result set.
+pub fn create_simple_recording_one_chunk_per_frame(
+    tuid_prefix: TuidPrefix,
+    segment_id: &str,
+    entity_paths: &[&str],
+    start_time: i64,
+    time_type: TimeType,
+) -> anyhow::Result<TempPath> {
+    let tmp_dir = tempfile::tempdir()?;
+    let path = create_simple_recording_one_chunk_per_frame_in(
+        tuid_prefix,
+        segment_id,
+        entity_paths,
+        start_time,
+        time_type,
+        tmp_dir.path(),
+    )?;
+    Ok(TempPath::new(tmp_dir, path))
+}
+
+/// Like [`create_simple_recording_in`], but emits one temporal chunk per frame.
+///
+/// Frames are at `start_time + {10, 20, 30, 40}` plus the same single static
+/// chunk per entity. The recording is non-compactable for the same reasons
+/// as the single-chunk variant.
+pub fn create_simple_recording_one_chunk_per_frame_in(
+    tuid_prefix: TuidPrefix,
+    segment_id: &str,
+    entity_paths: &[&str],
+    start_time: i64,
+    time_type: TimeType,
+    in_dir: &std::path::Path,
+) -> anyhow::Result<PathBuf> {
+    use re_chunk::{Chunk, TimePoint};
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt};
+
+    if !std::fs::metadata(in_dir)?.is_dir() {
+        return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
+    }
+
+    let tmp_path = in_dir.join(format!("{segment_id}.rrd"));
+
+    let rec = RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
+        .recording_id(segment_id)
+        .send_properties(false)
+        .save(tmp_path.clone())?;
+
+    let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
+    let mut next_row_id = next_row_id_generator(tuid_prefix);
+
+    for entity_path in entity_paths {
+        let entity_path = EntityPath::from(*entity_path);
+
+        let labels = vec![MyLabel("simple".to_owned())];
+
+        for frame_offset in [10_i64, 20, 30, 40] {
+            let frame = TimeInt::new_temporal(start_time + frame_offset);
+            #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let i = (frame_offset / 10) as u32 - 1;
+            let points = MyPoint::from_iter(i..i + 1);
+            let colors = MyColor::from_iter(i..i + 1);
+
+            let chunk = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+                .with_sparse_component_batches(
+                    next_row_id(),
+                    [build_index_value(frame, time_type)],
+                    [
+                        (MyPoints::descriptor_points(), Some(&points as _)),
+                        (MyPoints::descriptor_colors(), Some(&colors as _)),
+                    ],
+                )
+                .build()?;
+
+            rec.send_chunk(chunk);
+        }
+
+        let static_chunk = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+            .with_sparse_component_batches(
+                next_row_id(),
+                TimePoint::default(),
+                [(MyPoints::descriptor_labels(), Some(&labels as _))],
+            )
+            .build()?;
+
+        rec.send_chunk(static_chunk);
+    }
+
+    rec.flush_blocking()?;
+
+    Ok(tmp_path)
+}
+
 /// Creates a simple blueprint.
 pub fn create_simple_blueprint(
     tuid_prefix: TuidPrefix,

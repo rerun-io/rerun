@@ -47,10 +47,10 @@ use re_sdk_types::blueprint::components::{
 };
 use re_sdk_types::components::{
     AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode, FillRatio,
-    GammaCorrection, GraphType, HalfSize3D, ImagePlaneDistance, InterpolationMode, Length,
-    LinearSpeed, MagnificationFilter, MarkerSize, MeshFaceRendering, Name, Opacity, Position2D,
-    Position3D, Range1D, Scale3D, ShowLabels, StrokeWidth, Text, Timestamp, TransformRelation,
-    Translation3D, ValueRange, Vector3D, VideoCodec, Visible,
+    GammaCorrection, GraphType, HalfSize3D, ImagePlaneDistance, InterpolationMode, IsKeyframe,
+    Length, LinearSpeed, MagnificationFilter, MarkerSize, MeshFaceRendering, Name, Opacity,
+    Position2D, Position3D, Range1D, Scale3D, ShowLabels, StrokeWidth, Text, Timestamp,
+    TransformRelation, Translation3D, ValueRange, Vector3D, VideoCodec, Visible,
 };
 use re_sdk_types::{archetypes, components};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui_with_selection;
@@ -114,6 +114,16 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
     registry.add_singleline_edit_or_view::<ShowLabels>(edit_bool);
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
+
+    // `IsKeyframe` is logged data with no blueprint override path, so force
+    // read-only: any edit here would have nowhere to flow.
+    registry.add_singleline_edit_or_view::<IsKeyframe>(|ctx, ui, value| {
+        edit_bool(
+            ctx,
+            ui,
+            &mut re_viewer_context::MaybeMutRef::Ref(value.as_ref()),
+        )
+    });
 
     // Date components:
     registry.add_singleline_edit_or_view::<Timestamp>(view_timestamp);

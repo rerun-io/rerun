@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import datafusion as dfn
 import numpy as np
@@ -386,8 +386,18 @@ class ChunkBatcherConfig:
         """Low-latency configuration, preferred when streaming directly to a viewer."""
 
     @staticmethod
-    def ALWAYS() -> ChunkBatcherConfig:
-        """Always flushes ASAP."""
+    def ALWAYS_TEST_ONLY() -> ChunkBatcherConfig:
+        """
+        Always flushes ASAP.
+
+        !!! warning
+            Test-only configuration. Produces an unrealistically large number of chunks and is
+            not suitable for production workloads. With a file sink in particular, per-chunk
+            metadata is accumulated in memory until the SDK process ends and the file footer
+            can be written, which can drive memory usage through the roof. Use
+            [`LOW_LATENCY`][rerun_bindings.ChunkBatcherConfig.LOW_LATENCY] instead for fast
+            flushing in real applications.
+        """
 
     @staticmethod
     def NEVER() -> ChunkBatcherConfig:
@@ -663,7 +673,7 @@ class FileSink:
     Save the recording stream to a file.
     """
 
-    def __init__(self, path: str | os.PathLike[str]) -> None:
+    def __init__(self, path: str | os.PathLike[str], *, write_footer: bool = True) -> None:
         """
         Initialize a file sink.
 
@@ -671,6 +681,17 @@ class FileSink:
         ----------
         path:
             Path to write to. The file will be overwritten.
+        write_footer:
+            Whether to emit a complete RRD footer (including a manifest of every chunk) at the
+            end of the stream. Defaults to `True`.
+
+            Producing a footer keeps per-chunk metadata in memory for the lifetime of the sink,
+            which grows linearly with the number of chunks logged. Pass `write_footer=False` for
+            long-running streaming sessions; the resulting file is still a valid RRD and a
+            footer can be added after the fact via `rerun rrd optimize`.
+
+            *Warning*: lack of footer will significantly hurt random-access performance and some
+            tools (e.g. LazyStore) may not work properly.
 
         """
 
@@ -700,6 +721,8 @@ def save(
     path: str,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    *,
+    write_footer: bool = True,
 ) -> None:
     """Save the recording stream to a file."""
 
@@ -709,6 +732,8 @@ def save_blueprint(path: str, blueprint_stream: PyRecordingStream) -> None:
 def stdout(
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    *,
+    write_footer: bool = True,
 ) -> None:
     """Save to stdout."""
 
@@ -1571,16 +1596,23 @@ class LazyStoreInternal:
     def summary(self) -> str: ...
     def stream(self) -> LazyChunkStreamInternal: ...
 
+class StoreEntryInternal:
+    """Internal implementation. Use StoreEntry from rerun.experimental instead."""
+
+    @property
+    def kind(self) -> Literal["recording", "blueprint"]: ...
+    @property
+    def application_id(self) -> str: ...
+    @property
+    def recording_id(self) -> str: ...
+
 class RrdReaderInternal:
     """Internal implementation. Use RrdReader from rerun.experimental instead."""
 
     def __init__(self, path: str) -> None: ...
-    def stream(self) -> LazyChunkStreamInternal: ...
-    def store(self) -> LazyStoreInternal: ...
-    @property
-    def application_id(self) -> str | None: ...
-    @property
-    def recording_id(self) -> str | None: ...
+    def store_entries(self) -> list[StoreEntryInternal]: ...
+    def stream(self, store: StoreEntryInternal | None = None) -> LazyChunkStreamInternal: ...
+    def store(self, store: StoreEntryInternal | None = None) -> LazyStoreInternal: ...
     @property
     def path(self) -> Path: ...
 
