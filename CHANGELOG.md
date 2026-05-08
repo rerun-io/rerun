@@ -40,9 +40,22 @@ TODO(aedm): please fill out
 - Status view: click a phase to select the entity; click or drag empty space to set/scrub the time cursor; right- or middle-click + drag to pan; Cmd/Ctrl+scroll to zoom.
 - Status phase colors are now derived from a hash of the status value, so adding or reordering entries in the configuration no longer shifts existing colors.
 
-#### Occupancy grids
+#### `GridMap` archetype and MCAP support for ROS occupancy grids
 
-TODO(michael): please fill out
+Rerun now supports 2D grid maps, as used e.g. in robot mapping & navigation applications, through a new `GridMap` archetype.
+
+* A `GridMap` is an image buffer with defined cell size per pixel, which can be embedded as a textured rectangle in a 3D scene.
+* `GridMap` has a regular `ImageBuffer` component, so you can also send color images (e.g. to do custom color-mapping in your code).
+* For layering of multiple maps you can optionally set draw order and opacity when logging, or separately in the viewer / blueprint.
+* The visualizer also supports the colormap options that RViz users are familiar with, selectable at log time or in the viewer / blueprint.
+* In a 3D scene, the map appears at the entity's coordinate frame (either entity-path based or with TF-style named frame like `CoordinateFrame("map")`). Additionally, an optional translation & rotation offset can be specified.
+
+🧢 Rerun's MCAP importer automatically loads ROS 2 `nav_msgs/OccupancyGrid` messsages as `GridMap`s.
+Here's a demo video showing a typical ROS 2 MCAP recording with multiple map and costmap layers in Rerun:
+
+<!-- https://static.rerun.io/9e9a2cce0b76c8bde35edc0b85dfbaa0dd1db6ec_grid_map_release_0.32.mp4 -->
+
+https://github.com/user-attachments/assets/f31b712d-2dd7-4e45-bb6a-0e103e7016b3
 
 #### OSS catalog server now streams from disk
 
