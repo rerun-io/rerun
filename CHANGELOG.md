@@ -17,7 +17,7 @@ You can now build tables of recording previews configured with arbitrary bluepri
 
 <!-- https://static.rerun.io/59636c2a3c79f0f4f543e353a87315ec416bdad8_datasetpreview%20new.mp4 -->
 
-https://github.com/user-attachments/assets/6faf787b-409c-4aed-9aed-9f3380e7fd6f
+https://github.com/user-attachments/assets/7acf9671-c46a-4355-a50f-2670cc80c4d9
 
 Clickable flags let you curate data directly from the table: toggles update a boolean flag column and are written back to the server.
 
