@@ -35,5 +35,18 @@ def test_disconnect_on_cleanup_with_ctx() -> None:
         assert rerun_bindings.check_for_rrd_footer(rec_path)
 
 
+def test_ctx_finalizes_file_sink_while_stream_object_alive() -> None:
+    """Leaving `with` must write an RRD footer even if the stream object is still referenced."""
+    with tempfile.TemporaryDirectory() as dirpath:
+        rec_path = f"{dirpath}/rec.rrd"
+        holder: list[rr.RecordingStream] = []
+        with rr.RecordingStream("rerun_example_ctx_alive") as rec:
+            rec.save(rec_path)
+            rec.log("x", rr.Points2D(positions=[(1, 2), (3, 4)]))
+            holder.append(rec)
+        assert holder
+        assert rerun_bindings.check_for_rrd_footer(rec_path)
+
+
 if __name__ == "__main__":
     test_disconnect_on_cleanup()

@@ -353,30 +353,40 @@ class RecordingStream:
         self._prev = set_thread_local_data_recording(self)
         return self
 
+    def _leave_recording_context(self, *, finalize_sinks: bool) -> None:
+        """Restore thread/context state after leaving a `with` block.
+
+        When ``finalize_sinks`` is True (normal ``with`` exit), swaps sinks for a buffered sink so
+        file sinks are dropped and RRD footers are written even if this Python object stays alive.
+
+        ``recording_stream_generator_ctx`` passes ``finalize_sinks=False`` because it temporarily
+        leaves the context before each yield without tearing down sinks.
+        """
+        self.flush()
+
+        current_recording = active_recording_stream.get(None)
+
+        if self.context_token is not None:
+            active_recording_stream.reset(self.context_token)
+
+        set_thread_local_data_recording(self._prev)
+        self._prev = None
+
+        if current_recording is not self:
+            raise RuntimeError(
+                "RecordingStream context manager exited while not active. Likely mixing context managers with generators or async code. See: `recording_stream_generator_ctx`.",
+            )
+
+        if finalize_sinks:
+            self.disconnect()
+
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        self.flush()
-
-        current_recording = active_recording_stream.get(None)
-
-        # Restore the context state
-        if self.context_token is not None:
-            active_recording_stream.reset(self.context_token)
-
-        # Restore the recording stream state
-        set_thread_local_data_recording(self._prev)
-        self._prev = None
-
-        # Sanity check: we set this context-var on enter. If it's not still set, something weird
-        # happened. The user is probably doing something sketch with generators or async code.
-        if current_recording is not self:
-            raise RuntimeError(
-                "RecordingStream context manager exited while not active. Likely mixing context managers with generators or async code. See: `recording_stream_generator_ctx`.",
-            )
+        self._leave_recording_context(finalize_sinks=True)
 
     # NOTE: The type is a string because we cannot reference `RecordingStream` yet at this point.
     def to_native(self) -> bindings.PyRecordingStream:
@@ -1507,7 +1517,7 @@ def recording_stream_generator_ctx(func: _TFunc) -> _TFunc:
                         # TODO(jleibs): Do we need to pass something through here?
                         # Probably not, since __exit__ doesn't use those args, but
                         # keep an eye on this.
-                        current_recording.__exit__(None, None, None)  # Exit our context before we yield
+                        current_recording._leave_recording_context(finalize_sinks=False)
 
                     cont = yield value  # Yield the value, suspending the generator
 
