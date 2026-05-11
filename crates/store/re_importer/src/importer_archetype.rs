@@ -142,8 +142,8 @@ impl Importer for ArchetypeImporter {
                 contents.into_owned(),
             )?);
         } else if crate::SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension.as_str()) {
-            re_log::debug!(?filepath, importer = self.name(), "Loading 3D point cloud…",);
-            rows.extend(load_point_cloud(timepoint, entity_path, &contents)?);
+            re_log::debug!(?filepath, importer = self.name(), "Loading .ply geometry…",);
+            rows.extend(load_ply(timepoint, entity_path, &contents)?);
         } else if crate::SUPPORTED_TEXT_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading text document…",);
             rows.extend(load_text_document(
@@ -342,7 +342,7 @@ fn load_mesh(
     Ok(rows.into_iter())
 }
 
-fn load_point_cloud(
+fn load_ply(
     timepoint: TimePoint,
     entity_path: EntityPath,
     contents: &[u8],
@@ -351,12 +351,31 @@ fn load_point_cloud(
 
     let rows = [
         {
-            // TODO(#4532): `.ply` importer should support 2D point cloud & meshes
-            let points3d = re_sdk_types::archetypes::Points3D::from_file_contents(contents)
-                .map_err(anyhow::Error::from)?;
-            Chunk::builder(entity_path)
-                .with_archetype(RowId::new(), timepoint, &points3d)
-                .build()?
+            match re_ply::classify_geometry_from_bytes(contents).map_err(anyhow::Error::from)? {
+                re_ply::PlyGeometryClass::Points2D => {
+                    let points2d = re_sdk_types::archetypes::Points2D::from_file_contents(contents)
+                        .map_err(anyhow::Error::from)?;
+                    Chunk::builder(entity_path)
+                        .with_archetype(RowId::new(), timepoint, &points2d)
+                        .build()?
+                }
+                re_ply::PlyGeometryClass::Points3D => {
+                    let points3d = re_sdk_types::archetypes::Points3D::from_file_contents(contents)
+                        .map_err(anyhow::Error::from)?;
+                    Chunk::builder(entity_path)
+                        .with_archetype(RowId::new(), timepoint, &points3d)
+                        .build()?
+                }
+                re_ply::PlyGeometryClass::MeshOrAsset3D => {
+                    let asset3d = re_sdk_types::archetypes::Asset3D::from_file_contents(
+                        contents.to_vec(),
+                        Some(re_sdk_types::components::MediaType::ply()),
+                    );
+                    Chunk::builder(entity_path)
+                        .with_archetype(RowId::new(), timepoint, &asset3d)
+                        .build()?
+                }
+            }
         },
         //
     ];
@@ -387,4 +406,448 @@ fn load_text_document(
     ];
 
     Ok(rows.into_iter())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::borrow::Cow;
+
+    use super::{ArchetypeImporter, load_ply};
+    use re_chunk::{Chunk, ChunkComponents, RowId};
+    use re_log_types::{EntityPath, TimePoint};
+    use re_sdk_types::archetypes::{Asset3D, Mesh3D, Points2D, Points3D};
+    use re_sdk_types::components::MediaType;
+
+    use crate::{ImportedData, Importer as _, ImporterSettings};
+
+    fn load_single_chunk(contents: &[u8]) -> Chunk {
+        let chunks = load_ply(TimePoint::default(), EntityPath::from("points"), contents)
+            .unwrap()
+            .collect::<Vec<_>>();
+
+        assert_eq!(chunks.len(), 1);
+        chunks.into_iter().next().unwrap()
+    }
+
+    fn assert_ply_asset3d_chunk(chunk: &Chunk, entity_path: &str, contents: &[u8]) {
+        assert!(
+            chunk
+                .components()
+                .contains_component(Asset3D::descriptor_blob().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Mesh3D::descriptor_vertex_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Points2D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Points3D::descriptor_positions().component)
+        );
+
+        let expected = Chunk::builder(EntityPath::from(entity_path))
+            .with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &Asset3D::from_file_contents(contents.to_vec(), Some(MediaType::ply())),
+            )
+            .build()
+            .unwrap();
+
+        ChunkComponents::ensure_similar(expected.components(), chunk.components()).unwrap();
+    }
+
+    fn load_single_chunk_via_archetype_importer(filepath: &str, contents: &[u8]) -> Chunk {
+        let importer = ArchetypeImporter;
+        let (tx, rx) = crossbeam::channel::bounded(8);
+        let settings = ImporterSettings::recommended("test");
+
+        importer
+            .import_from_file_contents(&settings, filepath.into(), Cow::Borrowed(contents), tx)
+            .unwrap();
+
+        let chunks = rx
+            .into_iter()
+            .filter_map(ImportedData::into_chunk)
+            .collect::<Vec<_>>();
+
+        assert_eq!(chunks.len(), 1);
+        chunks.into_iter().next().unwrap()
+    }
+
+    #[test]
+    fn ply_xy_loads_as_points2d() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+end_header
+1 2 10 20 30
+4 5 11 21 31
+"#;
+
+        let chunk = load_single_chunk(contents);
+
+        assert!(
+            chunk
+                .components()
+                .contains_component(Points2D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Points3D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Asset3D::descriptor_blob().component)
+        );
+
+        let expected = Chunk::builder(EntityPath::from("points"))
+            .with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &Points2D::new([(1.0, 2.0), (4.0, 5.0)]).with_colors([0x0A141EFF, 0x0B151FFF]),
+            )
+            .build()
+            .unwrap();
+
+        ChunkComponents::ensure_similar(expected.components(), chunk.components()).unwrap();
+    }
+
+    #[test]
+    fn archetype_loader_routes_ply_xy_to_points2d() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+end_header
+1 2 10 20 30
+4 5 11 21 31
+"#;
+
+        let chunk = load_single_chunk_via_archetype_importer("points_xy.ply", contents);
+
+        assert!(
+            chunk
+                .components()
+                .contains_component(Points2D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Points3D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Mesh3D::descriptor_vertex_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Asset3D::descriptor_blob().component)
+        );
+    }
+
+    #[test]
+    fn archetype_loader_routes_ply_xyz_to_points3d() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+end_header
+1 2 3 10 20 30
+4 5 6 11 21 31
+"#;
+
+        let chunk = load_single_chunk_via_archetype_importer("points_xyz.ply", contents);
+
+        assert!(
+            chunk
+                .components()
+                .contains_component(Points3D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Points2D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Mesh3D::descriptor_vertex_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Asset3D::descriptor_blob().component)
+        );
+    }
+
+    #[test]
+    fn archetype_loader_routes_ply_mesh_to_asset3d() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+element face 1
+property list uchar int vertex_indices
+end_header
+0 0 0 255 0 0
+1 0 0 0 255 0
+1 1 0 0 0 255
+0 1 0 255 255 0
+4 0 1 2 3
+"#;
+
+        let chunk = load_single_chunk_via_archetype_importer("mesh.ply", contents);
+
+        assert!(
+            chunk
+                .components()
+                .contains_component(Asset3D::descriptor_blob().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Mesh3D::descriptor_vertex_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Points3D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Points2D::descriptor_positions().component)
+        );
+    }
+
+    #[test]
+    fn ply_xyz_faces_load_as_asset3d() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property float z
+property float nx
+property float ny
+property float nz
+property uchar red
+property uchar green
+property uchar blue
+element face 1
+property list uchar int vertex_indices
+end_header
+0 0 0 0 0 1 255 0 0
+1 0 0 0 0 1 0 255 0
+1 1 0 0 0 1 0 0 255
+0 1 0 0 0 1 255 255 0
+4 0 1 2 3
+"#;
+
+        let chunk = load_single_chunk(contents);
+
+        assert_ply_asset3d_chunk(&chunk, "points", contents);
+    }
+
+    #[test]
+    fn ply_xy_faces_load_as_asset3d() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+element face 1
+property list uchar int vertex_indices
+end_header
+0 0 255 0 0
+1 0 0 255 0
+1 1 0 0 255
+0 1 255 255 0
+4 0 1 2 3
+"#;
+
+        let chunk = load_single_chunk(contents);
+
+        assert_ply_asset3d_chunk(&chunk, "points", contents);
+    }
+
+    #[test]
+    fn ply_with_topology_loads_as_asset3d_without_point_validation() {
+        let contents = br#"ply
+format ascii 1.0
+element face 1
+property list uchar int vertex_indices
+end_header
+3 0 1 2
+"#;
+
+        let chunk = load_single_chunk(contents);
+
+        assert_ply_asset3d_chunk(&chunk, "points", contents);
+    }
+
+    #[test]
+    fn ply_nonempty_unsupported_faces_load_as_asset3d() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+element face 1
+property int material_index
+end_header
+0 0 255 0 0
+1 0 0 255 0
+1 1 0 0 255
+0 1 255 255 0
+7
+"#;
+
+        let chunk = load_single_chunk(contents);
+
+        assert_ply_asset3d_chunk(&chunk, "points", contents);
+    }
+
+    #[test]
+    fn ply_xy_zero_faces_load_as_points2d() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+element face 0
+property list uchar int vertex_indices
+end_header
+0 0 255 0 0
+1 0 0 255 0
+1 1 0 0 255
+0 1 255 255 0
+"#;
+
+        let chunk = load_single_chunk(contents);
+
+        assert!(
+            chunk
+                .components()
+                .contains_component(Points2D::descriptor_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Mesh3D::descriptor_vertex_positions().component)
+        );
+        assert!(
+            !chunk
+                .components()
+                .contains_component(Asset3D::descriptor_blob().component)
+        );
+
+        let expected = Chunk::builder(EntityPath::from("points"))
+            .with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &Points2D::new([(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)])
+                    .with_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF]),
+            )
+            .build()
+            .unwrap();
+
+        ChunkComponents::ensure_similar(expected.components(), chunk.components()).unwrap();
+    }
+
+    #[test]
+    fn ply_nonempty_unsupported_faces_load_as_asset3d_without_point_validation() {
+        let contents = br#"ply
+format ascii 1.0
+element face 1
+property int material_index
+end_header
+7
+"#;
+
+        let chunk = load_single_chunk(contents);
+
+        assert_ply_asset3d_chunk(&chunk, "points", contents);
+    }
+
+    #[test]
+    fn ply_without_vertex_element_or_topology_is_rejected() {
+        let contents = br#"ply
+format ascii 1.0
+element material 1
+property int material_index
+end_header
+7
+"#;
+
+        let Err(err) = load_ply(TimePoint::default(), EntityPath::from("points"), contents) else {
+            panic!("expected missing vertex element to be rejected");
+        };
+
+        assert!(
+            err.to_string()
+                .contains("PLY file is missing required \"vertex\" element")
+        );
+    }
+
+    #[test]
+    fn ply_without_y_coordinate_is_rejected() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float z
+end_header
+1 2
+4 5
+"#;
+
+        let Err(err) = load_ply(TimePoint::default(), EntityPath::from("points"), contents) else {
+            panic!("expected missing y coordinate to be rejected");
+        };
+
+        assert!(
+            err.to_string()
+                .contains("PLY vertex element must contain at least \"x\" and \"y\"")
+        );
+    }
 }

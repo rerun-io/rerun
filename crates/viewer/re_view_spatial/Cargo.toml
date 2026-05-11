@@ -38,6 +38,7 @@ re_query.workspace = true
 re_renderer = { workspace = true, features = [
   "import-gltf",
   "import-obj",
+  "import-ply",
   "import-stl",
   "import-dae",
 ] }
