@@ -179,6 +179,14 @@ class RecordingStream:
     has been recorded and (if applicable) flushed to the underlying OS-managed file descriptor,
     but other threads may still have data in flight.
 
+    On context manager exit, file-like sinks (e.g. those created by [`rerun.RecordingStream.save`][])
+    are also finalized so the resulting `.rrd` is consumable immediately — without this, the file's
+    footer would only be written when the `RecordingStream` is garbage-collected. Streaming sinks
+    (e.g. [`rerun.RecordingStream.connect_grpc`][], [`rerun.RecordingStream.serve_grpc`][]) are left
+    intact and continue to receive data after the `with`-block exits. After a file-like sink has
+    been finalized this way, subsequent log calls on the same `RecordingStream` go to a buffered
+    sink until a new sink is attached.
+
     See also: [`rerun.get_data_recording`][], [`rerun.get_global_data_recording`][],
     [`rerun.get_thread_local_data_recording`][].
 
@@ -360,6 +368,10 @@ class RecordingStream:
         exc_tb: TracebackType | None,
     ) -> None:
         self.flush()
+
+        # Finalize file-like sinks (e.g. `save()`) so the resulting `.rrd` is consumable as soon as
+        # the `with`-block exits. Streaming sinks like gRPC are left untouched.
+        bindings.finalize_deferred_sinks(recording=self.to_native())
 
         current_recording = active_recording_stream.get(None)
 

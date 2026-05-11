@@ -25,7 +25,7 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor]]):
     `SubsetRandomSampler`, ...). Shuffling and cross-worker partitioning
     are driven by the `DataLoader`'s sampler.
 
-    For in-order streaming with internal shuffling, use
+    For streaming iteration with internal shuffling, use
     [`RerunIterableDataset`][rerun.experimental.dataloader.RerunIterableDataset] instead.
 
     Parameters
@@ -33,7 +33,7 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor]]):
     source
         The dataset to read from (with optional segment filter).
     index
-        Timeline to iterate (e.g. `"frame_nr"`).
+        Timeline column to use as the sample index (e.g. `"frame_nr"`).
     fields
         Sample fields, keyed by output name.
     timeline_sampling

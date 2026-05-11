@@ -4906,7 +4906,7 @@ snippets = [
     { name = "av" },
     { name = "mcap-protobuf-support" },
     { name = "pandas" },
-    { name = "rerun-sdk" },
+    { name = "rerun-sdk", extra = ["dataloader"] },
 ]
 
 [package.metadata]
@@ -5025,7 +5025,7 @@ snippets = [
     { name = "av" },
     { name = "mcap-protobuf-support" },
     { name = "pandas" },
-    { name = "rerun-sdk", editable = "rerun_py" },
+    { name = "rerun-sdk", extras = ["dataloader"], editable = "rerun_py" },
 ]
 
 [[package]]

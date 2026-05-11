@@ -145,8 +145,6 @@ def test_urdf_tree_custom_static_transform_entity_path(tmp_path: Path) -> None:
         tree = rru.UrdfTree.from_file_path(URDF_PATH, static_transform_entity_path="custom_tf_static")
         tree.log_urdf_to_recording(rec)
 
-        rec.disconnect()  # save manifest
-
     paths = RrdReader(rrd_path).stream().collect().schema().entity_paths()
 
     assert "/custom_tf_static" in paths

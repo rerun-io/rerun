@@ -276,6 +276,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(serve_web_viewer, m)?)?;
     m.add_function(wrap_pyfunction!(serve_web, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
+    m.add_function(wrap_pyfunction!(finalize_deferred_sinks, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
 
     // time
@@ -1848,6 +1849,27 @@ fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.detach(|| {
         recording.disconnect();
+        flush_garbage_queue();
+    });
+}
+
+/// Finalize any deferred-finalization sinks (i.e. file-like sinks that write a footer at the end).
+///
+/// For a bare `FileSink` this is equivalent to `disconnect()`. For a `MultiSink` containing both
+/// streaming and file-like children, only the file-like children are dropped — the streaming
+/// children stay live. For all other sinks this is a no-op.
+///
+/// Used by `RecordingStream.__exit__` so that file-backed recordings are consumable as soon as
+/// the `with`-block exits, without waiting for `__del__` / GC.
+#[pyfunction]
+#[pyo3(signature = (recording=None))]
+fn finalize_deferred_sinks(py: Python<'_>, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    // Release the GIL in case any flushing behavior needs to cleanup a python object.
+    py.detach(|| {
+        recording.finalize_deferred_sinks();
         flush_garbage_queue();
     });
 }

@@ -116,6 +116,7 @@ impl ConnectionAnalytics {
         &self,
         query_info: QueryInfo,
         scan_start: web_time::Instant,
+        scan_start_wall: SystemTime,
     ) -> PendingQueryAnalytics {
         PendingQueryAnalytics {
             inner: Arc::new(PendingInner {
@@ -123,6 +124,7 @@ impl ConnectionAnalytics {
                 query_info,
                 fetch_stats: SharedFetchStats::default(),
                 scan_start,
+                scan_start_wall,
                 time_to_first_chunk: OnceLock::new(),
                 direct_terminal_reason: OnceLock::new(),
                 error_kind: OnceLock::new(),
@@ -322,6 +324,9 @@ pub struct QueryInfo {
     /// Total size of all queried chunks in bytes (from chunk metadata).
     pub query_bytes: u64,
 
+    /// Min # chunks touched within any single segment in this query.
+    pub query_chunks_per_segment_min: u32,
+
     /// Max number of chunks touched within any single segment in this query.
     pub query_chunks_per_segment_max: u32,
 
@@ -333,9 +338,6 @@ pub struct QueryInfo {
 
     /// Name of the sort/filter index (timeline) for this query, if any.
     pub primary_index_name: Option<String>,
-
-    /// Wall-clock start..end of the scan planning phase.
-    pub time_range: Range<SystemTime>,
 
     /// Time from sending `query_dataset` until the first response message
     /// arrives (the chunk metadata, not actual chunk data).
@@ -424,17 +426,22 @@ struct PendingInner {
     /// Monotonic start time of the query, for computing elapsed durations.
     scan_start: web_time::Instant,
 
+    /// Wall-clock start time of the query. Combined with `SystemTime::now()` at
+    /// drop time to produce the OTLP span's `start`/`end` timestamps, which then
+    /// match `total_duration_us`.
+    scan_start_wall: SystemTime,
+
     /// Time from scan start until the first chunk is returned to datafusion.
     time_to_first_chunk: OnceLock<Duration>,
 
     /// First terminal direct-fetch failure reason encountered, if any.
     /// Only set once. Stored as `&'static str` from the bounded
     /// [`DirectFetchFailureReason`] label set.
-    direct_terminal_reason: std::sync::OnceLock<DirectFetchFailureReason>,
+    direct_terminal_reason: OnceLock<DirectFetchFailureReason>,
 
     /// Error classification, if the query failed. `None` ⇒ success.
     /// Stored as `&'static str` from [`QueryErrorKind::as_str`] so emission is zero-copy.
-    error_kind: std::sync::OnceLock<&'static str>,
+    error_kind: OnceLock<&'static str>,
 }
 
 /// Bounded set of query-failure classifications for the analytics span.
@@ -690,137 +697,173 @@ impl Drop for PendingInner {
             query_info,
             fetch_stats,
             scan_start,
+            scan_start_wall,
             time_to_first_chunk,
             direct_terminal_reason,
             error_kind,
         } = self;
 
         let total_duration = scan_start.elapsed();
-
-        let QueryInfo {
-            ref dataset_id,
-            query_chunks,
-            query_segments,
-            query_layers,
-            query_columns,
-            query_entities,
-            query_bytes,
-            query_chunks_per_segment_max,
-            query_chunks_per_segment_mean,
-            query_type,
-            ref primary_index_name,
-            ref time_range,
-            time_to_first_chunk_info,
-            trace_id,
-        } = *query_info;
-
+        let scan_end_wall = SystemTime::now();
         let fetch = fetch_stats.snapshot();
         let time_to_first_chunk = time_to_first_chunk.get().copied();
         let direct_terminal_reason = direct_terminal_reason.get().copied();
         let error_kind = error_kind.get().copied();
+        let trace_id = query_info.trace_id;
 
-        let [start_ns, end_ns] = [
-            nanos_since_epoch(&time_range.start),
-            nanos_since_epoch(&time_range.end),
-        ];
-
-        #[expect(
-            clippy::cast_possible_wrap,
-            reason = "OTLP proto uses i64 for int values"
-        )]
-        let mut attributes = vec![
-            kv_string("dataset_id", dataset_id),
-            kv_int("query_chunks", query_chunks as i64),
-            kv_int("query_segments", query_segments as i64),
-            kv_int("query_layers", query_layers as i64),
-            kv_int("query_columns", query_columns as i64),
-            kv_int("query_entities", query_entities as i64),
-            kv_int("query_bytes", query_bytes as i64),
-            kv_int(
-                "query_chunks_per_segment_max",
-                i64::from(query_chunks_per_segment_max),
-            ),
-            kv_double(
-                "query_chunks_per_segment_mean",
-                f64::from(query_chunks_per_segment_mean),
-            ),
-            kv_string("query_type", query_type.as_str()),
-            kv_int("total_duration_us", total_duration.as_micros() as i64),
-            kv_bool("is_success", error_kind.is_none()),
-            // Fetch stats: gRPC
-            kv_int("fetch_grpc_requests", fetch.grpc_requests as i64),
-            kv_int("fetch_grpc_bytes", fetch.grpc_bytes as i64),
-            // Fetch stats: direct (HTTP). Note: gRPC retries happen at the transport
-            // layer and are not visible here — only direct-URL retries are counted.
-            kv_int("fetch_direct_requests", fetch.direct_requests as i64),
-            kv_int("fetch_direct_bytes", fetch.direct_bytes as i64),
-            kv_int("fetch_direct_retries", fetch.direct_retries_total as i64),
-            kv_int(
-                "fetch_direct_requests_retried",
-                fetch.direct_requests_retried as i64,
-            ),
-            kv_int(
-                "fetch_direct_retry_sleep_us",
-                fetch.direct_retry_sleep_us as i64,
-            ),
-            kv_int("fetch_direct_max_attempt", fetch.direct_max_attempt as i64),
-            kv_int(
-                "fetch_direct_original_ranges",
-                fetch.direct_original_ranges as i64,
-            ),
-            kv_int(
-                "fetch_direct_merged_ranges",
-                fetch.direct_merged_ranges as i64,
-            ),
-        ];
-
-        if let Some(name) = primary_index_name {
-            attributes.push(kv_string("primary_index_name", name));
-        }
-
-        if let Some(ttfci) = time_to_first_chunk_info {
-            attributes.push(kv_int(
-                "time_to_first_chunk_info_us",
-                ttfci.as_micros() as i64,
-            ));
-        }
-
-        if let Some(ttfr) = time_to_first_chunk {
-            attributes.push(kv_int("time_to_first_chunk_us", ttfr.as_micros() as i64));
-        }
-
-        if let Some(reason) = direct_terminal_reason {
-            attributes.push(kv_string("fetch_direct_terminal_reason", reason.as_str()));
-        }
-
-        if let Some(kind) = error_kind {
-            attributes.push(kv_string("error_kind", kind));
-        }
-
-        if let Some(version) = connection.server_version() {
-            attributes.push(kv_string("server_version", &version));
-        }
-
-        let links = trace_id
-            .map(|id| {
-                vec![Link {
-                    trace_id: id.to_bytes().to_vec(),
-                    ..Default::default()
-                }]
-            })
-            .unwrap_or_default();
-
-        let span = Span {
-            name: "cloud_query_dataset".to_owned(),
-            kind: SpanKind::Client.into(),
-            start_time_unix_nano: start_ns,
-            end_time_unix_nano: end_ns,
-            attributes,
-            links,
-            ..Default::default()
-        };
+        let span = build_query_span(
+            query_info,
+            &fetch,
+            *scan_start_wall..scan_end_wall,
+            total_duration,
+            time_to_first_chunk,
+            direct_terminal_reason,
+            error_kind,
+            connection.server_version().as_deref(),
+        );
 
         connection.send_span(span, trace_id);
+    }
+}
+
+/// Build the OTLP `cloud_query_dataset` span from collected per-query data.
+///
+/// Pure function — no I/O, no time reads. Extracted from `Drop for PendingInner`
+/// so the exact attribute set the analytics pipeline relies on can be locked
+/// down by unit tests; if a future change accidentally drops or renames a
+/// field, the tests fail.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "pure builder fn; grouping these would be churn without clarity"
+)]
+fn build_query_span(
+    query_info: &QueryInfo,
+    fetch: &TaskFetchStats,
+    wall_clock_range: Range<SystemTime>,
+    total_duration: Duration,
+    time_to_first_chunk: Option<Duration>,
+    direct_terminal_reason: Option<DirectFetchFailureReason>,
+    error_kind: Option<&'static str>,
+    server_version: Option<&str>,
+) -> Span {
+    let QueryInfo {
+        ref dataset_id,
+        query_chunks,
+        query_segments,
+        query_layers,
+        query_columns,
+        query_entities,
+        query_bytes,
+        query_chunks_per_segment_min,
+        query_chunks_per_segment_max,
+        query_chunks_per_segment_mean,
+        query_type,
+        ref primary_index_name,
+        time_to_first_chunk_info,
+        trace_id,
+    } = *query_info;
+
+    let start_time_unix_nano = nanos_since_epoch(&wall_clock_range.start);
+    let end_time_unix_nano = nanos_since_epoch(&wall_clock_range.end);
+
+    #[expect(
+        clippy::cast_possible_wrap,
+        reason = "OTLP proto uses i64 for int values"
+    )]
+    let mut attributes = vec![
+        kv_string("dataset_id", dataset_id),
+        kv_int("query_chunks", query_chunks as i64),
+        kv_int("query_segments", query_segments as i64),
+        kv_int("query_layers", query_layers as i64),
+        kv_int("query_columns", query_columns as i64),
+        kv_int("query_entities", query_entities as i64),
+        kv_int("query_bytes", query_bytes as i64),
+        kv_int(
+            "query_chunks_per_segment_min",
+            i64::from(query_chunks_per_segment_min),
+        ),
+        kv_int(
+            "query_chunks_per_segment_max",
+            i64::from(query_chunks_per_segment_max),
+        ),
+        kv_double(
+            "query_chunks_per_segment_mean",
+            f64::from(query_chunks_per_segment_mean),
+        ),
+        kv_string("query_type", query_type.as_str()),
+        kv_int("total_duration_us", total_duration.as_micros() as i64),
+        kv_bool("is_success", error_kind.is_none()),
+        // Fetch stats: gRPC
+        kv_int("fetch_grpc_requests", fetch.grpc_requests as i64),
+        kv_int("fetch_grpc_bytes", fetch.grpc_bytes as i64),
+        // Fetch stats: direct (HTTP). Note: gRPC retries happen at the transport
+        // layer and are not visible here — only direct-URL retries are counted.
+        kv_int("fetch_direct_requests", fetch.direct_requests as i64),
+        kv_int("fetch_direct_bytes", fetch.direct_bytes as i64),
+        kv_int("fetch_direct_retries", fetch.direct_retries_total as i64),
+        kv_int(
+            "fetch_direct_requests_retried",
+            fetch.direct_requests_retried as i64,
+        ),
+        kv_int(
+            "fetch_direct_retry_sleep_us",
+            fetch.direct_retry_sleep_us as i64,
+        ),
+        kv_int("fetch_direct_max_attempt", fetch.direct_max_attempt as i64),
+        kv_int(
+            "fetch_direct_original_ranges",
+            fetch.direct_original_ranges as i64,
+        ),
+        kv_int(
+            "fetch_direct_merged_ranges",
+            fetch.direct_merged_ranges as i64,
+        ),
+    ];
+
+    if let Some(name) = primary_index_name {
+        attributes.push(kv_string("primary_index_name", name));
+    }
+
+    if let Some(ttfci) = time_to_first_chunk_info {
+        attributes.push(kv_int(
+            "time_to_first_chunk_info_us",
+            ttfci.as_micros() as i64,
+        ));
+    }
+
+    if let Some(ttfr) = time_to_first_chunk {
+        attributes.push(kv_int("time_to_first_chunk_us", ttfr.as_micros() as i64));
+    }
+
+    if let Some(reason) = direct_terminal_reason {
+        attributes.push(kv_string("fetch_direct_terminal_reason", reason.as_str()));
+    }
+
+    if let Some(kind) = error_kind {
+        attributes.push(kv_string("error_kind", kind));
+    }
+
+    if let Some(version) = server_version {
+        attributes.push(kv_string("server_version", version));
+    }
+
+    let links = trace_id
+        .map(|id| {
+            vec![Link {
+                trace_id: id.to_bytes().to_vec(),
+                ..Default::default()
+            }]
+        })
+        .unwrap_or_default();
+
+    Span {
+        name: "cloud_query_dataset".to_owned(),
+        kind: SpanKind::Client.into(),
+        start_time_unix_nano,
+        end_time_unix_nano,
+        attributes,
+        links,
+        ..Default::default()
     }
 }
 
@@ -1252,6 +1295,262 @@ fn kv_double(key: &str, value: f64) -> KeyValue {
         value: Some(AnyValue {
             value: Some(Value::DoubleValue(value)),
         }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::*;
+
+    fn dummy_query_info() -> QueryInfo {
+        QueryInfo {
+            dataset_id: "ds-123".to_owned(),
+            query_chunks: 42,
+            query_segments: 5,
+            query_layers: 2,
+            query_columns: 7,
+            query_entities: 3,
+            query_bytes: 1234,
+            query_chunks_per_segment_min: 4,
+            query_chunks_per_segment_max: 12,
+            query_chunks_per_segment_mean: 8.4,
+            query_type: QueryType::LatestAt,
+            primary_index_name: None,
+            time_to_first_chunk_info: None,
+            trace_id: None,
+        }
+    }
+
+    fn attribute_keys(span: &Span) -> HashSet<&str> {
+        let keys: HashSet<_> = span.attributes.iter().map(|kv| kv.key.as_str()).collect();
+        re_log::debug_assert_eq!(
+            keys.len(),
+            span.attributes.len(),
+            "span contains duplicate attribute keys"
+        );
+        keys
+    }
+
+    fn find_int(span: &Span, key: &str) -> Option<i64> {
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::IntValue(i) => Some(*i),
+                _ => None,
+            })
+    }
+
+    fn find_string<'a>(span: &'a Span, key: &str) -> Option<&'a str> {
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::StringValue(s) => Some(s.as_str()),
+                _ => None,
+            })
+    }
+
+    fn find_double(span: &Span, key: &str) -> Option<f64> {
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::DoubleValue(d) => Some(*d),
+                _ => None,
+            })
+    }
+
+    fn find_bool(span: &Span, key: &str) -> Option<bool> {
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::BoolValue(b) => Some(*b),
+                _ => None,
+            })
+    }
+
+    /// Required attributes that must always be emitted, regardless of query state.
+    /// Adding/removing one of these is a breaking change for the analytics pipeline.
+    const REQUIRED_KEYS: &[&str] = &[
+        "dataset_id",
+        "query_chunks",
+        "query_segments",
+        "query_layers",
+        "query_columns",
+        "query_entities",
+        "query_bytes",
+        "query_chunks_per_segment_min",
+        "query_chunks_per_segment_max",
+        "query_chunks_per_segment_mean",
+        "query_type",
+        "total_duration_us",
+        "is_success",
+        "fetch_grpc_requests",
+        "fetch_grpc_bytes",
+        "fetch_direct_requests",
+        "fetch_direct_bytes",
+        "fetch_direct_retries",
+        "fetch_direct_requests_retried",
+        "fetch_direct_retry_sleep_us",
+        "fetch_direct_max_attempt",
+        "fetch_direct_original_ranges",
+        "fetch_direct_merged_ranges",
+    ];
+
+    #[test]
+    fn build_query_span_minimal_emits_only_required_attributes() {
+        let qi = dummy_query_info();
+        let fetch = TaskFetchStats::default();
+
+        let span = build_query_span(
+            &qi,
+            &fetch,
+            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+            Duration::from_micros(500),
+            None,
+            None,
+            None,
+            None,
+        );
+
+        // Span shape
+        assert_eq!(span.name, "cloud_query_dataset");
+        assert_eq!(span.kind, i32::from(SpanKind::Client));
+        assert!(span.links.is_empty());
+
+        // Attribute key set is exactly the required keys — no optional keys leaked.
+        let expected: HashSet<&str> = REQUIRED_KEYS.iter().copied().collect();
+        let actual = attribute_keys(&span);
+        assert_eq!(
+            actual,
+            expected,
+            "extra/missing attribute keys: {:?}",
+            actual.symmetric_difference(&expected).collect::<Vec<_>>()
+        );
+
+        // Spot-check a few values.
+        assert_eq!(find_string(&span, "dataset_id"), Some("ds-123"));
+        assert_eq!(find_int(&span, "query_chunks"), Some(42));
+        assert_eq!(find_int(&span, "query_chunks_per_segment_min"), Some(4));
+        assert_eq!(find_int(&span, "query_chunks_per_segment_max"), Some(12));
+        assert_eq!(
+            find_double(&span, "query_chunks_per_segment_mean"),
+            Some(f64::from(8.4_f32))
+        );
+        assert_eq!(find_string(&span, "query_type"), Some("latest_at"));
+        assert_eq!(find_int(&span, "total_duration_us"), Some(500));
+        assert_eq!(find_bool(&span, "is_success"), Some(true));
+    }
+
+    #[test]
+    fn build_query_span_records_fetch_stats() {
+        let qi = dummy_query_info();
+        let mut fetch = TaskFetchStats::default();
+        fetch.record_grpc_fetch(2_000);
+        fetch.record_grpc_fetch(3_000);
+        fetch.record_direct_fetch(10_000);
+        fetch.record_direct_retry(Duration::from_millis(5), 2);
+        fetch.record_direct_retry(Duration::from_millis(7), 3);
+        fetch.record_direct_request_was_retried();
+        fetch.record_direct_ranges(8, 4);
+
+        let span = build_query_span(
+            &qi,
+            &fetch,
+            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+            Duration::from_micros(1_000),
+            None,
+            None,
+            None,
+            None,
+        );
+
+        assert_eq!(find_int(&span, "fetch_grpc_requests"), Some(2));
+        assert_eq!(find_int(&span, "fetch_grpc_bytes"), Some(5_000));
+        assert_eq!(find_int(&span, "fetch_direct_requests"), Some(1));
+        assert_eq!(find_int(&span, "fetch_direct_bytes"), Some(10_000));
+        assert_eq!(find_int(&span, "fetch_direct_retries"), Some(2));
+        assert_eq!(find_int(&span, "fetch_direct_requests_retried"), Some(1));
+        assert_eq!(find_int(&span, "fetch_direct_retry_sleep_us"), Some(12_000));
+        assert_eq!(find_int(&span, "fetch_direct_max_attempt"), Some(3));
+        assert_eq!(find_int(&span, "fetch_direct_original_ranges"), Some(8));
+        assert_eq!(find_int(&span, "fetch_direct_merged_ranges"), Some(4));
+    }
+
+    #[test]
+    fn build_query_span_emits_all_optional_attributes_when_present() {
+        let trace_id = opentelemetry::TraceId::from_bytes([7u8; 16]);
+        let mut qi = dummy_query_info();
+        qi.primary_index_name = Some("log_time".to_owned());
+        qi.time_to_first_chunk_info = Some(Duration::from_micros(123));
+        qi.trace_id = Some(trace_id);
+
+        let span = build_query_span(
+            &qi,
+            &TaskFetchStats::default(),
+            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+            Duration::from_micros(999),
+            Some(Duration::from_micros(456)),
+            Some(DirectFetchFailureReason::Http5xx),
+            Some(QueryErrorKind::DirectFetch.as_str()),
+            Some("redap-1.2.3"),
+        );
+
+        // Optional keys must all be present.
+        let optional = [
+            "primary_index_name",
+            "time_to_first_chunk_info_us",
+            "time_to_first_chunk_us",
+            "fetch_direct_terminal_reason",
+            "error_kind",
+            "server_version",
+        ];
+        let keys = attribute_keys(&span);
+        for k in optional {
+            assert!(keys.contains(k), "missing optional attribute: {k}");
+        }
+
+        // is_success flips to false when error_kind is set.
+        assert_eq!(find_bool(&span, "is_success"), Some(false));
+
+        assert_eq!(find_string(&span, "primary_index_name"), Some("log_time"));
+        assert_eq!(find_int(&span, "time_to_first_chunk_info_us"), Some(123));
+        assert_eq!(find_int(&span, "time_to_first_chunk_us"), Some(456));
+        assert_eq!(
+            find_string(&span, "fetch_direct_terminal_reason"),
+            Some("http_5xx")
+        );
+        assert_eq!(find_string(&span, "error_kind"), Some("direct_fetch"));
+        assert_eq!(find_string(&span, "server_version"), Some("redap-1.2.3"));
+
+        // Trace id flows into span.links.
+        assert_eq!(span.links.len(), 1);
+        assert_eq!(span.links[0].trace_id, trace_id.to_bytes().to_vec());
+    }
+
+    #[test]
+    fn build_query_span_uses_wall_clock_range() {
+        let qi = dummy_query_info();
+        let start = SystemTime::UNIX_EPOCH + Duration::from_millis(2_000);
+        let end = SystemTime::UNIX_EPOCH + Duration::from_millis(2_500);
+
+        let span = build_query_span(
+            &qi,
+            &TaskFetchStats::default(),
+            start..end,
+            Duration::from_micros(0),
+            None,
+            None,
+            None,
+            None,
+        );
+
+        assert_eq!(span.start_time_unix_nano, 2_000_000_000);
+        assert_eq!(span.end_time_unix_nano, 2_500_000_000);
     }
 }
 

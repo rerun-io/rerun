@@ -1,8 +1,8 @@
 <!--[metadata]
 title = "ROS node"
 tags = ["2D", "3D", "Pinhole camera", "ROS", "Time series", "URDF"]
-thumbnail = "https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/480w.png"
-thumbnail_dimensions = [480, 284]
+thumbnail = "https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/480w.png"
+thumbnail_dimensions = [480, 318]
 -->
 
 A minimal example of creating a ROS node that subscribes to topics and converts the messages to Rerun log calls.
@@ -10,11 +10,11 @@ A minimal example of creating a ROS node that subscribes to topics and converts 
 The solution here is mostly a toy example to show how ROS concepts can be mapped to Rerun.
 
 <picture>
-  <img src="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/full.png" alt="Rerun viewer showing data streamed from the example ROS node">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/1200w.png">
+  <img src="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/full.png" alt="Rerun viewer showing data streamed from the example ROS node">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/1200w.png">
 </picture>
 
 ## Used Rerun types

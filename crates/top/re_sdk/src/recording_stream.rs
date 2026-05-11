@@ -1006,6 +1006,15 @@ enum Command {
         on_done: Sender<FlushResult>,
         timeout: Duration,
     },
+
+    /// Drop any sinks whose on-disk format only finalizes at shutdown (i.e. file-like sinks with
+    /// footers), while leaving streaming sinks (e.g. gRPC) untouched. Used by Python's
+    /// `RecordingStream.__exit__` to ensure file-backed recordings are consumable as soon as
+    /// the `with`-block exits, without waiting for GC.
+    FinalizeDeferredSinks {
+        on_done: Sender<()>,
+        timeout: Duration,
+    },
     PopPendingChunks,
     Shutdown,
 }
@@ -1017,6 +1026,9 @@ impl std::fmt::Debug for Command {
             Self::SwapSink { .. } => f.debug_struct("SwapSink").finish_non_exhaustive(),
             Self::InspectSink(_) => f.debug_tuple("InspectSink").finish_non_exhaustive(),
             Self::Flush { .. } => f.debug_struct("Flush").finish_non_exhaustive(),
+            Self::FinalizeDeferredSinks { .. } => f
+                .debug_struct("FinalizeDeferredSinks")
+                .finish_non_exhaustive(),
             Self::PopPendingChunks => write!(f, "PopPendingChunks"),
             Self::Shutdown => write!(f, "Shutdown"),
         }
@@ -1030,6 +1042,7 @@ impl re_byte_size::SizeBytes for Command {
             Self::SwapSink { .. }
             | Self::InspectSink(_)
             | Self::Flush { .. }
+            | Self::FinalizeDeferredSinks { .. }
             | Self::PopPendingChunks
             | Self::Shutdown => 0,
         }
@@ -1040,6 +1053,11 @@ impl Command {
     fn flush(timeout: Duration) -> (Self, Receiver<FlushResult>) {
         let (on_done, rx) = crossbeam::channel::bounded(1); // oneshot
         (Self::Flush { on_done, timeout }, rx)
+    }
+
+    fn finalize_deferred_sinks(timeout: Duration) -> (Self, Receiver<()>) {
+        let (on_done, rx) = crossbeam::channel::bounded(1); // oneshot
+        (Self::FinalizeDeferredSinks { on_done, timeout }, rx)
     }
 }
 
@@ -1581,6 +1599,30 @@ fn forwarding_thread(
                     // There was an error, and nobody received it:
                     re_log::error!("Failed to flush sink: {err}");
                 }
+            }
+            Command::FinalizeDeferredSinks { on_done, timeout } => {
+                if sink.defers_finalization_to_shutdown() && !sink.finalize_deferred_in_place() {
+                    // Composite sinks handle finalization themselves; otherwise the entire
+                    // sink defers finalization (e.g. a bare FileSink), so we have to swap it
+                    // out for a BufferedSink — dropping the old sink runs its writer thread
+                    // to completion and emits the footer.
+                    let backlog = sink.drain_backlog();
+                    if let Err(err) = sink.flush_blocking(timeout) {
+                        re_log::error!("Failed to flush previous sink during finalize: {err}");
+                    }
+
+                    let new_sink: Box<dyn LogSink> = Box::new(crate::log_sink::BufferedSink::new());
+                    new_sink.send(
+                        re_log_types::SetStoreInfo {
+                            row_id: *RowId::new(),
+                            info: store_info.clone(),
+                        }
+                        .into(),
+                    );
+                    new_sink.send_all(backlog);
+                    *sink = new_sink;
+                }
+                send_crossbeam(&on_done, ()).ok();
             }
             Command::PopPendingChunks => {
                 // Wake up and skip the current iteration so that we can drain all pending chunks
@@ -2299,6 +2341,43 @@ impl RecordingStream {
 
         if self.with(f).is_none() {
             re_log::warn_once!("Recording disabled - call to disconnect() ignored");
+        }
+    }
+
+    /// Finalize any sinks whose on-disk format only completes at shutdown (i.e. file-like sinks
+    /// that write a footer at the end), while leaving streaming sinks (e.g. gRPC) intact.
+    ///
+    /// For a bare deferring sink (e.g. `FileSink` from `save()`), this is equivalent to
+    /// [`Self::disconnect`]: the sink is replaced with a [`crate::sink::BufferedSink`] and its
+    /// `Drop` impl runs the writer thread to completion, which is what emits the footer.
+    ///
+    /// For a [`crate::log_sink::MultiSink`] containing a mix of deferring and streaming children,
+    /// only the deferring children are dropped. The streaming children remain live and the
+    /// `MultiSink` continues to receive new messages.
+    ///
+    /// For all other sinks this is a no-op.
+    ///
+    /// Used by Python's `RecordingStream.__exit__` so file-backed recordings are consumable as
+    /// soon as the `with`-block exits, without waiting for `__del__` / GC.
+    pub fn finalize_deferred_sinks(&self) {
+        let timeout = Duration::MAX;
+        let f = move |inner: &RecordingStreamInner| {
+            inner.wait_for_importers();
+
+            // Flush the batcher down the chunk channel so any pending data lands in the sink
+            // before we tear it down.
+            if let Err(err) = inner.batcher.flush_blocking(timeout) {
+                re_log::warn!("Failed to flush batcher in `finalize_deferred_sinks`: {err}");
+            }
+            inner.cmds_tx.send(Command::PopPendingChunks).ok();
+
+            let (cmd, oneshot) = Command::finalize_deferred_sinks(timeout);
+            inner.cmds_tx.send(cmd).ok();
+            oneshot.recv().ok();
+        };
+
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to finalize_deferred_sinks() ignored");
         }
     }
 

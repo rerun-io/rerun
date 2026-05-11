@@ -22,6 +22,7 @@
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
 "DataframeQuery" = ["howto/visualization/save_blueprint"]
+"Tensor" = ["howto/dataloader"] # snippet uses `torch.Tensor`, not Rerun's `Tensor` archetype
 
 # These components will ignore the associated snippets in the snippet index.
 [snippets_ref.components.opt_out]
@@ -147,6 +148,7 @@ backwards_check = [
   "concepts/query-and-transform/segment_properties",
   "howto/dataframe_operations",
   "howto/dataframe_performance",
+  "howto/dataloader",
   "howto/dataset_resampling",
   "howto/layers",
   "howto/lerobot_export",
@@ -267,6 +269,10 @@ backwards_check = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
+"howto/dataloader" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "howto/dataframe_performance" = [
   "cpp", # Not implemented
   "rust", # Not implemented
@@ -340,6 +346,10 @@ backwards_check = [
   "rust", # TODO(#5521): Rust views are not yet implemented
 ]
 "archetypes/image_advanced" = [
+  "cpp", # Missing examples
+  "rust", # Missing examples
+]
+"archetypes/grid_map_pose" = [
   "cpp", # Missing examples
   "rust", # Missing examples
 ]

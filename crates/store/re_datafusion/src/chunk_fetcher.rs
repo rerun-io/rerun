@@ -1,6 +1,7 @@
 //! Chunk fetching strategies: direct URL (HTTP Range) and gRPC.
 
 use std::collections::BTreeMap;
+use std::time::Duration;
 use std::{error::Error as _, fmt::Write as _};
 
 use arrow::array::{
@@ -718,8 +719,8 @@ async fn fetch_batch_via_direct_urls(
 
                 // Backoff matching gRPC retry settings: base 100ms, max 3s, 50% jitter.
                 let mut backoff_gen = re_backoff::BackoffGenerator::new(
-                    std::time::Duration::from_millis(100),
-                    std::time::Duration::from_secs(3),
+                    Duration::from_millis(100),
+                    Duration::from_secs(3),
                 )
                 .expect("base is less than max");
 

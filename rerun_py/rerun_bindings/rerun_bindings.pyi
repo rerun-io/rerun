@@ -793,6 +793,18 @@ def disconnect(recording: PyRecordingStream | None = None) -> None:
     Subsequent log messages will be buffered and either sent on the next call to `connect_grpc` or `spawn`.
     """
 
+def finalize_deferred_sinks(recording: PyRecordingStream | None = None) -> None:
+    """
+    Finalize any deferred-finalization sinks (i.e. file-like sinks that write a footer at the end).
+
+    For a bare `FileSink` this is equivalent to `disconnect()`. For a `MultiSink` containing both
+    streaming and file-like children, only the file-like children are dropped — the streaming
+    children stay live. For all other sinks this is a no-op.
+
+    Used by `RecordingStream.__exit__` so that file-backed recordings are consumable as soon as
+    the `with`-block exits, without waiting for `__del__` / GC.
+    """
+
 def flush(*, timeout_sec: float = 1e38, recording: PyRecordingStream | None = None) -> None:
     """Block until outstanding data has been flushed to the sink."""
 

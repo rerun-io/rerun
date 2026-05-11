@@ -82,7 +82,9 @@ Use the `rerun rrd optimize` CLI to migrate and optimize legacy RRDs.
 
 #### Plot improvements
 
-TODO(lucas, katya): please add pictures
+<picture>
+  <img src="https://static.rerun.io/1b28bdbf505997a039e589a41b6c7cb90971c1dd_tooltip.png" alt="new tooltip for plots" width="600">
+</picture>
 
 - Performance improvement for scenes with many series. Moved from egui CPU tesselation to GPU line rendering.
 - Redesigned tooltips. Hovering over a plot now shows a cleaner, more compact tooltip with color swatches matching each series. Also it is visually obvious now when events were actually logged.
@@ -100,10 +102,15 @@ This release comes with a few significant performance improvements. Among other 
 * MCAP decoder is now multithreaded
 
 #### New branding
+<picture>
+  <img src="https://static.rerun.io/fadf335a4b294030ade19d405811ab41607f898b_brand.png" alt="new rerun app icon" width="400">
+</picture> <br>
 
-TODO(katya): add image etc.
+<picture>
+  <img src="https://static.rerun.io/4aecf4577ab81493fda003882da6faeb886966dd_app-icon.png" alt="new rerun app icon" width="600">
+</picture>
 
-You may have noticed a new Rerun logo and the app icon! Stay tuned for more exciting news!
+You may have noticed a new Rerun logo and app icon! We've also slightly tweaked our color palette. Stay tuned for more exciting news!
 
 ### ☁️ Highlights for Rerun base customers
 
@@ -116,7 +123,15 @@ TODO(ilya): please fill out
 
 #### Experimental training dataloader
 
-TODO(gijs): please fill out
+You can now train PyTorch models directly against the Rerun OSS server, with no intermediate export step!
+
+The new highly experimental `rerun.experimental.dataloader` module exposes Rerun recordings as iterable or map-style PyTorch datasets, streaming encoded images, scalars, and compressed video (`h264`/`h265`/`av1`) on the fly. Random access, multi-worker prefetching, and DDP support work out of the box.
+
+Each field accepts an optional `window=(start_offset, end_offset)` parameter, an inclusive range relative to the current index. When set, the field yields the slice of values across that window instead of a single sample. For example, `window=(1, CHUNK_SIZE)` returns the next `CHUNK_SIZE` action values after every observation, making action-chunking policies a single query per batch.
+
+See the new [LeRobot ACT training example](https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader).
+
+Expect breaking changes between releases while we iterate on the design. For large-scale training, the Rerun Data Platform offers a higher-performance backend.
 
 ### ⚠️ Breaking changes
 

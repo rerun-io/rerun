@@ -1,16 +1,6 @@
-Train a [LeRobot](https://github.com/huggingface/lerobot) ACT policy using Rerun's experimental PyTorch dataloader, streaming trajectory data directly from a Rerun Data Platform catalog.
+Train a [LeRobot](https://github.com/huggingface/lerobot) ACT policy using Rerun's experimental PyTorch dataloader, streaming trajectory data directly from a Rerun catalog.
 
-## Background
-
-The Rerun Data Platform stores multimodal robot data (video streams, scalar signals, poses, …) as time-indexed recordings.
-The `rerun.experimental.dataloader` module exposes those recordings as a PyTorch-style `Dataset`, so you can plug them straight into a standard `DataLoader` and training loop.
-
-This example shows how to:
-
-- register a LeRobot dataset (from HuggingFace Hub) to a local Rerun Data Platform instance
-- build a `RerunDataset` that decodes video frames and scalar columns on the fly
-- use the `Field.window` feature to fetch future action chunks in a single query per batch
-- train an [ACT](https://tonyzhaozh.github.io/aloha/) (Action Chunking Transformer) policy on the resulting batches
+For an explanation of the dataloader API and how the example fits together, see the [Train PyTorch models with the Rerun dataloader](https://rerun.io/docs/howto/integrations/dataloader?speculative-link) how-to guide.
 
 ## Run the code
 
@@ -65,24 +55,14 @@ uv run python train.py \
     --batch-size 8 \
     --num-workers 8 \
     --lr 1e-5 \
-    --checkpoint-dir act_checkpoint
+    --checkpoint-dir act_checkpoint \
+    --dataset-style iterable  # or "map"
 ```
 
 Pass `--num-segments 0` to train on all segments in the dataset.
 
-### 4b. Train with traces
+### Training with traces
 
 ```sh
 TELEMETRY_ENABLED=true OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4317 uv run python train.py
-```
-
-### Iterable vs. Map-style dataset
-
-Pass `--dataset-style` to pick the PyTorch dataset class:
-
-- `iterable` (default) uses `RerunIterableDataset` — in-order streaming with shuffling and cross-worker partitioning handled internally.
-- `map` uses `RerunMapDataset` — random access by global index, so it plugs into PyTorch's sampler ecosystem (`DistributedSampler`, `WeightedRandomSampler`, `SubsetRandomSampler`, …).
-
-```bash
-uv run python train.py --dataset-style map
 ```

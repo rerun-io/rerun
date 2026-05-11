@@ -46,8 +46,6 @@ def lerobot_to_combined_rrd(dataset_dir: Path, combined_rrd: Path) -> None:
     with rr.RecordingStream(APPLICATION_ID) as rec:
         rec.save(str(combined_rrd))
         rec.log_file_from_path(str(dataset_dir))
-        rec.flush()
-        rec.disconnect()
 
 
 def split_into_episode_rrds(combined_rrd: Path, rrd_dir: Path) -> list[Path]:
@@ -71,12 +69,9 @@ def split_into_episode_rrds(combined_rrd: Path, rrd_dir: Path) -> list[Path]:
         episode_id = _zero_pad_episode_id(entry.recording_id)
         rrd_path = rrd_dir / f"{episode_id}.rrd"
 
-        rec = rr.RecordingStream(APPLICATION_ID, recording_id=episode_id, send_properties=False)
-        rec.save(str(rrd_path))
-        rec.send_chunks(store)
-        rec.flush()
-        # Disconnect to ensure footers are written.
-        rec.disconnect()
+        with rr.RecordingStream(APPLICATION_ID, recording_id=episode_id, send_properties=False) as rec:
+            rec.save(str(rrd_path))
+            rec.send_chunks(store)
         episode_paths.append(rrd_path)
         print(f"  wrote {rrd_path} ({rrd_path.stat().st_size / (1024 * 1024):.1f} MB)")
 

@@ -23,8 +23,8 @@ class Field:
     Parameters
     ----------
     path
-        Entity-path + component string identifying the source column
-        (e.g. `"/camera:EncodedImage:blob"`).
+        `entity_path:Archetype:component` triple identifying the source
+        column (e.g. `"/camera:EncodedImage:blob"`).
     decode
         A [`ColumnDecoder`][rerun.experimental.dataloader.ColumnDecoder]
         that turns the Arrow column into a tensor.
@@ -41,9 +41,16 @@ class Field:
         )
         ```
     window
-        Optional `(start_offset, end_offset)` inclusive range relative
-        to the current index value. `(50, 99)` means the 50 indices
-        starting 50 ahead of the current one.
+        Optional `(start_offset, end_offset)` range, inclusive on both
+        ends and added to the current index value. The field then yields
+        the slice of values across that window instead of a single
+        sample. Offsets are in the index timeline's native unit:
+        integer steps for integer-indexed timelines, nanoseconds for
+        timestamp timelines (use multiples of the
+        [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling]
+        period to align with the sampling grid). For example, `(1, 50)`
+        on an integer timeline fetches the next 50 values after the
+        current sample.
 
     """
 

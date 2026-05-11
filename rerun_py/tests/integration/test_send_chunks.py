@@ -50,7 +50,6 @@ def send_chunks_and_read(tmp_path: Path) -> SendChunksAndRead:
         ) as rec:
             rec.save(out_path)
             rec.send_chunks(chunks)
-            rec.disconnect()
         return RrdReader(out_path)
 
     return _impl

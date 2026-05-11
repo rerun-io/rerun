@@ -170,11 +170,14 @@ class VideoFrameDecoder(ColumnDecoder):
     """
     Compressed video random access via context-aware fetching.
 
-    `context_range(N)` asks the prefetcher to pull the previous
-    `keyframe_interval` samples (counted directly for integer indices,
-    converted to `keyframe_interval / fps_estimate` seconds for
-    timestamp indices). `decode()` runs the codec over those samples
-    in order and returns the final frame.
+    `context_range` asks the prefetcher to pull a window ending at the
+    target sample so the codec has enough preceding packets to decode
+    it. The window starts `keyframe_interval` positions before the
+    target for integer timelines, and
+    `keyframe_interval / fps_estimate` seconds before the target for
+    timestamp timelines; in both cases the target index is the window's
+    last position. `decode()` runs the codec over the fetched packets
+    in order and returns the frame at the target index.
 
     `keyframe_interval` must be greater than or equal to the actual GOP
     length; for timestamp indices `fps_estimate` must also be close to
