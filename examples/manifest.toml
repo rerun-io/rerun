@@ -20,8 +20,6 @@ examples = [
   "ros_node",
   "chess_robby_fischer",
   "nuscenes_dataset",
-  "ros2_bridge",
-  "ros_bridge",
   "kiss-icp",
   "live_depth_sensor",
   "lidar",
