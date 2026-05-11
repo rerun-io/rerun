@@ -952,15 +952,17 @@ impl RonExt for ron::Value {
 
 /// Build the [`ColorTable`] based on the content of `design_token.ron`
 fn load_color_table(json: &ron::Value) -> ColorTable {
-    fn get_color_from_json(json: &ron::Value, global_path: &str) -> Color32 {
-        Color32::from_hex(global_path_value(json, global_path).as_str().unwrap()).unwrap()
+    fn get_color_from_json(json: &ron::Value, global_path: &str) -> Option<Color32> {
+        let value = follow_path(json, global_path)?;
+        let hex = value.get_child("value")?.as_str()?;
+        Some(Color32::from_hex(hex).unwrap())
     }
 
+    // Not all hues define every scale (e.g. Gray uses step-50 while others use step-25).
+    // Missing entries get magenta so they're obvious if ever accidentally referenced.
     ColorTable::new(|color_token| {
-        get_color_from_json(
-            json,
-            &format!("{{Global.Color.{}.{}}}", color_token.hue, color_token.scale),
-        )
+        let path = format!("{{Global.Color.{}.{}}}", color_token.hue, color_token.scale);
+        get_color_from_json(json, &path).unwrap_or(Color32::DEBUG_COLOR)
     })
 }
 

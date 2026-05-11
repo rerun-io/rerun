@@ -189,13 +189,16 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
             }
 
             'scope: {
+                // This path only works if `TransformTreeContext` already built the transform forest.
+                // Creating `TransformDatabaseStoreCache` here would initialize the frame id registry,
+                // but still wouldn't build a useful transform forest, so a non-creating read is enough.
                 let caches = ctx.store_ctx().caches;
-                let (frame_id_registry, transform_forest) =
-                    caches.memoizer(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-                        (c.frame_id_registry(ctx.recording()), c.transform_forest())
-                    });
-
-                let Some(transform_forest) = transform_forest else {
+                let Some((frame_id_registry, transform_forest)) = caches
+                    .memoizer_read::<re_viewer_context::TransformDatabaseStoreCache, _>(|c| {
+                        Some((c.cached_frame_id_registry()?, c.transform_forest()?))
+                    })
+                    .flatten()
+                else {
                     break 'scope;
                 };
 

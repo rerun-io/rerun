@@ -32,5 +32,17 @@ impl_size_bytes_pod!(half::f16);
 #[cfg(feature = "ecolor")]
 impl_size_bytes_pod!(ecolor::Color32);
 
+#[cfg(feature = "egui")]
+impl_size_bytes_pod!(egui::Id, egui::Pos2, egui::Rect, egui::Vec2);
+
 #[cfg(feature = "glam")]
-impl_size_bytes_pod!(glam::Vec3, glam::DAffine3);
+impl_size_bytes_pod!(
+    glam::Mat3,
+    glam::Quat,
+    glam::Vec2,
+    glam::Vec3,
+    glam::DAffine3
+);
+
+#[cfg(feature = "macaw")]
+impl_size_bytes_pod!(macaw::BoundingBox, macaw::IsoTransform);

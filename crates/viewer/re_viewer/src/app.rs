@@ -595,8 +595,13 @@ impl App {
     /// Update the active [`re_viewer_context::TimeControl`]. And if the blueprint inspection
     /// panel is open, also open that time control.
     fn move_time(&mut self) {
-        if let Some(store_hub) = &self.store_hub
-            && let Some(store_id) = self.active_recording_id()
+        let stable_dt = self.egui_ctx.input(|i| i.stable_dt);
+
+        let Some(store_hub) = &self.store_hub else {
+            return;
+        };
+
+        if let Some(store_id) = self.active_recording_id()
             && let Some(blueprint) = store_hub.active_blueprint_for_app(store_id.application_id())
         {
             let default_blueprint = store_hub.default_blueprint_for_app(store_id.application_id());
@@ -614,8 +619,6 @@ impl App {
                 default_blueprint,
                 blueprint_query,
             };
-
-            let stable_dt = self.egui_ctx.input(|i| i.stable_dt);
 
             if let Some(recording) = store_hub.entity_db(store_id) {
                 // Are we still connected to the data source for the current store?
@@ -685,6 +688,16 @@ impl App {
                     undo_state.set_redo_time(time);
                 }
             }
+        }
+
+        // Tick time controls for preview recordings shown in grid or table cards.
+        // Runs even when there's no active recording.
+        if self
+            .state
+            .update_preview_time_controls(store_hub, stable_dt)
+            == re_viewer_context::NeedsRepaint::Yes
+        {
+            self.egui_ctx.request_repaint();
         }
     }
 
@@ -1951,14 +1964,18 @@ impl App {
                 egui_ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
 
-            UICommand::OpenWebHelp => {
+            UICommand::OpenWebsite => {
                 egui_ctx.open_url(egui::output::OpenUrl {
-                    url: "https://www.rerun.io/docs/getting-started/navigating-the-viewer"
-                        .to_owned(),
+                    url: "https://rerun.io/".to_owned(),
                     new_tab: true,
                 });
             }
-
+            UICommand::OpenWebHelp => {
+                egui_ctx.open_url(egui::output::OpenUrl {
+                    url: "https://rerun.io/docs/getting-started/navigating-the-viewer".to_owned(),
+                    new_tab: true,
+                });
+            }
             UICommand::OpenRerunDiscord => {
                 egui_ctx.open_url(egui::output::OpenUrl {
                     url: "https://discord.gg/PXtCgFBSmH".to_owned(),

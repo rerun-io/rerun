@@ -850,6 +850,22 @@ impl AppState {
         create_time_control_for(&mut self.time_controls, entity_db, blueprint_ctx)
     }
 
+    /// Tick time controls for all preview recordings shown in grid cards.
+    ///
+    /// All previews share a single playback clock in raw timeline units, so
+    /// nanoseconds for timestamp timelines and frame numbers for sequence timelines.
+    /// Shorter clips hold at their last frame while the longest one finishes, then
+    /// everything loops together.
+    pub fn update_preview_time_controls(
+        &mut self,
+        store_hub: &StoreHub,
+        stable_dt: f32,
+    ) -> re_viewer_context::NeedsRepaint {
+        self.view_states
+            .preview
+            .tick(|id| store_hub.entity_db(id), stable_dt)
+    }
+
     /// Remove dangling state
     pub fn cleanup(&mut self, store_hub: &StoreHub) {
         re_tracing::profile_function!();
@@ -859,6 +875,10 @@ impl AppState {
 
         self.blueprint_undo_state
             .retain(|store_id, _| store_hub.store_bundle().contains(store_id));
+
+        self.view_states
+            .preview
+            .cleanup_recordings(|id| store_hub.store_bundle().contains(id));
     }
 
     /// Returns the blueprint query that should be used for generating the current
@@ -1028,7 +1048,10 @@ impl re_byte_size::MemUsageTreeCapture for AppState {
             "blueprint_undo_state",
             self.blueprint_undo_state.total_size_bytes(),
         );
-        tree.add("view_states", self.view_states.total_size_bytes());
+        tree.add(
+            "view_states",
+            re_byte_size::MemUsageTreeCapture::capture_mem_usage_tree(&self.view_states),
+        );
         tree.into_tree()
     }
 }

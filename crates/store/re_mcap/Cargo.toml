@@ -27,6 +27,7 @@ ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 byteorder.workspace = true
+crossbeam.workspace = true
 cdr-encoding.workspace = true
 mcap.workspace = true
 prost-reflect.workspace = true

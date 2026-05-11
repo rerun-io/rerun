@@ -26,7 +26,7 @@ pub(crate) use analytics::{
     ConnectionAnalytics, PendingQueryAnalytics, PendingTableQueryAnalytics,
 };
 pub use analytics::{TableKind, TableQueryCaller};
-pub use catalog_provider::{DEFAULT_CATALOG_NAME, RedapCatalogProvider, get_all_catalog_names};
+pub use catalog_provider::RedapCatalogProviderList;
 pub use dataframe_query_common::{
     DataframeClientAPI, DataframeQueryTableProvider, query_from_query_expression,
 };

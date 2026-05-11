@@ -16,14 +16,14 @@ pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 
 pub use self::api_response_stream::ApiResponseStream;
 pub use self::connection_client::{
-    FetchChunksResponseStream, GenericConnectionClient, SegmentQueryParams,
+    ConnectionClient, FetchChunksResponseStream, GenericConnectionClient, SegmentQueryParams,
 };
 pub use self::connection_registry::{
-    ClientCredentialsError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
-    CredentialSource, Credentials, SourcedCredentials,
+    ClientCredentialsError, ConnectionRegistry, ConnectionRegistryHandle, CredentialSource,
+    Credentials, SourcedCredentials,
 };
 pub use self::grpc::{
-    ChunksWithSegment, RedapClient, StreamingOptions, channel,
+    ChunksWithSegment, RedapClient, RedapClientInner, StreamingOptions, channel,
     fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
 };
 

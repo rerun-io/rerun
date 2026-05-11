@@ -55,7 +55,7 @@ pd_df["jawOpenState"] = pd_df["jawOpen"] > 0.15
 # ----------------------------------------------------------------------------------------------
 # Log the data back to the viewer
 
-application_id = rr.recording.load_recording(example_rrd).application_id()
+application_id = rr.experimental.RrdReader(example_rrd).recordings()[0].application_id
 
 # Connect to the viewer
 # region: connect_viewer

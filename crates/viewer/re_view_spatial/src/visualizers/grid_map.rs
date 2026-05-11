@@ -240,11 +240,9 @@ impl GridMapVisualizer {
             return None;
         }
 
-        let image_stats = ctx
-            .viewer_ctx()
-            .store_context
-            .caches
-            .memoizer(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
+        let caches = ctx.viewer_ctx().store_context.caches;
+        let image_stats =
+            caches.memoizer_read_or_compute::<re_viewer_context::ImageStatsCache, _, _>(&image);
 
         let colormapped_texture = match gpu_bridge::image_to_gpu(
             ctx.viewer_ctx().render_ctx(),
@@ -408,9 +406,10 @@ impl GridMapVisualizer {
             return GridMapColorMode::NoColormap;
         }
 
-        let image_stats =
-            ctx.viewer_ctx().store_context.caches.memoizer(
-                |c: &mut re_viewer_context::ImageStatsCache| c.entry(&component_data.image),
+        let caches = ctx.viewer_ctx().store_context.caches;
+        let image_stats = caches
+            .memoizer_read_or_compute::<re_viewer_context::ImageStatsCache, _, _>(
+                &component_data.image,
             );
 
         let value_range = if matches!(colormap, Colormap::RvizMap | Colormap::RvizCostmap) {

@@ -78,10 +78,46 @@ impl<T> Mutex<T> {
 // ----------------------------------------------------------------------------
 
 /// The lock you get from [`RwLock::read`].
-pub use parking_lot::MappedRwLockReadGuard as RwLockReadGuard;
+pub use parking_lot::RwLockReadGuard;
 
 /// The lock you get from [`RwLock::write`].
-pub use parking_lot::MappedRwLockWriteGuard as RwLockWriteGuard;
+pub use parking_lot::RwLockWriteGuard;
+
+/// The lock you get from [`RwLock::read_upgradable`].
+pub struct RwLockUpgradableReadGuard<'a, T: ?Sized>(parking_lot::RwLockUpgradableReadGuard<'a, T>);
+
+impl<'a, T: ?Sized> RwLockUpgradableReadGuard<'a, T> {
+    /// Atomically upgrades this upgradable read lock into an exclusive write lock.
+    ///
+    /// Will log a warning in debug builds if the lock can't be upgraded within 10 seconds.
+    #[inline(always)]
+    #[cfg_attr(debug_assertions, track_caller)]
+    pub fn upgrade(self) -> RwLockWriteGuard<'a, T> {
+        if cfg!(debug_assertions) {
+            let loc = Location::caller();
+            parking_lot::RwLockUpgradableReadGuard::try_upgrade_for(self.0, DEADLOCK_DURATION)
+                .unwrap_or_else(|guard| {
+                    re_log::warn_once!(
+                        "[DEBUG] Failed to upgrade RWLock after {}s. Deadlock?\n Latest upgrade location: {loc}",
+                        DEADLOCK_DURATION.as_secs(),
+                    );
+
+                    parking_lot::RwLockUpgradableReadGuard::upgrade(guard)
+                })
+        } else {
+            parking_lot::RwLockUpgradableReadGuard::upgrade(self.0)
+        }
+    }
+}
+
+impl<T: ?Sized> std::ops::Deref for RwLockUpgradableReadGuard<'_, T> {
+    type Target = T;
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 /// Provides interior mutability.
 ///
@@ -106,7 +142,7 @@ impl<T: ?Sized> RwLock<T> {
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)]
     pub fn read(&self) -> RwLockReadGuard<'_, T> {
-        let guard = if cfg!(debug_assertions) {
+        if cfg!(debug_assertions) {
             let loc = Location::caller();
             self.0.try_read_for(DEADLOCK_DURATION).unwrap_or_else(|| {
                 re_log::warn_once!(
@@ -118,8 +154,38 @@ impl<T: ?Sized> RwLock<T> {
             })
         } else {
             self.0.read()
+        }
+    }
+
+    /// Try to acquire upgradable read-access to the lock.
+    ///
+    /// Will log a warning in debug builds if the lock can't be acquired within 10 seconds.
+    #[inline(always)]
+    #[cfg_attr(debug_assertions, track_caller)]
+    pub fn read_upgradable(&self) -> RwLockUpgradableReadGuard<'_, T> {
+        let guard = if cfg!(debug_assertions) {
+            let loc = Location::caller();
+            self.0.try_upgradable_read_for(DEADLOCK_DURATION).unwrap_or_else(|| {
+                re_log::warn_once!(
+                    "[DEBUG] Failed to acquire RWLock upgradable read after {}s. Deadlock?\n Latest upgradable read location: {loc}",
+                    DEADLOCK_DURATION.as_secs(),
+                );
+
+                self.0.upgradable_read()
+            })
+        } else {
+            self.0.upgradable_read()
         };
-        parking_lot::RwLockReadGuard::map(guard, |v| v)
+        RwLockUpgradableReadGuard(guard)
+    }
+
+    /// Try to acquire upgradable read-access to the lock.
+    ///
+    /// Alias for [`Self::read_upgradable`].
+    #[inline(always)]
+    #[cfg_attr(debug_assertions, track_caller)]
+    pub fn upgradable_read(&self) -> RwLockUpgradableReadGuard<'_, T> {
+        self.read_upgradable()
     }
 
     /// Try to acquire write-access to the lock.
@@ -128,7 +194,7 @@ impl<T: ?Sized> RwLock<T> {
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)]
     pub fn write(&self) -> RwLockWriteGuard<'_, T> {
-        let guard = if cfg!(debug_assertions) {
+        if cfg!(debug_assertions) {
             let loc = Location::caller();
             self.0.try_write_for(DEADLOCK_DURATION).unwrap_or_else(|| {
                 re_log::warn_once!(
@@ -140,8 +206,7 @@ impl<T: ?Sized> RwLock<T> {
             })
         } else {
             self.0.write()
-        };
-        parking_lot::RwLockWriteGuard::map(guard, |v| v)
+        }
     }
 
     /// Returns a mutable reference to the underlying data.
@@ -276,5 +341,18 @@ mod tests_rwlock {
 
         // Thread #0 now grabs a write lock, which is legal
         let _t0w0 = lock.write();
+    }
+
+    #[test]
+    fn rwlock_upgradable_read() {
+        let lock = RwLock::new(1);
+        let guard = lock.read_upgradable();
+        assert_eq!(*guard, 1);
+
+        let mut guard = guard.upgrade();
+        *guard = 2;
+        drop(guard);
+
+        assert_eq!(*lock.read(), 2);
     }
 }

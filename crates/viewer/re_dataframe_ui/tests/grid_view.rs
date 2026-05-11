@@ -24,7 +24,10 @@ async fn test_grid_view() {
 
     for (theme, suffix) in [(egui::Theme::Dark, "dark"), (egui::Theme::Light, "light")] {
         let mut test_context = TestContext::new();
-        test_context.app_options.experimental.table_grid_view = true;
+        test_context
+            .app_options
+            .experimental
+            .table_cards_and_blueprints = true;
         let runtime_handle =
             AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
 
@@ -63,7 +66,10 @@ async fn test_grid_view_resize() {
 
     for (width, suffix) in [(400.0, "narrow"), (1200.0, "wide")] {
         let mut test_context = TestContext::new();
-        test_context.app_options.experimental.table_grid_view = true;
+        test_context
+            .app_options
+            .experimental
+            .table_cards_and_blueprints = true;
         let runtime_handle =
             AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
 
@@ -111,7 +117,10 @@ async fn test_grid_view_flagging() {
 
     for (theme, suffix) in [(egui::Theme::Dark, "dark"), (egui::Theme::Light, "light")] {
         let mut test_context = TestContext::new();
-        test_context.app_options.experimental.table_grid_view = true;
+        test_context
+            .app_options
+            .experimental
+            .table_cards_and_blueprints = true;
         let runtime_handle =
             AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
 
@@ -158,7 +167,10 @@ async fn test_grid_view_flagging() {
 async fn test_grid_view_non_uniform_cards() {
     let (session_context, table_ref) = setup_non_uniform_table();
     let mut test_context = TestContext::new();
-    test_context.app_options.experimental.table_grid_view = true;
+    test_context
+        .app_options
+        .experimental
+        .table_cards_and_blueprints = true;
     let runtime_handle = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
 
     let mut harness = test_context

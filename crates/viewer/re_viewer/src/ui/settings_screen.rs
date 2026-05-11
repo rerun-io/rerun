@@ -159,8 +159,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     {
         let ExperimentalAppOptions {
             enable_status_view,
-            table_blueprints,
-            table_grid_view,
+            table_cards_and_blueprints,
         } = experimental;
         separator_with_some_space(ui);
         ui.strong("Experimental");
@@ -168,15 +167,10 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
             .on_hover_text(
                 "Show the experimental Status view for visualizing status transitions over time.",
             );
-        ui.re_checkbox(table_blueprints, "Table blueprints")
+        ui.re_checkbox(table_cards_and_blueprints, "Table cards and blueprints")
             .on_hover_text(
-                "Enable table blueprints embedded in Arrow schema metadata.\n\n\
-                 When enabled, tables can carry inline view definitions for segment previews.",
-            );
-        ui.re_checkbox(table_grid_view, "Table grid view")
-            .on_hover_text(
-                "Enable grid view mode for server supplied tables.\n\n\
-                 When enabled, a list/grid toggle appears in the table title bar.",
+                "Enable table blueprints embedded in Arrow schema metadata, plus grid view mode for server supplied tables.\n\n\
+                 When enabled, tables can carry inline view definitions for segment previews, and a list/grid toggle appears in the table title bar.",
             );
     }
 }

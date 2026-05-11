@@ -6,7 +6,7 @@ use re_sdk_types::image::ImageKind;
 use re_sdk_types::{Component as _, components};
 
 use crate::image_info::StoredBlobCacheKey;
-use crate::{Cache, ImageInfo, ImageStats};
+use crate::{Cache, CacheEntryAccess, ImageInfo, ImageStats};
 
 // Caches image stats (use e.g. `RowId` to generate cache key).
 #[derive(Default)]
@@ -18,6 +18,18 @@ impl ImageStatsCache {
             .0
             .entry((image.buffer_content_hash, image.kind))
             .or_insert_with(|| ImageStats::from_image(image))
+    }
+}
+
+impl CacheEntryAccess<ImageInfo, ImageStats> for ImageStatsCache {
+    fn read(&self, image: &ImageInfo) -> Option<ImageStats> {
+        self.0
+            .get(&(image.buffer_content_hash, image.kind))
+            .copied()
+    }
+
+    fn compute(&mut self, image: &ImageInfo) -> ImageStats {
+        self.entry(image)
     }
 }
 

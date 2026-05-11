@@ -28,6 +28,18 @@ pub struct Eye {
     pub fov_y: Option<f32>,
 }
 
+impl re_byte_size::SizeBytes for Eye {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 impl Eye {
     pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
 
@@ -158,6 +170,13 @@ struct EyeInterpolation {
     start: Eye,
 }
 
+impl re_byte_size::SizeBytes for EyeInterpolation {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl EyeInterpolation {
     pub fn target_time(start: &Eye, stop: &Eye) -> Option<f32> {
         // Take more time if the rotation is big:
@@ -212,6 +231,27 @@ pub struct EyeState {
     pub last_eye_up: Option<Vec3>,
 }
 
+impl re_byte_size::SizeBytes for EyeState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            fov_y: _,
+            velocity: _,
+            last_tracked_entity,
+            interpolation,
+            spin: _,
+            last_eye,
+            last_interaction_time: _,
+            last_look_target: _,
+            last_orbit_radius: _,
+            last_eye_up: _,
+        } = self;
+
+        last_tracked_entity.heap_size_bytes()
+            + interpolation.heap_size_bytes()
+            + last_eye.heap_size_bytes()
+    }
+}
+
 /// Utility struct for handling eye control parameter changes,
 /// e.g. via user input or blueprint.
 pub(crate) struct EyeController {
@@ -231,6 +271,17 @@ impl EyeController {
 
     /// Avoids breaking the view by zooming in too far.
     pub const MIN_ORBIT_DISTANCE: f32 = Eye::PERSPECTIVE_NEAR_PLANE * 2.0;
+
+    /// Cap on the orbital camera radius, as a multiple of the scene bounding box diagonal.
+    ///
+    /// Only applied when scroll-to-zoom wants to grow the radius further. Zoom-in, rotate,
+    /// pan, WASD, and every other form of motion are left alone — this is intentionally a
+    /// local restriction on orbital zoom-out only, not a general movement envelope. The 2D
+    /// view has its own, separate zoom-out cap (see `ui_2d::MAX_ZOOM_OUT_FACTOR`).
+    ///
+    /// If the radius already exceeds this (e.g. right after loading) the current radius is
+    /// used as the cap instead, so the camera isn't pulled back in.
+    const MAX_ORBITAL_ZOOM_OUT_FACTOR: f32 = 5.0;
 
     fn get_eye(&self) -> Eye {
         Eye {
@@ -482,7 +533,7 @@ impl EyeController {
     }
 
     /// Handle zoom/scroll input.
-    fn handle_zoom(&mut self, egui_ctx: &egui::Context) {
+    fn handle_zoom(&mut self, egui_ctx: &egui::Context, scene_bounding_box: &macaw::BoundingBox) {
         let zoom_factor = egui_ctx.input(|input| {
             // egui's default horizontal_scroll_modifier is shift, which is also our speed-up modifier.
             // This means that a user who wants to speed up scroll-to-zoom will generate a horizontal scroll delta.
@@ -498,16 +549,18 @@ impl EyeController {
         match self.kind {
             Eye3DKind::Orbital => {
                 let radius = self.pos.distance(self.look_target);
-                let new_radius = (radius / zoom_factor).at_least(Self::MIN_ORBIT_DISTANCE);
+
+                // Cap zoom-out against the scene bounding box. If we're already past the cap
+                // (e.g. right after loading) use the current radius instead — no snap-back.
+                let max_radius = max_orbital_radius(scene_bounding_box).max(radius);
+                let new_radius = (radius / zoom_factor).clamp(Self::MIN_ORBIT_DISTANCE, max_radius);
 
                 // The user may be scrolling to move the camera closer, but are not realizing
                 // the radius is now tiny.
                 // TODO(emilk): inform the users somehow that scrolling won't help, and that they should use WSAD instead.
                 // It might be tempting to start moving the camera here on scroll, but that would is bad for other reasons.
 
-                // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
-                // Max value is chosen with some generous margin of an observed crash due to infinity.
-                if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
+                if f32::MIN_POSITIVE < new_radius {
                     self.pos = self.look_target - self.fwd() * new_radius;
                     self.did_interact = true;
                 }
@@ -574,6 +627,7 @@ impl EyeController {
         eye_state: &mut EyeState,
         response: &egui::Response,
         drag_threshold: f32,
+        scene_bounding_box: &macaw::BoundingBox,
     ) {
         // Modify speed based on modifiers:
         let os = response.ctx.os();
@@ -593,7 +647,7 @@ impl EyeController {
         self.handle_drag(response, drag_threshold);
 
         if response.hovered() {
-            self.handle_zoom(&response.ctx);
+            self.handle_zoom(&response.ctx, scene_bounding_box);
         }
 
         if response.has_focus() {
@@ -606,6 +660,24 @@ impl EyeController {
             eye_state.last_interaction_time = Some(response.ctx.time());
         }
     }
+}
+
+/// Cap on the orbital zoom-out radius, derived from the scene bounding box diagonal.
+///
+/// Returns `1.0e17` (a large fallback that avoids infinities downstream) when no usable scene
+/// bounding box is available.
+fn max_orbital_radius(scene_bounding_box: &macaw::BoundingBox) -> f32 {
+    // `1.0e17` fallback is chosen with generous margin of an observed crash due to infinity.
+    let fallback = 1.0e17;
+
+    if !scene_bounding_box.is_finite() || scene_bounding_box.is_nothing() {
+        return fallback;
+    }
+    let scene_diagonal = scene_bounding_box.size().length();
+    if !scene_diagonal.is_finite() || scene_diagonal <= 0.0 {
+        return fallback;
+    }
+    scene_diagonal * EyeController::MAX_ORBITAL_ZOOM_OUT_FACTOR
 }
 
 pub fn find_camera(cameras: &[PinholeWrapper], needle: &EntityPath) -> Option<Eye> {
@@ -690,7 +762,7 @@ impl EyeState {
 
         // We do input before tracking entity, because the input can cause the eye
         // to stop tracking.
-        eye_controller.handle_input(self, response, drag_threshold);
+        eye_controller.handle_input(self, response, drag_threshold, &bounding_boxes.current);
 
         // If we interacted we write to the blueprint so reset spin offset.
         if eye_controller.did_interact {

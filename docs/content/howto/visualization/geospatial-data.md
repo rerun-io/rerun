@@ -4,7 +4,7 @@ order: 300
 ---
 
 Rerun 0.20 introduced a new [map view](../../reference/types/views/map_view.md).
-This guide provides a short overview on how to use it to visualise geospatial data.
+This guide provides a short overview on how to use it to visualize geospatial data.
 
 ## Coordinate system
 

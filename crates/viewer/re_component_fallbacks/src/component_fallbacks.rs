@@ -1,7 +1,8 @@
 use re_sdk_types::{archetypes, components, datatypes};
 use re_viewer_context::{
     ColormapWithRange, FallbackProviderRegistry, ImageInfo, ImageStatsCache, QueryContext,
-    TensorStats, TensorStatsCache, VideoStreamCache, auto_color_for_entity_path,
+    TensorStats, TensorStatsAccessor, TensorStatsCache, VideoStreamCache,
+    auto_color_for_entity_path,
 };
 
 pub fn type_fallbacks(registry: &mut FallbackProviderRegistry) {
@@ -295,7 +296,8 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                         re_sdk_types::image::ImageKind::Depth,
                     );
                     let cache = ctx.store_ctx().caches;
-                    let image_stats = cache.memoizer(|c: &mut ImageStatsCache| c.entry(&image));
+                    let image_stats =
+                        cache.memoizer_read_or_compute::<ImageStatsCache, _, _>(&image);
                     let default_range =
                         ColormapWithRange::default_range_for_depth_images(&image_stats);
                     return [default_range[0] as f64, default_range[1] as f64].into();
@@ -426,9 +428,13 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                     archetypes::Tensor::descriptor_data().component,
                 )
             {
-                let tensor_stats = ctx.store_ctx().memoizer(|c: &mut TensorStatsCache| {
-                    c.entry(re_log_types::hash::Hash64::hash(row_id), &tensor)
-                });
+                let tensor_cache_key = re_log_types::hash::Hash64::hash(row_id);
+                let tensor_stats = ctx
+                    .store_ctx()
+                    .memoizer_read_or_compute::<TensorStatsCache, _, _>(&TensorStatsAccessor {
+                        tensor_cache_key,
+                        tensor: &tensor,
+                    });
                 tensor_data_range_heuristic(&tensor_stats, tensor.dtype())
             } else {
                 components::ValueRange::new(0.0, 1.0)

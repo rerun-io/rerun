@@ -97,6 +97,23 @@ impl Default for TimeSeriesViewState {
     }
 }
 
+impl re_byte_size::SizeBytes for TimeSeriesViewState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            scalar_range: _,
+            full_data_time_range: _,
+            time_offset: _,
+            default_series_name_formats,
+            num_time_series_last_frame_per_instruction,
+            plot_transform: _,
+            time_per_pixel: _,
+        } = self;
+
+        default_series_name_formats.heap_size_bytes()
+            + num_time_series_last_frame_per_instruction.heap_size_bytes()
+    }
+}
+
 impl ViewState for TimeSeriesViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self

@@ -434,7 +434,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
 /// Per-batch caps used by `send_next_row_batch`.
 ///
 /// Accumulating up to `DEFAULT_BATCH_ROWS` rows or `DEFAULT_BATCH_BYTES` bytes
-/// (whichever first) amortises per-batch overhead (alloc, schema align, async
+/// (whichever first) amortizes per-batch overhead (alloc, schema align, async
 /// channel send) while keeping batch memory bounded for wide columns
 /// (e.g. images, large lists, replicated video blobs from retrofill).
 ///

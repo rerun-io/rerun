@@ -40,6 +40,16 @@ impl TransformDatabaseStoreCache {
         transform_cache.frame_id_registry()
     }
 
+    /// Returns the registry of all known frames if it has already been initialized, or `None` if it hasn't.
+    #[inline]
+    pub fn cached_frame_id_registry(
+        &self,
+    ) -> Option<ArcRwLockReadGuard<RawRwLock, FrameIdRegistry>> {
+        self.transform_cache
+            .as_ref()
+            .map(TransformResolutionCache::frame_id_registry)
+    }
+
     /// Accesses the transform component tracking data for a given timeline.
     #[inline]
     pub fn transforms_for_timeline(

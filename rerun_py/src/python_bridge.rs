@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use pyo3::exceptions::{PyKeyboardInterrupt, PyRuntimeError};
+use pyo3::exceptions::{PyKeyboardInterrupt, PyRuntimeError, PyStopIteration, PyTypeError};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
 use re_auth::oauth::Credentials;
@@ -39,6 +39,7 @@ impl PyRuntimeErrorExt for PyRuntimeError {
     }
 }
 
+use crate::chunk::PyChunkInternal;
 use crate::recording::PyRecordingInternal;
 
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
@@ -95,7 +96,7 @@ static GARBAGE_QUEUE: LazyLock<(GarbageSender, GarbageReceiver)> = LazyLock::new
 ///
 /// Any time you release the GIL (e.g. `py.allow_threads()`), try to slip in a call to this
 /// function so we don't accumulate too much garbage.
-fn flush_garbage_queue() {
+pub(crate) fn flush_garbage_queue() {
     while GARBAGE_QUEUE.1.try_recv().is_ok() {
         // Implicitly dropping chunks, therefore triggering their `release` callbacks, therefore
         // triggering the native Python GC.
@@ -289,7 +290,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_file_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
     m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
-    m.add_function(wrap_pyfunction!(send_chunk, m)?)?;
+    m.add_function(wrap_pyfunction!(send_chunks, m)?)?;
     m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(send_recording, m)?)?;
 
@@ -2123,25 +2124,56 @@ fn send_arrow_chunk(
     })
 }
 
-/// Send a pre-built chunk to the recording stream.
+/// Send chunks to the recording stream.
+///
+/// Accepts a single chunk or any iterable of chunks. Blocks until every chunk
+/// has been pushed to the recording's batcher.
 #[pyfunction]
-#[pyo3(signature = (chunk, recording=None))]
-fn send_chunk(
+#[pyo3(signature = (chunks, recording=None))]
+fn send_chunks(
     py: Python<'_>,
-    chunk: &crate::chunk::PyChunkInternal,
+    chunks: Bound<'_, PyAny>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
 
-    let chunk = re_chunk::Chunk::clone(chunk.inner());
+    // Single Chunk — fast path
+    if let Ok(chunk_obj) = chunks.downcast::<PyChunkInternal>() {
+        let chunk = re_chunk::Chunk::clone(chunk_obj.borrow().inner());
+        py.detach(|| {
+            recording.send_chunk(chunk);
+            flush_garbage_queue();
+        });
+        return Ok(());
+    }
 
-    py.detach(|| {
-        recording.send_chunk(chunk);
+    // Iterable of Chunk. Streamed one at a time — we don't collect into a Vec
+    // because the iterable may be a generator yielding many chunks and buffering
+    // all of them would inflate peak memory.
+    let iter: Py<PyAny> = chunks
+        .try_iter()
+        .map_err(|_err| PyTypeError::new_err("send_chunks expected a Chunk or iterable of Chunk"))?
+        .into_any()
+        .unbind();
 
+    py.detach(|| -> PyResult<()> {
+        loop {
+            let next_chunk = Python::attach(|py| -> PyResult<Option<re_chunk::Chunk>> {
+                match iter.bind(py).call_method0("__next__") {
+                    Ok(obj) => {
+                        let internal: PyRef<'_, PyChunkInternal> = obj.extract()?;
+                        Ok(Some(re_chunk::Chunk::clone(internal.inner())))
+                    }
+                    Err(err) if err.is_instance_of::<PyStopIteration>(py) => Ok(None),
+                    Err(err) => Err(err),
+                }
+            })?;
+            let Some(chunk) = next_chunk else { break };
+            recording.send_chunk(chunk);
+        }
         flush_garbage_queue();
-
         Ok(())
     })
 }

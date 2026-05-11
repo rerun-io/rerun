@@ -19,6 +19,17 @@ pub struct TextDocumentViewState {
     only_showing_markdown: bool,
 }
 
+impl re_byte_size::SizeBytes for TextDocumentViewState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            commonmark_cache,
+            only_showing_markdown: _,
+        } = self;
+        // Most of the memory not tracked unfortunately.
+        commonmark_cache.link_hooks().heap_size_bytes()
+    }
+}
+
 impl ViewState for TextDocumentViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self

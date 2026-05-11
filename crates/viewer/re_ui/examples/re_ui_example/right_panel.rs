@@ -488,7 +488,6 @@ impl RightPanel {
                     ui,
                     PropertyContent::new("text")
                         .value_fn(|ui, _vis| {
-                            // TODO(RR-3858): Listitems don't grow when their contents exceed their size
                             let mut text = "Give a bit of space to a longer text input fields, let’s say at least 3 lines and the rest …".to_owned();
                             FormFields::single(ui, TextEdit::multiline(&mut text).desired_rows(1));
                         }),

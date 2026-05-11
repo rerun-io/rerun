@@ -572,12 +572,16 @@ impl<'a> DataFusionTableWidget<'a> {
             }),
         );
 
-        let enable_grid_view = ctx.app_options().experimental.table_grid_view;
+        let table_cards_and_blueprints_enabled =
+            ctx.app_options().experimental.table_cards_and_blueprints;
         let view_mode_id = session_id.with("view_mode");
-        let mut view_mode = ui
-            .ctx()
-            .data(|d| d.get_temp::<TableViewMode>(view_mode_id))
-            .unwrap_or_default();
+        let mut view_mode = if table_cards_and_blueprints_enabled {
+            ui.ctx()
+                .data(|d| d.get_temp::<TableViewMode>(view_mode_id))
+                .unwrap_or_default()
+        } else {
+            TableViewMode::Table
+        };
 
         if let Some(title) = &self.title {
             title_ui(
@@ -587,7 +591,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 title,
                 self.url.as_deref(),
                 should_show_loading_indicator,
-                if enable_grid_view {
+                if table_cards_and_blueprints_enabled {
                     Some(&mut view_mode)
                 } else {
                     None
@@ -619,7 +623,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .arrow_fields(re_sorbet::BatchType::Dataframe);
 
         let mut decoded_blueprint = None;
-        let view_renderer = if ctx.app_options().experimental.table_blueprints {
+        let view_renderer = if table_cards_and_blueprints_enabled {
             let blueprint_db = self
                 .table_id
                 .as_ref()

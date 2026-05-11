@@ -19,13 +19,17 @@ use super::chunk_store::PyChunkStoreInternal;
 use super::error::ChunkPipelineError;
 use super::stream::{LazyChunkStream, StructuredFilter};
 use crate::chunk::PyChunkInternal;
+use crate::python_bridge::{PyRecordingStream, flush_garbage_queue, get_data_recording};
 
 /// Internal lazy chunk stream binding.
 ///
-/// This class implements of form of Rust-like move semantics. Builder methods (filter, split, etc.)
-/// **consume** the inner stream via `Option::take()`. This ensures that no lazy stream is used more
-/// than once in a pipeline. Terminals (collect, write_rrd, __iter__) borrow without consuming, so
-/// the same stream can be materialized multiple times.
+/// This class implements a form of Rust-like move semantics. Builder methods
+/// (`filter`, `drop_matching`, `split`, `map`, `flat_map`, `lenses`, `merge`)
+/// **consume** the inner stream via `Option::take()`: a consumed stream raises
+/// `ValueError` on further use, ensuring no lazy stream is used in more than
+/// one pipeline. Terminals (`to_chunks`, `__iter__`, `collect`, `write_rrd`,
+/// `send_to_recording`) **borrow** the inner stream and run the pipeline; the
+/// stream remains usable and can be re-executed.
 #[pyclass(
     frozen,
     name = "LazyChunkStreamInternal",
@@ -70,7 +74,7 @@ impl PyLazyChunkStreamInternal {
 
 #[pymethods]
 impl PyLazyChunkStreamInternal {
-    /// Keep the matching portion of each chunk.
+    /// Keep the matching portion of each chunk. Consumes this stream.
     #[pyo3(signature = (*, content=None, has_timeline=None, is_static=None, components=None))]
     fn filter(
         &self,
@@ -84,7 +88,7 @@ impl PyLazyChunkStreamInternal {
         Ok(Self::new(stream.filter(f)))
     }
 
-    /// Drop the matching portion of each chunk.
+    /// Drop the matching portion of each chunk. Consumes this stream.
     #[pyo3(signature = (*, content=None, has_timeline=None, is_static=None, components=None))]
     fn drop_matching(
         &self,
@@ -98,7 +102,7 @@ impl PyLazyChunkStreamInternal {
         Ok(Self::new(stream.drop_matching(f)))
     }
 
-    /// Split into (matching, non_matching).
+    /// Split into (matching, non_matching). Consumes this stream.
     #[pyo3(signature = (*, content=None, has_timeline=None, is_static=None, components=None))]
     fn split(
         &self,
@@ -146,7 +150,7 @@ impl PyLazyChunkStreamInternal {
         Ok(Self::new(stream.lenses(collection, content)))
     }
 
-    /// Concatenate chunks from multiple streams into one.
+    /// Concatenate chunks from multiple streams into one. Consumes all input streams.
     #[staticmethod]
     #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned Vec for #[staticmethod]
     fn merge(streams: Vec<PyRef<'_, Self>>) -> PyResult<Self> {
@@ -157,7 +161,7 @@ impl PyLazyChunkStreamInternal {
         Ok(Self::new(LazyChunkStream::merge(inners)))
     }
 
-    /// Consume the stream and write all chunks to an RRD file.
+    /// Run the pipeline and write all chunks to an RRD file.
     fn write_rrd(
         &self,
         py: Python<'_>,
@@ -174,7 +178,7 @@ impl PyLazyChunkStreamInternal {
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 
-    /// Consume the stream and materialize all chunks into a ChunkStore.
+    /// Run the pipeline and materialize all chunks into a ChunkStore.
     ///
     /// The defaults (`extra_passes=0`, `gop_batching=False`) produce a store that
     /// has only received the single-pass compaction that happens naturally during
@@ -251,7 +255,7 @@ impl PyLazyChunkStreamInternal {
         .map_err(PyErr::from)
     }
 
-    /// Consume the stream and return all chunks as a list.
+    /// Run the pipeline and return all chunks as a list.
     fn to_chunks(&self, py: Python<'_>) -> PyResult<Vec<PyChunkInternal>> {
         let mut compiled = self.compile_inner()?;
         let chunks: Vec<Arc<re_chunk::Chunk>> = py
@@ -280,6 +284,31 @@ impl PyLazyChunkStreamInternal {
     fn from_iter(py: Python<'_>, iterable: Py<PyAny>) -> PyResult<Self> {
         let iter_obj = iterable.call_method0(py, "__iter__")?;
         Ok(Self::new(LazyChunkStream::from_py_iter(iter_obj)))
+    }
+
+    /// Run the pipeline and send chunks to a recording stream.
+    ///
+    /// If `recording` is `None`, the active recording is used. Blocks until every
+    /// chunk has been pushed to the recording's batcher. A silent no-op when
+    /// there is no active recording.
+    #[pyo3(signature = (recording=None))]
+    fn send_to_recording(
+        &self,
+        py: Python<'_>,
+        recording: Option<&PyRecordingStream>,
+    ) -> PyResult<()> {
+        let Some(recording) = get_data_recording(recording) else {
+            return Ok(());
+        };
+        let mut compiled = self.compile_inner()?;
+        py.detach(|| -> Result<(), ChunkPipelineError> {
+            while let Some(chunk) = compiled.next()? {
+                recording.send_chunk((*chunk).clone());
+            }
+            flush_garbage_queue();
+            Ok(())
+        })
+        .map_err(PyErr::from)
     }
 }
 
@@ -391,11 +420,11 @@ fn write_rrd_compiled(
 /// Test-only: return a dict of the Rust `OptimizationProfile::<NAME>` field values.
 ///
 /// Used by the Python parity test to confirm that
-/// `OptimizationProfile.{LIVE,DATAPLATFORM}` on the Python side stays in sync
+/// `OptimizationProfile.{LIVE,OBJECT_STORE}` on the Python side stays in sync
 /// with the Rust constants this module forwards into `ChunkStoreConfig` /
 /// `CompactionOptions` above.
 ///
-/// Names: `"LIVE"`, `"DATAPLATFORM"`.
+/// Names: `"LIVE"`, `"OBJECT_STORE"`.
 #[pyfunction]
 pub fn _optimization_profile_values<'py>(
     py: Python<'py>,
@@ -403,7 +432,7 @@ pub fn _optimization_profile_values<'py>(
 ) -> PyResult<Bound<'py, PyDict>> {
     let p = match name {
         "LIVE" => OptimizationProfile::LIVE,
-        "DATAPLATFORM" => OptimizationProfile::DATAPLATFORM,
+        "OBJECT_STORE" => OptimizationProfile::OBJECT_STORE,
         other => {
             return Err(PyValueError::new_err(format!(
                 "unknown profile name: {other}"

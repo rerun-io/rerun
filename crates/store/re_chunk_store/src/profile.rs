@@ -3,9 +3,9 @@ use crate::ChunkStoreConfig;
 /// Named optimization profile combining chunk-size thresholds with
 /// post-processing knobs (extra passes, GoP rebatching, thick/thin split).
 ///
-/// Two presets are provided: [`Self::LIVE`] (Viewer-friendly small chunks)
-/// and [`Self::DATAPLATFORM`] (Data Platform-friendly large chunks tuned for
-/// query and streaming).
+/// Two presets are provided: [`Self::LIVE`] (small chunks tuned for the live
+/// Viewer workflow) and [`Self::OBJECT_STORE`] (large chunks tuned for
+/// object-store-backed query and streaming).
 ///
 /// A profile does not consult environment variables. Callers that need env-var
 /// layering must call [`ChunkStoreConfig::apply_env`] themselves on the result
@@ -35,9 +35,9 @@ impl OptimizationProfile {
         split_size_ratio: None,
     };
 
-    /// Optimized for Rerun Data Platform storage: larger chunks tuned for
-    /// query throughput and streaming over the network.
-    pub const DATAPLATFORM: Self = Self {
+    /// Optimized for object-store-backed storage (e.g. the Rerun Data Platform):
+    /// larger chunks tuned for query throughput and streaming over the network.
+    pub const OBJECT_STORE: Self = Self {
         chunk_max_bytes: 2 * 1024 * 1024,
         chunk_max_rows: 65_536,
         chunk_max_rows_if_unsorted: 8_192,
@@ -86,7 +86,7 @@ mod tests {
 
     #[test]
     fn to_chunk_store_config_carries_thresholds() {
-        let cfg = OptimizationProfile::DATAPLATFORM.to_chunk_store_config();
+        let cfg = OptimizationProfile::OBJECT_STORE.to_chunk_store_config();
         assert_eq!(cfg.chunk_max_bytes, 2 * 1024 * 1024);
         assert_eq!(cfg.chunk_max_rows, 65_536);
         assert_eq!(cfg.chunk_max_rows_if_unsorted, 8_192);

@@ -15,6 +15,16 @@ pub struct GraphViewState {
     pub visual_bounds: Option<VisualBounds2D>,
 }
 
+impl re_byte_size::SizeBytes for GraphViewState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            layout_state,
+            visual_bounds,
+        } = self;
+        layout_state.heap_size_bytes() + visual_bounds.heap_size_bytes()
+    }
+}
+
 impl GraphViewState {
     pub fn layout_ui(&self, ui: &mut egui::Ui) {
         let Some(rect) = self.layout_state.bounding_rect() else {
@@ -65,6 +75,24 @@ pub enum LayoutState {
         provider: ForceLayoutProvider,
         params: ForceLayoutParams,
     },
+}
+
+impl re_byte_size::SizeBytes for LayoutState {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::None => 0,
+            Self::InProgress {
+                layout,
+                provider,
+                params,
+            }
+            | Self::Finished {
+                layout,
+                provider,
+                params,
+            } => layout.heap_size_bytes() + provider.heap_size_bytes() + params.heap_size_bytes(),
+        }
+    }
 }
 
 impl LayoutState {

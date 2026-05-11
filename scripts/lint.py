@@ -1772,6 +1772,8 @@ def main() -> None:
         return f"{rerun_prefix}{path}"
 
     exclude_paths = (
+        "./dataplatform/crates/redap_protos/Cargo.toml",  # intentional [lints.clippy] override (see file header)
+        "./dataplatform/crates/redap_protos/src/v1alpha1",  # auto-generated
         rerun(".github/workflows/reusable_checks.yml"),  # zombie TODO hunting job
         rerun(".nox"),
         rerun(".pytest_cache"),
@@ -1831,11 +1833,15 @@ def main() -> None:
             filepath = "./" + filepath
             filepath = filepath.replace("\\", "/")
 
-            # Only lint files inside the rerun directory.
-            # In the standalone rerun repo rerun_prefix is "./" so everything matches.
-            # In the monorepo (reality) rerun_prefix is "./rerun/" which keeps us
-            # from accidentally linting dataplatform/ or other top-level directories.
-            if not filepath.startswith(rerun_prefix):
+            # Only lint files inside the rerun or dataplatform directories.
+            # In the standalone rerun repo `rerun_prefix` is "./" so everything matches.
+            # In the monorepo (reality) we explicitly include both top-level Rust
+            # workspaces (`./rerun/` and `./dataplatform/`) so they share the same
+            # custom lints, and skip everything else (`node_modules/`, `landing/`, …).
+            allowed_prefixes: tuple[str, ...] = (rerun_prefix,)
+            if rerun_prefix != "./":
+                allowed_prefixes = allowed_prefixes + ("./dataplatform/",)
+            if not filepath.startswith(allowed_prefixes):
                 continue
 
             extension = filepath.split(".")[-1]

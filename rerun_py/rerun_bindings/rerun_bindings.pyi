@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
@@ -258,11 +258,11 @@ def _optimization_profile_values(name: str) -> dict[str, object]:
     Test-only: return a dict of the Rust `OptimizationProfile::<NAME>` field values.
 
     Used by the Python parity test to confirm that
-    `OptimizationProfile.{LIVE,DATAPLATFORM}` on the Python side stays in sync
+    `OptimizationProfile.{LIVE,OBJECT_STORE}` on the Python side stays in sync
     with the Rust constants this module forwards into `ChunkStoreConfig` /
     `CompactionOptions` above.
 
-    Names: `"LIVE"`, `"DATAPLATFORM"`.
+    Names: `"LIVE"`, `"OBJECT_STORE"`.
     """
 
 # AI generated stubs for `PyRecordingStream` related class and functions
@@ -873,11 +873,16 @@ def send_arrow_chunk(
         A dictionary mapping component types to their values.
     """
 
-def send_chunk(
-    chunk: ChunkInternal,
+def send_chunks(
+    chunks: ChunkInternal | Iterable[ChunkInternal],
     recording: PyRecordingStream | None = None,
 ) -> None:
-    """Send a pre-built chunk to the recording stream."""
+    """
+    Send chunks to the recording stream.
+
+    Accepts a single chunk or any iterable of chunks. Blocks until every chunk
+    has been pushed to the recording's batcher.
+    """
 
 def log_file_from_path(
     file_path: str | os.PathLike[str],
@@ -1198,6 +1203,13 @@ class _UrdfTreeInternal:
     def get_visual_geometry_paths(self, link: str | _UrdfLinkInternal) -> list[str]: ...
     def log(self, recording: PyRecordingStream | None = None) -> None: ...
     def stream(self, *, include_joint_transforms: bool = True) -> LazyChunkStreamInternal: ...
+    def compute_joint_transform_batches(
+        self,
+        names: pa.Array,
+        values: pa.Array,
+        *,
+        clamp: bool = False,
+    ) -> pa.Array: ...
 
 class _UrdfJointInternal:
     """Internal Rust representation of a URDF joint."""
@@ -1706,6 +1718,14 @@ class LazyChunkStreamInternal:
     def __iter__(self) -> LazyChunkStreamIterator: ...
     @staticmethod
     def from_iter(iterable: Any) -> LazyChunkStreamInternal: ...
+    def send_to_recording(self, recording: PyRecordingStream | None = None) -> None:
+        """
+        Drain this stream into a recording stream.
+
+        If `recording` is `None`, the active recording is used. Blocks until every
+        chunk has been pushed to the recording's batcher. A silent no-op when
+        there is no active recording.
+        """
 
 class LazyChunkStreamIterator:
     """Iterator over chunks from a compiled stream."""

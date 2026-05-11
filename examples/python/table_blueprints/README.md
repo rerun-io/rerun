@@ -6,10 +6,14 @@ include_in_manifest = false
 
 ## Table blueprints
 
-Creates tables with embedded blueprint metadata. Each row links to a recording segment URI; the viewer can load those recordings on demand and render row previews with the embedded blueprint views.
+Creates tables with embedded blueprint metadata. Each row links to a recording segment URI;
+the viewer can load those recordings on demand and render row previews with the embedded blueprint views.
+
+The example also adds a boolean `marker_flag` column and names it in the embedded table blueprint. That column is the per-row flag state: the Viewer renders it as a clickable flag on each grid card, updates the visible table immediately when toggled, and upserts the changed boolean value back to the server using the `rerun:is_table_index` column as the row key. The column is still regular table data, so its saved values are what you get back when you query the table later.
 
 <!-- TODO(#12746): this is still experimental -->
-Table blueprints are experimental. Enable `Settings > Experimental > Table blueprints` in the viewer.
+Table cards and blueprints are experimental. Enable
+`Settings > Experimental > Table cards and blueprints` in the viewer.
 
 ## Dataset-specific setup
 

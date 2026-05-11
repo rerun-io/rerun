@@ -65,6 +65,25 @@ pub struct SpatialViewState {
     pub visual_bounds_2d: Option<VisualBounds2D>,
 }
 
+impl re_byte_size::SizeBytes for SpatialViewState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            bounding_boxes,
+            image_counts_last_frame: _,
+            previous_picking_result,
+            state_3d,
+            pinhole_at_origin,
+            visual_bounds_2d,
+        } = self;
+
+        bounding_boxes.heap_size_bytes()
+            + previous_picking_result.heap_size_bytes()
+            + state_3d.heap_size_bytes()
+            + pinhole_at_origin.heap_size_bytes()
+            + visual_bounds_2d.heap_size_bytes()
+    }
+}
+
 impl ViewState for SpatialViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self

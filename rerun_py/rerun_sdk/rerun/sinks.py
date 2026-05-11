@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, TypeAlias
 
+from typing_extensions import deprecated
+
 import rerun_bindings as bindings
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
 from rerun.recording_stream import BinaryStream, RecordingStream, get_application_id
@@ -16,7 +18,7 @@ from ._spawn import _spawn_viewer
 if TYPE_CHECKING:
     import pathlib
 
-    from rerun.recording import Recording
+    from rerun.recording import Recording  # ty:ignore[deprecated]
     from rerun.recording_stream import RecordingStream
 
 
@@ -461,7 +463,10 @@ def send_blueprint(
     )
 
 
-def send_recording(rrd: Recording, recording: RecordingStream | None = None) -> None:
+@deprecated(
+    "send_recording is deprecated since 0.32. Use rerun.experimental.send_chunks(reader.store()) instead.",
+)
+def send_recording(rrd: Recording, recording: RecordingStream | None = None) -> None:  # ty:ignore[deprecated]
     """
     Send a `Recording` loaded from a `.rrd` to the `RecordingStream`.
 
@@ -483,7 +488,7 @@ def send_recording(rrd: Recording, recording: RecordingStream | None = None) -> 
     if application_id is None:
         raise ValueError("No application id found. You must call rerun.init before sending a recording.")
 
-    bindings.send_recording(
+    bindings.send_recording(  # ty: ignore[deprecated]
         rrd._internal,
         recording=recording.to_native() if recording is not None else None,
     )

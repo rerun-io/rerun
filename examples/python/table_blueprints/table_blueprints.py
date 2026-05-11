@@ -3,10 +3,16 @@ Demo for table blueprints & segment previews.
 
 Table blueprints allow configuring table layouts and use segment previews.
 
-**TODO(#12745, #12746): This feature is experimental.** Enable it in the viewer under Settings > Experimental > Grid view as well as Table blueprints.
+**TODO(#12745, #12746): This feature is experimental.** Enable it in the
+viewer under Settings > Experimental > Table cards and blueprints.
 
 Each row can reference a recording via a URI column. The viewer loads those recordings
 on demand and renders them through the embedded blueprint's view definition.
+
+The demo also includes a boolean `marker_flag` column and points the embedded table
+blueprint at it. The Viewer uses that column as the per-row flag state: toggling a
+card's flag updates the visible table immediately and upserts the new boolean value
+back to the server using the `rerun:is_table_index` column as the row key.
 
 Usage:
     table_blueprints

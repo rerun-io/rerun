@@ -791,7 +791,7 @@ fn create_app(
     crate::customize_eframe_and_setup_renderer(cc)?;
 
     if let Some(theme) = theme {
-        match theme.as_str() {
+        match theme.to_ascii_lowercase().as_str() {
             "dark" => cc
                 .egui_ctx
                 .options_mut(|o| o.theme_preference = egui::ThemePreference::Dark),
@@ -802,7 +802,9 @@ fn create_app(
                 .egui_ctx
                 .options_mut(|o| o.theme_preference = egui::ThemePreference::System),
             _ => {
-                // Don't touch egui's settings, might be loaded from previous user interaction.
+                re_log::warn!(
+                    "Ignoring unknown `theme` value {theme:?}; expected `dark`, `light`, or `system`."
+                );
             }
         }
     }

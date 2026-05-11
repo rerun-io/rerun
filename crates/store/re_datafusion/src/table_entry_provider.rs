@@ -99,7 +99,7 @@ impl TableEntryTableProvider {
     ///
     /// Without this call no `cloud_scan_table` span will be emitted.
     pub fn with_analytics(mut self, origin: Origin) -> Self {
-        let analytics = ConnectionAnalytics::new(origin);
+        let analytics = ConnectionAnalytics::new(origin, &self.client);
 
         // Lazy-fetch the server version so subsequent spans can be filtered by
         // cloud build. Same pattern as `DataframeQueryTableProvider::new`.

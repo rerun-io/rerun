@@ -9,7 +9,7 @@
 //! (`re_datafusion::dataframe_query_provider::flush`) calls `next_row` once
 //! per index value and builds a fresh 1-row Arrow `RecordBatch` for each.
 //! `next_n_rows` is the throughput-oriented sibling that fills per-column
-//! `MutableArrayData` buffers and finalises once per call.
+//! `MutableArrayData` buffers and finalizes once per call.
 //!
 //! Two schemas are benched:
 //! * **list-of-list-f64** — mirrors `rerun-synthetic-long-10k`
@@ -263,7 +263,7 @@ fn bench_next_row_batch_list(c: &mut Criterion) {
 }
 
 /// Mimics `send_next_row_batch`: accumulate N `next_row()` results, then concat per column.
-/// Single-shot finalisation comparable to a single `next_n_rows(N)` call.
+/// Single-shot finalization comparable to a single `next_n_rows(N)` call.
 fn bench_per_row_plus_concat_list(c: &mut Criterion) {
     let mut group = c.benchmark_group("per_row_plus_concat_list");
     for &n in ROW_COUNTS {

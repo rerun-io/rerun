@@ -13,7 +13,7 @@ use nohash_hasher::IntMap;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, StoreBundle};
-use re_log_types::{StoreId, StoreKind, TimeReal};
+use re_log_types::{StoreId, StoreKind};
 
 use crate::RERUN_TABLE_BLUEPRINT;
 use re_viewer_context::{
@@ -151,6 +151,14 @@ impl<'a> RecordingPreviewRenderer<'a> {
                 ui.request_repaint();
                 return;
             };
+
+            // Register this recording so the shared preview `TimeControl` knows about it
+            // and can advance its loop bounds based on the longest registered clip.
+            view_states.preview.register_recording(rec.store_id());
+
+            // Request redraw whenever a new preview is registered to start advancing time for it.
+            ui.request_repaint();
+
             (rec, caches)
         } else {
             // We don't have a recording yet
@@ -178,27 +186,11 @@ impl<'a> RecordingPreviewRenderer<'a> {
             caches.visualizable_entities_for_visualizer_systems();
         let indicated_entities_per_visualizer = caches.indicated_entities_per_visualizer();
 
-        // Build a TimeControl from the embedded blueprint (reads TimePanelBlueprint
-        // for timeline, playback speed, etc.) and validate it against the recording.
-        let blueprint_ctx = re_viewer_context::AppBlueprintCtx {
-            current_blueprint: self.blueprint,
-            default_blueprint: None,
-            blueprint_query: self.blueprint_query.clone(),
-            command_sender: app_ctx.command_sender,
-        };
-        let mut time_ctrl = TimeControl::from_blueprint(&blueprint_ctx);
-        time_ctrl.update_from_blueprint(&blueprint_ctx, Some(recording));
-
-        // TODO(RR-4257): Don't hack mid-point, and actually store some time control.
-        // Seed the time cursor at the midpoint of every timeline so the preview
-        // shows a representative frame regardless of which timeline gets selected.
-        for (name, _timeline) in recording.timelines() {
-            if let Some(range) = recording.time_range_for(&name) {
-                let mid = TimeReal::from(range.min)
-                    + (TimeReal::from(range.max) - TimeReal::from(range.min)) * 0.5;
-                time_ctrl.set_time_cursor_ad_hoc(name, mid);
-            }
-        }
+        // Derive this recording's `TimeControl` from the shared preview clock. The
+        // shared clock is advanced each frame by `update_preview_time_controls`,
+        // and the derived clone maps the shared offset onto this recording's own
+        // data range so each clip tracks together.
+        let time_ctrl = view_states.preview.derive_recording_time_ctrl(recording);
         let active_timeline = time_ctrl.timeline();
         let store_id = recording.store_id();
 

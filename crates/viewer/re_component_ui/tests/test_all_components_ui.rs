@@ -414,7 +414,7 @@ fn check_and_print_results(test_cases: &[TestCase], results: &[Result<(), Snapsh
 }
 
 /// Create a [`TestContext`] with a fully populated component ui registry.
-// TODO(ab): It would be nice to generalise this utility. However, TestContext current lives in
+// TODO(ab): It would be nice to generalize this utility. However, TestContext current lives in
 // re_viewer_context, which cannot depend on re_component_ui.
 fn get_test_context() -> TestContext {
     let mut test_context = TestContext::new();

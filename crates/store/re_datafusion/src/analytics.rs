@@ -38,12 +38,6 @@ use re_uri::Origin;
 use tokio::sync::OnceCell;
 use web_time::{Duration, SystemTime};
 
-#[cfg(not(target_arch = "wasm32"))]
-type Channel = tonic::transport::Channel;
-
-#[cfg(target_arch = "wasm32")]
-type Channel = tonic_web_wasm_client::Client;
-
 const EXPORT_PATH: &str = "/opentelemetry.proto.collector.trace.v1.TraceService/Export";
 
 /// A per-connection analytics client that sends OTLP traces to a specific
@@ -69,7 +63,13 @@ impl std::fmt::Debug for ConnectionAnalytics {
 
 struct Inner {
     origin: Origin,
-    client: tokio::sync::Mutex<Option<tonic::client::Grpc<Channel>>>,
+
+    /// gRPC client sharing the layered tower service of the sibling
+    /// [`re_redap_client::ConnectionClient`] (i.e. same HTTP/2 transport, same auth /
+    /// version / propagate-headers stack).
+    ///
+    /// Cloned per send so concurrent OTLP exports don't serialize on a single client.
+    grpc: tonic::client::Grpc<re_redap_client::RedapClientInner>,
 
     /// Lazily populated once per connection via [`ConnectionAnalytics::set_server_version`].
     /// `None` if the version RPC failed or has not completed yet.
@@ -79,12 +79,14 @@ struct Inner {
 impl ConnectionAnalytics {
     /// Create a new analytics sender for the given origin.
     ///
-    /// The actual gRPC connection is established lazily on first use.
-    pub fn new(origin: Origin) -> Self {
+    /// The analytics OTLP channel reuses the layered tower service of the supplied
+    /// [`re_redap_client::ConnectionClient`], so exports go through the same
+    /// authenticated and version-tagged HTTP/2 connection as regular RPCs.
+    pub fn new(origin: Origin, client: &re_redap_client::ConnectionClient) -> Self {
         Self {
             inner: Arc::new(Inner {
                 origin,
-                client: tokio::sync::Mutex::new(None),
+                grpc: tonic::client::Grpc::new(client.service()),
                 server_version: OnceCell::new(),
             }),
         }
@@ -199,20 +201,9 @@ impl ConnectionAnalytics {
         span: Span,
         trace_id: Option<opentelemetry::TraceId>,
     ) -> tonic::Result<()> {
-        let mut guard = self.inner.client.lock().await;
-
-        let grpc = if let Some(grpc) = guard.as_mut() {
-            grpc
-        } else {
-            match re_redap_client::channel(self.inner.origin.clone()).await {
-                Ok(channel) => guard.get_or_insert(tonic::client::Grpc::new(channel)),
-                Err(err) => {
-                    return Err(tonic::Status::unavailable(format!(
-                        "failed to connect for analytics: {err}"
-                    )));
-                }
-            }
-        };
+        // Clone per send: avoids serializing
+        // concurrent sends behind a single client's `&mut self` borrow.
+        let mut grpc = self.inner.grpc.clone();
 
         let mut resource_attributes = vec![kv_string("service.name", "rerun-viewer")];
         if let Some(analytics) = re_analytics::Analytics::global_get() {
@@ -1608,12 +1599,13 @@ mod table_query_tests {
 
     fn make_pending() -> PendingTableQueryAnalytics {
         let origin: Origin = "rerun+http://localhost:51234".parse().unwrap();
-        let analytics = ConnectionAnalytics::new(origin);
+        let client = re_redap_client::ConnectionClient::new_disconnected();
+        let analytics = ConnectionAnalytics::new(origin, &client);
         analytics.begin_table_query(dummy_table_query_info(), web_time::Instant::now())
     }
 
-    #[test]
-    fn record_first_response_is_once_only() {
+    #[tokio::test]
+    async fn record_first_response_is_once_only() {
         let pending = make_pending();
         pending.record_first_response();
         let first = pending.inner.time_to_first_response.get().copied().unwrap();
@@ -1623,8 +1615,8 @@ mod table_query_tests {
         assert_eq!(first, second, "second call must not overwrite");
     }
 
-    #[test]
-    fn record_first_batch_is_once_only() {
+    #[tokio::test]
+    async fn record_first_batch_is_once_only() {
         let pending = make_pending();
         pending.record_first_batch();
         let first = pending.inner.time_to_first_batch.get().copied().unwrap();
@@ -1634,8 +1626,8 @@ mod table_query_tests {
         assert_eq!(first, second);
     }
 
-    #[test]
-    fn record_error_is_once_only() {
+    #[tokio::test]
+    async fn record_error_is_once_only() {
         let pending = make_pending();
         pending.record_error(QueryErrorKind::GrpcFetch);
         pending.record_error(QueryErrorKind::Decode);
@@ -1645,8 +1637,8 @@ mod table_query_tests {
         );
     }
 
-    #[test]
-    fn record_trace_id_is_once_only() {
+    #[tokio::test]
+    async fn record_trace_id_is_once_only() {
         let pending = make_pending();
         let first = opentelemetry::TraceId::from_bytes([1u8; 16]);
         let second = opentelemetry::TraceId::from_bytes([2u8; 16]);
@@ -1655,8 +1647,8 @@ mod table_query_tests {
         assert_eq!(pending.inner.trace_id.get().copied(), Some(first));
     }
 
-    #[test]
-    fn record_batch_accumulates_across_calls() {
+    #[tokio::test]
+    async fn record_batch_accumulates_across_calls() {
         let pending = make_pending();
         pending.record_batch(100, 1_000);
         pending.record_batch(50, 500);

@@ -877,10 +877,11 @@ fn warn_if_problematic_file_sink_config(config: &ChunkBatcherConfig, sink: &dyn 
         return;
     }
 
-    // Snippet-roundtrip tests intentionally pair this config with a forced file sink in order to
-    // exercise the per-row serialization path. The warning is correct in principle but noisy
-    // (and fatal under `RERUN_PANIC_ON_WARN`) for that controlled setup, so suppress it.
-    if forced_sink_path().is_some() {
+    // Snippet-roundtrip tests intentionally pair this config with a file sink to exercise the
+    // per-row serialization path. The warning is correct in principle but noisy (and fatal under
+    // `RERUN_PANIC_ON_WARN`) for that controlled setup, so suppress it when the test harness
+    // signals strict-test mode.
+    if re_log::env_var_is_truthy("RERUN_STRICT") {
         return;
     }
 

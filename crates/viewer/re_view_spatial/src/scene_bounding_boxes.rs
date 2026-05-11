@@ -29,6 +29,20 @@ pub struct SceneBoundingBoxes {
     pub region_of_interest_per_entity: IntMap<EntityPathHash, macaw::BoundingBox>,
 }
 
+impl re_byte_size::SizeBytes for SceneBoundingBoxes {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            current: _,
+            per_entity,
+            region_of_interest_current: _,
+            region_of_interest_smoothed: _,
+            region_of_interest_per_entity,
+        } = self;
+
+        per_entity.heap_size_bytes() + region_of_interest_per_entity.heap_size_bytes()
+    }
+}
+
 impl Default for SceneBoundingBoxes {
     fn default() -> Self {
         Self {

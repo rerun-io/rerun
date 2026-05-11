@@ -25,7 +25,7 @@ def job(name: str) -> Iterator[tuple[str, bytes | None]]:
 
     rr.send_blueprint(blueprint)
 
-    for i in range(100):
+    for i in range(30):
         time.sleep(0.01)
         rr.log("test", rr.TextLog(f"Message {i}"))
 

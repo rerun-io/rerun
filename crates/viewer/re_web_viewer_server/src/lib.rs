@@ -27,7 +27,12 @@ mod data {
 
     #[inline]
     pub fn favicon() -> &'static [u8] {
-        include_bytes!("../web_viewer/favicon.svg")
+        include_bytes!("../web_viewer/favicon.ico")
+    }
+
+    #[inline]
+    pub fn apple_touch_icon() -> &'static [u8] {
+        include_bytes!("../web_viewer/apple-touch-icon.png")
     }
 
     #[inline]
@@ -272,8 +277,8 @@ impl WebViewerServerInner {
 
         let (mime, bytes): (&str, &[u8]) = match path {
             "/" | "/index.html" => ("text/html", data::index_html()),
-            "/favicon.svg" => ("image/svg+xml", data::favicon()),
             "/favicon.ico" => ("image/x-icon", data::favicon()),
+            "/apple-touch-icon.png" => ("image/png", data::apple_touch_icon()),
             "/sw.js" => ("text/javascript", data::sw_js()),
             "/re_viewer.js" => ("text/javascript", data::viewer_js()),
             "/re_viewer_bg.wasm" => {

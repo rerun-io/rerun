@@ -143,6 +143,17 @@ impl ColumnDescriptor {
     }
 }
 
+impl re_byte_size::SizeBytes for ColumnDescriptor {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::RowId(_descr) => 0,
+            Self::Time(descr) => descr.heap_size_bytes(),
+            Self::Component(descr) => descr.heap_size_bytes(),
+        }
+    }
+}
+
 impl ColumnDescriptor {
     /// `chunk_entity_path`: if this column is part of a chunk batch,
     /// what is its entity path (so we can set [`ComponentColumnDescriptor::entity_path`])?

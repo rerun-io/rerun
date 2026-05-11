@@ -13,6 +13,14 @@ pub struct Layout {
     pub(super) entities: Vec<(EntityPath, Rect)>,
 }
 
+impl re_byte_size::SizeBytes for Layout {
+    fn heap_size_bytes(&self) -> u64 {
+        self.nodes.heap_size_bytes()
+            + self.edges.heap_size_bytes()
+            + self.entities.heap_size_bytes()
+    }
+}
+
 fn bounding_rect_from_iter(rectangles: impl Iterator<Item = egui::Rect>) -> egui::Rect {
     rectangles.fold(egui::Rect::NOTHING, |acc, rect| acc.union(rect))
 }

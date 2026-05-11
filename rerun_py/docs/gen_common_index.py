@@ -506,7 +506,7 @@ SECTION_TABLE: Final[list[Section]] = [
         mod_path=["rerun.experimental"],
         show_submodules=True,
         func_list=[
-            "send_chunk",
+            "send_chunks",
         ],
         class_list=[
             "Chunk",

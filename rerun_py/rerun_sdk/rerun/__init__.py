@@ -212,7 +212,7 @@ from .sinks import (
     disconnect as disconnect,
     save as save,
     send_blueprint as send_blueprint,
-    send_recording as send_recording,
+    send_recording as send_recording,  # ty:ignore[deprecated]
     serve_grpc as serve_grpc,
     set_sinks as set_sinks,
     spawn as spawn,

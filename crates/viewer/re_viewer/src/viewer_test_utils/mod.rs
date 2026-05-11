@@ -62,8 +62,10 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
         app.app_options_mut().video.ffmpeg_path = "/fake/ffmpeg/path".to_owned();
         app.app_options_mut().video.override_ffmpeg_path = true;
 
-        // Enable experimental grid view in tests.
-        app.app_options_mut().experimental.table_grid_view = true;
+        // Enable table cards and blueprints in tests.
+        app.app_options_mut()
+            .experimental
+            .table_cards_and_blueprints = true;
 
         // Always show the full date so timestamps render as `YYYY-MM-DD HH:MM:SS`
         // regardless of when the test runs. The default `HideDateToday` would

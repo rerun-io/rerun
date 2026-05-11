@@ -57,22 +57,23 @@ def split_into_episode_rrds(combined_rrd: Path, rrd_dir: Path) -> list[Path]:
     """
     rrd_dir.mkdir(parents=True, exist_ok=True)
 
-    archive = rr.recording.load_archive(str(combined_rrd))
-    recordings = archive.all_recordings()
+    reader = rr.experimental.RrdReader(str(combined_rrd))
+    recordings = reader.recordings()
     print(f"Archive contains {len(recordings)} recordings")
 
     episode_paths: list[Path] = []
-    for recording in recordings:
+    for entry in recordings:
+        store = reader.store(store=entry)
         # Skip metadata-only recordings (e.g. the "root" recording that only carries properties).
-        if not recording.schema().entity_paths():
+        if not store.schema().entity_paths():
             continue
 
-        episode_id = _zero_pad_episode_id(recording.recording_id())
+        episode_id = _zero_pad_episode_id(entry.recording_id)
         rrd_path = rrd_dir / f"{episode_id}.rrd"
 
         rec = rr.RecordingStream(APPLICATION_ID, recording_id=episode_id, send_properties=False)
         rec.save(str(rrd_path))
-        rr.send_recording(recording, recording=rec)
+        rec.send_chunks(store)
         rec.flush()
         # Disconnect to ensure footers are written.
         rec.disconnect()

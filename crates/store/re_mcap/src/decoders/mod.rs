@@ -11,10 +11,6 @@ mod stats;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[cfg(not(target_arch = "wasm32"))]
-use rayon::iter::{
-    IndexedParallelIterator as _, IntoParallelRefIterator as _, ParallelIterator as _,
-};
-#[cfg(not(target_arch = "wasm32"))]
 use re_chunk::RowId;
 use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::{Chunk, EntityPath};
@@ -404,14 +400,6 @@ impl MessageDecoderRunner {
             for mut chunk in decoder.finish() {
                 if let Ok(chunk) = &mut chunk {
                     chunk.sort_if_unsorted();
-                    for (name, column) in chunk.timelines() {
-                        if !column.is_sorted() {
-                            let entity_path = chunk.entity_path();
-                            re_log::warn_once!(
-                                "Found unsorted timeline '{name}' for entity '{entity_path}'. This may lead to suboptimal performance.",
-                            );
-                        }
-                    }
                 }
 
                 match chunk {
@@ -423,32 +411,76 @@ impl MessageDecoderRunner {
             Ok(batch)
         };
 
+        #[cfg(target_arch = "wasm32")]
+        let workers = 1;
+        #[cfg(not(target_arch = "wasm32"))]
+        let workers = rayon::current_num_threads().max(1);
+
+        if workers <= 2 {
+            // Serial path. Used on wasm32 and on small worker counts.
+            for chunk in &summary.chunk_indexes {
+                for c in decode_chunk(chunk)? {
+                    emit(c);
+                }
+            }
+            return Ok(());
+        }
+
         #[cfg(not(target_arch = "wasm32"))]
         {
-            const REORDER_CAPACITY_BYTES: u64 = 256 * 1024 * 1024;
-            let (batch_tx, batch_rx) = re_quota_channel::channel::<(usize, Vec<Chunk>)>(
-                "mcap-decoder-reorder",
-                REORDER_CAPACITY_BYTES,
-            );
+            // Count-bounded channel: cap how many decoded batches can sit in the queue ahead of
+            // the consumer. Workers block on `send` once the queue is full, which gives the
+            // reordering time to process.
+            let max_in_flight = workers * 2;
+
+            let (batch_tx, batch_rx) =
+                crossbeam::channel::bounded::<(usize, Vec<Chunk>)>(max_in_flight);
 
             // Decode chunks in parallel on a producer thread, and re-order them
-            // to be deterministic on this thread.
+            // to be deterministic on another thread.
+            //
+            // Workers pull chunk indices in FIFO order from a shared atomic counter.
             let (producer_result, ()) = rayon::join(
                 || {
-                    let result = summary
-                        .chunk_indexes
-                        .par_iter()
-                        .enumerate()
-                        .try_for_each_init(
-                            || batch_tx.clone(),
-                            |batch_tx, (batch_idx, chunk)| -> Result<(), Error> {
-                                let batch = decode_chunk(chunk)?;
-                                batch_tx.send((batch_idx, batch)).map_err(|err| {
-                                    Error::Other(anyhow::format_err!("Failed to send batch: {err}"))
-                                })?;
-                                Ok(())
-                            },
-                        );
+                    let next_idx = std::sync::atomic::AtomicUsize::new(0);
+                    let total = summary.chunk_indexes.len();
+                    let chunk_indexes = &summary.chunk_indexes;
+
+                    let result: Result<(), Error> = std::thread::scope(|scope| {
+                        let handles: Vec<_> = (0..workers)
+                            .map(|_| {
+                                let batch_tx = batch_tx.clone();
+                                let next_idx = &next_idx;
+                                let decode_chunk = &decode_chunk;
+                                scope.spawn(move || -> Result<(), Error> {
+                                    loop {
+                                        let idx = next_idx
+                                            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                        if idx >= total {
+                                            return Ok(());
+                                        }
+                                        let batch = decode_chunk(&chunk_indexes[idx])?;
+                                        // Blocks once `max_in_flight` batches are queued.
+                                        re_quota_channel::send_crossbeam(&batch_tx, (idx, batch))
+                                            .map_err(|err| {
+                                            Error::Other(anyhow::format_err!(
+                                                "Failed to send batch: {err}"
+                                            ))
+                                        })?;
+                                    }
+                                })
+                            })
+                            .collect();
+
+                        let mut first_err: Result<(), Error> = Ok(());
+                        for handle in handles {
+                            match handle.join().expect("decoder worker panicked") {
+                                Err(err) if first_err.is_ok() => first_err = Err(err),
+                                Ok(()) | Err(_) => {}
+                            }
+                        }
+                        first_err
+                    });
                     // Close the channel so the consumer's iteration terminates.
                     drop(batch_tx);
                     result
@@ -464,7 +496,7 @@ impl MessageDecoderRunner {
 
                     let mut buffer: BTreeMap<usize, Vec<Chunk>> = BTreeMap::new();
                     let mut current_idx = 0usize;
-                    for (idx, batch) in batch_rx.iter() {
+                    for (idx, batch) in &batch_rx {
                         if idx == current_idx {
                             for chunk in batch {
                                 emit_with_new_row_ids(chunk);
@@ -486,15 +518,6 @@ impl MessageDecoderRunner {
             );
 
             producer_result?;
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            for chunk in &summary.chunk_indexes {
-                for c in decode_chunk(chunk)? {
-                    emit(c);
-                }
-            }
         }
 
         Ok(())

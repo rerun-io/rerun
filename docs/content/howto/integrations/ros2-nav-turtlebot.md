@@ -21,11 +21,11 @@ All of the code for this guide can be found on GitHub in
 [rerun/examples/python/ros_node](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/).
 
 <picture>
-  <img src="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/full.png" alt="Rerun viewer showing data streamed from the example ROS node">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/1200w.png">
+  <img src="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/full.png" alt="Rerun viewer showing data streamed from the example ROS node">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/1200w.png">
 </picture>
 
 ---
@@ -173,6 +173,15 @@ def scan_callback(self, scan: LaserScan) -> None:
     rr.log("scan", rr.LineStrips3D(segs, radii=0.0025, colors=[255, 165, 0]))
     rr.log("scan", rr.CoordinateFrame(frame=scan.header.frame_id))
 ```
+
+### OccupancyGrid to rr.GridMap
+
+ROS [`nav_msgs/OccupancyGrid`](https://docs.ros2.org/latest/api/nav_msgs/msg/OccupancyGrid.html) messages map directly to Rerun's [`GridMap`](../../reference/types/archetypes/grid_map.md) archetype.
+This example subscribes to the static map and the local & global costmap topics, logging them with Rerun's RViz-compatible `RvizMap` and `RvizCostmap` colormaps and with draw-order values for defined layering.
+
+Most fields are a 1:1 mapping: the occupancy data becomes the `GridMap` image data, `info.resolution` becomes the cell size, and `info.origin` defines the map pose.
+The main caveat is row order: ROS occupancy grids start at the map's bottom-left cell, while regular image buffers as used by Rerun's `GridMap` are top-row first.
+The example therefore flips the rows before logging the grid data.
 
 ### Camera info and images
 

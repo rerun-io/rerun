@@ -72,9 +72,9 @@ pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
 };
 pub use self::cache::{
-    Cache, ImageDecodeCache, ImageStatsCache, Memoizers, SharablePlayableVideoStream, StoreCache,
-    TensorStatsCache, TransformDatabaseStoreCache, VideoAssetCache, VideoStreamCache,
-    VideoStreamProcessingError,
+    Cache, CacheEntryAccess, ImageDecodeCache, ImageStatsCache, Memoizers,
+    SharablePlayableVideoStream, StoreCache, TensorStatsAccessor, TensorStatsCache,
+    TransformDatabaseStoreCache, VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use self::command_sender::{
@@ -117,8 +117,9 @@ pub use self::store_view_context::StoreViewContext;
 pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};
 pub use self::time_control::{
-    MoveDirection, MoveSpeed, TIME_PANEL_PATH, TimeControl, TimeControlCommand,
-    TimeControlResponse, TimeControlUpdateParams, TimeView, time_panel_blueprint_entity_path,
+    MoveDirection, MoveSpeed, PreviewRecordingsDb, TIME_PANEL_PATH, TimeControl,
+    TimeControlCommand, TimeControlDb, TimeControlResponse, TimeControlUpdateParams, TimeView,
+    time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
     BufferAndFormatMatch, DatatypeMatch, IndicatedEntities, PerVisualizerInstruction,
@@ -132,7 +133,7 @@ pub use self::utils::{
 };
 pub use self::view::{
     BufferAndFormatConstraint, DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight,
-    PerSystemEntities, RecommendedMappings, RecommendedView, RecommendedVisualizers,
+    PerSystemEntities, PreviewState, RecommendedMappings, RecommendedView, RecommendedVisualizers,
     SingleRequiredComponentConstraint, SystemExecutionOutput, ViewClass, ViewClassExt,
     ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError,
     ViewContext, ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
@@ -154,6 +155,7 @@ pub mod external {
 }
 
 // Re-export
+pub use re_byte_size::SizeBytes;
 pub use re_chunk_store::MissingChunkReporter;
 
 // ---------------------------------------------------------------------------

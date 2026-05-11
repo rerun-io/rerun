@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, StoreId};
 
-use crate::{Cache, StoreCache, ViewClassRegistry};
+use crate::{Cache, CacheEntryAccess, StoreCache, ViewClassRegistry};
 
 /// The current Blueprint and Recording being displayed by the viewer
 pub struct ActiveStoreContext<'a> {
@@ -43,6 +43,28 @@ impl ActiveStoreContext<'_> {
     /// Shorthand for `self.caches.memoizer(f)`.
     pub fn memoizer<C: Cache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
         self.caches.memoizer(f)
+    }
+
+    /// Accesses an existing memoization cache for reading.
+    ///
+    /// Shorthand for `self.caches.memoizer_read(f)`.
+    pub fn memoizer_read<C: Cache, R>(&self, f: impl FnOnce(&C) -> R) -> Option<R> {
+        self.caches.memoizer_read(f)
+    }
+
+    /// Tries to read an existing memoization cache entry, then computes it through mutable access on miss.
+    ///
+    /// Use this if you're working with init-only cache entries, expect your cache entry to be usually present
+    /// and want to avoid the overhead of a write lock.
+    /// Note that this _adds_ overhead for the miss path compared to `memoizer`, so don't use this if you expect many misses!
+    /// (UI code typically doesn't need to care about this optimization, since it's usually single-threaded already.)
+    ///
+    /// Shorthand for `self.caches.memoizer_read_or_compute(key)`.
+    pub fn memoizer_read_or_compute<C, Key, Value>(&self, key: &Key) -> Value
+    where
+        C: CacheEntryAccess<Key, Value> + Default,
+    {
+        self.caches.memoizer_read_or_compute::<C, Key, Value>(key)
     }
 }
 

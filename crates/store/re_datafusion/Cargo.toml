@@ -71,7 +71,6 @@ reqwest.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 futures.workspace = true
-tonic-web-wasm-client.workspace = true
 wasm-bindgen-futures.workspace = true
 
 # These are used by Datafusion but the required features are not set for wasm build.
@@ -80,4 +79,5 @@ getrandom = { workspace = true, features = ["wasm_js"] }
 
 
 [dev-dependencies]
+re_redap_client = { workspace = true, features = ["test_utils"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }

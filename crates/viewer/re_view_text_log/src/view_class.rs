@@ -32,6 +32,17 @@ pub struct TextViewState {
     last_columns_min_sizes: Vec<u32>,
 }
 
+impl re_byte_size::SizeBytes for TextViewState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            latest_time: _,
+            seen_levels,
+            last_columns_min_sizes,
+        } = self;
+        seen_levels.heap_size_bytes() + last_columns_min_sizes.heap_size_bytes()
+    }
+}
+
 impl ViewState for TextViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self

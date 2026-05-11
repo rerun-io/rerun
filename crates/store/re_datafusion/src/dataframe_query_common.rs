@@ -180,7 +180,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         )
         .await?;
 
-        let analytics = crate::ConnectionAnalytics::new(origin);
+        let analytics = crate::ConnectionAnalytics::new(origin, &provider.client);
 
         // Kick off a background fetch of the server version so subsequent analytics
         // spans can be filtered by cloud build. Lazy-cached on `analytics`; the

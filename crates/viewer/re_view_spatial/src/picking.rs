@@ -49,6 +49,36 @@ pub struct PickingResult {
     pub hits: Vec<PickingRayHit>,
 }
 
+impl re_byte_size::SizeBytes for PickingHitType {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
+impl re_byte_size::SizeBytes for PickingRayHit {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
+impl re_byte_size::SizeBytes for PickingResult {
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(&self.hits)
+    }
+}
+
 impl PickingResult {
     pub fn space_position(&self) -> Option<glam::Vec3> {
         // Use gpu hit if available as they are usually the position one expects.

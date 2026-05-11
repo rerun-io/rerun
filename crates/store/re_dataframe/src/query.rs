@@ -1400,7 +1400,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// Append up to `max_rows` rows of data into freshly allocated per-column arrays.
     ///
     /// Throughput-oriented sibling of [`Self::next_row`]: shares the streaming-join machinery but
-    /// amortises per-row allocation by batching `MutableArrayData` extends and only finalising
+    /// amortizes per-row allocation by batching `MutableArrayData` extends and only finalizing
     /// to `ArrayRef` once per call.
     ///
     /// The returned [`NextNRowsOutput::columns`] strictly follows the schema specified by
@@ -1502,7 +1502,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         //
         // `source_bpr[i]` is the estimated bytes-per-row for `sources[i]`, computed as
         // `get_array_memory_size() / len()` at registration time. Cheap (one division per
-        // distinct source per batch) and lets the walk amortise the byte budget without
+        // distinct source per batch) and lets the walk amortize the byte budget without
         // inspecting `MutableArrayData` until freeze.
         enum SelectedEmitter {
             Source {
@@ -1766,7 +1766,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             };
         }
 
-        // Finalise each output column.
+        // Finalize each output column.
         let mut columns: Vec<ArrowArrayRef> = Vec::with_capacity(n_selected);
         for (selected_idx, emitter) in emitters.into_iter().enumerate() {
             let (_, column) = &state.selected_contents[selected_idx];

@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use egui::{Modifiers, NumExt as _, Rect, Response};
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
@@ -49,6 +51,36 @@ impl Default for MapViewState {
             last_center_position: walkers::lat_lon(59.319224, 18.075514),
             last_gpu_picking_result: None,
         }
+    }
+}
+
+impl re_byte_size::SizeBytes for MapViewState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            tiles,
+            map_memory: _,
+            selected_provider,
+            last_center_position: _,
+            last_gpu_picking_result: _,
+        } = self;
+
+        // `walkers::HttpTiles` keeps its tile cache private, so this is a best-effort estimate
+        // based on walkers 0.53 internals: an LRU cache with capacity 256 plus the currently queued
+        // download ids.
+        // - `TilesIo::new`: <https://docs.rs/walkers/0.53.0/src/walkers/io/tiles_io.rs.html#57>
+        // - `HttpTiles::stats`: <https://docs.rs/walkers/0.53.0/src/walkers/http_tiles.rs.html#61>
+        // Texture memory itself is tracked by egui/wgpu.
+        let tiles = tiles.as_ref().map_or(0, |tiles| {
+            const WALKERS_TILE_CACHE_CAPACITY: usize = 256;
+
+            let tile_cache = WALKERS_TILE_CACHE_CAPACITY
+                * (size_of::<(walkers::TileId, Option<walkers::Tile>)>() + 1);
+            let in_progress = tiles.stats().in_progress * size_of::<walkers::TileId>();
+
+            (tile_cache + in_progress) as u64
+        });
+
+        tiles + selected_provider.heap_size_bytes()
     }
 }
 

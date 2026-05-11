@@ -18,10 +18,34 @@ pub enum PathGeometry {
     // We could add other geometries, such as `Orthogonal` here too.
 }
 
+impl re_byte_size::SizeBytes for PathGeometry {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 #[derive(Debug)]
 pub struct EdgeGeometry {
     pub target_arrow: bool,
     pub path: PathGeometry,
+}
+
+impl re_byte_size::SizeBytes for EdgeGeometry {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl EdgeGeometry {

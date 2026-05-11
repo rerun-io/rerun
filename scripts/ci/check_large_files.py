@@ -21,6 +21,7 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "crates/store/re_sdk_types/src/reflection/mod.rs",
     "crates/top/re_sdk/src/recording_stream.rs",
     "crates/viewer/re_ui/data/Inter-Medium.otf",
+    "crates/viewer/re_viewer/data/app_icon_mac.png",
     "crates/viewer/re_viewer/src/app.rs",  # TODO(emilk): break this up into smaller files
     "docs/snippets/INDEX.md",
     "pixi.lock",
@@ -36,8 +37,9 @@ PATH_PREFIXES_ALLOWED_TO_CONTAIN_NON_LFS_PNGS = (
     "crates/viewer/re_ui/data/icons/",
     "crates/viewer/re_ui/data/logo_dark_mode.png",
     "crates/viewer/re_ui/data/logo_light_mode.png",
+    "crates/viewer/re_viewer/data/app_icon.png",
     "crates/viewer/re_viewer/data/app_icon_mac.png",
-    "crates/viewer/re_viewer/data/app_icon_windows.png",
+    "crates/viewer/re_web_viewer_server/web_viewer/apple-touch-icon.png",
     "docs/snippets/all/archetypes/ferris.png",
     "docs/snippets/all/archetypes/encoded_depth.png",
     "docs/snippets/src/snippets/ferris.png",

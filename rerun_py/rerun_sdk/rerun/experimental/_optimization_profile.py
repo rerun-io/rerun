@@ -11,9 +11,9 @@ class OptimizationProfile:
 
     Two presets:
 
-    - `OptimizationProfile.LIVE`: Viewer-friendly small chunks.
-    - `OptimizationProfile.DATAPLATFORM`: Rerun Data Platform-friendly large
-      chunks tuned for query and streaming.
+    - `OptimizationProfile.LIVE`: small chunks tuned for the live Viewer workflow.
+    - `OptimizationProfile.OBJECT_STORE`: large chunks tuned for object-store-backed
+      query and streaming (e.g. the Rerun Data Platform).
 
     The presets are *fully concrete*: every field has a value. Custom profiles
     built by calling `OptimizationProfile(...)` directly may pass `None` on the
@@ -27,10 +27,10 @@ class OptimizationProfile:
     rendering and fine-grained time-panel precision.
     """
 
-    DATAPLATFORM: ClassVar[OptimizationProfile]
+    OBJECT_STORE: ClassVar[OptimizationProfile]
     """
-    Optimized for Rerun Data Platform storage: larger chunks tuned for query
-    throughput and streaming over the network.
+    Optimized for object-store-backed storage (e.g. the Rerun Data Platform):
+    larger chunks tuned for query throughput and streaming over the network.
     """
 
     max_bytes: int | None = None
@@ -79,7 +79,7 @@ OptimizationProfile.LIVE = OptimizationProfile(
     split_size_ratio=None,
 )
 
-OptimizationProfile.DATAPLATFORM = OptimizationProfile(
+OptimizationProfile.OBJECT_STORE = OptimizationProfile(
     max_bytes=2 * 1024 * 1024,
     max_rows=65_536,
     max_rows_if_unsorted=8_192,

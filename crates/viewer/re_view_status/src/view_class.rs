@@ -35,6 +35,18 @@ struct StatusViewState {
     press_on_phase: bool,
 }
 
+impl re_byte_size::SizeBytes for StatusViewState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            time_range: _,
+            active_timeline,
+            press_on_phase: _,
+        } = self;
+
+        active_timeline.heap_size_bytes()
+    }
+}
+
 impl ViewState for StatusViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -216,14 +228,24 @@ impl ViewClass for StatusView {
         }
 
         // Right- or middle-click + drag to pan.
+        let mut pan_dx = 0.0;
         if response.dragged_by(egui::PointerButton::Secondary)
             || response.dragged_by(egui::PointerButton::Middle)
         {
-            let dx = response.drag_delta().x;
-            let dt = -(dx as f64 / rect.width() as f64) * (t_max - t_min);
+            pan_dx += response.drag_delta().x;
+            ui.ctx().set_cursor_icon(egui::CursorIcon::AllScroll);
+        }
+
+        // Two-finger touchpad pan (horizontal scroll without modifier).
+        // Cmd+scroll is routed to `zoom_delta` by egui, so it won't double-fire here.
+        if response.hovered() {
+            pan_dx += ui.input(|i| i.smooth_scroll_delta.x);
+        }
+
+        if pan_dx != 0.0 {
+            let dt = -(pan_dx as f64 / rect.width() as f64) * (t_max - t_min);
             t_min += dt;
             t_max += dt;
-            ui.ctx().set_cursor_icon(egui::CursorIcon::AllScroll);
         }
 
         // Ctrl/Cmd + scroll to zoom.

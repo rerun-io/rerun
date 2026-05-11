@@ -109,6 +109,66 @@ impl<T> GenericConnectionClient<T> {
 
 // ---
 
+/// Thin wrapper around [`GenericConnectionClient<crate::grpc::RedapClientInner>`] that
+/// additionally exposes the underlying layered tower service.
+///
+/// Sibling channels to the same origin (e.g. the per-connection analytics OTLP client)
+/// can clone the service and call non-`RerunCloudService` RPCs through it without
+/// rebuilding the auth/version/propagate-headers stack.
+///
+/// Use [`crate::ConnectionRegistryHandle::client`] to construct.
+#[derive(Debug, Clone)]
+pub struct ConnectionClient {
+    inner: GenericConnectionClient<crate::grpc::RedapClientInner>,
+    service: crate::grpc::RedapClientInner,
+}
+
+impl ConnectionClient {
+    pub(crate) fn new(
+        inner: GenericConnectionClient<crate::grpc::RedapClientInner>,
+        service: crate::grpc::RedapClientInner,
+    ) -> Self {
+        Self { inner, service }
+    }
+
+    /// Returns a clone of the underlying layered tower service.
+    pub fn service(&self) -> crate::grpc::RedapClientInner {
+        self.service.clone()
+    }
+
+    /// Build a [`ConnectionClient`] backed by a never-connecting localhost channel.
+    ///
+    /// Available only under `cfg(test)` or with the `test_utils` feature, this is
+    /// intended for unit tests that need a fully-typed `ConnectionClient` without
+    /// going through the registry / network.
+    #[cfg(any(test, feature = "test_utils"))]
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn new_disconnected() -> Self {
+        let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
+        let (raw_client, service) =
+            crate::grpc::assemble_client(channel, /* credentials */ None);
+        Self::new(GenericConnectionClient::new(raw_client), service)
+    }
+}
+
+impl std::ops::Deref for ConnectionClient {
+    type Target = GenericConnectionClient<crate::grpc::RedapClientInner>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl std::ops::DerefMut for ConnectionClient {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+// ---
+
 impl<T> GenericConnectionClient<T>
 where
     T: tonic::client::GrpcService<tonic::body::Body>,

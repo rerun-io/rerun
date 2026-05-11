@@ -1,11 +1,19 @@
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
-use anyhow::bail;
+use anyhow::{Context as _, bail};
+use arrow::array::{Array as _, Float64Array, ListArray, StringArray, StructArray};
+use arrow::buffer::OffsetBuffer;
+use arrow::compute::cast;
+use arrow::datatypes::{DataType, Field, Fields};
 use itertools::Itertools as _;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::EntityPath;
 use re_log_types::EntityPathPart;
+use re_sdk_types::Loggable as _;
 use re_sdk_types::archetypes::Transform3D;
+use re_sdk_types::datatypes::{Quaternion, Vec3D};
 use urdf_rs::{Geometry, Joint, Link, Material, Robot};
 
 use super::joint_transform;
@@ -223,6 +231,148 @@ impl UrdfTree {
             .with_quaternion(result.quaternion.to_array())
             .with_parent_frame(self.apply_frame_prefix(&result.parent_frame))
             .with_child_frame(self.apply_frame_prefix(&result.child_frame)))
+    }
+
+    /// Computes batches of 3D transform components from Arrow list arrays containing joint names and values.
+    ///
+    /// `names` must be a `ListArray` with `Utf8` values.
+    /// `values` must be a `ListArray` with values castable to `Float64`.
+    ///
+    /// The output is a `ListArray` with `translation`, `quaternion`, `parent_frame`, and
+    /// `child_frame` fields and the same outer row count as the inputs.
+    ///
+    /// Note: this is intended as a helper for lens pipelines, where you would usually pipe this output
+    /// through an additional lens that scatters each batch into final [`Transform3D`] rows.
+    pub fn compute_joint_transform_batches(
+        &self,
+        names: &ListArray,
+        values: &ListArray,
+        clamp: bool,
+    ) -> anyhow::Result<ListArray> {
+        if names.len() != values.len() {
+            bail!(
+                "joint name and value arrays must have the same number of rows, got {} and {}",
+                names.len(),
+                values.len()
+            );
+        }
+
+        let joint_names = names
+            .values()
+            .try_downcast_array_ref::<StringArray>()
+            .with_context(|| {
+                format!(
+                    "joint names must be list<utf8>, got {:?}",
+                    names.data_type()
+                )
+            })?;
+
+        let joint_values = cast(values.values().as_ref(), &DataType::Float64)
+            .context("failed to cast joint values to float64")?
+            .try_downcast_array::<Float64Array>()?;
+
+        let mut offsets = Vec::<i32>::with_capacity(names.len() + 1);
+        let mut translations = Vec::<Vec3D>::new();
+        let mut quaternions = Vec::<Quaternion>::new();
+        let mut parent_frames = Vec::<String>::new();
+        let mut child_frames = Vec::<String>::new();
+
+        offsets.push(0);
+
+        for row in 0..names.len() {
+            if names.is_null(row) || values.is_null(row) {
+                bail!(
+                    "joint name and value lists must not contain null rows, got null at row {row}"
+                );
+            }
+
+            let names_start = names.value_offsets()[row] as usize;
+            let names_end = names.value_offsets()[row + 1] as usize;
+            let values_start = values.value_offsets()[row] as usize;
+            let values_end = values.value_offsets()[row + 1] as usize;
+
+            let num_names = names_end - names_start;
+            let num_values = values_end - values_start;
+            if num_names != num_values {
+                bail!(
+                    "joint name and value lists must have the same length at row {row}, got {num_names} and {num_values}"
+                );
+            }
+
+            for (name_index, value_index) in (names_start..names_end).zip(values_start..values_end)
+            {
+                if joint_names.is_null(name_index) || joint_values.is_null(value_index) {
+                    bail!(
+                        "joint name and value lists must not contain null values, got null at row {row}"
+                    );
+                }
+
+                let joint_name = joint_names.value(name_index);
+                let joint = self
+                    .get_joint_by_name(joint_name)
+                    .with_context(|| format!("URDF does not contain joint {joint_name:?}"))?;
+
+                let result = joint_transform::internal::compute_joint_transform(
+                    joint,
+                    joint_values.value(value_index),
+                    clamp,
+                )?;
+
+                if let Some(warning) = &result.warning {
+                    re_log::warn!("{warning}");
+                }
+
+                translations.push(Vec3D([
+                    result.translation.x,
+                    result.translation.y,
+                    result.translation.z,
+                ]));
+                quaternions.push(Quaternion([
+                    result.quaternion.x,
+                    result.quaternion.y,
+                    result.quaternion.z,
+                    result.quaternion.w,
+                ]));
+                parent_frames.push(self.apply_frame_prefix(&result.parent_frame));
+                child_frames.push(self.apply_frame_prefix(&result.child_frame));
+            }
+
+            offsets.push(
+                i32::try_from(parent_frames.len())
+                    .context("too many joint transforms for Arrow list offsets")?,
+            );
+        }
+
+        let translation_array = Vec3D::to_arrow_opt(translations.iter().map(Some))?;
+        let quaternion_array = Quaternion::to_arrow_opt(quaternions.iter().map(Some))?;
+
+        let struct_fields = Fields::from(vec![
+            Field::new("translation", translation_array.data_type().clone(), false),
+            Field::new("quaternion", quaternion_array.data_type().clone(), false),
+            Field::new("parent_frame", DataType::Utf8, false),
+            Field::new("child_frame", DataType::Utf8, false),
+        ]);
+
+        let struct_array = StructArray::try_new(
+            struct_fields.clone(),
+            vec![
+                translation_array,
+                quaternion_array,
+                Arc::new(StringArray::from(parent_frames)),
+                Arc::new(StringArray::from(child_frames)),
+            ],
+            None,
+        )?;
+
+        Ok(ListArray::new(
+            Arc::new(Field::new_list_field(
+                DataType::Struct(struct_fields),
+                false,
+            )),
+            OffsetBuffer::new(offsets.into()),
+            Arc::new(struct_array),
+            None,
+        ))
     }
 
     /// The root [`Link`] in the URDF hierarchy.

@@ -21,7 +21,9 @@ all-features = true
 
 [features]
 ecolor = ["dep:ecolor"]
+egui = ["dep:egui", "ecolor"]
 glam = ["dep:glam"]
+macaw = ["dep:macaw"]
 
 
 [dependencies]
@@ -33,7 +35,9 @@ vec1.workspace = true # Small enough to always depend on it.
 
 # Optional dependencies:
 ecolor = { workspace = true, optional = true }
+egui = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
+macaw = { workspace = true, optional = true }
 
 
 [dev-dependencies]

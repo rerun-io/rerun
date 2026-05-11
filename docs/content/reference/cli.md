@@ -593,7 +593,7 @@ Examples:
 >
 > Per-knob flags and `RERUN_CHUNK_MAX_*` env vars override the profile's values. `RERUN_STORE_ENABLE_CHANGELOG` is ignored by this command — `rerun rrd optimize` is always headless.
 >
-> [Default: `dataplatform`]
+> [Default: `object-store`]
 
 * `--max-size <MAX_SIZE>`
 > Threshold after which a Chunk cannot be compacted any further.

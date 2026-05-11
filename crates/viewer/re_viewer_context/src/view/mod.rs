@@ -43,7 +43,7 @@ pub use view_query::{
     DataResult, RecommendedMappings, ViewQuery, VisualizerComponentMappings,
     VisualizerComponentSource, VisualizerInstruction, VisualizerInstructionsPerType,
 };
-pub use view_states::ViewStates;
+pub use view_states::{PreviewState, ViewStates};
 pub use visualizability_constraints::{
     BufferAndFormatConstraint, SingleRequiredComponentConstraint, VisualizabilityConstraints,
 };

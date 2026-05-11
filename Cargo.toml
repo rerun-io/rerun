@@ -46,6 +46,7 @@ ignored = [
   # used for specific targets or features
   "home",
   "profiling",
+  "wayland-sys", # only enabled via the `server` feature of `re_tracing`
   "windows-core",
 ]
 ignored-paths = [

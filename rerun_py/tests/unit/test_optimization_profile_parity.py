@@ -1,8 +1,8 @@
 """
 Parity test for `OptimizationProfile`.
 
-Python `OptimizationProfile.{LIVE,DATAPLATFORM}` must agree with the
-Rust `OptimizationProfile::{LIVE,DATAPLATFORM}` constants byte-for-byte.
+Python `OptimizationProfile.{LIVE,OBJECT_STORE}` must agree with the
+Rust `OptimizationProfile::{LIVE,OBJECT_STORE}` constants byte-for-byte.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ def _python_dict(p: OptimizationProfile) -> dict[str, object]:
     "name,profile",
     [
         ("LIVE", OptimizationProfile.LIVE),
-        ("DATAPLATFORM", OptimizationProfile.DATAPLATFORM),
+        ("OBJECT_STORE", OptimizationProfile.OBJECT_STORE),
     ],
 )
 def test_profile_parity(name: str, profile: OptimizationProfile) -> None:

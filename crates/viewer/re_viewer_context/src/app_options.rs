@@ -193,12 +193,9 @@ pub struct ExperimentalAppOptions {
     /// Enable the experimental Status view.
     pub enable_status_view: bool,
 
-    /// Enable grid view mode for data tables.
+    /// Enable table cards and blueprints.
     ///
-    /// When enabled, a list/grid toggle appears in the table title bar,
-    /// allowing users to switch between the traditional table and a card-based grid layout.
-    pub table_grid_view: bool,
-
-    /// Enable table blueprints embedded in Arrow schema metadata.
-    pub table_blueprints: bool,
+    /// This enables table blueprints embedded in Arrow schema metadata,
+    /// plus the table/grid view toggle for card-based table layouts.
+    pub table_cards_and_blueprints: bool,
 }

@@ -135,30 +135,40 @@ pub type RedapClientInner = re_auth::client::AuthService<
     >,
 >;
 
+/// Apply the standard SDK-side layer stack on top of an already-built channel
+/// and return the high-level `RedapClient` plus the layered service backing it.
+///
+/// Pulled out of [`client`] so [`crate::ConnectionClient::new_disconnected`]
+/// (and any future test fixture) can build a fully-typed client over a
+/// never-connecting channel without going through `with_retry`.
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn assemble_client(
+    channel: tonic_web_wasm_client::Client,
+    credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
+) -> (RedapClient, RedapClientInner) {
+    let middlewares = tower::ServiceBuilder::new()
+        .layer(AuthDecorator::new(credentials))
+        .layer(re_protos::headers::new_rerun_client_headers_layer());
+
+    let svc: RedapClientInner = tower::ServiceBuilder::new()
+        .layer(middlewares.into_inner())
+        .service(channel);
+
+    let client = RerunCloudServiceClient::new(svc.clone())
+        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE);
+    (client, svc)
+}
+
 #[cfg(target_arch = "wasm32")]
 pub(crate) async fn client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> ApiResult<RedapClient> {
+) -> ApiResult<(RedapClient, RedapClientInner)> {
     let channel = crate::with_retry("redap_connection", || async {
         channel(origin.clone()).await
     })
     .await?;
-
-    let middlewares = tower::ServiceBuilder::new()
-        .layer(AuthDecorator::new(credentials))
-        .layer({
-            let name = Some("rerun-web".to_owned());
-            let version = None;
-            let is_client = true;
-            re_protos::headers::new_rerun_headers_layer(name, version, is_client)
-        });
-
-    let svc = tower::ServiceBuilder::new()
-        .layer(middlewares.into_inner())
-        .service(channel);
-
-    Ok(RerunCloudServiceClient::new(svc).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+    Ok(assemble_client(channel, credentials))
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
@@ -192,24 +202,20 @@ pub type RedapClientInner = re_auth::client::AuthService<
 
 pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
 
+/// Apply the standard SDK-side layer stack on top of an already-built channel
+/// and return the high-level `RedapClient` plus the layered service backing it.
+///
+/// Pulled out of [`client`] so [`crate::ConnectionClient::new_disconnected`]
+/// (and any future test fixture) can build a fully-typed client over a
+/// never-connecting channel without going through `with_retry`.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) async fn client(
-    origin: Origin,
+pub(crate) fn assemble_client(
+    channel: tonic::transport::Channel,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> ApiResult<RedapClient> {
-    let channel = crate::with_retry("redap_connection", || async {
-        channel(origin.clone()).await
-    })
-    .await?;
-
+) -> (RedapClient, RedapClientInner) {
     let middlewares = tower::ServiceBuilder::new()
         .layer(AuthDecorator::new(credentials))
-        .layer({
-            let name = None;
-            let version = std::env::var("RERUN_CLIENT_VERSION_OVERRIDE").ok();
-            let is_client = true;
-            re_protos::headers::new_rerun_headers_layer(name, version, is_client)
-        });
+        .layer(re_protos::headers::new_rerun_client_headers_layer());
 
     #[cfg(feature = "perf_telemetry")]
     let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());
@@ -218,7 +224,21 @@ pub(crate) async fn client(
         .layer(middlewares.into_inner())
         .service(channel);
 
-    Ok(RerunCloudServiceClient::new(svc).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+    let client = RerunCloudServiceClient::new(svc.clone())
+        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE);
+    (client, svc)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) async fn client(
+    origin: Origin,
+    credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
+) -> ApiResult<(RedapClient, RedapClientInner)> {
+    let channel = crate::with_retry("redap_connection", || async {
+        channel(origin.clone()).await
+    })
+    .await?;
+    Ok(assemble_client(channel, credentials))
 }
 
 /// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.

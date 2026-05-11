@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from typing_extensions import deprecated
+
 from rerun.experimental import Chunk
 from rerun_bindings import recording_from_chunks
 
@@ -13,6 +15,9 @@ if TYPE_CHECKING:
     from rerun_bindings import RecordingInternal, RRDArchiveInternal
 
 
+@deprecated(
+    "Recording is deprecated since 0.32. Use rerun.experimental.RrdReader instead.",
+)
 class Recording:
     """
     A single Rerun recording.
@@ -52,7 +57,12 @@ class Recording:
             yield Chunk(chunk_internal)
 
     @staticmethod
-    def from_chunks(chunks: Iterable[Chunk], application_id: str, recording_id: str) -> Recording:
+    @deprecated(
+        "Recording.from_chunks is deprecated since 0.32. Use "
+        "LazyChunkStream.from_iter(chunks) and pass application_id and recording_id "
+        "to the destination (e.g. .write_rrd(path, application_id=…, recording_id=…)).",
+    )
+    def from_chunks(chunks: Iterable[Chunk], application_id: str, recording_id: str) -> Recording:  # ty:ignore[deprecated]
         """
         Create a new recording from an iterable of chunks.
 
@@ -72,13 +82,16 @@ class Recording:
 
         """
 
-        return Recording(recording_from_chunks((c._internal for c in chunks), application_id, recording_id))
+        return Recording(recording_from_chunks((c._internal for c in chunks), application_id, recording_id))  # ty:ignore[deprecated]
 
     def save(self, path: str | Path) -> None:
         """Save this recording to an RRD file."""
         self._internal.save(str(path))
 
 
+@deprecated(
+    "RRDArchive is deprecated since 0.32. Use rerun.experimental.RrdReader instead.",
+)
 class RRDArchive:
     """
     An archive loaded from an RRD.
@@ -95,6 +108,6 @@ class RRDArchive:
         """The number of recordings in the archive."""
         return self._internal.num_recordings()
 
-    def all_recordings(self) -> list[Recording]:
+    def all_recordings(self) -> list[Recording]:  # ty:ignore[deprecated]
         """All the recordings in the archive."""
-        return [Recording(r) for r in self._internal.all_recordings()]
+        return [Recording(r) for r in self._internal.all_recordings()]  # ty:ignore[deprecated]
