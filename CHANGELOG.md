@@ -171,6 +171,8 @@ As a part of our [website](https://rerun.io/) update, we've also added a feedbac
 - Add `stream() -> LazyChunkStream` to Python `UrdfTree` [dc51f60](https://github.com/rerun-io/rerun/commit/dc51f60554cc634133b5582e26ccb8c2769d4aa7)
 - Renames ChunkBatcherConfig::ALWAYS to ALWAYS_TEST_ONLY [46c20b8](https://github.com/rerun-io/rerun/commit/46c20b85ed0ae39292feae2a50355fdad87d4c0e)
 - Opt-out from generating a FileSink footer [0a78f28](https://github.com/rerun-io/rerun/commit/0a78f2817f15c50e00f6ea222227d9358dcf0eea)
+- Add `UrdfTree::compute_joint_transform_batches` for lens/chunk pipelines [efd045c](https://github.com/rerun-io/rerun/commit/efd045cdf953d6c3b97f764cdea9560df6fbcab4)
+- Add snippet showing a `GridMap` at a specific pose [2e99c68](https://github.com/rerun-io/rerun/commit/2e99c681e9f4789ce92803bda1e5edc76bb5788b)
 
 #### 🐍 Python API
 - Introduce `LazyChunkStream` [a0ce421](https://github.com/rerun-io/rerun/commit/a0ce421f4ca9b3e2406b73efd3e63fb8ee03b8b4)
@@ -202,6 +204,9 @@ As a part of our [website](https://rerun.io/) update, we've also added a feedbac
 - Split off `LazyStore` from `ChunkStore` (now returned by `dataset.segment_store()` and `RrdReader.store()`) [fa63189](https://github.com/rerun-io/rerun/commit/fa631894c4f2f0805a1b643dd8d068c841105159)
 - Improve dataloader config [b96a985](https://github.com/rerun-io/rerun/commit/b96a9859bcf412f24ba8444138a2ce8fd49d7a3f)
 - Add support for multi-store RRD to `RrdReader` [41ed51a](https://github.com/rerun-io/rerun/commit/41ed51ac0d37f4f80c8834a33a38b8587f8a32d1)
+- Rename `send_chunk` to `send_chunks` and accepts stores and `LazyChunkStream` [c8e0965](https://github.com/rerun-io/rerun/commit/c8e0965fb50f4d70599f448b4175dd563e72cdf1)
+- Deprecate `rerun.recording` [8b52512](https://github.com/rerun-io/rerun/commit/8b52512035c9afc58e543c07862ac14cb4bc677e)
+- Fix disconnect footgun [4833706](https://github.com/rerun-io/rerun/commit/483370692c187865c9a694264897a5d4e02a5166)
 
 #### 🦀 Rust API
 - Introduce `at_entity` instead of `*_output_columns_at` [8e65ff0](https://github.com/rerun-io/rerun/commit/8e65ff0504a58753a93a46645ef566cb4f436602)
@@ -237,6 +242,7 @@ As a part of our [website](https://rerun.io/) update, we've also added a feedbac
 - Fix reflection of "pure-constant" ROS2 message schemas [fefbf6d](https://github.com/rerun-io/rerun/commit/fefbf6d57e68e7e84c04285809188c7107fc1d79)
 - Handle large video file error gracefully [#12744](https://github.com/rerun-io/rerun/pull/12744) (thanks [@AyushAgrawal-A2](https://github.com/AyushAgrawal-A2)!)
 - Use row id instead of byte span for video streams [645e57b](https://github.com/rerun-io/rerun/commit/645e57b732d09a53a873d00162050a61bbf0b6b0)
+- Return empty tensor on video decoder cold-start instead of raising [13f92e5](https://github.com/rerun-io/rerun/commit/13f92e594c909cfd6c1136065ee24a35f945645a)
 
 #### 🌁 Viewer improvements
 - Cluster overlapping coplanar `TexturedRect`s and use draw order for tie-breaking [76b64c1](https://github.com/rerun-io/rerun/commit/76b64c137d96bf189b3cb683d6f6328017ef92a3)
@@ -266,6 +272,11 @@ As a part of our [website](https://rerun.io/) update, we've also added a feedbac
 - Make text document configuration part of the blueprint [e6ae09a](https://github.com/rerun-io/rerun/commit/e6ae09aa979231084768cd6c8f776f9bf5da563f)
 - Experimental preview renders for tables with data set URLs [b133946](https://github.com/rerun-io/rerun/commit/b133946c4fccc0f0f08893e3bf422b6a373cde0d)
 - Add `VideoStream.is_keyframe` component [d50eab6](https://github.com/rerun-io/rerun/commit/d50eab6d9d276f88d44c0c133a7e5a2c3e868642)
+- Limit 2D & 3D view zoom out [e43c172](https://github.com/rerun-io/rerun/commit/e43c172407300cc4eb8b979a9fa78ea30c73206f)
+- Make previews always play looping [90b5b01](https://github.com/rerun-io/rerun/commit/90b5b0134f9eb74c14c34908b30ab43c6af3ca62)
+- Fix arrows blowing up when cap behind camera [db571f7](https://github.com/rerun-io/rerun/commit/db571f7035b311d77e9c6015298a4d288faa27f2)
+- Add Ellipses2D archetype [2cbf5ff](https://github.com/rerun-io/rerun/commit/2cbf5ff4d5c68850e538ef75a1913b71fbecdcf6)
+- Clamp time controls [8af40e2](https://github.com/rerun-io/rerun/commit/8af40e283df04b9d4d26123fc09c201b9751d8df)
 
 #### 🗄️ OSS server
 - Lazy RRD loading in OSS server [4aea4a5](https://github.com/rerun-io/rerun/commit/4aea4a570a245949314f97b282e011c708efce01)
@@ -284,24 +295,32 @@ As a part of our [website](https://rerun.io/) update, we've also added a feedbac
 - Improve performance of Protobuf reflection [3969825](https://github.com/rerun-io/rerun/commit/39698253c8346639fc5d5b52c750717a8b4f7eb2)
 - `register` now takes a list of URIs [9ec5265](https://github.com/rerun-io/rerun/commit/9ec52651803e0c2c0716e3a16d4631957926b6c2)
 - Parallelize mcap decoder [6ccfcbf](https://github.com/rerun-io/rerun/commit/6ccfcbfc6fa8a1b28459440c895a9bbd6cfa6a6b)
+- Emit sparse `is_keyframe` marker chunks when running optimize [ec6dff0](https://github.com/rerun-io/rerun/commit/ec6dff03c046f4a2a0e4b2726f208a268d424108)
 
 #### 🧑‍🏫 Examples
 - Add dataloader training example [8cd8acb](https://github.com/rerun-io/rerun/commit/8cd8acb4f3bdad51b97a94174289ed103a8e835c)
 - Add snippet demonstrating `LineStrips3D` with `VisibleTimeRange` [80dd138](https://github.com/rerun-io/rerun/commit/80dd1381273fad507f0516e0fe4000b0369f5c79)
 - Use blueprint, component ui and type reflection in `custom_view` example [e64abd0](https://github.com/rerun-io/rerun/commit/e64abd0f695be3b7f66b0816c1b53f361c1c96f4)
+- Subscribe to occupancy grids in ROS node example [b4a46c5](https://github.com/rerun-io/rerun/commit/b4a46c561713ac895848e122f63b635d800677c8)
 
 #### 📚 Docs
 - Clearer behavior for `CoordinateFrame("")` [5bf9c4a](https://github.com/rerun-io/rerun/commit/5bf9c4a6027ce525a11c35dc9ff43e77324c3e6d)
+- Move "Installing Rerun" into Getting Started [0296f67](https://github.com/rerun-io/rerun/commit/0296f67bd56b1ed1625b08e9054d86d13d01767d)
+- Reduce python docs footguns [4e158e1](https://github.com/rerun-io/rerun/commit/4e158e1c6221f79ad5dbb4e1cb03b1f73f8c7903)
+- Split "Set up a project" out of Log and Ingest [d0d63bc](https://github.com/rerun-io/rerun/commit/d0d63bc775ef6c3964563c7ea2d52df3f9a619b1)
 
 #### 🖼 UI improvements
 - New tooltip redesign [b1a9d82](https://github.com/rerun-io/rerun/commit/b1a9d8285846b4dabce5e29f43af28cb94b7bb07)
 - Reduce the size of chevrons in the UI [3f63fa1](https://github.com/rerun-io/rerun/commit/3f63fa12db53e75a6a06f15b2d6d615ff47202a9)
 - Highlight invalid frame ID input and show `tf#/` suggestions if applicable [2dbe13a](https://github.com/rerun-io/rerun/commit/2dbe13afaae8627bebe776b1c1231110492d1e38)
 - Status visualizer configuration [bb83ed7](https://github.com/rerun-io/rerun/commit/bb83ed70fd5817905a667e93f868986bb11d0e35)
+- Update our icon ✨ [0677bbf](https://github.com/rerun-io/rerun/commit/0677bbf87ea4bffce0edd77cc64226a34c9d1d57)
+- change colors for new brand colors [27c9036](https://github.com/rerun-io/rerun/commit/27c90366696241da2e2ff7deea9cf97f330fc7eb)
 
 #### 🕸️ Web
 - Add progress bar to rerun-js and handle incomplete wasm downloads [ad551bd](https://github.com/rerun-io/rerun/commit/ad551bdf95f7abe2d1544693042ddf79fdd76e2a)
 - Add rerun-js login setting and default to hiding the login button [0d14814](https://github.com/rerun-io/rerun/commit/0d148144f367852084ea48767412f9198c0f1b95)
+- web_viewer: support overriding theme via ?theme= URL param [34b9958](https://github.com/rerun-io/rerun/commit/34b9958d5500741787350ae74bf3cf927a7b0fbb)
 
 #### 🎨 Renderer improvements
 - GPU accelerated time series plot drawing [8e9635b](https://github.com/rerun-io/rerun/commit/8e9635b3223528322db2d695b8b6aa45f3a1a037)
