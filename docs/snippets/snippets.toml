@@ -459,6 +459,16 @@ backwards_check = [
   "rust",
   "py",
 ]
+"tutorials/getting_started" = [
+  "py", # Requires a separately-running catalog server
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"tutorials/getting_started_convert" = [
+  "py", # Requires an input.mcap file
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "tutorials/fixed_window_plot" = [
   "cpp", # Not implemented
   "rust", # Not implemented

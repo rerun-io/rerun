@@ -25,11 +25,9 @@ Before starting, make sure you've [installed the SDK](./install-rerun.md) and [s
 
 ## Initializing the SDK
 
-Create a new file (or project) and import the relevant utilities from your language's SDK:
+Create a new file (or project), import the relevant utilities from your language's SDK, and initialize a recording. Initialization names the recording with a stable [`ApplicationId`](../concepts/logging-and-ingestion/recordings.md), then spawns a [Rerun Viewer](../reference/viewer/overview.md) and connects the recording to it:
 
 snippet: tutorials/dna[imports]
-
-Then initialize a recording. This names the recording with a stable [`ApplicationId`](../concepts/logging-and-ingestion/recordings.md), spawns a [Rerun Viewer](../reference/viewer/overview.md), and connects the recording to it:
 
 snippet: tutorials/dna[init]
 
