@@ -21,9 +21,9 @@ Boolean
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `IsKeyframe`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1IsKeyframe.html?speculative-link)
- * 🐍 [Python API docs for `IsKeyframe`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.IsKeyframe)
- * 🦀 [Rust API docs for `IsKeyframe`](https://docs.rs/rerun/latest/rerun/components/struct.IsKeyframe.html?speculative-link)
+ * 🌊 [C++ API docs for `IsKeyframe`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1IsKeyframe.html)
+ * 🐍 [Python API docs for `IsKeyframe`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.IsKeyframe)
+ * 🦀 [Rust API docs for `IsKeyframe`](https://docs.rs/rerun/latest/rerun/components/struct.IsKeyframe.html)
 
 
 ## Used by

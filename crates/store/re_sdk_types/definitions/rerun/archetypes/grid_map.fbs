@@ -10,7 +10,6 @@ namespace rerun.archetypes;
 table GridMap (
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Spatial 3D",
-  "attr.docs.unreleased",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView",
   "attr.rerun.state": "stable",
   "attr.rust.derive": "PartialEq"

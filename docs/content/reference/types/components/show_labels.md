@@ -32,7 +32,7 @@ Boolean
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
-* [`Ellipses2D`](../archetypes/ellipses2d.md?speculative-link)
+* [`Ellipses2D`](../archetypes/ellipses2d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`GraphNodes`](../archetypes/graph_nodes.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)

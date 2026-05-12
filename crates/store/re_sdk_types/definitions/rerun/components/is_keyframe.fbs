@@ -9,7 +9,6 @@ namespace rerun.components;
 /// See [components.VideoCodec] for the codec-specific definition of a keyframe.
 struct IsKeyframe (
   "attr.arrow.transparent",
-  "attr.docs.unreleased",
   "attr.python.aliases": "bool",
   "attr.python.array_aliases": "bool | npt.NDArray[np.bool_]",
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord, Hash",

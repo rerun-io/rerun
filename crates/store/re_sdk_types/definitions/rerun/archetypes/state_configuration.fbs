@@ -18,7 +18,6 @@ namespace rerun.archetypes;
 /// \example archetypes/state_configuration title="State changes with a custom style"
 table StateConfiguration (
   "attr.docs.category": "Plotting",
-  "attr.docs.unreleased",
   "attr.docs.view_types": "StateTimelineView",
   "attr.rerun.state": "unstable",
   "attr.rerun.visualizer": "StateVisualizer",

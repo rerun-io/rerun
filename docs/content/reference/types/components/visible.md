@@ -24,4 +24,4 @@ Boolean
 
 * [`SeriesLines`](../archetypes/series_lines.md)
 * [`SeriesPoints`](../archetypes/series_points.md)
-* [`StateConfiguration`](../archetypes/state_configuration.md?speculative-link)
+* [`StateConfiguration`](../archetypes/state_configuration.md)

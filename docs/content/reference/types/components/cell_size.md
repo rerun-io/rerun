@@ -17,11 +17,11 @@ Float32
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `CellSize`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1CellSize.html?speculative-link)
- * 🐍 [Python API docs for `CellSize`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.CellSize)
- * 🦀 [Rust API docs for `CellSize`](https://docs.rs/rerun/latest/rerun/components/struct.CellSize.html?speculative-link)
+ * 🌊 [C++ API docs for `CellSize`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1CellSize.html)
+ * 🐍 [Python API docs for `CellSize`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.CellSize)
+ * 🦀 [Rust API docs for `CellSize`](https://docs.rs/rerun/latest/rerun/components/struct.CellSize.html)
 
 
 ## Used by
 
-* [`GridMap`](../archetypes/grid_map.md?speculative-link)
+* [`GridMap`](../archetypes/grid_map.md)

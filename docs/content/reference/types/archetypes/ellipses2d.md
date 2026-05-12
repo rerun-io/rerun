@@ -30,9 +30,9 @@ If both half-sizes are equal, the ellipse is a circle.
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `Ellipses2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Ellipses2D.html?speculative-link)
- * 🐍 [Python API docs for `Ellipses2D`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.Ellipses2D)
- * 🦀 [Rust API docs for `Ellipses2D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Ellipses2D.html?speculative-link)
+ * 🌊 [C++ API docs for `Ellipses2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Ellipses2D.html)
+ * 🐍 [Python API docs for `Ellipses2D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Ellipses2D)
+ * 🦀 [Rust API docs for `Ellipses2D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Ellipses2D.html)
 
 ## Examples
 
