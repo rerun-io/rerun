@@ -2,7 +2,7 @@
 """
 Demonstrates how to log any file from the SDK using the `Importer` machinery.
 
-See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
+See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
 """
 
 from __future__ import annotations

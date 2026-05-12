@@ -45,7 +45,7 @@ The following lens extracts the `.y` field from the struct as a [`Scalar`](../..
 
 snippet: concepts/lenses[derive_lens]
 
-See the full examples in [Rust](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/lenses.rs?speculative-link) and [Python](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/lenses.py?speculative-link).
+See the full examples in [Rust](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/lenses.rs) and [Python](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/lenses.py).
 
 When we apply the `extract_y` lens, we get the following resulting chunks.
 

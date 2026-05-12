@@ -35,7 +35,7 @@ The Rerun command-line interface:
 > - A path to a Rerun .rrd recording
 > - A path to a Rerun .rbl blueprint
 > - An HTTP(S) URL to an .rrd or .rbl file to load
-> - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link)
+> - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview)
 >
 > If no arguments are given, a server will be hosted which a Rerun SDK can connect to.
 

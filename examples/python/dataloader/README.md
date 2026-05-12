@@ -1,6 +1,6 @@
 Train a [LeRobot](https://github.com/huggingface/lerobot) ACT policy using Rerun's experimental PyTorch dataloader, streaming trajectory data directly from a Rerun catalog.
 
-For an explanation of the dataloader API and how the example fits together, see the [Train PyTorch models with the Rerun dataloader](https://rerun.io/docs/howto/integrations/dataloader?speculative-link) how-to guide.
+For an explanation of the dataloader API and how the example fits together, see the [Train PyTorch models with the Rerun dataloader](https://rerun.io/docs/howto/integrations/dataloader) how-to guide.
 
 ## Run the code
 

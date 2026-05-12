@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-32?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-32
 
 ### ✨ Overview & highlights
 
@@ -48,7 +48,7 @@ A new experimental view for visualizing discrete state transitions over time as 
   <img src="https://static.rerun.io/state_timeline/3f821055b73ffda964dbd2573c0279f99cee02a8/full.png" alt="State timeline view">
 </picture>
 
-Read [our guide](https://rerun.io/docs/howto/visualization/state-timeline?speculative-link) to get started. Feedback is appreciated!
+Read [our guide](https://rerun.io/docs/howto/visualization/state-timeline) to get started. Feedback is appreciated!
 
 #### `GridMap` archetype and MCAP support for ROS occupancy grids
 
@@ -155,7 +155,7 @@ As a part of our [website](https://rerun.io/) update, we've also added a feedbac
 * URDF importer now loads the static transforms of the model to the `/tf_static` entity by default
 * MCAP metadata and statistics are now saved to `__mcap_metadata`
 
-🧳 Full Migration guide: https://rerun.io/docs/reference/migration/migration-0-32?speculative-link
+🧳 Full Migration guide: https://rerun.io/docs/reference/migration/migration-0-32
 
 ### 🔎 Details
 

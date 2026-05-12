@@ -1396,7 +1396,7 @@ impl RecordingStream {
     /// This method blocks until either at least one [`re_importer::Importer`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
     #[cfg(feature = "importers")]
     pub fn log_file_from_path(
         &self,
@@ -1414,7 +1414,7 @@ impl RecordingStream {
     /// This method blocks until either at least one [`re_importer::Importer`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
     #[cfg(feature = "importers")]
     pub fn log_file_from_contents(
         &self,

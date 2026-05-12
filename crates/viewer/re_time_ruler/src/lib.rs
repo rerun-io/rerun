@@ -10,7 +10,7 @@
 //! The crate has no opinion on where the ruler sits on screen or how the user
 //! pans and zooms — callers wire those up themselves. The helpers
 //! [`TimeRangesUi::pan`] and [`TimeRangesUi::zoom_at`] return new
-//! [`TimeView`](re_viewer_context::TimeView?speculative-link)s that the caller
+//! [`TimeView`](re_viewer_context::TimeView)s that the caller
 //! can apply.
 
 mod paint_ticks;
