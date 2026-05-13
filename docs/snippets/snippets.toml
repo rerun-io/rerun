@@ -145,6 +145,9 @@ backwards_check = [
   "concepts/send_dataframe", # Python-only API; no reference RRD checked in
   "howto/convert_mcap_protobuf", # Processes video from MCAP, non-deterministic encoding
   "howto/convert_mcap_protobuf_send_column",
+  "concepts/chunk_processing", # Python-only experimental API; output rrd may shift across versions
+  "concepts/chunk_processing_intro", # Python-only experimental API; output rrd may shift across versions
+  "howto/optimize_chunks", # Compacts a video-bearing MCAP; chunk layout may shift across optimizer versions
   # Catalog server examples don't generate rrds
   "concepts/query-and-transform/dataframe_query_example",
   "concepts/query-and-transform/segment_properties",
@@ -180,6 +183,14 @@ backwards_check = [
   "rust",
 ]
 "concepts/build_chunk" = [ # Python-only experimental API
+  "cpp",
+  "rust",
+]
+"concepts/chunk_processing" = [ # `rerun.experimental` is Python-only
+  "cpp",
+  "rust",
+]
+"concepts/chunk_processing_intro" = [ # `rerun.experimental` is Python-only
   "cpp",
   "rust",
 ]
@@ -310,6 +321,10 @@ backwards_check = [
 ]
 "howto/micro_batching" = [
   "cpp", # TODO(#10661): Doesn't exist
+]
+"howto/optimize_chunks" = [
+  "cpp", # `rerun.experimental` is Python-only
+  "rust", # `rerun.experimental` is Python-only
 ]
 "howto/query_images" = [
   "cpp", # Not implemented
@@ -576,6 +591,21 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "howto/convert_mcap_protobuf_send_column" = [ # Uses external MCAP file, depends on mcap_protobuf package
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/chunk_processing" = [ # Python-only; nothing to compare across languages
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/chunk_processing_intro" = [ # Python-only; nothing to compare across languages
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/optimize_chunks" = [ # Python-only; nothing to compare across languages
   "cpp",
   "py",
   "rust",

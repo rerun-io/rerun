@@ -132,11 +132,18 @@ ipc_size_bytes_p999 = 1.0 MiB
 # … truncated …
 ```
 
-This produces a new file where chunks have been merged up to ~4096 rows or 1 MiB each (the defaults). This significantly reduces viewer-side load and improves performance for future queries and visualization.
+This produces a new file where chunks have been merged up to the size and row thresholds of the selected optimization profile (see below) (further capped by `--max-size 2MiB` in the example above). This significantly reduces viewer-side load and improves performance for future queries and visualization.
 
 Because it runs offline, the CLI compactor has full access to the dataset and no real-time constraints, making it the most effective tool for optimal compaction. It's a good idea to compact files ahead of time if they’ll be queried or visualized repeatedly.
 
 > ⚠️ `rerun rrd optimize` will automatically migrate the data to the latest version of the RRD protocol, if needed. ⚠️
+
+Note that `rerun rrd optimize` ships two preset profiles, selected with `--profile`, that set sensible thresholds for two common targets:
+
+* `object-store` *(default)* — large chunks (up to ~65k rows, ~2 MiB), tuned for object-store-backed datasets stored on catalog servers, where query throughput and network streaming matter most.
+* `live` — small chunks (up to ~4096 rows, ~384 KiB), tuned for the live-Viewer workflow where the time panel benefits from finer-grained resolution.
+
+Per-knob flags (`--max-rows`, `--max-size`, …) and the `RERUN_CHUNK_MAX_*` environment variables override the profile's values.
 
 Constraints:
 * Runs: standalone CLI tool
@@ -144,11 +151,25 @@ Constraints:
 * Operational limits: none -- runs fully offline
 
 
+## Compacting chunks with the chunk processing API
+
+The same compaction logic that powers `rerun rrd optimize` is exposed in the [Chunk Processing API](../../concepts/logging-and-ingestion/chunk-processing-api.md), so you can fold optimization into a Python ingestion or conversion pipeline rather than running it as a separate CLI step:
+
+snippet: howto/optimize_chunks[optimize]
+
+[`LazyChunkStream.collect()`](https://ref.rerun.io/docs/python/stable/common/experimental?speculative-link#rerun.experimental.LazyChunkStream.collect) materializes the pipeline into a `ChunkStore`; passing an `OptimizationProfile` runs extra compaction passes tuned for a specific target. The two presets mirror the CLI's `--profile` values:
+
+* `OptimizationProfile.OBJECT_STORE` (corresponds to `--profile object-store`, the CLI default) — large chunks for object-store-backed datasets;
+* `OptimizationProfile.LIVE` (corresponds to `--profile live`) — small chunks for the live-Viewer workflow.
+
+* **Note:** `collect()` materializes the entire pipeline into an in-memory `ChunkStore` before writing, so the full recording must fit in RAM.
+
+
 ## Conclusion
 
 * Compaction isn’t a minor optimization — it can and frequently yields massive performance gains depending on your workload.
 * Rerun applies micro-batching and compaction by default, but optimal settings vary per use case.
 * Compaction can (and should) happen at multiple stages, each with different tradeoffs, operating under very different constraints.
-* The Rerun CLI is your best tool to:
-    * Understand chunk-related performance issues (`rerun rrd stats`)
-    * Preemptively optimize data (`rerun rrd optimize`)
+* Once data has been recorded, two complementary tools let you preemptively optimize it for downstream use:
+    * The Rerun CLI: `rerun rrd stats` to diagnose, `rerun rrd optimize` for one-shot offline compaction.
+    * The [Chunk Processing API](../../concepts/logging-and-ingestion/chunk-processing-api.md): same compaction logic, exposed in-process so you can fold it into a Python ingestion or conversion pipeline via `collect(optimize=OptimizationProfile.…)`.
