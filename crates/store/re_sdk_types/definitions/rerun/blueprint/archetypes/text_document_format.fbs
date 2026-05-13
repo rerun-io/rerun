@@ -1,0 +1,20 @@
+namespace rerun.blueprint.archetypes;
+
+/// Formatting options for the text document view.
+///
+/// These options only apply to plain text documents and have no effect on Markdown documents.
+table TextDocumentFormat (
+  "attr.rerun.scope": "blueprint"
+) {
+  // --- Optional ---
+
+  /// Whether to use a monospace font for the document body.
+  ///
+  /// Defaults to disabled.
+  monospace: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
+
+  /// Whether to wrap long lines in the document body.
+  ///
+  /// Defaults to enabled.
+  word_wrap: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 200);
+}

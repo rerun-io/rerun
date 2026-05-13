@@ -26,22 +26,22 @@ The Web Viewer has performance limitations compared to the native viewer. It run
 
 Both viewers can be extended: the Native Viewer through its [Rust API](../howto/visualization/extend-ui.md), and the Web Viewer can be [embedded in web applications](../howto/integrations/embed-web.md) or [Jupyter notebooks](../howto/integrations/embed-notebooks.md).
 
-### Data platform
+### Catalog server
 
-The Data Platform provides persistent storage and indexing for large-scale data. It organizes data into:
+The catalog server provides persistent storage and indexing for large-scale data. It organizes data into:
 
 - **Datasets**: Named collections of related recordings
 - **Segments**: Individual `.rrd` files registered to a dataset
 
 Data is served via the **redap** protocol (**Re**run **Da**ta **P**rotocol).
 
-The Data Platform is available as:
+The catalog server is available as:
 - Open-source server for local development (`rerun server`)
-- Managed offering for production deployments
+- **Rerun Hub**, our managed offering for production deployments
 
 ### Catalog SDK
 
-The Catalog SDK (`rerun.catalog`) is a Python library for querying and manipulating the data stored on the Data Platform. Combined with the managed Data Platform, it allows building complex data transformation pipelines.
+The Catalog SDK (`rerun.catalog`) is a Python library for querying and manipulating the data stored on a catalog server. Combined with Rerun Hub, it allows building complex data transformation pipelines.
 
 
 ## How they connect
@@ -66,7 +66,7 @@ Viewer: {
 Viewer.gRPC endpoint -> Viewer.Chunk Store
 Viewer.Chunk Store -> Viewer.Renderer
 
-Data Platform: {
+Catalog server: {
   label.near: bottom-center
   Datasets
 }
@@ -76,9 +76,9 @@ Catalog SDK
 Logging SDK -> Viewer.gRPC endpoint: stream
 Logging SDK -> ".rrd files": save
 ".rrd files" -> Viewer.Chunk Store: load
-".rrd files" -> Data Platform: register
-Data Platform -> Viewer.Chunk Store: redap
-Data Platform -> Catalog SDK: redap
+".rrd files" -> Catalog server: register
+Catalog server -> Viewer.Chunk Store: redap
+Catalog server -> Catalog SDK: redap
 ```
 
 
@@ -93,7 +93,7 @@ It's a great place to start exploring the examples.
 
 The `rerun` binary bundles multiple tools in one:
 - **Native Viewer** for visualization
-- **OSS Data Platform** server (via `rerun server`)
+- **OSS catalog server** (via `rerun server`)
 - **RRD tools** for file manipulation
 - **Web Viewer** (via `rerun --serve-web`)
 
@@ -173,15 +173,15 @@ Best for: sharing recordings, offline analysis, archiving.
 
 
 
-### Store on data platform
+### Store on a catalog server
 
-Register `.rrd` files with the Data Platform for persistent, indexed storage. Query and visualize on demand.
+Register `.rrd` files with a catalog server for persistent, indexed storage. Query and visualize on demand.
 
 ```d2
 direction: right
-".rrd" -> Data Platform: register
-Data Platform -> Viewer: redap
-Data Platform -> Catalog SDK: redap
+".rrd" -> Catalog server: register
+Catalog server -> Viewer: redap
+Catalog server -> Catalog SDK: redap
 ```
 
 Minimal example of creating a dataset and registering files:
@@ -201,13 +201,13 @@ Best for: large datasets, team collaboration, production pipelines.
 
 ### Query and transform data
 
-Use the Catalog SDK to query data from the Data Platform, process it, and write results back. Visualization is available at any time.
+Use the Catalog SDK to query data from a catalog server, process it, and write results back. Visualization is available at any time.
 
 ```d2
 direction: right
-Data Platform -> Catalog SDK: redap
-Data Platform <- Catalog SDK: redap
-Data Platform -> Viewer: redap
+Catalog server -> Catalog SDK: redap
+Catalog server <- Catalog SDK: redap
+Catalog server -> Viewer: redap
 ```
 
 Minimal example of querying a dataset:

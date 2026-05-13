@@ -99,13 +99,14 @@ pub fn log_tracing_session_finished(
     cpu_iowait_s: Option<f64>,
     net_rx_mb: Option<f64>,
 ) {
+    let fmt = |v: Option<f64>| v.map_or_else(|| "na".to_owned(), |x| format!("{x:.3}"));
     tracing::info!(
         rerun_session_id,
-        elapsed_s,
-        cpu_user_s = ?cpu_user_s,
-        cpu_system_s = ?cpu_system_s,
-        cpu_iowait_s = ?cpu_iowait_s,
-        net_rx_mb = ?net_rx_mb,
+        elapsed_s = format!("{elapsed_s:.3}"),
+        cpu_user_s = fmt(cpu_user_s),
+        cpu_system_s = fmt(cpu_system_s),
+        cpu_iowait_s = fmt(cpu_iowait_s),
+        net_rx_mb = fmt(net_rx_mb),
         "rerun tracing session finished",
     );
 }

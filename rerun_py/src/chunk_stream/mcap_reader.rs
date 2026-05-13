@@ -161,7 +161,7 @@ impl ChunkStreamFactory for McapStreamFactory {
             .name("mcap-chunk-source".into())
             .spawn(move || {
                 let result =
-                    loader.emit_chunks(&mmap, timeline_type, timestamp_offset_ns, &mut |chunk| {
+                    loader.emit_chunks(&mmap, timeline_type, timestamp_offset_ns, &|chunk| {
                         // Stop producing if the receiver has been dropped.
                         re_quota_channel::send_crossbeam(&tx, Ok(Arc::new(chunk))).ok();
                     });

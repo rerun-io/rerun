@@ -1471,8 +1471,7 @@ mod tests {
     fn test_implicit_transform_at_root_being_ignored_with_warning()
     -> Result<(), Box<dyn std::error::Error>> {
         re_log::setup_logging();
-        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Warn);
-        re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
+        let log_rx = re_log::add_log_msg_receiver(re_log::LevelFilter::WARN);
 
         let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
 
@@ -1522,7 +1521,7 @@ mod tests {
         );
 
         let received_log = log_rx.try_recv()?;
-        assert_eq!(received_log.level, re_log::Level::Warn);
+        assert_eq!(received_log.level, re_log::Level::WARN);
         assert!(
             received_log
                 .msg

@@ -101,7 +101,7 @@ impl<'ctx> LineDrawableBuilder<'ctx> {
         self.strips_buffer.is_empty()
     }
 
-    pub fn default_box_flags() -> LineStripFlags {
+    pub fn default_shape_flags() -> LineStripFlags {
         LineStripFlags::STRIP_FLAGS_OUTWARD_EXTENDING_ROUND_CAPS
     }
 }
@@ -393,7 +393,7 @@ impl<'ctx> LineBatchBuilder<'_, 'ctx> {
         let num_strips_added = 4;
         let num_vertices_added = 10 + 3 * 2;
         self.create_strip_builder(num_strips_added, num_vertices_added)
-            .flags(LineDrawableBuilder::default_box_flags())
+            .flags(LineDrawableBuilder::default_shape_flags())
     }
 
     /// Add rectangle outlines.
@@ -417,7 +417,7 @@ impl<'ctx> LineBatchBuilder<'_, 'ctx> {
             ]
             .into_iter(),
         )
-        .flags(LineDrawableBuilder::default_box_flags())
+        .flags(LineDrawableBuilder::default_shape_flags())
     }
 
     /// Adds a 2D series of line connected points.

@@ -8,3 +8,5 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
 DataFusion interfaces to Rerun gRPC queries
+
+See [`PIPELINE_BUDGET.md`](PIPELINE_BUDGET.md) for an explanation of the memory backpressure mechanism used by `SegmentStreamExec` to bound RAM across the IO → channel → in-memory store pipeline, and why a byte-bounded channel is not sufficient.

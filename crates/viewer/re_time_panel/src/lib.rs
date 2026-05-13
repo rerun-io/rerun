@@ -6,13 +6,11 @@
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod data_density_graph;
-mod paint_ticks;
 mod recursive_chunks_per_timeline_subscriber;
 mod streams_tree_data;
 mod time_axis;
 mod time_control_ui;
 mod time_panel;
-mod time_ranges_ui;
 mod time_selection_ui;
 
 pub use time_panel::TimePanel;
@@ -23,7 +21,7 @@ pub use {streams_tree_data::StreamsTreeData, time_panel::TimePanelSource};
 pub mod __bench {
     pub use crate::data_density_graph::*;
     pub use crate::time_panel::TimePanelItem;
-    pub use crate::time_ranges_ui::TimeRangesUi;
+    pub use re_time_ruler::TimeRangesUi;
 }
 
 /// Indicate moving the time cursor.

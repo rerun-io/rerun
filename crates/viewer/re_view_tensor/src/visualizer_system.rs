@@ -15,6 +15,17 @@ pub struct TensorVisualization {
     pub data_range: ValueRange,
 }
 
+impl re_byte_size::SizeBytes for TensorVisualization {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            tensor_row_id: _,
+            tensor: _, // Tensor is already counted as part of the store.
+            data_range: _,
+        } = self;
+        0
+    }
+}
+
 #[derive(Default)]
 pub struct TensorSystem;
 

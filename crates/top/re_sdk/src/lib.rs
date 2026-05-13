@@ -67,6 +67,11 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
             FileFlushError::Timeout => sink::SinkFlushError::Timeout,
         })
     }
+
+    #[inline]
+    fn defers_finalization_to_shutdown(&self) -> bool {
+        true
+    }
 }
 
 // ---------------
@@ -78,7 +83,7 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 /// sent over gRPC, written to file, etc.
 pub mod sink {
     #[cfg(not(target_arch = "wasm32"))]
-    pub use re_log_encoding::{FileSink, FileSinkError};
+    pub use re_log_encoding::{FileSink, FileSinkError, FileSinkOptions};
 
     pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
     pub use crate::log_sink::{

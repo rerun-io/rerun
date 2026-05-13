@@ -3,7 +3,7 @@
 import pyarrow as pa
 
 import rerun as rr
-from rerun.experimental import Chunk, DeriveLens, LazyChunkStream, MutateLens, Selector, send_chunk
+from rerun.experimental import Chunk, DeriveLens, LazyChunkStream, MutateLens, Selector, send_chunks
 
 rr.init("rerun_example_lenses", spawn=True)
 
@@ -53,5 +53,4 @@ extract_scaled_x = DeriveLens("Imu:accel", output_entity="/new_entity/accel_scal
 # Apply all lenses via the ChunkStream API and send the resulting chunks.
 stream = LazyChunkStream.from_iter([chunk])
 results = stream.lenses([extract_x, extract_y, simplify_accel, extract_scaled_x], output_mode="forward_unmatched")
-for result in results:
-    send_chunk(result)
+send_chunks(results)

@@ -1,0 +1,20 @@
+namespace rerun.components;
+
+/// Whether a [components.VideoSample] contains a keyframe (also known as a sync sample or IDR).
+///
+/// A keyframe in this sense must be _decoder re-entrant_: a decoder must be able to start
+/// decoding the stream from this sample alone, with no prior decoder state.
+/// Not every intra-coded frame qualifies. Some codecs have intra-only frames that may
+/// still reference existing decoder state and are therefore not valid sync points.
+/// See [components.VideoCodec] for the codec-specific definition of a keyframe.
+struct IsKeyframe (
+  "attr.arrow.transparent",
+  "attr.docs.unreleased",
+  "attr.python.aliases": "bool",
+  "attr.python.array_aliases": "bool | npt.NDArray[np.bool_]",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  is_keyframe: rerun.datatypes.Bool (order: 100);
+}

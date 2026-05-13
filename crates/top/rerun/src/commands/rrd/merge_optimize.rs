@@ -79,15 +79,15 @@ pub enum ProfileArg {
     /// Small chunks tuned for the live Viewer workflow.
     Live,
 
-    /// Larger chunks tuned for Data Platform query and streaming.
-    Dataplatform,
+    /// Larger chunks tuned for object-store-backed query and streaming.
+    ObjectStore,
 }
 
 impl ProfileArg {
     fn to_profile(self) -> OptimizationProfile {
         match self {
             Self::Live => OptimizationProfile::LIVE,
-            Self::Dataplatform => OptimizationProfile::DATAPLATFORM,
+            Self::ObjectStore => OptimizationProfile::OBJECT_STORE,
         }
     }
 }
@@ -113,7 +113,7 @@ pub struct OptimizeCommand {
     /// Per-knob flags and `RERUN_CHUNK_MAX_*` env vars override the profile's
     /// values. `RERUN_STORE_ENABLE_CHANGELOG` is ignored by this command —
     /// `rerun rrd optimize` is always headless.
-    #[arg(long = "profile", value_enum, default_value_t = ProfileArg::Dataplatform)]
+    #[arg(long = "profile", value_enum, default_value_t = ProfileArg::ObjectStore)]
     profile: ProfileArg,
 
     /// Threshold after which a Chunk cannot be compacted any further.

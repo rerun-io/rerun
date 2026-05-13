@@ -62,7 +62,7 @@ impl Mesh3DVisualizer {
                 };
 
                 c.entry(
-                    &entity_path.to_string(),
+                    entity_path,
                     key.clone(),
                     AnyMesh::Mesh {
                         mesh: mesh_entry.native_mesh,

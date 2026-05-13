@@ -1,0 +1,15 @@
+[package]
+name = "state_timeline_example"
+version = "0.31.0-alpha.1+dev"
+edition = "2024"
+rust-version = "1.92"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+arrow.workspace = true
+rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
+  "native_viewer",
+  "sdk",
+  "server",
+] }

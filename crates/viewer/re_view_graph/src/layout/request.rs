@@ -19,11 +19,30 @@ pub(super) struct NodeTemplate {
     pub(super) fixed_position: Option<Pos2>,
 }
 
+impl re_byte_size::SizeBytes for NodeTemplate {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct EdgeTemplate {
     pub source: NodeId,
     pub target: NodeId,
     pub target_arrow: bool,
+}
+
+impl re_byte_size::SizeBytes for EdgeTemplate {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 #[derive(Default, PartialEq)]
@@ -36,12 +55,24 @@ pub(super) struct GraphTemplate {
     pub(super) edges: BTreeMap<EdgeId, Vec<EdgeTemplate>>,
 }
 
+impl re_byte_size::SizeBytes for GraphTemplate {
+    fn heap_size_bytes(&self) -> u64 {
+        self.nodes.heap_size_bytes() + self.edges.heap_size_bytes()
+    }
+}
+
 /// A [`LayoutRequest`] encapsulates all the information that is considered when computing a layout.
 ///
 /// It implements [`PartialEq`] to check if a layout is up-to-date, or if it needs to be recomputed.
 #[derive(PartialEq)]
 pub struct LayoutRequest {
     pub(super) graphs: BTreeMap<EntityPath, GraphTemplate>,
+}
+
+impl re_byte_size::SizeBytes for LayoutRequest {
+    fn heap_size_bytes(&self) -> u64 {
+        self.graphs.heap_size_bytes()
+    }
 }
 
 impl LayoutRequest {

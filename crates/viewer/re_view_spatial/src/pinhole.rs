@@ -7,6 +7,18 @@ pub struct Pinhole {
     pub resolution: glam::Vec2,
 }
 
+impl re_byte_size::SizeBytes for Pinhole {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 impl Pinhole {
     /// Width/height ratio of the camera sensor.
     #[inline]

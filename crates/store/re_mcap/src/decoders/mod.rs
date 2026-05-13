@@ -1,3 +1,4 @@
+mod attachments;
 mod metadata;
 mod protobuf;
 mod raw;
@@ -9,10 +10,13 @@ mod stats;
 
 use std::collections::{BTreeMap, BTreeSet};
 
+#[cfg(not(target_arch = "wasm32"))]
+use re_chunk::RowId;
 use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::{Chunk, EntityPath};
 use re_log_types::TimeType;
 
+pub use self::attachments::McapAttachmentsDecoder;
 pub use self::metadata::McapMetadataDecoder;
 pub use self::protobuf::McapProtobufDecoder;
 pub use self::raw::McapRawDecoder;
@@ -24,6 +28,10 @@ pub use self::stats::McapStatisticDecoder;
 use crate::Error;
 use crate::parsers::{ChannelId, MessageParser, ParserContext};
 use crate::util::collect_empty_channels;
+
+// Write MCAP file info & stats to a dedicated static entity.
+// This keeps the general RRD `__properties` clean for user-specific property layers.
+const MCAP_PROPERTIES_ENTITY_PATH: &str = "__mcap_properties";
 
 /// Globally unique identifier for a decoder.
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -69,7 +77,7 @@ pub trait Decoder {
     fn process(
         &mut self,
         ctx: &DecoderContext<'_>,
-        emit: &mut dyn FnMut(Chunk),
+        emit: &(dyn Fn(Chunk) + Send + Sync),
     ) -> Result<(), Error>;
 }
 
@@ -123,13 +131,66 @@ impl<'a> DecoderContext<'a> {
             .iter()
             .map(|index| (index, mcap::read::metadata(self.mcap_bytes, index)))
     }
+
+    /// Iterates attachment records referenced by the summary attachment index.
+    pub fn attachment_records(
+        &self,
+    ) -> impl Iterator<
+        Item = (
+            &'a mcap::records::AttachmentIndex,
+            Result<mcap::Attachment<'a>, mcap::McapError>,
+        ),
+    > + '_ {
+        self.summary
+            .attachment_indexes
+            .iter()
+            .map(|index| (index, mcap::read::attachment(self.mcap_bytes, index)))
+    }
+}
+
+/// An emitter to use in tests and pass to [`Decoder::process`]
+#[cfg(not(target_arch = "wasm32"))]
+pub struct TestEmitter {
+    rx: std::sync::mpsc::Receiver<Chunk>,
+    emitter: Box<dyn Fn(Chunk) + Send + Sync>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Default for TestEmitter {
+    fn default() -> Self {
+        #[expect(clippy::disallowed_methods)] // This is intended to use in tests
+        let (tx, rx) = std::sync::mpsc::channel();
+        let emitter = Box::new(move |chunk| {
+            let _res = tx.send(chunk);
+        });
+        Self { rx, emitter }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl std::ops::Deref for TestEmitter {
+    type Target = dyn Fn(Chunk) + Send + Sync;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.emitter
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl TestEmitter {
+    pub fn finish(self) -> Vec<Chunk> {
+        let Self { rx, emitter } = self;
+        drop(emitter);
+        rx.iter().collect()
+    }
 }
 
 /// Can be used to extract per-message information from an MCAP file.
 ///
 /// This is a specialization of [`Decoder`] that allows defining [`MessageParser`]s.
 /// to interpret the contents of MCAP chunks.
-pub trait MessageDecoder {
+pub trait MessageDecoder: Send + Sync {
     fn identifier() -> DecoderIdentifier
     where
         Self: Sized;
@@ -293,21 +354,24 @@ impl MessageDecoderRunner {
         mcap_bytes: &[u8],
         summary: &mcap::Summary,
         time_type: TimeType,
-        emit: &mut dyn FnMut(Chunk),
+        emit: &(dyn Fn(Chunk) + Send + Sync),
     ) -> Result<(), Error> {
         self.inner.init(summary)?;
 
-        for chunk in &summary.chunk_indexes {
+        let allowed = &self.allowed;
+        let inner = &*self.inner;
+
+        let decode_chunk = |chunk: &::mcap::records::ChunkIndex| -> Result<Vec<Chunk>, Error> {
             let parsers = summary
                 .read_message_indexes(mcap_bytes, chunk)?
                 .iter()
                 .filter_map(|(channel, msg_offsets)| {
                     let channel_id = ChannelId::from(channel.id);
-                    if !self.allowed.contains(&channel_id) {
+                    if !allowed.contains(&channel_id) {
                         return None;
                     }
 
-                    let parser = self.inner.message_parser(channel, msg_offsets.len())?;
+                    let parser = inner.message_parser(channel, msg_offsets.len())?;
                     let entity_path = EntityPath::from(channel.topic.as_str());
                     let ctx = ParserContext::new(entity_path, channel.topic.clone(), time_type);
                     Some((channel_id, (ctx, parser)))
@@ -326,28 +390,134 @@ impl MessageDecoderRunner {
                             );
                         }
                     }
-                    Err(err) => re_log::error!("Failed to read message from MCAP file: {err}"),
+                    Err(err) => {
+                        re_log::error!("Failed to read message from MCAP file: {err}");
+                    }
                 }
             }
 
+            let mut batch = Vec::new();
             for mut chunk in decoder.finish() {
                 if let Ok(chunk) = &mut chunk {
                     chunk.sort_if_unsorted();
-                    for (name, column) in chunk.timelines() {
-                        if !column.is_sorted() {
-                            let entity_path = chunk.entity_path();
-                            re_log::warn_once!(
-                                "Found unsorted timeline '{name}' for entity '{entity_path}'. This may lead to suboptimal performance.",
-                            );
-                        }
-                    }
                 }
 
                 match chunk {
-                    Ok(c) => emit(c),
+                    Ok(c) => batch.push(c),
                     Err(err) => re_log::error!("Failed to decode chunk: {err}"),
                 }
             }
+
+            Ok(batch)
+        };
+
+        #[cfg(target_arch = "wasm32")]
+        let workers = 1;
+        #[cfg(not(target_arch = "wasm32"))]
+        let workers = rayon::current_num_threads().max(1);
+
+        if workers <= 2 {
+            // Serial path. Used on wasm32 and on small worker counts.
+            for chunk in &summary.chunk_indexes {
+                for c in decode_chunk(chunk)? {
+                    emit(c);
+                }
+            }
+            return Ok(());
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // Count-bounded channel: cap how many decoded batches can sit in the queue ahead of
+            // the consumer. Workers block on `send` once the queue is full, which gives the
+            // reordering time to process.
+            let max_in_flight = workers * 2;
+
+            let (batch_tx, batch_rx) =
+                crossbeam::channel::bounded::<(usize, Vec<Chunk>)>(max_in_flight);
+
+            // Decode chunks in parallel on a producer thread, and re-order them
+            // to be deterministic on another thread.
+            //
+            // Workers pull chunk indices in FIFO order from a shared atomic counter.
+            let (producer_result, ()) = rayon::join(
+                || {
+                    let next_idx = std::sync::atomic::AtomicUsize::new(0);
+                    let total = summary.chunk_indexes.len();
+                    let chunk_indexes = &summary.chunk_indexes;
+
+                    let result: Result<(), Error> = std::thread::scope(|scope| {
+                        let handles: Vec<_> = (0..workers)
+                            .map(|_| {
+                                let batch_tx = batch_tx.clone();
+                                let next_idx = &next_idx;
+                                let decode_chunk = &decode_chunk;
+                                scope.spawn(move || -> Result<(), Error> {
+                                    loop {
+                                        let idx = next_idx
+                                            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                        if idx >= total {
+                                            return Ok(());
+                                        }
+                                        let batch = decode_chunk(&chunk_indexes[idx])?;
+                                        // Blocks once `max_in_flight` batches are queued.
+                                        re_quota_channel::send_crossbeam(&batch_tx, (idx, batch))
+                                            .map_err(|err| {
+                                            Error::Other(anyhow::format_err!(
+                                                "Failed to send batch: {err}"
+                                            ))
+                                        })?;
+                                    }
+                                })
+                            })
+                            .collect();
+
+                        let mut first_err: Result<(), Error> = Ok(());
+                        for handle in handles {
+                            match handle.join().expect("decoder worker panicked") {
+                                Err(err) if first_err.is_ok() => first_err = Err(err),
+                                Ok(()) | Err(_) => {}
+                            }
+                        }
+                        first_err
+                    });
+                    // Close the channel so the consumer's iteration terminates.
+                    drop(batch_tx);
+                    result
+                },
+                || {
+                    // Re-create `RowId`s on this single thread so they are monotonically
+                    // increasing in emission order. Workers generate `RowId`s from
+                    // thread-local counters that are not comparable across threads.
+                    let emit_with_new_row_ids = |chunk: Chunk| {
+                        let chunk = chunk.clone_as(chunk.id(), RowId::new());
+                        emit(chunk);
+                    };
+
+                    let mut buffer: BTreeMap<usize, Vec<Chunk>> = BTreeMap::new();
+                    let mut current_idx = 0usize;
+                    for (idx, batch) in &batch_rx {
+                        if idx == current_idx {
+                            for chunk in batch {
+                                emit_with_new_row_ids(chunk);
+                            }
+                            current_idx += 1;
+                            while let Some(b) = buffer.remove(&current_idx) {
+                                for chunk in b {
+                                    emit_with_new_row_ids(chunk);
+                                }
+                                current_idx += 1;
+                            }
+                        } else {
+                            buffer.insert(idx, batch);
+                        }
+                    }
+
+                    re_log::debug_assert!(buffer.is_empty(), "All batches should've been consumed");
+                },
+            );
+
+            producer_result?;
         }
 
         Ok(())
@@ -378,7 +548,7 @@ impl ExecutionPlan {
         mcap_bytes: &[u8],
         summary: &mcap::Summary,
         time_type: TimeType,
-        emit: &mut dyn FnMut(Chunk),
+        emit: &(dyn Fn(Chunk) + Send + Sync),
     ) -> anyhow::Result<()> {
         let empty_channels = collect_empty_channels(mcap_bytes, summary)?;
         let ctx = DecoderContext::new(mcap_bytes, summary, &self.topic_filter, empty_channels);
@@ -428,6 +598,7 @@ impl DecoderRegistry {
         let mut registry = Self::empty()
             // file decoders:
             .register_file_decoder::<McapRecordingInfoDecoder>()
+            .register_file_decoder::<McapAttachmentsDecoder>()
             .register_file_decoder::<McapMetadataDecoder>()
             .register_file_decoder::<McapSchemaDecoder>()
             .register_file_decoder::<McapStatisticDecoder>()
@@ -654,7 +825,6 @@ impl DecoderRegistry {
 mod tests {
     use std::io;
 
-    use re_chunk::Chunk;
     use re_log_types::TimeType;
     use re_sdk_types::archetypes::McapMessage;
 
@@ -701,11 +871,11 @@ mod tests {
         assert_eq!(plan.assignments[0].channel_id, ChannelId(active_channel_id));
         assert_ne!(plan.assignments[0].channel_id, ChannelId(empty_channel_id));
 
-        let mut chunks = Vec::<Chunk>::new();
-        plan.run(&buffer, &summary, TimeType::TimestampNs, &mut |chunk| {
-            chunks.push(chunk);
-        })
-        .expect("failed to run plan");
+        let emitter = TestEmitter::default();
+        plan.run(&buffer, &summary, TimeType::TimestampNs, &*emitter)
+            .expect("failed to run plan");
+
+        let chunks = emitter.finish();
 
         assert_eq!(chunks.len(), 2);
         assert!(
@@ -776,11 +946,11 @@ mod tests {
             .expect("missing assignment");
         assert_eq!(assignment.decoder.to_string(), "raw");
 
-        let mut chunks = Vec::<Chunk>::new();
-        plan.run(&buffer, &summary, TimeType::TimestampNs, &mut |chunk| {
-            chunks.push(chunk);
-        })
-        .expect("failed to run plan");
+        let test_emitter = TestEmitter::default();
+        plan.run(&buffer, &summary, TimeType::TimestampNs, &*test_emitter)
+            .expect("failed to run plan");
+
+        let chunks = test_emitter.finish();
 
         assert!(chunks.iter().any(|chunk| {
             chunk.entity_path().to_string().ends_with("non_cdr_topic")

@@ -32,7 +32,13 @@ int main(int argc, char* argv[]) {
     for (int t = 0; t < static_cast<int>(TAU * 2.0 * 100.0); ++t) {
         rec.set_time_sequence("step", t);
 
-        rec.log("trig/sin", rerun::Scalars(sin(static_cast<double>(t) / 100.0)));
-        rec.log("trig/cos", rerun::Scalars(cos(static_cast<double>(t) / 100.0)));
+        rec.log(
+            "trig/sin",
+            rerun::Scalars(sin(static_cast<double>(t) / 100.0))
+        );
+        rec.log(
+            "trig/cos",
+            rerun::Scalars(cos(static_cast<double>(t) / 100.0))
+        );
     }
 }

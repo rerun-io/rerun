@@ -5,9 +5,11 @@ use re_log_types::{
 use re_sdk_types::blueprint::components::LoopMode;
 use re_ui::{HasDesignTokens as _, UICommand, UICommandSender as _, UiExt as _, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
-use re_viewer_context::{SystemCommandSender as _, TimeControl, TimeControlCommand, ViewerContext};
+use re_viewer_context::{
+    StoreViewContext, SystemCommandSender as _, TimeControl, TimeControlCommand, ViewerContext,
+};
 
-use super::time_ranges_ui::TimeRangesUi;
+use re_time_ruler::TimeRangesUi;
 
 /// Paints a rect on the timeline given a time range.
 pub fn paint_timeline_range(
@@ -54,16 +56,26 @@ pub fn collapsed_loop_selection_ui(
 
 pub fn loop_selection_ui(
     ctx: &ViewerContext<'_>,
-    time_ctrl: &TimeControl,
+    store_ctx: &StoreViewContext<'_>,
     time_ranges_ui: &TimeRangesUi,
     ui: &egui::Ui,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
     time_commands: &mut Vec<TimeControlCommand>,
 ) {
+    let time_ctrl = store_ctx.time_ctrl;
+
     let Some(time_type) = time_ctrl.time_type() else {
         return;
     };
+
+    let timeline_range = AbsoluteTimeRangeF::from(
+        store_ctx
+            .db
+            .time_range_for(time_ctrl.timeline_name())
+            .unwrap_or(AbsoluteTimeRange::EVERYTHING),
+    );
+
     if time_ctrl.time_selection().is_none() && time_ctrl.loop_mode() == LoopMode::Selection {
         // Helpfully select a time slice
         if let Some(selection) = initial_time_selection(time_ranges_ui, time_type) {
@@ -162,24 +174,44 @@ pub fn loop_selection_ui(
                     });
 
                 if left_response.dragged() {
-                    drag_right_loop_selection_edge(
+                    drag_left_loop_selection_edge(
                         ui,
                         time_ranges_ui,
                         &mut selected_range,
                         right_edge_id,
                     );
+
+                    // Keep the selection within the timeline range.
+                    selected_range.min = selected_range.min.max(timeline_range.min);
                 }
 
                 if right_response.dragged() {
-                    drag_left_loop_selection_edge(
+                    drag_right_loop_selection_edge(
                         ui,
                         time_ranges_ui,
                         &mut selected_range,
                         left_edge_id,
                     );
+
+                    // Keep the selection within the timeline range.
+                    selected_range.max = selected_range.max.min(timeline_range.max);
                 }
 
                 on_drag_loop_selection(ui, &middle_response, time_ranges_ui, &mut selected_range);
+
+                // Keep the selection within the timeline range.
+                if selected_range.min < timeline_range.min {
+                    selected_range.max = timeline_range.min + selected_range.length();
+                    selected_range.min = timeline_range.min;
+                }
+                if selected_range.max > timeline_range.max {
+                    selected_range.min = timeline_range.max - selected_range.length();
+                    selected_range.max = timeline_range.max;
+                }
+
+                selected_range = selected_range
+                    .intersection(timeline_range)
+                    .unwrap_or(AbsoluteTimeRangeF::EMPTY);
 
                 if middle_response.clicked() {
                     if ui.input(|i| i.modifiers.alt) {
@@ -452,7 +484,7 @@ fn initial_time_selection(
     }
 }
 
-fn drag_right_loop_selection_edge(
+fn drag_left_loop_selection_edge(
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
     selected_range: &mut AbsoluteTimeRangeF,
@@ -470,7 +502,7 @@ fn drag_right_loop_selection_edge(
     Some(())
 }
 
-fn drag_left_loop_selection_edge(
+fn drag_right_loop_selection_edge(
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
     selected_range: &mut AbsoluteTimeRangeF,

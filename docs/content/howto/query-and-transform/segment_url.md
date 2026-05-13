@@ -8,7 +8,7 @@ The generated URLs can optionally seek to a timestamp, select a time range, or s
 
 ## Setup
 
-We start by loading sample data in a local Data Platform instance and creating a table with some segment metadata.
+We start by loading sample data in a local catalog server instance and creating a table with some segment metadata.
 
 snippet: howto/query-and-transform/segment_url[setup]
 

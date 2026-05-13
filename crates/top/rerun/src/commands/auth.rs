@@ -5,7 +5,7 @@ pub enum AuthCommands {
     /// Log into Rerun.
     ///
     /// This command opens a page in your default browser, allowing you
-    /// to log in to the Rerun Data Platform.
+    /// to log in to Rerun Hub.
     ///
     /// Once you've logged in, your credentials are stored on your machine.
     ///
@@ -21,12 +21,12 @@ pub enum AuthCommands {
     /// Retrieve the stored access token.
     ///
     /// The access token is part of the credentials produced by `rerun auth login`,
-    /// and is used to authorize requests to the Rerun Data Platform.
+    /// and is used to authorize requests to Rerun Hub.
     Token(TokenCommand),
 
     /// Generate a fresh access token.
     ///
-    /// You can use this token to authorize requests to the Rerun Data Platform.
+    /// You can use this token to authorize requests to Rerun Hub.
     ///
     /// It's closer to an API key than an access token, as it can be revoked before
     /// it expires.

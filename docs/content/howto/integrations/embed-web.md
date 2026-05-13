@@ -25,6 +25,16 @@ For instance:
 <iframe src="https://app.rerun.io/version/0.20.3/?url=https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd"></iframe>
 ```
 
+### Matching the host page's theme
+
+By default, the embedded viewer follows the user's OS theme (`prefers-color-scheme`). If your host page has its own theme toggle, you can pin the viewer to match by passing `theme=dark`, `theme=light`, or `theme=system`:
+
+```html
+<iframe src="https://app.rerun.io/version/{RERUN_VERSION}/?url={RRD_URL}&theme=dark"></iframe>
+```
+
+This is useful for sites whose theme can differ from the OS preference — without it, a user on a light-mode OS visiting your dark-mode page would see a bright viewer panel against a dark background.
+
 ## Using the JavaScript package
 
 We offer JavaScript bindings to the Rerun Viewer via NPM. This method provides control over the Viewer but requires a JavaScript web application setup with a bundler.

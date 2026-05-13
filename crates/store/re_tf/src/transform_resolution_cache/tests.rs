@@ -1638,8 +1638,7 @@ fn ensure_no_logged_error(rx: &re_log::Receiver<re_log::LogMsg>) {
 
 fn test_error_on_changing_associated_path(time: TimeInt) -> Result<(), Box<dyn std::error::Error>> {
     re_log::setup_logging();
-    let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Error);
-    re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
+    let log_rx = re_log::add_log_msg_receiver(re_log::LevelFilter::ERROR);
 
     let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
     let mut cache = TransformResolutionCache::default();
@@ -1676,7 +1675,7 @@ fn test_error_on_changing_associated_path(time: TimeInt) -> Result<(), Box<dyn s
     let error = log_rx.try_recv().unwrap();
     ensure_no_logged_error(&log_rx); // Exactly one error.
 
-    assert_eq!(error.level, re_log::Level::Error);
+    assert_eq!(error.level, re_log::Level::ERROR);
     assert!(
         error.msg.contains("entity_a"),
         "Expected to mention previous entity, but msg was {}",

@@ -71,7 +71,7 @@ struct Index {
 
 /// All indexes for a dataset's chunks
 ///
-/// Index creation behavior (mimics Rerun Cloud):
+/// Index creation behavior (mimics Rerun Hub):
 /// - Cannot create an index that already exists. Changing and index's parameters requires
 ///   deleting it first.
 /// - Cannot create a index for a column that doesn't already have data, as we don't know
@@ -349,7 +349,7 @@ impl DatasetChunkIndexes {
 #[cfg(test)]
 mod tests {
     //! Simple test for vector search. More extensive tests are in the `redap_tests` package that
-    //! also tests consistency between this local server and Rerun Cloud.
+    //! also tests consistency between this local server and Rerun Hub.
 
     use arrow::array::{
         ArrayRef, FixedSizeBinaryArray, FixedSizeListArray, FixedSizeListBuilder, Float32Array,

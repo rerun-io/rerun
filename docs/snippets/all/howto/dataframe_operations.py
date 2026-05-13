@@ -1,4 +1,4 @@
-"""Demonstrate common dataframe operations with Rerun Data Platform."""
+"""Demonstrate common dataframe operations with a catalog server."""
 
 # region: setup
 from __future__ import annotations

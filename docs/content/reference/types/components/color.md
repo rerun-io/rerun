@@ -32,6 +32,7 @@ UInt32
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
+* [`Ellipses2D`](../archetypes/ellipses2d.md?speculative-link)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`GeoLineStrings`](../archetypes/geo_line_strings.md)
 * [`GeoPoints`](../archetypes/geo_points.md)
@@ -44,4 +45,5 @@ UInt32
 * [`Points3D`](../archetypes/points3d.md)
 * [`SeriesLines`](../archetypes/series_lines.md)
 * [`SeriesPoints`](../archetypes/series_points.md)
+* [`StateConfiguration`](../archetypes/state_configuration.md?speculative-link)
 * [`TextLog`](../archetypes/text_log.md)

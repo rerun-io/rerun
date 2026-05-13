@@ -13,6 +13,7 @@ mod visible_time_range_ui;
 mod visualizer_ui;
 
 pub use selection_panel::SelectionPanel;
+pub use visualizer_ui::SourceSelectorContext;
 
 #[cfg(test)]
 mod test {

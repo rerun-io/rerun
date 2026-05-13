@@ -37,20 +37,27 @@ struct CustomPoints3D {
 
 template <>
 struct rerun::AsComponents<CustomPoints3D> {
-    static Result<rerun::Collection<ComponentBatch>> as_batches(const CustomPoints3D& archetype) {
-        auto batches = AsComponents<rerun::Points3D>::as_batches(archetype.points)
-                           .value_or_throw()
-                           .to_vector();
+    static Result<rerun::Collection<ComponentBatch>> as_batches(
+        const CustomPoints3D& archetype
+    ) {
+        auto batches =
+            AsComponents<rerun::Points3D>::as_batches(archetype.points)
+                .value_or_throw()
+                .to_vector();
 
         // Add custom confidence components if present.
         if (archetype.confidences) {
             auto descriptor =
                 rerun::ComponentDescriptor("user.CustomPoints3D:confidences")
                     .or_with_archetype("user.CustomPoints3D")
-                    .or_with_component_type(rerun::Loggable<Confidence>::ComponentType);
-            batches.push_back(
-                ComponentBatch::from_loggable(*archetype.confidences, descriptor).value_or_throw()
-            );
+                    .or_with_component_type(
+                        rerun::Loggable<Confidence>::ComponentType
+                    );
+            batches.push_back(ComponentBatch::from_loggable(
+                                  *archetype.confidences,
+                                  descriptor
+            )
+                                  .value_or_throw());
         }
 
         return rerun::take_ownership(std::move(batches));

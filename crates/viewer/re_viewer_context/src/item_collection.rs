@@ -237,6 +237,7 @@ impl ItemCollection {
                     LogSource::JsChannel { .. } => None,
                     LogSource::Sdk => None,
                     LogSource::Stdin => None,
+                    LogSource::EmbeddedTableBlueprint => None,
                     LogSource::RedapGrpcStream { uri, .. } => {
                         Some((ClipboardTextDesc::Url, uri.to_string()))
                     }

@@ -7,7 +7,7 @@ dependencies = [
   "accelerate",
   "opencv-python",
   "pillow",
-  "diffusers==0.27.2",
+  "diffusers<0.38", # 0.38 currently depends on a safetensors pre-release
   "numpy",
   "torch", # this will use the version defined in the uv workspace
   "transformers",

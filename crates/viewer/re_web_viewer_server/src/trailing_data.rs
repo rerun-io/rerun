@@ -67,6 +67,7 @@ enum TrailingDataError {
 struct WebViewerData {
     index_html: Vec<u8>,
     favicon: Vec<u8>,
+    apple_touch_icon: Vec<u8>,
     sw_js: Vec<u8>,
     viewer_js: Vec<u8>,
     viewer_wasm: Vec<u8>,
@@ -153,7 +154,8 @@ fn load_from_trailing_zip() -> Result<WebViewerData, TrailingDataError> {
 
     // Extract each file
     let index_html = extract_file(&mut zip, "index.html")?;
-    let favicon = extract_file(&mut zip, "favicon.svg")?;
+    let favicon = extract_file(&mut zip, "favicon.ico")?;
+    let apple_touch_icon = extract_file(&mut zip, "apple-touch-icon.png")?;
     let sw_js = extract_file(&mut zip, "sw.js")?;
     let viewer_js = extract_file(&mut zip, "re_viewer.js")?;
     let viewer_wasm = extract_file(&mut zip, "re_viewer_bg.wasm")?;
@@ -163,6 +165,7 @@ fn load_from_trailing_zip() -> Result<WebViewerData, TrailingDataError> {
     Ok(WebViewerData {
         index_html,
         favicon,
+        apple_touch_icon,
         sw_js,
         viewer_js,
         viewer_wasm,
@@ -209,6 +212,11 @@ pub fn index_html() -> &'static [u8] {
 #[inline]
 pub fn favicon() -> &'static [u8] {
     &get_data().favicon
+}
+
+#[inline]
+pub fn apple_touch_icon() -> &'static [u8] {
+    &get_data().apple_touch_icon
 }
 
 #[inline]

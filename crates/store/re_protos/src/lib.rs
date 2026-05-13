@@ -50,6 +50,9 @@ mod v1alpha1 {
 
     #[path = "./rerun.cloud.v1alpha1.ext.rs"]
     pub mod rerun_cloud_v1alpha1_ext;
+
+    #[path = "./rerun.cloud.v1alpha1.ext.chunk_key.rs"]
+    pub mod rerun_cloud_v1alpha1_ext_chunk_key;
 }
 
 pub mod common {
@@ -72,6 +75,27 @@ pub mod cloud {
         pub use crate::v1alpha1::rerun_cloud_v1alpha1::*;
         pub mod ext {
             pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext::*;
+            pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext_chunk_key::*;
+        }
+
+        /// Server-supported feature flags advertised via `VersionResponse.features`.
+        ///
+        /// Constants here are the single source of truth — both client (gating)
+        /// and server (advertising) reference the same string. See `cloud.proto`
+        /// `VersionResponse.features` for protocol details.
+        pub mod features {
+            /// Server consumes `QueryLatestAt.per_segment_values` for chunk
+            /// pruning (RR-4355). New clients must check this before sending
+            /// `per_segment_values` — old servers will silently return only
+            /// static data.
+            pub const PER_SEGMENT_INDEX_VALUES: &str = "per_segment_index_values";
+
+            /// Returns the full list of features this build of the server
+            /// natively supports. Used by both OSS `re_server` and the
+            /// Rerun Hub frontend to populate `VersionResponse.features`.
+            pub fn all_supported_features() -> Vec<String> {
+                vec![PER_SEGMENT_INDEX_VALUES.to_owned()]
+            }
         }
     }
 }

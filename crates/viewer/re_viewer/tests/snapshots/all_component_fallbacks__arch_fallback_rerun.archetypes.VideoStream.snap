@@ -4,5 +4,6 @@ expression: arch_display
 ---
 codec: [0]
 sample: [[0]]
+is_keyframe: [false]
 opacity: [1.0]
 draw_order: [-15.0]

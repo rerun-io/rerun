@@ -31,5 +31,8 @@ int main(int argc, char* argv[]) {
     std::vector<rerun::Radius> radii(10);
     std::generate(radii.begin(), radii.end(), [&] { return dist_radius(gen); });
 
-    rec.log("random", rerun::Points3D(points3d).with_colors(colors).with_radii(radii));
+    rec.log(
+        "random",
+        rerun::Points3D(points3d).with_colors(colors).with_radii(radii)
+    );
 }

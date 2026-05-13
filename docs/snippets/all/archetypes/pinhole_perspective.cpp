@@ -3,7 +3,8 @@
 #include <rerun.hpp>
 
 int main(int argc, char* argv[]) {
-    const auto rec = rerun::RecordingStream("rerun_example_pinhole_perspective");
+    const auto rec =
+        rerun::RecordingStream("rerun_example_pinhole_perspective");
     rec.spawn().exit_on_failure();
 
     const float fov_y = 0.7853982f;
@@ -19,7 +20,8 @@ int main(int argc, char* argv[]) {
 
     rec.log(
         "world/points",
-        rerun::Points3D({{0.0f, 0.0f, -0.5f}, {0.1f, 0.1f, -0.5f}, {-0.1f, -0.1f, -0.5f}}
+        rerun::Points3D(
+            {{0.0f, 0.0f, -0.5f}, {0.1f, 0.1f, -0.5f}, {-0.1f, -0.1f, -0.5f}}
         ).with_radii({0.025f})
     );
 }

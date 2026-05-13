@@ -32,6 +32,7 @@
 #include "components/image_plane_distance.hpp"
 #include "components/interactive.hpp"
 #include "components/interpolation_mode.hpp"
+#include "components/is_keyframe.hpp"
 #include "components/key_value_pairs.hpp"
 #include "components/keypoint_id.hpp"
 #include "components/lat_lon.hpp"

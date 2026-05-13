@@ -21,4 +21,5 @@ all-features = true
 [dependencies]
 re_log_types.workspace = true
 re_sdk_types.workspace = true
+re_video.workspace = true
 re_viewer_context.workspace = true

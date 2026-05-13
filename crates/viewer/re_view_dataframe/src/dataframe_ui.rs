@@ -36,7 +36,7 @@ pub(crate) enum HideColumnAction {
 pub(crate) fn dataframe_ui(
     ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
-    query_handle: &re_dataframe::QueryHandle<StorageEngineArcReadGuard>,
+    query_handle: &mut re_dataframe::QueryHandle<StorageEngineArcReadGuard>,
     expanded_rows_cache: &mut ExpandedRowsCache,
     view_id: &ViewId,
     time_cursor_row: Option<u64>,
@@ -212,7 +212,7 @@ impl RowsDisplayData {
 struct DataframeTableDelegate<'a> {
     ctx: &'a StoreViewContext<'a>,
     table_style: re_ui::TableStyle,
-    query_handle: &'a QueryHandle<StorageEngineArcReadGuard>,
+    query_handle: &'a mut QueryHandle<StorageEngineArcReadGuard>,
     selected_columns: &'a [ColumnDescriptor],
     header_entity_paths: Vec<Option<EntityPath>>,
     display_data: anyhow::Result<RowsDisplayData>,

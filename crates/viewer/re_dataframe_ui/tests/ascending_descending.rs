@@ -25,7 +25,12 @@ async fn test_no_sort() {
             test_context.run_recording(&ui.ctx().clone(), |ctx| {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("No sort")
-                    .show(ctx, &runtime_handle, ui);
+                    .show(
+                        ctx,
+                        &runtime_handle,
+                        ui,
+                        &mut test_context.view_states.lock(),
+                    );
             });
         });
 
@@ -49,7 +54,12 @@ async fn test_ascending() {
                         sort_by: Some(SortBy::ascending("col")),
                         ..Default::default()
                     })
-                    .show(ctx, &runtime_handle, ui);
+                    .show(
+                        ctx,
+                        &runtime_handle,
+                        ui,
+                        &mut test_context.view_states.lock(),
+                    );
             });
         });
 
@@ -73,7 +83,12 @@ async fn test_descending() {
                         sort_by: Some(SortBy::descending("col")),
                         ..Default::default()
                     })
-                    .show(ctx, &runtime_handle, ui);
+                    .show(
+                        ctx,
+                        &runtime_handle,
+                        ui,
+                        &mut test_context.view_states.lock(),
+                    );
             });
         });
 
@@ -93,7 +108,12 @@ async fn test_column_menu_button() {
             test_context.run_recording(&ui.ctx().clone(), |ctx| {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Column menu button")
-                    .show(ctx, &runtime_handle, ui);
+                    .show(
+                        ctx,
+                        &runtime_handle,
+                        ui,
+                        &mut test_context.view_states.lock(),
+                    );
             });
         });
 

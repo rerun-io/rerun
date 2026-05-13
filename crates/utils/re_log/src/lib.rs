@@ -15,27 +15,24 @@
 //! In the viewer these logs, if >= info, become notifications. See
 //! `re_ui::notifications` for more information.
 
+#[cfg(feature = "setup")]
 mod channel_logger;
 mod debug_assert;
-mod result_extensions;
-
 #[cfg(feature = "setup")]
-mod multi_logger;
-
+mod event_visitor;
+mod result_extensions;
 #[cfg(feature = "setup")]
 mod setup;
+#[cfg(feature = "setup")]
+pub use channel_logger::{LogMsg, Receiver, Sender, add_log_msg_receiver};
 
-#[cfg(all(feature = "setup", target_arch = "wasm32"))]
-mod web_logger;
-
-pub use channel_logger::*;
-pub use log::{Level, LevelFilter};
+pub use tracing::Level;
+#[cfg(feature = "setup")]
+pub use tracing_subscriber::filter::LevelFilter;
 // The `re_log::info_once!(…)` etc are nice helpers, but the `log-once` crate is a bit lacking.
 // In the future we should implement our own macros to de-duplicate based on the callsite,
 // similar to how the log console in a browser will automatically suppress duplicates.
-pub use log_once::{debug_once, error_once, info_once, log_once, trace_once, warn_once};
-#[cfg(feature = "setup")]
-pub use multi_logger::{MultiLoggerNotSetupError, add_boxed_logger, add_logger};
+pub use log_once::{debug_once, error_once, info_once, trace_once, warn_once};
 pub use result_extensions::ResultExt;
 #[cfg(all(feature = "setup", not(target_arch = "wasm32")))]
 pub use setup::PanicOnWarnScope;
@@ -43,6 +40,20 @@ pub use setup::PanicOnWarnScope;
 pub use setup::{setup_logging, setup_logging_with_filter};
 // The tracing macros support more syntax features than the log, that's why we use them:
 pub use tracing::{debug, error, info, trace, warn};
+
+/// Log once at the given [`Level`].
+#[macro_export]
+macro_rules! log_once {
+    ($level:expr, $($arg:tt)+) => {
+        match $level {
+            $crate::Level::ERROR => $crate::error_once!($($arg)+),
+            $crate::Level::WARN => $crate::warn_once!($($arg)+),
+            $crate::Level::INFO => $crate::info_once!($($arg)+),
+            $crate::Level::DEBUG => $crate::debug_once!($($arg)+),
+            $crate::Level::TRACE => $crate::trace_once!($($arg)+),
+        }
+    };
+}
 
 /// Log a warning in debug builds, or a debug message in release builds.
 ///
@@ -236,29 +247,29 @@ fn add_builtin_log_filter(base_log_filter: &str) -> String {
 }
 
 /// Should we log this message given the filter?
-fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> bool {
+#[cfg(feature = "setup")]
+fn is_log_enabled(
+    filter: tracing_subscriber::filter::LevelFilter,
+    metadata: &tracing::Metadata<'_>,
+) -> bool {
     if CRATES_AT_ERROR_LEVEL
         .iter()
         .any(|crate_name| metadata.target().starts_with(crate_name))
     {
-        return metadata.level() <= log::LevelFilter::Error;
-    }
-
-    if CRATES_AT_WARN_LEVEL
+        *metadata.level() <= tracing_subscriber::filter::LevelFilter::ERROR
+    } else if CRATES_AT_WARN_LEVEL
         .iter()
         .any(|crate_name| metadata.target().starts_with(crate_name))
     {
-        return metadata.level() <= log::LevelFilter::Warn;
-    }
-
-    if CRATES_AT_INFO_LEVEL
+        *metadata.level() <= tracing_subscriber::filter::LevelFilter::WARN
+    } else if CRATES_AT_INFO_LEVEL
         .iter()
         .any(|crate_name| metadata.target().starts_with(crate_name))
     {
-        return metadata.level() <= log::LevelFilter::Info;
+        *metadata.level() <= tracing_subscriber::filter::LevelFilter::INFO
+    } else {
+        *metadata.level() <= filter
     }
-
-    metadata.level() <= filter
 }
 
 /// Check if an environment variable is set to a truthy value.

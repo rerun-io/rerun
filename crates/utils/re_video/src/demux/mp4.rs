@@ -69,10 +69,7 @@ impl VideoDataDescription {
                 let presentation_timestamp = Time::new(sample.composition_timestamp);
                 let duration = Time::new(sample.duration.saturating_cast());
 
-                let byte_span = Span {
-                    start: sample.offset as u32,
-                    len: sample.size as u32,
-                };
+                let byte_span = Span::from_start_len(sample.offset as u32, sample.size as u32);
 
                 samples.push_back(SampleMetadataState::Present(SampleMetadata {
                     is_sync: sample.is_sync,

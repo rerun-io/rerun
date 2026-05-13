@@ -937,6 +937,7 @@ impl TestContext {
                 | SystemCommand::Logout
                 | SystemCommand::SaveScreenshot { .. }
                 | SystemCommand::ShowNotification { .. }
+                | SystemCommand::RegisterTableBlueprint { .. }
                 | SystemCommand::ReadbackAndSaveTexture(_) => handled = false,
 
                 #[cfg(debug_assertions)]

@@ -42,7 +42,10 @@ namespace rerun::archetypes {
     ///
     ///     for (int step = 0; step <64; ++step) {
     ///         rec.set_time_sequence("step", step);
-    ///         rec.log("scalars", rerun::Scalars(sin(static_cast<double>(step) / 10.0)));
+    ///         rec.log(
+    ///             "scalars",
+    ///             rerun::Scalars(sin(static_cast<double>(step) / 10.0))
+    ///         );
     ///     }
     /// }
     /// ```
@@ -58,7 +61,8 @@ namespace rerun::archetypes {
     /// #include <rerun.hpp>
     ///
     /// int main(int argc, char* argv[]) {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_scalar_column_updates");
+    ///     const auto rec =
+    ///         rerun::RecordingStream("rerun_example_scalar_column_updates");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // Native scalars & times.

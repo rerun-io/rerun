@@ -87,11 +87,18 @@ fn ui_from_scene(
                 .inverse()
                 .transform_pos(zoom_center_in_ui)
                 .to_vec2();
-            bounds_rect = scale_rect(
+            let candidate = scale_rect(
                 bounds_rect.translate(-zoom_center_in_scene),
                 Vec2::splat(1.0) / zoom_delta,
             )
             .translate(zoom_center_in_scene);
+
+            bounds_rect = clamp_zoom_out(
+                bounds_rect,
+                candidate,
+                zoom_center_in_scene,
+                &view_state.bounding_boxes.current,
+            );
         }
     }
 
@@ -118,6 +125,55 @@ fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
         (factor * rect.min.to_vec2()).to_pos2(),
         (factor * rect.max.to_vec2()).to_pos2(),
     )
+}
+
+/// Cap on how large the 2D visible area is allowed to grow, measured per-axis as a multiple
+/// of the matching scene bounding box extent.
+///
+/// Applied to zoom-out only: width is clamped against `scene_size.x * factor` and height
+/// against `scene_size.y * factor`. An axis that is already past the limit is pinned at its
+/// current size, never pulled back in; zoom-in is never restricted.
+const MAX_ZOOM_OUT_FACTOR: f32 = 5.0;
+
+/// Cap zoom-out against the scene bounding box.
+///
+/// If we're already past the cap (e.g. right after loading) use the current size instead — no
+/// snap-back. Zooming in is never restricted.
+fn clamp_zoom_out(
+    current: Rect,
+    candidate: Rect,
+    zoom_center: Vec2,
+    scene_bbox: &macaw::BoundingBox,
+) -> Rect {
+    // `1.0e17` fallback is chosen with generous margin of an observed crash due to infinity.
+    let fallback = Vec2::splat(1.0e17);
+
+    let max_size = if scene_bbox.is_finite() && !scene_bbox.is_nothing() {
+        let scene_size = scene_bbox.size();
+        let max_size = vec2(scene_size.x, scene_size.y) * MAX_ZOOM_OUT_FACTOR;
+        if max_size.x.is_finite() && max_size.x > 0.0 && max_size.y.is_finite() && max_size.y > 0.0
+        {
+            max_size
+        } else {
+            fallback
+        }
+    } else {
+        fallback
+    }
+    .max(current.size());
+
+    let candidate_size = candidate.size();
+    let clamped_size = candidate_size.min(max_size);
+
+    if clamped_size == candidate_size {
+        candidate
+    } else {
+        scale_rect(
+            current.translate(-zoom_center),
+            clamped_size / current.size(),
+        )
+        .translate(zoom_center)
+    }
 }
 
 pub fn help(os: egui::os::OperatingSystem) -> Help {

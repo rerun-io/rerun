@@ -160,7 +160,7 @@ pub async fn register_and_scan_simple_dataset_with_properties(service: impl Reru
 /// properties.
 ///
 /// Note: this is not great. We should probably use the "regular" Rerun way for that (aka row id
-/// timestamp). But this is not how Rerun Cloud is currently working, and consistency is better than
+/// timestamp). But this is not how Rerun Hub is currently working, and consistency is better than
 /// correctness for the OSS server.
 pub async fn register_and_scan_simple_dataset_with_properties_out_of_order(
     service: impl RerunCloudService,

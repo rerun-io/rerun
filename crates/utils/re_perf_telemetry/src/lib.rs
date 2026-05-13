@@ -4,7 +4,7 @@
 //! including all log output.
 //!
 //! This sort of telemetry is always disabled on our OSS binaries, and is only used for
-//! * The Rerun Cloud infrastructure
+//! * The Rerun Hub infrastructure
 //! * Profiling by Rerun developer
 //!
 //! Logging strategy

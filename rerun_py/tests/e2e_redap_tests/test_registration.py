@@ -611,7 +611,7 @@ def test_registration_crossregion(catalog_client: CatalogClient) -> None:
 
 @pytest.mark.aws_only
 def test_registration_footerless(catalog_client: CatalogClient) -> None:
-    """Tests whether registration of footerless datasets fails as expected on Rerun Cloud."""
+    """Tests whether registration of footerless datasets fails as expected on Rerun Hub."""
 
     dataset_url = "s3://rerun-redap-datasets-pdx/test-resources/dataset-footerless/"
     expected_msg = "try running `rerun rrd migrate`"

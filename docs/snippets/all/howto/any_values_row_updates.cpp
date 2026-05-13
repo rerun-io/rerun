@@ -9,7 +9,8 @@
 #include <cstdio>
 
 arrow::Status run_main() {
-    const auto rec = rerun::RecordingStream("rerun_example_any_values_row_updates");
+    const auto rec =
+        rerun::RecordingStream("rerun_example_any_values_row_updates");
     rec.spawn().exit_on_failure();
 
     for (int64_t i = 0; i < 64; i++) {
@@ -18,16 +19,26 @@ arrow::Status run_main() {
         std::shared_ptr<arrow::Array> arrow_array;
 
         arrow::DoubleBuilder sin_builder;
-        ARROW_RETURN_NOT_OK(sin_builder.Append(sin(static_cast<double>(i) / 10.0)));
+        ARROW_RETURN_NOT_OK(
+            sin_builder.Append(sin(static_cast<double>(i) / 10.0))
+        );
         ARROW_RETURN_NOT_OK(sin_builder.Finish(&arrow_array));
-        auto sin =
-            rerun::ComponentBatch::from_arrow_array(std::move(arrow_array), "sin").value_or_throw();
+        auto sin_result = rerun::ComponentBatch::from_arrow_array(
+            std::move(arrow_array),
+            "sin"
+        );
+        auto sin = sin_result.value_or_throw();
 
         arrow::DoubleBuilder cos_builder;
-        ARROW_RETURN_NOT_OK(cos_builder.Append(cos(static_cast<double>(i) / 10.0)));
+        ARROW_RETURN_NOT_OK(
+            cos_builder.Append(cos(static_cast<double>(i) / 10.0))
+        );
         ARROW_RETURN_NOT_OK(cos_builder.Finish(&arrow_array));
-        auto cos =
-            rerun::ComponentBatch::from_arrow_array(std::move(arrow_array), "cos").value_or_throw();
+        auto cos_result = rerun::ComponentBatch::from_arrow_array(
+            std::move(arrow_array),
+            "cos"
+        );
+        auto cos = cos_result.value_or_throw();
 
         rec.log("/", sin, cos);
     }

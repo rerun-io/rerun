@@ -2,12 +2,12 @@
 
 use std::fmt::Write as _;
 
+use egui::ScrollArea;
 #[cfg(debug_assertions)]
 use egui::containers::menu;
 use egui::containers::menu::{MenuButton, MenuConfig};
-use egui::{Button, NumExt as _, ScrollArea};
 use re_ui::menu::menu_style;
-use re_ui::{UICommand, UICommandSender as _, UiExt as _};
+use re_ui::{UICommand, UICommandSender as _, UiExt as _, icons};
 use re_viewer_context::ActiveStoreContext;
 
 use crate::App;
@@ -21,23 +21,14 @@ impl App {
         _store_context: Option<&ActiveStoreContext<'_>>,
         ui: &mut egui::Ui,
     ) {
-        let desired_icon_height = if ui.max_rect().height() <= 24.0 {
-            // This is a bit of a hack to produce a sharp logo on mac on low-DPI screens.
-            // At a 16x16 size, the Rerun logo SVG just happens to have all its vertical
-            // lines at even pixel positions, making it look sharp and nice.
-            16.0
-        } else {
-            ui.max_rect().height() - 4.0
-        };
-        let desired_icon_height = desired_icon_height.at_most(28.0);
-
-        let image = re_ui::icons::RERUN_MENU
+        let icon_tint = ui.tokens().strong_fg_color;
+        let image = re_ui::icons::RERUN_WORDMARK
             .as_image()
-            .max_height(desired_icon_height)
-            .tint(ui.tokens().strong_fg_color)
+            .max_height(12.0)
+            .tint(icon_tint)
             .alt_text("Menu");
 
-        MenuButton::from_button(Button::image(image))
+        MenuButton::new((image, icons::DROPDOWN_ARROW.as_image().tint(icon_tint)))
             .config(MenuConfig::new().style(menu_style()))
             .ui(ui, |ui| {
                 ui.set_max_height(ui.content_rect().height());
@@ -171,6 +162,7 @@ impl App {
 
         ui.add_space(SPACING);
 
+        UICommand::OpenWebsite.menu_button_ui(ui, &self.command_sender);
         UICommand::OpenWebHelp.menu_button_ui(ui, &self.command_sender);
         UICommand::OpenRerunDiscord.menu_button_ui(ui, &self.command_sender);
 

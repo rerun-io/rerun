@@ -172,6 +172,37 @@ pub fn new_rerun_headers_layer(
         .into_inner()
 }
 
+/// Build the standard SDK-side Rerun headers layer.
+///
+/// This is the `(name, version, is_client)` triple every Rerun gRPC client should use
+/// unless it has a specific reason not to (e.g. the `redap_cli` binary, which advertises
+/// its own `CARGO_PKG_VERSION`). It is the single source of truth for client-side header
+/// configuration, so any path that opens a sibling channel (the main `RedapClient`, the
+/// per-connection analytics OTLP exports, etc.) presents the same
+/// `x-rerun-client-version` value to the server.
+///
+/// On wasm, the identity is hard-coded to `"rerun-web"` so the cloud server can
+/// distinguish browser traffic. On native, identity is left to fall through the standard
+/// `RerunVersionInterceptor` chain (`OTEL_SERVICE_NAME` → exe stem → `re_protos`'s
+/// `CARGO_PKG_NAME`) and the version respects `RERUN_CLIENT_VERSION_OVERRIDE` for tests.
+#[cfg(target_arch = "wasm32")]
+pub fn new_rerun_client_headers_layer() -> RerunHeadersLayer {
+    new_rerun_headers_layer(
+        Some("rerun-web".to_owned()),
+        None,
+        /* is_client */ true,
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn new_rerun_client_headers_layer() -> RerunHeadersLayer {
+    new_rerun_headers_layer(
+        None,
+        std::env::var("RERUN_CLIENT_VERSION_OVERRIDE").ok(),
+        /* is_client */ true,
+    )
+}
+
 /// Creates a new [`tower::Layer`] middleware that always makes sure to propagate Rerun headers
 /// back and forth across requests and responses.
 pub fn new_rerun_headers_propagation_layer() -> PropagateHeadersLayer {

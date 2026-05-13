@@ -163,7 +163,7 @@ pub enum SystemCommand {
         email: String,
     },
 
-    /// Logout from rerun cloud
+    /// Logout from Rerun Hub
     Logout,
 
     /// Save a screenshot to a file.
@@ -174,6 +174,12 @@ pub enum SystemCommand {
         /// Optional view id to screenshot a specific view.
         /// If None, screenshots the entire viewer.
         view_id: Option<ViewId>,
+    },
+
+    /// Register a decoded table blueprint in the [`StoreHub`](crate::StoreHub).
+    RegisterTableBlueprint {
+        table_id: re_log_types::TableId,
+        blueprint: Box<re_entity_db::EntityDb>,
     },
 }
 

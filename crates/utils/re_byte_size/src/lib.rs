@@ -50,7 +50,10 @@ pub trait SizeBytes {
     ///
     /// If `true`, this will make most blanket implementations of `SizeBytes` much faster (e.g. `Vec<T>`).
     #[inline]
-    fn is_pod() -> bool {
+    fn is_pod() -> bool
+    where
+        Self: Sized,
+    {
         false
     }
 }

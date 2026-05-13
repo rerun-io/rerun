@@ -2,8 +2,334 @@
 
 ## Unreleased
 
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-32?speculative-link
+
+### ✨ Overview & highlights
+
+#### Python chunk processing API
+
+This release introduces a chunk processing API designed for systematic and efficient wrangling of robotics data.
+It includes:
+- A `Chunk` object for inspecting, creating, and manipulating chunks.
+- Readers for common file formats (RRD, MCAP, Parquet, URDF, and more to come) which output streams of chunks.
+- A composable `LazyChunkStream` class to define memory-bounded chunk-based filtering and transformation pipelines.
+- Lenses: an expressive and performant API to manipulate component data in chunks.
+- A multithreaded, GIL-free, native engine for pipeline execution that is designed for distributed execution in the future.
+- Interoperability with a catalog server and the Rerun SDK logging API.
+
+In addition to enabling powerful data wrangling pipelines, the chunk processing API is significant for offering read/write chunk-level control of RRD files down to the raw Arrow data.
+
+_Note_: this API is experimental and subject to breaking changes as we continue to improve it.
+
+#### Experimental dataset review
+You can now build tables of recording previews configured with arbitrary blueprints!
+
+<!-- https://static.rerun.io/59636c2a3c79f0f4f543e353a87315ec416bdad8_datasetpreview%20new.mp4 -->
+
+https://github.com/user-attachments/assets/7acf9671-c46a-4355-a50f-2670cc80c4d9
+
+Clickable flags let you curate data directly from the table: toggles update a boolean flag column and are written back to the server.
+
+To try it out, enable the experimental options in the Viewer's settings and try the two Python examples:
+[`table_grid_with_flags`](./examples/python/table_grid_with_flags/) for basic grids with clickable flags,
+and [`table_blueprints`](./examples/python/table_blueprints/) for the full preview experience.
+
+Limitations, or why this is still experimental:
+* previews don't yet work directly on raw datasets; you have to send a special table to the server instead (see examples)
+* table blueprints are currently text-encoded in table metadata, this is subject to change
+* depending on the number and content of previews, overall runtime performance can be poor, especially in the browser
+* many UX details are still unfinished
+
+#### Experimental state timeline view
+
+A new experimental view for visualizing discrete state transitions over time as horizontal colored lanes, useful for state machines, mode transitions, and similar discrete signals. Log state changes with the new `StateChange` archetype; configure their display on the UI or using `StateConfiguration` in the blueprint API.
+
+<picture>
+  <img src="https://static.rerun.io/state_timeline/3f821055b73ffda964dbd2573c0279f99cee02a8/full.png" alt="State timeline view">
+</picture>
+
+Read [our guide](https://rerun.io/docs/howto/visualization/state-timeline?speculative-link) to get started. Feedback is appreciated!
+
+#### `GridMap` archetype and MCAP support for ROS occupancy grids
+
+Rerun now supports 2D grid maps, as used e.g. in robot mapping & navigation applications, through a new `GridMap` archetype.
+
+* A `GridMap` is an image buffer with defined cell size per pixel, which can be embedded as a textured rectangle in a 3D scene.
+* `GridMap` has a regular `ImageBuffer` component, so you can also send color images (e.g. to do custom color-mapping in your code).
+* For layering of multiple maps you can optionally set draw order and opacity when logging, or separately in the viewer / blueprint.
+* The visualizer also supports the colormap options that RViz users are familiar with, selectable at log time or in the viewer / blueprint.
+* In a 3D scene, the map appears at the entity's coordinate frame (either entity-path based or with TF-style named frame like `CoordinateFrame("map")`). Additionally, an optional translation & rotation offset can be specified.
+
+For ROS 2 users:
+* 🧢 Rerun's MCAP importer automatically loads ROS 2 `nav_msgs/OccupancyGrid` messages as `GridMap`s.
+* 📖 Our [ROS 2 guide](https://rerun.io/docs/howto/integrations/ros2-nav-turtlebot) also shows an example how you can log `GridMap` from your custom ROS nodes.
+
+Here's a demo video showing a typical ROS 2 MCAP recording with multiple map and costmap layers in Rerun:
+
+<!-- https://static.rerun.io/9e9a2cce0b76c8bde35edc0b85dfbaa0dd1db6ec_grid_map_release_0.32.mp4 -->
+
+https://github.com/user-attachments/assets/f31b712d-2dd7-4e45-bb6a-0e103e7016b3
+
+#### OSS catalog server now streams from disk
+
+The OSS server (`rerun server` and `rr.server.Server`) no longer eagerly loads RRDs in memory when registering datasets.
+It instead uses the manifest embedded in the RRDs to load chunks on demand when serving requests.
+This greatly extends the amount of data that can be registered and queried for a given memory budget, and makes registration orders of magnitude faster.
+
+_Note_: This requires the RRDs to have a manifest, which most modern RRDs have.
+Legacy RRDs are still eagerly loaded.
+Use the `rerun rrd optimize` CLI to migrate and optimize legacy RRDs.
+
+#### Plot improvements
+
+<picture>
+  <img src="https://static.rerun.io/1b28bdbf505997a039e589a41b6c7cb90971c1dd_tooltip.png" alt="new tooltip for plots" width="600">
+</picture>
+
+- Performance improvement for scenes with many series. Moved from egui CPU tesselation to GPU line rendering.
+- Redesigned tooltips. Hovering over a plot now shows a cleaner, more compact tooltip with color swatches matching each series. Also it is visually obvious now when events were actually logged.
+- Better NaN & Infinity handling. Time series views now gracefully handle non-finite values: the Y-axis range ignores them, isolated data points surrounded by NaN are drawn as dots instead of disappearing, and aggregation skips over non-finite values rather than corrupting nearby points
+
+
+#### Performance improvements
+
+This release comes with a few significant performance improvements. Among other things:
+
+* Visualizing scenes with many transforms on the same entity (as it is often the case with `tf`-style named transforms) will now perform vastly better
+* Plot line tessellation is now GPU accelerated, using the same rendering path as our 3D lines
+* Web viewer now decodes images using the web decoder, resulting in much smoother play of raw-image "videos"
+* various improvements to `rrd optimize` (former `rrd compact`) to produce more streaming & object storage friendly data
+* MCAP decoder is now multithreaded
+
+#### New branding
+<picture>
+  <img src="https://static.rerun.io/fadf335a4b294030ade19d405811ab41607f898b_brand.png" alt="new rerun app icon" width="400">
+</picture> <br>
+
+<picture>
+  <img src="https://static.rerun.io/4aecf4577ab81493fda003882da6faeb886966dd_app-icon.png" alt="new rerun app icon" width="600">
+</picture>
+
+You may have noticed a new Rerun logo and app icon! We've also slightly tweaked our color palette. Stay tuned for more exciting news!
+
+### ☁️ Highlights for Rerun Hub customers
+
+Several improvements in the open-source Rerun SDK are designed specifically to work with Rerun Hub.
+ Here are the key updates that are especially relevant if you're a customer of Rerun Hub:
+
+#### Direct fetch from object storage for commercial `Rerun Hub` customers
+
+The SDK will now fetch chunk data directly from the object store that holds your recordings, without needing to proxy the data through the server.
+This allows for better performance in highly parallel workloads, as well as lower latency when the client is located close to the data store.
+
+The old proxy path is still supported, and can be opted into using the `RERUN_CHUNK_STRATEGY=grpc` environment variable.
+
+#### Experimental training dataloader
+
+You can now train PyTorch models directly against the Rerun OSS server, with no intermediate export step!
+
+The new highly experimental `rerun.experimental.dataloader` module exposes Rerun recordings as iterable or map-style PyTorch datasets, streaming encoded images, scalars, and compressed video (`h264`/`h265`/`av1`) on the fly. Random access, multi-worker prefetching, and DDP support work out of the box.
+
+Each field accepts an optional `window=(start_offset, end_offset)` parameter, an inclusive range relative to the current index. When set, the field yields the slice of values across that window instead of a single sample. For example, `window=(1, CHUNK_SIZE)` returns the next `CHUNK_SIZE` action values after every observation, making action-chunking policies a single query per batch.
+
+See the new [LeRobot ACT training example](https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader).
+
+Expect breaking changes between releases while we iterate on the design. For large-scale training, Rerun Hub offers a higher-performance backend.
+
+#### Docs feedback on the website.
+
+As a part of our [website](https://rerun.io/) update, we've also added a feedback form to all our documentation pages. So you can add your feedback directly to the respective topic.
+
+<picture>
+  <img src="https://static.rerun.io/feedback-form/e96b0889824e4bc0cf42039bead0612953e54a87/full.png" alt="feedback form">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/feedback-form/e96b0889824e4bc0cf42039bead0612953e54a87/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/feedback-form/e96b0889824e4bc0cf42039bead0612953e54a87/768w.png">
+</picture>
+
 ### ⚠️ Breaking changes
-- `rerun rrd compact` renamed to `rerun rrd optimize`
+
+* "Data loaders" renamed to "importers" to avoid confusion with the widely-used ML/PyTorch "dataloader" concept
+* Rust Lenses API has been restructured
+* `rerun rrd compact` renamed to `rerun rrd optimize`, has profiles and new defaults
+* `DatasetEntry.register` requires a sequence of URIs (Python)
+* URDF importer now loads the static transforms of the model to the `/tf_static` entity by default
+* MCAP metadata and statistics are now saved to `__mcap_metadata`
+
+🧳 Full Migration guide: https://rerun.io/docs/reference/migration/migration-0-32?speculative-link
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Group URDF collision entity paths by geometry type [a394117](https://github.com/rerun-io/rerun/commit/a3941179b52acc61e1b144c746fef8db8e58f182)
+- Add Parquet Dataloader with some workarounds for merging columns [c1ee446](https://github.com/rerun-io/rerun/commit/c1ee446ee9f437847c15033a249be640ac89bc2b)
+- Optionally add struct grouping on parquet columns [ae22b4d](https://github.com/rerun-io/rerun/commit/ae22b4d3afa5e71f2a2043c1c45090a5640f2bd1)
+- Introduce `GridMap` archetype & visualizer [d74cb27](https://github.com/rerun-io/rerun/commit/d74cb277052ebd41ce5a981d75591a57fea3fc66)
+- Rename "DataLoader" to Importer [11cd1c2](https://github.com/rerun-io/rerun/commit/11cd1c24b1c55228c48d3c9e9ca4bc465d73c2d3)
+- Use `/tf_static` as default in URDF importer & make configurable in `UrdfTree` [1f01a57](https://github.com/rerun-io/rerun/commit/1f01a572e774ad49112d7e658dab16c60617877a)
+- Expose `mimic` joints from URDF [cf4c652](https://github.com/rerun-io/rerun/commit/cf4c65255afed1aeded9f61d513b6fe75fd4b0f5)
+- Add RViz-style "Map" and "Costmap" color options for `GridMap` [c452a48](https://github.com/rerun-io/rerun/commit/c452a482638f9a4271596f2ec382f76d5e7695be)
+- Add `stream() -> LazyChunkStream` to Python `UrdfTree` [dc51f60](https://github.com/rerun-io/rerun/commit/dc51f60554cc634133b5582e26ccb8c2769d4aa7)
+- Renames ChunkBatcherConfig::ALWAYS to ALWAYS_TEST_ONLY [46c20b8](https://github.com/rerun-io/rerun/commit/46c20b85ed0ae39292feae2a50355fdad87d4c0e)
+- Opt-out from generating a FileSink footer [0a78f28](https://github.com/rerun-io/rerun/commit/0a78f2817f15c50e00f6ea222227d9358dcf0eea)
+
+#### 🐍 Python API
+- Introduce `LazyChunkStream` [a0ce421](https://github.com/rerun-io/rerun/commit/a0ce421f4ca9b3e2406b73efd3e63fb8ee03b8b4)
+- Introduce `McapLoader` to produce `LazyChunkStream` from MCAP file [ef51623](https://github.com/rerun-io/rerun/commit/ef51623f8fa45f0bf130b5a55b4b72db7cd43051)
+- Expose `Selector` in Python SDK [ffc088d](https://github.com/rerun-io/rerun/commit/ffc088dbf39e767eb02488c0786672517275682b)
+- Introduce Python `ChunkStore` object [9294554](https://github.com/rerun-io/rerun/commit/9294554075197fff676000f29f5090f6b35ab771)
+- Add ability to compact `ChunkStore` [5dd9f23](https://github.com/rerun-io/rerun/commit/5dd9f2315abb2ae885cb45108512431db32fa4c3)
+- Use Lenses to manipulate `ChunkStream` in Python SDK [72ff520](https://github.com/rerun-io/rerun/commit/72ff520451de6c187262fcf10f62e954aa00785e)
+- Make notebook display loading spinner when waiting on send_table [ea09906](https://github.com/rerun-io/rerun/commit/ea09906cf3d6b87b16ad55239983a85ec44e5421)
+- Make `RrdLoader` produce lazy `ChunkStore` [2e804c4](https://github.com/rerun-io/rerun/commit/2e804c40b316cfcc483a55e2f5edf2b8a227bb8d)
+- Add `map` and `flat_map` method to `LazyChunkStream` [393680c](https://github.com/rerun-io/rerun/commit/393680c7dd2337b4fcd59d1851fd38e525ab5664)
+- Add `Chunk` construction methods: `from_columns` and `from_record_batch` [547d650](https://github.com/rerun-io/rerun/commit/547d650fcb6665942a06b4c010e65aaead585e14)
+- Add `exists_ok` option to `CatalogClient.create_dataset` [8d4e1b3](https://github.com/rerun-io/rerun/commit/8d4e1b307774554255968c485ae28ffb067aeece)
+- Add `Chunk.apply_lenses()` API [88fea86](https://github.com/rerun-io/rerun/commit/88fea86e302742ef1982a60dd126829b27f0818c)
+- Expose split-size-ratio in python [c21a5b8](https://github.com/rerun-io/rerun/commit/c21a5b8cd0701044ea1f34e0f30be922eb25269b)
+- Initial torch dataloader [dca28f2](https://github.com/rerun-io/rerun/commit/dca28f27b0fc936d7e043ceaf41895bab84b84b7)
+- Rename `rrd compact` to `rrd optimize` [c5b027b](https://github.com/rerun-io/rerun/commit/c5b027ba02d8fb1fbf30bdda7ab7b430ce90383f)
+- Add `apply_selector` methods to `Chunk` [5a20bd6](https://github.com/rerun-io/rerun/commit/5a20bd679677cbbfb0f808e774a3c654c47d7ac2)
+- Use `Mapping`-based `LensOutput` and improve naming [2fc409e](https://github.com/rerun-io/rerun/commit/2fc409e5f1a74fa91abf4dcb8fdbb1b3b583830d)
+- Add Map-style torch dataset [ebb9953](https://github.com/rerun-io/rerun/commit/ebb9953034baa59817326f3c1fdbaa508149cd2f)
+- Make task cancellation API public, add `.cancel()` on RegistrationHandle [260d119](https://github.com/rerun-io/rerun/commit/260d1198c83768c7ef25d35cad1658036006f437)
+- Add documentation page for lenses [1cb99e5](https://github.com/rerun-io/rerun/commit/1cb99e5c24ee2fa386d14d2c225fc298873527e2)
+- Add include & exclude topic filter options to MCAP importer [1b586fa](https://github.com/rerun-io/rerun/commit/1b586fa604479d55891b057b9dc4c74e44bafdf9)
+- Further simplify Lenses API in Python and Rust [65d744a](https://github.com/rerun-io/rerun/commit/65d744ae34b317af2caf36c42ef939477b6ee00c)
+- Allow creating a `Chunk` copy with a new entity path [3d8f97c](https://github.com/rerun-io/rerun/commit/3d8f97cf76886f3e6cc8795c19afccabe4ba10f3)
+- Make `Selector` picklable [db20691](https://github.com/rerun-io/rerun/commit/db206917263291fb433a1d5db8199fb3e8bc0390)
+- Add `dataset.segment_store(segment_id)` to create a lazy `ChunkStore` [524b5cc](https://github.com/rerun-io/rerun/commit/524b5cc3ad543a699cc1579f58fc4b038d0ae97d)
+- Introduce optimization profiles and change default [d3488bc](https://github.com/rerun-io/rerun/commit/d3488bc7f5fb640ff3bbe583d1414873d8ea7410)
+- Split off `LazyStore` from `ChunkStore` (now returned by `dataset.segment_store()` and `RrdReader.store()`) [fa63189](https://github.com/rerun-io/rerun/commit/fa631894c4f2f0805a1b643dd8d068c841105159)
+- Improve dataloader config [b96a985](https://github.com/rerun-io/rerun/commit/b96a9859bcf412f24ba8444138a2ce8fd49d7a3f)
+- Add support for multi-store RRD to `RrdReader` [41ed51a](https://github.com/rerun-io/rerun/commit/41ed51ac0d37f4f80c8834a33a38b8587f8a32d1)
+
+#### 🦀 Rust API
+- Introduce `at_entity` instead of `*_output_columns_at` [8e65ff0](https://github.com/rerun-io/rerun/commit/8e65ff0504a58753a93a46645ef566cb4f436602)
+- Decouple entity path filtering from `Lens` definition [80ab3a9](https://github.com/rerun-io/rerun/commit/80ab3a9db06644caadc646f194f5a6bd64d1a779)
+- Pushdown filters for select [215e8aa](https://github.com/rerun-io/rerun/commit/215e8aa3f7f23ce1b84724793ef51c61eda23b27)
+- Rework chunk output produced by Lenses [dbeef05](https://github.com/rerun-io/rerun/commit/dbeef05a3457e4def4bc1162719659fae9dbbc11)
+- schema evolution: widen record-batch on read [838a669](https://github.com/rerun-io/rerun/commit/838a669d2f2090d22395a481b2dcd08012ebc92c)
+- Unify `Chunk`-based APIs between Rust and Python [a171102](https://github.com/rerun-io/rerun/commit/a1711026c976b1a4b9a1dc4669a7994d43da4b4c)
+- Add `apply_selector` methods to `Chunk` [5a20bd6](https://github.com/rerun-io/rerun/commit/5a20bd679677cbbfb0f808e774a3c654c47d7ac2)
+- Enforce one-to-one mapping of `LensOutput` to target entity [b5709e5](https://github.com/rerun-io/rerun/commit/b5709e5c3ca2c0454ac42bf635a0317a89261ed9)
+- Add documentation page for lenses [1cb99e5](https://github.com/rerun-io/rerun/commit/1cb99e5c24ee2fa386d14d2c225fc298873527e2)
+- Further simplify Lenses API in Python and Rust [65d744a](https://github.com/rerun-io/rerun/commit/65d744ae34b317af2caf36c42ef939477b6ee00c)
+- Allow creating a `Chunk` copy with a new entity path [3d8f97c](https://github.com/rerun-io/rerun/commit/3d8f97cf76886f3e6cc8795c19afccabe4ba10f3)
+- Add `GraphView` to rust blueprint api [9327b5f](https://github.com/rerun-io/rerun/commit/9327b5f93e962e4a3e506b8202884f7b82e18b52)
+
+#### 🪳 Bug fixes
+- Fix our python 3.10 support [7d4716d](https://github.com/rerun-io/rerun/commit/7d4716dd5e6bf36203cd246731b2d530ece6dc38)
+- Fix MCAP CLI decoder identifier list [5b170a4](https://github.com/rerun-io/rerun/commit/5b170a499f9f016b5fb47abb4b6dedb031b2aaf2)
+- Fix bug where shapes defined with UI units were scaled incorrectly [7e7ec15](https://github.com/rerun-io/rerun/commit/7e7ec157f4c772b235f1bbff57a5dcde75db412c)
+- Improve `rerun download` [1c9aa10](https://github.com/rerun-io/rerun/commit/1c9aa10c1c8984dd63606f4d3c534cd6505e9cd4)
+- Fix off-by-one bug in video stream cache [f0484ee](https://github.com/rerun-io/rerun/commit/f0484eedaaa7263d19a3c3386955930829cfb0d0)
+- Fix: Hyperlinks shown in tables wouldn't resize [f16707e](https://github.com/rerun-io/rerun/commit/f16707e0cd651d04453fa6ff8e59e69d39faf528)
+- Fix range queries on 3D points in `SpatialView3D` [e8dc5e0](https://github.com/rerun-io/rerun/commit/e8dc5e0a3febf793433c72646bf838a938add107)
+- Fix plot view time range ui [45de0cb](https://github.com/rerun-io/rerun/commit/45de0cbcf63b2d2280d1e0136d64ea3fe3a990e4)
+- Make arrow keys pause playback [37009c0](https://github.com/rerun-io/rerun/commit/37009c04050e7d5ac968a5b2f50e9f0addfc6f95)
+- Fix silent error swallowing in gRPC streaming, add error injection testing infrastructure [ec01f7a](https://github.com/rerun-io/rerun/commit/ec01f7a3c167467a37e5c78e616b7aa2dbc67e17)
+- Fix `follow` not being propagated to `http` URLs with extensions [09d5f94](https://github.com/rerun-io/rerun/commit/09d5f94c98bf06aa84ab6f041cc13ef0f21f3537)
+- Fix renderer registration order influencing draw order [97db1a1](https://github.com/rerun-io/rerun/commit/97db1a16382f5ae689d2e6a76dfedd7654e2802a)
+- Unify `rerun//` and `rerun+https` at parse time, fixing Viewer bugs for incorrectly distinguishing them [69ff58d](https://github.com/rerun-io/rerun/commit/69ff58d66a1e8c7ca524bca4b7daf0f691842710)
+- Add `SystemCommand::RemoveRedapServer` for more thorough cleanup [52bc3ea](https://github.com/rerun-io/rerun/commit/52bc3ea69bad2a4b73ea3019e4b9b7a728c281a4)
+- Close recordings when a server is removed [ad7371f](https://github.com/rerun-io/rerun/commit/ad7371f3cbaada95147577eed60c7d71da59a516)
+- Fix visualizations not showing up when initial data was empty [c867040](https://github.com/rerun-io/rerun/commit/c867040a23cb78b4a27d766fabb5ce9e00c44ca2)
+- Fix reflection of "pure-constant" ROS2 message schemas [fefbf6d](https://github.com/rerun-io/rerun/commit/fefbf6d57e68e7e84c04285809188c7107fc1d79)
+- Handle large video file error gracefully [#12744](https://github.com/rerun-io/rerun/pull/12744) (thanks [@AyushAgrawal-A2](https://github.com/AyushAgrawal-A2)!)
+- Use row id instead of byte span for video streams [645e57b](https://github.com/rerun-io/rerun/commit/645e57b732d09a53a873d00162050a61bbf0b6b0)
+
+#### 🌁 Viewer improvements
+- Cluster overlapping coplanar `TexturedRect`s and use draw order for tie-breaking [76b64c1](https://github.com/rerun-io/rerun/commit/76b64c137d96bf189b3cb683d6f6328017ef92a3)
+- Always open recording in background from context menu [a173287](https://github.com/rerun-io/rerun/commit/a1732872bf29cd9addff622f343e06d4bd020f07)
+- Improve implicit handling of invalid instance pose rotations [e65a6ce](https://github.com/rerun-io/rerun/commit/e65a6ce8f21a41dc3c8ff0bcf2f1ddbdb9367704)
+- Use optional `pose` of Foxglove `PointCloud` (if set) [fee2815](https://github.com/rerun-io/rerun/commit/fee28155cd4e077501b67acc36d5aac2aac15467)
+- LeRobot loader: Add support for flat feature names [a493658](https://github.com/rerun-io/rerun/commit/a493658e85bd534fff07f1eacdb141d502caae0e)
+- Select `message_log_time` as default timeline for MCAP [b687bd6](https://github.com/rerun-io/rerun/commit/b687bd644f405106d8e13357719e68b9f6e4b3d3)
+- Properly handle outline masks of overlapping coplanar rectangles [617a7c2](https://github.com/rerun-io/rerun/commit/617a7c2a25f49d80b5a691178dbd75b357275219)
+- New liftable shape limit to avoid unresponsive viewer [a4f6223](https://github.com/rerun-io/rerun/commit/a4f62231ae91b8bf19fa646abfd4d0c0b75b881b)
+- Add configurable CORS policy for rerun proxy and re_server [8baa142](https://github.com/rerun-io/rerun/commit/8baa142ffc5e81a8574e6bc9629d35d012036af9)
+- Smarter `VideoStream` streaming [2f73783](https://github.com/rerun-io/rerun/commit/2f73783025afeb9c026fe7032a73d1a98946506b)
+- Support focusing specific 3D points in viewer [ddda5cf](https://github.com/rerun-io/rerun/commit/ddda5cf159f5c50ee6a42a5bc9b6e32190e4b516)
+- Experimental grid layout & flagging for tables [9b6bf71](https://github.com/rerun-io/rerun/commit/9b6bf710021a495a7b96e3f24bf73b7b0e634157)
+- Make panel state toggable while inspecting tables/server [2eb8fb0](https://github.com/rerun-io/rerun/commit/2eb8fb07d3792d16048195c789f6e8b5ff49d276)
+- Streaming info panel (as part of memory panel) [597fdd4](https://github.com/rerun-io/rerun/commit/597fdd4cfbceeb28bd1bddf5ddb11f1a0e4dce5b)
+- Respect `up_axis` in Collada (.dae) mesh importer [#12708](https://github.com/rerun-io/rerun/pull/12708) (thanks [@Abhisheklearn12](https://github.com/Abhisheklearn12)!)
+- Improve handling of NaN & Infinity values in time series view [055777f](https://github.com/rerun-io/rerun/commit/055777ff5b32eaaeb8fe04f16d28d50449a46e3d)
+- By default, fetch similar chunks 30 seconds of playtime forward [7c0680e](https://github.com/rerun-io/rerun/commit/7c0680e5d4b740acc710b366249c32b141ac12dd)
+- Remember memory limit between viewer relaunches [1eb763a](https://github.com/rerun-io/rerun/commit/1eb763a34328802de7644bffccd7b1aa156e7997)
+- Add support for duration columns in lerobot datasets [1cd0abc](https://github.com/rerun-io/rerun/commit/1cd0abc9cbbe14d6c4c8773432a4cb59ed6eda34)
+- Support hierarchical dataset naming in viewer [efa2f23](https://github.com/rerun-io/rerun/commit/efa2f234e968e8888a6ca6d53f39170c5b319b48)
+- Display `.` separated dataset in a folder hierarchy [a217309](https://github.com/rerun-io/rerun/commit/a21730943085d8a0742eae8e2d225eef11310535)
+- Full VP8+VP9 support on native & web [a1642b4](https://github.com/rerun-io/rerun/commit/a1642b4f8213ac2c00d51bb6a630c30705d84a3b) (thanks [@AyushAgrawal-A2](https://github.com/AyushAgrawal-A2)!)
+- Use video player for encoded depth images [c3af7d5](https://github.com/rerun-io/rerun/commit/c3af7d530a5933e624e1404c14c1c62a2ff78a1a)
+- Better log console formatting [bd4c866](https://github.com/rerun-io/rerun/commit/bd4c866309dbb7ff0f6bb847d9e897f570d655a1)
+- Make text document configuration part of the blueprint [e6ae09a](https://github.com/rerun-io/rerun/commit/e6ae09aa979231084768cd6c8f776f9bf5da563f)
+- Experimental preview renders for tables with data set URLs [b133946](https://github.com/rerun-io/rerun/commit/b133946c4fccc0f0f08893e3bf422b6a373cde0d)
+- Add `VideoStream.is_keyframe` component [d50eab6](https://github.com/rerun-io/rerun/commit/d50eab6d9d276f88d44c0c133a7e5a2c3e868642)
+
+#### 🗄️ OSS server
+- Lazy RRD loading in OSS server [4aea4a5](https://github.com/rerun-io/rerun/commit/4aea4a570a245949314f97b282e011c708efce01)
+- No longer cache chunks in OSS server [853591a](https://github.com/rerun-io/rerun/commit/853591a3d143da30e79aea113c35af6435728124)
+
+#### 🚀 Performance improvements
+- Decode encoded images using our video-player system, and use the web video decoder [794a722](https://github.com/rerun-io/rerun/commit/794a722d64c46e8c643af7d43c86aa92c2ea7135)
+- Drop details from the manifest that aren't needed to reduce manifest memory bloat [612e9ef](https://github.com/rerun-io/rerun/commit/612e9ef5a75a1b9f3e8fa3d81b1142903b83d7a6)
+- `rerun rrd compact`: split by video GoP boundaries [2485570](https://github.com/rerun-io/rerun/commit/248557024b14e95257659d63fdadb105ac5a2f87)
+- By default, only prefetched what is visible [b509f91](https://github.com/rerun-io/rerun/commit/b509f91d244128339a2e3204a39ca66c6564197d)
+- Speed up `DatasetView.reader`: only fetch schema once [b266938](https://github.com/rerun-io/rerun/commit/b26693866da4ae496aceb58042cc232d5b1aeae9)
+- Huge speedup transform lookups for overlapping transform chunks [803337d](https://github.com/rerun-io/rerun/commit/803337de7dc94e19613946a9b34d7a914107511d)
+- Don't traverse through parent entities in queries if there are no cleared entities at all [a873b22](https://github.com/rerun-io/rerun/commit/a873b22737798756abcac6c25bf8ff7194a6221e)
+- Fix not taking fast paths in line/point for using default radii [5fb7c3d](https://github.com/rerun-io/rerun/commit/5fb7c3d00ff2e1a31c9c9e510100d3dfb2253a1f)
+- `CatalogClient`: Add RTT and bandwidth probes [87c5e05](https://github.com/rerun-io/rerun/commit/87c5e056326f62a106ce4215775fdb2b53ce3199)
+- Improve performance of Protobuf reflection [3969825](https://github.com/rerun-io/rerun/commit/39698253c8346639fc5d5b52c750717a8b4f7eb2)
+- `register` now takes a list of URIs [9ec5265](https://github.com/rerun-io/rerun/commit/9ec52651803e0c2c0716e3a16d4631957926b6c2)
+- Parallelize mcap decoder [6ccfcbf](https://github.com/rerun-io/rerun/commit/6ccfcbfc6fa8a1b28459440c895a9bbd6cfa6a6b)
+
+#### 🧑‍🏫 Examples
+- Add dataloader training example [8cd8acb](https://github.com/rerun-io/rerun/commit/8cd8acb4f3bdad51b97a94174289ed103a8e835c)
+- Add snippet demonstrating `LineStrips3D` with `VisibleTimeRange` [80dd138](https://github.com/rerun-io/rerun/commit/80dd1381273fad507f0516e0fe4000b0369f5c79)
+- Use blueprint, component ui and type reflection in `custom_view` example [e64abd0](https://github.com/rerun-io/rerun/commit/e64abd0f695be3b7f66b0816c1b53f361c1c96f4)
+
+#### 📚 Docs
+- Clearer behavior for `CoordinateFrame("")` [5bf9c4a](https://github.com/rerun-io/rerun/commit/5bf9c4a6027ce525a11c35dc9ff43e77324c3e6d)
+
+#### 🖼 UI improvements
+- New tooltip redesign [b1a9d82](https://github.com/rerun-io/rerun/commit/b1a9d8285846b4dabce5e29f43af28cb94b7bb07)
+- Reduce the size of chevrons in the UI [3f63fa1](https://github.com/rerun-io/rerun/commit/3f63fa12db53e75a6a06f15b2d6d615ff47202a9)
+- Highlight invalid frame ID input and show `tf#/` suggestions if applicable [2dbe13a](https://github.com/rerun-io/rerun/commit/2dbe13afaae8627bebe776b1c1231110492d1e38)
+- Status visualizer configuration [bb83ed7](https://github.com/rerun-io/rerun/commit/bb83ed70fd5817905a667e93f868986bb11d0e35)
+
+#### 🕸️ Web
+- Add progress bar to rerun-js and handle incomplete wasm downloads [ad551bd](https://github.com/rerun-io/rerun/commit/ad551bdf95f7abe2d1544693042ddf79fdd76e2a)
+- Add rerun-js login setting and default to hiding the login button [0d14814](https://github.com/rerun-io/rerun/commit/0d148144f367852084ea48767412f9198c0f1b95)
+
+#### 🎨 Renderer improvements
+- GPU accelerated time series plot drawing [8e9635b](https://github.com/rerun-io/rerun/commit/8e9635b3223528322db2d695b8b6aa45f3a1a037)
+
+#### 🧢 MCAP
+- Add `Selector::pipe` for calling anonymous functions [ea50667](https://github.com/rerun-io/rerun/commit/ea50667657307293eabf14c1b4bb0e6947605928)
+- Support Foxglove `LocationFix` & `LocationFixes` [28fe84e](https://github.com/rerun-io/rerun/commit/28fe84e2769ec652919dd0075b5b22010273d62c)
+- Split `Runtime` out of `Selector` [0febb36](https://github.com/rerun-io/rerun/commit/0febb36710b8e4efecb0b17890625986e6fa463d)
+- Transition Lenses to be `Selector<DynExpr>`-based [75e965a](https://github.com/rerun-io/rerun/commit/75e965a4c18784cb645ddf2f1765e80dc16da1c3)
+- Lenses should not drop unrelated columns [849efb4](https://github.com/rerun-io/rerun/commit/849efb4a17b37882d2113f35af03bfb72d949971)
+- MCAP: Add lens for ROS 2 `nav_msgs/OccupancyGrid` [c87a9ae](https://github.com/rerun-io/rerun/commit/c87a9aeeaded70cad02d2b802913b9d4d8fec02f)
+- Write MCAP metadata to `__mcap_metadata` instead of `__properties` [3352bb6](https://github.com/rerun-io/rerun/commit/3352bb63b8bd3732e26d17da13c01f0a4c87e873)
+- Write MCAP stats & info to `__mcap_properties` instead of `__properties` [31159e1](https://github.com/rerun-io/rerun/commit/31159e18323d2b73ab8f22ffa64144977d6296f4)
+- Decode MCAP attachment records into `__mcap_attachments` [004539a](https://github.com/rerun-io/rerun/commit/004539a793449ae28df1561c309d93715bedf60f)
+
+#### 📈 Analytics
+- More SDK analytics [fc6c8c7](https://github.com/rerun-io/rerun/commit/fc6c8c79fdd8201fef8119a66f9b1540d2a2f8da)
+
+#### 🧑‍💻 Dev-experience
+- Add `rerun.tracing_session()` for support correlation [ec9f048](https://github.com/rerun-io/rerun/commit/ec9f048dfbd83fef934dcd4f19c752618c2ec81a)
+
+#### 📦 Dependencies
+- Update datafusion to 52.5.0 [2832f82](https://github.com/rerun-io/rerun/commit/2832f8264a303e5ad8187183178c0f399a845205)
+- Unpin wasm-bindgen [#12737](https://github.com/rerun-io/rerun/pull/12737) (thanks [@anassinator](https://github.com/anassinator)!)
+
+#### 🤷‍ Other
+- Add option to split chunks with large component size differences for different archetypes [b0e6f90](https://github.com/rerun-io/rerun/commit/b0e6f90b3abcb7599d94d561774ff03b0b310dc4)
+- Run `rerun rrd optimize` on a folder of recordings [9ccb8b2](https://github.com/rerun-io/rerun/commit/9ccb8b2f8d731e78f2ffb8b04dbe0e1d60fe54ee)
 
 ## [0.31.4](https://github.com/rerun-io/rerun/compare/0.31.3...0.31.4) - 2026-04-29
 
@@ -428,7 +754,7 @@ And finally, thanks to a contribution from [@vfilter](https://github.com/vfilter
 </picture>
 
 #### 📡 On-demand streaming / larger-than-RAM
-The Rerun Viewer now supports _on-demand streaming_, when connected to either the OSS server or [Rerun Cloud](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ?typeform-source=rerun.io).
+The Rerun Viewer now supports _on-demand streaming_, when connected to either the OSS server or [Rerun Hub](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ?typeform-source=rerun.io).
 
 With on-demand streaming, whatever you are currently viewing will be downloaded first.
 This includes time-scrubbing to the end of a very long recording and quickly seeing what is there, or viewing only one camera feed of many.
@@ -437,7 +763,7 @@ Of course, your memory limit will be respected, and when you change your view or
 
 This also means that the web viewer can finally view recordings larger than the 4GiB limit enforced by Wasm32, as long as those recordings are served by a Rerun server.
 
-It also means that Rerun Cloud users can view huge recordings, larger than what fits into RAM.
+It also means that Rerun Hub users can view huge recordings, larger than what fits into RAM.
 The OSS server, however, still loads everything into RAM before serving it.
 
 Usage:
@@ -803,7 +1129,7 @@ You can now get some insight on which parts of your recording use how much memor
 - **Python**: Internal submodules moved to underscore-prefixed names (e.g., `rr.color_conversion` → `rr._color_conversion`)
 - **CLI**: `rerun server --addr` renamed to `rerun server --host`
 - **Blueprint**: Component overrides from `.rbl` files created in previous versions cannot be loaded in 0.29
-- **Data Platform**: Datasets need re-registration to populate `name` and `start_time` in segment table
+- **Catalog server**: Datasets need re-registration to populate `name` and `start_time` in segment table
 
 🧳 Check the migration guide for details: https://rerun.io/docs/reference/migration/migration-0-29
 
@@ -1160,7 +1486,7 @@ MCAP timelines renamed from `log_time`/`publish_time` to `message_log_time`/`mes
 - Implement the search service [#11954](https://github.com/rerun-io/rerun/pull/11954)
 - Add `MapProvider::MapboxLight` [#12083](https://github.com/rerun-io/rerun/pull/12083) (thanks [@sectore](https://github.com/sectore)!)
 - Implement streaming for datafusion table [#12162](https://github.com/rerun-io/rerun/pull/12162)
-- Add rerun cloud section to welcome page [#12051](https://github.com/rerun-io/rerun/pull/12051)
+- Add Rerun Hub section to welcome page [#12051](https://github.com/rerun-io/rerun/pull/12051)
 - Add support for server side filtering of DataFusion DataFrames [#12147](https://github.com/rerun-io/rerun/pull/12147)
 - Fix compaction of recordings containing video streams [35810c74187c250925e958a8f095756915313ce7](https://github.com/rerun-io/rerun/commit/35810c74187c250925e958a8f095756915313ce7)
 - Python SDK: Add timeout_sec argument to flush [f69d249e5c6bc5225d8f2f0be384243ab9dacf03](https://github.com/rerun-io/rerun/commit/f69d249e5c6bc5225d8f2f0be384243ab9dacf03)
@@ -1560,7 +1886,7 @@ See the
 -   Allow opening web viewer links directly [#10928](https://github.com/rerun-io/rerun/pull/10928)
 -   Add keyboard shortcut to copy entity hierarchy [#10938](https://github.com/rerun-io/rerun/pull/10938)
 -   Add H.265 support for native & `VideoStream` [#10994](https://github.com/rerun-io/rerun/pull/10994)
--   Support sharing URLs for Data Platform datasets & tables [#11038](https://github.com/rerun-io/rerun/pull/11038)
+-   Support sharing URLs for catalog server datasets & tables [#11038](https://github.com/rerun-io/rerun/pull/11038)
 -   New open from URL dialog & main menu entry [#11040](https://github.com/rerun-io/rerun/pull/11040)
 -   Add archetypes for MCAP metadata [#11062](https://github.com/rerun-io/rerun/pull/11062)
 -   Add `opacity` setting for `VideoStream` & `VideoAsset` [#11113](https://github.com/rerun-io/rerun/pull/11113)
@@ -1592,7 +1918,7 @@ See the
 -   Add share link button to time panel context menu [#11186](https://github.com/rerun-io/rerun/pull/11186)
 
 #### 🕸️ Web
--   Improve browser navigation for http & Rerun Data Platform links [#10863](https://github.com/rerun-io/rerun/pull/10863)
+-   Improve browser navigation for http & catalog server links [#10863](https://github.com/rerun-io/rerun/pull/10863)
 -   pixi: Use llvm-ar from PATH on macOS, avoid unexpanded ${PIXI_PROJECT… [#10910](https://github.com/rerun-io/rerun/pull/10910) (thanks [@matildasmeds](https://github.com/matildasmeds)!)
 
 #### 🧑‍💻 Dev-experience
@@ -1759,7 +2085,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 
 #### 🐍 Python API
 - Add `Dataset.register_batch` and wrappers for task ids [#9895](https://github.com/rerun-io/rerun/pull/9895)
-- Introduce `ConnectionRegistry` for centralised redap client and token management [#10078](https://github.com/rerun-io/rerun/pull/10078)
+- Introduce `ConnectionRegistry` for centralized redap client and token management [#10078](https://github.com/rerun-io/rerun/pull/10078)
 - Build in `manylinux_2_28` container [#10148](https://github.com/rerun-io/rerun/pull/10148)
 - Add APIs to Dataset to query and update the associated blueprint [#10156](https://github.com/rerun-io/rerun/pull/10156)
 - Support for seconds-since-Epoch numpy arrays for constructing `TimeColumn` [#10168](https://github.com/rerun-io/rerun/pull/10168) (thanks [@MichaelGrupp](https://github.com/MichaelGrupp)!)

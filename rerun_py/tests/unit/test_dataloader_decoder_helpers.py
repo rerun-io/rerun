@@ -6,8 +6,11 @@ import numpy as np
 import pyarrow as pa
 import pytest
 from rerun.experimental.dataloader._decoders import (
+    VideoFrameDecoder,
     _avcc_to_annex_b,
     _flatten_blob,
+    _h264_annex_b_has_idr,
+    _hevc_annex_b_has_irap,
     _is_annex_b,
     _is_av1_keyframe_packet,
     _unwrap_to_numpy,
@@ -69,6 +72,96 @@ def _avcc_encode(nal_units: list[bytes], nal_length_size: int = 4) -> bytes:
         out.extend(len(unit).to_bytes(nal_length_size, "big"))
         out.extend(unit)
     return bytes(out)
+
+
+def _h264_annex_b(nal_units: list[tuple[int, bytes]], use_4byte: bool = True) -> bytes:
+    """Build an Annex B H.264 stream from `(nal_unit_type, payload)` pairs."""
+    start = b"\x00\x00\x00\x01" if use_4byte else b"\x00\x00\x01"
+    out = bytearray()
+    for nal_type, payload in nal_units:
+        out.extend(start)
+        # nal_ref_idc=3, forbidden_zero_bit=0
+        out.append((3 << 5) | (nal_type & 0x1F))
+        out.extend(payload)
+    return bytes(out)
+
+
+def _hevc_annex_b(nal_units: list[tuple[int, bytes]], use_4byte: bool = True) -> bytes:
+    """Build an Annex B HEVC stream from `(nal_unit_type, payload)` pairs."""
+    start = b"\x00\x00\x00\x01" if use_4byte else b"\x00\x00\x01"
+    out = bytearray()
+    for nal_type, payload in nal_units:
+        out.extend(start)
+        # forbidden_zero_bit=0, layer_id=0, temporal_id_plus1=1
+        out.append((nal_type & 0x3F) << 1)
+        out.append(0x01)
+        out.extend(payload)
+    return bytes(out)
+
+
+@pytest.mark.parametrize("use_4byte", [True, False])
+def test_h264_annex_b_has_idr_simple(use_4byte: bool) -> None:
+    sample = _h264_annex_b([(5, b"\xaa\xbb\xcc")], use_4byte=use_4byte)
+    assert _h264_annex_b_has_idr(sample) is True
+
+
+def test_h264_annex_b_has_idr_after_sps_pps() -> None:
+    sample = _h264_annex_b([
+        (7, b"\x42\xc0\x1f"),  # SPS
+        (8, b"\xce\x38\x80"),  # PPS
+        (5, b"\x88\x84"),  # IDR
+    ])
+    assert _h264_annex_b_has_idr(sample) is True
+
+
+def test_h264_annex_b_has_idr_after_aud_sei() -> None:
+    sample = _h264_annex_b([
+        (9, b"\x10"),  # AUD
+        (6, b"\x01\x80"),  # SEI
+        (5, b"\x88"),  # IDR
+    ])
+    assert _h264_annex_b_has_idr(sample) is True
+
+
+def test_h264_annex_b_has_idr_p_slice_only() -> None:
+    sample = _h264_annex_b([(1, b"\xab\xcd\xef")])
+    assert _h264_annex_b_has_idr(sample) is False
+
+
+def test_h264_annex_b_has_idr_empty() -> None:
+    assert _h264_annex_b_has_idr(b"") is False
+
+
+@pytest.mark.parametrize("use_4byte", [True, False])
+def test_hevc_annex_b_has_irap_simple(use_4byte: bool) -> None:
+    sample = _hevc_annex_b([(19, b"\xaa\xbb\xcc")], use_4byte=use_4byte)
+    assert _hevc_annex_b_has_irap(sample) is True
+
+
+@pytest.mark.parametrize("nal_type", [16, 17, 18, 19, 20, 21, 22, 23])
+def test_hevc_annex_b_has_irap_all_irap_types(nal_type: int) -> None:
+    sample = _hevc_annex_b([(nal_type, b"\xaa")])
+    assert _hevc_annex_b_has_irap(sample) is True
+
+
+@pytest.mark.parametrize("nal_type", [1, 15, 24, 32, 35])  # TRAIL_R, RSV_VCL_*, just-out-of-IRAP, VPS, AUD
+def test_hevc_annex_b_has_irap_non_irap_types(nal_type: int) -> None:
+    sample = _hevc_annex_b([(nal_type, b"\xaa")])
+    assert _hevc_annex_b_has_irap(sample) is False
+
+
+def test_hevc_annex_b_has_irap_after_vps_sps_pps() -> None:
+    sample = _hevc_annex_b([
+        (32, b"\xaa"),  # VPS
+        (33, b"\xbb"),  # SPS
+        (34, b"\xcc"),  # PPS
+        (19, b"\xdd"),  # IDR_W_RADL
+    ])
+    assert _hevc_annex_b_has_irap(sample) is True
+
+
+def test_hevc_annex_b_has_irap_empty() -> None:
+    assert _hevc_annex_b_has_irap(b"") is False
 
 
 def test_avcc_to_annex_b_single_unit() -> None:
@@ -168,3 +261,12 @@ def test_flatten_blob_binary_respects_offsets() -> None:
     )
     for row, expected in enumerate([b"AAAA", b"BB", b"CCCCCC"]):
         np.testing.assert_array_equal(_flatten_blob(arr, row), np.frombuffer(expected, dtype=np.uint8))
+
+
+def test_video_frame_decoder_returns_none_without_keyframe() -> None:
+    """`decode` returns `None` when the prefetched window contains no keyframe."""
+    p_slice_only = _h264_annex_b([(1, b"\xab\xcd\xef\x01\x02\x03")])
+    raw = pa.chunked_array([pa.array([[p_slice_only]], type=pa.list_(pa.binary()))])
+
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=2)
+    assert decoder.decode(raw, 0, "seg") is None

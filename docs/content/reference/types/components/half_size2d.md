@@ -28,3 +28,4 @@ FixedSizeList(2 x non-null Float32)
 ## Used by
 
 * [`Boxes2D`](../archetypes/boxes2d.md)
+* [`Ellipses2D`](../archetypes/ellipses2d.md?speculative-link)

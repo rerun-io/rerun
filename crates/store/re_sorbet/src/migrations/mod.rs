@@ -59,7 +59,7 @@ fn get_or_guess_version(batch: &RecordBatch) -> Result<semver::Version, Error> {
         })
     } else {
         // The record batch does not have a sorbet version metadata.
-        // Rerun cloud schemas currently come without metadata,
+        // Rerun Hub schemas currently come without metadata,
         // so we need to run the full migration just in case.
         // TODO(RR-2175): Always include version metadata in redap
 
@@ -106,7 +106,7 @@ fn maybe_apply<M: Migration>(
 }
 
 /// Migrate a sorbet record batch of unknown version to the latest version.
-#[tracing::instrument(level = "debug", skip_all)]
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn migrate_record_batch(mut batch: RecordBatch, batch_type: BatchType) -> RecordBatch {
     batch = migrate_record_batch_impl(batch);
 

@@ -72,13 +72,13 @@ Creating or updating snapshots is done by adding `--snapshot-update` to the pyte
 
 ## Redap tests
 
-Redap stands for "Rerun data protocol." It is the interface between clients such as the Rerun viewer or SDK, and servers such as Rerun OSS or Rerun Cloud.
+Redap stands for "Rerun data protocol." It is the interface between clients such as the Rerun viewer or SDK, and servers such as Rerun OSS or Rerun Hub.
 
 We have several test harnesses related to redap.
 
 ### `re_redap_tests`
 
-This is a Rust-based compliance test suite that builds directly against the server's service handler. It is run both against the OSS server in this repository, and our Rerun's proprietary implementation Rerun Cloud. This test suite does not run through an actual gRPC connection. It directly links to the servers' code.
+This is a Rust-based compliance test suite that builds directly against the server's service handler. It is run both against the OSS server in this repository, and our Rerun's proprietary implementation Rerun Hub. This test suite does not run through an actual gRPC connection. It directly links to the servers' code.
 
 This test suite is executed by the OSS server tests, so you can run it locally with:
 

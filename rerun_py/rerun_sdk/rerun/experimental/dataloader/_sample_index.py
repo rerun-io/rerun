@@ -14,7 +14,7 @@ from rerun._tracing import tracing_scope, with_tracing
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from ._config import Column, DataSource
+    from ._config import DataSource, Field
 
 
 def _ns_to_datetime64(ns: int) -> np.datetime64:
@@ -61,8 +61,9 @@ class SampleIndex:
         For [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling]: nanoseconds between grid points.
         `None` for integer indices.
     is_timestamp
-        True when the index is a timestamp timeline. Controls output
-        dtype of `indices_in_range`.
+        True when the index is a timestamp timeline. Exposed so callers
+        can decide whether to interpret returned `int` values as
+        nanoseconds-since-epoch.
 
     """
 
@@ -127,12 +128,15 @@ class SampleIndex:
             return _ns_to_datetime64(ns)
         return int(seg.index_start) + int(pos)
 
-    def indices_in_range(self, seg: SegmentMetadata, lo: int, hi: int) -> Iterable[int]:  # noqa: ARG002
+    def indices_in_range(self, lo: int, hi: int) -> Iterable[int]:
         """
-        Enumerate valid index values in `[lo, hi]` for `seg`.
+        Enumerate valid index values in `[lo, hi]`.
 
-        Returned values are plain `int` (ns-since-epoch for timestamp
-        indices). The caller casts the aggregated set to the right
+        For fixed-rate timelines the returned values walk down from `hi`
+        in `ns_per_sample` steps (so they remain on the grid as long as
+        `hi` is). For integer timelines, every value in `[lo, hi]` is
+        returned. Values are plain `int` (ns-since-epoch for timestamp
+        indices); the caller casts the aggregated set to the right
         `numpy` dtype.
         """
         if hi < lo:
@@ -148,7 +152,7 @@ class SampleIndex:
     def build(
         source: DataSource,
         index: str,
-        columns: dict[str, Column],
+        fields: dict[str, Field],
         *,
         timeline_sampling: FixedRateSampling | None = None,
     ) -> SampleIndex:
@@ -161,14 +165,14 @@ class SampleIndex:
             Data source to build from.
         index
             Name of the index timeline column.
-        columns
-            Column definitions for window-trim calculation.
+        fields
+            Field definitions, used for window-trim calculation.
         timeline_sampling
             Required for timestamp indices; ignored for integer indices.
             Pass [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling] for a regular grid.
 
         """
-        return _build(source, index, columns, timeline_sampling=timeline_sampling)
+        return _build(source, index, fields, timeline_sampling=timeline_sampling)
 
 
 def _ns_per_sample(rate_hz: float) -> int:
@@ -182,7 +186,7 @@ def _ns_per_sample(rate_hz: float) -> int:
 class _RangesCtx:
     """Parameters shared across the per-segment build loop."""
 
-    columns: dict[str, Column]
+    fields: dict[str, Field]
     ranges_table: pa.Table
     start_col: str
     end_col: str
@@ -211,21 +215,27 @@ def _find_range_columns(ranges_table: pa.Table, index: str) -> tuple[str, str]:
     return pick(("start", "min"), "start"), pick(("end", "max"), "end")
 
 
-def _window_trims_ns(columns: dict[str, Column]) -> tuple[int, int]:
-    """(trim_start, trim_end) from column window offsets (native units)."""
+def _window_trims_ns(fields: dict[str, Field]) -> tuple[int, int]:
+    """
+    Largest `(-window[0], window[1])` across all fields, floored at 0.
+
+    Used to shrink the iterable range so windowed lookups stay inside
+    each segment. Only called for timestamp timelines, where
+    `field.window` is interpreted as nanoseconds (hence the `_ns` suffix).
+    """
     trim_start = 0
     trim_end = 0
-    for col in columns.values():
-        if col.window is not None:
-            trim_start = max(trim_start, -col.window[0])
-            trim_end = max(trim_end, col.window[1])
+    for field in fields.values():
+        if field.window is not None:
+            trim_start = max(trim_start, -field.window[0])
+            trim_end = max(trim_end, field.window[1])
     return trim_start, trim_end
 
 
 def _build(
     source: DataSource,
     index: str,
-    columns: dict[str, Column],
+    fields: dict[str, Field],
     *,
     timeline_sampling: FixedRateSampling | None,
 ) -> SampleIndex:
@@ -249,7 +259,7 @@ def _build(
 
     start_col, end_col = _find_range_columns(ranges_table, index)
     ctx = _RangesCtx(
-        columns=columns,
+        fields=fields,
         ranges_table=ranges_table,
         start_col=start_col,
         end_col=end_col,
@@ -279,10 +289,10 @@ def _build_integer(ctx: _RangesCtx) -> SampleIndex:
     """Build SampleIndex for integer-indexed data."""
     min_window_start = 0
     max_window_end = 0
-    for col in ctx.columns.values():
-        if col.window is not None:
-            min_window_start = min(min_window_start, col.window[0])
-            max_window_end = max(max_window_end, col.window[1])
+    for field in ctx.fields.values():
+        if field.window is not None:
+            min_window_start = min(min_window_start, field.window[0])
+            max_window_end = max(max_window_end, field.window[1])
 
     seg_col = ctx.ranges_table.column("rerun_segment_id").to_pylist()
     min_vals = ctx.ranges_table.column(ctx.start_col).to_pylist()
@@ -323,7 +333,7 @@ def _build_fixed_rate(ctx: _RangesCtx, ns_per_sample: int) -> SampleIndex:
     min_vals = ctx.ranges_table.column(ctx.start_col).to_numpy()
     max_vals = ctx.ranges_table.column(ctx.end_col).to_numpy()
 
-    trim_start_ns, trim_end_ns = _window_trims_ns(ctx.columns)
+    trim_start_ns, trim_end_ns = _window_trims_ns(ctx.fields)
 
     segments: list[SegmentMetadata] = []
     for seg_id, seg_min, seg_max in zip(seg_col, min_vals, max_vals, strict=False):

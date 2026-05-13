@@ -16,6 +16,16 @@ pub(crate) struct ExpandedRowsCache {
     valid_for: egui::Id,
 }
 
+impl re_byte_size::SizeBytes for ExpandedRowsCache {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            expanded_rows,
+            valid_for: _,
+        } = self;
+        expanded_rows.heap_size_bytes()
+    }
+}
+
 impl Default for ExpandedRowsCache {
     fn default() -> Self {
         Self {

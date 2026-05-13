@@ -10,7 +10,8 @@ rerun::Position3D mul_pos(float factor, rerun::Position3D vec) {
 }
 
 int main(int argc, char* argv[]) {
-    const auto rec = rerun::RecordingStream("rerun_example_mesh3d_partial_updates");
+    const auto rec =
+        rerun::RecordingStream("rerun_example_mesh3d_partial_updates");
     rec.spawn().exit_on_failure();
 
     rerun::Position3D vertex_positions[3] = {
@@ -45,7 +46,9 @@ int main(int argc, char* argv[]) {
         };
         rec.log(
             "triangle",
-            rerun::Mesh3D::update_fields().with_vertex_positions(modified_vertex_positions)
+            rerun::Mesh3D::update_fields().with_vertex_positions(
+                modified_vertex_positions
+            )
         );
     }
 }

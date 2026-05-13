@@ -105,9 +105,9 @@ To output columns to multiple entities from a single component, multiple lenses 
 `rerun rrd compact` is now `rerun rrd optimize`.
 
 A new `--profile` argument has been added to opt to known good values.
-Two profiles are available: `live` (optimized for the live Viewer workflow, same as previous defaults) and `dataplatform` (optimized for querying and streaming from the Data Platform). <!-- NOLINT -->
+Two profiles are available: `live` (optimized for the live Viewer workflow, same as previous defaults) and `object-store` (optimized for querying and streaming from object-store-backed storage, e.g. a catalog server). <!-- NOLINT -->
 
-By default, the `dataplatform` profile is now used. Use `--profile live` to keep the previous behavior. <!-- NOLINT -->
+By default, the `object-store` profile is now used. Use `--profile live` to keep the previous behavior. <!-- NOLINT -->
 
 ## `DatasetEntry.register` requires a sequence of URIs (Python)
 
@@ -130,6 +130,24 @@ This replaces the model-dependent entity path of previous versions, and improves
 
 A custom entity path can be now also configured in the `UrdfTree` API in Python and Rust, if desired.
 
-## MCAP metadata
+## MCAP metadata and statistics
 
-In MCAP to RRD conversion, metadata records are now saved at a dedicated [reserved entity path](../../concepts/logging-and-ingestion/entity-path.md#reserved-paths) `__mcap_metadata` instead of RRD properties (`__properties`).
+In MCAP to RRD conversion, metadata records, statistics, and recording info are now saved at dedicated [reserved entity paths](../../concepts/logging-and-ingestion/entity-path.md#reserved-paths) instead of RRD properties (`__properties`).
+
+Metadata records are saved under `__mcap_metadata`, and MCAP statistics and recording info are saved under `__mcap_properties`.
+
+## `rerun.recording` deprecated in favor of `RrdReader`
+
+The `rerun.recording` module — `Recording`, `RRDArchive`, `load_recording`, `load_archive` — is deprecated.
+Use `rerun.experimental.RrdReader` instead, which natively supports multi-store RRDs (multiple recordings and blueprints in one file) and lazy loading.
+
+| Before                                               | After                                                                                     |
+|------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| `rr.recording.load_recording(path)`                  | `rr.experimental.RrdReader(path).store()`                                                 |
+| `rr.recording.load_archive(path)`                    | `rr.experimental.RrdReader(path)`                                                         |
+| `archive.all_recordings()`                           | `reader.recordings()` then `reader.store(store=entry)`                                    |
+| `recording.application_id()` / `recording_id()`      | `StoreEntry.application_id` / `recording_id` (from `reader.recordings()`)                 |
+| `Recording.from_chunks(chunks, app, rec).save(path)` | `LazyChunkStream.from_iter(chunks).write_rrd(path, application_id=app, recording_id=rec)` |
+| `rr.send_recording(rec)`                             | `rr.experimental.send_chunks(reader.store())`                                             |
+| `RecordingStream.send_recording(rec)`                | `RecordingStream.send_chunks(rec)`                                                        |
+| `DatasetEntry.download_segment(seg)`                 | `DatasetEntry.segment_store(seg)`                                                         |

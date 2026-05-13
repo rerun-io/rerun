@@ -21,7 +21,7 @@ impl Decoder for McapSchemaDecoder {
     fn process(
         &mut self,
         ctx: &DecoderContext<'_>,
-        emit: &mut dyn FnMut(Chunk),
+        emit: &(dyn Fn(Chunk) + Send + Sync),
     ) -> Result<(), Error> {
         for channel in ctx.relevant_channels() {
             let mut components = from_channel(channel).as_serialized_batches();

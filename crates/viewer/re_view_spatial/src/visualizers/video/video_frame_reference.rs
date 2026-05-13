@@ -176,6 +176,8 @@ impl VideoFrameReferenceVisualizer {
                         format!("No video asset at {video_reference:?}"),
                         VideoPlaybackIssueSeverity::Informational,
                     )),
+                    None,
+                    None,
                 );
             }
 
@@ -205,6 +207,12 @@ impl VideoFrameReferenceVisualizer {
                     let multiplicative_tint =
                         re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
+                    let bit_depth = video
+                        .data_descr()
+                        .encoding_details
+                        .as_ref()
+                        .and_then(|d| d.bit_depth);
+
                     show_video_frame(
                         ctx.view_ctx,
                         data,
@@ -219,6 +227,8 @@ impl VideoFrameReferenceVisualizer {
                             multiplicative_tint,
                         }),
                         frame_output.error.map(VideoPlaybackIssue::from),
+                        None,
+                        bit_depth,
                     );
                 }
                 Err(err) => {
@@ -235,6 +245,8 @@ impl VideoFrameReferenceVisualizer {
                             err.to_string(),
                             VideoPlaybackIssueSeverity::Error,
                         )),
+                        None,
+                        None,
                     );
                 }
             },

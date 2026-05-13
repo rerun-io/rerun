@@ -604,7 +604,7 @@ enum Command {
 
     /// Download recordings and save them as .rrd files.
     ///
-    /// Supports downloading from Rerun Cloud as well as any other supported URI.
+    /// Supports downloading from Rerun Hub as well as any other supported URI.
     Download(DownloadCommand),
 
     /// Generates the Rerun CLI manual (markdown).

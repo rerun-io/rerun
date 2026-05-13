@@ -18,7 +18,7 @@ arrow::Status run_main() {
     auto confidences = rerun::ComponentBatch::from_arrow_array(
         std::move(arrow_array),
         rerun::ComponentDescriptor("confidence")
-            .with_component_type(rerun::Loggable<rerun::components::Scalar>::ComponentType)
+            .with_component_type(rerun::Loggable<rerun::Scalar>::ComponentType)
     );
 
     arrow::StringBuilder description_builder;
@@ -29,7 +29,7 @@ arrow::Status run_main() {
         rerun::ComponentDescriptor("description")
             .with_component_type(
 
-                rerun::Loggable<rerun::components::Text>::ComponentType
+                rerun::Loggable<rerun::Text>::ComponentType
             )
     );
     // URIs will become clickable links
@@ -42,7 +42,9 @@ arrow::Status run_main() {
     );
 
     arrow::StringBuilder repository_builder;
-    ARROW_RETURN_NOT_OK(repository_builder.Append("https://github.com/rerun-io/rerun"));
+    ARROW_RETURN_NOT_OK(
+        repository_builder.Append("https://github.com/rerun-io/rerun")
+    );
     ARROW_RETURN_NOT_OK(repository_builder.Finish(&arrow_array));
     auto repository = rerun::ComponentBatch::from_arrow_array(
         std::move(arrow_array),

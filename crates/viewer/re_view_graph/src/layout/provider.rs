@@ -101,6 +101,13 @@ pub struct ForceLayoutProvider {
     pub request: LayoutRequest,
 }
 
+impl re_byte_size::SizeBytes for ForceLayoutProvider {
+    fn heap_size_bytes(&self) -> u64 {
+        // `fjadra::Simulation` keeps its internals private; count layout inputs we own.
+        self.request.heap_size_bytes()
+    }
+}
+
 fn considered_edges(request: &LayoutRequest) -> Vec<(usize, usize)> {
     let node_index: ahash::HashMap<NodeId, usize> = request
         .all_nodes()

@@ -9,6 +9,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    import pyarrow as pa
+
     from . import Transform3D
     from ._baseclasses import ComponentColumnList
     from .experimental import LazyChunkStream
@@ -372,6 +374,42 @@ class UrdfTree:
         from .experimental import LazyChunkStream
 
         return LazyChunkStream(self._inner.stream(include_joint_transforms=include_joint_transforms))
+
+    def compute_joint_transform_batches(
+        self,
+        names: pa.Array,
+        values: pa.Array,
+        *,
+        clamp: bool = False,
+    ) -> pa.Array:
+        """
+        Compute batches of 3D transform components from Arrow list arrays containing joint names and values.
+
+        `names` must be a `ListArray` with `Utf8` values.
+        `values` must be a `ListArray` with values castable to `Float64`.
+
+        The output is a `ListArray` with `translation`, `quaternion`, `parent_frame`, and
+        `child_frame` fields and the same outer row count as the inputs.
+
+        Note: this is intended as a helper for lens pipelines, where you would usually pipe this output
+        through an additional lens that scatters each batch into final `Transform3D` component rows.
+
+        Parameters
+        ----------
+        names:
+            Joint names for each row.
+        values:
+            Joint values for each row.
+        clamp:
+            Whether to clamp & warn about values outside joint limits.
+
+        Returns
+        -------
+        pa.Array
+            Transform batches with one outer row for each input row.
+
+        """
+        return self._inner.compute_joint_transform_batches(names, values, clamp=clamp)
 
     def __repr__(self) -> str:
         return self._inner.__repr__()

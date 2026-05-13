@@ -49,6 +49,7 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
 
+    OpenWebsite,
     OpenWebHelp,
     OpenRerunDiscord,
 
@@ -200,9 +201,10 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::Quit => ("Quit", "Close the Rerun Viewer"),
 
+            Self::OpenWebsite => ("rerun.io", "Visit our homepage"),
             Self::OpenWebHelp => (
-                "Help",
-                "Visit the help page on our website, with troubleshooting tips and more",
+                "Docs",
+                "Visit the docs on our website, with troubleshooting tips and more",
             ),
             Self::OpenRerunDiscord => (
                 "Rerun Discord",
@@ -461,6 +463,7 @@ impl UICommand {
             }
 
             Self::OpenWebHelp => smallvec![],
+            Self::OpenWebsite => smallvec![],
             Self::OpenRerunDiscord => smallvec![],
 
             Self::ResetViewer => smallvec![ctrl_shift(Key::R)],
@@ -569,7 +572,7 @@ impl UICommand {
 
     pub fn icon(self) -> Option<&'static crate::Icon> {
         match self {
-            Self::OpenWebHelp => Some(&crate::icons::EXTERNAL_LINK),
+            Self::OpenWebsite | Self::OpenWebHelp => Some(&crate::icons::EXTERNAL_LINK),
             Self::OpenRerunDiscord => Some(&crate::icons::DISCORD),
             _ => None,
         }

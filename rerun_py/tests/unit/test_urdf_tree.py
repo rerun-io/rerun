@@ -3,10 +3,11 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
+import pyarrow as pa
 import pytest
 import rerun as rr
 import rerun.urdf as rru
-from rerun.experimental import RrdReader, StreamingReader
+from rerun.experimental import Chunk, DeriveLens, LazyChunkStream, RrdReader, Selector, StreamingReader
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 URDF_PATH = REPO_ROOT / "examples" / "rust" / "animated_urdf" / "data" / "so100.urdf"
@@ -32,7 +33,7 @@ def test_urdf_tree_loading() -> None:
     child_link = tree.get_joint_child(joint)
     assert child_link.name == "shoulder"
 
-    # We expect flat, neighbouring paths for visual and collision geometries of links,
+    # We expect flat, neighboring paths for visual and collision geometries of links,
     # queryable by either link name or link object.
     visual_paths = tree.get_visual_geometry_paths(child_link)
     assert visual_paths[0] == "/so_arm100/visual_geometries/shoulder/visual_0"
@@ -203,6 +204,83 @@ def test_urdf_compute_transform_columns() -> None:
     # Verify that out-of-range values produce warnings.
     with pytest.warns(UserWarning, match="outside limits"):
         joint.compute_transform_columns([joint.limit_upper + 1.0], clamp=True)
+
+
+def test_urdf_transform_batches_in_lens_pipeline() -> None:
+    """Integration test for computing transform batches from joint states in a chunk pipeline using lenses."""
+
+    frame_prefix = "prefix_"
+    urdf_tree = rru.UrdfTree.from_file_path(URDF_PATH, frame_prefix=frame_prefix)
+
+    # Create a chunk with joint names and values.
+    messages = pa.StructArray.from_arrays(
+        [
+            # Note: "1", "2" are joint names from the test URDF file we use here.
+            pa.array([["1", "2"], ["1"]], type=pa.list_(pa.string())),
+            pa.array([[0.0, 0.5], [1.0]], type=pa.list_(pa.float64())),
+        ],
+        names=["joint_names", "actuator_readings"],
+    )
+    chunk = Chunk.from_columns(
+        "/joint_states",
+        indexes=[rr.TimeColumn("frame", sequence=[0, 1])],
+        columns=rr.DynamicArchetype.columns(
+            archetype="schemas.SomeCustomJointState",
+            components={"message": messages},
+        ),
+    )
+
+    # Apply a two-stage pipeline using lenses:
+
+    # 1. Compute joint transforms in batch using `UrdfTree.compute_joint_transform_batches`.
+    # N input rows with multiple joint states per row -> N output rows with multiple transforms per row.
+    compute_joints = DeriveLens("schemas.SomeCustomJointState:message").to_component(
+        "rerun.urdf.JointTransformBatch",
+        Selector(".").pipe(
+            lambda joint_state_messages: urdf_tree.compute_joint_transform_batches(
+                names=Selector(".joint_names").execute(joint_state_messages),
+                values=Selector(".actuator_readings").execute(joint_state_messages),
+            )
+        ),
+    )
+    # 2. Scatter the batch data into final `Transform3D` rows.
+    # N input rows with multiple transforms per row -> one output row per transform.
+    output_transforms = (
+        DeriveLens("rerun.urdf.JointTransformBatch", output_entity="/tf", scatter=True)
+        .to_component(rr.Transform3D.descriptor_translation(), Selector(".[].translation"))
+        .to_component(rr.Transform3D.descriptor_quaternion(), Selector(".[].quaternion"))
+        .to_component(rr.Transform3D.descriptor_parent_frame(), Selector(".[].parent_frame"))
+        .to_component(rr.Transform3D.descriptor_child_frame(), Selector(".[].child_frame"))
+    )
+
+    chunks = LazyChunkStream.from_iter([chunk]).lenses(compute_joints).lenses(output_transforms).to_chunks()
+
+    assert len(chunks) == 1
+    assert chunks[0].entity_path == "/tf"
+    assert chunks[0].num_rows == 3
+
+    batch = chunks[0].to_record_batch()
+    assert batch.column("frame").to_pylist() == [0, 0, 1]
+    assert set(batch.column_names) >= {
+        "Transform3D:translation",
+        "Transform3D:quaternion",
+        "Transform3D:parent_frame",
+        "Transform3D:child_frame",
+    }
+
+    joint1 = urdf_tree.get_joint_by_name("1")
+    joint2 = urdf_tree.get_joint_by_name("2")
+    assert joint1 is not None and joint2 is not None
+    assert batch.column("Transform3D:parent_frame").to_pylist() == [
+        [f"{frame_prefix}{joint1.parent_link}"],
+        [f"{frame_prefix}{joint2.parent_link}"],
+        [f"{frame_prefix}{joint1.parent_link}"],
+    ]
+    assert batch.column("Transform3D:child_frame").to_pylist() == [
+        [f"{frame_prefix}{joint1.child_link}"],
+        [f"{frame_prefix}{joint2.child_link}"],
+        [f"{frame_prefix}{joint1.child_link}"],
+    ]
 
 
 def assert_quat_equivalent(actual: rr.components.RotationQuatBatch, expected: list[float]) -> None:

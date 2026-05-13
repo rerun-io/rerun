@@ -83,74 +83,62 @@ pub fn resolution_of_image_at(
         }
     }
 
-    // Check for an encoded image.
-    let encoded_image_blob_component = archetypes::EncodedImage::descriptor_blob().component;
-    if let Some(((_time, _), _)) = entity_db.latest_at_component::<re_sdk_types::components::Blob>(
-        entity_path,
-        query,
-        encoded_image_blob_component,
-    ) {
-        let video = ctx
-            .store_context
-            .memoizer(|c: &mut crate::VideoStreamCache| {
-                c.entry(
-                    entity_db,
-                    entity_path,
-                    *ctx.time_ctrl.timeline_name(),
-                    ctx.app_options().video_decoder_settings(),
-                    encoded_image_blob_component,
-                    &|| {
-                        let media_type = entity_db
-                            .latest_at_component::<components::MediaType>(
-                                entity_path,
-                                query,
-                                archetypes::EncodedImage::descriptor_media_type().component,
-                            )
-                            .map(|(_, c)| c.to_string());
-
-                        Ok(re_video::VideoCodec::ImageSequence(media_type))
-                    },
-                )
-            });
-
-        if let Ok(video) = video
-            && let Some(encoding_details) = &video.read_arc().video_descr().encoding_details
-        {
-            return Some(components::Resolution::from(
-                encoding_details.coded_dimensions.map(|e| e as f32),
-            ));
-        }
-    }
-
-    // Check for an encoded depth image.
-    if let Some(((_time, row_id), blob)) = entity_db
-        .latest_at_component::<re_sdk_types::components::Blob>(
-            entity_path,
-            query,
-            archetypes::EncodedDepthImage::descriptor_blob().component,
-        )
-    {
-        let media_type = entity_db
-            .latest_at_component::<components::MediaType>(
+    // Check for an encoded image & encoded depth image.
+    let encoded_image_resolution = |image_blob_component, media_type_component| {
+        if let Some(((_time, _), _)) = entity_db
+            .latest_at_component::<re_sdk_types::components::Blob>(
                 entity_path,
                 query,
-                archetypes::EncodedDepthImage::descriptor_media_type().component,
+                image_blob_component,
             )
-            .map(|(_, c)| c);
+        {
+            let video = ctx
+                .store_context
+                .memoizer(|c: &mut crate::VideoStreamCache| {
+                    c.entry(
+                        entity_db,
+                        entity_path,
+                        *ctx.time_ctrl.timeline_name(),
+                        ctx.app_options().video_decoder_settings(),
+                        image_blob_component,
+                        &|| {
+                            let media_type = entity_db
+                                .latest_at_component::<components::MediaType>(
+                                    entity_path,
+                                    query,
+                                    media_type_component,
+                                )
+                                .map(|(_, c)| c.to_string());
 
-        let depth_image = ctx
-            .store_context
-            .memoizer(|c: &mut crate::ImageDecodeCache| {
-                c.entry_encoded_depth(
-                    row_id,
-                    archetypes::EncodedDepthImage::descriptor_blob().component,
-                    &blob,
-                    media_type.as_ref(),
-                )
-            });
+                            Ok(re_video::VideoCodec::ImageSequence(media_type))
+                        },
+                    )
+                });
 
-        if let Ok(depth_image) = depth_image {
-            return Some(depth_image.width_height_f32().into());
+            if let Ok(video) = video
+                && let Some(encoding_details) = &video.read_arc().video_descr().encoding_details
+            {
+                return Some(components::Resolution::from(
+                    encoding_details.coded_dimensions.map(|e| e as f32),
+                ));
+            }
+        }
+
+        None
+    };
+
+    for (image_blob_component, media_type_component) in [
+        (
+            archetypes::EncodedImage::descriptor_blob().component,
+            archetypes::EncodedImage::descriptor_media_type().component,
+        ),
+        (
+            archetypes::EncodedDepthImage::descriptor_blob().component,
+            archetypes::EncodedDepthImage::descriptor_media_type().component,
+        ),
+    ] {
+        if let Some(res) = encoded_image_resolution(image_blob_component, media_type_component) {
+            return Some(res);
         }
     }
 

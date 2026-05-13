@@ -3,12 +3,12 @@ title: Catalog object model
 order: 100
 ---
 
-This page covers the Data Platform's object model. For logging and recording basics, see [Recordings](../logging-and-ingestion/recordings.md). For API details, see the [Catalog SDK reference](https://ref.rerun.io/docs/python/stable/common/catalog/).
+This page covers the catalog server's object model. For logging and recording basics, see [Recordings](../logging-and-ingestion/recordings.md). For API details, see the [Catalog SDK reference](https://ref.rerun.io/docs/python/stable/common/catalog/).
 
 
 ## Catalog
 
-We refer to the contents stored in a given instance of the Data Platform as the _catalog_.
+We refer to the contents stored in a given catalog server as the _catalog_.
 The catalog contains top-level objects called _entries_.
 
 There are currently two types of entries: **tables** and **datasets**.

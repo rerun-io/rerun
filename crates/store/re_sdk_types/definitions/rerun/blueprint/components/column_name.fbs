@@ -1,0 +1,13 @@
+namespace rerun.blueprint.components;
+
+/// The name of a column in a table.
+table ColumnName (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str | Sequence[str]",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.rust.repr": "transparent",
+  "attr.rerun.scope": "blueprint"
+) {
+    value: rerun.datatypes.Utf8 (order: 100);
+}

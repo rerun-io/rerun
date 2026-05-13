@@ -72,7 +72,7 @@
     },
 
     "label_button_icon_color": {
-      "color": "{Gray.775}"
+      "color": "{Gray.750}"
     },
     "section_header_color": {
       "color": "{Gray.200}"
@@ -103,7 +103,7 @@
     "icon_color_on_primary": {"color": "{Blue.750}"},
     "icon_color_on_primary_hovered": {"color": "{Gray.1000}"},
     "selection_bg_fill": {
-      "color": "{Blue.350}"
+      "color": "{Blue.500}"
     },
     "selection_stroke_color": {
       "color": "{Blue.900}" // TODO(emilk): should we unify this with text_color_on_primary?
@@ -182,10 +182,10 @@
       "color": "{Blue.375}"
     },
     "drag_pill_nondroppable_fill": {
-      "color": "{Gray.325}"
+      "color": "{Gray.300}"
     },
     "drag_pill_nondroppable_stroke": {
-      "color": "{Gray.375}"
+      "color": "{Gray.400}"
     },
     "drop_target_container_stroke": {
       "color": "{Blue.350}",
@@ -220,22 +220,22 @@
       "color": "{Gray.300}"
     },
     "widget_hovered_color": {
-      "color": "{Gray.325}"
+      "color": "{Gray.300}"
     },
     "widget_hovered_weak_bg_fill": {
-      "color": "{Gray.325}"
+      "color": "{Gray.300}"
     },
     "widget_hovered_bg_fill": {
-      "color": "{Gray.325}"
+      "color": "{Gray.300}"
     },
     "widget_active_weak_bg_fill": {
-      "color": "{Gray.325}"
+      "color": "{Gray.300}"
     },
     "widget_active_bg_fill": {
-      "color": "{Gray.325}"
+      "color": "{Gray.300}"
     },
     "widget_open_weak_bg_fill": {
-      "color": "{Gray.325}"
+      "color": "{Gray.300}"
     },
     "widget_noninteractive_weak_bg_fill": {
       "color": "{Gray.150}"
@@ -250,7 +250,7 @@
       "color": "{Gray.550}"
     },
     "text_default": {
-      "color": "{Gray.775}"
+      "color": "{Gray.750}"
     },
     "text_strong": {
       "color": "{Gray.1000}"

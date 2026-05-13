@@ -111,6 +111,9 @@ pub struct StoreHub {
     default_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     active_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
 
+    /// Blueprints associated with tables rather than [`ApplicationId`]
+    table_blueprints: HashMap<TableId, StoreId>,
+
     data_source_order: DataSourceOrder,
     store_bundle: StoreBundle,
     table_stores: HashMap<TableId, TableStore>,
@@ -264,6 +267,7 @@ impl StoreHub {
             store_usages: Default::default(),
 
             table_stores: TableStores::default(),
+            table_blueprints: Default::default(),
         }
     }
 
@@ -493,6 +497,26 @@ impl StoreHub {
         self.table_stores.insert(id, store)
     }
 
+    /// Store a decoded table blueprint [`EntityDb`] for the given table.
+    ///
+    /// Any previously stored blueprint for this table is removed first.
+    pub fn insert_table_blueprint(&mut self, table_id: TableId, blueprint: EntityDb) {
+        // Remove any previous blueprint for this table.
+        if let Some(old_store_id) = self.table_blueprints.remove(&table_id) {
+            self.store_bundle.remove(&old_store_id);
+        }
+
+        let store_id = blueprint.store_id().clone();
+        self.store_bundle.insert(blueprint);
+        self.table_blueprints.insert(table_id, store_id);
+    }
+
+    /// Look up the decoded blueprint [`EntityDb`] for a table, if one was stored.
+    pub fn table_blueprint(&self, table_id: &TableId) -> Option<&EntityDb> {
+        let store_id = self.table_blueprints.get(table_id)?;
+        self.store_bundle.get(store_id)
+    }
+
     fn remove_store(&mut self, store_id: &StoreId) {
         _ = self.store_caches.remove(store_id);
         let removed_store = self.store_bundle.remove(store_id);
@@ -546,6 +570,9 @@ impl StoreHub {
             }
             RecordingOrTable::Table { table_id } => {
                 self.table_stores.remove(table_id);
+                if let Some(blueprint_store_id) = self.table_blueprints.remove(table_id) {
+                    self.store_bundle.remove(&blueprint_store_id);
+                }
             }
         }
     }
@@ -602,6 +629,7 @@ impl StoreHub {
             .retain(|store_id, _| store_ids_retained.contains(store_id));
 
         self.table_stores.clear();
+        self.table_blueprints.clear();
     }
 
     // ---------------------
@@ -1061,6 +1089,17 @@ impl StoreHub {
         store_size_before.saturating_sub(store_size_after)
     }
 
+    /// Find a recording whose redap URI matches the given `uri`, ignoring fragments.
+    pub fn find_recording_by_uri(&self, uri: &re_uri::DatasetSegmentUri) -> Option<&EntityDb> {
+        self.store_bundle.recordings().find(|db| {
+            db.redap_uri().is_some_and(|redap_uri| {
+                redap_uri.origin == uri.origin
+                    && redap_uri.dataset_id == uri.dataset_id
+                    && redap_uri.segment_id == uri.segment_id
+            })
+        })
+    }
+
     /// Remove any recordings with a network source pointing at this `uri`.
     pub fn remove_recording_by_uri(&mut self, uri: &str) {
         self.retain_recordings(|db| {
@@ -1274,6 +1313,7 @@ impl StoreHub {
             active_blueprint_by_app_id: _,
             store_bundle,
             table_stores,
+            table_blueprints: _,
             data_source_order: _,
             should_enable_heuristics_by_app_id: _,
 
@@ -1331,6 +1371,7 @@ impl MemUsageTreeCapture for StoreHub {
             persistence: _,
             default_blueprint_by_app_id: _,
             active_blueprint_by_app_id: _,
+            table_blueprints: _,
             data_source_order: _,
             should_enable_heuristics_by_app_id: _,
 

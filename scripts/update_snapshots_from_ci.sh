@@ -23,7 +23,7 @@ find . -type d -path "*/tests/snapshots*" | while read dir; do
 done
 
 
-gh run download "$RUN_ID" --name "test-results-linux" --dir tmp_artefacts
+gh run download "$RUN_ID" --name "test-results-rust-checks-tests-linux" --dir tmp_artefacts
 
 # move the snapshots to the correct location, overwriting the existing ones
 rsync -a tmp_artefacts/ .

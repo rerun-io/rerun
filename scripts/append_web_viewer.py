@@ -33,7 +33,8 @@ def create_web_viewer_zip(web_viewer_dir: Path) -> bytes:
     """Create a zip archive of the web viewer assets."""
     required_files = [
         "index.html",
-        "favicon.svg",
+        "favicon.ico",
+        "apple-touch-icon.png",
         "sw.js",
         "re_viewer.js",
         "re_viewer_bg.wasm",

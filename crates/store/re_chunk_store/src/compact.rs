@@ -54,7 +54,8 @@ impl ChunkStore {
     /// datatypes, up to the thresholds in the config. Large chunks may be split.
     ///
     /// If `is_start_of_gop` is provided, video stream chunks are rebatched to align
-    /// with GoP boundaries after compaction.
+    /// with GoP boundaries after compaction, and sparse `is_keyframe` marker chunks
+    /// are emitted.
     ///
     /// If `split_size_ratio` is provided, chunks are split on entry so no two
     /// archetype groups sharing a chunk differ in byte size by more than that factor.

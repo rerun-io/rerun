@@ -87,7 +87,7 @@ fn modal_ui(
 
         let resp = ui
             .add_enabled_ui(!disabled, |ui| {
-                row_ui(ui, icon_for_container_kind(&kind), title, subtitle)
+                row_ui(ui, icon_for_container_kind(&kind), title, subtitle, false)
             })
             .inner
             .on_disabled_hover_text(format!(
@@ -104,20 +104,35 @@ fn modal_ui(
 
     ui.full_span_separator();
 
-    // view of any kind
-    for view in ctx
+    // Split views into stable / experimental groups. Experimental views go into a separate
+    // section at the bottom of the modal with a warning icon — they're fully functional, just
+    // marked clearly as in-flux.
+    let (stable_views, experimental_views): (Vec<_>, Vec<_>) = ctx
         .view_class_registry()
         .iter_registry()
         .map(|entry| ViewBlueprint::new_with_root_wildcard(entry.identifier))
-    {
+        .partition(|view| !view.class(ctx.view_class_registry()).is_experimental());
+
+    let add_view_row = |ui: &mut egui::Ui, view: ViewBlueprint, is_experimental: bool| {
         let icon = view.class(ctx.view_class_registry()).icon();
         let title = view.class(ctx.view_class_registry()).display_name();
         let subtitle = format!("Create a new view to display {title} content.");
 
-        if row_ui(ui, icon, title, &subtitle).clicked() {
+        if row_ui(ui, icon, title, &subtitle, is_experimental).clicked() {
             viewport.add_views(std::iter::once(view), target_container, None);
             viewport.mark_user_interaction(ctx);
             ui.close();
+        }
+    };
+
+    for view in stable_views {
+        add_view_row(ui, view, false);
+    }
+
+    if !experimental_views.is_empty() {
+        ui.full_span_separator();
+        for view in experimental_views {
+            add_view_row(ui, view, true);
         }
     }
 }
@@ -142,7 +157,13 @@ fn modal_ui(
 /// │◀─────────────────────────────────────────────────▶│
 ///                       clip_rect
 /// ```
-fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) -> egui::Response {
+fn row_ui(
+    ui: &mut egui::Ui,
+    icon: &re_ui::Icon,
+    title: &str,
+    subtitle: &str,
+    is_experimental: bool,
+) -> egui::Response {
     //TODO(ab): use design tokens
     let row_space = 14.0;
     let row_height = 42.0;
@@ -182,7 +203,22 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
             ui.vertical(|ui| {
                 ui.strong(title);
                 ui.add_space(-5.0);
-                ui.add(egui::Label::new(subtitle).wrap_mode(egui::TextWrapMode::Extend));
+                if is_experimental {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = 4.0;
+                        ui.add(
+                            re_ui::icons::WARNING
+                                .as_image()
+                                .tint(ui.tokens().alert_info.icon),
+                        );
+                        ui.add(
+                            egui::Label::new(format!("Experimental: {subtitle}").as_str())
+                                .wrap_mode(egui::TextWrapMode::Extend),
+                        );
+                    });
+                } else {
+                    ui.add(egui::Label::new(subtitle).wrap_mode(egui::TextWrapMode::Extend));
+                }
             });
 
             let right_coord = ui.cursor().max.x;

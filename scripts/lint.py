@@ -344,12 +344,29 @@ def lint_line(
             )
 
     if is_in_oss_rerun_repo:
-        # Check for specific data platform phrases that should be capitalized.
+        # Deprecated brand names. Replacement is context-dependent:
+        #   - 'Rerun Hub'      → commercial managed offering
+        #   - 'catalog server' → generic OSS or managed
+        #   - or rephrase to avoid naming the product
+        # Matched case-insensitively so that lowercase variants (e.g. 'rerun cloud') are also caught.
+        deprecated_msg = "is a deprecated name. Use 'Rerun Hub' (commercial), 'catalog server' (generic), or rephrase."
+        if re.search(r"\bRerun\s+Cloud\b", line, re.IGNORECASE):
+            return f"'Rerun Cloud' {deprecated_msg}"
+        if re.search(r"\bRerun\s+Base\b", line, re.IGNORECASE):
+            return f"'Rerun Base' {deprecated_msg}"
+        if re.search(r"\bRerun\s+Data\s+Platform\b", line, re.IGNORECASE):
+            return f"'Rerun Data Platform' {deprecated_msg}"
+        if re.search(r"\bData\s+Platform\b", line, re.IGNORECASE):
+            return f"'Data Platform' {deprecated_msg}"
         # Skip URL paths (`/dataplatform/`) and python package extras specifiers
-        if re.search(r"(the\s+data\s+platform|Rerun\s+data\s+platform)", line) or re.search(
-            r"(?<![/\[,])dataplatform(?![/\],])", line
-        ):
-            return "Use 'the Data Platform', 'Rerun Data Platform', or 'Data Platform' (unless it's part of a URL path or python package extras specifier)"
+        # (`rerun-sdk[dataloader,dataplatform]`) — those reference the feature name, not prose.
+        if re.search(r"(?<![/\[,])dataplatform(?![/\],])", line, re.IGNORECASE):
+            return f"'dataplatform' {deprecated_msg}"
+
+        # Enforce 'Rerun Hub' capitalization: flag any case variant that isn't exactly 'Rerun Hub'.
+        for m in re.finditer(r"\bRerun\s+Hub\b", line, re.IGNORECASE):
+            if m.group(0) != "Rerun Hub":
+                return "'Rerun Hub' must be properly capitalized."
 
     if not is_in_docstring:
         if m := re.search(
@@ -474,13 +491,16 @@ def test_lint_line() -> None:
 """,
         "fn ret_any() -> &dyn std::any::Any",
         "fn ret_any_mut() -> &mut dyn std::any::Any",
+        # URL paths and python package extras still reference the feature name.
         "Visit /dataplatform/docs for more info",
         "The https://example.com/dataplatform/api endpoint",
         'dependencies = ["rerun-sdk[dataloader,dataplatform]"]',
         'override-dependencies = ["rerun-sdk[dataplatform]"]',
         'extras = ["dataplatform,extra"]',
-        "We need a data platform solution",
-        "Building data platform infrastructure",
+        # New approved names.
+        "Connect to Rerun Hub for hosted catalogs.",
+        "Spin up a catalog server locally.",
+        "We use the catalog server in production.",
         # %err (Display) in tracing macros is good
         'tracing::warn!(%err, "something failed");',
         're_log::error!(%err, "something failed");',
@@ -575,10 +595,27 @@ def test_lint_line() -> None:
         "fn take_any_mut(thing: &mut dyn std::any::Any)",
         "fn take_any(thing: &dyn Any)",
         "fn take_any_mut(thing: &mut dyn Any)",
+        # Deprecated brand names — must use 'Rerun Hub' or 'catalog server' instead.
+        # Matched case-insensitively, so lowercase variants must also error.
         "The dataplatform is powerful",
         "Using dataplatform for analytics",
+        "Using DATAPLATFORM in caps",
         "I love the data platform",
         "The Rerun data platform is great",
+        "We use the Rerun Data Platform.",
+        "We use the RERUN DATA PLATFORM.",
+        "Connect via Rerun Cloud today.",
+        "Connect via rerun cloud today.",
+        "Connect via RERUN CLOUD today.",
+        "The Data Platform stores recordings.",
+        "The data platform stores recordings.",
+        "Rerun Base is the new commercial offering.",
+        "rerun base is the new commercial offering.",
+        # Wrong 'Rerun Hub' capitalization.
+        "Connect to Rerun hub today.",
+        "Use rerun Hub for catalogs.",
+        "Use rerun hub for catalogs.",
+        "USE RERUN HUB FOR CATALOGS.",
         # Inline sensitive data in log messages (bad pattern) - only error/warn are linted
         're_log::warn!("Failed to open URL {url}: {err}");',
         're_log::error!("Failed to read file at {path}: {err}");',
@@ -1181,9 +1218,8 @@ allow_capitalized = [
     # Referring to the Rerun Viewer as just "the Viewer" is fine, but not all mentions of "viewer" are capitalized.
     "Arrow",
     # Referring to the Apache Arrow project as just "Arrow" is fine, but not all mentions of "arrow" are capitalized.
-    "Data",
-    "Platform",
-    # In the context of "Data Platform" we want capitalization, but not for all mentions
+    "Hub",
+    # Referring to Rerun Hub as just "Hub" is fine, but "hub" as a common noun isn't capitalized.
 ]
 
 force_capitalized_as_lower = [word.lower() for word in force_capitalized]
@@ -1303,16 +1339,6 @@ def fix_header_casing(s: str) -> str:
     return " ".join(new_words)
 
 
-def fix_dataplatform(s: str) -> str:
-    """Fix specific data platform phrases to proper capitalization unless it's part of a URL path or package extras."""
-    # Skip URL paths (`/dataplatform/`) and package extras specifiers
-    # (`rerun-sdk[dataloader,dataplatform]`) — those reference the feature name, not prose.
-    s = re.sub(r"the\s+data\s+platform", "the Data Platform", s)
-    s = re.sub(r"Rerun\s+data\s+platform", "Rerun Data Platform", s)
-    s = re.sub(r"(?<![/\[,])dataplatform(?![/\],])", "Data Platform", s)
-    return s
-
-
 def fix_enforced_upper_case(s: str) -> str:
     new_words: list[str] = []
     inline_code_block = False
@@ -1392,14 +1418,6 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
                 new_line = fix_enforced_upper_case(line)
                 if new_line != line:
                     errors.append(f"{line_nr}: Certain words should be capitalized. This should be '{new_line}'.")
-                    line = new_line
-
-                # Fix dataplatform to Data Platform
-                new_line = fix_dataplatform(line)
-                if new_line != line:
-                    errors.append(
-                        f"{line_nr}: Use 'Data Platform' instead of 'dataplatform'. This should be '{new_line}'."
-                    )
                     line = new_line
 
             if in_example_readme and not in_metadata:
@@ -1772,6 +1790,8 @@ def main() -> None:
         return f"{rerun_prefix}{path}"
 
     exclude_paths = (
+        "./dataplatform/crates/redap_protos/Cargo.toml",  # intentional [lints.clippy] override (see file header)
+        "./dataplatform/crates/redap_protos/src/v1alpha1",  # auto-generated
         rerun(".github/workflows/reusable_checks.yml"),  # zombie TODO hunting job
         rerun(".nox"),
         rerun(".pytest_cache"),
@@ -1831,11 +1851,15 @@ def main() -> None:
             filepath = "./" + filepath
             filepath = filepath.replace("\\", "/")
 
-            # Only lint files inside the rerun directory.
-            # In the standalone rerun repo rerun_prefix is "./" so everything matches.
-            # In the monorepo (reality) rerun_prefix is "./rerun/" which keeps us
-            # from accidentally linting dataplatform/ or other top-level directories.
-            if not filepath.startswith(rerun_prefix):
+            # Only lint files inside the rerun or dataplatform directories.
+            # In the standalone rerun repo `rerun_prefix` is "./" so everything matches.
+            # In the monorepo (reality) we explicitly include both top-level Rust
+            # workspaces (`./rerun/` and `./dataplatform/`) so they share the same
+            # custom lints, and skip everything else (`node_modules/`, `landing/`, …).
+            allowed_prefixes: tuple[str, ...] = (rerun_prefix,)
+            if rerun_prefix != "./":
+                allowed_prefixes = allowed_prefixes + ("./dataplatform/",)
+            if not filepath.startswith(allowed_prefixes):
                 continue
 
             extension = filepath.split(".")[-1]

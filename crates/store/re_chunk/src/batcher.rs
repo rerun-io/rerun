@@ -179,7 +179,16 @@ impl ChunkBatcherConfig {
     };
 
     /// Always flushes ASAP.
-    pub const ALWAYS: Self = Self {
+    ///
+    /// # WARNING: test-only configuration.
+    ///
+    /// This produces an unrealistically large number of chunks and is **not** suitable for
+    /// production workloads. In particular, with a file sink it can drive memory usage through
+    /// the roof: per-chunk metadata has to be accumulated in memory until the SDK process ends
+    /// and the file footer can be written.
+    ///
+    /// Use [`Self::LOW_LATENCY`] if you actually want fast flushing in real applications.
+    pub const ALWAYS_TEST_ONLY: Self = Self {
         flush_tick: Duration::MAX,
         flush_num_bytes: 0,
         flush_num_rows: 0,
@@ -195,6 +204,16 @@ impl ChunkBatcherConfig {
         chunk_max_rows_if_unsorted: 256,
         ..Self::DEFAULT
     };
+
+    /// Returns true if this config flushes after every single row (one chunk per row).
+    ///
+    /// This is the case for [`Self::ALWAYS_TEST_ONLY`] and any config where either the row or
+    /// byte threshold is zero — the batcher flushes whenever pending rows/bytes meet *or exceed*
+    /// the threshold, so a zero threshold triggers on the first row.
+    #[inline]
+    pub fn always_flushes(&self) -> bool {
+        self.flush_num_rows == 0 || self.flush_num_bytes == 0
+    }
 
     /// Environment variable to configure [`Self::flush_tick`].
     pub const ENV_FLUSH_TICK: &'static str = "RERUN_FLUSH_TICK_SECS";

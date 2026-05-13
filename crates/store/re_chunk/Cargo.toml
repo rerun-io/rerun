@@ -26,6 +26,12 @@ default = []
 serde = ["re_log_types/serde", "re_tuid/serde", "re_types_core/serde"]
 
 
+[package.metadata.cargo-shear]
+ignored = [
+  "re_tuid", # used only via the `serde` feature flag (`re_tuid/serde`)
+]
+
+
 [dependencies]
 
 # Rerun

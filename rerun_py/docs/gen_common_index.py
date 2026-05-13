@@ -1,36 +1,32 @@
 #!/usr/bin/env python3
 """
-Generate an index table and rendered pages for the common APIs.
+Generate API reference pages and a landing index for the rerun Python SDK.
 
-NOTE: When changing anything in this file, also consider how it affects `crates/build/re_dev_tools/src/build_search_index/ingest/python.rs`.
+The script emits two kinds of output (at the docs root):
 
-The top-level index file should look like
-```
-## Initialization
-Function | Description
--------- | -----------
-[rerun.init()](initialization/#rerun.init) | Initialize the Rerun SDK …
-[rerun.connect_grpc()](initialization/#rerun.connect_grpc) | Connect to a remote Rerun Viewer on the …
-[rerun.spawn()](initialization/#rerun.spawn) | Spawn a Rerun Viewer …
-…
+1. **Track A — auto-generated per-package pages** (`<slug>.md`).
+   Each entry in `DOCUMENTED_PACKAGES` gets one page that renders every
+   public symbol of that package. Public symbols are determined by `griffe`
+   with the `griffe-public-redundant-aliases` extension installed (see
+   `mkdocs.yml`), which honors three signals: `__all__`, `from x import Foo
+   as Foo` redundant aliases, and in-file non-underscore definitions.
 
-The Summary should look like:
-```
-* [index](index.md)
-* [Initialization](initialization.md)
-* [Logging Primitives](primitives.md)
-* [Logging Images](images.md)
-* [Annotations](annotation.md)
-* [Extension Components](extension_components.md)
-* [Plotting](plotting.md)
-* [Transforms](transforms.md)
-* [Helpers](helpers.md)
-```
+2. **Track B — curated overlay** (tables on `index.md`).
+   `CURATED_GROUPS` defines themed tables on the landing page only — they
+   never gate coverage. Missing curation only affects the landing page.
+
+A pre-emission validator fails the build if any new subpackage/module
+appears under `rerun_sdk/rerun/` without being either documented or
+explicitly excluded, if a documented or excluded path no longer exists
+on disk, if a documented package's public surface is empty or fully
+excluded, or if a curated table references an unknown symbol.
+
+NOTE: When changing anything in this file, also consider how it affects
+`crates/build/re_dev_tools/src/build_search_index/ingest/python.rs`.
 """
 
 from __future__ import annotations
 
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,112 +35,101 @@ from typing import Final
 import griffe
 import mkdocs_gen_files
 
-# Modules we want public but get captured in other doc sections
-EXCLUDE_SUBMODULE_CHECK = ["recording_stream", "sinks", "time", "web"]
+# Packages that get an auto-generated `<slug>.md` page at the docs root.
+# Maps each dotted package path to its nav title path: a 1-tuple for a
+# top-level nav entry, or a 2-tuple `(parent, child)` for a nested entry
+# (used by the Blueprint sub-packages and `experimental.dataloader`).
+# To document a brand-new subpackage, add a row here. Iteration order
+# determines nav order in the rendered sidebar.
+DOCUMENTED_PACKAGES: Final[dict[str, tuple[str, ...]]] = {
+    "rerun": ("Core",),
+    "rerun.archetypes": ("Archetypes",),
+    "rerun.components": ("Components",),
+    "rerun.datatypes": ("Datatypes",),
+    "rerun.blueprint": ("Blueprint", "APIs"),
+    "rerun.blueprint.archetypes": ("Blueprint", "Archetypes"),
+    "rerun.blueprint.components": ("Blueprint", "Components"),
+    "rerun.blueprint.datatypes": ("Blueprint", "Datatypes"),
+    "rerun.blueprint.views": ("Blueprint", "Views"),
+    "rerun.catalog": ("Catalog",),
+    "rerun.experimental": ("Experimental",),
+    "rerun.experimental.dataloader": ("Experimental", "Dataloader"),
+    "rerun.recording": ("Recording",),
+    "rerun.server": ("Server",),
+    "rerun.urdf": ("URDF Support",),
+    "rerun.notebook": ("Notebook",),
+    "rerun.auth": ("Authentication",),
+    "rerun.utilities": ("Utilities",),
+}
 
+# Subpackages/modules under `rerun.` that deliberately do NOT get a Track A
+# page. Their public symbols surface elsewhere (typically re-exported flat
+# into top-level `rerun`). The freshness check (bottom of file) requires
+# every non-underscore subpackage/module under `rerun_sdk/rerun/` to appear
+# either here or in `DOCUMENTED_PACKAGES`, which makes it impossible to add
+# a new submodule and silently miss it.
+EXCLUDED_FROM_TRACK_A: Final[set[str]] = {
+    # Single-file modules whose public symbols are re-exported flat into
+    # `rerun` and surface on the `rerun` page. Listing them as their own
+    # Track A page would just duplicate already-documented content.
+    "rerun.any_batch_value",
+    "rerun.any_value",
+    "rerun.dynamic_archetype",
+    "rerun.error_utils",
+    "rerun.recording_stream",
+    "rerun.sinks",
+    "rerun.time",
+    "rerun.web",
+    # Internal organization for blueprint code; only exposes
+    # `Visualizer`/`VisualizableArchetype` which are implementation contracts,
+    # not user-facing API.
+    "rerun.blueprint.visualizers",
+    # Namespace-only packages with empty `__init__.py`; users import
+    # deeper symbols (e.g. `from rerun.utilities.datafusion.collect import ...`).
+    # No aggregated surface to document at the namespace level.
+    "rerun.utilities.datafusion",
+    "rerun.utilities.datafusion.functions",
+}
 
-def all_archetypes() -> list[str]:
-    file_path = Path(__file__).parent.parent.parent.joinpath("rerun_py/rerun_sdk/rerun/archetypes/__init__.py")
-
-    # Initialize an empty list to store the quoted strings
-    quoted_strings = []
-
-    # Regular expression pattern to match quoted strings
-    pattern = r'"([^"]*)"'
-
-    # Open the file for reading
-    with open(file_path, encoding="utf8") as file:
-        # Read the file line by line
-        for line in file:
-            # Use re.findall to find all quoted strings in the line
-            matches = re.findall(pattern, line)
-
-            # Append the matched strings to the list
-            quoted_strings.extend(matches)
-
-    assert len(quoted_strings) > 0, f"Found no archetypes in {file_path}"
-    return quoted_strings
-
-
-def all_submodules(max_depth: int | None = None, ignore_hidden: bool = True) -> list[str]:
-    """
-    Walk the rerun package structure to find all submodules.
-
-    Args:
-        max_depth: Maximum depth to traverse. If None, traverse all levels.
-                   Depth 1 would return 'blueprint' but not 'blueprint.archetypes'.
-        ignore_hidden: If True, skip modules starting with underscores (e.g., _baseclasses, __main__).
-
-    """
-
-    rerun_package_path = Path(__file__).parent.parent.parent.joinpath("rerun_py/rerun_sdk/rerun")
-
-    # Walk the filesystem directly instead of importing packages
-    submodules = []
-
-    # We do this because we build and test our docs without rerun_bindings built.
-    def _walk_package_dir(directory: Path, base_path: Path, current_relative_path: str = "") -> None:
-        """Recursively walk a Python package directory to find submodules."""
-        if not directory.is_dir():
-            return
-
-        # Check if this directory is a Python package (has __init__.py)
-        init_file = directory / "__init__.py"
-        if not init_file.exists():
-            return
-
-        # If we're not at the root, add this as a submodule
-        if current_relative_path:
-            # Skip hidden modules if requested
-            if ignore_hidden:
-                parts = current_relative_path.split(".")
-                if any(part.startswith("_") for part in parts):
-                    return
-
-            # Check depth if max_depth is specified
-            if max_depth is not None:
-                depth = current_relative_path.count(".") + 1
-                if depth > max_depth:
-                    return
-
-            submodules.append(current_relative_path)
-
-        # Recursively walk subdirectories
-        for item in directory.iterdir():
-            if item.is_dir() and not item.name.startswith("."):
-                new_relative_path = current_relative_path + "." + item.name if current_relative_path else item.name
-                _walk_package_dir(item, base_path, new_relative_path)
-
-    _walk_package_dir(rerun_package_path, rerun_package_path)
-
-    assert len(submodules) > 0, f"Found no submodules in {rerun_package_path}"
-    return sorted(submodules)
+# Per-package, per-symbol allow-list of public symbols that should NOT be
+# documented. Each entry must carry a comment explaining why.
+EXPLICIT_DOC_EXCLUDES: Final[dict[str, set[str]]] = {
+    "rerun": {
+        # Internal arrow-IPC constants used by send_dataframe; not user-facing.
+        "RECORDING_PROPERTIES_PATH",
+        "RERUN_KIND",
+        "RERUN_KIND_CONTROL",
+        "RERUN_KIND_INDEX",
+        "SORBET_ARCHETYPE_NAME",
+        "SORBET_COMPONENT",
+        "SORBET_COMPONENT_TYPE",
+        "SORBET_ENTITY_PATH",
+        "SORBET_INDEX_NAME",
+        "SORBET_IS_TABLE_INDEX",
+        # Per-developer profiling; opt-in via env var.
+        "tracing_session",
+        # Internal numpy compat shim re-exported for use within rerun_py.
+        "asarray",
+    },
+}
 
 
 @dataclass
-class Section:
+class Group:
+    """A curated themed table rendered on the landing page only."""
+
     title: str
-    sub_title: str | None = None
-    func_list: list[str] | None = None
-    class_list: list[str] | None = None
-    gen_page: bool = True
-    mod_path: list[str] | None = None
-    show_tables: bool = True
-    default_filters: bool = True
-    show_submodules: bool = False
-
-    def __post_init__(self) -> None:
-        if self.mod_path is None:
-            self.mod_path = ["rerun"]
+    items: list[str]
 
 
-# This is the list of sections and functions that will be included in the index
-# for each of them.
-SECTION_TABLE: Final[list[Section]] = [
-    ################################################################################
-    Section(
+# Curated overlay: themed tables shown on the landing `index.md`. These never
+# gate coverage — the auto-generated per-package pages are the source of
+# truth. Items are dotted relative paths into the `rerun` package
+# (e.g., `init`, `archetypes.Points3D`, `experimental.send_chunk`).
+CURATED_GROUPS: Final[list[Group]] = [
+    Group(
         title="Initialization functions",
-        func_list=[
+        items=[
             "init",
             "set_sinks",
             "connect_grpc",
@@ -157,124 +142,74 @@ SECTION_TABLE: Final[list[Section]] = [
             "memory_recording",
             "notebook_show",
             "legacy_notebook_show",
+            "ChunkBatcherConfig",
+            "DescribedComponentBatch",
+            "RecordingStream",
+            "TimeColumnLike",
         ],
-        class_list=["ChunkBatcherConfig", "DescribedComponentBatch", "RecordingStream", "TimeColumnLike"],
     ),
-    Section(
+    Group(
         title="Logging functions",
-        func_list=[
-            "log",
-            "log_file_from_path",
-            "log_file_from_contents",
-        ],
+        items=["log", "log_file_from_path", "log_file_from_contents"],
     ),
-    Section(
+    Group(
         title="Property functions",
-        func_list=[
-            "send_property",
-            "send_recording_name",
-            "send_recording_start_time_nanos",
-        ],
+        items=["send_property", "send_recording_name", "send_recording_start_time_nanos"],
     ),
-    Section(
+    Group(
         title="Timeline functions",
-        func_list=[
-            "set_time",
-            "disable_timeline",
-            "reset_time",
-        ],
+        items=["set_time", "disable_timeline", "reset_time"],
     ),
-    Section(
+    Group(
         title="Columnar API",
-        func_list=[
-            "send_columns",
-            "send_record_batch",
-            "send_dataframe",
-        ],
-        class_list=[
-            "TimeColumn",
-        ],
+        items=["send_columns", "send_record_batch", "send_dataframe", "TimeColumn"],
     ),
-    ################################################################################
-    # These sections don't have tables, but generate pages containing all the archetypes, components, datatypes
-    Section(
-        title="Archetypes",
-        mod_path=["rerun.archetypes"],
-        show_tables=False,
-    ),
-    Section(
-        title="Components",
-        mod_path=["rerun.components"],
-        show_tables=False,
-    ),
-    Section(
-        title="Datatypes",
-        mod_path=["rerun.datatypes"],
-        show_tables=False,
-    ),
-    Section(
-        title="Custom Data",
-        mod_path=["rerun.any_value", "rerun.any_batch_value", "rerun.dynamic_archetype"],
-    ),
-    ################################################################################
-    # These are tables but don't need their own pages since they refer to types that
-    # were added in the pages up above
-    Section(
+    Group(
         title="General",
-        class_list=[
+        items=[
             "archetypes.Clear",
             "blueprint.archetypes.EntityBehavior",
             "archetypes.RecordingInfo",
         ],
-        gen_page=False,
     ),
-    Section(
+    Group(
         title="Annotations",
-        class_list=[
+        items=[
             "archetypes.AnnotationContext",
             "datatypes.AnnotationInfo",
             "datatypes.ClassDescription",
         ],
-        gen_page=False,
     ),
-    Section(
-        title="ErrorUtils",
-        mod_path=["rerun.error_utils"],
-        show_tables=False,
-    ),
-    Section(
+    Group(
         title="Images",
-        class_list=[
+        items=[
             "archetypes.DepthImage",
             "archetypes.Image",
             "archetypes.EncodedImage",
             "archetypes.EncodedDepthImage",
             "archetypes.SegmentationImage",
         ],
-        gen_page=False,
     ),
-    Section(
+    Group(
         title="Video",
-        class_list=[
+        items=[
             "archetypes.VideoStream",
             "archetypes.AssetVideo",
             "archetypes.VideoFrameReference",
         ],
-        gen_page=False,
     ),
-    Section(
+    Group(
         title="Plotting",
-        class_list=[
+        items=[
             "archetypes.BarChart",
             "archetypes.Scalars",
             "archetypes.SeriesLines",
             "archetypes.SeriesPoints",
         ],
-        gen_page=False,
     ),
-    Section(
+    Group(
         title="Spatial Archetypes",
-        class_list=[
+        items=[
             "archetypes.Arrows3D",
             "archetypes.Arrows2D",
             "archetypes.Asset3D",
@@ -282,6 +217,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Boxes3D",
             "archetypes.Capsules3D",
             "archetypes.Cylinders3D",
+            "archetypes.Ellipses2D",
             "archetypes.Ellipsoids3D",
             "archetypes.GridMap",
             "archetypes.LineStrips2D",
@@ -291,42 +227,30 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Points3D",
             "archetypes.TransformAxes3D",
         ],
-        gen_page=False,
     ),
-    Section(
+    Group(
         title="Geospatial Archetypes",
-        class_list=[
-            "archetypes.GeoLineStrings",
-            "archetypes.GeoPoints",
-        ],
-        gen_page=False,
+        items=["archetypes.GeoLineStrings", "archetypes.GeoPoints"],
     ),
-    Section(
+    Group(
         title="Graphs",
-        class_list=[
-            "archetypes.GraphNodes",
-            "archetypes.GraphEdges",
-        ],
-        gen_page=False,
+        items=["archetypes.GraphNodes", "archetypes.GraphEdges"],
     ),
-    Section(
+    Group(
         title="Tensors",
-        class_list=["archetypes.Tensor"],
-        gen_page=False,
+        items=["archetypes.Tensor"],
     ),
-    Section(
+    Group(
         title="Text",
-        class_list=["LoggingHandler", "archetypes.TextDocument", "archetypes.TextLog"],
-        gen_page=False,
+        items=["LoggingHandler", "archetypes.TextDocument", "archetypes.TextLog"],
     ),
-    Section(
-        title="Status",
-        class_list=["archetypes.Status"],
-        gen_page=False,
+    Group(
+        title="State timeline",
+        items=["archetypes.StateChange", "archetypes.StateConfiguration"],
     ),
-    Section(
+    Group(
         title="Transforms and Coordinate Systems",
-        class_list=[
+        items=[
             "archetypes.Pinhole",
             "archetypes.Transform3D",
             "archetypes.InstancePoses3D",
@@ -336,238 +260,37 @@ SECTION_TABLE: Final[list[Section]] = [
             "datatypes.RotationAxisAngle",
             "archetypes.CoordinateFrame",
         ],
-        gen_page=False,
     ),
-    Section(
+    Group(
         title="MCAP",
-        class_list=[
+        items=[
             "archetypes.McapChannel",
             "archetypes.McapMessage",
             "archetypes.McapSchema",
             "archetypes.McapStatistics",
         ],
-        gen_page=False,
     ),
-    # Section(
-    #     title="Deprecated",
-    #     class_list=[],
-    #     gen_page=False,
-    # ),
-    ################################################################################
-    # Other referenced things
-    Section(
-        title="Enums",
-        mod_path=["rerun"],
-        class_list=[
-            "Box2DFormat",
-            "ImageFormat",
-            "MeshFormat",
-        ],
-        show_tables=False,
-    ),
-    Section(
+    Group(
         title="Interfaces",
-        mod_path=["rerun"],
-        class_list=[
+        items=[
             "ComponentMixin",
             "ComponentBatchLike",
             "AsComponents",
-            "ComponentBatchLike",
             "ComponentColumn",
         ],
-        default_filters=False,
-        show_tables=True,
     ),
-    ################################################################################
-    # Blueprint APIs
-    Section(
-        title="Blueprint",
-        sub_title="APIs",
-        mod_path=["rerun.blueprint"],
-        class_list=[
-            "Blueprint",
-            "BlueprintLike",
-            "BlueprintPart",
-            "Container",
-            "ContainerLike",
-            "Horizontal",
-            "Vertical",
-            "Grid",
-            "Tabs",
-            "View",
-            "BarChartView",
-            "Spatial2DView",
-            "Spatial3DView",
-            "TensorView",
-            "TextDocumentView",
-            "TextLogView",
-            "TimeSeriesView",
-            "BlueprintPanel",
-            "SelectionPanel",
-            "TimePanel",
-        ],
-    ),
-    Section(
-        title="Blueprint",
-        sub_title="Archetypes",
-        mod_path=["rerun.blueprint.archetypes"],
-        show_tables=False,
-    ),
-    Section(
-        title="Blueprint",
-        sub_title="Components",
-        mod_path=["rerun.blueprint.components"],
-        show_tables=False,
-    ),
-    Section(
-        title="Blueprint",
-        sub_title="Datatypes",
-        mod_path=["rerun.blueprint.datatypes"],
-        show_tables=False,
-    ),
-    Section(
-        title="Blueprint",
-        sub_title="Views",
-        mod_path=["rerun.blueprint.views"],
-        show_tables=False,
-    ),
-    ################################################################################
-    # Remaining sections
-    Section(
-        title="Catalog",
-        show_tables=True,
-        mod_path=["rerun.catalog"],
-        show_submodules=True,
-        class_list=[
-            "Schema",
-            "ComponentColumnDescriptor",
-            "ComponentColumnSelector",
-            "IndexColumnDescriptor",
-            "IndexColumnSelector",
-            "AlreadyExistsError",
-            "CatalogClient",
-            "DatasetEntry",
-            "DatasetView",
-            "Entry",
-            "EntryId",
-            "EntryKind",
-            "IndexValuesLike",
-            "NotFoundError",
-            "RegistrationHandle",
-            "RegistrationResult",
-            "SegmentRegistrationResult",
-            "TableEntry",
-            "VectorDistanceMetric",
-            "VectorDistanceMetricLike",
-        ],
-    ),
-    Section(
-        title="Server",
-        show_tables=True,
-        mod_path=["rerun.server"],
-        show_submodules=True,
-    ),
-    Section(
-        title="Authentication",
-        show_tables=True,
-        mod_path=["rerun.auth"],
-        func_list=["login", "logout", "get_credentials"],
-        class_list=["Credentials"],
-        show_submodules=True,
-    ),
-    Section(
-        title="Recording",
-        mod_path=["rerun.recording"],
-        func_list=[
-            "load_archive",
-            "load_recording",
-        ],
-        class_list=[
-            "Recording",
-            "RRDArchive",
-        ],
-        show_tables=True,
-    ),
-    Section(
-        title="URDF Support",
-        show_tables=True,
-        mod_path=["rerun.urdf"],
-        show_submodules=True,
-    ),
-    Section(
-        title="Utilities",
-        show_tables=False,
-        mod_path=["rerun.utilities"],
-        show_submodules=True,
-    ),
-    Section(
-        title="Experimental",
-        show_tables=True,
-        mod_path=["rerun.experimental"],
-        show_submodules=True,
-        func_list=[
-            "send_chunk",
-        ],
-        class_list=[
-            "Chunk",
-            "ChunkStore",
-            "ColumnRule",
-            "DeriveLens",
-            "IndexedReader",
-            "LazyChunkStream",
-            "LazyStore",
-            "Lens",
-            "McapReader",
-            "MutateLens",
-            "OptimizationProfile",
-            "ParquetReader",
-            "RrdReader",
-            "Selector",
-            "StreamingReader",
-            "ViewerClient",
-        ],
-    ),
-    Section(
-        title="Notebook",
-        show_tables=True,
-        mod_path=["rerun.notebook"],
-        show_submodules=True,
-        func_list=[
-            "set_default_size",
-        ],
-        class_list=[
-            "Viewer",
-            "ViewerEvent",
-            "PlayEvent",
-            "PauseEvent",
-            "TimeUpdateEvent",
-            "TimelineChangeEvent",
-            "SelectionChangeEvent",
-            "RecordingOpenEvent",
-            "SelectionItem",
-            "EntitySelectionItem",
-            "ViewSelectionItem",
-            "ContainerSelectionItem",
-        ],
-    ),
-    Section(
+    Group(
         title="Script Helpers",
-        func_list=[
-            "script_add_args",
-            "script_setup",
-            "script_teardown",
-        ],
+        items=["script_add_args", "script_setup", "script_teardown"],
     ),
-    Section(
+    Group(
         title="Other classes and functions",
-        show_tables=False,
-        func_list=[
+        items=[
             "get_data_recording",
             "get_global_data_recording",
             "get_recording_id",
             "get_thread_local_data_recording",
             "is_enabled",
-            "new_recording",
             "set_global_data_recording",
             "set_thread_local_data_recording",
             "start_web_viewer_server",
@@ -575,72 +298,227 @@ SECTION_TABLE: Final[list[Section]] = [
             "new_entity_path",
             "thread_local_stream",
             "recording_stream_generator_ctx",
+            "MemoryRecording",
+            "BinaryStream",
+            "GrpcSink",
+            "FileSink",
         ],
-        class_list=["LoggingHandler", "MemoryRecording", "BinaryStream", "GrpcSink", "FileSink"],
     ),
 ]
 
 
-def is_archetype_mentioned(thing: str) -> bool:
-    for section in SECTION_TABLE:
-        if section.class_list is not None:
-            if f"archetypes.{thing}" in section.class_list:
-                return True
-    return False
+def public_surface(pkg: griffe.Module) -> set[str]:
+    """
+    Return the set of names that `griffe.is_public` considers public.
+
+    Relies on the `griffe-public-redundant-aliases` extension to honor the
+    `from x import Foo as Foo` convention; combined with griffe's built-in
+    `__all__` handling and underscore-name filtering, this matches the
+    rerun codebase's public-API conventions.
+    """
+    return {name for name, member in pkg.members.items() if member.is_public and not name.startswith("_")}
 
 
-def is_submodule_mentioned(thing: str) -> bool:
-    if thing in EXCLUDE_SUBMODULE_CHECK:
-        return True
-    for section in SECTION_TABLE:
-        if section.mod_path is not None:
-            for mod_path in section.mod_path:
-                if thing == mod_path[len("rerun.") :]:
-                    return True
-    return False
+# ---------------------------------------------------------------------------
+# Setup griffe loader and resolve documented packages.
 
-
-# Virtual folder where we will generate the md files
 rerun_py_root = Path(__file__).parent.parent.resolve()
 sdk_root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
-common_dir = Path("common")
+out_dir = Path()  # generated pages live at the docs root
 
-# Make sure all archetypes are included in the index:
-for submodule in all_submodules(1, True):
-    assert is_submodule_mentioned(submodule), (
-        f"Submodule '{submodule}' is not mentioned in the index of {__file__};"
-        " please add it to SECTION_TABLE for documentation, or prefix with underscore to hide it."
-    )
-for archetype in all_archetypes():
-    assert is_archetype_mentioned(archetype), f"Archetype '{archetype}' is not mentioned in the index of {__file__}"
-
-# We use griffe to access docstrings
-# Lots of other potentially interesting stuff we could pull out in the future
-# This is what mkdocstrings uses under the hood
-search_paths = [path for path in sys.path if path]  # eliminate empty path
-
-# This is where maturin puts rerun_bindings
+search_paths = [path for path in sys.path if path]
 search_paths.insert(0, rerun_py_root.as_posix())
-# This is where the rerun package is
 search_paths.insert(0, sdk_root.as_posix())
 
-loader = griffe.GriffeLoader(search_paths=search_paths)
-
+# Load the same extension that mkdocs.yml configures for mkdocstrings, so this
+# script and the rendered docs agree on what counts as a public symbol.
+extensions = griffe.load_extensions("griffe_public_redundant_aliases")
+loader = griffe.GriffeLoader(search_paths=search_paths, extensions=extensions)
 bindings_pkg = loader.load("rerun_bindings", find_stubs_package=True)
 rerun_pkg = loader.load("rerun")
 
-# Create the nav for this section
+
+def griffe_module_for(pkg: str) -> griffe.Module:
+    """Return the griffe Module for a `DOCUMENTED_PACKAGES` entry."""
+    if pkg == "rerun":
+        return rerun_pkg
+    assert pkg.startswith("rerun.")
+    return rerun_pkg[pkg[len("rerun.") :]]
+
+
+def discover_subpackages_and_modules() -> set[str]:
+    """
+    Return the dotted paths of every public subpackage/top-level module in `rerun_sdk/rerun/`.
+
+    Includes every non-underscore subpackage at any depth (a directory with
+    `__init__.py`), and every non-underscore single-file module at the top
+    level only (e.g., `rerun.notebook`, `rerun.server`).
+
+    Single-file `.py` modules nested *inside* subpackages are treated as
+    implementation detail and skipped — these are typically codegen output
+    (e.g., `rerun.archetypes.points3d` backing `rerun.archetypes.Points3D`)
+    that users are not expected to import directly.
+    """
+    base = sdk_root.joinpath("rerun")
+    found = {"rerun"}
+
+    for entry in base.iterdir():
+        if entry.name.startswith("_") or entry.name.startswith("."):
+            continue
+        if entry.is_dir() and (entry / "__init__.py").exists():
+            found.add(f"rerun.{entry.name}")
+            _walk_nested_subpackages(entry, f"rerun.{entry.name}", found)
+        elif entry.is_file() and entry.suffix == ".py" and entry.stem != "__init__":
+            found.add(f"rerun.{entry.stem}")
+
+    return found
+
+
+def _walk_nested_subpackages(pkg_dir: Path, dotted: str, found: set[str]) -> None:
+    """Recurse into `pkg_dir`, collecting nested subpackages (dirs with `__init__.py`)."""
+    for entry in pkg_dir.iterdir():
+        if entry.name.startswith("_") or entry.name.startswith("."):
+            continue
+        if entry.is_dir() and (entry / "__init__.py").exists():
+            child = f"{dotted}.{entry.name}"
+            found.add(child)
+            _walk_nested_subpackages(entry, child, found)
+
+
+# ---------------------------------------------------------------------------
+# Pre-emission validator: fail loud on stale config or new modules before
+# any output is written, with friendlier messages than a raw KeyError mid-render.
+
+
+def validate_config() -> None:
+    """
+    Fail the build if any docs config has gone stale.
+
+    Together these checks make it impossible to add (or rename, or remove) a
+    submodule without docs noticing.
+    """
+    discovered = discover_subpackages_and_modules()
+    documented = set(DOCUMENTED_PACKAGES)
+
+    stale = documented - discovered
+    if stale:
+        raise SystemExit(
+            f"DOCUMENTED_PACKAGES references modules that no longer exist on disk: "
+            f"{sorted(stale)}. Remove them from DOCUMENTED_PACKAGES.",
+        )
+
+    stale = EXCLUDED_FROM_TRACK_A - discovered
+    if stale:
+        raise SystemExit(
+            f"EXCLUDED_FROM_TRACK_A references modules that no longer exist on disk: "
+            f"{sorted(stale)}. Remove them from EXCLUDED_FROM_TRACK_A.",
+        )
+
+    unaccounted = discovered - documented - EXCLUDED_FROM_TRACK_A - {"rerun"}
+    if unaccounted:
+        raise SystemExit(
+            f"New subpackages/modules under `rerun.` are neither documented nor "
+            f"excluded: {sorted(unaccounted)}.\n"
+            f"  - Add a row to DOCUMENTED_PACKAGES to give each its own Track A page, OR\n"
+            f"  - Add to EXCLUDED_FROM_TRACK_A with an inline comment if its public\n"
+            f"    symbols are re-exported elsewhere (typically flat into `rerun`).",
+        )
+
+    for pkg in DOCUMENTED_PACKAGES:
+        expected = public_surface(griffe_module_for(pkg))
+        excludes = EXPLICIT_DOC_EXCLUDES.get(pkg, set())
+        if not expected:
+            raise SystemExit(
+                f"`{pkg}` is in DOCUMENTED_PACKAGES but griffe sees no public symbols. "
+                f"Either add `__all__`, add public re-exports, or remove `{pkg}` from "
+                f"DOCUMENTED_PACKAGES.",
+            )
+        if not (expected - excludes):
+            raise SystemExit(
+                f"All public symbols of `{pkg}` are in EXPLICIT_DOC_EXCLUDES; "
+                f"remove `{pkg}` from DOCUMENTED_PACKAGES or trim the excludes.",
+            )
+
+    for group in CURATED_GROUPS:
+        for item in group.items:
+            try:
+                _ = rerun_pkg[item]
+            except KeyError:
+                raise SystemExit(
+                    f"Curated table '{group.title}' references unknown symbol '{item}'.",
+                ) from None
+
+
+validate_config()
+
+
+# ---------------------------------------------------------------------------
+# Track A: emit per-package pages.
+
 nav = mkdocs_gen_files.Nav()
-nav["index"] = "index.md"
-
-# This is the top-level index which will include a table-view of each sub-section
-index_path = common_dir.joinpath("index.md")
+nav[("Overview",)] = "index.md"
 
 
-def make_slug(s: str) -> str:
-    s = s.lower().strip()
-    s = re.sub(r"[\s]+", "_", s)
-    return s
+def slug_for(pkg: str) -> str:
+    # The codegen in `re_types_builder` writes Python doc URLs as
+    # `ref.rerun.io/docs/python/stable/<subpackage>` (e.g. `/archetypes`,
+    # `/blueprint_views`) — i.e. without a leading `rerun_`. Match that here
+    # so the autogenerated links in `docs/content/reference/types/**` resolve.
+    if pkg == "rerun":
+        return "rerun.md"
+    return pkg.removeprefix("rerun.").replace(".", "_") + ".md"
+
+
+for pkg, nav_path in DOCUMENTED_PACKAGES.items():
+    excludes = EXPLICIT_DOC_EXCLUDES.get(pkg, set())
+    members = sorted(public_surface(griffe_module_for(pkg)) - excludes)
+
+    md_file = slug_for(pkg)
+    nav[nav_path] = md_file
+
+    write_path = out_dir.joinpath(md_file)
+    with mkdocs_gen_files.open(write_path, "w") as fd:
+        fd.write(f"::: {pkg}\n")
+        fd.write("    options:\n")
+        fd.write("      show_root_heading: True\n")
+        fd.write("      heading_level: 3\n")
+        fd.write("      members_order: alphabetical\n")
+        fd.write("      members:\n")
+        for name in members:
+            fd.write(f"        - {name}\n")
+
+
+# ---------------------------------------------------------------------------
+# Track B: emit landing page with static prefix, curated tables, static suffix.
+
+index_path = out_dir.joinpath("index.md")
+
+
+def docstring_first_line(item: str) -> str:
+    """Return the first line of `rerun.<item>`'s docstring, with bindings fallback."""
+    obj = rerun_pkg[item]
+    if "rerun_bindings" in obj.canonical_path:
+        # The class is defined in the maturin extension; griffe sees the stub.
+        # Get the docstring from the bindings package instead.
+        obj = bindings_pkg[obj.canonical_path[len("rerun_bindings.") :]]
+    if obj.docstring is None:
+        raise SystemExit(f"No docstring for `rerun.{item}` (referenced from a curated table).")
+    return obj.docstring.lines[0]
+
+
+def display_name(item: str) -> str:
+    """
+    Compute the rendered name for a curated-table entry.
+
+    Strip `archetypes.` / `components.` / `datatypes.` prefixes when the
+    symbol is also flat-re-exported into top-level `rerun`, so the table
+    shows `rerun.Points3D` rather than `rerun.archetypes.Points3D`.
+    """
+    for prefix in ("archetypes.", "components.", "datatypes."):
+        stripped = item.removeprefix(prefix)
+        if stripped != item and stripped in rerun_pkg.members:
+            return f"rerun.{stripped}"
+    return f"rerun.{item}"
 
 
 with mkdocs_gen_files.open(index_path, "w") as index_file:
@@ -681,92 +559,31 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
 """,
     )
 
-    for section in SECTION_TABLE:
-        if section.gen_page:
-            # Turn the heading into a slug and add it to the nav
-            if section.sub_title:
-                md_name = make_slug("_".join([section.title, section.sub_title]))
-                md_file = md_name + ".md"
-                nav[(section.title, section.sub_title)] = md_file
-            else:
-                md_name = make_slug(section.title)
-                md_file = md_name + ".md"
-                nav[section.title] = md_file
+    for group in CURATED_GROUPS:
+        index_file.write(f"### {group.title}\n")
 
-            # Write out the contents of this section
-            write_path = common_dir.joinpath(md_file)
-            with mkdocs_gen_files.open(write_path, "w") as fd:
-                for mod_path in section.mod_path:
-                    fd.write(f"::: {mod_path}\n")
-                    fd.write("    options:\n")
-                    fd.write("      show_root_heading: True\n")
-                    fd.write("      heading_level: 3\n")
-                    fd.write("      members_order: alphabetical\n")
-                    # fd.write("      show_object_full_path: True\n")
-                    if section.func_list or section.class_list:
-                        fd.write("      members:\n")
-                        for func_name in section.func_list or []:
-                            fd.write(f"        - {func_name}\n")
-                        for class_name in section.class_list or []:
-                            fd.write(f"        - {class_name}\n")
-                    if not section.default_filters:
-                        fd.write("      filters: []\n")
-                    if section.show_submodules:
-                        fd.write("      show_submodules: True\n")
-            # Helpful for debugging
-            if 0:
-                with mkdocs_gen_files.open(write_path, "r") as fd:
-                    print("FOR SECTION", section.title)
-                    print(fd.read())
-                    print()
+        # `is_function` follows alias chains, so this works for redundant
+        # aliases as well as in-file definitions.
+        funcs = [item for item in group.items if rerun_pkg[item].is_function]
+        classes = [item for item in group.items if not rerun_pkg[item].is_function]
 
-        # Write out a table for the section in the index_file
-        if section.show_tables:
-            index_file.write(f"### {section.title}\n")
-            if section.func_list:
-                index_file.write("Function | Description\n")
-                index_file.write("-------- | -----------\n")
-                for func_name in section.func_list:
-                    # Check if any mod_path is not "rerun" to determine formatting
-                    non_rerun_paths = [path for path in section.mod_path if path != "rerun"]
-                    if non_rerun_paths:
-                        # Use the first non-rerun path for formatting
-                        mod_tail = non_rerun_paths[0].split(".")[1:]
-                        func_name = ".".join([*mod_tail, func_name])
-                    func = rerun_pkg[func_name]
-                    index_file.write(f"[`rerun.{func_name}()`][rerun.{func_name}] | {func.docstring.lines[0]}\n")
-            if section.class_list:
-                index_file.write("\n")
-                index_file.write("Class | Description\n")
-                index_file.write("-------- | -----------\n")
-                for class_name in section.class_list:
-                    # Check if any mod_path is not "rerun" to determine formatting
-                    non_rerun_paths = [path for path in section.mod_path if path != "rerun"]
-                    if non_rerun_paths:
-                        # Use the first non-rerun path for formatting
-                        mod_tail = non_rerun_paths[0].split(".")[1:]
-                        class_name = ".".join([*mod_tail, class_name])
-                    cls = rerun_pkg[class_name]
-                    bindings_class = False
-                    if "rerun_bindings" in cls.canonical_path:
-                        bindings_class = True
-                        # Get the docstring from the bindings package, but keep the rerun display path
-                        cls = bindings_pkg[cls.canonical_path[len("rerun_bindings.") :]]
-                        # Don't overwrite class_name - keep the rerun module path for display
-                    show_class = class_name
-                    for maybe_strip in ["archetypes.", "components.", "datatypes."]:
-                        if class_name.startswith(maybe_strip):
-                            stripped = class_name.replace(maybe_strip, "")
-                            if stripped in rerun_pkg.classes:
-                                show_class = stripped
-                    # Always show as rerun.* in documentation, even for bindings classes
-                    show_class = "rerun." + show_class
-                    class_name = "rerun." + class_name
-                    if cls.docstring is None:
-                        raise ValueError(f"No docstring for class {class_name}")
-                    index_file.write(f"[`{show_class}`][{class_name}] | {cls.docstring.lines[0]}\n")
+        if funcs:
+            index_file.write("Function | Description\n")
+            index_file.write("-------- | -----------\n")
+            for item in funcs:
+                index_file.write(
+                    f"[`{display_name(item)}()`][rerun.{item}] | {docstring_first_line(item)}\n",
+                )
+            index_file.write("\n")
 
-        index_file.write("\n")
+        if classes:
+            index_file.write("Class | Description\n")
+            index_file.write("-------- | -----------\n")
+            for item in classes:
+                index_file.write(
+                    f"[`{display_name(item)}`][rerun.{item}] | {docstring_first_line(item)}\n",
+                )
+            index_file.write("\n")
 
     index_file.write(
         """
@@ -779,6 +596,7 @@ or [join our Discord](https://discord.gg/Gcm8BbTaAj).
 """,
     )
 
+
 # Generate the SUMMARY.txt file
-with mkdocs_gen_files.open(common_dir.joinpath("SUMMARY.txt"), "w") as nav_file:
+with mkdocs_gen_files.open(out_dir.joinpath("SUMMARY.txt"), "w") as nav_file:
     nav_file.writelines(nav.build_literate_nav())

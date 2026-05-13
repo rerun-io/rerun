@@ -6,7 +6,7 @@ use re_log_types::StoreId;
 
 use crate::view::visualizer_entity_subscriber::VisualizerEntitySubscriber;
 use crate::{
-    Cache, IndicatedEntities, Memoizers, PerVisualizerType, ViewClassRegistry,
+    Cache, CacheEntryAccess, IndicatedEntities, Memoizers, PerVisualizerType, ViewClassRegistry,
     ViewSystemIdentifier, VisualizableEntities,
 };
 
@@ -123,6 +123,26 @@ impl StoreCache {
     /// Adds the cache lazily if it wasn't already there.
     pub fn memoizer<C: Cache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
         self.memoizers.entry::<C, R>(f)
+    }
+
+    /// Accesses an existing memoization cache for reading.
+    ///
+    /// Returns `None` if the cache has not been created yet.
+    pub fn memoizer_read<C: Cache, R>(&self, f: impl FnOnce(&C) -> R) -> Option<R> {
+        self.memoizers.read::<C, R>(f)
+    }
+
+    /// Tries to read an existing memoization cache entry, then computes it through mutable access on miss.
+    ///
+    /// Use this if you're working with init-only cache entries, expect your cache entry to be usually present
+    /// and want to avoid the overhead of a write lock.
+    /// Note that this _adds_ overhead for the miss path compared to `memoizer`, so don't use this if you expect many misses!
+    /// (UI code typically doesn't need to care about this optimization, since it's usually single-threaded already.)
+    pub fn memoizer_read_or_compute<C, Key, Value>(&self, key: &Key) -> Value
+    where
+        C: CacheEntryAccess<Key, Value> + Default,
+    {
+        self.memoizers.read_or_compute::<C, Key, Value>(key)
     }
 
     /// For each visualizer, return the set of entities that may be visualizable with it.

@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use arrow::array::{
     Array as _, ArrayData, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
@@ -30,6 +29,7 @@ use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, RowIdColumnDescriptor, TimeColumnSelector,
 };
+use re_span::Span;
 use re_types_core::arrow_helpers::as_array_ref;
 use re_types_core::{Loggable as _, SerializedComponentColumn, archetypes};
 
@@ -76,18 +76,111 @@ pub struct NextNRowsOutput {
     pub num_rows: usize,
 }
 
-/// Per-output-column extend record for the deferred-replay finaliser in `_next_n_rows`.
+/// One step in the deferred-replay finalizer inside `_next_n_rows`.
+///
+/// Each output column accumulates a list of [`ColumnExtend`] entries during the
+/// row-resolution loop and replays them via `MutableArrayData` once the batch is
+/// fully sized, allowing single-row pushes to coalesce into long abutting runs.
 #[derive(Debug, Clone, Copy)]
 enum ColumnExtend {
-    /// Append `len` rows from `src_idx` starting at `start`.
+    /// Append a contiguous row run by copying `rows` from one of the column's
+    /// distinct source arrays (`SelectedEmitter::Source::sources[source_idx]`).
     Range {
-        src_idx: usize,
-        start: usize,
-        len: usize,
+        /// Index into `SelectedEmitter::Source::sources` — picks which previously
+        /// registered source array this run reads from. Source arrays are
+        /// deduplicated by their underlying chunk pointer at registration time
+        /// (see `SelectedEmitter::ensure_source`), so multiple runs from the
+        /// same chunk share a single `source_idx`.
+        source_idx: usize,
+
+        /// Row range to copy out of `sources[source_idx]` (start row, inclusive,
+        /// for `len` rows).
+        rows: Span<usize>,
     },
 
     /// Append `len` null rows.
     Nulls { len: usize },
+}
+
+/// Per-output-column emission state used by [`QueryHandle::_next_n_rows`].
+///
+/// `Source` columns accumulate [`ColumnExtend`] entries that reference shared
+/// source arrays (deduplicated by chunk pointer), then replay them through
+/// `MutableArrayData` once the batch is fully sized. `Time` columns push i64
+/// values + a validity mask directly.
+enum SelectedEmitter {
+    Source {
+        sources: Vec<ArrayData>,
+
+        source_ids: Vec<*const Chunk>, // Used over `ChunkId` for speed.
+
+        /// `source_bytes_per_row[i]` is the estimated bytes-per-row for `sources[i]`, computed
+        /// as `get_array_memory_size() / len()` at registration time. Cheap (one
+        /// division per distinct source per batch) and lets the walk amortize the byte
+        /// budget without inspecting `MutableArrayData` until freeze.
+        source_bytes_per_row: Vec<usize>,
+
+        extends: Vec<ColumnExtend>,
+    },
+    Time {
+        values: Vec<i64>,
+        valid: Vec<bool>,
+    },
+}
+
+impl SelectedEmitter {
+    fn ensure_source(
+        sources: &mut Vec<ArrayData>,
+        source_ids: &mut Vec<*const Chunk>,
+        source_bytes_per_row: &mut Vec<usize>,
+        id: *const Chunk,
+        data: impl FnOnce() -> ArrayData,
+    ) -> usize {
+        if let Some(idx) = source_ids.iter().position(|x| *x == id) {
+            idx
+        } else {
+            let idx = sources.len();
+            let d = data();
+            let bpr = d.get_array_memory_size().checked_div(d.len()).unwrap_or(0);
+            sources.push(d);
+            source_ids.push(id);
+            source_bytes_per_row.push(bpr);
+            idx
+        }
+    }
+
+    /// Append a contiguous row run drawn from `sources[source_idx]`,
+    /// merging with a trailing abutting `Range` from the same source.
+    /// Coalescing turns long runs of single-row extends into a handful
+    /// of multi-row extends, shrinking the replay loop in the finalizer.
+    fn push_run(extends: &mut Vec<ColumnExtend>, source_idx: usize, rows: Span<usize>) {
+        if rows.len == 0 {
+            return;
+        }
+        if let Some(ColumnExtend::Range {
+            source_idx: prev_src,
+            rows: prev_rows,
+        }) = extends.last_mut()
+            && *prev_src == source_idx
+            && prev_rows.end() == rows.start
+        {
+            prev_rows.len += rows.len;
+            return;
+        }
+        extends.push(ColumnExtend::Range { source_idx, rows });
+    }
+
+    /// Append `len` null rows, merging with a trailing `Nulls` entry.
+    fn push_nulls(extends: &mut Vec<ColumnExtend>, len: usize) {
+        if len == 0 {
+            return;
+        }
+        if let Some(ColumnExtend::Nulls { len: prev_len }) = extends.last_mut() {
+            *prev_len += len;
+            return;
+        }
+        extends.push(ColumnExtend::Nulls { len });
+    }
 }
 
 // TODO(cmc): (no specific order) (should we make issues for these?)
@@ -119,10 +212,84 @@ pub struct QueryHandle<E: StorageEngineLike> {
     /// The original query expression used to instantiate this handle.
     pub(crate) query: QueryExpression,
 
-    /// Internal private state. Lazily computed.
+    /// Immutable view metadata. Lazily computed on first use.
     ///
     /// It is important that handles stay cheap to create.
     state: OnceLock<QueryHandleState>,
+
+    /// Mutable iteration state. Lazily initialized on the first `&mut self` call.
+    ///
+    /// Layout mirrors [`QueryHandleState::view_chunks`].
+    iter_state: Option<IterState>,
+}
+
+/// Immutable per-chunk metadata used by the streaming-join walk.
+///
+/// `time_min`/`time_max` are cached at init from the chunk's time column for the query's
+/// `filtered_index`, used for range-based pruning and as the sort key for early-break iteration.
+struct ChunkBundle {
+    chunk: Chunk,
+    time_min: i64,
+    time_max: i64,
+}
+
+impl ChunkBundle {
+    fn new(chunk: Chunk, filtered_index: Option<&Index>) -> Self {
+        let (time_min, time_max) = filtered_index
+            .and_then(|idx| chunk.timelines().get(idx))
+            .map_or((i64::MIN, i64::MAX), |tc| {
+                let r = tc.time_range();
+                (r.min().as_i64(), r.max().as_i64())
+            });
+        Self {
+            chunk,
+            time_min,
+            time_max,
+        }
+    }
+}
+
+/// Mutable per-chunk iteration state for the streaming-join walk.
+///
+/// `cursor` tracks the current row inside the corresponding [`ChunkBundle::chunk`].
+/// `exhausted` is set once the cursor moves past `chunk.num_rows()` or once
+/// `cur_index_value` exceeds `time_max`, allowing later rows to skip the chunk entirely.
+#[derive(Debug, Default, Clone, Copy)]
+struct ChunkIterCursor {
+    cursor: u64,
+    exhausted: bool,
+}
+
+/// Mutable iteration state. Lazily initialized on the first `&mut self` iteration call,
+/// after the immutable [`QueryHandleState`] has been built.
+///
+/// Lives outside `OnceLock` so that the public iteration API can take `&mut self` and
+/// mutate it through plain Rust references (no `Cell`/atomics needed).
+struct IterState {
+    /// Current row index: the position of the iterator. For [`QueryHandle::next_row`].
+    ///
+    /// This represents the number of rows that the caller has iterated on; unrelated to
+    /// the per-chunk cursors. The corresponding index value is
+    /// [`QueryHandleState::unique_index_values`]`[cur_row]`.
+    cur_row: u64,
+
+    /// Per-view, per-chunk cursors. Layout mirrors [`QueryHandleState::view_chunks`]
+    /// exactly: `view_chunks[view_idx][chunk_idx]` corresponds to
+    /// `state.view_chunks[view_idx][chunk_idx]`.
+    view_chunks: Vec<Vec<ChunkIterCursor>>,
+}
+
+impl IterState {
+    fn new(state: &QueryHandleState) -> Self {
+        Self {
+            cur_row: 0,
+            view_chunks: state
+                .view_chunks
+                .iter()
+                .map(|chunks| vec![ChunkIterCursor::default(); chunks.len()])
+                .collect(),
+        }
+    }
 }
 
 /// Internal private state. Lazily computed.
@@ -162,15 +329,12 @@ struct QueryHandleState {
     /// All returned rows will have this schema.
     arrow_schema: ArrowSchemaRef,
 
-    /// All the [`Chunk`]s included in the view contents.
+    /// All the [`Chunk`]s included in the view contents, with their cached time ranges.
     ///
     /// These are already sorted, densified, vertically sliced, and [latest-deduped] according
-    /// to the query.
-    ///
-    /// The atomic counter is used as a cursor which keeps track of our current position within
-    /// each individual chunk.
-    /// Because chunks are allowed to overlap, we might need to rebound between two or more chunks
-    /// during our iteration.
+    /// to the query. Per-chunk iteration cursors live in [`IterState::view_chunks`] with
+    /// matching layout (chunks are allowed to overlap, so iteration may rebound between two
+    /// or more chunks).
     ///
     /// This vector's entries correspond to those in [`QueryHandleState::view_contents`].
     /// Note: time and column entries don't have chunks -- inner vectors will be empty.
@@ -178,23 +342,13 @@ struct QueryHandleState {
     /// [latest-deduped]: [`Chunk::deduped_latest_on_index`]
     //
     // NOTE: Reminder: we have to query everything in the _view_, irrelevant of the current selection.
-    view_chunks: Vec<Vec<(AtomicU64, Chunk)>>,
-
-    /// Tracks the current row index: the position of the iterator. For [`QueryHandle::next_row`].
-    ///
-    /// This represents the number of rows that the caller has iterated on: it is completely
-    /// unrelated to the cursors used to track the current position in each individual chunk.
-    ///
-    /// The corresponding index value can be obtained using `unique_index_values[cur_row]`.
-    ///
-    /// `unique_index_values[cur_row]`: [`QueryHandleState::unique_index_values`]
-    cur_row: AtomicU64,
+    view_chunks: Vec<Vec<ChunkBundle>>,
 
     /// All unique index values that can possibly be returned by this query.
     ///
     /// Guaranteed ascendingly sorted and deduped.
     ///
-    /// See also [`QueryHandleState::cur_row`].
+    /// See also [`IterState::cur_row`].
     unique_index_values: Vec<IndexValue>,
 }
 
@@ -204,6 +358,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             engine,
             query,
             state: Default::default(),
+            iter_state: None,
         }
     }
 }
@@ -212,33 +367,51 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// Lazily initialize internal private state.
     ///
     /// It is important that query handles stay cheap to create.
-    #[tracing::instrument(level = "trace", skip_all)]
     fn init(&self) -> &QueryHandleState {
-        self.engine
-            .with(|store, cache| self.state.get_or_init(|| self.init_(store, cache)))
+        self.engine.with(|store, cache| {
+            self.state
+                .get_or_init(|| Self::init_(&self.query, store, cache))
+        })
+    }
+
+    /// Trigger lazy initialization of both `state` and `iter_state`, then return split
+    /// borrows into the immutable view metadata and the mutable iteration state.
+    ///
+    /// All `&mut self` iteration entry points funnel through this helper so the rest of
+    /// the implementation can work against `(&QueryHandleState, &mut IterState)` directly,
+    /// without further interior mutability.
+    fn init_iter(&mut self) -> (&QueryHandleState, &mut IterState) {
+        // First trigger immutable lazy init so the OnceLock is populated.
+        let _ = self.init();
+        // Now split-borrow `state` (immut, via OnceLock::get) from `iter_state` (mut).
+        let Self {
+            state, iter_state, ..
+        } = self;
+        let state = state.get().expect("state was just initialized by init()");
+        let iter_state = iter_state.get_or_insert_with(|| IterState::new(state));
+        (state, iter_state)
     }
 
     // NOTE: This is split in its own method otherwise it completely breaks `rustfmt`.
-    fn init_(&self, store: &ChunkStore, cache: &QueryCache) -> QueryHandleState {
+    #[tracing::instrument(level = "trace", skip_all)]
+    fn init_(query: &QueryExpression, store: &ChunkStore, cache: &QueryCache) -> QueryHandleState {
         re_tracing::profile_scope!("init");
 
         // The timeline doesn't matter if we're running in static-only mode.
-        let filtered_index = self
-            .query
+        let filtered_index = query
             .filtered_index
             .unwrap_or_else(|| TimelineName::new(""));
 
         // 1. Compute the schema for the query.
-        let view_contents_schema = store.schema_for_query(&self.query);
+        let view_contents_schema = store.schema_for_query(query);
         let view_contents = view_contents_schema.indices_and_components();
 
         // 2. Compute the schema of the selected contents.
         //
         // The caller might have selected columns that do not exist in the view: they should
         // still appear in the results.
-        let selected_contents: Vec<(_, _)> = if let Some(selection) = self.query.selection.as_ref()
-        {
-            self.compute_user_selection(&view_contents, selection)
+        let selected_contents: Vec<(_, _)> = if let Some(selection) = query.selection.as_ref() {
+            Self::compute_user_selection(&view_contents, selection)
         } else {
             view_contents.clone().into_iter().enumerate().collect()
         };
@@ -255,10 +428,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         ));
 
         // 4. Perform the query and keep track of all the relevant chunks.
-        let query = {
-            let index_range = if self.query.filtered_index.is_none() {
+        let range_query = {
+            let index_range = if query.filtered_index.is_none() {
                 AbsoluteTimeRange::EMPTY // static-only
-            } else if let Some(using_index_values) = self.query.using_index_values.as_ref() {
+            } else if let Some(using_index_values) = query.using_index_values.as_ref() {
                 using_index_values
                     .first()
                     .and_then(|start| using_index_values.last().map(|end| (start, end)))
@@ -266,7 +439,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         AbsoluteTimeRange::new(*start, *end)
                     })
             } else {
-                self.query
+                query
                     .filtered_index_range
                     .unwrap_or(AbsoluteTimeRange::EVERYTHING)
             };
@@ -276,7 +449,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 .keep_extra_components(false)
         };
         let (view_pov_chunks_idx, mut view_chunks) =
-            self.fetch_view_chunks(store, cache, &query, &view_contents);
+            Self::fetch_view_chunks(query, store, cache, &range_query, &view_contents);
 
         // 5. Collect all relevant clear chunks and update the view accordingly.
         //
@@ -284,7 +457,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         {
             re_tracing::profile_scope!("clear_chunks");
 
-            let clear_chunks = self.fetch_clear_chunks(store, cache, &query, &view_contents);
+            let clear_chunks =
+                Self::fetch_clear_chunks(query, store, cache, &range_query, &view_contents);
             for (view_idx, chunks) in view_chunks.iter_mut().enumerate() {
                 let Some(ColumnDescriptor::Component(descr)) = view_contents.get(view_idx) else {
                     continue;
@@ -323,29 +497,28 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             ))
                             .unwrap();
 
-                        (AtomicU64::new(0), chunk)
+                        ChunkBundle::new(chunk, Some(&filtered_index))
                     }));
-
-                    // The chunks were sorted that way before, and it needs to stay that way after.
-                    chunks.sort_by_key(|(_cursor, chunk)| {
-                        // NOTE: The chunk has been densified already: its global time range is the same as
-                        // the time range for the specific component of interest.
-                        chunk
-                            .timelines()
-                            .get(&filtered_index)
-                            .map(|time_column| time_column.time_range())
-                            .map_or(TimeInt::STATIC, |time_range| time_range.min())
-                    });
                 }
             }
+        }
+
+        // 5b. Sort each view's chunks by `time_min` ascending.
+        //
+        // The streaming-join walk relies on this ordering to break out of the per-row inner
+        // loop as soon as it sees a chunk whose `time_min > cur_index_value`. Order doesn't
+        // affect row output because the streaming-join already takes max-RowId across
+        // overlapping chunks for any given index value.
+        for chunks in &mut view_chunks {
+            chunks.sort_by_key(|cc| cc.time_min);
         }
 
         // 6. Collect all unique index values.
         //
         // Used to achieve ~O(log(n)) pagination.
-        let unique_index_values = if self.query.filtered_index.is_none() {
+        let unique_index_values = if query.filtered_index.is_none() {
             vec![TimeInt::STATIC]
-        } else if let Some(using_index_values) = self.query.using_index_values.as_ref() {
+        } else if let Some(using_index_values) = query.using_index_values.as_ref() {
             using_index_values
                 .iter()
                 .filter(|index_value| !index_value.is_static())
@@ -363,8 +536,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
             let mut all_unique_index_values: BTreeSet<TimeInt> = view_chunks
                 .flat_map(|chunks| {
-                    chunks.iter().filter_map(|(_cursor, chunk)| {
-                        chunk
+                    chunks.iter().filter_map(|cc| {
+                        cc.chunk
                             .timelines()
                             .get(&filtered_index)
                             .map(|time_column| time_column.times())
@@ -373,7 +546,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 .flatten()
                 .collect();
 
-            if let Some(filtered_index_values) = self.query.filtered_index_values.as_ref() {
+            if let Some(filtered_index_values) = query.filtered_index_values.as_ref() {
                 all_unique_index_values.retain(|time| filtered_index_values.contains(time));
             }
 
@@ -416,15 +589,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             filtered_index,
             arrow_schema,
             view_chunks,
-            cur_row: AtomicU64::new(0),
             unique_index_values,
         }
     }
 
     #[tracing::instrument(level = "trace", skip_all)]
-    #[expect(clippy::unused_self)]
     fn compute_user_selection(
-        &self,
         view_contents: &[ColumnDescriptor],
         selection: &[ColumnSelector],
     ) -> Vec<(usize, ColumnDescriptor)> {
@@ -513,13 +683,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 
     fn fetch_view_chunks(
-        &self,
+        query: &QueryExpression,
         store: &ChunkStore,
         cache: &QueryCache,
-        query: &RangeQuery,
+        range_query: &RangeQuery,
         view_contents: &[ColumnDescriptor],
-    ) -> (Option<usize>, Vec<Vec<(AtomicU64, Chunk)>>) {
-        let mut view_pov_chunks_idx = self.query.filtered_is_not_null.as_ref().map(|_| usize::MAX);
+    ) -> (Option<usize>, Vec<Vec<ChunkBundle>>) {
+        let mut view_pov_chunks_idx = query.filtered_is_not_null.as_ref().map(|_| usize::MAX);
 
         let view_chunks = view_contents
             .iter()
@@ -528,11 +698,17 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => Vec::new(),
 
                 ColumnDescriptor::Component(column) => {
-                    let chunks = self
-                        .fetch_chunks(store, cache, query, &column.entity_path, [column.component])
-                        .unwrap_or_default();
+                    let chunks = Self::fetch_chunks(
+                        query,
+                        store,
+                        cache,
+                        range_query,
+                        &column.entity_path,
+                        [column.component],
+                    )
+                    .unwrap_or_default();
 
-                    if let Some(pov) = self.query.filtered_is_not_null.as_ref()
+                    if let Some(pov) = query.filtered_is_not_null.as_ref()
                         && column.matches(pov)
                     {
                         view_pov_chunks_idx = Some(idx);
@@ -551,10 +727,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// These chunks take recursive clear semantics into account and are guaranteed to be properly densified.
     /// The component data is stripped out, only the indices are left.
     fn fetch_clear_chunks(
-        &self,
+        query: &QueryExpression,
         store: &ChunkStore,
         cache: &QueryCache,
-        query: &RangeQuery,
+        range_query: &RangeQuery,
         view_contents: &[ColumnDescriptor],
     ) -> IntMap<EntityPath, Vec<Chunk>> {
         /// Returns all the ancestors of an [`EntityPath`].
@@ -617,23 +793,25 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .filter_map(|entity_path| {
                 // For the entity itself, any chunk that contains clear data is relevant, recursive or not.
                 // Just fetch everything we find.
-                let flat_chunks = self
-                    .fetch_chunks(store, cache, query, entity_path, components)
-                    .map(|chunks| {
-                        chunks
-                            .into_iter()
-                            .map(|(_cursor, chunk)| chunk)
-                            .collect_vec()
-                    })
-                    .unwrap_or_default();
+                let flat_chunks =
+                    Self::fetch_chunks(query, store, cache, range_query, entity_path, components)
+                        .map(|chunks| chunks.into_iter().map(|cc| cc.chunk).collect_vec())
+                        .unwrap_or_default();
 
                 let recursive_chunks =
                     entity_path_ancestors(entity_path).flat_map(|ancestor_path| {
-                        self.fetch_chunks(store, cache, query, &ancestor_path, components)
-                            .into_iter() // option
-                            .flat_map(|chunks| chunks.into_iter().map(|(_cursor, chunk)| chunk))
-                            // NOTE: Ancestors' chunks are only relevant for the rows where `ClearIsRecursive=true`.
-                            .filter_map(|chunk| chunk_filter_recursive_only(&chunk))
+                        Self::fetch_chunks(
+                            query,
+                            store,
+                            cache,
+                            range_query,
+                            &ancestor_path,
+                            components,
+                        )
+                        .into_iter() // option
+                        .flat_map(|chunks| chunks.into_iter().map(|cc| cc.chunk))
+                        // NOTE: Ancestors' chunks are only relevant for the rows where `ClearIsRecursive=true`.
+                        .filter_map(|chunk| chunk_filter_recursive_only(&chunk))
                     });
 
                 let chunks = flat_chunks
@@ -650,20 +828,20 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 
     fn fetch_chunks(
-        &self,
+        query: &QueryExpression,
         _store: &ChunkStore,
         cache: &QueryCache,
-        query: &RangeQuery,
+        range_query: &RangeQuery,
         entity_path: &EntityPath,
         components: impl IntoIterator<Item = ComponentIdentifier>,
-    ) -> Option<Vec<(AtomicU64, Chunk)>> {
+    ) -> Option<Vec<ChunkBundle>> {
         // NOTE: Keep in mind that the range APIs natively make sure that we will
         // either get a bunch of relevant _static_ chunks, or a bunch of relevant
         // _temporal_ chunks, but never both.
         //
         // TODO(cmc): Going through the cache is very useful in a Viewer context, but
         // not so much in an SDK context. Make it configurable.
-        let results = cache.range(query, entity_path, components);
+        let results = cache.range(range_query, entity_path, components);
 
         debug_assert!(
             results.components.len() <= 1,
@@ -675,6 +853,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .into_iter()
             .next()
             .map(|(_component_descr, chunks)| {
+                let filtered_index = query.filtered_index.as_ref();
                 chunks
                     .into_iter()
                     .map(|chunk| {
@@ -686,7 +865,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         // remaining unique index values all while taking row-id ordering semantics
                         // into account.
                         debug_assert!(
-                            if let Some(index) = self.query.filtered_index.as_ref() {
+                            if let Some(index) = filtered_index {
                                 chunk.is_timeline_sorted(index)
                             } else {
                                 chunk.is_sorted()
@@ -699,7 +878,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         //
                         // let chunk = chunk.deduped_latest_on_index(&query.timeline);
 
-                        (AtomicU64::default(), chunk)
+                        ChunkBundle::new(chunk, filtered_index)
                     })
                     .collect_vec()
             })
@@ -741,12 +920,6 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// Does nothing if `row_idx` is out of bounds.
     ///
-    /// ## Concurrency
-    ///
-    /// Cursors are implemented using atomic variables, which means calling any of the `seek_*`
-    /// while iteration is concurrently ongoing is memory-safe but logically undefined racy
-    /// behavior. Be careful.
-    ///
     /// ## Performance
     ///
     /// This requires going through every chunk once, and for each chunk running a binary search if
@@ -754,27 +927,21 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// I.e.: it's pretty cheap already.
     #[inline]
-    pub fn seek_to_row(&self, row_idx: usize) {
-        let state = self.init();
+    pub fn seek_to_row(&mut self, row_idx: usize) {
+        let (state, iter_state) = self.init_iter();
 
-        let Some(index_value) = state.unique_index_values.get(row_idx) else {
+        let Some(index_value) = state.unique_index_values.get(row_idx).copied() else {
             return;
         };
 
-        state.cur_row.store(row_idx as _, Ordering::Relaxed);
-        self.seek_to_index_value(*index_value);
+        iter_state.cur_row = row_idx as _;
+        Self::seek_to_index_value_impl(state, iter_state, index_value);
     }
 
     /// Advance all internal cursors so that the next row yielded will correspond to `index_value`.
     ///
     /// If `index_value` isn't present in the dataset, this seeks to the first index value
     /// available past that point, if any.
-    ///
-    /// ## Concurrency
-    ///
-    /// Cursors are implemented using atomic variables, which means calling any of the `seek_*`
-    /// while iteration is concurrently ongoing is memory-safe but logically undefined racy
-    /// behavior. Be careful.
     ///
     /// ## Performance
     ///
@@ -783,25 +950,32 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// I.e.: it's pretty cheap already.
     #[tracing::instrument(level = "debug", skip_all)]
-    fn seek_to_index_value(&self, index_value: IndexValue) {
+    fn seek_to_index_value_impl(
+        state: &QueryHandleState,
+        iter_state: &mut IterState,
+        index_value: IndexValue,
+    ) {
         re_tracing::profile_function!();
 
-        let state = self.init();
-
         if index_value.is_static() {
-            for chunks in &state.view_chunks {
-                for (cursor, _chunk) in chunks {
-                    cursor.store(0, Ordering::Relaxed);
+            for chunks in &mut iter_state.view_chunks {
+                for cc in chunks {
+                    cc.cursor = 0;
+                    cc.exhausted = false;
                 }
             }
             return;
         }
 
-        for chunks in &state.view_chunks {
-            for (cursor, chunk) in chunks {
+        for (state_chunks, iter_chunks) in state
+            .view_chunks
+            .iter()
+            .zip(iter_state.view_chunks.iter_mut())
+        {
+            for (bundle, cc) in state_chunks.iter().zip(iter_chunks.iter_mut()) {
                 // NOTE: The chunk has been densified already: its global time range is the same as
                 // the time range for the specific component of interest.
-                let Some(time_column) = chunk.timelines().get(&state.filtered_index) else {
+                let Some(time_column) = bundle.chunk.timelines().get(&state.filtered_index) else {
                     continue;
                 };
 
@@ -810,7 +984,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 let new_cursor = if index_value < time_range.min() {
                     0
                 } else if index_value > time_range.max() {
-                    chunk.num_rows() as u64 /* yes, one past the end -- not a mistake */
+                    bundle.chunk.num_rows() as u64 /* yes, one past the end -- not a mistake */
                 } else {
                     time_column
                         .times_raw()
@@ -818,7 +992,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         as u64
                 };
 
-                cursor.store(new_cursor, Ordering::Relaxed);
+                cc.cursor = new_cursor;
+                cc.exhausted = false;
             }
         }
     }
@@ -869,9 +1044,18 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// }
     /// ```
     #[inline]
-    pub fn next_row(&self) -> Option<Vec<ArrayRef>> {
-        self.engine
-            .with(|store, cache| self._next_row(store, cache))
+    pub fn next_row(&mut self) -> Option<Vec<ArrayRef>> {
+        // Trigger lazy state init through the immutable `&self` path before split-borrowing.
+        let _ = self.init();
+        let Self {
+            engine,
+            query,
+            state,
+            iter_state,
+        } = self;
+        let state = state.get().expect("state was just initialized by init()");
+        let iter_state = iter_state.get_or_insert_with(|| IterState::new(state));
+        engine.with(|store, cache| Self::_next_row(query, state, iter_state, store, cache))
     }
 
     /// Asynchronously returns the next row's worth of data.
@@ -891,16 +1075,24 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
     pub fn next_row_async(
-        &self,
+        &mut self,
     ) -> impl std::future::Future<Output = Option<Vec<ArrayRef>>> + use<E>
     where
         E: 'static + Send + Clone,
     {
-        let res: Option<Option<_>> = self
-            .engine
-            .try_with(|store, cache| self._next_row(store, cache));
+        let Self {
+            engine,
+            query,
+            state,
+            iter_state,
+        } = self;
+        let res: Option<Option<_>> = engine.try_with(|store, cache| {
+            let st = state.get_or_init(|| Self::init_(query, store, cache));
+            let it = iter_state.get_or_insert_with(|| IterState::new(st));
+            Self::_next_row(query, st, it, store, cache)
+        });
 
-        let engine = self.engine.clone();
+        let engine = engine.clone();
         std::future::poll_fn(move |cx| {
             if let Some(row) = &res {
                 std::task::Poll::Ready(row.clone())
@@ -928,14 +1120,18 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         })
     }
 
-    pub fn _next_row(&self, store: &ChunkStore, cache: &QueryCache) -> Option<Vec<ArrowArrayRef>> {
+    fn _next_row<'state>(
+        query: &QueryExpression,
+        state: &'state QueryHandleState,
+        iter_state: &mut IterState,
+        _store: &ChunkStore,
+        cache: &QueryCache,
+    ) -> Option<Vec<ArrowArrayRef>> {
         // re_tracing::profile_function!(); // too many and short-lived
 
-        let state = self.state.get_or_init(move || self.init_(store, cache));
-
-        let mut scratch: Vec<Option<StreamingJoinState<'_>>> =
+        let mut scratch: Vec<Option<StreamingJoinState<'state>>> =
             Vec::with_capacity(state.view_chunks.len());
-        let resolved = self._resolve_one_row(state, cache, &mut scratch)?;
+        let resolved = Self::_resolve_one_row(query, state, iter_state, cache, &mut scratch)?;
 
         // NOTE: Non-component entries have no data to slice, hence the optional layer.
         //
@@ -1000,13 +1196,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .view_chunks
                     .first()
                     .and_then(|vec| vec.first()) // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
-                    .map(|(row_idx, chunk)| {
-                        as_array_ref(
-                            chunk
-                                .row_ids_array()
-                                .slice(row_idx.load(Ordering::Acquire) as _, 1),
-                        )
-                    })
+                    .zip(iter_state.view_chunks.first().and_then(|vec| vec.first()))
+                    .map(|(cc, cs)| as_array_ref(cc.chunk.row_ids_array().slice(cs.cursor as _, 1)))
                     .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
 
                 ColumnDescriptor::Time(descr) => resolved.get(descr.timeline().name()).map_or_else(
@@ -1036,12 +1227,14 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// per-view-column resolved state for this row (component chunks, retrofills, statics) and
     /// the returned [`ResolvedRow`] holds the max value seen on each timeline.
     fn _resolve_one_row<'state>(
-        &self,
+        query: &QueryExpression,
         state: &'state QueryHandleState,
+        iter_state: &mut IterState,
         cache: &QueryCache,
         view_streaming_state: &mut Vec<Option<StreamingJoinState<'state>>>,
     ) -> Option<ResolvedRow> {
-        let row_idx = state.cur_row.fetch_add(1, Ordering::Relaxed);
+        let row_idx = iter_state.cur_row;
+        iter_state.cur_row = row_idx + 1;
         let cur_index_value = state.unique_index_values.get(row_idx as usize)?;
 
         // First, we need to find, among all the chunks available for the current view contents,
@@ -1050,23 +1243,46 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // NOTE: Non-component columns don't have a streaming state, hence the optional layer.
         view_streaming_state.clear();
         view_streaming_state.resize_with(state.view_chunks.len(), || None);
-        for (view_column_idx, view_chunks) in state.view_chunks.iter().enumerate() {
+        let cur_index_value_i64 = cur_index_value.as_i64();
+        for (view_column_idx, (view_chunks, iter_chunks)) in state
+            .view_chunks
+            .iter()
+            .zip(iter_state.view_chunks.iter_mut())
+            .enumerate()
+        {
             let mut entry: Option<StreamingJoinStateEntry<'state>> = None;
 
-            'overlaps: for (cur_cursor, cur_chunk) in view_chunks {
-                // TODO(cmc): This can easily be optimized by looking ahead and breaking as soon as chunks
-                // stop overlapping.
+            'overlaps: for (cc, cs) in view_chunks.iter().zip(iter_chunks.iter_mut()) {
+                // H1: skip chunks that already finished a prior row.
+                if cs.exhausted {
+                    continue 'overlaps;
+                }
+
+                // H3: chunks are sorted by `time_min` ascending — once we see a chunk
+                // whose `time_min` is past `cur_index_value`, no later chunk can match
+                // either.
+                if cur_index_value_i64 < cc.time_min {
+                    break 'overlaps;
+                }
+
+                // H2: chunks whose `time_max` is below `cur_index_value` are exhausted
+                // for the rest of the iteration. Mark and skip.
+                if cur_index_value_i64 > cc.time_max {
+                    cs.exhausted = true;
+                    continue 'overlaps;
+                }
 
                 // NOTE: Too soon to increment the cursor, we cannot know yet which chunks will or
                 // will not be part of the current row.
-                let mut cur_cursor_value = cur_cursor.load(Ordering::Relaxed);
+                let mut cur_cursor_value = cs.cursor;
 
                 let cur_index_times_empty: &[i64] = &[];
-                let cur_index_times = cur_chunk
+                let cur_index_times = cc
+                    .chunk
                     .timelines()
                     .get(&state.filtered_index)
                     .map_or(cur_index_times_empty, |time_column| time_column.times_raw());
-                let cur_index_row_ids = cur_chunk.row_ids_slice();
+                let cur_index_row_ids = cc.chunk.row_ids_slice();
 
                 let (index_value, cur_row_id) = 'walk: loop {
                     let (Some(mut index_value), Some(mut cur_row_id)) = (
@@ -1076,6 +1292,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             .map(TimeInt::new_temporal),
                         cur_index_row_ids.get(cur_cursor_value as usize).copied(),
                     ) else {
+                        // Cursor is past the last row of this chunk — exhausted forever.
+                        cs.exhausted = true;
                         continue 'overlaps;
                     };
 
@@ -1095,7 +1313,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             if next_index_value == *cur_index_value {
                                 index_value = next_index_value;
                                 cur_row_id = next_row_id;
-                                cur_cursor_value = cur_cursor.fetch_add(1, Ordering::Relaxed) + 1;
+                                cur_cursor_value = cs.cursor + 1;
+                                cs.cursor = cur_cursor_value;
                             } else {
                                 break;
                             }
@@ -1108,20 +1327,21 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         continue 'overlaps;
                     }
 
-                    cur_cursor_value = cur_cursor.fetch_add(1, Ordering::Relaxed) + 1;
+                    cur_cursor_value = cs.cursor + 1;
+                    cs.cursor = cur_cursor_value;
                 };
 
                 debug_assert_eq!(index_value, *cur_index_value);
 
                 if let Some(existing) = entry.as_mut() {
                     if cur_row_id > existing.row_id {
-                        existing.chunk = cur_chunk;
+                        existing.chunk = &cc.chunk;
                         existing.cursor = cur_cursor_value;
                         existing.row_id = cur_row_id;
                     }
                 } else {
                     entry = Some(StreamingJoinStateEntry {
-                        chunk: cur_chunk,
+                        chunk: &cc.chunk,
                         cursor: cur_cursor_value,
                         row_id: cur_row_id,
                     });
@@ -1153,7 +1373,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             }
         }
 
-        match self.query.sparse_fill_strategy {
+        match query.sparse_fill_strategy {
             SparseFillStrategy::None => {}
 
             SparseFillStrategy::LatestAtGlobal => {
@@ -1274,7 +1494,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// Append up to `max_rows` rows of data into freshly allocated per-column arrays.
     ///
     /// Throughput-oriented sibling of [`Self::next_row`]: shares the streaming-join machinery but
-    /// amortises per-row allocation by batching `MutableArrayData` extends and only finalising
+    /// amortizes per-row allocation by batching `MutableArrayData` extends and only finalizing
     /// to `ArrayRef` once per call.
     ///
     /// The returned [`NextNRowsOutput::columns`] strictly follows the schema specified by
@@ -1285,36 +1505,59 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// len`). Pass `usize::MAX` to disable the byte cap. The first row is always
     /// admitted regardless of the cap, so a single wide row can exceed `max_bytes`.
     #[inline]
-    pub fn next_n_rows(&self, max_rows: usize, max_bytes: usize) -> NextNRowsOutput {
-        self.engine
-            .with(|store, cache| self._next_n_rows(store, cache, max_rows, max_bytes))
+    pub fn next_n_rows(&mut self, max_rows: usize, max_bytes: usize) -> NextNRowsOutput {
+        let _ = self.init();
+        let Self {
+            engine,
+            query,
+            state,
+            iter_state,
+        } = self;
+        let state = state.get().expect("state was just initialized by init()");
+        let iter_state = iter_state.get_or_insert_with(|| IterState::new(state));
+        engine.with(|store, cache| {
+            Self::_next_n_rows(query, state, iter_state, store, cache, max_rows, max_bytes)
+        })
     }
 
     /// Asynchronous sibling of [`Self::next_n_rows`].
     #[cfg(not(target_arch = "wasm32"))]
     pub fn next_n_rows_async(
-        &self,
+        &mut self,
         max_rows: usize,
         max_bytes: usize,
     ) -> impl std::future::Future<Output = NextNRowsOutput> + use<'_, E>
     where
         E: 'static + Send + Clone,
     {
+        let Self {
+            engine,
+            query,
+            state,
+            iter_state,
+        } = self;
+
         // Retry on every poll: if `try_with` initially fails because a writer
         // holds the lock, the rayon-spawned `engine.with(..)` re-acquires the
         // lock and wakes us, but only a fresh `try_with` call here can actually
         // make progress. Capturing the result once at function entry would let
         // the future spin forever on a permanent `None`.
+        //
+        // State and iter-state are lazily initialized inside the `try_with` closure
+        // so we never block on the engine lock — the future simply yields and is
+        // re-polled when the writer releases the lock.
         std::future::poll_fn(move |cx| {
-            let res = self
-                .engine
-                .try_with(|store, cache| self._next_n_rows(store, cache, max_rows, max_bytes));
+            let res = engine.try_with(|store, cache| {
+                let st = state.get_or_init(|| Self::init_(query, store, cache));
+                let it = iter_state.get_or_insert_with(|| IterState::new(st));
+                Self::_next_n_rows(query, st, it, store, cache, max_rows, max_bytes)
+            });
 
             if let Some(out) = res {
                 std::task::Poll::Ready(out)
             } else {
                 rayon::spawn({
-                    let engine = self.engine.clone();
+                    let engine = engine.clone();
                     let waker = cx.waker().clone();
                     move || {
                         engine.with(|_store, _cache| {
@@ -1330,15 +1573,16 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
     #[tracing::instrument(level = "debug", skip_all, fields(max_rows, max_bytes))]
     fn _next_n_rows(
-        &self,
-        store: &ChunkStore,
+        query: &QueryExpression,
+        state: &QueryHandleState,
+        iter_state: &mut IterState,
+        _store: &ChunkStore,
         cache: &QueryCache,
         max_rows: usize,
         max_bytes: usize,
     ) -> NextNRowsOutput {
         re_tracing::profile_function!();
 
-        let state = self.state.get_or_init(move || self.init_(store, cache));
         let n_selected = state.selected_contents.len();
 
         if max_rows == 0 {
@@ -1346,79 +1590,6 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 columns: Vec::new(),
                 num_rows: 0,
             };
-        }
-
-        // Per-output-column emission state.
-        //
-        // `source_bpr[i]` is the estimated bytes-per-row for `sources[i]`, computed as
-        // `get_array_memory_size() / len()` at registration time. Cheap (one division per
-        // distinct source per batch) and lets the walk amortise the byte budget without
-        // inspecting `MutableArrayData` until freeze.
-        enum SelectedEmitter {
-            Source {
-                sources: Vec<ArrayData>,
-                source_ids: Vec<usize>,
-                source_bpr: Vec<usize>,
-                extends: Vec<ColumnExtend>,
-            },
-            Time {
-                values: Vec<i64>,
-                valid: Vec<bool>,
-            },
-        }
-
-        impl SelectedEmitter {
-            fn ensure_source(
-                sources: &mut Vec<ArrayData>,
-                source_ids: &mut Vec<usize>,
-                source_bpr: &mut Vec<usize>,
-                id: usize,
-                data: impl FnOnce() -> ArrayData,
-            ) -> usize {
-                if let Some(idx) = source_ids.iter().position(|x| *x == id) {
-                    idx
-                } else {
-                    let idx = sources.len();
-                    let d = data();
-                    let bpr = d.get_array_memory_size().checked_div(d.len()).unwrap_or(0);
-                    sources.push(d);
-                    source_ids.push(id);
-                    source_bpr.push(bpr);
-                    idx
-                }
-            }
-
-            /// Append a `Range` extend, merging with the previous entry when it is
-            /// a `Range` from the same source whose end abuts `start`. Coalescing
-            /// turns long runs of single-row extends into a handful of multi-row
-            /// extends, shrinking the replay loop in the finaliser.
-            fn push_range(extends: &mut Vec<ColumnExtend>, src_idx: usize, start: usize) {
-                if let Some(ColumnExtend::Range {
-                    src_idx: prev_src,
-                    start: prev_start,
-                    len: prev_len,
-                }) = extends.last_mut()
-                    && *prev_src == src_idx
-                    && *prev_start + *prev_len == start
-                {
-                    *prev_len += 1;
-                    return;
-                }
-                extends.push(ColumnExtend::Range {
-                    src_idx,
-                    start,
-                    len: 1,
-                });
-            }
-
-            /// Append a single null row, merging with a trailing `Nulls` entry.
-            fn push_null(extends: &mut Vec<ColumnExtend>) {
-                if let Some(ColumnExtend::Nulls { len }) = extends.last_mut() {
-                    *len += 1;
-                    return;
-                }
-                extends.push(ColumnExtend::Nulls { len: 1 });
-            }
         }
 
         // Clamp the up-front capacity hint: callers can legitimately pass a very
@@ -1436,7 +1607,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     SelectedEmitter::Source {
                         sources: Vec::new(),
                         source_ids: Vec::new(),
-                        source_bpr: Vec::new(),
+                        source_bytes_per_row: Vec::new(),
                         extends: Vec::with_capacity(cap_hint),
                     }
                 }
@@ -1462,7 +1633,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 break;
             }
 
-            let Some(resolved) = self._resolve_one_row(state, cache, &mut scratch) else {
+            let Some(resolved) =
+                Self::_resolve_one_row(query, state, iter_state, cache, &mut scratch)
+            else {
                 break;
             };
 
@@ -1472,7 +1645,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         let SelectedEmitter::Source {
                             sources,
                             source_ids,
-                            source_bpr,
+                            source_bytes_per_row,
                             extends,
                         } = &mut emitters[selected_idx]
                         else {
@@ -1480,24 +1653,32 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             continue;
                         };
 
-                        if let Some((cursor, chunk)) =
-                            state.view_chunks.first().and_then(|v| v.first())
+                        if let Some((cc, cs)) = state
+                            .view_chunks
+                            .first()
+                            .and_then(|v| v.first())
+                            .zip(iter_state.view_chunks.first().and_then(|v| v.first()))
                         {
                             // TODO(#9922): verify that using the row:ids from the first chunk
                             // always makes sense.
-                            let id = std::ptr::from_ref::<Chunk>(chunk) as usize;
-                            let pos = cursor.load(Ordering::Acquire) as usize;
-                            let src_idx = SelectedEmitter::ensure_source(
+                            let id = std::ptr::from_ref::<Chunk>(&cc.chunk);
+                            let pos = cs.cursor as usize;
+                            let source_idx = SelectedEmitter::ensure_source(
                                 sources,
                                 source_ids,
-                                source_bpr,
+                                source_bytes_per_row,
                                 id,
-                                || chunk.row_ids_array().to_data(),
+                                || cc.chunk.row_ids_array().to_data(),
                             );
-                            SelectedEmitter::push_range(extends, src_idx, pos);
-                            total_bytes = total_bytes.saturating_add(source_bpr[src_idx]);
+                            SelectedEmitter::push_run(
+                                extends,
+                                source_idx,
+                                Span::from_start_len(pos, 1),
+                            );
+                            total_bytes =
+                                total_bytes.saturating_add(source_bytes_per_row[source_idx]);
                         } else {
-                            SelectedEmitter::push_null(extends);
+                            SelectedEmitter::push_nulls(extends, 1);
                         }
                     }
 
@@ -1522,7 +1703,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         let SelectedEmitter::Source {
                             sources,
                             source_ids,
-                            source_bpr,
+                            source_bytes_per_row,
                             extends,
                         } = &mut emitters[selected_idx]
                         else {
@@ -1540,22 +1721,23 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                     .next()
                                     .map(|la| la.to_data());
                                 if let Some(data) = list_array_data {
-                                    let id = std::ptr::from_ref::<Chunk>(s.chunk) as usize;
-                                    let src_idx = SelectedEmitter::ensure_source(
+                                    let id = std::ptr::from_ref::<Chunk>(s.chunk);
+                                    let source_idx = SelectedEmitter::ensure_source(
                                         sources,
                                         source_ids,
-                                        source_bpr,
+                                        source_bytes_per_row,
                                         id,
                                         || data,
                                     );
-                                    SelectedEmitter::push_range(
+                                    SelectedEmitter::push_run(
                                         extends,
-                                        src_idx,
-                                        s.cursor as usize,
+                                        source_idx,
+                                        Span::from_start_len(s.cursor as usize, 1),
                                     );
-                                    total_bytes = total_bytes.saturating_add(source_bpr[src_idx]);
+                                    total_bytes = total_bytes
+                                        .saturating_add(source_bytes_per_row[source_idx]);
                                 } else {
-                                    SelectedEmitter::push_null(extends);
+                                    SelectedEmitter::push_nulls(extends, 1);
                                 }
                             }
                             Some(StreamingJoinState::Retrofilled(unit)) => {
@@ -1581,21 +1763,26 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 if let Some(data) = component_data {
                                     // UnitChunkShared derefs to Chunk; underlying address is
                                     // Arc-stable.
-                                    let id = std::ptr::from_ref::<Chunk>(&**unit) as usize;
-                                    let src_idx = SelectedEmitter::ensure_source(
+                                    let id = std::ptr::from_ref::<Chunk>(&**unit);
+                                    let source_idx = SelectedEmitter::ensure_source(
                                         sources,
                                         source_ids,
-                                        source_bpr,
+                                        source_bytes_per_row,
                                         id,
                                         || data,
                                     );
-                                    SelectedEmitter::push_range(extends, src_idx, 0);
-                                    total_bytes = total_bytes.saturating_add(source_bpr[src_idx]);
+                                    SelectedEmitter::push_run(
+                                        extends,
+                                        source_idx,
+                                        Span::from_start_len(0, 1),
+                                    );
+                                    total_bytes = total_bytes
+                                        .saturating_add(source_bytes_per_row[source_idx]);
                                 } else {
-                                    SelectedEmitter::push_null(extends);
+                                    SelectedEmitter::push_nulls(extends, 1);
                                 }
                             }
-                            None => SelectedEmitter::push_null(extends),
+                            None => SelectedEmitter::push_nulls(extends, 1),
                         }
                     }
                 }
@@ -1611,7 +1798,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             };
         }
 
-        // Finalise each output column.
+        // Finalize each output column.
         let mut columns: Vec<ArrowArrayRef> = Vec::with_capacity(n_selected);
         for (selected_idx, emitter) in emitters.into_iter().enumerate() {
             let (_, column) = &state.selected_contents[selected_idx];
@@ -1621,7 +1808,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     sources,
                     extends,
                     source_ids: _,
-                    source_bpr: _,
+                    source_bytes_per_row: _,
                 } => {
                     if sources.is_empty() {
                         columns.push(arrow::array::new_null_array(datatype, num_rows));
@@ -1631,11 +1818,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let mut mutable = MutableArrayData::new(src_refs, true, num_rows);
                     for ext in &extends {
                         match ext {
-                            ColumnExtend::Range {
-                                src_idx,
-                                start,
-                                len,
-                            } => mutable.extend(*src_idx, *start, *start + *len),
+                            ColumnExtend::Range { source_idx, rows } => {
+                                mutable.extend(*source_idx, rows.start, rows.end());
+                            }
                             ColumnExtend::Nulls { len } => mutable.extend_nulls(*len),
                         }
                     }
@@ -1684,7 +1869,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// See [`Self::next_row`] for more information.
     #[inline]
-    pub fn next_row_batch(&self) -> Option<ArrowRecordBatch> {
+    pub fn next_row_batch(&mut self) -> Option<ArrowRecordBatch> {
         let row = self.next_row()?;
         match ArrowRecordBatch::try_new_with_options(
             self.schema().clone(),
@@ -1706,7 +1891,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
     #[inline]
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn next_row_batch_async(&self) -> Option<ArrowRecordBatch>
+    pub async fn next_row_batch_async(&mut self) -> Option<ArrowRecordBatch>
     where
         E: 'static + Send + Clone,
     {
@@ -1728,23 +1913,23 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
 impl<E: StorageEngineLike> QueryHandle<E> {
     /// Returns an iterator backed by [`Self::next_row`].
-    pub fn iter(&self) -> impl Iterator<Item = Vec<ArrowArrayRef>> + '_ {
+    pub fn iter(&mut self) -> impl Iterator<Item = Vec<ArrowArrayRef>> + '_ {
         std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row`].
     #[expect(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn into_iter(self) -> impl Iterator<Item = Vec<ArrowArrayRef>> {
+    pub fn into_iter(mut self) -> impl Iterator<Item = Vec<ArrowArrayRef>> {
         std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
-    pub fn batch_iter(&self) -> impl Iterator<Item = ArrowRecordBatch> + '_ {
+    pub fn batch_iter(&mut self) -> impl Iterator<Item = ArrowRecordBatch> + '_ {
         std::iter::from_fn(move || self.next_row_batch())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
-    pub fn into_batch_iter(self) -> impl Iterator<Item = ArrowRecordBatch> {
+    pub fn into_batch_iter(mut self) -> impl Iterator<Item = ArrowRecordBatch> {
         std::iter::from_fn(move || self.next_row_batch())
     }
 }
@@ -1830,15 +2015,14 @@ mod tests {
             let query = QueryExpression::default();
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -1852,15 +2036,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -1886,15 +2069,14 @@ mod tests {
         };
         eprintln!("{query:#?}:");
 
-        let query_handle = query_engine.query(query.clone());
+        let mut query_handle = query_engine.query(query.clone());
         assert_eq!(
             query_engine.query(query.clone()).into_iter().count() as u64,
             query_handle.num_rows()
         );
-        let dataframe = concat_batches(
-            query_handle.schema(),
-            &query_handle.batch_iter().collect_vec(),
-        )?;
+        let schema = query_handle.schema().clone();
+        let batches = query_handle.batch_iter().collect_vec();
+        let dataframe = concat_batches(&schema, &batches)?;
         eprintln!("{}", format_record_batch(&dataframe.clone()));
 
         assert_snapshot!(DisplayRB(dataframe));
@@ -1919,15 +2101,14 @@ mod tests {
         };
         eprintln!("{query:#?}:");
 
-        let query_handle = query_engine.query(query.clone());
+        let mut query_handle = query_engine.query(query.clone());
         assert_eq!(
             query_engine.query(query.clone()).into_iter().count() as u64,
             query_handle.num_rows()
         );
-        let dataframe = concat_batches(
-            query_handle.schema(),
-            &query_handle.batch_iter().collect_vec(),
-        )?;
+        let schema = query_handle.schema().clone();
+        let batches = query_handle.batch_iter().collect_vec();
+        let dataframe = concat_batches(&schema, &batches)?;
         eprintln!("{}", format_record_batch(&dataframe.clone()));
 
         assert_snapshot!(DisplayRB(dataframe));
@@ -1958,15 +2139,14 @@ mod tests {
         };
         eprintln!("{query:#?}:");
 
-        let query_handle = query_engine.query(query.clone());
+        let mut query_handle = query_engine.query(query.clone());
         assert_eq!(
             query_engine.query(query.clone()).into_iter().count() as u64,
             query_handle.num_rows()
         );
-        let dataframe = concat_batches(
-            query_handle.schema(),
-            &query_handle.batch_iter().collect_vec(),
-        )?;
+        let schema = query_handle.schema().clone();
+        let batches = query_handle.batch_iter().collect_vec();
+        let dataframe = concat_batches(&schema, &batches)?;
         eprintln!("{}", format_record_batch(&dataframe.clone()));
 
         assert_snapshot!(DisplayRB(dataframe));
@@ -2000,15 +2180,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2030,15 +2209,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2073,15 +2251,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2099,15 +2276,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2127,15 +2303,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2155,15 +2330,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2197,15 +2371,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2234,15 +2407,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2272,15 +2444,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2299,15 +2470,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2352,15 +2522,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2395,15 +2564,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2465,15 +2633,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2505,15 +2672,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot!(DisplayRB(dataframe));
@@ -2529,15 +2695,14 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concat_batches(
-                query_handle.schema(),
-                &query_handle.batch_iter().collect_vec(),
-            )?;
+            let schema = query_handle.schema().clone();
+            let batches = query_handle.batch_iter().collect_vec();
+            let dataframe = concat_batches(&schema, &batches)?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             // TODO(#7650): Those null values for `MyColor` on 10 and 20 look completely insane, but then again
@@ -2570,7 +2735,7 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows(),
@@ -2586,10 +2751,9 @@ mod tests {
                         query_handle.schema(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
                     )?;
-                    let got = concat_batches(
-                        query_handle.schema(),
-                        &query_handle.batch_iter().take(3).collect_vec(),
-                    )?;
+                    let schema = query_handle.schema().clone();
+                    let batches = query_handle.batch_iter().take(3).collect_vec();
+                    let got = concat_batches(&schema, &batches)?;
 
                     let expected = format!("{:#?}", expected.columns());
                     let got = format!("{:#?}", got.columns());
@@ -2612,7 +2776,7 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows(),
@@ -2628,10 +2792,9 @@ mod tests {
                         query_handle.schema(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
                     )?;
-                    let got = concat_batches(
-                        query_handle.schema(),
-                        &query_handle.batch_iter().take(3).collect_vec(),
-                    )?;
+                    let schema = query_handle.schema().clone();
+                    let batches = query_handle.batch_iter().take(3).collect_vec();
+                    let got = concat_batches(&schema, &batches)?;
 
                     let expected = format!("{:#?}", expected.columns());
                     let got = format!("{:#?}", got.columns());
@@ -2656,7 +2819,7 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows(),
@@ -2672,10 +2835,9 @@ mod tests {
                         query_handle.schema(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
                     )?;
-                    let got = concat_batches(
-                        query_handle.schema(),
-                        &query_handle.batch_iter().take(3).collect_vec(),
-                    )?;
+                    let schema = query_handle.schema().clone();
+                    let batches = query_handle.batch_iter().take(3).collect_vec();
+                    let got = concat_batches(&schema, &batches)?;
 
                     let expected = format!("{:#?}", expected.columns());
                     let got = format!("{:#?}", got.columns());
@@ -2694,7 +2856,7 @@ mod tests {
             };
             eprintln!("{query:#?}:");
 
-            let query_handle = query_engine.query(query.clone());
+            let mut query_handle = query_engine.query(query.clone());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows(),
@@ -2710,10 +2872,9 @@ mod tests {
                         query_handle.schema(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
                     )?;
-                    let got = concat_batches(
-                        query_handle.schema(),
-                        &query_handle.batch_iter().take(3).collect_vec(),
-                    )?;
+                    let schema = query_handle.schema().clone();
+                    let batches = query_handle.batch_iter().take(3).collect_vec();
+                    let got = concat_batches(&schema, &batches)?;
 
                     let expected = format!("{:#?}", expected.columns());
                     let got = format!("{:#?}", got.columns());
@@ -2768,12 +2929,11 @@ mod tests {
             selection: None,
         };
 
-        let query_handle = engine.query(query_expr);
+        let mut query_handle = engine.query(query_expr);
 
-        let dataframe = concat_batches(
-            query_handle.schema(),
-            &query_handle.batch_iter().collect_vec(),
-        )?;
+        let schema = query_handle.schema().clone();
+        let batches = query_handle.batch_iter().collect_vec();
+        let dataframe = concat_batches(&schema, &batches)?;
         eprintln!("{}", format_record_batch(&dataframe.clone()));
 
         assert_snapshot!(DisplayRB(dataframe));
@@ -2795,7 +2955,7 @@ mod tests {
 
             #[inline]
             fn poll_next(
-                self: std::pin::Pin<&mut Self>,
+                mut self: std::pin::Pin<&mut Self>,
                 cx: &mut std::task::Context<'_>,
             ) -> std::task::Poll<Option<Self::Item>> {
                 let fut = self.0.next_row_batch_async();
@@ -2967,13 +3127,13 @@ mod tests {
 
         for query in queries {
             // Reference path: row-by-row via existing `next_row`.
-            let reference_handle = query_engine.query(query.clone());
+            let mut reference_handle = query_engine.query(query.clone());
             let reference_rows: Vec<_> = reference_handle.iter().collect();
             let total_rows = reference_rows.len();
             let n_fields = reference_handle.schema().fields.len();
 
             // Candidate path: many `next_n_rows` calls of size 64.
-            let candidate_handle = query_engine.query(query.clone());
+            let mut candidate_handle = query_engine.query(query.clone());
             let mut candidate_rows = 0usize;
             let mut candidate_columns: Vec<Vec<ArrowArrayRef>> =
                 (0..n_fields).map(|_| Vec::new()).collect();
@@ -3327,6 +3487,317 @@ mod tests {
 
         let chunk5 = Arc::new(chunk5);
         store.insert_chunk(&chunk5)?;
+
+        Ok(())
+    }
+
+    /// Build a store containing `n_chunks` disjoint single-component chunks, each holding
+    /// `rows_per_chunk` rows. Chunk `k` covers the time range
+    /// `[k * rows_per_chunk, (k+1) * rows_per_chunk)`. Chunks are inserted in `order`.
+    fn build_disjoint_chunk_store(
+        n_chunks: usize,
+        rows_per_chunk: usize,
+        order: &[usize],
+    ) -> anyhow::Result<ChunkStore> {
+        assert_eq!(order.len(), n_chunks);
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+
+        let entity_path = EntityPath::from("/disjoint");
+
+        let mut chunks: Vec<Arc<Chunk>> = Vec::with_capacity(n_chunks);
+        for chunk_idx in 0..n_chunks {
+            let mut builder = Chunk::builder(entity_path.clone());
+            for local_row in 0..rows_per_chunk {
+                let global_row = chunk_idx * rows_per_chunk + local_row;
+                #[expect(clippy::cast_possible_wrap)]
+                let frame = TimeInt::new_temporal(global_row as i64);
+                let points = MyPoint::from_iter(global_row as u32..global_row as u32 + 1);
+                builder = builder.with_sparse_component_batches(
+                    RowId::new(),
+                    [build_frame_nr(frame)],
+                    [(MyPoints::descriptor_points(), Some(&points as _))],
+                );
+            }
+            chunks.push(Arc::new(builder.build()?));
+        }
+
+        for &idx in order {
+            store.insert_chunk(&chunks[idx])?;
+        }
+
+        Ok(store)
+    }
+
+    fn run_query_collect_rows(
+        store: &ChunkStoreHandle,
+        query: QueryExpression,
+    ) -> anyhow::Result<ArrowRecordBatch> {
+        let cache = QueryCache::new_handle(store.clone());
+        let engine = QueryEngine::new(store.clone(), cache);
+        let mut handle = engine.query(query);
+        let schema = handle.schema().clone();
+        let batches = handle.batch_iter().collect_vec();
+        Ok(concat_batches(&schema, &batches)?)
+    }
+
+    /// Build `n_chunks` single-component chunks on the same entity whose time
+    /// ranges overlap with their neighbors.
+    ///
+    /// Chunk `k` covers `frame_nr ∈ [k * step, k * step + chunk_width)`. With
+    /// `step < chunk_width`, neighboring chunks share `chunk_width - step` frames.
+    /// Each chunk uses a distinct payload offset so the streaming-join's
+    /// max-`RowId` overlap resolution at `query.rs:1243` has a meaningful winner
+    /// to pick.
+    fn build_overlapping_chunks(
+        n_chunks: usize,
+        chunk_width: u32,
+        step: u32,
+    ) -> anyhow::Result<Vec<Arc<Chunk>>> {
+        assert!(n_chunks >= 1);
+        assert!(step < chunk_width, "chunks must actually overlap");
+
+        let entity_path = EntityPath::from("/overlap");
+        let mut chunks: Vec<Arc<Chunk>> = Vec::with_capacity(n_chunks);
+        for k in 0..n_chunks {
+            let mut builder = Chunk::builder(entity_path.clone());
+            #[expect(clippy::cast_possible_truncation)]
+            let base = (k as u32) * step;
+            // Distinct payload so we can detect which chunk's data ended up in the row.
+            #[expect(clippy::cast_possible_truncation)]
+            let payload_offset = (k as u32) * 1_000;
+            for f in base..base + chunk_width {
+                let points = MyPoint::from_iter((f + payload_offset)..(f + payload_offset + 1));
+                let frame = TimeInt::new_temporal(i64::from(f));
+                builder = builder.with_sparse_component_batches(
+                    RowId::new(),
+                    [build_frame_nr(frame)],
+                    [(MyPoints::descriptor_points(), Some(&points as _))],
+                );
+            }
+            chunks.push(Arc::new(builder.build()?));
+        }
+        Ok(chunks)
+    }
+
+    fn build_overlapping_chunk_store(
+        chunks: &[Arc<Chunk>],
+        order: &[usize],
+    ) -> anyhow::Result<ChunkStore> {
+        assert_eq!(order.len(), chunks.len());
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+        for &idx in order {
+            store.insert_chunk(&chunks[idx])?;
+        }
+        Ok(store)
+    }
+
+    /// Verifies that the H3 init-sort by `time_min` (which is now unconditional, vs. the
+    /// previous "only after clear-chunk merge" policy) leaves emitted output unchanged
+    /// when two chunks overlap on the same `filtered_index` value, exercised through both
+    /// the batched (`next_n_rows` -> `next_row_batch`) and the per-row (`next_row` ->
+    /// `_resolve_one_row`) paths.
+    ///
+    /// Why both paths matter: the streaming-join's overlap resolution at `query.rs:1243`
+    /// picks max-`RowId` for value columns, which is order-independent by construction.
+    /// The `RowId` column itself is sourced from `view_chunks.first()`
+    /// (`query.rs:1101-1107`, `1635-1656`). Once `view_chunks` is sorted by `time_min`,
+    /// the "first chunk" identity becomes a function of `time_min` rather than insert
+    /// order — so insert-order invariance is the correct assertion either way.
+    ///
+    /// Note: the `RowId` column itself is intentionally not in the selection. Today,
+    /// `indices_and_components()` (per its `TODO(#9922)` doc) excludes `RowId`, so the
+    /// first view is always a `Time` column with empty `view_chunks[0]`, which makes the
+    /// `view_chunks.first().and_then(|vec| vec.first())` lookup return `None` and emit
+    /// a null array — incompatible with the non-nullable `RowId` schema field. When
+    /// `#9922` is fixed and `RowId` emission picks a real chunk, the H3 sort makes that
+    /// choice a pure function of `time_min`, so this test's insert-order-invariance
+    /// assertion will continue to hold over the full record batch.
+    #[test]
+    fn pruning_walk_overlapping_chunks_rowid_invariance() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        // 3 chunks: A=[0,5), B=[3,8), C=[6,11). Pairwise overlaps on frames
+        // {3,4} (A∩B) and {6,7} (B∩C). Distinct payload offsets per chunk so
+        // the max-RowId overlap winner at `query.rs:1243` has a real choice
+        // to make.
+        const N_CHUNKS: usize = 3;
+        const CHUNK_WIDTH: u32 = 5;
+        const STEP: u32 = 3;
+        let chunks = build_overlapping_chunks(N_CHUNKS, CHUNK_WIDTH, STEP)?;
+
+        let forward: Vec<usize> = (0..N_CHUNKS).collect();
+        let reversed: Vec<usize> = (0..N_CHUNKS).rev().collect();
+        let shuffled: Vec<usize> = vec![1, 2, 0];
+
+        let store_fwd = ChunkStoreHandle::new(build_overlapping_chunk_store(&chunks, &forward)?);
+        let store_rev = ChunkStoreHandle::new(build_overlapping_chunk_store(&chunks, &reversed)?);
+        let store_shuf = ChunkStoreHandle::new(build_overlapping_chunk_store(&chunks, &shuffled)?);
+
+        let filtered_index_name = TimelineName::new("frame_nr");
+        let filtered_index = Some(filtered_index_name);
+
+        let make_query = |range: Option<AbsoluteTimeRange>| QueryExpression {
+            filtered_index,
+            filtered_index_range: range,
+            selection: Some(vec![
+                ColumnSelector::Time(TimeColumnSelector::from(filtered_index_name)),
+                ColumnSelector::Component(ComponentColumnSelector {
+                    entity_path: EntityPath::from("/overlap"),
+                    component: MyPoints::descriptor_points().component.to_string(),
+                }),
+            ]),
+            ..Default::default()
+        };
+
+        let collect_per_row_arrays = |store: &ChunkStoreHandle,
+                                      query: QueryExpression|
+         -> anyhow::Result<Vec<Vec<ArrayRef>>> {
+            let cache = QueryCache::new_handle(store.clone());
+            let engine = QueryEngine::new(store.clone(), cache);
+            let mut handle = engine.query(query);
+            let mut out = Vec::new();
+            while let Some(row) = handle.next_row() {
+                out.push(row);
+            }
+            Ok(out)
+        };
+
+        // Full-range and mid-range queries. Mid-range crosses chunk boundaries
+        // to exercise H1 (exhausted), H2 (time-range prune), and H3 (early
+        // break) jointly under overlap.
+        //
+        // Total unique frames: union of [0,5), [3,8), [6,11) = [0,11) -> 11 rows.
+        // Mid-range [4..=7] picks 4 rows, with frame 4 in A∩B and frames 6,7 in B∩C.
+        let full_query = make_query(None);
+        let mid_query = make_query(Some(AbsoluteTimeRange::new(4, 7)));
+
+        for (label, query, expected_rows) in [
+            ("full-range", full_query, 11usize),
+            ("mid-range", mid_query, 4usize),
+        ] {
+            // Batched path: byte-identical record batches across all 3 orderings.
+            let rb_fwd = run_query_collect_rows(&store_fwd, query.clone())?;
+            let rb_rev = run_query_collect_rows(&store_rev, query.clone())?;
+            let rb_shuf = run_query_collect_rows(&store_shuf, query.clone())?;
+            assert_eq!(rb_fwd.num_rows(), expected_rows, "{label}: row count");
+            assert_eq!(rb_fwd, rb_rev, "{label}: batched fwd vs reversed");
+            assert_eq!(rb_fwd, rb_shuf, "{label}: batched fwd vs shuffled");
+
+            // Per-row path drives `_resolve_one_row` directly.
+            let rows_fwd = collect_per_row_arrays(&store_fwd, query.clone())?;
+            let rows_rev = collect_per_row_arrays(&store_rev, query.clone())?;
+            let rows_shuf = collect_per_row_arrays(&store_shuf, query)?;
+            assert_eq!(rows_fwd.len(), expected_rows, "{label}: per-row count");
+            for (other_label, other) in [("reversed", &rows_rev), ("shuffled", &rows_shuf)] {
+                assert_eq!(
+                    rows_fwd.len(),
+                    other.len(),
+                    "{label}: per-row count diverged vs {other_label}",
+                );
+                for (i, (a_row, b_row)) in rows_fwd.iter().zip(other).enumerate() {
+                    assert_eq!(
+                        a_row.len(),
+                        b_row.len(),
+                        "{label}: per-row column count diverged at row {i} vs {other_label}",
+                    );
+                    for (col_idx, (a, b)) in a_row.iter().zip(b_row).enumerate() {
+                        assert_eq!(
+                            a.to_data(),
+                            b.to_data(),
+                            "{label}: row {i} col {col_idx} changed vs {other_label}",
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Verifies that the H1/H2/H3 pruning logic produces identical row output regardless
+    /// of the insertion order of disjoint chunks. The view-init sort by `time_min` (H3)
+    /// must normalize the walk so that:
+    /// - forward, reversed, and shuffled chunk inserts yield byte-identical record batches
+    /// - mid-range filtered queries (which exercise H1 exhaustion of earlier chunks and
+    ///   H3 early-break for later chunks) match the unfiltered slice.
+    #[test]
+    fn pruning_walk_insert_order_invariance() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        const N_CHUNKS: usize = 5;
+        const ROWS_PER_CHUNK: usize = 4;
+        const TOTAL_ROWS: usize = N_CHUNKS * ROWS_PER_CHUNK;
+
+        let forward: Vec<usize> = (0..N_CHUNKS).collect();
+        let reversed: Vec<usize> = (0..N_CHUNKS).rev().collect();
+        let shuffled: Vec<usize> = vec![2, 0, 4, 1, 3];
+
+        let store_fwd = ChunkStoreHandle::new(build_disjoint_chunk_store(
+            N_CHUNKS,
+            ROWS_PER_CHUNK,
+            &forward,
+        )?);
+        let store_rev = ChunkStoreHandle::new(build_disjoint_chunk_store(
+            N_CHUNKS,
+            ROWS_PER_CHUNK,
+            &reversed,
+        )?);
+        let store_shuf = ChunkStoreHandle::new(build_disjoint_chunk_store(
+            N_CHUNKS,
+            ROWS_PER_CHUNK,
+            &shuffled,
+        )?);
+
+        let filtered_index = Some(TimelineName::new("frame_nr"));
+
+        // Full-range query: all rows visible. Each row should match across orderings.
+        let full_query = QueryExpression {
+            filtered_index,
+            ..Default::default()
+        };
+
+        let rb_fwd = run_query_collect_rows(&store_fwd, full_query.clone())?;
+        let rb_rev = run_query_collect_rows(&store_rev, full_query.clone())?;
+        let rb_shuf = run_query_collect_rows(&store_shuf, full_query.clone())?;
+
+        assert_eq!(rb_fwd.num_rows(), TOTAL_ROWS);
+        assert_eq!(rb_fwd, rb_rev, "forward vs reversed insert order differ");
+        assert_eq!(rb_fwd, rb_shuf, "forward vs shuffled insert order differ");
+
+        // Mid-range query: indices [8..16) skip the first two chunks entirely (H1/H2)
+        // and break out before reaching the last chunk (H3).
+        let mid_query = QueryExpression {
+            filtered_index,
+            filtered_index_range: Some(AbsoluteTimeRange::new(8, 15)),
+            ..Default::default()
+        };
+
+        let mid_fwd = run_query_collect_rows(&store_fwd, mid_query.clone())?;
+        let mid_rev = run_query_collect_rows(&store_rev, mid_query.clone())?;
+        let mid_shuf = run_query_collect_rows(&store_shuf, mid_query)?;
+
+        assert_eq!(mid_fwd.num_rows(), 8); // frames 8..=15 inclusive
+        assert_eq!(mid_fwd, mid_rev, "mid-range fwd vs reversed differ");
+        assert_eq!(mid_fwd, mid_shuf, "mid-range fwd vs shuffled differ");
+
+        // Sanity: per-row `next_row` matches batch output.
+        let cache = QueryCache::new_handle(store_shuf.clone());
+        let engine = QueryEngine::new(store_shuf.clone(), cache);
+        let mut handle = engine.query(QueryExpression {
+            filtered_index,
+            ..Default::default()
+        });
+        let mut row_count = 0usize;
+        while handle.next_row().is_some() {
+            row_count += 1;
+        }
+        assert_eq!(row_count, TOTAL_ROWS);
 
         Ok(())
     }

@@ -6,4 +6,6 @@ namespace rerun.blueprint.views;
 table TextDocumentView (
     "attr.rerun.view_identifier": "TextDocument"
 ) {
+  /// Formatting options for the text document view.
+  format_options: rerun.blueprint.archetypes.TextDocumentFormat (order: 1000);
 }

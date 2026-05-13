@@ -2,9 +2,12 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
+use arrow::array::{ArrayRef, BooleanArray, ListArray as ArrowListArray};
+use arrow::buffer::{OffsetBuffer, ScalarBuffer};
+use arrow::datatypes::Field;
 use itertools::izip;
 use re_byte_size::SizeBytes as _;
-use re_chunk::{Chunk, ChunkId, ChunkShared, EntityPath, Timeline, TimelineName};
+use re_chunk::{Chunk, ChunkId, ChunkShared, EntityPath, TimeColumn, Timeline, TimelineName};
 use re_format::format_bytes;
 use re_log_types::TimeInt;
 use re_sdk_types::archetypes::VideoStream;
@@ -48,16 +51,27 @@ pub fn rebatch_video_chunks_to_gops(
     re_tracing::profile_function!();
 
     let sample_component = VideoStream::descriptor_sample().component;
+    let keyframe_component = VideoStream::descriptor_is_keyframe().component;
 
     // Collect all temporal chunks that contain video samples, grouped by entity.
     let mut sample_chunks_per_entity: HashMap<EntityPath, HashMap<ChunkId, ChunkShared>> =
         Default::default();
+    let mut existing_keyframe_chunk_ids_per_entity: HashMap<EntityPath, HashSet<ChunkId>> =
+        Default::default();
     for chunk in store.iter_physical_chunks() {
-        if !chunk.is_static() && chunk.components().contains_component(sample_component) {
+        if chunk.is_static() {
+            continue;
+        }
+        if chunk.components().contains_component(sample_component) {
             sample_chunks_per_entity
                 .entry(chunk.entity_path().clone())
                 .or_default()
                 .insert(chunk.id(), chunk.clone());
+        } else if chunk.components().contains_component(keyframe_component) {
+            existing_keyframe_chunk_ids_per_entity
+                .entry(chunk.entity_path().clone())
+                .or_default()
+                .insert(chunk.id());
         }
     }
 
@@ -67,6 +81,7 @@ pub fn rebatch_video_chunks_to_gops(
 
     let mut replaced_chunk_ids: HashSet<ChunkId> = HashSet::default();
     let mut new_chunks: Vec<Chunk> = Vec::new();
+    let mut keyframe_chunks: Vec<Chunk> = Vec::new();
 
     re_log::info!(
         num_video_entities = sample_chunks_per_entity.len(),
@@ -75,9 +90,18 @@ pub fn rebatch_video_chunks_to_gops(
 
     for (entity_path, sample_chunks) in &sample_chunks_per_entity {
         match rebatch_video_entity(store, config, is_start_of_gop, entity_path, sample_chunks) {
-            Ok(new_entity_chunks) => {
+            Ok(EntityRebatch {
+                rebatched,
+                keyframes,
+            }) => {
                 replaced_chunk_ids.extend(sample_chunks.keys().copied());
-                new_chunks.extend(new_entity_chunks);
+                if let Some(stale) = existing_keyframe_chunk_ids_per_entity.get(entity_path) {
+                    replaced_chunk_ids.extend(stale.iter().copied());
+                }
+                new_chunks.extend(rebatched);
+                if let Some(kf) = keyframes {
+                    keyframe_chunks.push(kf);
+                }
             }
             Err(err) => {
                 re_log::warn!(entity = %entity_path, %err, "failed to rebatch video entity, skipping");
@@ -104,6 +128,10 @@ pub fn rebatch_video_chunks_to_gops(
         new_store.insert_chunk(&Arc::new(chunk))?;
     }
 
+    for chunk in keyframe_chunks {
+        new_store.insert_chunk(&Arc::new(chunk))?;
+    }
+
     /// Warn once per compaction if any rebatched chunk exceeds this size.
     ///
     /// GoP rebatching never splits a GoP across chunks, so streams with long
@@ -122,16 +150,26 @@ pub fn rebatch_video_chunks_to_gops(
     Ok(new_store)
 }
 
+/// Per-entity rebatch result.
+struct EntityRebatch {
+    /// Chunks that replace the original `VideoSample` chunks for this entity.
+    rebatched: Vec<Chunk>,
+
+    /// Marker chunk holding sparse `is_keyframe` rows for this entity, if any.
+    keyframes: Option<Chunk>,
+}
+
 /// Rebatch a single video entity's chunks along GoP boundaries.
 ///
-/// Returns the new chunks that replace the old ones.
+/// Returns the new chunks that replace the old ones, and an optional marker chunk
+/// of `is_keyframe` rows captured from the same scan.
 fn rebatch_video_entity(
     store: &ChunkStore,
     config: &ChunkStoreConfig,
     is_start_of_gop: &dyn Fn(&[u8], VideoCodec) -> anyhow::Result<bool>,
     entity_path: &EntityPath,
     sample_chunks: &HashMap<ChunkId, ChunkShared>,
-) -> anyhow::Result<Vec<Chunk>> {
+) -> anyhow::Result<EntityRebatch> {
     re_tracing::profile_function!();
 
     for chunk in sample_chunks.values() {
@@ -152,8 +190,9 @@ fn rebatch_video_entity(
         }
     }
 
-    let timeline_name =
+    let timeline =
         choose_timeline(sample_chunks).ok_or_else(|| anyhow::anyhow!("no timeline found"))?;
+    let timeline_name = *timeline.name();
 
     let codec = extract_codec(store, entity_path, timeline_name)
         .ok_or_else(|| anyhow::anyhow!("couldn't resolve video codec"))?;
@@ -161,6 +200,8 @@ fn rebatch_video_entity(
     let sample_index = build_sample_index(is_start_of_gop, sample_chunks, timeline_name, codec)?;
 
     anyhow::ensure!(!sample_index.is_empty(), "no video samples found");
+
+    let keyframes = build_keyframe_chunk(entity_path, timeline, &sample_index)?;
 
     let gop_groups = split_into_gop_groups(entity_path, &sample_index);
 
@@ -177,11 +218,57 @@ fn rebatch_video_entity(
 
     log_entity_chunk_stats(entity_path, timeline_name, codec, &merged);
 
-    Ok(merged)
+    Ok(EntityRebatch {
+        rebatched: merged,
+        keyframes,
+    })
+}
+
+/// Build a sparse `is_keyframe` marker chunk for this entity.
+///
+/// Emits one row per keyframe sample, all with value `true`, on the
+/// [`VideoStream::descriptor_is_keyframe`] descriptor. Returns `None` if no
+/// sample in `sample_index` was detected as a keyframe.
+fn build_keyframe_chunk(
+    entity_path: &EntityPath,
+    timeline: Timeline,
+    sample_index: &[SampleInfo],
+) -> anyhow::Result<Option<Chunk>> {
+    // Collect timestamps for keyframe samples. `sample_index` is already sorted by time,
+    // so the resulting time column is sorted too.
+    let times: Vec<i64> = sample_index
+        .iter()
+        .filter(|s| s.is_start_of_gop)
+        .map(|s| s.time.as_i64())
+        .collect();
+
+    let num_keyframes = times.len();
+    if num_keyframes == 0 {
+        return Ok(None);
+    }
+
+    // Build the component column as a single ListArray: `num_keyframes` rows,
+    // each holding a one-element boolean batch with value `true`.
+    let values: ArrayRef = Arc::new(BooleanArray::from(vec![true; num_keyframes]));
+    let offsets = OffsetBuffer::from_lengths(std::iter::repeat_n(1, num_keyframes));
+    let field = Field::new("item", values.data_type().clone(), true);
+    let list_array = ArrowListArray::try_new(field.into(), offsets, values, None)
+        .map_err(|err| anyhow::anyhow!("failed to build keyframe list array: {err}"))?;
+
+    let time_column = TimeColumn::new(Some(true), timeline, ScalarBuffer::from(times));
+
+    let chunk = Chunk::from_columns(
+        entity_path.clone(),
+        [time_column],
+        [(VideoStream::descriptor_is_keyframe(), list_array)],
+    )
+    .map_err(|err| anyhow::anyhow!("failed to build keyframe chunk: {err}"))?;
+
+    Ok(Some(chunk))
 }
 
 /// Pick the best timeline for sorting video samples.
-fn choose_timeline(sample_chunks: &HashMap<ChunkId, ChunkShared>) -> Option<TimelineName> {
+fn choose_timeline(sample_chunks: &HashMap<ChunkId, ChunkShared>) -> Option<Timeline> {
     let mut counts: HashMap<Timeline, u64> = Default::default();
     for chunk in sample_chunks.values() {
         for tc in chunk.timelines().values() {
@@ -194,8 +281,9 @@ fn choose_timeline(sample_chunks: &HashMap<ChunkId, ChunkShared>) -> Option<Time
     }
 
     let timelines: Vec<_> = counts.keys().copied().collect();
-    let best = Timeline::pick_best_timeline(&timelines, |t| counts.get(t).copied().unwrap_or(0));
-    Some(*best.name())
+    Some(Timeline::pick_best_timeline(&timelines, |t| {
+        counts.get(t).copied().unwrap_or(0)
+    }))
 }
 
 fn extract_codec(
@@ -335,7 +423,7 @@ fn chunk_from_gop(
             .entry(sample.chunk_id)
             .or_insert_with(|| {
                 chunk_order.push(sample.chunk_id);
-                vec![row_index]
+                Vec::new()
             })
             .push(row_index);
     }

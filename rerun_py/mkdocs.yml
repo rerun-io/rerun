@@ -5,6 +5,15 @@ site_name: Rerun Python APIs
 site_url: https://ref.rerun.io/docs/python/
 repo_url: https://github.com/rerun-io/rerun/
 
+# Files in `docs/` that are contributor-facing source materials and should
+# not ship as part of the published site (mkdocs copies non-`.md` files
+# verbatim by default).
+exclude_docs: |
+  writing_docs.md
+  gen_common_index.py
+  SUMMARY.txt
+  templates/
+
 # Use the material theme
 # Override some options for nav: https://squidfunk.github.io/mkdocs-material/setup/setting-up-navigation/
 theme:
@@ -12,8 +21,6 @@ theme:
   features:
     - navigation.indexes
     - navigation.instant
-    - navigation.tabs
-    - navigation.tabs.sticky
     - navigation.tracking
     - search.share
 
@@ -30,7 +37,7 @@ plugins:
       handlers:
         python:
           paths: ["rerun_sdk", "."] # Lookup python modules relative to this path
-          import: # Cross-references for python and numpy
+          inventories: # Cross-references for python and numpy
             - https://arrow.apache.org/docs/objects.inv
             - https://docs.python.org/3.10/objects.inv
             - https://numpy.org/doc/stable/objects.inv
@@ -54,7 +61,8 @@ plugins:
             merge_init_into_class: false # Not compatible with `inherited_members`
             show_if_no_docstring: false # We intentionally hide archetype fields
             show_source: no
-            load_external_modules: true
+            extra:
+              load_external_modules: true
             preload_modules:
               - rerun_bindings
             annotations_path: brief
@@ -62,15 +70,43 @@ plugins:
             find_stubs_package: true
             extensions:
               - griffe_warnings_deprecated
+              - griffe_public_redundant_aliases
 
   - gen-files: # https://oprypin.github.io/mkdocs-gen-files
       scripts:
         - docs/gen_common_index.py
   - literate-nav: # https://oprypin.github.io/mkdocs-literate-nav
       nav_file: SUMMARY.txt
+  # Keep legacy `common/<page>` URLs working. We dropped the `common/` URL
+  # prefix and collapsed the old function-category pages
+  # (initialization_functions, logging_functions, etc.) into the flat
+  # `rerun` page. These stubs preserve the old URLs for inbound links
+  # (docs, examples, blog posts, external sites).
   - redirects: # https://github.com/mkdocs/mkdocs-redirects
       redirect_maps:
-        "index.md": "common/index.md"
+        common/index.md: index.md
+        common/archetypes.md: archetypes.md
+        common/components.md: components.md
+        common/datatypes.md: datatypes.md
+        common/catalog.md: catalog.md
+        common/utilities.md: utilities.md
+        common/recording.md: recording.md
+        common/server.md: server.md
+        common/notebook.md: notebook.md
+        common/authentication.md: auth.md
+        common/urdf_support.md: urdf.md
+        common/blueprint_apis.md: blueprint.md
+        common/blueprint_archetypes.md: blueprint_archetypes.md
+        common/blueprint_components.md: blueprint_components.md
+        common/blueprint_datatypes.md: blueprint_datatypes.md
+        common/blueprint_views.md: blueprint_views.md
+        common/initialization_functions.md: rerun.md
+        common/logging_functions.md: rerun.md
+        common/property_functions.md: rerun.md
+        common/columnar_api.md: rerun.md
+        common/script_helpers.md: rerun.md
+        common/other_classes_and_functions.md: rerun.md
+        common/custom_data.md: rerun.md
 
 # https://www.mkdocs.org/user-guide/configuration/#markdown_extensions
 # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/

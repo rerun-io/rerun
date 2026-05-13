@@ -3,7 +3,9 @@
 #include <rerun.hpp>
 
 int main(int argc, char* argv[]) {
-    const auto rec = rerun::RecordingStream("rerun_example_transform3d_hierarchy_named_frames");
+    const auto rec = rerun::RecordingStream(
+        "rerun_example_transform3d_hierarchy_named_frames"
+    );
     rec.spawn().exit_on_failure();
 
     // Define entities with explicit coordinate frames.

@@ -7,7 +7,7 @@ use re_log_types::hash::Hash64;
 use re_sdk_types::archetypes::Tensor;
 use re_sdk_types::datatypes::TensorData;
 
-use crate::{Cache, TensorStats};
+use crate::{Cache, CacheEntryAccess, TensorStats};
 
 /// Caches tensor stats.
 ///
@@ -15,15 +15,32 @@ use crate::{Cache, TensorStats};
 #[derive(Default)]
 pub struct TensorStatsCache(HashMap<Hash64, TensorStats>);
 
-impl TensorStatsCache {
+pub struct TensorStatsAccessor<'a> {
     /// The `RowId` of the `TensorData` may be used as a cache key.
     /// NOTE: `TensorData` is never batched (they are mono-components),
     /// so we don't need the instance id here.
+    pub tensor_cache_key: Hash64,
+
+    /// The tensor data over which we're computing stats. This is needed for the cache miss case.
+    pub tensor: &'a TensorData,
+}
+
+impl TensorStatsCache {
     pub fn entry(&mut self, tensor_cache_key: Hash64, tensor: &TensorData) -> TensorStats {
         *self
             .0
             .entry(tensor_cache_key)
             .or_insert_with(|| TensorStats::from_tensor(tensor))
+    }
+}
+
+impl<'a> CacheEntryAccess<TensorStatsAccessor<'a>, TensorStats> for TensorStatsCache {
+    fn read(&self, key: &TensorStatsAccessor<'a>) -> Option<TensorStats> {
+        self.0.get(&key.tensor_cache_key).copied()
+    }
+
+    fn compute(&mut self, key: &TensorStatsAccessor<'a>) -> TensorStats {
+        self.entry(key.tensor_cache_key, key.tensor)
     }
 }
 

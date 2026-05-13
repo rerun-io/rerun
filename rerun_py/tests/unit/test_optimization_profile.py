@@ -24,10 +24,10 @@ def test_optimization_profile_equality() -> None:
 
 def test_replace_works() -> None:
     """`dataclasses.replace` produces a new profile with overridden fields."""
-    derived = dataclasses.replace(OptimizationProfile.DATAPLATFORM, gop_batching=False)
+    derived = dataclasses.replace(OptimizationProfile.OBJECT_STORE, gop_batching=False)
     assert derived.gop_batching is False
-    # Other fields preserved from DATAPLATFORM
-    assert derived.max_bytes == OptimizationProfile.DATAPLATFORM.max_bytes
-    assert derived.max_rows == OptimizationProfile.DATAPLATFORM.max_rows
+    # Other fields preserved from OBJECT_STORE
+    assert derived.max_bytes == OptimizationProfile.OBJECT_STORE.max_bytes
+    assert derived.max_rows == OptimizationProfile.OBJECT_STORE.max_rows
     # Original is untouched
-    assert OptimizationProfile.DATAPLATFORM.gop_batching is True
+    assert OptimizationProfile.OBJECT_STORE.gop_batching is True

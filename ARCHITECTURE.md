@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/architecture_diagram/e611cd77b5322761eba3188def773c2bfd30a355/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/e611cd77b5322761eba3188def773c2bfd30a355/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/e611cd77b5322761eba3188def773c2bfd30a355/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/e611cd77b5322761eba3188def773c2bfd30a355/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/e611cd77b5322761eba3188def773c2bfd30a355/1200w.png">
+  <img src="https://static.rerun.io/architecture_diagram/78bd9fe5f0f8edec47e73b9ce107e4eaa831b8a8/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/78bd9fe5f0f8edec47e73b9ce107e4eaa831b8a8/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/78bd9fe5f0f8edec47e73b9ce107e4eaa831b8a8/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/78bd9fe5f0f8edec47e73b9ce107e4eaa831b8a8/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/78bd9fe5f0f8edec47e73b9ce107e4eaa831b8a8/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -147,13 +147,14 @@ Update instructions:
 | re_redap_browser       | The UI and communication to implement the in-viewer redap server browser.                                  |
 | re_selection_panel     | The UI for the selection panel.                                                                            |
 | re_time_panel          | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time.                     |
+| re_time_ruler          | Time ruler widget shared by the time panel and time-aware views.                                           |
 | re_view                | Types & utilities for defining View classes and communicating with the Viewport.                           |
 | re_view_bar_chart      | A View that shows a single bar chart.                                                                      |
 | re_view_dataframe      | A View that shows the data contained in entities in a table.                                               |
 | re_view_graph          | A View that shows a graph (node-link diagram).                                                             |
 | re_view_map            | A View that shows geospatial data on a map.                                                                |
 | re_view_spatial        | Views that show entities in a 2D or 3D spatial relationship.                                               |
-| re_view_status         | A view that shows status transitions as horizontal lanes over time.                                        |
+| re_view_state_timeline | A view that shows state transitions as horizontal lanes over time.                                         |
 | re_view_tensor         | A View dedicated to visualizing tensors with arbitrary dimensionality.                                     |
 | re_view_text_document  | A simple View that shows a single text box.                                                                |
 | re_view_text_log       | A View that shows text entries in a table and scrolls with the active time.                                |

@@ -19,7 +19,7 @@ workspace = true
 all-features = true
 
 [package.metadata.cargo-shear]
-ignored = ["js-sys", "env_filter"]
+ignored = []
 
 
 [features]
@@ -27,7 +27,7 @@ default = []
 
 ## Feature to set up logging in binaries,
 ## i.e. from `main` or in a web-app.
-setup = ["dep:env_logger", "dep:js-sys", "dep:wasm-bindgen"]
+setup = ["dep:tracing-log", "dep:tracing-web"]
 
 
 [dependencies]
@@ -36,15 +36,10 @@ crossbeam.workspace = true
 log-once.workspace = true
 parking_lot.workspace = true
 
-# make sure dependencies that user tracing gets forwarded to `log`:
-tracing = { workspace = true, features = ["log"] }
-
-# Native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-env_filter.workspace = true
-env_logger = { workspace = true, optional = true, features = ["auto-color", "humantime"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-log = { workspace = true, optional = true }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-js-sys = { workspace = true, optional = true }
-wasm-bindgen = { workspace = true, optional = true }
+tracing-web = { workspace = true, optional = true }

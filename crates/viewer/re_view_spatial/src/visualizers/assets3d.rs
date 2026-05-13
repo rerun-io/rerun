@@ -55,7 +55,7 @@ impl Asset3DVisualizer {
                 };
 
                 c.entry(
-                    &entity_path.to_string(),
+                    entity_path,
                     key.clone(),
                     AnyMesh::Asset {
                         asset: crate::mesh_loader::NativeAsset3D {

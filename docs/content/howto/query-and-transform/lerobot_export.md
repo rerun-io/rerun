@@ -29,7 +29,7 @@ Each recording becomes a segment in the dataset, and each unique segment id beco
 
 snippet: howto/lerobot_export[setup]
 
-See [Catalog object model](../../concepts/query-and-transform/catalog-object-model.md) for how recordings are represented on the Data Platform.
+See [Catalog object model](../../concepts/query-and-transform/catalog-object-model.md) for how recordings are represented on a catalog server.
 
 ### Filter data for training
 

@@ -287,10 +287,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
 
                 if let Some(bytes) = self.byte_chunks.try_read(header.len as usize) {
                     let bytes_len = bytes.len() as u64;
-                    let byte_span = re_chunk::Span {
-                        start: start_offset,
-                        len: bytes_len,
-                    };
+                    let byte_span = re_chunk::Span::from_start_len(start_offset, bytes_len);
                     let message = match T::decode(
                         bytes.clone(),
                         byte_span,

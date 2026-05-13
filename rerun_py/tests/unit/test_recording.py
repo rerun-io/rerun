@@ -1,4 +1,4 @@
-"""Tests for rerun.recording module (non-deprecated Recording functionality)."""
+"""Tests for the (deprecated) rerun.recording module."""
 
 from __future__ import annotations
 
@@ -7,10 +7,13 @@ import subprocess
 import uuid
 from typing import TYPE_CHECKING
 
+import pytest
 import rerun as rr
 
 if TYPE_CHECKING:
     import syrupy
+
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
 APP_ID = "rerun_example_test_recording"
 
@@ -26,7 +29,7 @@ def test_recording_info(tmp_path: pathlib.Path) -> None:
         rec.set_time("my_index", sequence=1)
         rec.log("points", rr.Points3D([[1, 2, 3]]))
 
-    recording = rr.recording.load_recording(rrd)
+    recording = rr.recording.load_recording(rrd)  # ty:ignore[deprecated]
 
     assert recording.application_id() == APP_ID
     assert recording.recording_id() == str(expected_recording_id)
@@ -45,7 +48,7 @@ def test_schema_recording(tmp_path: pathlib.Path, snapshot: syrupy.SnapshotAsser
         rec.log("points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]))
         rec.log("static_text", rr.TextLog("Hello"), static=True)
 
-    recording = rr.recording.load_recording(rrd)
+    recording = rr.recording.load_recording(rrd)  # ty:ignore[deprecated]
     schema = recording.schema()
 
     # log_tick, log_time, my_index
@@ -110,7 +113,7 @@ def test_schema_entity_paths(tmp_path: pathlib.Path) -> None:
         rec.log("static_text", rr.TextLog("Hello"), static=True)
         rec.send_property("my_prop", rr.AnyValues(prop=123))
 
-    recording = rr.recording.load_recording(rrd)
+    recording = rr.recording.load_recording(rrd)  # ty:ignore[deprecated]
     schema = recording.schema()
 
     assert schema.entity_paths() == ["/points", "/static_text"]
@@ -134,7 +137,7 @@ def test_schema_archetypes(tmp_path: pathlib.Path) -> None:
         rec.log("static_text", rr.TextLog("Hello"), static=True)
         rec.send_property("my_prop", rr.Points2D([[0, 2]]))
 
-    recording = rr.recording.load_recording(rrd)
+    recording = rr.recording.load_recording(rrd)  # ty:ignore[deprecated]
     schema = recording.schema()
 
     assert schema.archetypes() == ["rerun.archetypes.Points3D", "rerun.archetypes.TextLog"]
@@ -158,7 +161,7 @@ def test_schema_component_types(tmp_path: pathlib.Path) -> None:
         rec.log("static_text", rr.TextLog("Hello"), static=True)
         rec.send_property("my_prop", rr.Points2D([[0, 2]]))
 
-    recording = rr.recording.load_recording(rrd)
+    recording = rr.recording.load_recording(rrd)  # ty:ignore[deprecated]
     schema = recording.schema()
 
     assert schema.component_types() == [
@@ -185,7 +188,7 @@ def test_schema_columns_for(tmp_path: pathlib.Path) -> None:
         rec.log("static_text", rr.TextLog("Hello"), static=True)
         rec.send_property("my_prop", rr.Points2D([[0, 2]]))
 
-    recording = rr.recording.load_recording(rrd)
+    recording = rr.recording.load_recording(rrd)  # ty:ignore[deprecated]
     schema = recording.schema()
 
     def names(cols: list) -> list[str]:  # type: ignore[type-arg]
@@ -245,7 +248,7 @@ def test_schema_column_names_for(tmp_path: pathlib.Path) -> None:
         rec.log("points", rr.Points3D([[1, 2, 3]]))
         rec.log("static_text", rr.TextLog("Hello"), static=True)
 
-    recording = rr.recording.load_recording(rrd)
+    recording = rr.recording.load_recording(rrd)  # ty:ignore[deprecated]
     schema = recording.schema()
 
     # Filter by archetype (fully-qualified)
@@ -275,11 +278,11 @@ def test_load_recording_path_types(tmp_path: pathlib.Path) -> None:
         rec.log("test", rr.TextLog("Hello"))
 
     # Test with string path
-    recording = rr.recording.load_recording(rrd)
+    recording = rr.recording.load_recording(rrd)  # ty:ignore[deprecated]
     assert recording is not None
 
     # Test with Path object
-    recording = rr.recording.load_recording(pathlib.Path(tmp_path) / "tmp.rrd")
+    recording = rr.recording.load_recording(pathlib.Path(tmp_path) / "tmp.rrd")  # ty:ignore[deprecated]
     assert recording is not None
 
 
@@ -302,7 +305,7 @@ def test_chunk_record_batch(tmp_path: pathlib.Path, snapshot: syrupy.SnapshotAss
             columns=rr.TextLog.columns(text=["Hello"]),
         )
 
-    recording = rr.recording.load_recording(rrd)
+    recording = rr.recording.load_recording(rrd)  # ty:ignore[deprecated]
     chunks = sorted(recording.chunks(), key=lambda c: c.entity_path)
 
     parts = []
@@ -332,11 +335,11 @@ def test_save_roundtrip(tmp_path: pathlib.Path) -> None:
         rec.log("points", rr.Points3D([[7, 8, 9]], colors=[[255, 0, 0]]))
         rec.log("static_text", rr.TextLog("Hello"), static=True)
 
-    recording = rr.recording.load_recording(original_rrd)
+    recording = rr.recording.load_recording(original_rrd)  # ty:ignore[deprecated]
     recording.save(roundtrip_rrd)
 
     # Load the roundtripped recording and verify metadata is preserved
-    roundtripped = rr.recording.load_recording(roundtrip_rrd)
+    roundtripped = rr.recording.load_recording(roundtrip_rrd)  # ty:ignore[deprecated]
 
     assert roundtripped.application_id() == APP_ID
     assert roundtripped.recording_id() == str(expected_recording_id)
@@ -370,7 +373,7 @@ def test_save_roundtrip_compare(tmp_path: pathlib.Path) -> None:
     assert process.returncode == 0, f"RRD optimize failed: {process.stderr.decode('utf-8')}"
 
     # Roundtrip via load + save
-    rr.recording.load_recording(optimized_rrd).save(roundtrip_rrd)
+    rr.recording.load_recording(optimized_rrd).save(roundtrip_rrd)  # ty:ignore[deprecated]
 
     # Compare optimized vs roundtripped
     process = subprocess.run(
@@ -409,8 +412,8 @@ def test_chunk_roundtrip_compare(tmp_path: pathlib.Path) -> None:
     assert process.returncode == 0, f"RRD optimize failed: {process.stderr.decode('utf-8')}"
 
     # Load, roundtrip through chunks, and save
-    recording = rr.recording.load_recording(optimized_rrd)
-    reconstructed = rr.recording.Recording.from_chunks(
+    recording = rr.recording.load_recording(optimized_rrd)  # ty:ignore[deprecated]
+    reconstructed = rr.recording.Recording.from_chunks(  # ty:ignore[deprecated]
         recording.chunks(),
         application_id=recording.application_id(),
         recording_id=recording.recording_id(),

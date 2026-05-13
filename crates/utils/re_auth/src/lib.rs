@@ -20,7 +20,7 @@ mod claims;
 mod service;
 mod token;
 
-/// Rerun Cloud permissions
+/// Rerun Hub permissions
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Permission {
     /// User can read data.

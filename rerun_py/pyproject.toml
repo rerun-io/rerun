@@ -43,7 +43,7 @@ tests = [
   "opencv-python>4.6",
   "pandas>=2",
   "polars==1.36.1",
-  "pytest==8.4.2",
+  "pytest==9.0.3",
   "semver>=3.0,<3.1",
   "syrupy==5.0.0",
   "tomli==2.0.1",
@@ -59,7 +59,7 @@ dataplatform = [ # NOLINT
   "pandas>=2",
 ] # pandas is needed so pyarrow properly converts nanoseconds (RR-3532)
 
-# PyTorch `Dataset` for the Rerun Data Platform.
+# PyTorch `Dataset` for a catalog server.
 dataloader = ["torch>=2.5", "torchvision", "av", "pillow>=8.0.0"]
 
 # Client-side OpenTelemetry export, enabled by setting `TELEMETRY_ENABLED=true`

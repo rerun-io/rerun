@@ -87,6 +87,8 @@ fn main() {
 
     ${MODS}
 
+    // The generated match arm grows with every snippet, so we have exceeded clippy's 600-line limit.
+    #[expect(clippy::too_many_lines)]
     pub fn run() {
         let args: Vec<String> = std::env::args().skip(1).collect();
 

@@ -1,0 +1,37 @@
+namespace rerun.blueprint.archetypes;
+
+/// Blueprint for configuring the styling of a table.
+table TableBlueprint (
+    "attr.rerun.scope": "blueprint",
+    "attr.rerun.state": "unstable"
+) {
+    /// The name of the column that contains recording URIs for segment previews.
+    ///
+    /// Every row can at most preview a single segment.
+    ///
+    /// For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
+    /// meaning that the regular structure of [archetypes.ViewportBlueprint], and [archetypes.ViewBlueprint] structure applies.
+    /// However, this mostly ignores layout container types as well as automatic spawning.
+    segment_preview_column: rerun.blueprint.components.ColumnName ("attr.rerun.component_optional", nullable, order: 1000);
+
+    /// The name of the boolean column used for flag/annotation toggles.
+    ///
+    /// Must be set for flagging to be available. The named column must exist in the
+    /// table and be of boolean type.
+    /// Additionally, the table must be remote and have another column with
+    /// `rerun:is_table_index` metadata since flag changes are persisted to the server
+    /// via upsert.
+    flag_column: rerun.blueprint.components.ColumnName ("attr.rerun.component_optional", nullable, order: 2000);
+
+    /// The name of the column to use as the card title in grid view.
+    ///
+    /// If unset, the first visible string column is used as the title.
+    grid_view_card_title: rerun.blueprint.components.ColumnName ("attr.rerun.component_optional", nullable, order: 3000);
+
+    /// The name of the column containing URLs to open when a card is clicked in grid view.
+    ///
+    /// If unset, defaults to the first URL column in the table that points to the same
+    /// Rerun server. If no such column exists, no URL is associated with cards and
+    /// clicking them does not navigate anywhere.
+    url_column: rerun.blueprint.components.ColumnName ("attr.rerun.component_optional", nullable, order: 4000);
+}

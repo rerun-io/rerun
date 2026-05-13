@@ -13,7 +13,7 @@ pub enum PickableRectSourceData {
     },
 
     /// The rectangle is a frame in a video.
-    Video,
+    Video { depth_meter: Option<DepthMeter> },
 
     /// The rectangle represents a placeholder icon.
     Placeholder,

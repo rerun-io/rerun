@@ -106,7 +106,7 @@ pub struct AppState {
     /// Not serialized since on startup we have to typically discard it anyways since
     /// whatever data was selected before is no longer accessible.
     ///
-    /// For Data Platform use-cases this can even be rather irritating:
+    /// For catalog server use-cases this can even be rather irritating:
     /// if previously a server was selected, then starting with a URL should no longer select it.
     #[serde(skip)]
     pub selection_state: ApplicationSelectionState,
@@ -673,6 +673,7 @@ impl AppState {
                                         ui,
                                         table_id,
                                         store,
+                                        view_states,
                                     );
                                 } else {
                                     re_log::error_once!(
@@ -703,6 +704,7 @@ impl AppState {
                                     &ctx.active_recording_store_view_context(), // TODO(RR-1127): this makes no sense
                                     ui,
                                     *entry_id,
+                                    view_states,
                                 );
                             }
 
@@ -742,6 +744,7 @@ impl AppState {
                                         &ctx.active_recording_store_view_context(), // TODO(RR-3033): server_central_panel_ui should not know about any recording/blueprint
                                         ui,
                                         origin,
+                                        view_states,
                                     );
                                 }
                             }
@@ -847,6 +850,22 @@ impl AppState {
         create_time_control_for(&mut self.time_controls, entity_db, blueprint_ctx)
     }
 
+    /// Tick time controls for all preview recordings shown in grid cards.
+    ///
+    /// All previews share a single playback clock in raw timeline units, so
+    /// nanoseconds for timestamp timelines and frame numbers for sequence timelines.
+    /// Shorter clips hold at their last frame while the longest one finishes, then
+    /// everything loops together.
+    pub fn update_preview_time_controls(
+        &mut self,
+        store_hub: &StoreHub,
+        stable_dt: f32,
+    ) -> re_viewer_context::NeedsRepaint {
+        self.view_states
+            .preview
+            .tick(|id| store_hub.entity_db(id), stable_dt)
+    }
+
     /// Remove dangling state
     pub fn cleanup(&mut self, store_hub: &StoreHub) {
         re_tracing::profile_function!();
@@ -856,6 +875,10 @@ impl AppState {
 
         self.blueprint_undo_state
             .retain(|store_id, _| store_hub.store_bundle().contains(store_id));
+
+        self.view_states
+            .preview
+            .cleanup_recordings(|id| store_hub.store_bundle().contains(id));
     }
 
     /// Returns the blueprint query that should be used for generating the current
@@ -914,10 +937,12 @@ fn table_ui(
     ui: &mut Ui,
     table_id: &TableId,
     store: &TableStore,
+    view_states: &mut ViewStates,
 ) {
     re_dataframe_ui::DataFusionTableWidget::new(store.session_context(), TableStore::TABLE_NAME)
+        .table_id(table_id.clone())
         .title(table_id.as_str())
-        .show(ctx, runtime, ui);
+        .show(ctx, runtime, ui, view_states);
 }
 
 pub(crate) fn create_time_control_for<'cfgs>(
@@ -935,7 +960,9 @@ pub(crate) fn create_time_control_for<'cfgs>(
                 LogSource::File { follow, .. } | LogSource::HttpStream { follow, .. } => *follow,
 
                 // Not live data:
-                LogSource::RedapGrpcStream { .. } | LogSource::RrdWebEvent => false,
+                LogSource::RedapGrpcStream { .. }
+                | LogSource::RrdWebEvent
+                | LogSource::EmbeddedTableBlueprint => false,
 
                 // Live data:
                 LogSource::Sdk
@@ -1021,7 +1048,10 @@ impl re_byte_size::MemUsageTreeCapture for AppState {
             "blueprint_undo_state",
             self.blueprint_undo_state.total_size_bytes(),
         );
-        tree.add("view_states", self.view_states.total_size_bytes());
+        tree.add(
+            "view_states",
+            re_byte_size::MemUsageTreeCapture::capture_mem_usage_tree(&self.view_states),
+        );
         tree.into_tree()
     }
 }

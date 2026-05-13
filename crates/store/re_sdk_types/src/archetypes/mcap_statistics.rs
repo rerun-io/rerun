@@ -21,7 +21,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Recording-level statistics about an MCAP file, logged as a part of [`archetypes::RecordingInfo`][crate::archetypes::RecordingInfo].
+/// **Archetype**: Recording-level statistics about an MCAP file.
 ///
 /// This archetype contains summary information about an entire MCAP recording, including
 /// counts of messages, schemas, channels, and other records, as well as timing information

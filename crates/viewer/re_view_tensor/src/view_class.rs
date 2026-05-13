@@ -39,6 +39,13 @@ pub struct ViewTensorState {
     tensor: Option<TensorVisualization>,
 }
 
+impl re_byte_size::SizeBytes for ViewTensorState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { tensor } = self;
+        tensor.heap_size_bytes()
+    }
+}
+
 impl ViewState for ViewTensorState {
     fn as_any(&self) -> &dyn std::any::Any {
         self

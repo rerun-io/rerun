@@ -13,6 +13,6 @@ int main(int argc, char* argv[]) {
             .with_labels({"A", "B", "C"}),
         rerun::GraphEdges({{"a", "b"}, {"b", "c"}, {"c", "a"}})
             // Optional: graphs are undirected by default.
-            .with_graph_type(rerun::components::GraphType::Undirected)
+            .with_graph_type(rerun::GraphType::Undirected)
     );
 }

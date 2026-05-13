@@ -1,4 +1,4 @@
-"""Map-style Dataset backed by the Rerun Data Platform."""
+"""Map-style Dataset backed by a catalog server."""
 
 from __future__ import annotations
 
@@ -10,31 +10,32 @@ import torch.utils.data
 from rerun._tracing import with_tracing
 
 from ._sample_index import FixedRateSampling, SampleIndex
-from ._utils import _decode_iter, _fetch_arrow, _WorkerConnection
+from ._utils import _decode_iter, _fetch_arrow, _warn_if_fork_unsafe, _WorkerConnection
 
 if TYPE_CHECKING:
-    from ._config import Column, DataSource
+    from ._config import DataSource, Field
 
 
-class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor]]):
+class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
     """
-    Map-style dataset backed by the Rerun Data Platform.
+    Map-style dataset backed by a catalog server.
 
-    Supports random access by global index, making it compatible with
-    PyTorch's sampler ecosystem (`DistributedSampler`, `WeightedRandomSampler`, `SubsetRandomSampler`, …).
+    Supports random access by global index, so it works with PyTorch's
+    sampler ecosystem (`DistributedSampler`, `WeightedRandomSampler`,
+    `SubsetRandomSampler`, ...). Shuffling and cross-worker partitioning
+    are driven by the `DataLoader`'s sampler.
 
-    Shuffling and cross-worker partitioning are driven by the `DataLoader`'s sampler.
-
-    For simple in-order streaming with internal shuffling, use [`RerunIterableDataset`][rerun.experimental.dataloader.RerunIterableDataset] instead.
+    For streaming iteration with internal shuffling, use
+    [`RerunIterableDataset`][rerun.experimental.dataloader.RerunIterableDataset] instead.
 
     Parameters
     ----------
     source
         The dataset to read from (with optional segment filter).
     index
-        Timeline to iterate (e.g. `"frame_nr"`).
-    columns
-        Output fields, keyed by output name.
+        Timeline column to use as the sample index (e.g. `"frame_nr"`).
+    fields
+        Sample fields, keyed by output name.
     timeline_sampling
         Required when `index` is a timestamp timeline; ignored for
         integer indices. Pass [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling] to sample on
@@ -46,7 +47,7 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor]]):
     dataset = RerunMapDataset(
         source,
         "frame_nr",
-        {"image": Column("/camera:Image:blob", decode=ImageDecoder())},
+        {"image": Field("/camera:Image:blob", decode=ImageDecoder())},
     )
     sampler = DistributedSampler(dataset)
     loader = DataLoader(dataset, batch_size=8, sampler=sampler, num_workers=4)
@@ -60,54 +61,56 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor]]):
         self,
         source: DataSource,
         index: str,
-        columns: dict[str, Column],
+        fields: dict[str, Field],
         *,
         timeline_sampling: FixedRateSampling | None = None,
     ) -> None:
         super().__init__()
 
-        self._columns = columns
+        _warn_if_fork_unsafe(stacklevel=3)
+
+        self._fields = fields
         self._index = index
 
         self._sample_index = SampleIndex.build(
             source,
             index,
-            self._columns,
+            self._fields,
             timeline_sampling=timeline_sampling,
         )
 
         self._connection = _WorkerConnection(
             catalog_url=source.dataset.catalog.url,
             dataset_name=source.dataset.name,
-            columns=columns,
+            fields=fields,
         )
 
     @property
     def sample_index(self) -> SampleIndex:
-        """The underlying [`SampleIndex`][rerun.experimental.dataloader.SampleIndex] — useful for diagnostics."""
+        """The underlying [`SampleIndex`][rerun.experimental.dataloader.SampleIndex]."""
         return self._sample_index
 
     def __len__(self) -> int:
         """Total number of samples across all segments."""
         return self._sample_index.total_samples
 
-    def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:  # ty: ignore[invalid-method-override]
+    def __getitem__(self, idx: int) -> dict[str, torch.Tensor | None]:  # ty: ignore[invalid-method-override]
         """Fetch a single sample by global index (one server query)."""
         return self.__getitems__([idx])[0]
 
     @with_tracing("RerunMapDataset.__getitems__")
-    def __getitems__(self, indices: list[int]) -> list[dict[str, torch.Tensor]]:
+    def __getitems__(self, indices: list[int]) -> list[dict[str, torch.Tensor | None]]:
         """
         Fetch multiple samples by global index in a single server query.
 
-        PyTorch's `DataLoader` calls this automatically when available,
-        so each training batch round-trips only once.
+        PyTorch's `DataLoader` calls this automatically when present, so
+        each batch round-trips once.
         """
         view, decoders = self._connection.ensure()
         targets, seg_tables = _fetch_arrow(
             view=view,
             index=self._index,
-            columns=self._columns,
+            fields=self._fields,
             decoders=decoders,
             sample_index=self._sample_index,
             indices=indices,
@@ -117,7 +120,7 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor]]):
                 targets=targets,
                 seg_tables=seg_tables,
                 index=self._index,
-                columns=self._columns,
+                fields=self._fields,
                 decoders=decoders,
             ),
         )

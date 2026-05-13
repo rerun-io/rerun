@@ -30,6 +30,18 @@ pub struct ForceLayoutParams {
     pub(super) force_collision_iterations: ForceIterations,
 }
 
+impl re_byte_size::SizeBytes for ForceLayoutParams {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 /// Convenience struct for querying the components of a blueprint archetype or its fallbacks.
 struct QueryArchetype<'a, T> {
     ctx: &'a ViewContext<'a>,

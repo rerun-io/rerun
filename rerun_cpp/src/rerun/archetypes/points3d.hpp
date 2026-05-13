@@ -37,7 +37,10 @@ namespace rerun::archetypes {
     ///     const auto rec = rerun::RecordingStream("rerun_example_points3d");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     rec.log("points", rerun::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
+    ///     rec.log(
+    ///         "points",
+    ///         rerun::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}})
+    ///     );
     /// }
     /// ```
     ///
@@ -51,7 +54,8 @@ namespace rerun::archetypes {
     /// #include <vector>
     ///
     /// int main(int argc, char* argv[]) {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_points3d_row_updates");
+    ///     const auto rec =
+    ///         rerun::RecordingStream("rerun_example_points3d_row_updates");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
@@ -66,14 +70,17 @@ namespace rerun::archetypes {
     ///     };
     ///
     ///     // At each timestep, all points in the cloud share the same but changing color and radius.
-    ///     std::vector<uint32_t> colors = {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
+    ///     std::vector<uint32_t> colors =
+    ///         {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
     ///     std::vector<float> radii = {0.05f, 0.01f, 0.2f, 0.1f, 0.3f};
     ///
     ///     for (size_t i = 0; i <5; i++) {
     ///         rec.set_time_duration_secs("time", 10.0 + static_cast<double>(i));
     ///         rec.log(
     ///             "points",
-    ///             rerun::Points3D(positions[i]).with_colors(colors[i]).with_radii(radii[i])
+    ///             rerun::Points3D(positions[i])
+    ///                 .with_colors(colors[i])
+    ///                 .with_radii(radii[i])
     ///         );
     ///     }
     /// }
@@ -90,7 +97,8 @@ namespace rerun::archetypes {
     /// using namespace std::chrono_literals;
     ///
     /// int main(int argc, char* argv[]) {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_points3d_column_updates");
+    ///     const auto rec =
+    ///         rerun::RecordingStream("rerun_example_points3d_column_updates");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
@@ -105,16 +113,20 @@ namespace rerun::archetypes {
     ///     };
     ///
     ///     // At each timestep, all points in the cloud share the same but changing color and radius.
-    ///     std::vector<uint32_t> colors = {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
+    ///     std::vector<uint32_t> colors =
+    ///         {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
     ///     std::vector<float> radii = {0.05f, 0.01f, 0.2f, 0.1f, 0.3f};
     ///
     ///     // Log at seconds 10-14
     ///     auto times = rerun::Collection{10s, 11s, 12s, 13s, 14s};
-    ///     auto time_column = rerun::TimeColumn::from_durations("time", std::move(times));
+    ///     auto time_column =
+    ///         rerun::TimeColumn::from_durations("time", std::move(times));
     ///
     ///     // Partition our data as expected across the 5 timesteps.
-    ///     auto position = rerun::Points3D().with_positions(positions).columns({2, 4, 4, 3, 4});
-    ///     auto color_and_radius = rerun::Points3D().with_colors(colors).with_radii(radii).columns();
+    ///     auto position =
+    ///         rerun::Points3D().with_positions(positions).columns({2, 4, 4, 3, 4});
+    ///     auto color_and_radius =
+    ///         rerun::Points3D().with_colors(colors).with_radii(radii).columns();
     ///
     ///     rec.send_columns("points", time_column, position, color_and_radius);
     /// }
@@ -130,7 +142,8 @@ namespace rerun::archetypes {
     /// #include <vector>
     ///
     /// int main(int argc, char* argv[]) {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_points3d_partial_updates");
+    ///     const auto rec =
+    ///         rerun::RecordingStream("rerun_example_points3d_partial_updates");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     std::vector<rerun::Position3D> positions;
@@ -162,7 +175,12 @@ namespace rerun::archetypes {
     ///
     ///         // Update only the colors and radii, leaving everything else as-is.
     ///         rec.set_time_sequence("frame", i);
-    ///         rec.log("points", rerun::Points3D::update_fields().with_radii(radii).with_colors(colors));
+    ///         rec.log(
+    ///             "points",
+    ///             rerun::Points3D::update_fields().with_radii(radii).with_colors(
+    ///                 colors
+    ///             )
+    ///         );
     ///     }
     ///
     ///     std::vector<rerun::Radius> radii;
@@ -170,7 +188,12 @@ namespace rerun::archetypes {
     ///
     ///     // Update the positions and radii, and clear everything else in the process.
     ///     rec.set_time_sequence("frame", 20);
-    ///     rec.log("points", rerun::Points3D::clear_fields().with_positions(positions).with_radii(radii));
+    ///     rec.log(
+    ///         "points",
+    ///         rerun::Points3D::clear_fields().with_positions(positions).with_radii(
+    ///             radii
+    ///         )
+    ///     );
     /// }
     /// ```
     struct Points3D {

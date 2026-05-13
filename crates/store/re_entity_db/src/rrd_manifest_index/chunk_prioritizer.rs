@@ -279,7 +279,7 @@ impl RemainingByteBudget {
         Self {
             total_bytes_in_memory,
             remaining_bytes_in_memory: total_bytes_in_memory,
-            remaining_bytes_on_wire: max_bytes_on_wire.cast_signed(),
+            remaining_bytes_on_wire: i64::try_from(max_bytes_on_wire).unwrap_or(i64::MAX),
         }
     }
 
@@ -1344,4 +1344,451 @@ impl ChunkFetcher<'_> {
 pub struct ChunkFetchResult {
     pub(super) new_in_transit_chunks: Vec<ChunkId>,
     pub(super) time_cursor: Option<TimelinePoint>,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+    use std::sync::Arc;
+
+    use arrow::array::RecordBatch;
+    use re_byte_size::SizeBytes as _;
+    use re_chunk::{Chunk, EntityPath, RowId, TimeInt, Timeline};
+    use re_chunk_store::ChunkStore;
+    use re_log_encoding::RrdManifest;
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{AbsoluteTimeRange, StoreId, StoreKind, TimePoint};
+    use re_types_core::ChunkId;
+
+    use crate::ChunkPromise;
+    use crate::rrd_manifest_index::RrdManifestIndex;
+
+    use super::*;
+
+    fn setup_test_recording(chunks: &[Arc<Chunk>]) -> (ChunkStore, RrdManifestIndex) {
+        let store_id = StoreId::random(StoreKind::Recording, "test");
+        let manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+            store_id.clone(),
+            chunks.iter().map(|c| &**c),
+        )
+        .unwrap();
+
+        let mut store = ChunkStore::new(store_id, Default::default());
+        let _events = store.insert_rrd_manifest(manifest.clone());
+
+        let mut manifest_index = RrdManifestIndex::default();
+        manifest_index
+            .append(manifest, store.entity_tree())
+            .unwrap();
+
+        (store, manifest_index)
+    }
+
+    fn build_temporal_chunk(entity: &str, timeline: Timeline, time: i64) -> Arc<Chunk> {
+        let point = MyPoint::new(1.0, 1.0);
+        Arc::new(
+            Chunk::builder(EntityPath::from(entity))
+                .with_component_batch(
+                    RowId::new(),
+                    TimePoint::from_iter([(timeline, time)]),
+                    (MyPoints::descriptor_points(), &[point] as _),
+                )
+                .build()
+                .unwrap(),
+        )
+    }
+
+    fn build_static_chunk(entity: &str) -> Arc<Chunk> {
+        let point = MyPoint::new(1.0, 1.0);
+        Arc::new(
+            Chunk::builder(EntityPath::from(entity))
+                .with_component_batch(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    (MyPoints::descriptor_points(), &[point] as _),
+                )
+                .build()
+                .unwrap(),
+        )
+    }
+
+    /// Chunk IDs in a batch passed to the load callback, in the order the manifest gave us.
+    fn chunk_ids_in_batch(rb: &RecordBatch) -> Vec<ChunkId> {
+        let col = rb
+            .column_by_name(RrdManifest::FIELD_CHUNK_ID)
+            .expect("missing chunk_id column");
+        let arr = col
+            .as_any()
+            .downcast_ref::<arrow::array::FixedSizeBinaryArray>()
+            .expect("chunk_id column should be FixedSizeBinaryArray");
+        ChunkId::try_slice_from_arrow(arr)
+            .expect("chunk_id should decode")
+            .to_vec()
+    }
+
+    /// Load callback that records every chunk ID the prioritizer asked to load.
+    ///
+    /// Returns the callback together with the shared buffer it writes into, so the
+    /// caller can assert exactly which chunks were requested after running the fetch.
+    fn recording_load_fn() -> (
+        impl Fn(RecordBatch) -> ChunkPromise,
+        Arc<re_mutex::Mutex<Vec<ChunkId>>>,
+    ) {
+        let requested = Arc::new(re_mutex::Mutex::new(Vec::<ChunkId>::new()));
+        let out = Arc::clone(&requested);
+        let load = move |rb: RecordBatch| {
+            out.lock().extend(chunk_ids_in_batch(&rb));
+            poll_promise::Promise::from_ready(Ok(vec![]))
+        };
+        (load, requested)
+    }
+
+    struct FetchOutcome {
+        requested: Vec<ChunkId>,
+        result: ChunkFetchResult,
+        state: PrioritizationState,
+    }
+
+    /// Run one full prioritizer pass and collect what happened: which chunks got asked
+    /// for, the end-of-fetch prioritization state, and the resulting [`ChunkFetchResult`].
+    fn run_fetch(
+        manifest_index: &mut RrdManifestIndex,
+        store: &ChunkStore,
+        budget: &mut RemainingByteBudget,
+        stage: FetchStage,
+    ) -> FetchOutcome {
+        let options = ChunkPrefetchOptions::default();
+        let mut fetcher = manifest_index
+            .prepare_chunk_fetcher(store, &options, None, budget)
+            .expect("should create fetcher");
+        fetcher.fetch(budget, stage).unwrap();
+        let state = fetcher.state;
+        let (load, requested) = recording_load_fn();
+        let result = fetcher.finish(&load).unwrap();
+        let requested = std::mem::take(&mut *requested.lock());
+        FetchOutcome {
+            requested,
+            result,
+            state,
+        }
+    }
+
+    /// When the memory budget cannot hold every `FullyLoaded` chunk, only the ones
+    /// that fit stay protected. This protects the rest from being pinned in memory
+    /// and lets garbage collection evict them.
+    #[test]
+    fn fully_loaded_chunks_drop_protection_when_memory_budget_is_exhausted() {
+        let tl = Timeline::new_sequence("frame");
+        // Different entity paths keep the chunks from getting merged.
+        let chunks: Vec<Arc<Chunk>> = (0..5)
+            .map(|i| build_temporal_chunk(&format!("/entity_{i}"), tl, (i as i64 + 1) * 100))
+            .collect();
+
+        let (mut store, mut manifest_index) = setup_test_recording(&chunks);
+
+        for chunk in &chunks {
+            let events = store.insert_chunk(chunk).unwrap();
+            manifest_index.on_events(&store, &events);
+        }
+
+        let total_physical_bytes: u64 = store
+            .iter_physical_chunks()
+            .map(|c| Chunk::total_size_bytes(c.as_ref()))
+            .sum();
+        assert!(total_physical_bytes > 0);
+        let budget_bytes = total_physical_bytes / 2;
+
+        let mut budget = RemainingByteBudget::new(budget_bytes, u64::MAX);
+        let outcome = run_fetch(
+            &mut manifest_index,
+            &store,
+            &mut budget,
+            FetchStage::Everything,
+        );
+
+        assert!(
+            outcome.state.memory_budget_filled,
+            "budget should be exhausted with budget {budget_bytes} for {total_physical_bytes} total bytes"
+        );
+        assert!(
+            outcome.requested.is_empty(),
+            "fully-loaded chunks should never go through the load callback"
+        );
+        assert!(
+            outcome.result.new_in_transit_chunks.is_empty(),
+            "fully-loaded chunks should not transition to InTransit"
+        );
+
+        let protected = manifest_index.chunk_prioritizer().protected_chunks();
+        assert!(
+            protected.roots.len() < chunks.len(),
+            "budget fit {} out of {} root chunks; expected fewer than all",
+            protected.roots.len(),
+            chunks.len()
+        );
+        assert!(
+            !protected.roots.is_empty(),
+            "at least one chunk must fit in half the total budget"
+        );
+
+        for root_id in &protected.roots {
+            assert!(
+                chunks.iter().any(|c| c.id() == *root_id),
+                "protected root {root_id:?} should be one of the chunks we inserted"
+            );
+        }
+    }
+
+    /// The `Required` pass fetches only the static chunk. Temporal chunks stay untouched
+    /// until a `Everything` pass runs.
+    #[test]
+    fn required_pass_only_fetches_static_then_everything_fetches_the_rest() {
+        let tl = Timeline::new_sequence("frame");
+        let static_chunk = build_static_chunk("/static_entity");
+        let temporal_chunks: Vec<Arc<Chunk>> = (0..3)
+            .map(|i| build_temporal_chunk("/temporal_entity", tl, (i + 1) * 100))
+            .collect();
+
+        let mut all_chunks = vec![Arc::clone(&static_chunk)];
+        all_chunks.extend(temporal_chunks.iter().cloned());
+
+        let (store, mut manifest_index) = setup_test_recording(&all_chunks);
+
+        let mut budget = RemainingByteBudget::new(u64::MAX, u64::MAX);
+        let required = run_fetch(
+            &mut manifest_index,
+            &store,
+            &mut budget,
+            FetchStage::Required,
+        );
+
+        assert_eq!(
+            required.requested,
+            vec![static_chunk.id()],
+            "Required pass should only load the static chunk"
+        );
+        assert_eq!(
+            required.result.new_in_transit_chunks,
+            vec![static_chunk.id()],
+            "only the static chunk should transition to InTransit"
+        );
+
+        manifest_index.handle_fetch_result(required.result);
+
+        let everything = run_fetch(
+            &mut manifest_index,
+            &store,
+            &mut budget,
+            FetchStage::Everything,
+        );
+
+        let requested: HashSet<ChunkId> = everything.requested.iter().copied().collect();
+        let expected: HashSet<ChunkId> = temporal_chunks.iter().map(|c| c.id()).collect();
+        assert_eq!(
+            requested, expected,
+            "Everything pass should load exactly the remaining temporal chunks"
+        );
+        assert_eq!(
+            everything
+                .result
+                .new_in_transit_chunks
+                .iter()
+                .copied()
+                .collect::<HashSet<_>>(),
+            expected,
+        );
+    }
+
+    /// With a memory budget that only fits a couple of chunks, the fetcher stops
+    /// once the budget is full and the load callback sees only that subset, all drawn
+    /// from the input.
+    #[test]
+    fn memory_budget_caps_how_many_chunks_get_loaded() {
+        let tl = Timeline::new_sequence("frame");
+        let chunks: Vec<Arc<Chunk>> = (0..5)
+            .map(|i| build_temporal_chunk("/e", tl, (i + 1) * 100))
+            .collect();
+
+        let (store, mut manifest_index) = setup_test_recording(&chunks);
+
+        let manifest = manifest_index.manifest().unwrap();
+        let one_chunk_size = manifest.col_chunk_byte_size_uncompressed()[0];
+        assert!(
+            one_chunk_size > 0,
+            "manifest should report nonzero chunk size"
+        );
+        let budget_bytes = one_chunk_size * 2 + one_chunk_size / 2;
+
+        let mut budget = RemainingByteBudget::new(budget_bytes, u64::MAX);
+        let outcome = run_fetch(
+            &mut manifest_index,
+            &store,
+            &mut budget,
+            FetchStage::Everything,
+        );
+
+        assert!(
+            outcome.state.memory_budget_filled,
+            "memory budget should report as filled"
+        );
+        assert!(
+            outcome.requested.len() < chunks.len(),
+            "budget should cap the load: got {} out of {}",
+            outcome.requested.len(),
+            chunks.len()
+        );
+        assert!(
+            !outcome.requested.is_empty(),
+            "budget should allow at least one chunk"
+        );
+
+        assert_eq!(
+            outcome
+                .result
+                .new_in_transit_chunks
+                .iter()
+                .copied()
+                .collect::<HashSet<_>>(),
+            outcome.requested.iter().copied().collect::<HashSet<_>>(),
+            "new_in_transit_chunks should match the IDs passed to the load callback"
+        );
+    }
+
+    /// With a duration cap on `Similar`, only chunks the time cursor would reach
+    /// within that duration get fetched. Chunks further ahead on the timeline
+    /// stay untouched until a later pass asks for them.
+    #[test]
+    fn similar_stage_skips_chunks_beyond_reach_time() {
+        let tl = Timeline::new_sequence("frame");
+        // Same entity on every chunk so reporting one missing seeds interest for
+        // all of them. The time query only classifies interesting chunks as
+        // `Similar`.
+        let chunks: Vec<Arc<Chunk>> = (0..5)
+            .map(|i| build_temporal_chunk("/entity", tl, (i + 1) * 100))
+            .collect();
+
+        let (store, mut manifest_index) = setup_test_recording(&chunks);
+        store.report_missing_virtual_chunk_id(chunks[0].id());
+
+        // Chunks are spaced so that reach time equals `speed * frame`, i.e.
+        // cap of 3s keeps chunks 0..=2 and drops chunks 3..=4.
+        let time_cursor = PrefetchTimeCursor {
+            time_cursor: (tl, TimeInt::new_temporal(0)).into(),
+            speed_if_unpaused: 100.0,
+            loop_range: None,
+        };
+
+        let options = ChunkPrefetchOptions::default();
+        let mut budget = RemainingByteBudget::new(u64::MAX, u64::MAX);
+        let mut fetcher = manifest_index
+            .prepare_chunk_fetcher(&store, &options, Some(time_cursor), &mut budget)
+            .expect("should create fetcher");
+
+        fetcher
+            .fetch(
+                &mut budget,
+                FetchStage::Similar(Some(Duration::from_secs(3))),
+            )
+            .unwrap();
+        let (load, requested) = recording_load_fn();
+        let _result = fetcher.finish(&load).unwrap();
+        let requested: HashSet<ChunkId> = requested.lock().iter().copied().collect();
+
+        let within_cap: HashSet<ChunkId> = chunks[..=2].iter().map(|c| c.id()).collect();
+        let beyond_cap: HashSet<ChunkId> = chunks[3..].iter().map(|c| c.id()).collect();
+        assert!(within_cap.is_subset(&requested));
+        assert!(beyond_cap.is_disjoint(&requested));
+    }
+
+    /// Without a duration cap, `Similar(None)` fetches every chunk the time
+    /// query classifies as similar, regardless of where they sit on the timeline.
+    #[test]
+    fn similar_stage_without_time_cap_fetches_all_reachable_chunks() {
+        let tl = Timeline::new_sequence("frame");
+        let chunks: Vec<Arc<Chunk>> = (0..5)
+            .map(|i| build_temporal_chunk("/entity", tl, (i + 1) * 100))
+            .collect();
+
+        let (store, mut manifest_index) = setup_test_recording(&chunks);
+        store.report_missing_virtual_chunk_id(chunks[0].id());
+
+        let time_cursor = PrefetchTimeCursor {
+            time_cursor: (tl, TimeInt::new_temporal(0)).into(),
+            speed_if_unpaused: 100.0,
+            loop_range: None,
+        };
+
+        let options = ChunkPrefetchOptions::default();
+        let mut budget = RemainingByteBudget::new(u64::MAX, u64::MAX);
+        let mut fetcher = manifest_index
+            .prepare_chunk_fetcher(&store, &options, Some(time_cursor), &mut budget)
+            .expect("should create fetcher");
+
+        fetcher
+            .fetch(&mut budget, FetchStage::Similar(None))
+            .unwrap();
+        let (load, requested) = recording_load_fn();
+        let _result = fetcher.finish(&load).unwrap();
+        let requested: HashSet<ChunkId> = requested.lock().iter().copied().collect();
+
+        let expected: HashSet<ChunkId> = chunks.iter().map(|c| c.id()).collect();
+        assert_eq!(requested, expected);
+    }
+
+    /// During loop playback, reach time for a chunk before the cursor is the
+    /// wrap-around time through the loop. Chunks outside the loop are
+    /// considered unreachable and are skipped whenever the cap is finite.
+    #[test]
+    fn similar_stage_honours_loop_wrap_around_and_excludes_chunks_outside_loop() {
+        let tl = Timeline::new_sequence("frame");
+        // The chunks span every `TimeRangeStage` relative to the cursor and the
+        // loop. First a chunk in `BeforeCursorOutsideLoop`, then one in
+        // `BeforeCursor` whose reach time wraps around through the loop, then
+        // three in `AfterCursor` covering the cursor, mid-loop, and the loop
+        // end, then a final one in `AfterCursorOutsideLoop`.
+        let chunks: Vec<Arc<Chunk>> = [100, 450, 500, 600, 700, 900]
+            .into_iter()
+            .map(|t| build_temporal_chunk("/entity", tl, t))
+            .collect();
+
+        let (store, mut manifest_index) = setup_test_recording(&chunks);
+        // Report a chunk that sits in `BeforeCursorOutsideLoop` as missing so
+        // the `Required` pass picks it up and also seeds interest for the rest.
+        store.report_missing_virtual_chunk_id(chunks[0].id());
+
+        let time_cursor = PrefetchTimeCursor {
+            time_cursor: (tl, TimeInt::new_temporal(500)).into(),
+            speed_if_unpaused: 100.0,
+            loop_range: Some(AbsoluteTimeRange::new(
+                TimeInt::new_temporal(400),
+                TimeInt::new_temporal(700),
+            )),
+        };
+
+        let options = ChunkPrefetchOptions::default();
+        let mut budget = RemainingByteBudget::new(u64::MAX, u64::MAX);
+        let mut fetcher = manifest_index
+            .prepare_chunk_fetcher(&store, &options, Some(time_cursor), &mut budget)
+            .expect("should create fetcher");
+
+        // Cap picked so the wrap-around chunk fits but chunks outside the loop
+        // do not. Their reach time is unreachable under loop playback.
+        fetcher
+            .fetch(
+                &mut budget,
+                FetchStage::Similar(Some(Duration::from_secs(3))),
+            )
+            .unwrap();
+        let (load, requested) = recording_load_fn();
+        let _result = fetcher.finish(&load).unwrap();
+        let requested: HashSet<ChunkId> = requested.lock().iter().copied().collect();
+
+        // The `Required` chunk and every chunk inside the loop should be
+        // fetched. The chunk past the loop end in `AfterCursorOutsideLoop`
+        // should not.
+        let inside_loop_and_required: HashSet<ChunkId> =
+            chunks[..5].iter().map(|c| c.id()).collect();
+        assert!(inside_loop_and_required.is_subset(&requested));
+        assert!(!requested.contains(&chunks[5].id()));
+    }
 }

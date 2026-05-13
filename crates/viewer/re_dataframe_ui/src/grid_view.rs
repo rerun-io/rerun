@@ -1,14 +1,23 @@
+use std::str::FromStr as _;
+
+use ahash::HashSet;
 use egui::{Frame, RichText, Ui};
 
 use re_ui::egui_ext::card_layout::CardLayout;
 use re_ui::{UiExt as _, UiLayout};
-use re_viewer_context::StoreViewContext;
+use re_viewer_context::{StoreViewContext, ViewStates};
 
 use crate::DisplayRecordBatch;
-use crate::datafusion_table_widget::{Columns, bool_value_at, find_row_batch};
+use crate::datafusion_table_widget::{
+    Columns, bool_value_at, find_row_batch, resolve_recording_for_row,
+};
 use crate::display_record_batch::DisplayColumn;
+use crate::preview_renderer::RecordingPreviewRenderer;
 use crate::re_table_utils::TableConfig;
 use crate::table_blueprint::TableBlueprint;
+
+/// Height of the segment preview area inside each card.
+const PREVIEW_HEIGHT: f32 = 200.0;
 
 pub struct FlagChangeEvent {
     pub row: u64,
@@ -19,6 +28,7 @@ pub struct FlagChangeEvent {
 struct CardConfig<'a> {
     table_config: &'a TableConfig,
     title_col_index: Option<usize>,
+    url_col_index: Option<usize>,
     table_blueprint: &'a TableBlueprint,
     flagging_enabled: bool,
 }
@@ -34,14 +44,32 @@ pub fn grid_ui(
     display_record_batches: &[DisplayRecordBatch],
     table_config: &TableConfig,
     table_blueprint: &TableBlueprint,
+    view_renderer: Option<&RecordingPreviewRenderer<'_>>,
+    view_states: &mut ViewStates,
     num_table_rows: u64,
     flagging_enabled: bool,
 ) -> Vec<FlagChangeEvent> {
+    let mut already_requested_uris = HashSet::default();
     let mut flag_changes = Vec::new();
 
+    // Blueprint fields are expected to be resolved upstream via `TableBlueprint::apply_heuristics`,
+    // so we only need a direct name lookup here.
+    let title_col_index = table_blueprint
+        .grid_view_card_title
+        .as_deref()
+        .and_then(|name| lookup_column(columns, name, "Title"));
+    let url_col_index = table_blueprint
+        .url_column
+        .as_deref()
+        .and_then(|name| lookup_column(columns, name, "URL"));
+
     let tokens = ui.tokens();
-    let card_min_width = tokens.table_grid_view_card_min_width;
     let card_spacing = tokens.table_grid_view_card_spacing;
+
+    // Scale the card width with the number of views so each view keeps roughly the same
+    // footprint as a single-view card.
+    let num_views = view_renderer.map_or(1, |r| r.num_views()).max(1);
+    let card_min_width = tokens.table_grid_view_card_min_width * num_views as f32;
 
     let inner_margin = egui::Margin::same(tokens.table_grid_view_card_inner_margin as i8);
     let card_frame = Frame::new()
@@ -49,12 +77,10 @@ pub fn grid_ui(
         .fill(tokens.table_grid_view_card_fill)
         .corner_radius(tokens.table_grid_view_card_corner_radius);
 
-    // Resolve the title column index once for all cards.
-    let title_col_index = find_title_column_index(table_blueprint, columns, table_config);
-
     let card_config = CardConfig {
         table_config,
         title_col_index,
+        url_col_index,
         table_blueprint,
         flagging_enabled,
     };
@@ -77,6 +103,9 @@ pub fn grid_ui(
                     ctx,
                     &card_config,
                     ui,
+                    view_renderer,
+                    view_states,
+                    &mut already_requested_uris,
                     index as u64,
                     columns,
                     display_record_batches,
@@ -88,13 +117,26 @@ pub fn grid_ui(
     flag_changes
 }
 
+/// Look up a column by its display name, warning once if it is missing.
+fn lookup_column(columns: &Columns<'_>, name: &str, kind: &str) -> Option<usize> {
+    let found = columns.find_index_by_display_name(name);
+    if found.is_none() {
+        re_log::warn_once!("{kind} column {name:?} was not found in the table.");
+    }
+    found
+}
+
 /// Render the content of a single card for the given table row.
 ///
 /// This renders only the card interior — the frame is handled by [`CardLayout`].
+#[expect(clippy::too_many_arguments)]
 fn card_content_ui(
     ctx: &StoreViewContext<'_>,
     config: &CardConfig<'_>,
     ui: &mut Ui,
+    view_renderer: Option<&RecordingPreviewRenderer<'_>>,
+    view_states: &mut ViewStates,
+    already_requested_uris: &mut HashSet<re_uri::DatasetSegmentUri>,
     row_idx: u64,
     columns: &Columns<'_>,
     display_record_batches: &[DisplayRecordBatch],
@@ -105,6 +147,7 @@ fn card_content_ui(
     let &CardConfig {
         table_config,
         title_col_index,
+        url_col_index,
         table_blueprint,
         flagging_enabled,
     } = config;
@@ -113,6 +156,14 @@ fn card_content_ui(
         find_row_batch(display_record_batches, row_idx as usize)?;
 
     let mut flag_change_event = None;
+
+    // Register a click sense over the whole card area *before* drawing content so that
+    // interactive child widgets (flag button, etc.) take click priority.
+    let card_click_response = ui.interact(
+        ui.max_rect(),
+        ui.id().with(("card_click", row_idx)),
+        egui::Sense::click(),
+    );
 
     // Read the title value for this row from the pre-resolved title column.
     let title_text = title_col_index.and_then(|idx| {
@@ -125,8 +176,10 @@ fn card_content_ui(
 
     // CardLayout calls us inside a horizontal row — we need vertical layout for card content.
     ui.vertical(|ui| {
-        // Title row: title on the left, flag toggle on the right.
-        egui::Sides::new().shrink_left().show(
+        ui.set_max_width(ui.available_width());
+
+        // Title row: title on the left (truncate if needed), flag toggle on the right.
+        egui::Sides::new().shrink_left().truncate().show(
             ui,
             |ui| {
                 if let Some(title_text) = title_text {
@@ -156,6 +209,34 @@ fn card_content_ui(
             },
         );
 
+        // Segment preview if any.
+        // TODO(RR-4510): loading indication if we're not ready to draw
+        if let Some(renderer) = view_renderer
+            && let Some(preview_column) = table_blueprint.segment_preview_column.as_deref()
+        {
+            let (rect, _response) = ui.allocate_exact_size(
+                egui::vec2(ui.available_width(), PREVIEW_HEIGHT),
+                egui::Sense::hover(),
+            );
+
+            let recording = resolve_recording_for_row(
+                ctx,
+                preview_column,
+                columns,
+                display_record_batches,
+                row_idx,
+                already_requested_uris,
+            );
+
+            let mut child_ui = ui.new_child(
+                egui::UiBuilder::new()
+                    .max_rect(rect)
+                    .layout(egui::Layout::left_to_right(egui::Align::Center)),
+            );
+
+            renderer.show_preview(ctx.app_ctx, &mut child_ui, row_idx, recording, view_states);
+        }
+
         ui.horizontal_wrapped(|ui| {
             for col_idx in table_config.visible_column_indexes() {
                 if Some(col_idx) == title_col_index {
@@ -176,43 +257,16 @@ fn card_content_ui(
         });
     });
 
+    if card_click_response.clicked()
+        && let Some(idx) = url_col_index
+        && let Some(DisplayColumn::Component(comp)) = display_record_batch.columns().get(idx)
+        && let Some(url_str) = comp.string_value_at(batch_index)
+        && re_uri::RedapUri::from_str(&url_str).is_ok()
+    {
+        ui.open_url(egui::OpenUrl::same_tab(url_str));
+    }
+
     flag_change_event
-}
-
-/// Find the column index to use as the card title.
-///
-/// If `grid_view_card_title` is set in the blueprint, uses that column.
-/// Otherwise falls back to the first visible string-typed column.
-fn find_title_column_index(
-    table_blueprint: &TableBlueprint,
-    columns: &Columns<'_>,
-    table_config: &TableConfig,
-) -> Option<usize> {
-    if let Some(title_col_name) = &table_blueprint.grid_view_card_title {
-        for col_idx in table_config.visible_column_indexes() {
-            if columns
-                .columns
-                .get(col_idx)
-                .is_some_and(|c| c.display_name() == *title_col_name)
-            {
-                return Some(col_idx);
-            }
-        }
-    }
-
-    // Fallback: first visible column that has string data.
-    for col_idx in table_config.visible_column_indexes() {
-        if let Some(col) = columns.columns.get(col_idx)
-            && matches!(
-                col.desc,
-                re_sorbet::ColumnDescriptorRef::Component(c) if c.store_datatype == arrow::datatypes::DataType::Utf8
-            )
-        {
-            return Some(col_idx);
-        }
-    }
-
-    None
 }
 
 /// A flag toggle button with progressive-disclosure styling.

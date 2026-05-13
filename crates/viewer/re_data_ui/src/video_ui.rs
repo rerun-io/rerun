@@ -434,7 +434,14 @@ fn decoded_frame_ui<'a>(
                 ui,
                 ui_layout,
                 &format!("{stream_kind}_preview"),
-                &re_renderer::renderer::ColormappedTexture::from_video_frame(texture.clone()),
+                &re_renderer::renderer::ColormappedTexture::from_video_frame(
+                    texture.clone(),
+                    video
+                        .data_descr()
+                        .encoding_details
+                        .as_ref()
+                        .and_then(|d| d.bit_depth),
+                ),
                 preview_size,
                 &|| match re_renderer::schedule_read_texture(ctx.render_ctx, &texture.inner.texture)
                 {
@@ -771,62 +778,98 @@ impl VideoUi {
         descr: &ComponentDescriptor,
     ) -> Option<Self> {
         let sample_component = descr.component;
-        let (video_stream_result, stream_kind) =
-            if descr.component == archetypes::VideoStream::descriptor_sample().component {
-                let res = ctx.memoizer(|c: &mut VideoStreamCache| {
-                    c.video_entry(
-                        ctx.db,
-                        entity_path,
-                        ctx.timeline_name(),
-                        ctx.app_ctx.app_options.video_decoder_settings(),
-                    )
-                });
+        let (video_stream_result, stream_kind) = if descr.component
+            == archetypes::VideoStream::descriptor_sample().component
+        {
+            let res = ctx.memoizer(|c: &mut VideoStreamCache| {
+                c.video_entry(
+                    ctx.db,
+                    entity_path,
+                    ctx.timeline_name(),
+                    ctx.app_ctx.app_options.video_decoder_settings(),
+                )
+            });
 
-                (res, StreamKind::Video)
-            } else if descr.component == archetypes::EncodedImage::descriptor_blob().component {
-                let res = ctx.memoizer(|c: &mut VideoStreamCache| {
-                    c.entry(
-                        ctx.db,
-                        entity_path,
-                        ctx.timeline_name(),
-                        ctx.app_ctx.app_options.video_decoder_settings(),
-                        descr.component,
-                        &|| {
-                            let codec_component =
-                                archetypes::EncodedImage::descriptor_media_type().component;
-                            let query_result = ctx.db.storage_engine().cache().latest_at(
-                                // Get the last logged codec. Should be unchanging so if correctly
-                                // logged it doesn't matter which one we get.
-                                &re_chunk_store::LatestAtQuery::new(
-                                    ctx.timeline_name(),
-                                    re_log_types::TimeInt::MAX,
-                                ),
-                                entity_path,
-                                [codec_component],
-                            );
+            (res, StreamKind::Video)
+        } else if descr.component == archetypes::EncodedImage::descriptor_blob().component {
+            let res = ctx.memoizer(|c: &mut VideoStreamCache| {
+                c.entry(
+                    ctx.db,
+                    entity_path,
+                    ctx.timeline_name(),
+                    ctx.app_ctx.app_options.video_decoder_settings(),
+                    descr.component,
+                    &|| {
+                        let codec_component =
+                            archetypes::EncodedImage::descriptor_media_type().component;
+                        let query_result = ctx.db.storage_engine().cache().latest_at(
+                            // Get the last logged codec. Should be unchanging so if correctly
+                            // logged it doesn't matter which one we get.
+                            &re_chunk_store::LatestAtQuery::new(
+                                ctx.timeline_name(),
+                                re_log_types::TimeInt::MAX,
+                            ),
+                            entity_path,
+                            [codec_component],
+                        );
 
-                            let codec_chunk = query_result
-                                .get_required(codec_component)
-                                .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
+                        let codec_chunk = query_result
+                            .get_required(codec_component)
+                            .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
 
-                            let last_codec = codec_chunk
+                        let last_codec = codec_chunk
+                            .component_mono::<MediaType>(codec_component)
+                            .transpose()
+                            .map_err(|err| {
+                                VideoStreamProcessingError::FailedReadingCodec(Box::new(err))
+                            })?;
+
+                        Ok(re_video::VideoCodec::ImageSequence(
+                            last_codec.map(|s| s.to_string()),
+                        ))
+                    },
+                )
+            });
+
+            (res, StreamKind::Image)
+        } else if descr.component == archetypes::EncodedDepthImage::descriptor_blob().component {
+            let res = ctx.memoizer(|c: &mut VideoStreamCache| {
+                c.entry(
+                    ctx.db,
+                    entity_path,
+                    ctx.timeline_name(),
+                    ctx.app_ctx.app_options.video_decoder_settings(),
+                    descr.component,
+                    &|| {
+                        let codec_component =
+                            archetypes::EncodedDepthImage::descriptor_media_type().component;
+                        let query_result = ctx.db.storage_engine().cache().latest_at(
+                            &re_chunk_store::LatestAtQuery::new(
+                                ctx.timeline_name(),
+                                re_log_types::TimeInt::MAX,
+                            ),
+                            entity_path,
+                            [codec_component],
+                        );
+
+                        let last_codec = query_result.get(codec_component).and_then(|chunk| {
+                            chunk
                                 .component_mono::<MediaType>(codec_component)
                                 .transpose()
-                                .map_err(|err| {
-                                    VideoStreamProcessingError::FailedReadingCodec(Box::new(err))
-                                })?;
+                                .ok()?
+                        });
 
-                            Ok(re_video::VideoCodec::ImageSequence(
-                                last_codec.map(|s| s.to_string()),
-                            ))
-                        },
-                    )
-                });
+                        Ok(re_video::VideoCodec::ImageSequence(
+                            last_codec.map(|s| s.to_string()),
+                        ))
+                    },
+                )
+            });
 
-                (res, StreamKind::Image)
-            } else {
-                return None;
-            };
+            (res, StreamKind::Image)
+        } else {
+            return None;
+        };
 
         Some(Self::Stream(
             video_stream_result,

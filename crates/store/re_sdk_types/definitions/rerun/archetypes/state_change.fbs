@@ -1,0 +1,22 @@
+namespace rerun.archetypes;
+
+/// A state change, representing a transition of an entity into a new state.
+///
+/// Useful for representing discrete state machines, mode transitions, or
+/// state changes over time. Each logged [archetypes.StateChange] marks a new state
+/// at the given time. A `null` state is ignored by the state timeline view.
+///
+/// The state timeline view displays these as horizontal colored lanes over time.
+///
+/// \example archetypes/state_change title="State changes over time" image="https://static.rerun.io/state_change/6654a13e984702b96547750469c368ce6e900c0f/1200w.png"
+table StateChange (
+  "attr.docs.category": "Plotting",
+  "attr.docs.unreleased",
+  "attr.docs.view_types": "StateTimelineView",
+  "attr.rerun.state": "unstable",
+  "attr.rerun.visualizer": "StateVisualizer",
+  "attr.rust.derive": "PartialEq"
+) {
+  /// The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.
+  state: rerun.components.Text ("attr.rerun.component_required", nullable, order: 100);
+}

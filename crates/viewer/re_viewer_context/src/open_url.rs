@@ -352,6 +352,10 @@ impl ViewerOpenUrl {
                 "Can't share links to recordings streamed from stdin."
             )),
 
+            LogSource::EmbeddedTableBlueprint => Err(anyhow::anyhow!(
+                "Can't share links to embedded table blueprints."
+            )),
+
             LogSource::RedapGrpcStream {
                 uri,
                 open_behavior: _,

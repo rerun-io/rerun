@@ -158,6 +158,17 @@ pub trait ViewClass: Send + Sync {
     /// Used for UI display.
     fn display_name(&self) -> &'static str;
 
+    // TODO(RR-4506): Remove this flag (and all sites that branch on it) once the Status view
+    // graduates from experimental.
+    /// Whether this view class is still experimental.
+    ///
+    /// Experimental views are shown in a separate "Experimental" section at the bottom of the
+    /// "add view" picker (with a warning icon), and surface an inline warning banner in the
+    /// selection panel when a view of this kind is selected. They are otherwise fully functional.
+    fn is_experimental(&self) -> bool {
+        false
+    }
+
     /// Icon used to identify this view class.
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::VIEW_GENERIC
@@ -356,16 +367,12 @@ where
 /// For any state that should be persisted, use the Blueprint!
 /// This state is used for transient state, such as animation or uncommitted ui state like dragging a camera.
 /// (on mouse release, the camera would be committed to the blueprint).
-pub trait ViewState: std::any::Any + Sync + Send {
+pub trait ViewState: std::any::Any + Sync + Send + re_byte_size::SizeBytes {
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
-
-    fn size_bytes(&self) -> u64 {
-        0 // TODO(emilk): implement this for large view statses
-    }
 }
 
 /// Implementation of an empty view state.

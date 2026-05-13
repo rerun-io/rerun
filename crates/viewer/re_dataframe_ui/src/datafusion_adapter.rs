@@ -55,8 +55,10 @@ impl From<&TableBlueprint> for DataFusionQueryData {
             entry_links,
             prefilter,
             column_filters,
+            segment_preview_column: _,
             grid_view_card_title: _,
             flag_column: _,
+            url_column: _,
         } = value;
 
         Self {

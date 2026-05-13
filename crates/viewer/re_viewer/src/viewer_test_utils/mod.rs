@@ -9,6 +9,7 @@ pub use app_testing_ext::AppTestingExt;
 use egui_kittest::Harness;
 use re_build_info::build_info;
 use re_viewer_context::AppOptions;
+use re_viewer_context::external::re_log_types::DateVisibility;
 
 pub type AppOptionsEditor = Box<dyn Fn(&mut AppOptions)>;
 
@@ -19,7 +20,6 @@ pub struct HarnessOptions {
     pub step_dt: Option<f32>,
     pub startup_url: Option<String>,
     pub enable_component_mapping: bool,
-    pub enable_experimental_status_view: bool,
 
     /// Allows the test to set `AppOptions` at start.
     pub app_options_editor: Option<AppOptionsEditor>,
@@ -49,7 +49,6 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
                 // Don't show the welcome / example screen in tests.
                 // See also: https://github.com/rerun-io/rerun/issues/10989
                 hide_welcome_screen: true,
-                enable_experimental_status_view: options.enable_experimental_status_view,
                 ..Default::default()
             },
             cc,
@@ -61,8 +60,18 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
         app.app_options_mut().video.ffmpeg_path = "/fake/ffmpeg/path".to_owned();
         app.app_options_mut().video.override_ffmpeg_path = true;
 
-        // Enable experimental grid view in tests.
-        app.app_options_mut().experimental.table_grid_view = true;
+        // Enable table cards and blueprints in tests.
+        app.app_options_mut()
+            .experimental
+            .table_cards_and_blueprints = true;
+
+        // Always show the full date so timestamps render as `YYYY-MM-DD HH:MM:SS`
+        // regardless of when the test runs. The default `HideDateToday` would
+        // silently break snapshots once the calendar day rolls over.
+        app.app_options_mut().timestamp_format = app
+            .app_options()
+            .timestamp_format
+            .with_date_visibility(DateVisibility::ShowDate);
 
         if let Some(editor) = &options.app_options_editor {
             editor(app.app_options_mut());

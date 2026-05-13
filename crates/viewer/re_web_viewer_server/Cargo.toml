@@ -18,7 +18,7 @@ include = [
   "Cargo.toml",
 
   # Matches the files in src/lib.rs:
-  "web_viewer/favicon.svg",
+  "web_viewer/apple-touch-icon.png",
   "web_viewer/favicon.ico",
   "web_viewer/index.html",
   "web_viewer/re_viewer_bg.wasm",

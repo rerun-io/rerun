@@ -351,10 +351,8 @@ impl<W: std::io::Write> Encoder<W> {
 
         let byte_size_excluding_header = n - crate::MessageHeader::ENCODED_SIZE_BYTES as u64;
 
-        let byte_span_excluding_header = re_span::Span {
-            start: byte_offset_excluding_header,
-            len: byte_size_excluding_header,
-        };
+        let byte_span_excluding_header =
+            re_span::Span::from_start_len(byte_offset_excluding_header, byte_size_excluding_header);
 
         Ok((n, byte_span_excluding_header))
     }

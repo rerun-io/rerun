@@ -33,7 +33,7 @@ namespace rerun::archetypes {
     ///     const auto rec = rerun::RecordingStream("rerun_example_geo_line_strings");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     auto line_string = rerun::components::GeoLineString::from_lat_lon(
+    ///     auto line_string = rerun::GeoLineString::from_lat_lon(
     ///         {{41.0000, -109.0452},
     ///          {41.0000, -102.0415},
     ///          {36.9931, -102.0415},

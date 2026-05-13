@@ -43,11 +43,14 @@ namespace rerun::archetypes {
     ///     std::uniform_int_distribution<int> dist(0, 255);
     ///
     ///     std::vector<uint8_t> data(8 * 6 * 3 * 5);
-    ///     std::generate(data.begin(), data.end(), [&] { return static_cast<uint8_t>(dist(gen)); });
+    ///     std::generate(data.begin(), data.end(), [&] {
+    ///         return static_cast<uint8_t>(dist(gen));
+    ///     });
     ///
     ///     rec.log(
     ///         "tensor",
-    ///         rerun::Tensor({8, 6, 3, 5}, data).with_dim_names({"width", "height", "channel", "batch"})
+    ///         rerun::Tensor({8, 6, 3, 5}, data)
+    ///             .with_dim_names({"width", "height", "channel", "batch"})
     ///     );
     /// }
     /// ```

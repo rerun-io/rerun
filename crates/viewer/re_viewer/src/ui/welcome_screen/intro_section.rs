@@ -120,7 +120,7 @@ impl IntroItem {
                 };
                 ui.set_style(ui.style_of(opposite_theme));
 
-                ui.heading(RichText::new("Rerun Data Platform").strong());
+                ui.heading(RichText::new("Rerun Hub").strong());
 
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;

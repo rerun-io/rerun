@@ -14,6 +14,6 @@ int main(int argc, char* argv[]) {
     rec.log(
         "mcap/channels/camera",
         rerun::archetypes::McapChannel(1, "/camera/image", "cdr")
-            .with_metadata(rerun::components::KeyValuePairs(metadata))
+            .with_metadata(rerun::KeyValuePairs(metadata))
     );
 }

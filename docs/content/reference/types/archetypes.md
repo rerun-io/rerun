@@ -34,7 +34,7 @@ This page lists all built-in archetypes.
 * [`McapChannel`](archetypes/mcap_channel.md): A channel within an MCAP file that defines how messages are structured and encoded.
 * [`McapMessage`](archetypes/mcap_message.md): The binary payload of a single MCAP message, without metadata.
 * [`McapSchema`](archetypes/mcap_schema.md): A schema definition that describes the structure of messages in an MCAP file.
-* [`McapStatistics`](archetypes/mcap_statistics.md): Recording-level statistics about an MCAP file, logged as a part of [`archetypes.RecordingInfo`](https://rerun.io/docs/reference/types/archetypes/recording_info).
+* [`McapStatistics`](archetypes/mcap_statistics.md): Recording-level statistics about an MCAP file.
 
 ## Plotting
 
@@ -42,12 +42,14 @@ This page lists all built-in archetypes.
 * [`Scalars`](archetypes/scalars.md): One or more double-precision scalar values, e.g. for use for time-series plots.
 * [`SeriesLines`](archetypes/series_lines.md): Define the style properties for one or more line series in a chart.
 * [`SeriesPoints`](archetypes/series_points.md): Define the style properties for one or more point series (scatter plot) in a chart.
-* [`Status`](archetypes/status.md): A status update, representing a change in the status of an entity.
+* [`StateChange`](archetypes/state_change.md): A state change, representing a transition of an entity into a new state.
+* [`StateConfiguration`](archetypes/state_configuration.md): Define the style and mapping for state values in a state timeline view.
 
 ## Spatial 2D
 
 * [`Arrows2D`](archetypes/arrows2d.md): 2D arrows with optional colors, radii, labels, etc.
 * [`Boxes2D`](archetypes/boxes2d.md): 2D boxes with half-extents and optional center, colors etc.
+* [`Ellipses2D`](archetypes/ellipses2d.md): 2D ellipses with half-extents (semi-axes) and optional center, colors etc.
 * [`LineStrips2D`](archetypes/line_strips2d.md): 2D line strips with positions and optional colors, radii, labels, etc.
 * [`Points2D`](archetypes/points2d.md): A 2D point cloud with positions and optional colors, radii, labels, etc.
 

@@ -19,13 +19,14 @@ from collections.abc import Callable
 import numpy as np
 
 import rerun as rr  # pip install rerun-sdk
+from rerun.components import Colormap
 
 try:
     import cv_bridge
     import laser_geometry
     import rclpy
     from image_geometry import PinholeCameraModel
-    from nav_msgs.msg import Odometry
+    from nav_msgs.msg import OccupancyGrid, Odometry
     from numpy.lib.recfunctions import structured_to_unstructured
     from rclpy.callback_groups import ReentrantCallbackGroup
     from rclpy.node import Node
@@ -70,6 +71,26 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         self.subscribe("/rgbd_camera/image", Image, self.image_callback)
         self.subscribe("/rgbd_camera/depth_image", Image, self.depth_callback)
         self.subscribe("/robot_description", String, self.urdf_callback, latching=True)
+        self.subscribe(
+            "/map",
+            OccupancyGrid,
+            lambda grid: self.occupancy_grid_callback("/map", grid, Colormap.RvizMap, draw_order=1.0),
+            latching=True,
+        )
+        self.subscribe(
+            "/global_costmap/costmap",
+            OccupancyGrid,
+            lambda grid: self.occupancy_grid_callback(
+                "/global_costmap_costmap", grid, Colormap.RvizCostmap, draw_order=2.0, opacity=0.75
+            ),
+        )
+        self.subscribe(
+            "/local_costmap/costmap",
+            OccupancyGrid,
+            lambda grid: self.occupancy_grid_callback(
+                "/local_costmap_costmap", grid, Colormap.RvizCostmap, draw_order=3.0, opacity=0.75
+            ),
+        )
 
     def subscribe(
         self, topic: str, msg_type: type, callback: Callable[[rclpy.MsgT], None], latching: bool = False
@@ -142,6 +163,58 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
         rr.log("rgbd_camera/depth_image", depth_image)
         rr.log("rgbd_camera/depth_image", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
+
+    def occupancy_grid_callback(
+        self,
+        entity_path: str,
+        grid: OccupancyGrid,
+        colormap: rr.components.Colormap,
+        draw_order: float | None = None,
+        opacity: float | None = None,
+    ) -> None:
+        """
+        Logs a ROS OccupancyGrid as a Rerun GridMap.
+        """
+        time = Time.from_msg(grid.header.stamp)
+        rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
+
+        # Log the coordinate frame ID of the map.
+        # The local offset of the map frame within the grid is handled by the archetype (see below).
+        rr.log(entity_path, rr.CoordinateFrame(frame=grid.header.frame_id))
+
+        # ROS maps start at the bottom-left cell; Rerun image buffers are top-row first.
+        data = np.asarray(grid.data, dtype=np.int8).reshape((grid.info.height, grid.info.width))
+        image_data = np.flipud(data).astype(np.uint8, copy=False)
+
+        rr.log(
+            entity_path,
+            rr.GridMap(
+                data=image_data.tobytes(),
+                format=rr.components.ImageFormat(
+                    width=grid.info.width,
+                    height=grid.info.height,
+                    color_model="L",
+                    channel_datatype="U8",
+                ),
+                cell_size=grid.info.resolution,
+                translation=[
+                    grid.info.origin.position.x,
+                    grid.info.origin.position.y,
+                    grid.info.origin.position.z,
+                ],
+                quaternion=rr.Quaternion(
+                    xyzw=[
+                        grid.info.origin.orientation.x,
+                        grid.info.origin.orientation.y,
+                        grid.info.origin.orientation.z,
+                        grid.info.origin.orientation.w,
+                    ]
+                ),
+                colormap=colormap,
+                draw_order=draw_order,
+                opacity=opacity,
+            ),
+        )
 
     def scan_callback(self, scan: LaserScan) -> None:
         """

@@ -1,6 +1,5 @@
 use egui::{
-    Align, Atom, Button, Color32, Id, Image, Layout, NumExt as _, Popup, RichText, Sense,
-    include_image,
+    Align, Atom, Button, Color32, Id, Image, Layout, Popup, RichText, Sense, include_image,
 };
 use emath::{Rect, RectAlign, Vec2};
 use re_format::format_uint;
@@ -91,9 +90,6 @@ fn top_bar_ui(
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
     app.rerun_menu_button_ui(frame.wgpu_render_state(), store_context, ui);
-
-    ui.add_space(12.0);
-    website_link_ui(ui);
 
     if !app.startup_options().web_history_enabled() {
         ui.add_space(12.0);
@@ -511,29 +507,6 @@ fn user_icon(email: &str, rect: Rect, ui: &egui::Ui, corner_radius: f32, tint: u
         egui::FontId::proportional(rect.height() * 0.6),
         Color32::WHITE,
     );
-}
-
-/// Shows clickable website link as an image (text doesn't look as nice)
-fn website_link_ui(ui: &mut egui::Ui) {
-    let desired_height = ui.max_rect().height();
-    let desired_height = desired_height.at_most(20.0);
-
-    let image = re_ui::icons::RERUN_IO_TEXT
-        .as_image()
-        .fit_to_original_size(2.0) // hack, because the original SVG is very small
-        .max_height(desired_height)
-        .tint(ui.tokens().strong_fg_color);
-
-    let url = "https://rerun.io/";
-    let response = ui
-        .add(egui::Button::image(image))
-        .on_hover_cursor(egui::CursorIcon::PointingHand);
-    if response.clicked() {
-        ui.open_url(egui::output::OpenUrl {
-            url: url.to_owned(),
-            new_tab: true,
-        });
-    }
 }
 
 fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {

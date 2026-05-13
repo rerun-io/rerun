@@ -30,7 +30,7 @@ pub enum ServerModalMode {
 }
 
 impl ServerModalMode {
-    /// Should we show a warning about Data Platform being experimental?
+    /// Should we show a warning about the catalog server being experimental?
     pub fn should_show_experimental_warning(&self) -> bool {
         matches!(self, Self::Add)
     }
@@ -185,7 +185,7 @@ impl ServerModal {
             |ui| {
                 if self.mode.should_show_experimental_warning() {
                     ui.warning_label(
-                        "The Data Platform is very experimental and not generally \
+                        "Rerun Hub is experimental and not generally \
                 available yet. Proceed with caution!",
                     );
                 }

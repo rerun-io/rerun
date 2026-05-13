@@ -33,6 +33,7 @@ pub enum ApiErrorKind {
     Timeout,
     Internal,
     InvalidArguments,
+    FailedPrecondition,
     ResourcesExhausted,
 
     /// Failed to decode data received from the server (e.g. protobuf → Arrow conversion).
@@ -55,6 +56,7 @@ impl From<tonic::Code> for ApiErrorKind {
             tonic::Code::Unimplemented => Self::Unimplemented,
             tonic::Code::Unavailable => Self::Connection,
             tonic::Code::InvalidArgument => Self::InvalidArguments,
+            tonic::Code::FailedPrecondition => Self::FailedPrecondition,
             tonic::Code::DeadlineExceeded => Self::Timeout,
             _ => Self::Internal,
         }
@@ -73,6 +75,7 @@ impl ApiErrorKind {
             | Self::Unauthenticated
             | Self::Unimplemented
             | Self::InvalidArguments
+            | Self::FailedPrecondition
             | Self::Deserialization
             | Self::Serialization
             | Self::InvalidServer => false,
@@ -91,6 +94,7 @@ impl std::fmt::Display for ApiErrorKind {
             Self::Connection => write!(f, "Connection"),
             Self::Internal => write!(f, "Internal"),
             Self::InvalidArguments => write!(f, "InvalidArguments"),
+            Self::FailedPrecondition => write!(f, "FailedPrecondition"),
             Self::ResourcesExhausted => write!(f, "ResourcesExhausted"),
             Self::Deserialization => write!(f, "Deserialization"),
             Self::Serialization => write!(f, "Serialization"),

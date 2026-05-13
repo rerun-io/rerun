@@ -1,4 +1,4 @@
-use crate::analytics::QueryType;
+use crate::analytics::{QueryInfo, QueryType};
 use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use crate::batch_coalescer::coalescer::CoalescerOptions;
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
@@ -30,7 +30,7 @@ use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{ApiError, ApiResult, ConnectionClient, ConnectionRegistryHandle};
 
-use crate::IntoDfError as _;
+use crate::{IntoDfError as _, SegmentStreamExec};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_uri::Origin;
 use std::any::Any;
@@ -40,8 +40,9 @@ use std::str::FromStr as _;
 use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::LazyLock;
+use std::time::Duration;
 use tracing::Instrument as _;
-use web_time::Instant;
+use web_time::{Instant, SystemTime};
 
 /// Environment variable to force the client to go through the `FetchChunks` data fetching path.
 #[cfg(not(target_arch = "wasm32"))]
@@ -180,7 +181,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         )
         .await?;
 
-        let analytics = crate::ConnectionAnalytics::new(origin);
+        let analytics = crate::ConnectionAnalytics::new(origin, &provider.client);
 
         // Kick off a background fetch of the server version so subsequent analytics
         // spans can be filtered by cloud build. Lazy-cached on `analytics`; the
@@ -252,14 +253,20 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             ApiError::invalid_arguments_with_source(trace_id, err, "computing schema for query")
         })?;
 
-        let select_all_entity_paths = false;
-
         let entity_paths = query_expression
             .view_contents
             .as_ref()
             .map_or(vec![], |contents| {
                 contents.keys().cloned().collect::<Vec<_>>()
             });
+
+        // Preserve the `QueryExpression` distinction between:
+        // - `view_contents=None`: all entities
+        // - `view_contents=Some(empty)`: no entities
+        //
+        // Both cases produce an empty `entity_paths` list, so the explicit flag
+        // must be driven from `view_contents` itself rather than the derived list.
+        let select_all_entity_paths = query_expression.view_contents.is_none();
 
         let query = query_from_query_expression(query_expression);
         let fuzzy_descriptors: Vec<String> = query_expression
@@ -399,7 +406,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
         };
 
         async {
-            let scan_start_wall = web_time::SystemTime::now();
+            let scan_start_wall = SystemTime::now();
             let scan_start = Instant::now();
 
             let mut dataset_queries = vec![self.query_dataset_request.clone()];
@@ -434,7 +441,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             let mut query_expression = self.query_expression.clone();
 
             let mut chunk_info_batches = Vec::with_capacity(dataset_queries.len());
-            let mut time_to_first_chunk_info: Option<std::time::Duration> = None;
+            let mut time_to_first_chunk_info: Option<Duration> = None;
 
             let mut trace_id: Option<opentelemetry::TraceId> = None;
 
@@ -501,7 +508,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                     .unwrap_or_default();
 
                 analytics.begin_query(
-                    crate::analytics::QueryInfo {
+                    QueryInfo {
                         dataset_id: self.dataset_id.to_string(),
                         query_chunks: agg.chunks,
                         query_segments: agg.segments,
@@ -509,6 +516,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                         query_columns: self.schema.fields().len(),
                         query_entities: self.query_dataset_request.entity_paths.len(),
                         query_bytes: agg.bytes,
+                        query_chunks_per_segment_min: agg.chunks_per_segment_min,
                         query_chunks_per_segment_max: agg.chunks_per_segment_max,
                         query_chunks_per_segment_mean: agg.chunks_per_segment_mean,
                         query_type: QueryType::classify(&self.query_expression),
@@ -516,11 +524,11 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                             .query_expression
                             .filtered_index
                             .map(|i| i.as_str().to_owned()),
-                        time_range: scan_start_wall..web_time::SystemTime::now(),
                         time_to_first_chunk_info,
                         trace_id,
                     },
                     scan_start,
+                    scan_start_wall,
                 )
             });
 
@@ -542,7 +550,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             // physical-plan boundary that DataFusion's optimizer relies on
             // (removing it has been observed to confuse downstream sort /
             // projection nodes that reference `rerun_segment_id`).
-            crate::SegmentStreamExec::try_new(
+            SegmentStreamExec::try_new(
                 &self.schema,
                 self.sort_index,
                 projection,
@@ -655,7 +663,7 @@ fn entity_path_from_field(field: &Field) -> Option<EntityPath> {
 }
 
 /// Compute the output schema for a query on a dataset. When we call `get_dataset_schema`
-/// on the Data Platform, we will get the schema for all entities and all components. This
+/// on the catalog server, we will get the schema for all entities and all components. This
 /// method is used to down select from that full schema based on `query_expression`.
 #[tracing::instrument(level = "trace", skip_all)]
 fn compute_schema_for_query(
@@ -714,7 +722,6 @@ fn compute_schema_for_query(
     )))
 }
 
-#[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn prepend_string_column_schema(schema: &Schema, column_name: &str) -> Schema {
     let mut fields = vec![Field::new(column_name, DataType::Utf8, false)];
     fields.extend(schema.fields().iter().map(|f| (**f).clone()));
@@ -822,6 +829,7 @@ pub(crate) struct ChunkInfoAggregates {
     pub segments: usize,
     pub layers: usize,
     pub bytes: u64,
+    pub chunks_per_segment_min: u32,
     pub chunks_per_segment_max: u32,
     pub chunks_per_segment_mean: f32,
 }
@@ -856,7 +864,15 @@ pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAgg
         }
     }
     let segments = per_segment.len();
-    let chunks_per_segment_max = per_segment.into_values().max().unwrap_or(0);
+    let (chunks_per_segment_min, chunks_per_segment_max) = per_segment
+        .into_values()
+        .fold((u32::MAX, 0u32), |(min, max), v| (min.min(v), max.max(v)));
+    // Clamp the sentinel back to 0 when the histogram was empty.
+    let chunks_per_segment_min = if segments == 0 {
+        0
+    } else {
+        chunks_per_segment_min
+    };
     let chunks_per_segment_mean = if segments == 0 {
         0.0
     } else {
@@ -878,6 +894,7 @@ pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAgg
         segments,
         layers,
         bytes,
+        chunks_per_segment_min,
         chunks_per_segment_max,
         chunks_per_segment_mean,
     }
@@ -889,16 +906,13 @@ pub fn query_from_query_expression(query_expression: &QueryExpression) -> Query 
     } else {
         query_expression
             .min_latest_at()
-            .map(|latest_at| QueryLatestAt {
-                index: Some(latest_at.timeline().to_string()),
-                at: latest_at.at(),
-            })
+            .map(|latest_at| QueryLatestAt::global(Some(latest_at.timeline()), latest_at.at()))
     };
 
     Query {
         latest_at,
         range: query_expression.max_range().map(|range| QueryRange {
-            index: range.timeline().to_string(),
+            index: *range.timeline(),
             index_range: range.range,
         }),
         columns_always_include_everything: false,
@@ -1284,5 +1298,123 @@ mod tests {
         }
 
         assert_eq!(query.entity_paths, original);
+    }
+
+    /// Build a synthetic chunk-info `RecordBatch` from parallel column vectors.
+    fn make_chunk_info_batch(
+        segment_ids: &[&str],
+        layer_names: &[&str],
+        byte_lens: &[u64],
+    ) -> RecordBatch {
+        use arrow::array::UInt64Array;
+
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![
+                QueryDatasetResponse::field_chunk_segment_id(),
+                QueryDatasetResponse::field_chunk_layer_name(),
+                QueryDatasetResponse::field_chunk_byte_len(),
+            ],
+            HashMap::default(),
+        ));
+
+        let n = segment_ids.len();
+        assert_eq!(n, layer_names.len());
+        assert_eq!(n, byte_lens.len());
+
+        RecordBatch::try_new_with_options(
+            schema,
+            vec![
+                Arc::new(StringArray::from(segment_ids.to_vec())),
+                Arc::new(StringArray::from(layer_names.to_vec())),
+                Arc::new(UInt64Array::from(byte_lens.to_vec())),
+            ],
+            &RecordBatchOptions::new().with_row_count(Some(n)),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn chunk_info_aggregates_empty() {
+        let batch = make_chunk_info_batch(&[], &[], &[]);
+        let agg = compute_chunk_info_aggregates(&batch);
+        assert_eq!(agg.chunks, 0);
+        assert_eq!(agg.segments, 0);
+        assert_eq!(agg.layers, 0);
+        assert_eq!(agg.bytes, 0);
+        assert_eq!(agg.chunks_per_segment_min, 0);
+        assert_eq!(agg.chunks_per_segment_max, 0);
+        assert_eq!(agg.chunks_per_segment_mean, 0.0);
+    }
+
+    #[test]
+    fn chunk_info_aggregates_single_segment() {
+        // 3 chunks, all in segment "A", all in layer "base".
+        let batch =
+            make_chunk_info_batch(&["A", "A", "A"], &["base", "base", "base"], &[10, 20, 30]);
+        let agg = compute_chunk_info_aggregates(&batch);
+        assert_eq!(agg.chunks, 3);
+        assert_eq!(agg.segments, 1);
+        assert_eq!(agg.layers, 1);
+        assert_eq!(agg.bytes, 60);
+        assert_eq!(agg.chunks_per_segment_min, 3);
+        assert_eq!(agg.chunks_per_segment_max, 3);
+        assert!((agg.chunks_per_segment_mean - 3.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn chunk_info_aggregates_uniform_segments() {
+        // 6 chunks spread evenly: A,A | B,B | C,C.
+        let batch = make_chunk_info_batch(
+            &["A", "A", "B", "B", "C", "C"],
+            &["base"; 6],
+            &[1, 1, 1, 1, 1, 1],
+        );
+        let agg = compute_chunk_info_aggregates(&batch);
+        assert_eq!(agg.chunks, 6);
+        assert_eq!(agg.segments, 3);
+        assert_eq!(agg.layers, 1);
+        assert_eq!(agg.bytes, 6);
+        assert_eq!(agg.chunks_per_segment_min, 2);
+        assert_eq!(agg.chunks_per_segment_max, 2);
+        assert!((agg.chunks_per_segment_mean - 2.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn chunk_info_aggregates_skewed_segments() {
+        // Sizes [1, 5, 10] — 16 chunks across 3 segments.
+        let mut segs = vec!["A"];
+        segs.extend(std::iter::repeat_n("B", 5));
+        segs.extend(std::iter::repeat_n("C", 10));
+        let layers = vec!["base"; segs.len()];
+        let bytes = vec![1u64; segs.len()];
+
+        let batch = make_chunk_info_batch(&segs, &layers, &bytes);
+        let agg = compute_chunk_info_aggregates(&batch);
+        assert_eq!(agg.chunks, 16);
+        assert_eq!(agg.segments, 3);
+        assert_eq!(agg.layers, 1);
+        assert_eq!(agg.bytes, 16);
+        assert_eq!(agg.chunks_per_segment_min, 1);
+        assert_eq!(agg.chunks_per_segment_max, 10);
+        // mean = 16/3 ≈ 5.333
+        assert!((agg.chunks_per_segment_mean - (16.0 / 3.0)).abs() < 1e-5);
+    }
+
+    #[test]
+    fn chunk_info_aggregates_multi_layer() {
+        // Two segments, each touched in two layers — 4 distinct (segment, layer) rows.
+        let batch = make_chunk_info_batch(
+            &["A", "A", "B", "B"],
+            &["base", "v2", "base", "v2"],
+            &[100, 200, 300, 400],
+        );
+        let agg = compute_chunk_info_aggregates(&batch);
+        assert_eq!(agg.chunks, 4);
+        assert_eq!(agg.segments, 2);
+        assert_eq!(agg.layers, 2);
+        assert_eq!(agg.bytes, 1000);
+        assert_eq!(agg.chunks_per_segment_min, 2);
+        assert_eq!(agg.chunks_per_segment_max, 2);
+        assert!((agg.chunks_per_segment_mean - 2.0).abs() < f32::EPSILON);
     }
 }

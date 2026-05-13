@@ -1,0 +1,8 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+values: []
+labels: []
+colors: [3161148927]
+visible: [true]

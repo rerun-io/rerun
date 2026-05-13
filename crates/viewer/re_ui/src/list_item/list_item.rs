@@ -310,7 +310,7 @@ impl ListItem {
     ///
     /// *Important*: must be called while nested in a [`super::list_item_scope`].
     pub fn show_flat<'a>(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
-        // Note: the purpose of the scope is to minimise interferences on subsequent items' id
+        // Note: the purpose of the scope is to minimize interferences on subsequent items' id
         ui.sanity_check();
         ui.scope(|ui| self.ui(ui, None, 0.0, Box::new(content)))
             .inner
@@ -321,7 +321,7 @@ impl ListItem {
     ///
     /// *Important*: must be called while nested in a [`super::list_item_scope`].
     pub fn show_hierarchical(self, ui: &mut Ui, content: impl ListItemContent) -> Response {
-        // Note: the purpose of the scope is to minimise interferences on subsequent items' id
+        // Note: the purpose of the scope is to minimize interferences on subsequent items' id
         ui.scope(|ui| {
             let tokens = ui.tokens();
             self.ui(
@@ -396,7 +396,7 @@ impl ListItem {
         let openness = state.openness(ui.ctx());
         self.collapse_openness = Some(openness);
 
-        // Note: the purpose of the scope is to minimise interferences on subsequent items' id
+        // Note: the purpose of the scope is to minimize interferences on subsequent items' id
         let response = ui
             .scope(|ui| self.ui(ui, Some(id), 0.0, Box::new(content)))
             .inner;

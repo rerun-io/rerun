@@ -40,10 +40,8 @@ fn simple_manifest() {
             let chunk_byte_size = transport_compressed.encoded_len() as u64;
             let chunk_byte_size_uncompressed = transport_uncompressed.encoded_len() as u64;
 
-            let chunk_byte_span_excluding_header = re_span::Span {
-                start: byte_offset_excluding_header,
-                len: chunk_byte_size,
-            };
+            let chunk_byte_span_excluding_header =
+                re_span::Span::from_start_len(byte_offset_excluding_header, chunk_byte_size);
             builder
                 .append(
                     &chunk_batch,

@@ -798,6 +798,9 @@ struct RecordingStreamInner {
     batcher: ChunkBatcher,
     batcher_to_sink_handle: Option<std::thread::JoinHandle<()>>,
 
+    /// Mirror of the batcher's currently active configuration.
+    current_batcher_config: Mutex<ChunkBatcherConfig>,
+
     /// It true, any new sink will update the batcher's configuration (as far as possible).
     sink_dependent_batcher_config: bool,
 
@@ -859,6 +862,39 @@ fn resolve_batcher_config(
     }
 }
 
+/// Warns once if `sink` defers finalization to shutdown (e.g. a file sink) and is paired with a
+/// flush-on-every-row batcher config such as [`ChunkBatcherConfig::ALWAYS_TEST_ONLY`].
+///
+/// These sinks have to keep per-chunk metadata in memory until the footer can be written at
+/// process exit. A flush-on-every-row config produces one chunk per row, so for long-running
+/// recordings this can drive memory usage through the roof.
+fn warn_if_problematic_file_sink_config(config: &ChunkBatcherConfig, sink: &dyn LogSink) {
+    if !sink.defers_finalization_to_shutdown() {
+        return;
+    }
+
+    if !config.always_flushes() {
+        return;
+    }
+
+    // Snippet-roundtrip tests intentionally pair this config with a file sink to exercise the
+    // per-row serialization path. The warning is correct in principle but noisy (and fatal under
+    // `RERUN_PANIC_ON_WARN`) for that controlled setup, so suppress it when the test harness
+    // signals strict-test mode.
+    if re_log::env_var_is_truthy("RERUN_STRICT") {
+        return;
+    }
+
+    re_log::warn_once!(
+        "ChunkBatcherConfig::ALWAYS_TEST_ONLY (or an equivalent flush-on-every-row config) is \
+         being used with a file sink. This produces one chunk per row, and the file's footer \
+         cannot be written until the SDK process exits — so per-chunk metadata accumulates in \
+         memory for the entire lifetime of the recording, which can blow up memory usage. \
+         Use the default `ChunkBatcherConfig` for production workloads, or \
+         `ChunkBatcherConfig::LOW_LATENCY` if you need fast flushing."
+    );
+}
+
 impl RecordingStreamInner {
     fn new(
         store_info: StoreInfo,
@@ -869,6 +905,8 @@ impl RecordingStreamInner {
     ) -> RecordingStreamResult<Self> {
         let sink_dependent_batcher_config = batcher_config.is_none();
         let batcher_config = resolve_batcher_config(batcher_config, &*sink);
+
+        warn_if_problematic_file_sink_config(&batcher_config, &*sink);
 
         let on_release = batcher_hooks.on_release.clone();
         let batcher = ChunkBatcher::new(batcher_config, batcher_hooks)?;
@@ -927,6 +965,7 @@ impl RecordingStreamInner {
             cmds_tx,
             batcher,
             batcher_to_sink_handle: Some(batcher_to_sink_handle),
+            current_batcher_config: Mutex::new(batcher_config),
             sink_dependent_batcher_config,
             importer_handles: Mutex::new(Vec::new()),
             pid_at_creation: std::process::id(),
@@ -967,6 +1006,15 @@ enum Command {
         on_done: Sender<FlushResult>,
         timeout: Duration,
     },
+
+    /// Drop any sinks whose on-disk format only finalizes at shutdown (i.e. file-like sinks with
+    /// footers), while leaving streaming sinks (e.g. gRPC) untouched. Used by Python's
+    /// `RecordingStream.__exit__` to ensure file-backed recordings are consumable as soon as
+    /// the `with`-block exits, without waiting for GC.
+    FinalizeDeferredSinks {
+        on_done: Sender<()>,
+        timeout: Duration,
+    },
     PopPendingChunks,
     Shutdown,
 }
@@ -978,6 +1026,9 @@ impl std::fmt::Debug for Command {
             Self::SwapSink { .. } => f.debug_struct("SwapSink").finish_non_exhaustive(),
             Self::InspectSink(_) => f.debug_tuple("InspectSink").finish_non_exhaustive(),
             Self::Flush { .. } => f.debug_struct("Flush").finish_non_exhaustive(),
+            Self::FinalizeDeferredSinks { .. } => f
+                .debug_struct("FinalizeDeferredSinks")
+                .finish_non_exhaustive(),
             Self::PopPendingChunks => write!(f, "PopPendingChunks"),
             Self::Shutdown => write!(f, "Shutdown"),
         }
@@ -991,6 +1042,7 @@ impl re_byte_size::SizeBytes for Command {
             Self::SwapSink { .. }
             | Self::InspectSink(_)
             | Self::Flush { .. }
+            | Self::FinalizeDeferredSinks { .. }
             | Self::PopPendingChunks
             | Self::Shutdown => 0,
         }
@@ -1001,6 +1053,11 @@ impl Command {
     fn flush(timeout: Duration) -> (Self, Receiver<FlushResult>) {
         let (on_done, rx) = crossbeam::channel::bounded(1); // oneshot
         (Self::Flush { on_done, timeout }, rx)
+    }
+
+    fn finalize_deferred_sinks(timeout: Duration) -> (Self, Receiver<()>) {
+        let (on_done, rx) = crossbeam::channel::bounded(1); // oneshot
+        (Self::FinalizeDeferredSinks { on_done, timeout }, rx)
     }
 }
 
@@ -1543,6 +1600,30 @@ fn forwarding_thread(
                     re_log::error!("Failed to flush sink: {err}");
                 }
             }
+            Command::FinalizeDeferredSinks { on_done, timeout } => {
+                if sink.defers_finalization_to_shutdown() && !sink.finalize_deferred_in_place() {
+                    // Composite sinks handle finalization themselves; otherwise the entire
+                    // sink defers finalization (e.g. a bare FileSink), so we have to swap it
+                    // out for a BufferedSink — dropping the old sink runs its writer thread
+                    // to completion and emits the footer.
+                    let backlog = sink.drain_backlog();
+                    if let Err(err) = sink.flush_blocking(timeout) {
+                        re_log::error!("Failed to flush previous sink during finalize: {err}");
+                    }
+
+                    let new_sink: Box<dyn LogSink> = Box::new(crate::log_sink::BufferedSink::new());
+                    new_sink.send(
+                        re_log_types::SetStoreInfo {
+                            row_id: *RowId::new(),
+                            info: store_info.clone(),
+                        }
+                        .into(),
+                    );
+                    new_sink.send_all(backlog);
+                    *sink = new_sink;
+                }
+                send_crossbeam(&on_done, ()).ok();
+            }
             Command::PopPendingChunks => {
                 // Wake up and skip the current iteration so that we can drain all pending chunks
                 // before handling the next command.
@@ -1821,7 +1902,10 @@ impl RecordingStream {
             if inner.sink_dependent_batcher_config {
                 let batcher_config = resolve_batcher_config(None, &*new_sink);
                 inner.batcher.update_config(batcher_config);
+                *inner.current_batcher_config.lock() = batcher_config;
             }
+
+            warn_if_problematic_file_sink_config(&inner.current_batcher_config.lock(), &*new_sink);
 
             // Swap the sink, which will internally make sure to re-ingest the backlog if needed
             inner
@@ -2260,6 +2344,43 @@ impl RecordingStream {
         }
     }
 
+    /// Finalize any sinks whose on-disk format only completes at shutdown (i.e. file-like sinks
+    /// that write a footer at the end), while leaving streaming sinks (e.g. gRPC) intact.
+    ///
+    /// For a bare deferring sink (e.g. `FileSink` from `save()`), this is equivalent to
+    /// [`Self::disconnect`]: the sink is replaced with a [`crate::sink::BufferedSink`] and its
+    /// `Drop` impl runs the writer thread to completion, which is what emits the footer.
+    ///
+    /// For a [`crate::log_sink::MultiSink`] containing a mix of deferring and streaming children,
+    /// only the deferring children are dropped. The streaming children remain live and the
+    /// `MultiSink` continues to receive new messages.
+    ///
+    /// For all other sinks this is a no-op.
+    ///
+    /// Used by Python's `RecordingStream.__exit__` so file-backed recordings are consumable as
+    /// soon as the `with`-block exits, without waiting for `__del__` / GC.
+    pub fn finalize_deferred_sinks(&self) {
+        let timeout = Duration::MAX;
+        let f = move |inner: &RecordingStreamInner| {
+            inner.wait_for_importers();
+
+            // Flush the batcher down the chunk channel so any pending data lands in the sink
+            // before we tear it down.
+            if let Err(err) = inner.batcher.flush_blocking(timeout) {
+                re_log::warn!("Failed to flush batcher in `finalize_deferred_sinks`: {err}");
+            }
+            inner.cmds_tx.send(Command::PopPendingChunks).ok();
+
+            let (cmd, oneshot) = Command::finalize_deferred_sinks(timeout);
+            inner.cmds_tx.send(cmd).ok();
+            oneshot.recv().ok();
+        };
+
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to finalize_deferred_sinks() ignored");
+        }
+    }
+
     /// Send a blueprint through this recording stream.
     pub fn send_blueprint(
         &self,
@@ -2312,6 +2433,7 @@ impl fmt::Debug for RecordingStream {
                 cmds_tx: _,
                 batcher: _,
                 batcher_to_sink_handle: _,
+                current_batcher_config,
                 sink_dependent_batcher_config,
                 importer_handles,
                 pid_at_creation,
@@ -2321,6 +2443,7 @@ impl fmt::Debug for RecordingStream {
                 .field("store_info", &store_info)
                 .field("recording_info", &recording_info)
                 .field("tick", &tick)
+                .field("current_batcher_config", &*current_batcher_config.lock())
                 .field(
                     "sink_dependent_batcher_config",
                     &sink_dependent_batcher_config,
@@ -2752,7 +2875,7 @@ mod tests {
     fn always_flush() {
         let rec = RecordingStreamBuilder::new("rerun_example_always_flush")
             .enabled(true)
-            .batcher_config(ChunkBatcherConfig::ALWAYS)
+            .batcher_config(ChunkBatcherConfig::ALWAYS_TEST_ONLY)
             .buffered()
             .unwrap();
 
@@ -2898,7 +3021,7 @@ mod tests {
     fn disabled() {
         let (rec, storage) = RecordingStreamBuilder::new("rerun_example_disabled")
             .enabled(false)
-            .batcher_config(ChunkBatcherConfig::ALWAYS)
+            .batcher_config(ChunkBatcherConfig::ALWAYS_TEST_ONLY)
             .memory()
             .unwrap();
 
@@ -3226,7 +3349,7 @@ mod tests {
 
         // Changing the sink should have no effect since an explicit config is in place.
         rec.set_sink(Box::new(BatcherConfigTestSink {
-            config: ChunkBatcherConfig::ALWAYS,
+            config: ChunkBatcherConfig::ALWAYS_TEST_ONLY,
         }));
         // Don't want to stall the test for CONFIG_CHANGE_TIMEOUT here.
         let new_config_recv_result = rx.recv_timeout(std::time::Duration::from_millis(100));

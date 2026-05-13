@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import datafusion as dfn
 import numpy as np
@@ -258,11 +258,11 @@ def _optimization_profile_values(name: str) -> dict[str, object]:
     Test-only: return a dict of the Rust `OptimizationProfile::<NAME>` field values.
 
     Used by the Python parity test to confirm that
-    `OptimizationProfile.{LIVE,DATAPLATFORM}` on the Python side stays in sync
+    `OptimizationProfile.{LIVE,OBJECT_STORE}` on the Python side stays in sync
     with the Rust constants this module forwards into `ChunkStoreConfig` /
     `CompactionOptions` above.
 
-    Names: `"LIVE"`, `"DATAPLATFORM"`.
+    Names: `"LIVE"`, `"OBJECT_STORE"`.
     """
 
 # AI generated stubs for `PyRecordingStream` related class and functions
@@ -386,8 +386,18 @@ class ChunkBatcherConfig:
         """Low-latency configuration, preferred when streaming directly to a viewer."""
 
     @staticmethod
-    def ALWAYS() -> ChunkBatcherConfig:
-        """Always flushes ASAP."""
+    def ALWAYS_TEST_ONLY() -> ChunkBatcherConfig:
+        """
+        Always flushes ASAP.
+
+        !!! warning
+            Test-only configuration. Produces an unrealistically large number of chunks and is
+            not suitable for production workloads. With a file sink in particular, per-chunk
+            metadata is accumulated in memory until the SDK process ends and the file footer
+            can be written, which can drive memory usage through the roof. Use
+            [`LOW_LATENCY`][rerun_bindings.ChunkBatcherConfig.LOW_LATENCY] instead for fast
+            flushing in real applications.
+        """
 
     @staticmethod
     def NEVER() -> ChunkBatcherConfig:
@@ -663,7 +673,7 @@ class FileSink:
     Save the recording stream to a file.
     """
 
-    def __init__(self, path: str | os.PathLike[str]) -> None:
+    def __init__(self, path: str | os.PathLike[str], *, write_footer: bool = True) -> None:
         """
         Initialize a file sink.
 
@@ -671,6 +681,17 @@ class FileSink:
         ----------
         path:
             Path to write to. The file will be overwritten.
+        write_footer:
+            Whether to emit a complete RRD footer (including a manifest of every chunk) at the
+            end of the stream. Defaults to `True`.
+
+            Producing a footer keeps per-chunk metadata in memory for the lifetime of the sink,
+            which grows linearly with the number of chunks logged. Pass `write_footer=False` for
+            long-running streaming sessions; the resulting file is still a valid RRD and a
+            footer can be added after the fact via `rerun rrd optimize`.
+
+            *Warning*: lack of footer will significantly hurt random-access performance and some
+            tools (e.g. LazyStore) may not work properly.
 
         """
 
@@ -700,6 +721,8 @@ def save(
     path: str,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    *,
+    write_footer: bool = True,
 ) -> None:
     """Save the recording stream to a file."""
 
@@ -709,6 +732,8 @@ def save_blueprint(path: str, blueprint_stream: PyRecordingStream) -> None:
 def stdout(
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    *,
+    write_footer: bool = True,
 ) -> None:
     """Save to stdout."""
 
@@ -766,6 +791,18 @@ def disconnect(recording: PyRecordingStream | None = None) -> None:
     Disconnect from remote server (if any).
 
     Subsequent log messages will be buffered and either sent on the next call to `connect_grpc` or `spawn`.
+    """
+
+def finalize_deferred_sinks(recording: PyRecordingStream | None = None) -> None:
+    """
+    Finalize any deferred-finalization sinks (i.e. file-like sinks that write a footer at the end).
+
+    For a bare `FileSink` this is equivalent to `disconnect()`. For a `MultiSink` containing both
+    streaming and file-like children, only the file-like children are dropped — the streaming
+    children stay live. For all other sinks this is a no-op.
+
+    Used by `RecordingStream.__exit__` so that file-backed recordings are consumable as soon as
+    the `with`-block exits, without waiting for `__del__` / GC.
     """
 
 def flush(*, timeout_sec: float = 1e38, recording: PyRecordingStream | None = None) -> None:
@@ -848,11 +885,16 @@ def send_arrow_chunk(
         A dictionary mapping component types to their values.
     """
 
-def send_chunk(
-    chunk: ChunkInternal,
+def send_chunks(
+    chunks: ChunkInternal | Iterable[ChunkInternal],
     recording: PyRecordingStream | None = None,
 ) -> None:
-    """Send a pre-built chunk to the recording stream."""
+    """
+    Send chunks to the recording stream.
+
+    Accepts a single chunk or any iterable of chunks. Blocks until every chunk
+    has been pushed to the recording's batcher.
+    """
 
 def log_file_from_path(
     file_path: str | os.PathLike[str],
@@ -1173,6 +1215,13 @@ class _UrdfTreeInternal:
     def get_visual_geometry_paths(self, link: str | _UrdfLinkInternal) -> list[str]: ...
     def log(self, recording: PyRecordingStream | None = None) -> None: ...
     def stream(self, *, include_joint_transforms: bool = True) -> LazyChunkStreamInternal: ...
+    def compute_joint_transform_batches(
+        self,
+        names: pa.Array,
+        values: pa.Array,
+        *,
+        clamp: bool = False,
+    ) -> pa.Array: ...
 
 class _UrdfJointInternal:
     """Internal Rust representation of a URDF joint."""
@@ -1571,16 +1620,23 @@ class LazyStoreInternal:
     def summary(self) -> str: ...
     def stream(self) -> LazyChunkStreamInternal: ...
 
+class StoreEntryInternal:
+    """Internal implementation. Use StoreEntry from rerun.experimental instead."""
+
+    @property
+    def kind(self) -> Literal["recording", "blueprint"]: ...
+    @property
+    def application_id(self) -> str: ...
+    @property
+    def recording_id(self) -> str: ...
+
 class RrdReaderInternal:
     """Internal implementation. Use RrdReader from rerun.experimental instead."""
 
     def __init__(self, path: str) -> None: ...
-    def stream(self) -> LazyChunkStreamInternal: ...
-    def store(self) -> LazyStoreInternal: ...
-    @property
-    def application_id(self) -> str | None: ...
-    @property
-    def recording_id(self) -> str | None: ...
+    def store_entries(self) -> list[StoreEntryInternal]: ...
+    def stream(self, store: StoreEntryInternal | None = None) -> LazyChunkStreamInternal: ...
+    def store(self, store: StoreEntryInternal | None = None) -> LazyStoreInternal: ...
     @property
     def path(self) -> Path: ...
 
@@ -1674,6 +1730,14 @@ class LazyChunkStreamInternal:
     def __iter__(self) -> LazyChunkStreamIterator: ...
     @staticmethod
     def from_iter(iterable: Any) -> LazyChunkStreamInternal: ...
+    def send_to_recording(self, recording: PyRecordingStream | None = None) -> None:
+        """
+        Drain this stream into a recording stream.
+
+        If `recording` is `None`, the active recording is used. Blocks until every
+        chunk has been pushed to the recording's batcher. A silent no-op when
+        there is no active recording.
+        """
 
 class LazyChunkStreamIterator:
     """Iterator over chunks from a compiled stream."""

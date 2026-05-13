@@ -52,6 +52,7 @@ from .interpolation_mode import (
     InterpolationModeBatch,
     InterpolationModeLike,
 )
+from .is_keyframe import IsKeyframe, IsKeyframeBatch
 from .key_value_pairs import KeyValuePairs, KeyValuePairsArrayLike, KeyValuePairsBatch, KeyValuePairsLike
 from .keypoint_id import KeypointId, KeypointIdBatch
 from .lat_lon import LatLon, LatLonBatch
@@ -194,6 +195,8 @@ __all__ = [
     "InterpolationModeArrayLike",
     "InterpolationModeBatch",
     "InterpolationModeLike",
+    "IsKeyframe",
+    "IsKeyframeBatch",
     "KeyValuePairs",
     "KeyValuePairsArrayLike",
     "KeyValuePairsBatch",

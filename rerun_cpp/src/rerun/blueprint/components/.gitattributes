@@ -10,6 +10,7 @@ auto_scroll.hpp linguist-generated=true
 auto_views.hpp linguist-generated=true
 background_kind.cpp linguist-generated=true
 background_kind.hpp linguist-generated=true
+column_name.hpp linguist-generated=true
 column_order.cpp linguist-generated=true
 column_order.hpp linguist-generated=true
 column_share.hpp linguist-generated=true

@@ -7,6 +7,7 @@
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/is_keyframe.hpp"
 #include "../components/opacity.hpp"
 #include "../components/video_codec.hpp"
 #include "../components/video_sample.hpp"
@@ -61,6 +62,17 @@ namespace rerun::archetypes {
         /// See `components::VideoCodec` for codec specific requirements.
         std::optional<ComponentBatch> sample;
 
+        /// Whether the corresponding `components::VideoSample` contains a keyframe.
+        ///
+        /// A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+        /// start decoding the stream with no prior decoder state. See `components::IsKeyframe`
+        /// and `components::VideoCodec` for the codec-specific definition.
+        ///
+        /// This field is optional. It does not change how the stream itself is decoded: it is
+        /// metadata that travels with the sample and can be inspected when querying the data
+        /// back, for example to locate sync points or build a frame index.
+        std::optional<ComponentBatch> is_keyframe;
+
         /// Opacity of the video stream, useful for layering several media.
         ///
         /// Defaults to 1.0 (fully opaque).
@@ -85,6 +97,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_sample = ComponentDescriptor(
             ArchetypeName, "VideoStream:sample",
             Loggable<rerun::components::VideoSample>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `is_keyframe` field.
+        static constexpr auto Descriptor_is_keyframe = ComponentDescriptor(
+            ArchetypeName, "VideoStream:is_keyframe",
+            Loggable<rerun::components::IsKeyframe>::ComponentType
         );
         /// `ComponentDescriptor` for the `opacity` field.
         static constexpr auto Descriptor_opacity = ComponentDescriptor(
@@ -167,6 +184,33 @@ namespace rerun::archetypes {
         /// be used when logging a single row's worth of data.
         VideoStream with_many_sample(const Collection<rerun::components::VideoSample>& _sample) && {
             sample = ComponentBatch::from_loggable(_sample, Descriptor_sample).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Whether the corresponding `components::VideoSample` contains a keyframe.
+        ///
+        /// A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+        /// start decoding the stream with no prior decoder state. See `components::IsKeyframe`
+        /// and `components::VideoCodec` for the codec-specific definition.
+        ///
+        /// This field is optional. It does not change how the stream itself is decoded: it is
+        /// metadata that travels with the sample and can be inspected when querying the data
+        /// back, for example to locate sync points or build a frame index.
+        VideoStream with_is_keyframe(const rerun::components::IsKeyframe& _is_keyframe) && {
+            is_keyframe = ComponentBatch::from_loggable(_is_keyframe, Descriptor_is_keyframe)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `is_keyframe` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_is_keyframe` should
+        /// be used when logging a single row's worth of data.
+        VideoStream with_many_is_keyframe(
+            const Collection<rerun::components::IsKeyframe>& _is_keyframe
+        ) && {
+            is_keyframe = ComponentBatch::from_loggable(_is_keyframe, Descriptor_is_keyframe)
+                              .value_or_throw();
             return std::move(*this);
         }
 

@@ -1,5 +1,6 @@
 use crate::{drag_and_drop, hierarchical_drag_and_drop};
-use egui::{Atom, Button, DragValue, RichText, TextEdit, Ui};
+use eframe::emath::Align;
+use egui::{Atom, AtomExt as _, AtomKind, Button, DragValue, RichText, TextEdit, Ui, Vec2};
 use re_ui::list_item::{ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::re_form::{ConstructFormStrip as _, FormFields, SelectableStrip};
 use re_ui::{UiExt as _, icons, list_item};
@@ -375,16 +376,17 @@ impl RightPanel {
                     RichText::new(suffix).color(subdued).size(10.0)
                 };
 
+                // The drag value hardcodes it's gap to 0 so we need to add some space
+                let drag_value_gap = || AtomKind::Empty.atom_size(Vec2::new(4.0, 0.0));
+
                 demo_ui(
                     ui,
                     PropertyContent::new("width").value_fn(|ui, _vis| {
-                        // TODO(RR-3883): Add atom support to dragvalue
                         FormFields::single(
                             ui,
-                            Button::new((
-                                "0.75",
-                                suffix("pt"),
-                            )),
+                            DragValue::new(
+                                &mut 0.75,
+                            ).suffix((drag_value_gap(), suffix(" pt"))),
                         );
                     }),
                 );
@@ -419,18 +421,20 @@ impl RightPanel {
                     PropertyContent::new("centers")
                         .value_fn(|ui, _vis| {
                             FormFields::same(ui, 2)
-                                .and(Button::new((suffix("x"), "640")))
-                                .and(Button::new((suffix("y"), "640")));
+                                .and(DragValue::new(&mut 640.0).prefix((suffix("x"), drag_value_gap())))
+                                .and(DragValue::new(&mut 640.0).prefix((suffix("y"), drag_value_gap())));
                         }),
                 );
+
 
                 demo_ui(
                     ui,
                     PropertyContent::new("range")
                         .value_fn(|ui, _vis| {
                             FormFields::same(ui, 2)
-                                .and(Button::new(("640", Atom::grow(), suffix("min"))))
-                                .and(Button::new(("640", Atom::grow(), suffix("max"))));
+                                .and(DragValue::new(&mut 640.0)
+                                    .suffix((drag_value_gap().atom_grow(true), suffix("min"))))
+                                .and(DragValue::new(&mut 640.0).suffix((drag_value_gap().atom_grow(true), suffix("max"))));
                         }),
                 );
 
@@ -450,9 +454,9 @@ impl RightPanel {
                     PropertyContent::new("vertex_normals")
                         .value_fn(|ui, _vis| {
                             FormFields::same(ui, 3)
-                                .and(Button::new((suffix("x"), "640")))
-                                .and(Button::new((suffix("y"), "640")))
-                                .and(Button::new((suffix("z"), "640")));
+                                .and(DragValue::new(&mut 640.0).prefix((suffix("x"), drag_value_gap())))
+                                .and(DragValue::new(&mut 640.0).prefix((suffix("y"), drag_value_gap())))
+                                .and(DragValue::new(&mut 640.0).prefix((suffix("z"), drag_value_gap())));
                         }),
                 );
 
@@ -478,9 +482,8 @@ impl RightPanel {
                     ui,
                     PropertyContent::new("name")
                         .value_fn(|ui, _vis| {
-                            // TODO(RR-3859): TextEdit margin is hardcoded in egui. TextEdit also ignores
-                            // interact size (should use it as min height)
-                            FormFields::single(ui, TextEdit::singleline(&mut "Temperature".to_owned()));
+                            FormFields::single(ui, TextEdit::singleline(&mut "Temperature".to_owned())
+                                .vertical_align(Align::Center));
                         }),
                 );
 
@@ -488,7 +491,6 @@ impl RightPanel {
                     ui,
                     PropertyContent::new("text")
                         .value_fn(|ui, _vis| {
-                            // TODO(RR-3858): Listitems don't grow when their contents exceed their size
                             let mut text = "Give a bit of space to a longer text input fields, let’s say at least 3 lines and the rest …".to_owned();
                             FormFields::single(ui, TextEdit::multiline(&mut text).desired_rows(1));
                         }),

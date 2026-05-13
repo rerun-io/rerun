@@ -285,7 +285,7 @@ mod tests {
         );
     }
 
-    /// Verifies the `OTel` mechanism used by the Data Platform async tasks to suppress
+    /// Verifies the `OTel` mechanism used by the catalog server async tasks to suppress
     /// span export while keeping `trace_id` in logs: setting an unsampled parent
     /// context on a child span causes the `parentbased_traceidratio` sampler to mark
     /// the child (and its subtree) as not-sampled, so spans are not exported, but the

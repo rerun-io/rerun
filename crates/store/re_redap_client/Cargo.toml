@@ -21,6 +21,10 @@ default = []
 ## This only works on native.
 perf_telemetry = ["dep:re_perf_telemetry"]
 
+## Exposes test fixtures (e.g. `ConnectionClient::disconnected_for_test`) for use
+## in downstream crates' integration tests.
+test_utils = []
+
 
 [lints]
 workspace = true

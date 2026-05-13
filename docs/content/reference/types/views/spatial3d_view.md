@@ -85,6 +85,7 @@ snippet: views/spatial3d
 * [`AssetVideo`](../archetypes/asset_video.md) (if logged under a projection)
 * [`Boxes2D`](../archetypes/boxes2d.md) (if logged under a projection)
 * [`DepthImage`](../archetypes/depth_image.md) (if logged under a projection)
+* [`Ellipses2D`](../archetypes/ellipses2d.md) (if logged under a projection)
 * [`EncodedDepthImage`](../archetypes/encoded_depth_image.md) (if logged under a projection)
 * [`EncodedImage`](../archetypes/encoded_image.md) (if logged under a projection)
 * [`Image`](../archetypes/image.md) (if logged under a projection)

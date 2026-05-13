@@ -9,7 +9,7 @@ This page provides an overview of how the Rerun documentation is organized to he
 
 High-level introduction to Rerun:
 
-- **[What is Rerun?](what-is-rerun.md)** - Learn about Rerun's data platform for Physical AI
+- **[What is Rerun?](what-is-rerun.md)** - Learn about Rerun, the Unified Data Layer for Physical AI
 - **[Installing the Viewer](installing-rerun/viewer.md)** - Get Rerun installed on your system
 
 ## Getting started
@@ -35,7 +35,7 @@ Understanding the foundational concepts behind Rerun:
 - **[Static Data](../concepts/logging-and-ingestion/static.md)** - Data that exists across all timelines
 - **[Query Semantics](../concepts/logging-and-ingestion/latest-at.md)** - How Rerun resolves data queries
 - **[Annotation Context](../concepts/visualization/annotation-context.md)** - Shared styling and labels
-- **[Recordings](../concepts/logging-and-ingestion/recordings.md)** - Managing recordings, application IDs, and the Data Platform
+- **[Recordings](../concepts/logging-and-ingestion/recordings.md)** - Managing recordings, application IDs, and the catalog server
 - **[Visualizers and Overrides](../concepts/visualization/customize-views.md)** - Customizing rendering
 - **[Chunks](../concepts/logging-and-ingestion/chunks.md)** - Internal storage mechanism (advanced)
 

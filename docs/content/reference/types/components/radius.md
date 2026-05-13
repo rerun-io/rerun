@@ -35,6 +35,7 @@ Float32
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
+* [`Ellipses2D`](../archetypes/ellipses2d.md?speculative-link)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`GeoLineStrings`](../archetypes/geo_line_strings.md)
 * [`GeoPoints`](../archetypes/geo_points.md)

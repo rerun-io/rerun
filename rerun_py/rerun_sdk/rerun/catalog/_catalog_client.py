@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING, overload
 
+from rerun._tracing import with_tracing
 from rerun.error_utils import _send_warning_or_raise
 from rerun_bindings import (
     CatalogClientInternal,
@@ -28,7 +29,7 @@ def _are_datafusion_versions_compatible(v1: int, v2: int) -> bool:
     """
     Determine compatibility between two DataFusion versions.
 
-    In some rare cases, we may need to have a mismatch, e.g. in some deployed Rerun Cloud docker images. So we have a
+    In some rare cases, we may need to have a mismatch, e.g. in some deployed Rerun Hub docker images. So we have a
     carefully crafted compatibility allowlist for known-to-be-ffi-compatible DataFusion releases.
     """
 
@@ -188,6 +189,7 @@ class CatalogClient:
         version, cloud_provider, cloud_region = self._internal.version_info()
         return VersionInfo(version=version, cloud_provider=cloud_provider, cloud_region=cloud_region)
 
+    @with_tracing("CatalogClient.benchmark")
     def benchmark(self, *, num_bytes: int = 16 * 1024 * 1024, num_pings: int = 5) -> BenchmarkResult:
         """
         Measure round-trip time and download bandwidth to the server.

@@ -129,6 +129,7 @@ class VideoStream(Archetype, VisualizableArchetype):
         codec: components.VideoCodecLike,
         *,
         sample: datatypes.BlobLike | None = None,
+        is_keyframe: datatypes.BoolLike | None = None,
         opacity: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> None:
@@ -165,6 +166,16 @@ class VideoStream(Archetype, VisualizableArchetype):
             previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+        is_keyframe:
+            Whether the corresponding [`components.VideoSample`][rerun.components.VideoSample] contains a keyframe.
+
+            A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+            start decoding the stream with no prior decoder state. See [`components.IsKeyframe`][rerun.components.IsKeyframe]
+            and [`components.VideoCodec`][rerun.components.VideoCodec] for the codec-specific definition.
+
+            This field is optional. It does not change how the stream itself is decoded: it is
+            metadata that travels with the sample and can be inspected when querying the data
+            back, for example to locate sync points or build a frame index.
         opacity:
             Opacity of the video stream, useful for layering several media.
 
@@ -179,7 +190,9 @@ class VideoStream(Archetype, VisualizableArchetype):
 
         # You can define your own __init__ function as a member of VideoStreamExt in video_stream_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(codec=codec, sample=sample, opacity=opacity, draw_order=draw_order)
+            self.__attrs_init__(
+                codec=codec, sample=sample, is_keyframe=is_keyframe, opacity=opacity, draw_order=draw_order
+            )
             return
         self.__attrs_clear__()
 
@@ -188,6 +201,7 @@ class VideoStream(Archetype, VisualizableArchetype):
         self.__attrs_init__(
             codec=None,
             sample=None,
+            is_keyframe=None,
             opacity=None,
             draw_order=None,
         )
@@ -206,6 +220,7 @@ class VideoStream(Archetype, VisualizableArchetype):
         clear_unset: bool = False,
         codec: components.VideoCodecLike | None = None,
         sample: datatypes.BlobLike | None = None,
+        is_keyframe: datatypes.BoolLike | None = None,
         opacity: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> VideoStream:
@@ -244,6 +259,16 @@ class VideoStream(Archetype, VisualizableArchetype):
             previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+        is_keyframe:
+            Whether the corresponding [`components.VideoSample`][rerun.components.VideoSample] contains a keyframe.
+
+            A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+            start decoding the stream with no prior decoder state. See [`components.IsKeyframe`][rerun.components.IsKeyframe]
+            and [`components.VideoCodec`][rerun.components.VideoCodec] for the codec-specific definition.
+
+            This field is optional. It does not change how the stream itself is decoded: it is
+            metadata that travels with the sample and can be inspected when querying the data
+            back, for example to locate sync points or build a frame index.
         opacity:
             Opacity of the video stream, useful for layering several media.
 
@@ -261,6 +286,7 @@ class VideoStream(Archetype, VisualizableArchetype):
             kwargs = {
                 "codec": codec,
                 "sample": sample,
+                "is_keyframe": is_keyframe,
                 "opacity": opacity,
                 "draw_order": draw_order,
             }
@@ -296,6 +322,14 @@ class VideoStream(Archetype, VisualizableArchetype):
         )
 
     @staticmethod
+    def descriptor_is_keyframe() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoStream:is_keyframe",
+            archetype=VideoStream.NAME,
+            component_type=components.IsKeyframeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
     def descriptor_opacity() -> ComponentDescriptor:
         return ComponentDescriptor(
             "VideoStream:opacity",
@@ -317,6 +351,7 @@ class VideoStream(Archetype, VisualizableArchetype):
         *,
         codec: components.VideoCodecArrayLike | None = None,
         sample: datatypes.BlobArrayLike | None = None,
+        is_keyframe: datatypes.BoolArrayLike | None = None,
         opacity: datatypes.Float32ArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
@@ -358,6 +393,16 @@ class VideoStream(Archetype, VisualizableArchetype):
             previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+        is_keyframe:
+            Whether the corresponding [`components.VideoSample`][rerun.components.VideoSample] contains a keyframe.
+
+            A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+            start decoding the stream with no prior decoder state. See [`components.IsKeyframe`][rerun.components.IsKeyframe]
+            and [`components.VideoCodec`][rerun.components.VideoCodec] for the codec-specific definition.
+
+            This field is optional. It does not change how the stream itself is decoded: it is
+            metadata that travels with the sample and can be inspected when querying the data
+            back, for example to locate sync points or build a frame index.
         opacity:
             Opacity of the video stream, useful for layering several media.
 
@@ -375,6 +420,7 @@ class VideoStream(Archetype, VisualizableArchetype):
             inst.__attrs_init__(
                 codec=codec,
                 sample=sample,
+                is_keyframe=is_keyframe,
                 opacity=opacity,
                 draw_order=draw_order,
             )
@@ -386,6 +432,7 @@ class VideoStream(Archetype, VisualizableArchetype):
         kwargs = {
             "VideoStream:codec": codec,
             "VideoStream:sample": sample,
+            "VideoStream:is_keyframe": is_keyframe,
             "VideoStream:opacity": opacity,
             "VideoStream:draw_order": draw_order,
         }
@@ -461,6 +508,23 @@ class VideoStream(Archetype, VisualizableArchetype):
     # previous samples which may be required to decode an image.
     #
     # See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    is_keyframe: components.IsKeyframeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.IsKeyframeBatch._converter,  # type: ignore[misc]
+    )
+    # Whether the corresponding [`components.VideoSample`][rerun.components.VideoSample] contains a keyframe.
+    #
+    # A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+    # start decoding the stream with no prior decoder state. See [`components.IsKeyframe`][rerun.components.IsKeyframe]
+    # and [`components.VideoCodec`][rerun.components.VideoCodec] for the codec-specific definition.
+    #
+    # This field is optional. It does not change how the stream itself is decoded: it is
+    # metadata that travels with the sample and can be inspected when querying the data
+    # back, for example to locate sync points or build a frame index.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

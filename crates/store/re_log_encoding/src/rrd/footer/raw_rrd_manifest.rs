@@ -442,10 +442,8 @@ impl RawRrdManifest {
             use re_byte_size::SizeBytes as _;
             let byte_size_uncompressed = chunk.heap_size_bytes();
 
-            let uncompressed_byte_span = re_span::Span {
-                start: offset,
-                len: byte_size_uncompressed,
-            };
+            let uncompressed_byte_span =
+                re_span::Span::from_start_len(offset, byte_size_uncompressed);
 
             offset += byte_size_uncompressed;
 
@@ -1333,7 +1331,7 @@ impl RawRrdManifest {
     pub const FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED: &str = "chunk_byte_size_uncompressed";
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
 
-    /// These fields might be returned by some implementations (such as Rerun Cloud) that do not
+    /// These fields might be returned by some implementations (such as Rerun Hub) that do not
     /// support fetching chunks with only a set of chunk-keys.
     /// We generally want to ignore them during tests and sanity checking, and just blindly forward
     /// them as-is otherwise.

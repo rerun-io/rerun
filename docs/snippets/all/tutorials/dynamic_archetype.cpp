@@ -18,7 +18,7 @@ arrow::Status run_main() {
     auto confidences = rerun::ComponentBatch::from_arrow_array(
         std::move(arrow_array),
         rerun::ComponentDescriptor("MyArchetype:confidence")
-            .with_component_type(rerun::Loggable<rerun::components::Scalar>::ComponentType)
+            .with_component_type(rerun::Loggable<rerun::Scalar>::ComponentType)
             .with_archetype("MyArchetype")
     );
 
@@ -30,7 +30,7 @@ arrow::Status run_main() {
         rerun::ComponentDescriptor("MyArchetype:description")
             .with_component_type(
 
-                rerun::Loggable<rerun::components::Text>::ComponentType
+                rerun::Loggable<rerun::Text>::ComponentType
             )
             .with_archetype("MyArchetype")
     );
@@ -40,15 +40,19 @@ arrow::Status run_main() {
     ARROW_RETURN_NOT_OK(homepage_builder.Finish(&arrow_array));
     auto homepage = rerun::ComponentBatch::from_arrow_array(
         std::move(arrow_array),
-        rerun::ComponentDescriptor("MyArchetype:homepage").with_archetype("MyArchetype")
+        rerun::ComponentDescriptor("MyArchetype:homepage")
+            .with_archetype("MyArchetype")
     );
 
     arrow::StringBuilder repository_builder;
-    ARROW_RETURN_NOT_OK(repository_builder.Append("https://github.com/rerun-io/rerun"));
+    ARROW_RETURN_NOT_OK(
+        repository_builder.Append("https://github.com/rerun-io/rerun")
+    );
     ARROW_RETURN_NOT_OK(repository_builder.Finish(&arrow_array));
     auto repository = rerun::ComponentBatch::from_arrow_array(
         std::move(arrow_array),
-        rerun::ComponentDescriptor("MyArchetype:repository").with_archetype("MyArchetype")
+        rerun::ComponentDescriptor("MyArchetype:repository")
+            .with_archetype("MyArchetype")
     );
 
     rec.log("new_archetype", confidences, description, homepage, repository);

@@ -27,7 +27,9 @@ pub use self::rrd_manifest_index::{
 };
 pub use self::store_bundle::{StoreBundle, StoreLoadError};
 pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash};
+
 pub use re_chunk_store::EntityTree;
+pub use re_log_channel::LogSource;
 
 pub mod external {
     pub use {re_chunk_store, re_query};

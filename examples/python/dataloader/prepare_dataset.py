@@ -4,7 +4,7 @@ This script:
 1. Downloads a LeRobot dataset from HuggingFace Hub.
 2. Loads it into Rerun via the built-in LeRobot importer (`log_file_from_path`).
 3. Splits the resulting archive into one RRD per episode.
-4. Registers the per-episode RRDs to a Rerun Data Platform instance.
+4. Registers the per-episode RRDs to a catalog server instance.
 
 """
 
@@ -46,8 +46,6 @@ def lerobot_to_combined_rrd(dataset_dir: Path, combined_rrd: Path) -> None:
     with rr.RecordingStream(APPLICATION_ID) as rec:
         rec.save(str(combined_rrd))
         rec.log_file_from_path(str(dataset_dir))
-        rec.flush()
-        rec.disconnect()
 
 
 def split_into_episode_rrds(combined_rrd: Path, rrd_dir: Path) -> list[Path]:
@@ -57,25 +55,23 @@ def split_into_episode_rrds(combined_rrd: Path, rrd_dir: Path) -> list[Path]:
     """
     rrd_dir.mkdir(parents=True, exist_ok=True)
 
-    archive = rr.recording.load_archive(str(combined_rrd))
-    recordings = archive.all_recordings()
+    reader = rr.experimental.RrdReader(str(combined_rrd))
+    recordings = reader.recordings()
     print(f"Archive contains {len(recordings)} recordings")
 
     episode_paths: list[Path] = []
-    for recording in recordings:
+    for entry in recordings:
+        store = reader.store(store=entry)
         # Skip metadata-only recordings (e.g. the "root" recording that only carries properties).
-        if not recording.schema().entity_paths():
+        if not store.schema().entity_paths():
             continue
 
-        episode_id = _zero_pad_episode_id(recording.recording_id())
+        episode_id = _zero_pad_episode_id(entry.recording_id)
         rrd_path = rrd_dir / f"{episode_id}.rrd"
 
-        rec = rr.RecordingStream(APPLICATION_ID, recording_id=episode_id, send_properties=False)
-        rec.save(str(rrd_path))
-        rr.send_recording(recording, recording=rec)
-        rec.flush()
-        # Disconnect to ensure footers are written.
-        rec.disconnect()
+        with rr.RecordingStream(APPLICATION_ID, recording_id=episode_id, send_properties=False) as rec:
+            rec.save(str(rrd_path))
+            rec.send_chunks(store)
         episode_paths.append(rrd_path)
         print(f"  wrote {rrd_path} ({rrd_path.stat().st_size / (1024 * 1024):.1f} MB)")
 
@@ -88,7 +84,7 @@ def register_to_catalog(
     catalog_url: str,
     dataset_name: str,
 ) -> None:
-    """Register per-episode RRDs to a Rerun Data Platform instance.
+    """Register per-episode RRDs to a catalog server instance.
 
     Uses absolute file:// URIs so the catalog can read the RRDs directly from the local filesystem.
     """

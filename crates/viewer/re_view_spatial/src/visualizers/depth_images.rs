@@ -25,7 +25,9 @@ use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView3D};
 use re_sdk_types::reflection::Enum as _;
 
 pub struct DepthImageProcessResult {
-    pub image_info: ImageInfo,
+    /// Raw image data for pixel-level picking.
+    /// `None` for video-decoded depth images where raw pixel data isn't available.
+    pub image_info: Option<ImageInfo>,
     pub depth_meter: DepthMeter,
     pub colormap: ColormappedTexture,
 }
@@ -81,9 +83,9 @@ pub fn process_depth_image_data(
         .map(|r| [r[0] as f32, r[1] as f32])
         .unwrap_or_else(|| {
             // Don't use fallback provider since it has to query information we already have.
-            let image_stats = ctx
-                .store_ctx()
-                .memoizer(|c: &mut ImageStatsCache| c.entry(&image_info));
+            let store_ctx = ctx.store_ctx();
+            let image_stats =
+                store_ctx.memoizer_read_or_compute::<ImageStatsCache, _, _>(&image_info);
             ColormapWithRange::default_range_for_depth_images(&image_stats)
         });
     let colormap_with_range = ColormapWithRange {
@@ -142,7 +144,7 @@ pub fn process_depth_image_data(
             depth_cloud_entities.insert(
                 entity_path.hash(),
                 DepthImageProcessResult {
-                    image_info,
+                    image_info: Some(image_info),
                     depth_meter,
                     colormap: textured_rect.colormapped_texture,
                 },

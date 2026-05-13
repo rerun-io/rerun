@@ -171,6 +171,12 @@ pub struct AbsoluteTimeRangeF {
 }
 
 impl AbsoluteTimeRangeF {
+    /// Contains no time at all.
+    pub const EMPTY: Self = Self {
+        min: TimeReal::MAX,
+        max: TimeReal::MIN,
+    };
+
     #[inline]
     pub fn new(min: impl Into<TimeReal>, max: impl Into<TimeReal>) -> Self {
         Self {
@@ -222,6 +228,19 @@ impl AbsoluteTimeRangeF {
     #[inline]
     pub fn length(&self) -> TimeReal {
         self.max - self.min
+    }
+
+    #[inline]
+    pub fn intersects(&self, other: Self) -> bool {
+        self.min <= other.max && self.max >= other.min
+    }
+
+    #[inline]
+    pub fn intersection(&self, other: Self) -> Option<Self> {
+        self.intersects(other).then(|| Self {
+            min: self.min.max(other.min),
+            max: self.max.min(other.max),
+        })
     }
 
     /// Creates an [`AbsoluteTimeRange`] from self by rounding the start

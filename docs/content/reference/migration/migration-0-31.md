@@ -9,7 +9,7 @@ order: 979
 
 The `-l` / `--layer` flag for `rerun mcap convert` has been renamed to `-d` / `--decoder`.
 
-This change is motivated by the ambiguity of the term "layer", which is also a core concept of Rerun Cloud.
+This change is motivated by the ambiguity of the term "layer", which is also a core concept of the Rerun catalog server.
 
 Before:
 

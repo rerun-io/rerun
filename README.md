@@ -145,7 +145,7 @@ You can adjust the size of this buffer to your needs (see [here](https://rerun.i
 ## Business model
 Rerun uses an open-core model. Everything in this repository will stay open source and free (both as in beer and as in freedom).
 
-We are also building a commercial data platform.
+We are also building Rerun Hub, a scalable catalog for robotic data.
 Right now that is only available for a few select design partners.
 [Click here if you're interested](https://rerun.io/pricing).
 

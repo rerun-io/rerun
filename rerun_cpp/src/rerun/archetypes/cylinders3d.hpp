@@ -64,11 +64,26 @@ namespace rerun::archetypes {
     ///                 {8.0f, 0.0f, 0.0f},
     ///             })
     ///             .with_rotation_axis_angles({
-    ///                 rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(0.0)),
-    ///                 rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(-22.5)),
-    ///                 rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(-45.0)),
-    ///                 rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(-67.5)),
-    ///                 rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(-90.0)),
+    ///                 rerun::RotationAxisAngle(
+    ///                     {1.0f, 0.0f, 0.0f},
+    ///                     rerun::Angle::degrees(0.0)
+    ///                 ),
+    ///                 rerun::RotationAxisAngle(
+    ///                     {1.0f, 0.0f, 0.0f},
+    ///                     rerun::Angle::degrees(-22.5)
+    ///                 ),
+    ///                 rerun::RotationAxisAngle(
+    ///                     {1.0f, 0.0f, 0.0f},
+    ///                     rerun::Angle::degrees(-45.0)
+    ///                 ),
+    ///                 rerun::RotationAxisAngle(
+    ///                     {1.0f, 0.0f, 0.0f},
+    ///                     rerun::Angle::degrees(-67.5)
+    ///                 ),
+    ///                 rerun::RotationAxisAngle(
+    ///                     {1.0f, 0.0f, 0.0f},
+    ///                     rerun::Angle::degrees(-90.0)
+    ///                 ),
     ///             })
     ///     );
     /// }

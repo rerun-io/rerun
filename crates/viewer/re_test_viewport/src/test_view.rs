@@ -13,6 +13,18 @@ pub struct TestView;
 
 pub struct TestViewState;
 
+impl re_viewer_context::SizeBytes for TestViewState {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 impl ViewState for TestViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self

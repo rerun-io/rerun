@@ -9,7 +9,8 @@
 #include <vector>
 
 int main(int argc, char* argv[]) {
-    const auto rec = rerun::RecordingStream("rerun_example_arrows3d_row_updates");
+    const auto rec =
+        rerun::RecordingStream("rerun_example_arrows3d_row_updates");
     rec.spawn().exit_on_failure();
 
     // Prepare a fixed sequence of arrows over 5 timesteps.
@@ -36,7 +37,8 @@ int main(int argc, char* argv[]) {
     }
 
     // At each timestep, all arrows share the same but changing color.
-    std::vector<uint32_t> colors = {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
+    std::vector<uint32_t> colors =
+        {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
 
     for (size_t i = 0; i < 5; i++) {
         rec.set_time_duration_secs("time", 10.0 + static_cast<double>(i));

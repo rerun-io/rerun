@@ -3,7 +3,7 @@ title: What is Rerun?
 order: 0
 ---
 
-Rerun is a data platform for Physical AI that helps you understand and improve complex processes involving rich multimodal data like 2D, 3D, text, time series, and tensors.
+Rerun is the Unified Data Layer for Physical AI that helps you understand and improve complex processes involving rich multimodal data like 2D, 3D, text, time series, and tensors.
 
 It combines simple and flexible data logging with a powerful visualizer and query engine, designed specifically for domains like robotics, spatial computing, embodied AI, computer vision, simulation, and any system involving sensors and signals that evolve over time.
 
@@ -18,7 +18,7 @@ Building intelligent physical systems requires rapid iteration on both data and 
 
 The best robotics teams minimize their time from new data to training. Rerun gives you the unified infrastructure to make that happen.
 
-## The Rerun Data Platform
+## What Rerun provides
 
 Rerun provides an integrated solution for working with multimodal temporal data:
 
@@ -66,7 +66,7 @@ To set clear expectations:
 4. [Query recordings](../getting-started/data-out.md) to get clean dataframes into tools like Pandas, Polars, or DuckDB
 5. [Extend Rerun](../howto/extend.md) when you need to
 
-We also offer a commercial data platform for teams that need collaborative dataset management, version control, and cloud storage. [Learn more](https://rerun.io/pricing).
+We also offer **Rerun Hub**, a scalable catalog for robotic data, for teams that need collaborative dataset management, version control, and cloud storage. [Learn more](https://rerun.io/pricing).
 
 ## Get started
 

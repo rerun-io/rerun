@@ -161,10 +161,8 @@ impl Layer {
             // There's no compression on the OSS server (no disk), so "compressed size" equals
             // uncompressed size. The chunk_key is what's used to actually fetch data.
             let byte_size_uncompressed = chunk.heap_size_bytes();
-            let uncompressed_byte_span = re_span::Span {
-                start: offset,
-                len: byte_size_uncompressed,
-            };
+            let uncompressed_byte_span =
+                re_span::Span::from_start_len(offset, byte_size_uncompressed);
             offset += byte_size_uncompressed;
 
             builder

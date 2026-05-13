@@ -22,6 +22,7 @@
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
 "DataframeQuery" = ["howto/visualization/save_blueprint"]
+"Tensor" = ["howto/dataloader"] # snippet uses `torch.Tensor`, not Rerun's `Tensor` archetype
 
 # These components will ignore the associated snippets in the snippet index.
 [snippets_ref.components.opt_out]
@@ -34,7 +35,7 @@
 [snippets_ref]
 features = [
   [
-    "Query Data Platform",
+    "Catalog server",
     [
       "howto/dataframe_operations",
       "howto/dataframe_performance",
@@ -139,14 +140,17 @@ features = [
 backwards_check = [
   "archetypes/image_advanced", # Uses Pillow to encode a PNG; Pillow encodes differently on different OSes, so the bytes in the RRD won't match the checked-in reference.
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
+  "concepts/build_chunk", # Python-only experimental API; no reference RRD checked in
   "concepts/explicit_recording", # The file path differs locally and on CI
+  "concepts/send_dataframe", # Python-only API; no reference RRD checked in
   "howto/convert_mcap_protobuf", # Processes video from MCAP, non-deterministic encoding
   "howto/convert_mcap_protobuf_send_column",
-  # Dataplatform examples don't generate rrds
+  # Catalog server examples don't generate rrds
   "concepts/query-and-transform/dataframe_query_example",
   "concepts/query-and-transform/segment_properties",
   "howto/dataframe_operations",
   "howto/dataframe_performance",
+  "howto/dataloader",
   "howto/dataset_resampling",
   "howto/layers",
   "howto/lerobot_export",
@@ -175,6 +179,10 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"concepts/build_chunk" = [ # Python-only experimental API
+  "cpp",
+  "rust",
+]
 "concepts/explicit_recording" = [ # python-specific check
   "cpp",
   "rust",
@@ -184,10 +192,14 @@ backwards_check = [
   "cpp",
   "rust",
 ]
-"concepts/send_recording" = [
+"concepts/send_chunks" = [
   "py", # Requires context (an RRD file to be exported by the user)
   "cpp", # Not implemented for C++
   "rust", # Requires context (an RRD file to be exported by the user)
+]
+"concepts/send_dataframe" = [ # Python-only API
+  "cpp",
+  "rust",
 ]
 "concepts/static/log_static" = [ # pseudo-code
   "py",
@@ -267,6 +279,10 @@ backwards_check = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
+"howto/dataloader" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "howto/dataframe_performance" = [
   "cpp", # Not implemented
   "rust", # Not implemented
@@ -343,6 +359,10 @@ backwards_check = [
   "cpp", # Missing examples
   "rust", # Missing examples
 ]
+"archetypes/grid_map_pose" = [
+  "cpp", # Missing examples
+  "rust", # Missing examples
+]
 "archetypes/entity_behavior" = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
@@ -413,6 +433,26 @@ backwards_check = [
   "cpp",
   "rust",
   "py",
+]
+"tutorials/dna" = [ # Calls spawn() with non-deterministic RNG output — see tutorials/dna_connect_grpc for a CI-friendly variant
+  "cpp",
+  "rust",
+  "py",
+]
+"tutorials/dna_connect_grpc" = [ # Requires a separately-running viewer
+  "cpp",
+  "rust",
+  "py",
+]
+"tutorials/getting_started" = [
+  "py", # Requires a separately-running catalog server
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"tutorials/getting_started_convert" = [
+  "py", # Requires an input.mcap file
+  "cpp", # Not implemented
+  "rust", # Not implemented
 ]
 "tutorials/fixed_window_plot" = [
   "cpp", # Not implemented
@@ -611,7 +651,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 [extra_args]
-"concepts/send_recording" = ["$config_dir/../../tests/assets/rrd/dna.rrd"]
+"concepts/send_chunks" = ["$config_dir/../../tests/assets/rrd/dna.rrd"]
 "archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/mesh/cube.glb"]
 "archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/mesh/cube.glb"]
 "archetypes/encoded_depth_image" = ["$config_dir/../../tests/assets/encoded_depth_image.rvl"]

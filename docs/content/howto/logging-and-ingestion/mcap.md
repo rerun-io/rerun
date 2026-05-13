@@ -60,12 +60,13 @@ Each layer extracts different types of information from the MCAP source and each
 
 - **`raw`**: Logs the unprocessed message bytes as Rerun blobs without any interpretation
 - **`schema`**: Extracts metadata about channels, topics, and schemas
-- **`stats`**: Extracts file-level metrics like message counts, time ranges, and channel statistics
+- **`stats`**: Extracts file-level metrics like message counts, time ranges, and channel statistics into `__mcap_properties` in the RRD
 - **`metadata`** Extracts metadata records (if present) into `__mcap_metadata` in the RRD
+- **`attachments`**: Extracts MCAP attachment records (if present) as static data under `__mcap_attachments`
 - **`protobuf`**: Automatically decodes protobuf-encoded messages using reflection
 - **`ros2msg`**: Provides semantic conversion of common ROS2 message types into Rerun's visualization components
 - **`ros2_reflection`**: Automatically decodes ROS2 messages using reflection
-- **`recording_info`**: Extracts recording metadata such as message counts, start time, and session information
+- **`recording_info`**: Extracts recording metadata such as message counts, start time, and session information into `__mcap_properties` in the RRD
 - **`urdf`**: Uses Rerun's built-in URDF loader when a ROS 2 `/robot_description` string topic is present
 
 By default, Rerun analyzes an MCAP file to determine which decoders are active to provide the most comprehensive view of your data, while avoiding duplication.

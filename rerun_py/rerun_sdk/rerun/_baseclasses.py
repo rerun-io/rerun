@@ -409,7 +409,7 @@ class ComponentColumn:
 
 class ComponentColumnList(Iterable[ComponentColumn]):
     """
-    A collection of [ComponentColumn][]s.
+    A collection of [`ComponentColumn`][rerun.ComponentColumn]s.
 
     Useful to partition and log multiple columns at once.
     """

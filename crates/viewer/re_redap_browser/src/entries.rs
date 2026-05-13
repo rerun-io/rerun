@@ -9,7 +9,7 @@ use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
 use re_dataframe_ui::{RequestedObject, StreamingCacheTableProvider};
-use re_datafusion::{SegmentTableProvider, TableEntryTableProvider};
+use re_datafusion::{SegmentTableProvider, TableEntryTableProvider, TableKind, TableQueryCaller};
 use re_log_types::{EntryId, EntryName};
 use re_protos::TypeConversionError;
 use re_protos::cloud::v1alpha1::ext::{DatasetEntry, EntryDetails, ProviderDetails, TableEntry};
@@ -307,7 +307,16 @@ async fn fetch_table_details(
     #[cfg(not(target_arch = "wasm32"))]
     let runtime = Some(runtime.inner().clone());
 
+    let table_kind = TableKind::from(&result.table_entry.provider_details);
+    let caller = match table_kind {
+        TableKind::SystemEntries | TableKind::SystemNamespaces => TableQueryCaller::EntriesTable,
+        TableKind::Lance | TableKind::Unknown => TableQueryCaller::BrowserDetailView,
+    };
+
     let table_provider = TableEntryTableProvider::new(client, id, runtime)
+        .with_caller(caller)
+        .with_table_kind(table_kind)
+        .with_analytics(origin.clone())
         .into_provider()
         .await
         .map_err(|err| {

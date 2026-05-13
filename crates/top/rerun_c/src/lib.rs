@@ -646,8 +646,8 @@ pub extern "C" fn rr_recording_stream_free(id: CRecordingStream) {
             drop(stream);
         }
     } else {
-        // Yes, at least as of writing we can still log things in this state!
-        re_log::debug!(
+        // ⚠️ Don't use `re_log` here since it goes through `tracing` which _also_ may have shut down thread locals at this point, causing a panic when accessing them.
+        eprintln!(
             "rr_recording_stream_free called on a thread that is shutting down and can no longer access thread locals. We can't handle this and have to ignore this call."
         );
     }

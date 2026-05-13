@@ -17,7 +17,7 @@ use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 use re_uri::DATASET_HIERARCHY_SEPARATOR;
 use re_viewer_context::{
-    AppContext, AsyncRuntimeHandle, EditRedapServerModalCommand, StoreViewContext,
+    AppContext, AsyncRuntimeHandle, EditRedapServerModalCommand, StoreViewContext, ViewStates,
 };
 
 use crate::context::Context;
@@ -138,6 +138,7 @@ impl Server {
         ctx: &Context<'_>,
         ui: &mut egui::Ui,
         inline_login_flow: &mut Option<(re_uri::Origin, Box<LoginFlow>)>,
+        view_states: &mut ViewStates,
     ) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
             self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
@@ -182,7 +183,7 @@ impl Server {
                     )
                     .and(col("name").not_eq(lit("__entries"))),
             )
-            .show(viewer_ctx, &self.runtime, ui);
+            .show(viewer_ctx, &self.runtime, ui, view_states);
     }
 
     fn folder_ui(
@@ -256,6 +257,7 @@ impl Server {
         viewer_ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         dataset: &Dataset,
+        view_states: &mut ViewStates,
     ) {
         const RECORDING_LINK_COLUMN_NAME: &str = "recording link";
 
@@ -310,10 +312,16 @@ impl Server {
             self.origin.clone(),
             dataset.id(),
         )
-        .show(viewer_ctx, &self.runtime, ui);
+        .show(viewer_ctx, &self.runtime, ui, view_states);
     }
 
-    fn table_entry_ui(&self, viewer_ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, table: &Table) {
+    fn table_entry_ui(
+        &self,
+        viewer_ctx: &StoreViewContext<'_>,
+        ui: &mut egui::Ui,
+        table: &Table,
+        view_states: &mut ViewStates,
+    ) {
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.clone(),
             TableReference::bare(table.name().to_string()),
@@ -321,7 +329,7 @@ impl Server {
         .title(table.name().to_string())
         .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
         .remote_table(re_uri::EntryUri::new(table.origin.clone(), table.id()))
-        .show(viewer_ctx, &self.runtime, ui);
+        .show(viewer_ctx, &self.runtime, ui, view_states);
     }
 }
 
@@ -843,12 +851,19 @@ impl RedapServers {
         viewer_ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         origin: &re_uri::Origin,
+        view_states: &mut ViewStates,
     ) {
         if let Some(server) = self.servers.get(origin) {
             let ctx = Context {
                 command_sender: &self.command_sender,
             };
-            server.server_ui(viewer_ctx, &ctx, ui, &mut self.inline_login_flow);
+            server.server_ui(
+                viewer_ctx,
+                &ctx,
+                ui,
+                &mut self.inline_login_flow,
+                view_states,
+            );
         } else {
             viewer_ctx.revert_to_default_route();
         }
@@ -876,19 +891,25 @@ impl RedapServers {
         send_crossbeam(&self.command_sender, Command::OpenEditServerModal(command)).ok();
     }
 
-    pub fn entry_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, active_entry: EntryId) {
+    pub fn entry_ui(
+        &self,
+        ctx: &StoreViewContext<'_>,
+        ui: &mut egui::Ui,
+        active_entry: EntryId,
+        view_states: &mut ViewStates,
+    ) {
         for server in self.servers.values() {
             if let Some(entry) = server.find_entry(active_entry) {
                 match entry.inner() {
                     Ok(crate::entries::EntryInner::Dataset(dataset)) => {
-                        server.dataset_entry_ui(ctx, ui, dataset);
+                        server.dataset_entry_ui(ctx, ui, dataset, view_states);
 
                         // If we're connected twice to the same server, we will find this entry
                         // multiple times. We avoid it by returning here.
                         return;
                     }
                     Ok(crate::entries::EntryInner::Table(table)) => {
-                        server.table_entry_ui(ctx, ui, table);
+                        server.table_entry_ui(ctx, ui, table, view_states);
 
                         // If we're connected twice to the same server, we will find this entry
                         // multiple times. We avoid it by returning here.

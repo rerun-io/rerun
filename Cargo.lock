@@ -3542,19 +3542,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "env_logger"
-version = "0.11.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2daee4ea451f429a58296525ddf28b45a3b64f1acf6587e2067437bb11e218d"
-dependencies = [
- "anstream",
- "anstyle",
- "env_filter",
- "jiff",
- "log",
-]
-
-[[package]]
 name = "epaint"
 version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7392,7 +7379,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c80231409c20246a13fddb31776fb942c38553c51e871f8cbd687a4cfb5843d"
 dependencies = [
  "phf_shared 0.11.3",
- "rand 0.8.5",
+ "rand 0.8.6",
 ]
 
 [[package]]
@@ -8006,9 +7993,9 @@ checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
 
 [[package]]
 name = "rand"
-version = "0.8.5"
+version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
+checksum = "5ca0ecfa931c29007047d1bc58e623ab12e5590e8c7cc53200d5202b69266d8a"
 dependencies = [
  "libc",
  "rand_chacha 0.3.1",
@@ -8070,7 +8057,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
 dependencies = [
  "num-traits",
- "rand 0.8.5",
+ "rand 0.8.6",
 ]
 
 [[package]]
@@ -8342,9 +8329,11 @@ version = "0.32.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "ecolor",
+ "egui",
  "glam",
  "half",
  "insta",
+ "macaw",
  "parking_lot",
  "smallvec",
  "vec1",
@@ -8457,6 +8446,7 @@ version = "0.32.0-alpha.1+dev"
 dependencies = [
  "re_log_types",
  "re_sdk_types",
+ "re_video",
  "re_viewer_context",
 ]
 
@@ -8584,8 +8574,10 @@ version = "0.32.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "criterion",
  "insta",
  "itertools 0.14.0",
+ "mimalloc",
  "nohash-hasher",
  "rayon",
  "re_arrow_util",
@@ -8596,6 +8588,7 @@ dependencies = [
  "re_query",
  "re_sdk_types",
  "re_sorbet",
+ "re_span",
  "re_tracing",
  "re_types_core",
  "similar-asserts",
@@ -8611,6 +8604,7 @@ dependencies = [
  "ahash",
  "arrow",
  "async-trait",
+ "base64 0.22.1",
  "cfg-if",
  "crossbeam",
  "datafusion",
@@ -8622,10 +8616,14 @@ dependencies = [
  "insta",
  "itertools 0.14.0",
  "jiff",
+ "nohash-hasher",
  "ordered-float 5.1.0",
  "re_arrow_util",
+ "re_chunk_store",
  "re_component_ui",
+ "re_data_source",
  "re_dataframe",
+ "re_entity_db",
  "re_format",
  "re_log",
  "re_log_types",
@@ -8641,6 +8639,8 @@ dependencies = [
  "re_ui",
  "re_uri",
  "re_viewer_context",
+ "re_viewport",
+ "re_viewport_blueprint",
  "serde",
  "static_assertions",
  "strum",
@@ -8662,12 +8662,14 @@ dependencies = [
  "futures-util",
  "getrandom 0.3.4",
  "http",
+ "jiff",
  "opentelemetry",
  "opentelemetry-proto",
  "parking_lot",
  "re_analytics",
  "re_arrow_util",
  "re_backoff",
+ "re_byte_size",
  "re_dataframe",
  "re_format",
  "re_log",
@@ -8684,7 +8686,6 @@ dependencies = [
  "tokio-stream",
  "tonic",
  "tonic-prost",
- "tonic-web-wasm-client",
  "tracing",
  "wasm-bindgen-futures",
  "web-time",
@@ -8879,6 +8880,7 @@ name = "re_integration_test"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "datafusion",
  "egui",
  "egui_kittest",
  "egui_tiles",
@@ -8888,7 +8890,9 @@ dependencies = [
  "parking_lot",
  "re_build_info",
  "re_dataframe_ui",
+ "re_datafusion",
  "re_log_encoding",
+ "re_log_types",
  "re_protos",
  "re_redap_client",
  "re_sdk",
@@ -8904,6 +8908,8 @@ dependencies = [
  "re_viewer",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "reqwest",
+ "serde",
  "tempfile",
  "tokio",
 ]
@@ -8941,14 +8947,13 @@ name = "re_log"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
- "env_filter",
- "env_logger",
- "js-sys",
  "log",
  "log-once",
  "parking_lot",
  "tracing",
- "wasm-bindgen",
+ "tracing-log",
+ "tracing-subscriber",
+ "tracing-web",
 ]
 
 [[package]]
@@ -9057,13 +9062,16 @@ dependencies = [
  "arrow",
  "byteorder",
  "cdr-encoding",
+ "crossbeam",
  "insta",
  "mcap",
  "prost-reflect",
+ "rayon",
  "re_arrow_util",
  "re_chunk",
  "re_log",
  "re_log_types",
+ "re_quota_channel",
  "re_ros_msg",
  "re_sdk_types",
  "re_tracing",
@@ -9833,6 +9841,7 @@ dependencies = [
  "re_log_types",
  "re_sdk_types",
  "re_test_context",
+ "re_time_ruler",
  "re_tracing",
  "re_ui",
  "re_viewer_context",
@@ -9840,6 +9849,20 @@ dependencies = [
  "serde",
  "smallvec",
  "vec1",
+]
+
+[[package]]
+name = "re_time_ruler"
+version = "0.32.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "itertools 0.14.0",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_sdk_types",
+ "re_tracing",
+ "re_viewer_context",
 ]
 
 [[package]]
@@ -10084,6 +10107,7 @@ dependencies = [
  "egui_dnd",
  "egui_table",
  "itertools 0.14.0",
+ "re_byte_size",
  "re_chunk_store",
  "re_component_ui",
  "re_dataframe",
@@ -10112,6 +10136,7 @@ dependencies = [
  "fjadra",
  "itertools 0.14.0",
  "nohash-hasher",
+ "re_byte_size",
  "re_chunk",
  "re_chunk_store",
  "re_data_ui",
@@ -10139,6 +10164,7 @@ dependencies = [
  "glam",
  "itertools 0.14.0",
  "macaw",
+ "re_byte_size",
  "re_data_ui",
  "re_entity_db",
  "re_log",
@@ -10208,15 +10234,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_view_status"
+name = "re_view_state_timeline"
 version = "0.32.0-alpha.1+dev"
 dependencies = [
  "egui",
+ "re_byte_size",
  "re_chunk_store",
+ "re_component_ui",
  "re_log_types",
  "re_sdk_types",
+ "re_selection_panel",
  "re_test_context",
  "re_test_viewport",
+ "re_time_ruler",
  "re_tracing",
  "re_ui",
  "re_view",
@@ -10233,6 +10263,7 @@ dependencies = [
  "egui",
  "half",
  "ndarray",
+ "re_byte_size",
  "re_chunk_store",
  "re_data_ui",
  "re_log_types",
@@ -10256,6 +10287,7 @@ version = "0.32.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_commonmark",
+ "re_byte_size",
  "re_chunk_store",
  "re_log_types",
  "re_sdk_types",
@@ -10275,6 +10307,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "itertools 0.14.0",
+ "re_byte_size",
  "re_chunk_store",
  "re_data_ui",
  "re_entity_db",
@@ -10401,7 +10434,7 @@ dependencies = [
  "re_view_graph",
  "re_view_map",
  "re_view_spatial",
- "re_view_status",
+ "re_view_state_timeline",
  "re_view_tensor",
  "re_view_text_document",
  "re_view_text_log",
@@ -10480,7 +10513,6 @@ dependencies = [
  "re_quota_channel",
  "re_redap_client",
  "re_renderer",
- "re_rvl",
  "re_sdk_types",
  "re_string_interner",
  "re_tf",
@@ -11731,17 +11763,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
+name = "state_timeline_example"
+version = "0.31.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "rerun",
+]
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "status_example"
-version = "0.31.0-alpha.1+dev"
-dependencies = [
- "rerun",
-]
 
 [[package]]
 name = "std_prelude"
@@ -12725,6 +12758,19 @@ dependencies = [
  "tracing-core",
  "tracing-subscriber",
  "tracy-client",
+]
+
+[[package]]
+name = "tracing-web"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9e6a141feebd51f8d91ebfd785af50fca223c570b86852166caa3b141defe7c"
+dependencies = [
+ "js-sys",
+ "tracing-core",
+ "tracing-subscriber",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

@@ -46,7 +46,10 @@ namespace rerun::archetypes {
     ///
     ///     fs::path image_filepath = fs::path(__FILE__).parent_path() / "ferris.png";
     ///
-    ///     rec.log("image", rerun::EncodedImage::from_file(image_filepath).value_or_throw());
+    ///     rec.log(
+    ///         "image",
+    ///         rerun::EncodedImage::from_file(image_filepath).value_or_throw()
+    ///     );
     /// }
     /// ```
     struct EncodedImage {

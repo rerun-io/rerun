@@ -330,6 +330,15 @@ impl ListItemContent for PropertyContent<'_> {
                 &child_ui,
                 child_ui.min_rect().right() - context.layout_info.left_x,
             );
+
+            // Grow the parent ui vertically (but not horizontally) when the value
+            // content exceeds the available height. We cap the horizontal extent at
+            // `value_rect.right()` so overflowing content doesn't widen the list item.
+            let alloc_rect = egui::Rect::from_min_max(
+                value_rect.min,
+                egui::pos2(value_rect.max.x, child_ui.min_rect().bottom()),
+            );
+            ui.advance_cursor_after_rect(alloc_rect);
         }
     }
 

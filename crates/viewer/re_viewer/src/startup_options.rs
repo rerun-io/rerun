@@ -106,9 +106,6 @@ pub struct StartupOptions {
     /// * notebooks & native: use rerun.io/viewer with the crate's last known stable version
     /// * web viewers: use the url of the page it is embedded in
     pub viewer_base_url: Option<String>,
-
-    /// Enable the experimental Status view.
-    pub enable_experimental_status_view: bool,
 }
 
 impl StartupOptions {
@@ -141,7 +138,7 @@ impl StartupOptions {
     /// The url to use for the web viewer when sharing links.
     #[allow(clippy::allow_attributes, clippy::unused_self)] // Only used on web.
     pub fn web_viewer_base_url(&self) -> Option<url::Url> {
-        // TODO(RR-1878): Would be great to grab this from the Data Platform when available.
+        // TODO(RR-1878): Would be great to grab this from the catalog server when available.
 
         if let Some(url) = &self.viewer_base_url
             && let Ok(url) = url.parse::<url::Url>()
@@ -204,8 +201,6 @@ impl Default for StartupOptions {
             login: None,
 
             viewer_base_url: None,
-
-            enable_experimental_status_view: false,
         }
     }
 }

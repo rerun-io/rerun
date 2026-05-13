@@ -1,4 +1,5 @@
 #![cfg(feature = "testing")]
+use re_ui::notifications::NotificationUi;
 use re_viewer_context::{Route, StoreHub};
 
 use crate::App;
@@ -7,6 +8,7 @@ pub trait AppTestingExt {
     fn testonly_get_store_hub(&mut self) -> &mut StoreHub;
     fn testonly_get_route(&self) -> &Route;
     fn testonly_set_test_hook(&mut self, func: crate::app_state::TestHookFn);
+    fn testonly_get_notifications(&self) -> &NotificationUi;
 }
 
 impl AppTestingExt for App {
@@ -22,5 +24,9 @@ impl AppTestingExt for App {
 
     fn testonly_set_test_hook(&mut self, func: crate::app_state::TestHookFn) {
         self.state.test_hook = Some(func);
+    }
+
+    fn testonly_get_notifications(&self) -> &NotificationUi {
+        &self.notifications
     }
 }

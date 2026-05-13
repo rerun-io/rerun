@@ -264,7 +264,7 @@ impl<T: SizeBytes + ?Sized> SizeBytes for Arc<T> {
     }
 }
 
-impl<T: SizeBytes> SizeBytes for Box<T> {
+impl<T: SizeBytes + ?Sized> SizeBytes for Box<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         T::total_size_bytes(&**self)

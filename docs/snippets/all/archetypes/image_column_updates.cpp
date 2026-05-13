@@ -38,9 +38,12 @@ int main(int argc, char* argv[]) {
 
     // Split up the image data into several components referencing the underlying data.
     const size_t image_size_in_bytes = width * height * 3;
-    std::vector<rerun::components::ImageBuffer> image_data(times.size());
+    std::vector<rerun::ImageBuffer> image_data(times.size());
     for (size_t i = 0; i < times.size(); ++i) {
-        image_data[i] = rerun::borrow(images.data() + i * image_size_in_bytes, image_size_in_bytes);
+        image_data[i] = rerun::borrow(
+            images.data() + i * image_size_in_bytes,
+            image_size_in_bytes
+        );
     }
 
     // Send all images at once.

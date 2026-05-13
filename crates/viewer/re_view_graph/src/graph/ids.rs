@@ -9,6 +9,18 @@ pub struct NodeId {
     pub node_hash: GraphNodeHash,
 }
 
+impl re_byte_size::SizeBytes for NodeId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 impl nohash_hasher::IsEnabled for NodeId {}
 
 // We implement `Hash` manually, because `nohash_hasher` requires a single call to `state.write_*`.
@@ -40,6 +52,18 @@ pub struct EdgeId {
     // TODO(grtlr): Consider something more storage efficient here
     pub source: NodeId,
     pub target: NodeId,
+}
+
+impl re_byte_size::SizeBytes for EdgeId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl EdgeId {

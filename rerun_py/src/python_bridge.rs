@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use pyo3::exceptions::{PyKeyboardInterrupt, PyRuntimeError};
+use pyo3::exceptions::{PyKeyboardInterrupt, PyRuntimeError, PyStopIteration, PyTypeError};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
 use re_auth::oauth::Credentials;
@@ -39,6 +39,7 @@ impl PyRuntimeErrorExt for PyRuntimeError {
     }
 }
 
+use crate::chunk::PyChunkInternal;
 use crate::recording::PyRecordingInternal;
 
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
@@ -95,7 +96,7 @@ static GARBAGE_QUEUE: LazyLock<(GarbageSender, GarbageReceiver)> = LazyLock::new
 ///
 /// Any time you release the GIL (e.g. `py.allow_threads()`), try to slip in a call to this
 /// function so we don't accumulate too much garbage.
-fn flush_garbage_queue() {
+pub(crate) fn flush_garbage_queue() {
     while GARBAGE_QUEUE.1.try_recv().is_ok() {
         // Implicitly dropping chunks, therefore triggering their `release` callbacks, therefore
         // triggering the native Python GC.
@@ -275,6 +276,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(serve_web_viewer, m)?)?;
     m.add_function(wrap_pyfunction!(serve_web, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
+    m.add_function(wrap_pyfunction!(finalize_deferred_sinks, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
 
     // time
@@ -289,7 +291,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_file_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
     m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
-    m.add_function(wrap_pyfunction!(send_chunk, m)?)?;
+    m.add_function(wrap_pyfunction!(send_chunks, m)?)?;
     m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(send_recording, m)?)?;
 
@@ -602,8 +604,16 @@ impl PyChunkBatcherConfig {
     #[expect(non_snake_case)]
     #[staticmethod]
     /// Always flushes ASAP.
-    fn ALWAYS() -> Self {
-        Self(ChunkBatcherConfig::ALWAYS)
+    ///
+    /// !!! warning
+    ///     Test-only configuration. Produces an unrealistically large number of chunks and is
+    ///     not suitable for production workloads. With a file sink in particular, per-chunk
+    ///     metadata is accumulated in memory until the SDK process ends and the file footer
+    ///     can be written, which can drive memory usage through the roof. Use
+    ///     [`LOW_LATENCY`][rerun_bindings.ChunkBatcherConfig.LOW_LATENCY] instead for fast
+    ///     flushing in real applications.
+    fn ALWAYS_TEST_ONLY() -> Self {
+        Self(ChunkBatcherConfig::ALWAYS_TEST_ONLY)
     }
 
     #[expect(non_snake_case)]
@@ -1104,19 +1114,23 @@ impl PyGrpcSink {
 #[derive(PartialEq, Hash)]
 struct PyFileSink {
     path: PathBuf,
+    write_footer: bool,
 }
 
 #[pymethods]
 impl PyFileSink {
     #[new]
-    #[pyo3(signature = (path))]
-    #[pyo3(text_signature = "(self, path)")]
-    fn new(path: PathBuf) -> Self {
-        Self { path }
+    #[pyo3(signature = (path, *, write_footer = true))]
+    #[pyo3(text_signature = "(self, path, *, write_footer=True)")]
+    fn new(path: PathBuf, write_footer: bool) -> Self {
+        Self { path, write_footer }
     }
 
     pub fn __repr__(&self) -> String {
-        format!("FileSink({:#?})", self.path)
+        format!(
+            "FileSink({:#?}, write_footer={})",
+            self.path, self.write_footer
+        )
     }
 }
 
@@ -1146,8 +1160,13 @@ fn set_sinks<'py>(
             resolved_sinks.push(Box::new(sink));
         } else if let Ok(sink) = sink.downcast::<PyFileSink>() {
             let sink = sink.get();
-            let sink = re_sdk::sink::FileSink::new(sink.path.clone())
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            let sink = re_sdk::sink::FileSink::with_options(
+                sink.path.clone(),
+                re_sdk::sink::FileSinkOptions {
+                    write_footer: sink.write_footer,
+                },
+            )
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             resolved_sinks.push(Box::new(sink));
         } else if let Ok(storage) = sink.downcast::<PyBinarySinkStorage>() {
             // Direct PyBinarySinkStorage
@@ -1267,11 +1286,12 @@ fn connect_grpc_blueprint(
 
 /// Save the recording stream to a file.
 #[pyfunction]
-#[pyo3(signature = (path, default_blueprint = None, recording = None))]
+#[pyo3(signature = (path, default_blueprint = None, recording = None, *, write_footer = true))]
 fn save(
     path: &str,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
+    write_footer: bool,
     py: Python<'_>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
@@ -1288,8 +1308,11 @@ fn save(
     py.detach(|| {
         // We create the sink manually so we can send the default blueprint
         // first before the rest of the current recording stream.
-        let sink = re_sdk::sink::FileSink::new(path)
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+        let sink = re_sdk::sink::FileSink::with_options(
+            path,
+            re_sdk::sink::FileSinkOptions { write_footer },
+        )
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
         if let Some(default_blueprint) = default_blueprint {
             send_mem_sink_as_default_blueprint(&sink, default_blueprint);
@@ -1339,10 +1362,11 @@ fn save_blueprint(
 
 /// Save to stdout.
 #[pyfunction]
-#[pyo3(signature = (default_blueprint = None, recording = None))]
+#[pyo3(signature = (default_blueprint = None, recording = None, *, write_footer = true))]
 fn stdout(
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
+    write_footer: bool,
     py: Python<'_>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
@@ -1362,8 +1386,10 @@ fn stdout(
             Box::new(re_sdk::sink::BufferedSink::new())
         } else {
             Box::new(
-                re_sdk::sink::FileSink::stdout()
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                re_sdk::sink::FileSink::stdout_with_options(re_sdk::sink::FileSinkOptions {
+                    write_footer,
+                })
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
             )
         };
 
@@ -1827,6 +1853,27 @@ fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
     });
 }
 
+/// Finalize any deferred-finalization sinks (i.e. file-like sinks that write a footer at the end).
+///
+/// For a bare `FileSink` this is equivalent to `disconnect()`. For a `MultiSink` containing both
+/// streaming and file-like children, only the file-like children are dropped — the streaming
+/// children stay live. For all other sinks this is a no-op.
+///
+/// Used by `RecordingStream.__exit__` so that file-backed recordings are consumable as soon as
+/// the `with`-block exits, without waiting for `__del__` / GC.
+#[pyfunction]
+#[pyo3(signature = (recording=None))]
+fn finalize_deferred_sinks(py: Python<'_>, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    // Release the GIL in case any flushing behavior needs to cleanup a python object.
+    py.detach(|| {
+        recording.finalize_deferred_sinks();
+        flush_garbage_queue();
+    });
+}
+
 /// Block until outstanding data has been flushed to the sink.
 #[pyfunction]
 #[pyo3(signature = (*, timeout_sec = 1e38, recording = None))] // Can't use infinity here because of python_check_signatures.py
@@ -2099,25 +2146,56 @@ fn send_arrow_chunk(
     })
 }
 
-/// Send a pre-built chunk to the recording stream.
+/// Send chunks to the recording stream.
+///
+/// Accepts a single chunk or any iterable of chunks. Blocks until every chunk
+/// has been pushed to the recording's batcher.
 #[pyfunction]
-#[pyo3(signature = (chunk, recording=None))]
-fn send_chunk(
+#[pyo3(signature = (chunks, recording=None))]
+fn send_chunks(
     py: Python<'_>,
-    chunk: &crate::chunk::PyChunkInternal,
+    chunks: Bound<'_, PyAny>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
 
-    let chunk = re_chunk::Chunk::clone(chunk.inner());
+    // Single Chunk — fast path
+    if let Ok(chunk_obj) = chunks.downcast::<PyChunkInternal>() {
+        let chunk = re_chunk::Chunk::clone(chunk_obj.borrow().inner());
+        py.detach(|| {
+            recording.send_chunk(chunk);
+            flush_garbage_queue();
+        });
+        return Ok(());
+    }
 
-    py.detach(|| {
-        recording.send_chunk(chunk);
+    // Iterable of Chunk. Streamed one at a time — we don't collect into a Vec
+    // because the iterable may be a generator yielding many chunks and buffering
+    // all of them would inflate peak memory.
+    let iter: Py<PyAny> = chunks
+        .try_iter()
+        .map_err(|_err| PyTypeError::new_err("send_chunks expected a Chunk or iterable of Chunk"))?
+        .into_any()
+        .unbind();
 
+    py.detach(|| -> PyResult<()> {
+        loop {
+            let next_chunk = Python::attach(|py| -> PyResult<Option<re_chunk::Chunk>> {
+                match iter.bind(py).call_method0("__next__") {
+                    Ok(obj) => {
+                        let internal: PyRef<'_, PyChunkInternal> = obj.extract()?;
+                        Ok(Some(re_chunk::Chunk::clone(internal.inner())))
+                    }
+                    Err(err) if err.is_instance_of::<PyStopIteration>(py) => Ok(None),
+                    Err(err) => Err(err),
+                }
+            })?;
+            let Some(chunk) = next_chunk else { break };
+            recording.send_chunk(chunk);
+        }
         flush_garbage_queue();
-
         Ok(())
     })
 }

@@ -167,4 +167,4 @@ impl std::ops::DerefMut for ChunkId {
     }
 }
 
-crate::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId"); // Used in the Data Platform
+crate::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId"); // Used in the catalog server

@@ -25,7 +25,7 @@ As such, it is implemented to be as close as possible to the actual API boundary
 ## Non-goals
 
 - Test layers outside the redap boundary, including `re_redap_client::ConnectionClient` or the Python SDK.
-- Test anything about the internals of the redap implementors (OSS server, Rerun Cloud, etc.)
+- Test anything about the internals of the redap implementors (OSS server, Rerun Hub, etc.)
 
 ## Usage
 

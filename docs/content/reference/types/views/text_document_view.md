@@ -6,6 +6,13 @@ title: "TextDocumentView"
 ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 A view of a single text document, for use with [`archetypes.TextDocument`](https://rerun.io/docs/reference/types/archetypes/text_document).
 
+## Properties
+
+### `format_options`
+Formatting options for the text document view.
+
+* `monospace`: Whether to use a monospace font for the document body.
+* `word_wrap`: Whether to wrap long lines in the document body.
 
 ## API reference links
  * 🐍 [Python API docs for `TextDocumentView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TextDocumentView)
