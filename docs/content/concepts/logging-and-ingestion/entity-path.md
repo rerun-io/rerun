@@ -47,7 +47,8 @@ You can insert an arbitrary unicode code point into an entity path using `\u{262
 
 So for instance, `world/3D/My\ Image.jpg/detection` is a valid path (note the escaped space!).
 
-⚠️ NOTE: even though entity paths are somewhat analogous to file paths, they are NOT the same. `..` does not mean "parent folder", and you are NOT intended to pass a file path as an entity path (especially not on Windows, which use `\` as a path separator).
+> [!WARNING]
+> Even though entity paths are somewhat analogous to file paths, they are NOT the same. `..` does not mean "parent folder", and you are NOT intended to pass a file path as an entity path (especially not on Windows, which use `\` as a path separator).
 
 ### Path hierarchy functions
 Path hierarchy plays an important role in a number of different functions within Rerun:

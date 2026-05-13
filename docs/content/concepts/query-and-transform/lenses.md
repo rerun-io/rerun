@@ -3,7 +3,8 @@ title: Lenses
 order: 400
 ---
 
-> **Note:** The Lenses API is currently experimental and may change in future releases.
+> [!NOTE]
+> The Lenses API is currently experimental and may change in future releases.
 
 Lenses transform data by extracting, reshaping, and rerouting components.
 They produce new component columns, entity paths, or timelines from existing data.

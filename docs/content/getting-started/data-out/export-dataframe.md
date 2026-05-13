@@ -147,7 +147,8 @@ Name: jawOpen, dtype: float64
 
 This confirms that the newly created `"jawOpen"` column now contains regular, 64-bit float numbers, and missing values are represented by NaNs.
 
-_Note_: should you want to filter out the NaNs, you may use the [`dropna()`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.dropna.html) method.
+> [!NOTE]
+> Should you want to filter out the NaNs, you may use the [`dropna()`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.dropna.html) method.
 
 ## Next steps
 

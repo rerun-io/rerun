@@ -24,9 +24,10 @@ There are two options to choose from:
 * Raw video frames [`VideoStream`](../../reference/types/archetypes/video_stream.md)
 * Video files using [`AssetVideo`](../../reference/types/archetypes/asset_video.md)
 
-⚠️ Do not use compressed video if you need accurate pixel replication:
-this is not only due to the obvious detail loss on encoding,
-but also since the exact _display_ of the same video is not consistent across platforms and decoder versions.
+> [!WARNING]
+> Do not use compressed video if you need accurate pixel replication:
+> this is not only due to the obvious detail loss on encoding,
+> but also since the exact _display_ of the same video is not consistent across platforms and decoder versions.
 
 ## Streaming video / raw encoded video frames
 

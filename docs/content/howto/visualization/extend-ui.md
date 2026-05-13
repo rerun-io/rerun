@@ -7,7 +7,8 @@ description: How to extend the Rerun Viewer UI using Rust and egui
 There are three ways to extend the Rerun Viewer with custom Rust code, depending on how deep you need to go:
 embedding custom UI panels alongside the Viewer, adding a custom visualizer to a built-in view, or implementing an entirely new view class.
 
-**⚠️ Note that the interfaces for extending the Viewer are not yet stable.** Expect code implementing custom extensions to break with every release of Rerun.
+> [!WARNING]
+> The interfaces for extending the Viewer are not yet stable. Expect code implementing custom extensions to break with every release of Rerun.
 
 
 ## Embedding custom UI in the Viewer

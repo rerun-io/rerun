@@ -78,10 +78,12 @@ Streams all logging data into an `.rrd` file on disk, which can then be loaded i
 
 To view the saved file, use `rerun path/to/file.rrd`.
 
-**Note:** RRD files saved with Rerun 0.23 or later can be opened with a newer Rerun version.
-For more details and potential limitations, please refer to [our blog post](https://rerun.io/blog/release-0.23).
+> [!NOTE]
+> RRD files saved with Rerun 0.23 or later can be opened with a newer Rerun version.
+> For more details and potential limitations, please refer to [our blog post](https://rerun.io/blog/release-0.23).
 
-⚠️ At the moment, we only guarantee compatibility across adjacent minor versions (e.g. Rerun 0.24 can open RRDs from 0.23).
+> [!WARNING]
+> At the moment, we only guarantee compatibility across adjacent minor versions (e.g. Rerun 0.24 can open RRDs from 0.23).
 
 #### C++
 Use `RecordingStream::save`.

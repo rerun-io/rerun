@@ -62,8 +62,9 @@ You can also define and log your own custom archetypes and components completely
 
 In this example we extend the Rerun Points3D archetype with a custom confidence component and user-defined archetype.
 
-⚠️ NOTE: Due to the component descriptor changes in `v0.24` it is currently not possible for custom data to be picked up by visualizers.
-We are currently investigating approaches to bring that functionality back.
+> [!WARNING]
+> Due to the component descriptor changes in `v0.24` it is currently not possible for custom data to be picked up by visualizers.
+> We are currently investigating approaches to bring that functionality back.
 
 However, your custom data will still show up in the dataframe view, as shown below.
 

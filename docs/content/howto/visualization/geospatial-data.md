@@ -35,7 +35,8 @@ Rerun currently supports two types of geometries:
 - [`GeoPoints`](../../reference/types/archetypes/geo_points.md): batch of individual points, with optional [radius](../../reference/types/components/radius.md) and [color](../../reference/types/components/color.md)
 - [`GeoLineStrings`](../../reference/types/archetypes/geo_line_strings.md): batch of line strings, with optional [radius](../../reference/types/components/radius.md) and [color](../../reference/types/components/color.md)
 
-*Note*: polygons are planned but are not supported yet (see [this issue](https://github.com/rerun-io/rerun/issues/8066)).
+> [!NOTE]
+> Polygons are planned but are not supported yet (see [this issue](https://github.com/rerun-io/rerun/issues/8066)).
 
 As in other views, radii may be expressed either as UI points (negative values) or scene units (positive values).
 For the latter case, the map view uses meters are scene units.

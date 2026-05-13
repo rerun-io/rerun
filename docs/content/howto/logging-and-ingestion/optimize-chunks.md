@@ -136,7 +136,8 @@ This produces a new file where chunks have been merged up to the size and row th
 
 Because it runs offline, the CLI compactor has full access to the dataset and no real-time constraints, making it the most effective tool for optimal compaction. It's a good idea to compact files ahead of time if they’ll be queried or visualized repeatedly.
 
-> ⚠️ `rerun rrd optimize` will automatically migrate the data to the latest version of the RRD protocol, if needed. ⚠️
+> [!WARNING]
+> `rerun rrd optimize` will automatically migrate the data to the latest version of the RRD protocol, if needed.
 
 Note that `rerun rrd optimize` ships two preset profiles, selected with `--profile`, that set sensible thresholds for two common targets:
 

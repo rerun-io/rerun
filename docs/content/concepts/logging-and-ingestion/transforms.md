@@ -44,9 +44,11 @@ with `child_frame` and `parent_frame` parameters set to their respective names.
 snippet: concepts/transform3d_hierarchy_named_frames
 
 Note that unlike in ROS, you can log your transform relationship on _any_ entity.
-**Note:** A current limitation to this is that once a `Transform3D` (or `Pinhole`) relating two frames has been logged to an entity, this particular relation may no longer be logged on any other entity.
-An exception to this rule is [static data](static.md): if you log a frame to frame relationship on an entity with static time, you can later on use a different entity for temporal information.
-This is useful to specify "default" transforms without yet knowing what timeline and paths are going to be used for temporal transforms.
+
+> [!NOTE]
+> A current limitation to this is that once a `Transform3D` (or `Pinhole`) relating two frames has been logged to an entity, this particular relation may no longer be logged on any other entity.
+> An exception to this rule is [static data](static.md): if you log a frame to frame relationship on an entity with static time, you can later on use a different entity for temporal information.
+> This is useful to specify "default" transforms without yet knowing what timeline and paths are going to be used for temporal transforms.
 
 
 Named transform frames have several advantages over entity path based hierarchies:
@@ -168,7 +170,8 @@ Note that in this example the archetype is logged at the root path, this will ma
 [Pinholes](https://rerun.io/docs/reference/types/archetypes/view_coordinates) have a view coordinates field integrated as a shortcut.
 The default coordinate system for pinhole entities is `RDF` (X=Right, Y=Down, Z=Forward).
 
->  ⚠️ Unlike in 3D views where `rr.ViewCoordinates` only impacts how the rendered scene is oriented, applying `rr.ViewCoordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example.
+> [!WARNING]
+> Unlike in 3D views where `rr.ViewCoordinates` only impacts how the rendered scene is oriented, applying `rr.ViewCoordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example.
 
 For 2D spaces and other entities, view coordinates currently have currently no effect ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
 

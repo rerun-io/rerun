@@ -5,7 +5,8 @@ order: 700
 
 The [StateTimelineView](../../reference/types/views/state_timeline_view.md) shows how entities transition between discrete states over time. Each entity becomes a horizontal lane, and each logged state is rendered as a colored band that runs until the next change. This is a good fit for state machines, mode transitions, sensor health, or any other piece of data that's better described as "what state am I in right now?" than as a numerical value.
 
-> ⚠️ **Experimental.** The State Timeline view, the [`StateChange`](../../reference/types/archetypes/state_change.md) archetype, and the [`StateConfiguration`](../../reference/types/archetypes/state_configuration.md) archetype are all marked unstable and may change in ways that aren't backwards compatible.
+> [!WARNING]
+> **Experimental.** The State Timeline view, the [`StateChange`](../../reference/types/archetypes/state_change.md) archetype, and the [`StateConfiguration`](../../reference/types/archetypes/state_configuration.md) archetype are all marked unstable and may change in ways that aren't backwards compatible.
 
 ## Logging state changes
 

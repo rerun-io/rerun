@@ -77,7 +77,9 @@ ERROR: No matching distribution found for rerun-sdk
 Then this is likely because you're running a version of pip that is too old.
 You can check the version of pip with `pip --version`.
 If you're running a version of pip 20 or older, you should upgrade it with `pip install --upgrade pip`.
-⚠️ depending on your system configuration this may upgrade the pip installation aliased by `pip3` instead of `pip`.
+
+> [!WARNING]
+> Depending on your system configuration this may upgrade the pip installation aliased by `pip3` instead of `pip`.
 
 
 ## Startup issues

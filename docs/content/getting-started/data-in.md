@@ -143,7 +143,8 @@ snippet: tutorials/dna[time_loop]
 A call to `set_time` (or `set_duration_secs` in Rust / `set_time_duration` in C++) creates our new `Timeline` and makes sure that any logging calls that follow get assigned that time.
 You can add as many timelines and timestamps as you want when logging data.
 
-⚠️ If you run this code as is, the result will be… surprising: the beads are animating as expected, but everything we've logged until that point is gone! ⚠️
+> [!WARNING]
+> If you run this code as is, the result will be… surprising: the beads are animating as expected, but everything we've logged until that point is gone!
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data7_wat/2a3b65f4a0e1e948184d85bab497e4bffdda0b7e/480w.png">
@@ -221,7 +222,8 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 RRD files saved with Rerun 0.23 or later can be opened with a newer Rerun version.
 For more details and potential limitations, please refer to [our blog post](https://rerun.io/blog/release-0.23).
 
-⚠️ At the moment, we only guarantee compatibility across adjacent minor versions (e.g. Rerun 0.24 can open RRDs from 0.23).
+> [!WARNING]
+> At the moment, we only guarantee compatibility across adjacent minor versions (e.g. Rerun 0.24 can open RRDs from 0.23).
 
 ### Rust-only: showing the Viewer in-process
 

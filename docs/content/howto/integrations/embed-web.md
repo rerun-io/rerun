@@ -43,7 +43,8 @@ Various packages are available:
 - [@rerun-io/web-viewer](https://www.npmjs.com/package/@rerun-io/web-viewer): Suitable for JS apps without a framework or frameworks without dedicated packages.
 - [@rerun-io/web-viewer-react](https://www.npmjs.com/package/@rerun-io/web-viewer-react): Designed specifically for React apps.
 
-> ℹ️ Note: The stability of the `rrd` format is still evolving, so the package version corresponds to the supported Rerun SDK version. Therefore, `@rerun-io/web-viewer@0.10.0` can only connect to a data source (`.rrd` file, gRPC connection, etc.) originating from a Rerun SDK with version `0.10.0`!
+> [!NOTE]
+> The stability of the `rrd` format is still evolving, so the package version corresponds to the supported Rerun SDK version. Therefore, `@rerun-io/web-viewer@0.10.0` can only connect to a data source (`.rrd` file, gRPC connection, etc.) originating from a Rerun SDK with version `0.10.0`!
 
 ### Basic example
 
@@ -53,7 +54,8 @@ To begin, install the package ([@rerun-io/web-viewer](https://www.npmjs.com/pack
 npm i @rerun-io/web-viewer
 ```
 
-> ℹ Note: This package is compatible only with recent browser versions. If your target browser lacks support for Wasm imports or top-level await, additional plugins may be required for your bundler setup. For instance, if you're using [Vite](https://vitejs.dev/), you'll need to install [vite-plugin-wasm](https://www.npmjs.com/package/vite-plugin-wasm) and [vite-plugin-top-level-await](https://www.npmjs.com/package/vite-plugin-top-level-await) and integrate them into your `vite.config.js`.
+> [!NOTE]
+> This package is compatible only with recent browser versions. If your target browser lacks support for Wasm imports or top-level await, additional plugins may be required for your bundler setup. For instance, if you're using [Vite](https://vitejs.dev/), you'll need to install [vite-plugin-wasm](https://www.npmjs.com/package/vite-plugin-wasm) and [vite-plugin-top-level-await](https://www.npmjs.com/package/vite-plugin-top-level-await) and integrate them into your `vite.config.js`.
 
 Once installed and configured, import and use it within your application:
 
