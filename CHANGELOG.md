@@ -1,6 +1,6 @@
 # Rerun changelog
 
-## Unreleased
+## [0.32.0](https://github.com/rerun-io/rerun/compare/0.31.4...0.32.0) - 2026-05-13 - Chunk Processing, Dataset Review & More
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-32
 
