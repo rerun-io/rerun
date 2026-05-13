@@ -90,10 +90,10 @@ Result: {
 }
 
 
-Dataset -> view: "filter_contents()\nfilter_segments()"
-Dataset -> DataFrame: "reader()"
-view -> DataFrame: "reader()"
-DataFrame -> Result: "collect()"
+Dataset -> view: |md `filter_contents()`<br/>`filter_segments()` |
+Dataset -> DataFrame: |md `reader()` |
+view -> DataFrame: |md `reader()` |
+DataFrame -> Result: |md `collect()` |
 ```
 
 
