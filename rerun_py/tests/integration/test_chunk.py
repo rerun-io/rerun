@@ -109,6 +109,37 @@ def test_chunk_from_columns_static() -> None:
 """)
 
 
+def test_chunk_format_keeps_rerun_metadata_prefixes() -> None:
+    """`trim_metadata_keys=False` preserves the `rerun:` / `sorbet:` prefixes on metadata keys."""
+    chunk = Chunk.from_columns(
+        "/test/static",
+        indexes=[],
+        columns=rr.Points3D.columns(positions=[[1, 2, 3], [4, 5, 6]]),
+    )
+    assert chunk.format(redact=True, trim_metadata_keys=False) == inline_snapshot("""\
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                           │
+│ * rerun:entity_path: /test/static                                                                   │
+│ * rerun:id: [**REDACTED**]                                                                          │
+│ * sorbet:version: [**REDACTED**]                                                                    │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌───────────────────────────────────────────────┬─────────────────────────────────────────────────┐ │
+│ │ RowId                                         ┆ Points3D:positions                              │ │
+│ │ ---                                           ┆ ---                                             │ │
+│ │ type: non-null FixedSizeBinary(16)            ┆ type: List(FixedSizeList(3 x non-null Float32)) │ │
+│ │ ARROW:extension:metadata: {"namespace":"row"} ┆ rerun:archetype: Points3D                       │ │
+│ │ ARROW:extension:name: TUID                    ┆ rerun:component: Points3D:positions             │ │
+│ │ rerun:is_sorted: true                         ┆ rerun:component_type: Position3D                │ │
+│ │ rerun:kind: control                           ┆ rerun:kind: data                                │ │
+│ ╞═══════════════════════════════════════════════╪═════════════════════════════════════════════════╡ │
+│ │ row_[**REDACTED**]                            ┆ [[1.0, 2.0, 3.0]]                               │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ row_[**REDACTED**]                            ┆ [[4.0, 5.0, 6.0]]                               │ │
+│ └───────────────────────────────────────────────┴─────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────┘\
+""")
+
+
 def test_chunk_from_columns_into_store() -> None:
     """Chunks built via from_columns can be inserted into a ChunkStore."""
     from rerun.experimental import ChunkStore

@@ -225,7 +225,7 @@ class Chunk:
             lenses = [lenses]
         return [Chunk(internal) for internal in self._internal.apply_lenses([lens._internal for lens in lenses])]
 
-    def format(self, *, width: int = 240, redact: bool = False) -> str:
+    def format(self, *, width: int = 240, redact: bool = False, trim_metadata_keys: bool = True) -> str:
         """
         Format this chunk as a human-readable table string.
 
@@ -236,15 +236,18 @@ class Chunk:
         redact:
             If True, redact non-deterministic values (RowIds, ChunkIds, etc.)
             for stable snapshot testing. Default: False.
+        trim_metadata_keys:
+            If True, trim the `rerun:` / `sorbet:` prefix from metadata keys.
+            Default: True.
 
         """
-        return self._internal.format(width=width, redact=redact)
+        return self._internal.format(width=width, redact=redact, trim_metadata_keys=trim_metadata_keys)
 
     def __repr__(self) -> str:
         return repr(self._internal)
 
     def __str__(self) -> str:
-        return self._internal.format()
+        return self.format()
 
     def __len__(self) -> int:
         return len(self._internal)

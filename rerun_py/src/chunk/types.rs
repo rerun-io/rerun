@@ -177,18 +177,21 @@ impl PyChunkInternal {
         Ok(Self::new(Arc::new(new_chunk)))
     }
 
-    /// Format this chunk as a human-readable table string.
-    ///
-    /// Args:
-    ///     width: Fixed width for the table (default: 240).
-    ///     redact: If true, redact non-deterministic values like RowIds (default: false).
-    #[pyo3(signature = (*, width=240, redact=false))]
-    fn format(&self, width: usize, redact: bool) -> PyResult<String> {
+    /// Format this chunk as a human-readable table string. Internal: the user-facing wrapper sets defaults.
+    #[pyo3(signature = (*, width, redact, trim_metadata_keys))]
+    #[expect(clippy::fn_params_excessive_bools)] // Named keyword args in Python.
+    fn format(&self, width: usize, redact: bool, trim_metadata_keys: bool) -> PyResult<String> {
         let batch = self
             .chunk
             .to_record_batch()
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-        Ok(re_arrow_util::format_record_batch_with_width(&batch, Some(width), redact).to_string())
+        let opts = re_arrow_util::RecordBatchFormatOpts {
+            width: Some(width),
+            redact_non_deterministic: redact,
+            trim_metadata_keys,
+            ..Default::default()
+        };
+        Ok(re_arrow_util::format_record_batch_opts(&batch, &opts).to_string())
     }
 
     fn __repr__(&self) -> String {
