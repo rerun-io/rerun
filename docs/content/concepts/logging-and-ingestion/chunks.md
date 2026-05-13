@@ -140,7 +140,7 @@ You can build a chunk directly (from raw arrow data or time/component columns), 
 
 snippet: concepts/build_chunk
 
-`send_chunks` also accepts iterables of chunks, as well as [`LazyChunkStream`](https://ref.rerun.io/docs/python/stable/common/experimental/#rerun.experimental.LazyChunkStream)s, [`ChunkStore`](https://ref.rerun.io/docs/python/stable/common/experimental/#rerun.experimental.ChunkStore)s, and [`LazyStore`](https://ref.rerun.io/docs/python/stable/common/experimental/#rerun.experimental.LazyStore)s — useful for replaying a recording or piping chunks through a [lens](../query-and-transform/lenses.md) transformation. For example, to forward every chunk of an existing RRD into a new recording stream:
+`send_chunks` also accepts iterables of chunks, as well as [`LazyChunkStream`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.LazyChunkStream)s, [`ChunkStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.ChunkStore)s, and [`LazyStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.LazyStore)s — useful for replaying a recording or piping chunks through a [lens](../query-and-transform/lenses.md) transformation. For example, to forward every chunk of an existing RRD into a new recording stream:
 
 snippet: concepts/send_chunks
 
@@ -149,8 +149,8 @@ Like `send_columns`, this path bypasses the time context and the [micro-batcher]
 <!-- TODO(ab): link to py-chunk concept when it exists -->
 
 Reference:
-* [🐍 Python `Chunk`](https://ref.rerun.io/docs/python/stable/common/experimental/#rerun.experimental.Chunk)
-* [🐍 Python `send_chunks`](https://ref.rerun.io/docs/python/stable/common/experimental/#rerun.experimental.send_chunks)
+* [🐍 Python `Chunk`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.Chunk)
+* [🐍 Python `send_chunks`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.send_chunks)
 
 
 
