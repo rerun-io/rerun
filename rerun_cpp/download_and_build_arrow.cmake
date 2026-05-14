@@ -81,7 +81,11 @@ function(download_and_build_arrow)
         set(VERSION_PATCH "-DCMAKE_POLICY_VERSION_MINIMUM=${CMAKE_POLICY_VERSION_MINIMUM}")
     endif()
 
-    set(MIMALLOC_PATCH ${CMAKE_CURRENT_LIST_DIR}/patches/mimalloc_cmake4.patch)
+    set(ARROW_PATCHES
+        # TODO(apache/arrow#45985): Arrow can't support CMake 4.0 yet
+        ${CMAKE_CURRENT_LIST_DIR}/patches/mimalloc_cmake4.patch
+        # TODO update to arrow 24 and remove this patch
+        ${CMAKE_CURRENT_LIST_DIR}/patches/arrow_libtool.patch)
 
     ExternalProject_Add(
         arrow_cpp
@@ -92,8 +96,8 @@ function(download_and_build_arrow)
         UPDATE_COMMAND "" # Prevent unnecessary rebuilds on every cmake --build
 
         # Apply patch after checkout but before configure
-        # TODO(apache/arrow#45985): Arrow can't support CMake 4.0 yet
-        PATCH_COMMAND git apply --check ${MIMALLOC_PATCH} && git apply ${MIMALLOC_PATCH} || true
+        # Since this is downloading a release tarball, we need to init a git repository in order to apply the patches.
+        PATCH_COMMAND git init && git apply --check ${ARROW_PATCHES} && git apply ${ARROW_PATCHES} || true
 
         # LOG_X ON means that the output of the command will
         # be logged to a file _instead_ of printed to the console.

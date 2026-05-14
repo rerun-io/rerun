@@ -1,0 +1,13 @@
+diff --git a/cpp/cmake_modules/BuildUtils.cmake b/cpp/cmake_modules/BuildUtils.cmake
+index 692efa7..4f8f5e7 100644
+--- a/cpp/cmake_modules/BuildUtils.cmake
++++ b/cpp/cmake_modules/BuildUtils.cmake
+@@ -112,7 +112,7 @@ function(arrow_create_merged_static_lib output_target)
+     execute_process(COMMAND ${LIBTOOL_MACOS} -V
+                     OUTPUT_VARIABLE LIBTOOL_V_OUTPUT
+                     OUTPUT_STRIP_TRAILING_WHITESPACE)
+-    if(NOT "${LIBTOOL_V_OUTPUT}" MATCHES ".*cctools-([0-9.]+).*")
++    if(NOT "${LIBTOOL_V_OUTPUT}" MATCHES ".*cctools.+([0-9.]+).*")
+       message(FATAL_ERROR "libtool found appears to be the incompatible GNU libtool: ${LIBTOOL_MACOS}"
+       )
+     endif()
