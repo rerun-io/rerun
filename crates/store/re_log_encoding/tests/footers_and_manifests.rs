@@ -358,6 +358,103 @@ fn footer_roundtrip() {
     }
 }
 
+/// Regression test for chunks for store B that follow a
+/// `SetStoreInfo(A)` (without an intervening `SetStoreInfo(B)`) used to be misfiled under A.
+///
+/// This reproduces the shape produced by the Python SDK when a single `RecordingStream` emits
+/// both recording data and a blueprint to the same file sink: only one `SetStoreInfo` is sent
+/// (for the recording), but `ArrowMsg`s for both the recording's `StoreId` and the blueprint's
+/// `StoreId` flow through. The encoder must key its manifests off each chunk's own `store_id`,
+/// not off whatever `SetStoreInfo` it last saw.
+#[test]
+fn footer_interleaved_stores_without_set_store_info() {
+    let store_id_recording = generate_recording_store_id();
+    let store_id_blueprint = generate_blueprint_store_id();
+
+    let recording_chunks = generate_recording_chunks(1).collect_vec();
+    let blueprint_chunks = generate_blueprint_chunks(2).collect_vec();
+
+    let num_recording_chunks = recording_chunks.len();
+    let num_blueprint_chunks = blueprint_chunks.len();
+
+    // A single `SetStoreInfo` (for the recording), followed by recording chunks, followed by
+    // blueprint chunks — with NO `SetStoreInfo` for the blueprint. This is what the Python SDK
+    // produces today when a `RecordingStream` writes both data and a blueprint to one file sink.
+    let msgs = std::iter::once(LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+        row_id: *RowId::ZERO,
+        info: re_log_types::StoreInfo {
+            store_id: store_id_recording.clone(),
+            cloned_from: None,
+            store_source: re_log_types::StoreSource::Unknown,
+            store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
+        },
+    }))
+    .chain(
+        recording_chunks
+            .into_iter()
+            .map(|c| LogMsg::ArrowMsg(store_id_recording.clone(), c)),
+    )
+    .chain(
+        blueprint_chunks
+            .into_iter()
+            .map(|c| LogMsg::ArrowMsg(store_id_blueprint.clone(), c)),
+    );
+
+    let msgs_encoded = Encoder::encode(msgs.map(Ok)).unwrap();
+
+    // Decode the footer and check that we got two separate manifests, each holding the chunks
+    // that genuinely belong to it. Pre-fix, the blueprint chunks were merged into the recording's
+    // manifest (and no blueprint manifest existed at all).
+    let stream_footer_start = msgs_encoded
+        .len()
+        .checked_sub(re_log_encoding::StreamFooter::ENCODED_SIZE_BYTES)
+        .unwrap();
+    let stream_footer =
+        re_log_encoding::StreamFooter::from_rrd_bytes(&msgs_encoded[stream_footer_start..])
+            .unwrap();
+
+    let StreamFooterEntry {
+        rrd_footer_byte_span_from_start_excluding_header,
+        ..
+    } = stream_footer.entries[0];
+    let rrd_footer_range = rrd_footer_byte_span_from_start_excluding_header
+        .try_cast::<usize>()
+        .unwrap()
+        .range();
+    let rrd_footer_bytes = &msgs_encoded[rrd_footer_range];
+
+    let rrd_footer =
+        re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(rrd_footer_bytes).unwrap();
+    let rrd_footer = rrd_footer.to_application(()).unwrap();
+
+    assert_eq!(
+        rrd_footer.manifests.len(),
+        2,
+        "expected one manifest per store_id, got {:?}",
+        rrd_footer.manifests.keys().collect_vec()
+    );
+
+    let raw_manifest_recording = rrd_footer
+        .manifests
+        .get(&store_id_recording)
+        .expect("recording manifest must be keyed by the recording's own store_id");
+    let raw_manifest_blueprint = rrd_footer.manifests.get(&store_id_blueprint).expect(
+        "blueprint manifest must be keyed by the blueprint's own store_id, \
+             not folded into the recording's manifest",
+    );
+
+    assert_eq!(
+        raw_manifest_recording.data.num_rows(),
+        num_recording_chunks,
+        "recording manifest must contain exactly the recording's chunks"
+    );
+    assert_eq!(
+        raw_manifest_blueprint.data.num_rows(),
+        num_blueprint_chunks,
+        "blueprint manifest must contain exactly the blueprint's chunks"
+    );
+}
+
 #[test]
 fn footer_empty() {
     fn generate_store_id() -> StoreId {
