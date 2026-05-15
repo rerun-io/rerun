@@ -27,6 +27,23 @@ impl Default for Segment {
     }
 }
 
+/// What happened to a segment's layer map as a result of an
+/// [`Segment::insert_layer`] call.
+#[must_use]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LayerInsertOutcome {
+    /// The layer name was not previously present; the new layer was added.
+    Inserted,
+
+    /// The layer name was already present; the existing layer was replaced
+    /// (per [`IfDuplicateBehavior::Overwrite`]).
+    Overwritten,
+
+    /// The layer name was already present and the existing layer was kept
+    /// (per [`IfDuplicateBehavior::Skip`]). No mutation occurred.
+    Skipped,
+}
+
 impl Segment {
     pub fn layer_count(&self) -> usize {
         self.inner.layers.len()
@@ -58,32 +75,40 @@ impl Segment {
         self.inner.updated_at()
     }
 
-    /// Result: a successful result is `true` if the layer existed and was overwritten
+    /// Insert a layer into this segment, observing `on_duplicate` if the
+    /// layer name is already present.
+    ///
+    /// Returns:
+    /// - `Ok(Inserted)`    on fresh insert
+    /// - `Ok(Overwritten)` if the layer existed and `on_duplicate = Overwrite`
+    /// - `Ok(Skipped)`     if the layer existed and `on_duplicate = Skip`
+    ///   (no mutation occurs; the existing layer is unchanged)
+    /// - `Err(LayerAlreadyExists)` if the layer existed and
+    ///   `on_duplicate = Error`
     pub fn insert_layer(
         &mut self,
         layer_name: String,
         layer: Layer,
         on_duplicate: IfDuplicateBehavior,
-    ) -> Result<bool, Error> {
-        // Check if the layer already exists first
+    ) -> Result<LayerInsertOutcome, Error> {
         if self.inner.layers.contains_key(&layer_name) {
             match on_duplicate {
                 IfDuplicateBehavior::Overwrite => {
                     // Will overwrite, so modify
                     self.inner.modify().layers.insert(layer_name, layer);
                     // Timestamp updated when guard drops
-                    Ok(true)
+                    Ok(LayerInsertOutcome::Overwritten)
                 }
                 IfDuplicateBehavior::Skip => {
                     re_log::info!("Ignoring layer '{layer_name}': already exists in segment");
                     // No modification, no timestamp update
-                    Ok(true)
+                    Ok(LayerInsertOutcome::Skipped)
                 }
                 IfDuplicateBehavior::Error => Err(Error::LayerAlreadyExists(layer_name)),
             }
         } else {
             self.inner.modify().layers.insert(layer_name, layer);
-            Ok(false)
+            Ok(LayerInsertOutcome::Inserted)
         }
     }
 
