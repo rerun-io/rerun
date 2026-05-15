@@ -17,7 +17,8 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 
 use crate::store::{
-    Error, Layer, ResolvedStore, Segment, StoreSlotId, Tracked, store_pool::StorePool,
+    Error, Layer, LayerInsertOutcome, ResolvedStore, Segment, StoreSlotId, Tracked,
+    store_pool::StorePool,
 };
 
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
@@ -520,13 +521,15 @@ impl Dataset {
                 )?;
             }
         }
-        Schema::try_merge([current_schema, new_layer_schema]).map_err(|err| {
-            Error::SchemaConflict(format!(
-                "schema incompatibility on segment '{segment_id}', layer '{layer_name}': {err}"
-            ))
-        })?;
+        // Keep the merged schema so we can refresh the cache below.
+        let merged_schema =
+            Schema::try_merge([current_schema.clone(), new_layer_schema]).map_err(|err| {
+                Error::SchemaConflict(format!(
+                    "schema incompatibility on segment '{segment_id}', layer '{layer_name}': {err}"
+                ))
+            })?;
 
-        let overwritten = self
+        let outcome = self
             .inner
             .modify()
             .segments
@@ -538,13 +541,43 @@ impl Dataset {
                 on_duplicate,
             )?;
 
+        // Refresh the schema cache after each successful add_layer to avoid
+        // the O(N²) recompute pattern when register_with_dataset adds many
+        // layers in a single batch. `self.inner.modify()` always bumps
+        // `updated_at`, which would otherwise invalidate the cache on every
+        // iteration.
+        //
+        // - Inserted:     dataset schema is exactly `merged_schema`.
+        // - Skipped:      insert_layer was a no-op, so the schema is
+        //                 unchanged → reuse `current_schema`.
+        // - Overwritten:  the old layer's exclusive fields may no longer be
+        //                 present anywhere, so the schema may shrink in ways
+        //                 we can't reconstruct here. Drop the cache; the next
+        //                 `schema()` call will pay the full recompute.
+        //                 (Overwrite is rare relative to fresh insert in
+        //                 registration batches.)
+        {
+            let mut cache = self.cached_schema.lock();
+            let updated_at = self.updated_at();
+            *cache = match outcome {
+                LayerInsertOutcome::Inserted => Some((updated_at, Arc::new(merged_schema))),
+                LayerInsertOutcome::Skipped => Some((updated_at, Arc::new(current_schema))),
+                LayerInsertOutcome::Overwritten => None,
+            };
+        }
+
         #[cfg(feature = "lance")]
         self.indexes()
-            .on_layer_added(segment_id, &resolved, &layer_name, overwritten)
+            .on_layer_added(
+                segment_id,
+                &resolved,
+                &layer_name,
+                outcome == LayerInsertOutcome::Overwritten,
+            )
             .await?;
 
         #[cfg(not(feature = "lance"))]
-        let _ = overwritten;
+        let _ = outcome;
 
         Ok(())
     }

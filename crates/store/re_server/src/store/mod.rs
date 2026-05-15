@@ -16,7 +16,7 @@ pub use self::error::Error;
 pub use self::in_memory_store::InMemoryStore;
 pub use self::layer::Layer;
 pub use self::resolved_store::ResolvedStore;
-pub use self::segment::Segment;
+pub use self::segment::{LayerInsertOutcome, Segment};
 pub use self::store_pool::StoreSlotId;
 pub use self::table::Table;
 pub use self::task_registry::{TASK_ID_SUCCESS, TaskResult};
