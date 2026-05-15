@@ -157,7 +157,7 @@ The same compaction logic that powers `rerun rrd optimize` is exposed in the [Ch
 
 snippet: howto/optimize_chunks[optimize]
 
-[`LazyChunkStream.collect()`](https://ref.rerun.io/docs/python/stable/common/experimental?speculative-link#rerun.experimental.LazyChunkStream.collect) materializes the pipeline into a `ChunkStore`; passing an `OptimizationProfile` runs extra compaction passes tuned for a specific target. The two presets mirror the CLI's `--profile` values:
+[`LazyChunkStream.collect()`](https://ref.rerun.io/docs/python/stable/experimental#rerun.experimental.LazyChunkStream.collect) materializes the pipeline into a `ChunkStore`; passing an `OptimizationProfile` runs extra compaction passes tuned for a specific target. The two presets mirror the CLI's `--profile` values:
 
 * `OptimizationProfile.OBJECT_STORE` (corresponds to `--profile object-store`, the CLI default) — large chunks for object-store-backed datasets;
 * `OptimizationProfile.LIVE` (corresponds to `--profile live`) — small chunks for the live-Viewer workflow.
