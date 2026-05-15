@@ -27,7 +27,7 @@ The `stats` decoder computes file-level metrics and statistics, creating entitie
 
 ### Semantic interpretation
 
-The `ros2msg` and `foxglove` decoders provide semantic interpretation and visualization of standard ROS 2 and Foxglove message types, creating meaningful Rerun visualization archetypes from data. Unlike the `protobuf` decoder, this decoder understands the semantics of the messages and creates appropriate visualizations: images become [Image](../../../reference/types/archetypes/image.md), point clouds become [Points3D](../../../reference/types/archetypes/points3d.md), IMU messages become [SeriesLines](../../../reference/types/archetypes/series_lines.md) with the data plotted over time, and so on.
+The `ros1msg`, `ros2msg`, and `foxglove` decoders provide semantic interpretation and visualization of standard ROS 1, ROS 2, and Foxglove message types, creating meaningful Rerun visualization archetypes from data. Unlike the `protobuf` decoder, these decoders understand the semantics of the messages and create appropriate visualizations: images become [Image](../../../reference/types/archetypes/image.md), point clouds become [Points3D](../../../reference/types/archetypes/points3d.md), IMU messages become [SeriesLines](../../../reference/types/archetypes/series_lines.md) with the data plotted over time, and so on.
 
 See [Message Formats](message-formats.md) for the complete list of supported message types.
 

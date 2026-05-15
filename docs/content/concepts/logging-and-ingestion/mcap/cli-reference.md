@@ -71,6 +71,7 @@ Decoding:
 
 Semantic:
 - **`foxglove`**: Semantic interpretation of Foxglove Protobuf messages
+- **`ros1msg`**: Semantic interpretation of ROS1 messages
 - **`ros2msg`**: Semantic interpretation of ROS2 messages
 
 ### Default behavior

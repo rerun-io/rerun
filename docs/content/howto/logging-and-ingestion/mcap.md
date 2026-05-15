@@ -64,6 +64,7 @@ Each layer extracts different types of information from the MCAP source and each
 - **`metadata`** Extracts metadata records (if present) into `__mcap_metadata` in the RRD
 - **`attachments`**: Extracts MCAP attachment records (if present) as static data under `__mcap_attachments`
 - **`protobuf`**: Automatically decodes protobuf-encoded messages using reflection
+- **`ros1msg`**: Provides semantic conversion of common ROS1 message types into Rerun's visualization components
 - **`ros2msg`**: Provides semantic conversion of common ROS2 message types into Rerun's visualization components
 - **`ros2_reflection`**: Automatically decodes ROS2 messages using reflection
 - **`recording_info`**: Extracts recording metadata such as message counts, start time, and session information into `__mcap_properties` in the RRD
@@ -79,7 +80,7 @@ The following shows how to select specific decoders:
 rerun mcap convert input.mcap -d protobuf -d stats -o output.rrd
 
 # Use multiple decoders for different perspectives
-rerun mcap convert input.mcap -d ros2msg -d raw -d recording_info -o output.rrd
+rerun mcap convert input.mcap -d ros1msg -d ros2msg -d raw -d recording_info -o output.rrd
 
 # Add robot geometry from robot_description topics
 rerun mcap convert input.mcap -d ros2msg -d urdf -o output.rrd

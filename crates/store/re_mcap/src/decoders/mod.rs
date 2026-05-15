@@ -3,6 +3,7 @@ mod metadata;
 mod protobuf;
 mod raw;
 mod recording_info;
+mod ros1;
 mod ros2;
 mod ros2_reflection;
 mod schema;
@@ -21,6 +22,7 @@ pub use self::metadata::McapMetadataDecoder;
 pub use self::protobuf::McapProtobufDecoder;
 pub use self::raw::McapRawDecoder;
 pub use self::recording_info::McapRecordingInfoDecoder;
+pub use self::ros1::McapRos1Decoder;
 pub use self::ros2::McapRos2Decoder;
 pub use self::ros2_reflection::McapRos2ReflectionDecoder;
 pub use self::schema::McapSchemaDecoder;
@@ -603,6 +605,7 @@ impl DecoderRegistry {
             .register_file_decoder::<McapSchemaDecoder>()
             .register_file_decoder::<McapStatisticDecoder>()
             // message decoders (priority order):
+            .register_message_decoder::<McapRos1Decoder>()
             .register_message_decoder::<McapRos2Decoder>()
             .register_message_decoder::<McapRos2ReflectionDecoder>()
             .register_message_decoder::<McapProtobufDecoder>();
@@ -923,6 +926,38 @@ mod tests {
         (summary, buffer)
     }
 
+    fn ros1_summary_with_message_encoding(
+        schema_name: &str,
+        topic: &str,
+        message_encoding: &str,
+        payload: &[u8],
+    ) -> (mcap::Summary, Vec<u8>) {
+        let cursor = io::Cursor::new(Vec::new());
+        let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+        let schema_id = writer
+            .add_schema(schema_name, "ros1msg", b"string data")
+            .expect("failed to add schema");
+        let channel_id = writer
+            .add_channel(schema_id, topic, message_encoding, &Default::default())
+            .expect("failed to add channel");
+
+        writer
+            .write_to_known_channel(
+                &mcap::records::MessageHeader {
+                    channel_id,
+                    sequence: 0,
+                    log_time: 1,
+                    publish_time: 1,
+                },
+                payload,
+            )
+            .expect("failed to write message");
+
+        let summary = writer.finish().expect("failed to finish writer");
+        let buffer = writer.into_inner().into_inner();
+        (summary, buffer)
+    }
+
     /// We expect CDR as encoding for ros2msg-schema messages.
     /// Test that a non-CDR channel that claims to have ros2msg
     /// falls back to raw forwarding instead of message reflection.
@@ -978,6 +1013,73 @@ mod tests {
             .assignments
             .iter()
             .find(|assignment| assignment.topic == "non_cdr_string_topic")
+            .expect("missing assignment");
+        assert_eq!(assignment.decoder.to_string(), "raw");
+    }
+
+    #[test]
+    fn semantic_ros1_decoder_claims_ros1_channels() {
+        let mut payload = Vec::new();
+        payload.extend(5_u32.to_le_bytes());
+        payload.extend(b"hello");
+
+        let (summary, buffer) = ros1_summary_with_message_encoding(
+            "std_msgs/String",
+            "ros1_string_topic",
+            "ros1",
+            &payload,
+        );
+
+        let plan = DecoderRegistry::all_with_raw_fallback()
+            .plan(&buffer, &summary, &TopicFilter::default())
+            .expect("failed to plan");
+
+        let assignment = plan
+            .assignments
+            .iter()
+            .find(|assignment| assignment.topic == "ros1_string_topic")
+            .expect("missing assignment");
+        assert_eq!(assignment.decoder.to_string(), "ros1msg");
+    }
+
+    #[test]
+    fn unsupported_ros1_schema_falls_back_to_raw() {
+        let (summary, buffer) = ros1_summary_with_message_encoding(
+            "custom_msgs/Foo",
+            "custom_ros1_topic",
+            "ros1",
+            &[1, 2, 3],
+        );
+
+        let plan = DecoderRegistry::all_with_raw_fallback()
+            .plan(&buffer, &summary, &TopicFilter::default())
+            .expect("failed to plan");
+
+        let assignment = plan
+            .assignments
+            .iter()
+            .find(|assignment| assignment.topic == "custom_ros1_topic")
+            .expect("missing assignment");
+        assert_eq!(assignment.decoder.to_string(), "raw");
+    }
+
+    #[test]
+    fn non_ros1_ros1msg_channel_falls_back_to_raw() {
+        let (summary, buffer) = ros1_summary_with_message_encoding(
+            "std_msgs/String",
+            "json_ros1_topic",
+            "json",
+            br#"{"data":"hello"}"#,
+        );
+
+        let plan = DecoderRegistry::all_with_raw_fallback()
+            .plan(&buffer, &summary, &TopicFilter::default())
+            .expect("failed to plan");
+
+        let assignment = plan
+            .assignments
+            .iter()
+            .find(|assignment| assignment.topic == "json_ros1_topic")
             .expect("missing assignment");
         assert_eq!(assignment.decoder.to_string(), "raw");
     }

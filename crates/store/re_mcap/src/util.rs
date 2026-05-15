@@ -132,6 +132,11 @@ impl TimestampCell {
         Self::from_nanos_with_type(timestamp_ns, "ros2_timestamp", time_type)
     }
 
+    /// Create a time cell on the `"ros1_timestamp"` timeline with the given [`TimeType`].
+    pub fn from_nanos_ros1(timestamp_ns: u64, time_type: TimeType) -> Self {
+        Self::from_nanos_with_type(timestamp_ns, "ros1_timestamp", time_type)
+    }
+
     /// The timeline name for this time cell.
     pub fn timeline_name(&self) -> &str {
         &self.timeline
@@ -173,6 +178,14 @@ mod tests {
         let ts: u64 = 1_672_531_200_000_000_000;
         let cell = TimestampCell::from_nanos_ros2(ts, TimeType::TimestampNs);
         assert_eq!(cell.timeline_name(), "ros2_timestamp");
+        assert!(matches!(cell.time.typ, TimeType::TimestampNs));
+    }
+
+    #[test]
+    fn test_from_nanos_ros1() {
+        let ts: u64 = 1_672_531_200_000_000_000;
+        let cell = TimestampCell::from_nanos_ros1(ts, TimeType::TimestampNs);
+        assert_eq!(cell.timeline_name(), "ros1_timestamp");
         assert!(matches!(cell.time.typ, TimeType::TimestampNs));
     }
 

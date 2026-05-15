@@ -5,16 +5,16 @@ order: 200
 
 Rerun provides automatic visualization for common message types in MCAP files:
 
-* ROS 2 messages
+* ROS 1 and ROS 2 messages
 * Foxglove schemas (Protobuf)
 
 ## Overview
 
-This table shows an overview of the ROS 2 and Foxglove message schemas that are automatically converted to Rerun archetypes.
+This table shows an overview of the ROS and Foxglove message schemas that are automatically converted to Rerun archetypes.
 
 We are continually adding support for more standard message types.
 
-| Modality | ROS 2 | Foxglove Protobuf | Rerun Archetypes |
+| Modality | ROS | Foxglove Protobuf | Rerun Archetypes |
 | --- | --- | --- | --- |
 | Raw image | `sensor_msgs/Image` | `RawImage` | [Image](../../../reference/types/archetypes/image.md), [DepthImage](../../../reference/types/archetypes/depth_image.md) |
 | Encoded image | `sensor_msgs/CompressedImage` | `CompressedImage` | [EncodedImage](../../../reference/types/archetypes/encoded_image.md), [EncodedDepthImage](../../../reference/types/archetypes/encoded_depth_image.md) |
@@ -39,9 +39,9 @@ In addition to the `message_log_time` and `message_publish_time` timestamps that
 
 #### ROS
 
-Most ROS message payloads have an additional [`Header`]( https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Header.html) that may also contain timestamp information. These timestamps are put onto specific `ros2_*` timelines.
+Most ROS message payloads have an additional [`Header`]( https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Header.html) that may also contain timestamp information. These timestamps are put onto specific ROS timelines.
 
-Timestamps within Unix time range (1990-2100) create a `ros2_timestamp` timeline. Values outside this range create a `ros2_duration` timeline representing relative time from custom epochs.
+ROS 1 messages create a `ros1_timestamp` timeline. ROS 2 messages create a `ros2_timestamp` timeline.
 
 #### Foxglove
 
