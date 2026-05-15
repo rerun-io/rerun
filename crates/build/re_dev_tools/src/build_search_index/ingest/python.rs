@@ -249,6 +249,7 @@ enum Item {
 struct Module {
     name: String,
     // labels: Vec<String>,
+    #[serde(default)]
     members: BTreeMap<String, Item>,
     docstring: Option<Docstring>,
 }
@@ -281,6 +282,7 @@ struct Docstring {
 struct Class {
     name: String,
     docstring: Option<Docstring>,
+    #[serde(default)]
     members: BTreeMap<String, Item>,
 }
 
