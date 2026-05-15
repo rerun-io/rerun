@@ -70,6 +70,51 @@ impl Pose {
 }
 
 #[derive(Debug, Clone)]
+pub struct PoseStamped {
+    pub header: Header,
+    pub pose: Pose,
+}
+
+impl PoseStamped {
+    pub fn read(reader: &mut Ros1Reader<'_>) -> anyhow::Result<Self> {
+        Ok(Self {
+            header: Header::read(reader)?,
+            pose: Pose::read(reader)?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PoseWithCovariance {
+    pub pose: Pose,
+    pub covariance: [f64; 36],
+}
+
+impl PoseWithCovariance {
+    pub fn read(reader: &mut Ros1Reader<'_>) -> anyhow::Result<Self> {
+        Ok(Self {
+            pose: Pose::read(reader)?,
+            covariance: reader.read_f64_array()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PoseWithCovarianceStamped {
+    pub header: Header,
+    pub pose: PoseWithCovariance,
+}
+
+impl PoseWithCovarianceStamped {
+    pub fn read(reader: &mut Ros1Reader<'_>) -> anyhow::Result<Self> {
+        Ok(Self {
+            header: Header::read(reader)?,
+            pose: PoseWithCovariance::read(reader)?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Transform {
     pub translation: Vector3,
     pub rotation: Quaternion,

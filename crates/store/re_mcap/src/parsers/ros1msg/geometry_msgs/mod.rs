@@ -1,0 +1,3 @@
+mod pose_with_covariance_stamped;
+
+pub use pose_with_covariance_stamped::PoseWithCovarianceStampedMessageParser;

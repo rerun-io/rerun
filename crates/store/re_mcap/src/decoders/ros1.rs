@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use super::MessageDecoder;
 use crate::parsers::MessageParser;
 use crate::parsers::ros1msg::Ros1MessageParser;
+use crate::parsers::ros1msg::geometry_msgs::PoseWithCovarianceStampedMessageParser;
 use crate::parsers::ros1msg::nav_msgs::OccupancyGridMessageParser;
 use crate::parsers::ros1msg::sensor_msgs::{
     CameraInfoMessageParser, CompressedImageMessageParser, ImageMessageParser,
@@ -28,6 +29,9 @@ impl McapRos1Decoder {
 
     pub fn new() -> Self {
         Self::empty()
+            .register_parser::<PoseWithCovarianceStampedMessageParser>(
+                "geometry_msgs/PoseWithCovarianceStamped",
+            )
             .register_parser::<ImageMessageParser>("sensor_msgs/Image")
             .register_parser::<CompressedImageMessageParser>("sensor_msgs/CompressedImage")
             .register_parser::<CameraInfoMessageParser>("sensor_msgs/CameraInfo")
