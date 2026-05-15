@@ -1,6 +1,13 @@
 # Rerun changelog
 
-## Unreleased
+## [0.32.1](https://github.com/rerun-io/rerun/compare/0.32.0...0.32.1) - 2026-05-15
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Fix problem of intermixing different store messages in one rrd [5620f47](https://github.com/rerun-io/rerun/commit/5620f47064a46c4733eea1189e7757d898340a9b)
+
+## [0.32.0](https://github.com/rerun-io/rerun/compare/0.31.4...0.32.0) - 2026-05-13 - Chunk Processing, Pytorch dataloader, Dataset Review
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-32
 
@@ -112,6 +119,16 @@ This release comes with a few significant performance improvements. Among other 
 
 You may have noticed a new Rerun logo and app icon! We've also slightly tweaked our color palette. Stay tuned for more exciting news!
 
+#### Docs feedback on the website.
+
+As a part of our [website](https://rerun.io/) update, we've also added a feedback form to all our documentation pages. So you can add your feedback directly to the respective topic.
+
+<picture>
+  <img src="https://static.rerun.io/feedback-form/e96b0889824e4bc0cf42039bead0612953e54a87/full.png" alt="feedback form">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/feedback-form/e96b0889824e4bc0cf42039bead0612953e54a87/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/feedback-form/e96b0889824e4bc0cf42039bead0612953e54a87/768w.png">
+</picture>
+
 ### ☁️ Highlights for Rerun Hub customers
 
 Several improvements in the open-source Rerun SDK are designed specifically to work with Rerun Hub.
@@ -135,16 +152,6 @@ Each field accepts an optional `window=(start_offset, end_offset)` parameter, an
 See the new [LeRobot ACT training example](https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader).
 
 Expect breaking changes between releases while we iterate on the design. For large-scale training, Rerun Hub offers a higher-performance backend.
-
-#### Docs feedback on the website.
-
-As a part of our [website](https://rerun.io/) update, we've also added a feedback form to all our documentation pages. So you can add your feedback directly to the respective topic.
-
-<picture>
-  <img src="https://static.rerun.io/feedback-form/e96b0889824e4bc0cf42039bead0612953e54a87/full.png" alt="feedback form">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/feedback-form/e96b0889824e4bc0cf42039bead0612953e54a87/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/feedback-form/e96b0889824e4bc0cf42039bead0612953e54a87/768w.png">
-</picture>
 
 ### ⚠️ Breaking changes
 
