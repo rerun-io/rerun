@@ -1,16 +1,16 @@
-<h1 align="center">
+<h3 align="center">
   <a href="https://www.rerun.io/">
-    <img alt="banner" src="https://user-images.githubusercontent.com/1148717/218142418-1d320929-6b7a-486e-8277-fbeef2432529.png">
+    <img alt="Frame 1" src="https://github.com/user-attachments/assets/be5a4dfd-e3d7-4718-b770-ca8d30bac18f" />
   </a>
-</h1>
+</h3>
 
-<h1 align="center">
+<h3 align="center">
   <a href="https://pypi.org/project/rerun-sdk/">                        <img alt="PyPi"           src="https://img.shields.io/pypi/v/rerun-sdk.svg">                              </a>
   <a href="https://crates.io/crates/rerun">                             <img alt="crates.io"      src="https://img.shields.io/crates/v/rerun.svg">                                </a>
   <a href="https://github.com/rerun-io/rerun/blob/main/LICENSE-MIT">    <img alt="MIT"            src="https://img.shields.io/badge/license-MIT-blue.svg">                        </a>
   <a href="https://github.com/rerun-io/rerun/blob/main/LICENSE-APACHE"> <img alt="Apache"         src="https://img.shields.io/badge/license-Apache-blue.svg">                     </a>
   <a href="https://discord.gg/Gcm8BbTaAj">                              <img alt="Rerun Discord"  src="https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord"> </a>
-</h1>
+</h3>
 
 # Time-aware multimodal data stack and visualizations
 Rerun is building the multimodal data stack to model, ingest, store, query and view robotics-style data.
