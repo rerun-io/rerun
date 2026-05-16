@@ -1,8 +1,8 @@
 use crate::DesignTokens;
 
-struct DesignTokensPerTheme {
-    dark: DesignTokens,
-    light: DesignTokens,
+pub(crate) struct DesignTokensPerTheme {
+    pub(crate) dark: DesignTokens,
+    pub(crate) light: DesignTokens,
 }
 
 impl DesignTokensPerTheme {
@@ -42,10 +42,15 @@ mod design_token_access {
 
     use super::DesignTokensPerTheme;
 
+    static DESIGN_TOKENS: OnceLock<DesignTokensPerTheme> = OnceLock::new();
+
     pub fn design_tokens_per_theme() -> &'static DesignTokensPerTheme {
-        static DESIGN_TOKENS: OnceLock<DesignTokensPerTheme> = OnceLock::new();
         DESIGN_TOKENS
             .get_or_init(|| DesignTokensPerTheme::load().expect("Failed to load design tokens"))
+    }
+
+    pub fn try_set_design_tokens(tokens: DesignTokensPerTheme) -> Result<(), ()> {
+        DESIGN_TOKENS.set(tokens).map_err(|_| ())
     }
 }
 
@@ -153,6 +158,15 @@ mod design_token_access {
 
         *current.read()
     }
+
+    pub fn try_set_design_tokens(tokens: DesignTokensPerTheme) -> Result<(), ()> {
+        // Mirrors the OnceLock-based variant: only succeed if the static is not yet initialized.
+        // In hot-reload mode the file watcher may overwrite this later — that's intentional, as
+        // this build flavor is only enabled inside the rerun workspace, where the file watcher
+        // already leaks on every reload.
+        let leaked: &'static DesignTokensPerTheme = Box::leak(Box::new(tokens));
+        CURRENT_TOKENS.set(RwLock::new(leaked)).map_err(|_| ())
+    }
 }
 
 pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
@@ -160,6 +174,10 @@ pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
         egui::Theme::Dark => &design_token_access::design_tokens_per_theme().dark,
         egui::Theme::Light => &design_token_access::design_tokens_per_theme().light,
     }
+}
+
+pub(crate) fn try_set_design_tokens(dark: DesignTokens, light: DesignTokens) -> Result<(), ()> {
+    design_token_access::try_set_design_tokens(DesignTokensPerTheme { dark, light })
 }
 
 #[cfg(hot_reload_design_tokens)]
