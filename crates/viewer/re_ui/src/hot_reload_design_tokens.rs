@@ -1,8 +1,8 @@
 use crate::DesignTokens;
 
-pub(crate) struct DesignTokensPerTheme {
-    pub(crate) dark: DesignTokens,
-    pub(crate) light: DesignTokens,
+struct DesignTokensPerTheme {
+    dark: DesignTokens,
+    light: DesignTokens,
 }
 
 impl DesignTokensPerTheme {
@@ -40,6 +40,8 @@ impl DesignTokensPerTheme {
 mod design_token_access {
     use std::sync::OnceLock;
 
+    use crate::DesignTokens;
+
     use super::DesignTokensPerTheme;
 
     static DESIGN_TOKENS: OnceLock<DesignTokensPerTheme> = OnceLock::new();
@@ -49,8 +51,10 @@ mod design_token_access {
             .get_or_init(|| DesignTokensPerTheme::load().expect("Failed to load design tokens"))
     }
 
-    pub fn try_set_design_tokens(tokens: DesignTokensPerTheme) -> Result<(), ()> {
-        DESIGN_TOKENS.set(tokens).map_err(|_| ())
+    pub fn try_set_design_tokens(dark: DesignTokens, light: DesignTokens) -> Result<(), ()> {
+        DESIGN_TOKENS
+            .set(DesignTokensPerTheme { dark, light })
+            .map_err(|_| ())
     }
 }
 
@@ -61,6 +65,8 @@ mod design_token_access {
 
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
     use parking_lot::{Mutex, RwLock};
+
+    use crate::DesignTokens;
 
     use super::DesignTokensPerTheme;
 
@@ -159,12 +165,13 @@ mod design_token_access {
         *current.read()
     }
 
-    pub fn try_set_design_tokens(tokens: DesignTokensPerTheme) -> Result<(), ()> {
+    pub fn try_set_design_tokens(dark: DesignTokens, light: DesignTokens) -> Result<(), ()> {
         // Mirrors the OnceLock-based variant: only succeed if the static is not yet initialized.
         // In hot-reload mode the file watcher may overwrite this later — that's intentional, as
         // this build flavor is only enabled inside the rerun workspace, where the file watcher
         // already leaks on every reload.
-        let leaked: &'static DesignTokensPerTheme = Box::leak(Box::new(tokens));
+        let leaked: &'static DesignTokensPerTheme =
+            Box::leak(Box::new(DesignTokensPerTheme { dark, light }));
         CURRENT_TOKENS.set(RwLock::new(leaked)).map_err(|_| ())
     }
 }
@@ -176,9 +183,7 @@ pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
     }
 }
 
-pub(crate) fn try_set_design_tokens(dark: DesignTokens, light: DesignTokens) -> Result<(), ()> {
-    design_token_access::try_set_design_tokens(DesignTokensPerTheme { dark, light })
-}
+pub(crate) use design_token_access::try_set_design_tokens;
 
 #[cfg(hot_reload_design_tokens)]
 pub use design_token_access::{hot_reload_design_tokens, install_hot_reload};
