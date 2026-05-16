@@ -136,6 +136,23 @@ impl HasDesignTokens for egui::Visuals {
     }
 }
 
+/// Override the embedded design tokens before they're first read.
+///
+/// Lets downstream crates ship their own theming (e.g. a tweaked color palette) without forking
+/// `re_ui`. Construct `dark` and `light` via [`DesignTokens::load`] or
+/// [`DesignTokens::load_with_color_table`] and call this **before**
+/// [`apply_style_and_install_loaders`] (or any other code path that triggers design-token
+/// initialization).
+///
+/// Returns `Err(())` if the design tokens have already been initialized; in that case `dark` and
+/// `light` are dropped.
+///
+/// Note: when `re_ui` is built with hot-reloading enabled (only inside the rerun workspace),
+/// the file watcher may subsequently overwrite the supplied values.
+pub fn try_set_design_tokens(dark: DesignTokens, light: DesignTokens) -> Result<(), ()> {
+    self::hot_reload_design_tokens::try_set_design_tokens(dark, light)
+}
+
 /// Apply the Rerun design tokens to the given egui context and install image loaders.
 pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     re_tracing::profile_function!();
