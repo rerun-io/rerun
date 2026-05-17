@@ -213,6 +213,15 @@ impl<T> Sender<T> {
     }
 
     // Non-blocking version for web
+    //
+    // On WASM, we cannot block. Previously we would log a warning and send
+    // anyway, but this caused unbounded memory growth because the consumer
+    // (running on the same single thread) could never drain the channel while
+    // the producer was busy sending. When WASM linear memory hit the 2 GiB
+    // ceiling, `memory.grow` failed and Chromium raised SIGILL. (#12723)
+    //
+    // Now we enforce a hard ceiling at 2× capacity: messages that would push
+    // us past that limit are silently dropped. This is better than crashing.
     #[cfg(target_arch = "wasm32")]
     fn send_impl(&self, msg: T, size_bytes: u64) -> Result<(), SendError<T>> {
         let capacity = self.shared.capacity_bytes;
@@ -222,9 +231,26 @@ impl<T> Sender<T> {
             let new_total = state.bytes_in_flight + size_bytes;
 
             if capacity < new_total {
+                // Allow moderate overrun (up to 2× capacity) to avoid dropping
+                // small bursts, but enforce a hard ceiling to prevent OOM.
+                let hard_ceiling = capacity.saturating_mul(2);
+
+                if new_total > hard_ceiling {
+                    re_log::warn_once!(
+                        "{}: Channel byte budget ({}) exceeded by 2× on web. \
+                        Dropping message to prevent OOM crash. \
+                        Consumer is likely starved — consider reducing send rate.",
+                        self.shared.debug_name,
+                        re_format::format_bytes(capacity as f64),
+                    );
+                    // Drop the message — it is better to lose data than to crash
+                    // the entire browser tab with SIGILL.
+                    return Ok(());
+                }
+
                 re_log::debug_once!(
-                    "{}: Channel byte budget ({}) exceeded. \
-                    Cannot block on web; sending anyway.",
+                    "{}: Channel byte budget ({}) exceeded on web. \
+                    Sending anyway (below hard ceiling).",
                     self.shared.debug_name,
                     re_format::format_bytes(capacity as f64),
                 );
