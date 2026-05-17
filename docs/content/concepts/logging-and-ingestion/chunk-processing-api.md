@@ -47,16 +47,16 @@ LazyChunkStream -> Terminal call
 
 Readers produce [`Chunk`](chunks.md)s from external sources such as files, or datasets hosted on a catalog server.
 
-In some cases, readers are classes provided by the Chunk Processing API, such as [`RrdReader`](https://ref.rerun.io/docs/python/stable/common/experimental?speculative-link#rerun.experimental.RrdReader) and [`McapReader`](https://ref.rerun.io/docs/python/stable/common/experimental?speculative-link#rerun.experimental.McapReader).
+In some cases, readers are classes provided by the Chunk Processing API, such as [`RrdReader`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.RrdReader) and [`McapReader`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.McapReader).
 The reader functionality can also be provided by classes from other parts of the Rerun SDK.
-For example, [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/common/catalog?speculative-link#rerun.catalog.DatasetEntry) has a [`segment_store`](https://ref.rerun.io/docs/python/stable/common/catalog?speculative-link#rerun.catalog.DatasetEntry.segment_store) method which returns a [`LazyStore`](https://ref.rerun.io/docs/python/stable/common/experimental?speculative-link#rerun.experimental.LazyStore) for the corresponding segment (see the [catalog object model](../query-and-transform/catalog-object-model.md) for more information on datasets).
-[`UrdfTree`](https://ref.rerun.io/docs/python/stable/common/urdf?speculative-link#rerun.urdf.UrdfTree) is another example of a class that offers reader functionality in addition to a larger feature set.
+For example, [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry) has a [`segment_store`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment_store) method which returns a [`LazyStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.LazyStore) for the corresponding segment (see the [catalog object model](../query-and-transform/catalog-object-model.md) for more information on datasets).
+[`UrdfTree`](https://ref.rerun.io/docs/python/stable/urdf/#rerun.urdf.UrdfTree) is another example of a class that offers reader functionality in addition to a larger feature set.
 
 There are two ways in which a reader may provide chunks.
 All readers can sequentially stream all their source's chunks, typically via the `stream()` method.
 Internally, such readers typically parse the source file, convert data to chunks as it is extracted, and yield those chunks as they are produced.
 
-Some readers, called [`IndexedReader`](https://ref.rerun.io/docs/python/stable/common/experimental?speculative-link#rerun.experimental.IndexedReader), can also provide indexed, random access to chunks via a [`LazyStore`](https://ref.rerun.io/docs/python/stable/common/experimental?speculative-link#rerun.experimental.LazyStore).
+Some readers, called [`IndexedReader`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.IndexedReader), can also provide indexed, random access to chunks via a [`LazyStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.LazyStore).
 This is typically implemented on top of an existing chunk index, and is currently available for the following readers:
 - `RrdReader` (relies on the RRD footer index) <!-- TODO(ab) link doc page about that when we have it -->
 - `DatasetEntry.segment_store()` (relies on the chunk index maintained by the catalog server)
@@ -73,8 +73,8 @@ In all cases, readers typically act as the root of a processing pipeline and pro
 
 A store is a collection of chunks and comes in two complementary flavors:
 
-- **[`LazyStore`](https://ref.rerun.io/docs/python/stable/common/experimental?speculative-link#rerun.experimental.LazyStore)** — index-based, on-demand. Returned by indexed loaders such as `RrdReader(path).store()` and `DatasetEntry.segment_store()`.
-- **[`ChunkStore`](https://ref.rerun.io/docs/python/stable/common/experimental?speculative-link#rerun.experimental.ChunkStore)** — fully materialized, all chunks held in memory. Build one with `ChunkStore.from_chunks([...])`, or materialize a stream via `stream.collect()`.
+- **[`LazyStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.LazyStore)** — index-based, on-demand. Returned by indexed loaders such as `RrdReader(path).store()` and `DatasetEntry.segment_store()`.
+- **[`ChunkStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.ChunkStore)** — fully materialized, all chunks held in memory. Build one with `ChunkStore.from_chunks([...])`, or materialize a stream via `stream.collect()`.
 
 
 The previous section already hinted at the perks of `LazyStore`. Being index-based, it is cheap to create and takes limited amounts of memory.
@@ -88,7 +88,7 @@ One common reason to materialize a `ChunkStore` is to run chunk optimization; se
 > In the future, `ChunkStore` will be extended to allow running [dataframe queries](../query-and-transform/dataframe-queries.md) directly against it.
 
 Both kinds of stores share a common API surface, including:
-- extracting the underlying [`Schema`](https://ref.rerun.io/docs/python/stable/common/catalog?speculative-link#rerun.catalog.Schema) of the store;
+- extracting the underlying [`Schema`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.Schema) of the store;
 - turning the store back into a pipeline with `.stream()`;
 - exposing various statistics and content summaries.
 
@@ -147,7 +147,7 @@ Note that doing so executes the entire pipeline twice, which may not be desirabl
 
 The rest of this page walks through a single end-to-end pipeline that reads a robot-arm MCAP recording, fans the protobuf joint-state column out into per-joint `Scalars` series in degrees, tags the result with a static `/metadata` chunk built from scratch, and writes a new `.rrd`.
 
-Full source: [Python](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/chunk_processing.py?speculative-link).
+Full source: [Python](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/chunk_processing.py).
 
 ### Setup
 
