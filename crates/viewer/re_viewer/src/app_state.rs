@@ -981,11 +981,14 @@ pub(crate) fn create_time_control_for<'cfgs>(
             PlayState::Playing
         };
 
-        let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
-
-        time_ctrl.set_play_state(Some(entity_db), play_state, Some(blueprint_ctx));
-
-        time_ctrl
+        // Apply the data-source-derived default only if the blueprint did not
+        // already specify a `play_state`. Otherwise we'd clobber the user's
+        // setting (and write the clobbered value back to the blueprint).
+        TimeControl::from_blueprint_with_fallback_play_state(
+            blueprint_ctx,
+            Some(entity_db),
+            play_state,
+        )
     }
 
     configs

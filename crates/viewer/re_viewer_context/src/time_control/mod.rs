@@ -322,6 +322,25 @@ impl TimeControl {
         this
     }
 
+    /// Like [`Self::from_blueprint`], but applies `fallback_play_state` when the
+    /// blueprint does not specify one.
+    ///
+    /// Use this for the initial construction of a [`TimeControl`] for a recording,
+    /// where the caller has computed a data-source-derived default that should
+    /// only kick in if the user's blueprint hasn't already pinned the value.
+    pub fn from_blueprint_with_fallback_play_state(
+        blueprint_ctx: &impl BlueprintContext,
+        db: Option<&dyn TimeControlDb>,
+        fallback_play_state: PlayState,
+    ) -> Self {
+        let mut this = Self::default();
+        this.update_from_blueprint(blueprint_ctx, db);
+        if blueprint_ctx.play_state().is_none() {
+            this.set_play_state(db, fallback_play_state, Some(blueprint_ctx));
+        }
+        this
+    }
+
     /// Read from the time panel blueprint and update the state from that.
     ///
     /// If `db` is some this will also make sure we are on a valid timeline.
@@ -631,6 +650,13 @@ impl TimeControl {
         match play_state {
             PlayState::Paused => {
                 self.playing = false;
+                // Clear `following` so a subsequent first-time TimeState insertion
+                // (see `update`'s Paused branch) lands at `full_range.min()` rather
+                // than `full_range.max()`. Without this, a Paused-from-blueprint
+                // transition out of the default `following: true` would place the
+                // cursor at the very end of the recording, and a subsequent drag
+                // would route through `exit_follow_mode` and resume playback.
+                self.following = false;
             }
             PlayState::Playing => {
                 self.playing = true;
@@ -670,6 +696,7 @@ impl TimeControl {
 
     fn pause(&mut self, blueprint_ctx: Option<&impl BlueprintContext>) {
         self.playing = false;
+        self.following = false;
         if let Some(blueprint_ctx) = blueprint_ctx {
             blueprint_ctx.set_play_state(PlayState::Paused);
         }
