@@ -2,3 +2,4 @@
 
 mod test_occupancy_grid;
 mod test_pose_stamped;
+mod test_string;
