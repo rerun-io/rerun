@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
+    ChunkStore, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
 };
 use re_log::debug_assert;
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
@@ -157,20 +157,21 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
         re_tracing::profile_function!();
 
         for event in events {
-            let Some(add) = event.to_addition() else {
-                // Topology is only additive, don't care about removals.
+            let ChunkStoreDiff::SchemaAddition(add) = &event.diff else {
                 continue;
             };
 
-            // Possible optimization:
-            // only update topologies if an entity is logged the first time or a new relevant component was added.
-            self.topologies
-                .entry(event.store_id.clone())
-                .or_default()
-                .on_store_diff(
-                    add.delta_chunk().entity_path(),
-                    add.delta_chunk().component_descriptors(),
-                );
+            for meta in &add.new_columns {
+                self.topologies
+                    .entry(event.store_id.clone())
+                    .or_default()
+                    .on_store_diff(
+                        &meta.entity_path,
+                        meta.components
+                            .iter()
+                            .map(|component| &component.descriptor),
+                    );
+            }
         }
     }
 }
@@ -184,6 +185,7 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
 ///
 /// Spatial topology is time independent but may change as new data comes in.
 /// Generally, the assumption is that topological cuts stay constant over time.
+#[derive(Debug)]
 pub struct SpatialTopology {
     /// All subspaces, identified by their origin-hash.
     subspaces: IntMap<EntityPathHash, SubSpace>,
