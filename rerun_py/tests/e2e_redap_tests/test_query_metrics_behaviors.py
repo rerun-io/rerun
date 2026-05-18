@@ -59,8 +59,8 @@ def test_limit_does_not_propagate_into_server_request(readonly_test_dataset: Dat
         f"limited={limited.query_chunks} vs full={full.query_chunks}"
     )
     # Limit query still fetched non-trivial data; not a no-op.
-    assert limited.fetch_grpc_requests >= 1
-    assert limited.fetch_grpc_bytes > 0
+    assert limited.fetch_requests >= 1
+    assert limited.fetch_bytes > 0
     assert limited.error_kind is None
     assert full.error_kind is None
 
@@ -120,7 +120,7 @@ def test_cancellation_mid_stream_still_produces_snapshot(readonly_test_dataset: 
     assert qm.error_kind is None, f"limit(1) on a healthy query must succeed, got: {qm.error_kind}"
     # Some chunks must have been fetched even for limit(1) (we only stop after
     # the first batch is ready).
-    assert qm.fetch_grpc_requests >= 1
+    assert qm.fetch_requests >= 1
 
 
 def test_no_filter_no_pushdown(readonly_test_dataset: DatasetEntry) -> None:
@@ -191,7 +191,6 @@ def test_query_metrics_smoke_e2e(readonly_test_dataset: DatasetEntry, time_idx: 
     assert qm.error_kind is None
     assert qm.direct_terminal_reason is None
 
-    # Wire counters: at least the gRPC side fired (direct may not have if the
-    # local-OSS test server doesn't generate direct URLs).
-    assert qm.fetch_grpc_requests >= 1
-    assert qm.fetch_grpc_bytes > 0
+    # Wire counters: at least one transport (gRPC or direct) must have fired.
+    assert qm.fetch_requests >= 1
+    assert qm.fetch_bytes > 0

@@ -125,6 +125,16 @@ class QueryMetrics:
     fetch_direct_original_ranges: int
     fetch_direct_merged_ranges: int
 
+    @property
+    def fetch_requests(self) -> int:
+        """Total fetch requests across both gRPC and direct transports."""
+        return self.fetch_grpc_requests + self.fetch_direct_requests
+
+    @property
+    def fetch_bytes(self) -> int:
+        """Total bytes fetched across both gRPC and direct transports."""
+        return self.fetch_grpc_bytes + self.fetch_direct_bytes
+
 
 def _from_rust(m: object) -> QueryMetrics:
     """Build a `QueryMetrics` from a Rust-side `_QueryMetrics` PyO3 instance."""
