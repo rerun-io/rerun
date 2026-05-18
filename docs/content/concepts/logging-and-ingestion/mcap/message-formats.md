@@ -115,8 +115,18 @@ You can see this also in the selection panel:
 
 ## ROS1 message types
 
-ROS1 messages are currently not supported for semantic interpretation through any layer.
-The `raw` and `schema` layers are able to preserve the original bytes and structure of the messages.
+ROS 1 data is not supported for semantic interpretation through any decoder.
+The `raw` and `schema` decoders are able to preserve the original bytes and structure of ROS 1 messages in MCAP files, but Rerun will not convert them to visualization archetypes.
+
+We don't plan to add support for ROS 1 in Rerun, as it has reached [end-of-life](https://www.ros.org/blog/noetic-eol/) in May 2025.
+But if you have legacy ROS 1 data and want to migrate it to modern formats, we recommend to try external tools like [`rosbags`](https://ternaris.gitlab.io/rosbags/).
+For example, this command converts a ROS 1 `.bag` to a ROS 2 CDR-encoded `.mcap` that Rerun can import like any other supported ROS 2 recording:
+```bash
+rosbags-convert --src my_data_ros1.bag --dst my_data_ros2 --dst-storage mcap
+
+rerun my_data_ros2/my_data_ros2.mcap
+```
+Please refer to the `rosbags` documentation for further information.
 
 ## Adding support for new types
 
