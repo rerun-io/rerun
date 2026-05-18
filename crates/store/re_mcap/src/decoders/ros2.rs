@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use super::MessageDecoder;
 use crate::parsers::MessageParser;
 use crate::parsers::ros2msg::Ros2MessageParser;
-use crate::parsers::ros2msg::geometry_msgs::PoseStampedMessageParser;
 use crate::parsers::ros2msg::rcl_interfaces::LogMessageParser;
 use crate::parsers::ros2msg::sensor_msgs::{
     BatteryStateMessageParser, CameraInfoMessageParser, CompressedImageMessageParser,
@@ -36,8 +35,6 @@ impl McapRos2Decoder {
     /// Creates a new [`McapRos2Decoder`] with all supported message types pre-registered
     pub fn new() -> Self {
         Self::empty()
-            // geometry_msgs
-            .register_parser::<PoseStampedMessageParser>("geometry_msgs/msg/PoseStamped")
             // rcl_interfaces
             .register_parser::<LogMessageParser>("rcl_interfaces/msg/Log")
             // sensor_msgs
