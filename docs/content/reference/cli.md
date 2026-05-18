@@ -658,6 +658,13 @@ Examples:
 >
 > [Default: `false`]
 
+* `--fix-keyframe <FIX_KEYFRAME>`
+> Drop any user-supplied `VideoStream:is_keyframe` labels and re-derive them from the encoded samples.
+>
+> By default, `rrd optimize` validates user-supplied keyframe labels against the encoded samples and errors out if they disagree. Pass this flag to ignore the existing labels and unconditionally re-derive them.
+>
+> [Default: `false`]
+
 * `--split-size-ratio <SPLIT_SIZE_RATIO>`
 > If set, split chunks so no two archetype groups sharing a chunk differ in byte size by more than this factor. Values should be `>= 1`; at `1.0`, every archetype is forced into its own chunk.
 >

@@ -109,6 +109,9 @@ pub enum ChunkStoreError {
         value: String,
         err: Box<dyn std::error::Error + Send + Sync>,
     },
+
+    #[error("{0:#}")]
+    VideoRebatch(anyhow::Error),
 }
 
 pub type ChunkStoreResult<T> = ::std::result::Result<T, ChunkStoreError>;

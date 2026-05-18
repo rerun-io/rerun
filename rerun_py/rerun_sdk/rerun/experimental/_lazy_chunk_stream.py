@@ -311,6 +311,7 @@ class LazyChunkStream:
                 extra_passes=optimize.extra_passes,
                 gop_batching=optimize.gop_batching,
                 split_size_ratio=optimize.split_size_ratio,
+                fix_keyframe=optimize.fix_keyframe,
             ),
         )
 

@@ -174,6 +174,15 @@ pub struct OptimizeCommand {
     #[clap(long = "no-rebatch-videos", default_value_t = false)]
     no_rebatch_videos: bool,
 
+    /// Drop any user-supplied `VideoStream:is_keyframe` labels and re-derive
+    /// them from the encoded samples.
+    ///
+    /// By default, `rrd optimize` validates user-supplied keyframe labels against
+    /// the encoded samples and errors out if they disagree. Pass this flag to
+    /// ignore the existing labels and unconditionally re-derive them.
+    #[clap(long = "fix-keyframe", default_value_t = false)]
+    fix_keyframe: bool,
+
     /// If set, split chunks so no two archetype groups sharing a chunk differ in
     /// byte size by more than this factor. Values should be `>= 1`; at `1.0`,
     /// every archetype is forced into its own chunk.
@@ -200,6 +209,7 @@ impl OptimizeCommand {
             num_extra_passes,
             continue_on_error,
             no_rebatch_videos,
+            fix_keyframe,
             split_size_ratio,
         } = self;
 
@@ -244,6 +254,7 @@ impl OptimizeCommand {
             num_extra_passes: Some(num_extra_passes as usize),
             is_start_of_gop: gop_batching.then_some(is_start_of_gop),
             split_size_ratio,
+            fix_keyframe: *fix_keyframe,
         };
 
         // Directory mirror mode: if any input is a directory, recursively expand it

@@ -1724,8 +1724,16 @@ class LazyChunkStreamInternal:
         extra_passes: int = 0,
         gop_batching: bool = False,
         split_size_ratio: float | None = None,
+        fix_keyframe: bool = False,
     ) -> ChunkStoreInternal:
-        """Consume the stream and materialize all chunks into a ChunkStore."""
+        """
+        Run the pipeline and materialize all chunks into a ChunkStore.
+
+        The defaults (`extra_passes=0`, `gop_batching=False`) produce a store that
+        has only received the single-pass compaction that happens naturally during
+        chunk insertion. The Python wrapper `LazyChunkStream.collect(optimize=...)`
+        is the intended entry point.
+        """
     def to_chunks(self) -> list[ChunkInternal]: ...
     def __iter__(self) -> LazyChunkStreamIterator: ...
     @staticmethod
