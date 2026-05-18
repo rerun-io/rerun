@@ -8,6 +8,7 @@ use egui_kittest::kittest::Queryable as _;
 use egui_kittest::{SnapshotOptions, SnapshotResults};
 use futures::StreamExt as _;
 use re_integration_test::HarnessExt as _;
+use re_viewer::external::re_log_types::TimelineName;
 use re_viewer::external::re_ui::notifications::NotificationLevel;
 use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions, step_until};
 use re_viewer::{SystemCommand, SystemCommandSender as _};
@@ -220,9 +221,19 @@ async fn test_old_rrds_in_current_viewer() {
         );
 
         // Pause playback and seek to the end of the recording so the snapshot
-        // is deterministic and the viewer stops requesting repaints.
+        // is deterministic. If the default active timeline is `log_time`
+        // (inherently unstable across runs), switch to `log_tick` first.
         harness.run_with_viewer_context(|ctx| {
-            ctx.send_time_commands(vec![TimeControlCommand::Pause, TimeControlCommand::MoveEnd]);
+            let mut commands = vec![];
+            if *ctx.time_ctrl.timeline_name() == TimelineName::log_time() {
+                // log_time is inherently unstable and non-deterministic, so change to log_tick
+                commands.push(TimeControlCommand::SetActiveTimeline(
+                    TimelineName::log_tick(),
+                ));
+            }
+            commands.push(TimeControlCommand::Pause);
+            commands.push(TimeControlCommand::MoveEnd);
+            ctx.send_time_commands(commands);
         });
         harness.run();
 

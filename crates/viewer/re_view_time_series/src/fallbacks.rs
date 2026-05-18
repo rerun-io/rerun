@@ -86,7 +86,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
                 (0..num_series)
                     .map(|i| {
-                        let hash = re_log_types::hash::Hash64::hash((ctx.instruction_id, i))
+                        let hash = re_log_types::hash::Hash64::hash((ctx.target_entity_path, i))
                             .hash64()
                             % u16::MAX as u64;
                         re_viewer_context::auto_color_egui(hash as u16).into()
