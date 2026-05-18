@@ -1,0 +1,15 @@
+[project]
+name = "robot_data_preprocessing"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["pyarrow", "rerun-sdk"]
+
+[project.scripts]
+robot_data_preprocessing = "robot_data_preprocessing:main"
+
+[tool.rerun-example]
+skip = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
