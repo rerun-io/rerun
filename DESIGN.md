@@ -17,6 +17,15 @@ Good: `log("File saved")`
 
 Bad: `log("file saved.")`
 
+#### Dashes
+Use a spaced em dash (` — `) for parenthetical breaks in prose (docs, comments, log messages, UI text).
+
+Avoid:
+- Unspaced em dashes (`word—word`) — add spaces around the em dash. <!-- NOLINT -->
+- En dashes (`–`) used as sentence punctuation — use an em dash instead.
+
+En dashes are reserved for numeric/range expressions (`2020–2025`, `pp. 10–15`, `~3–4 GB`).
+
 ### Buttons
 
 When a button action requires more input after pressing, suffix it with `…`.

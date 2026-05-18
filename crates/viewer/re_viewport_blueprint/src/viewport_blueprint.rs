@@ -272,7 +272,7 @@ impl ViewportBlueprint {
                 self.view(&data_result.view_id).is_some_and(|view| {
                     let entity_path = &data_result.instance_path.entity_path;
 
-                    // TODO(#5742): including any path that is—or descend from—the space origin is
+                    // TODO(#5742): including any path that is — or descend from — the space origin is
                     // necessary because such items may actually be displayed in the blueprint tree.
                     entity_path == &view.space_origin
                         || entity_path.is_descendant_of(&view.space_origin)

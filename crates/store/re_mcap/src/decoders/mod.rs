@@ -330,7 +330,7 @@ impl TopicFilter {
 /// Registry fallback strategy.
 #[derive(Clone, Debug, Default)]
 pub enum Fallback {
-    /// No fallback – channels without a handler are simply unassigned.
+    /// No fallback — channels without a handler are simply unassigned.
     #[default]
     None,
 

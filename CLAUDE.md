@@ -73,6 +73,7 @@ To add custom functionality to generated types, create `_ext` files:
 - validate various custom conventions via `pixi run lint-rerun <file>` (not passing any file will check everything)
 - Use `format!("{x}")` over `format!("{}, x)` (same in log calls etc)
 - Don't write trivial comments that add nothing new
+- Prose style (em vs en dash, sentence endings, casing) — see [`DESIGN.md`](DESIGN.md). In short: spaced em dash ` — `, never unspaced `word—word`, and don't use `–` as a sentence dash (it's for numeric ranges only) <!-- NOLINT -->
 
 ## Architecture overview
 

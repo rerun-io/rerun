@@ -24,7 +24,7 @@ Rerun provides an integrated solution for working with multimodal temporal data:
 
 **Time-aware data model:** At its core is an [Entity Component System (ECS)](../concepts/logging-and-ingestion/entity-component.md) designed for robotics and XR applications. This model understands both [spatial relationships](../concepts/logging-and-ingestion/transforms.md) and [temporal evolution](../concepts/logging-and-ingestion/timelines.md), making it natural to work with sensor data, transforms, and time-series information.
 
-**Built-in visualization:** A fast, embeddable visualizer lets you see your data as 3D scenes, images, plots, and text—all synchronized and explorable through time. Build [layouts and customize visualizations](../getting-started/configure-the-viewer.md) interactively or [programmatically](../concepts/visualization/blueprints.md).
+**Built-in visualization:** A fast, embeddable visualizer lets you see your data as 3D scenes, images, plots, and text — all synchronized and explorable through time. Build [layouts and customize visualizations](../getting-started/configure-the-viewer.md) interactively or [programmatically](../concepts/visualization/blueprints.md).
 
 **Query and export:** Extract clean [dataframes](../howto/query-and-transform/get-data-out.md) for analysis in Pandas, Polars, or DuckDB. Use recordings to create datasets for training and evaluating your models.
 

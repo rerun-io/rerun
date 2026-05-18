@@ -15,7 +15,7 @@ pub enum VisitorControlFlow<B> {
 }
 
 impl<B> VisitorControlFlow<B> {
-    /// Indicates whether we should visit the children of the current node—or entirely stop
+    /// Indicates whether we should visit the children of the current node — or entirely stop
     /// traversal.
     ///
     /// Returning a [`ControlFlow`] enables key ergonomics by allowing the use of the short circuit
