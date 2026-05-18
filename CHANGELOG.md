@@ -1,5 +1,12 @@
 # Rerun changelog
 
+## [0.32.1](https://github.com/rerun-io/rerun/compare/0.32.0...0.32.1) - 2026-05-15
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Fix problem of intermixing different store messages in one rrd [5620f47](https://github.com/rerun-io/rerun/commit/5620f47064a46c4733eea1189e7757d898340a9b)
+
 ## [0.32.0](https://github.com/rerun-io/rerun/compare/0.31.4...0.32.0) - 2026-05-13 - Chunk Processing, Pytorch dataloader, Dataset Review
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-32
