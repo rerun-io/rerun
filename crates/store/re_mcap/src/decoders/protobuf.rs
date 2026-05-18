@@ -564,10 +564,9 @@ impl MessageDecoder for McapProtobufDecoder {
 
     fn init(&mut self, summary: &mcap::Summary) -> Result<(), Error> {
         for channel in summary.channels.values() {
-            let schema = channel
-                .schema
-                .as_ref()
-                .ok_or(Error::NoSchema(channel.topic.clone()))?;
+            let Some(schema) = channel.schema.as_ref() else {
+                continue;
+            };
 
             if schema.encoding.as_str() != "protobuf" {
                 continue;
