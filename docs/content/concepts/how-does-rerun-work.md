@@ -9,7 +9,7 @@ Rerun has several components manage multimodal data across its lifetime. This pa
 
 ### Logging SDK
 
-The Logging SDK is how you get data into Rerun. Available for Python, Rust, and C++, it runs inside your application and logs data using [archetypes](logging-and-ingestion/entity-component.md)—structured types like `Points3D`, `Image`, or `Transform3D`.
+The Logging SDK is how you get data into Rerun. Available for Python, Rust, and C++, it runs inside your application and logs data using [archetypes](logging-and-ingestion/entity-component.md) — structured types like `Points3D`, `Image`, or `Transform3D`.
 
 Data can be streamed directly to the Viewer, saved to `.rrd` files, or both.
 

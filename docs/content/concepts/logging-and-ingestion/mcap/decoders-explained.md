@@ -9,7 +9,7 @@ You can specify which decoders to use during conversion, allowing you to extract
 
 ## Understanding decoders with an example
 
-When multiple decoders are enabled, they each process the same messages independently, creating different component types on identical entity paths. This can result in data duplication—for instance, enabling both `raw` and `protobuf` decoders stores the same message as both structured field data and raw binary blobs.
+When multiple decoders are enabled, they each process the same messages independently, creating different component types on identical entity paths. This can result in data duplication — for instance, enabling both `raw` and `protobuf` decoders stores the same message as both structured field data and raw binary blobs.
 
 Consider an MCAP file from a ROS2 robot containing sensor data on the topic `/robot/camera/image_raw` with ROS2 `sensor_msgs/msg/Image` messages:
 

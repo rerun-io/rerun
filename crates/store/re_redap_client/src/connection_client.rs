@@ -558,7 +558,7 @@ where
     }
 
     /// Get a list of segment IDs for the given dataset entry ID.
-    //TODO(ab): is there a way—and a reason—to not collect and instead return a stream?
+    //TODO(ab): is there a way — and a reason — to not collect and instead return a stream?
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_dataset_segment_ids(
         &mut self,
