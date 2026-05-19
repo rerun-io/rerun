@@ -677,7 +677,8 @@ fn max_orbital_radius(scene_bounding_box: &macaw::BoundingBox) -> f32 {
     if !scene_diagonal.is_finite() || scene_diagonal <= 0.0 {
         return fallback;
     }
-    scene_diagonal * EyeController::MAX_ORBITAL_ZOOM_OUT_FACTOR
+    (scene_diagonal * EyeController::MAX_ORBITAL_ZOOM_OUT_FACTOR)
+        .max(EyeController::MIN_ORBIT_DISTANCE)
 }
 
 pub fn find_camera(cameras: &[PinholeWrapper], needle: &EntityPath) -> Option<Eye> {
