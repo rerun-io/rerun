@@ -745,9 +745,11 @@ impl VideoDataDescription {
         samples: &StableIndexDeque<SampleMetadataState>,
         decode_time: Time,
     ) -> Option<SampleIndex> {
-        samples
+        let idx = samples
             .partition_point(|sample| sample.decode_timestamp() <= decode_time)
-            .checked_sub(1)
+            .checked_sub(1)?;
+
+        (idx >= samples.min_index()).then_some(idx)
     }
 
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
@@ -783,7 +785,7 @@ impl VideoDataDescription {
             debug_assert!(sample_statistics.dts_always_equal_pts);
             return Ok(decode_sample_idx);
         };
-        debug_assert!(has_sample_highest_pts_so_far.len() == samples.next_index());
+        debug_assert!(has_sample_highest_pts_so_far.len() == samples.num_elements());
 
         // Search backwards, starting at `decode_sample_idx`, looking for
         // the first sample where `sample.presentation_timestamp <= presentation_timestamp`.
@@ -811,7 +813,9 @@ impl VideoDataDescription {
                 best_index = sample_idx;
             }
 
-            if best_pts != Time::MIN && has_sample_highest_pts_so_far[sample_idx] {
+            if best_pts != Time::MIN
+                && has_sample_highest_pts_so_far[sample_idx - samples.min_index()]
+            {
                 // We won't see any bigger PTS values anymore, meaning we're as close as we can get to the requested PTS!
                 return Ok(best_index);
             }
