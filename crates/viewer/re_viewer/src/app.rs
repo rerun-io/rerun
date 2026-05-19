@@ -21,7 +21,7 @@ use re_log_channel::{
 use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_sdk_types::blueprint::components::{LoopMode, PlayState};
+use re_sdk_types::blueprint::components::PlayState;
 use re_sdk_types::external::uuid;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
@@ -1669,13 +1669,9 @@ impl App {
     ///
     /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
-        let re_uri::Fragment {
-            selection,
-            when,
-            time_selection,
-        } = fragment;
+        let time_commands = TimeControlCommand::from_url_fragment(&fragment);
 
-        if let Some(selection) = selection {
+        if let Some(selection) = fragment.selection {
             let re_log_types::DataPath {
                 entity_path,
                 instance,
@@ -1691,22 +1687,7 @@ impl App {
             };
 
             self.command_sender
-                .send_system(SystemCommand::set_selection(item.clone()));
-        }
-
-        let mut time_commands = Vec::new();
-        if let Some(time_selection) = time_selection {
-            time_commands.push(TimeControlCommand::SetActiveTimeline(
-                *time_selection.timeline.name(),
-            ));
-            time_commands.push(TimeControlCommand::SetTimeSelection(time_selection.range));
-            time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
-        }
-
-        if let Some((timeline, timecell)) = when {
-            time_commands.push(TimeControlCommand::SetActiveTimeline(timeline));
-            time_commands.push(TimeControlCommand::SetPlayState(PlayState::Paused));
-            time_commands.push(TimeControlCommand::SetTime(timecell.value.into()));
+                .send_system(SystemCommand::set_selection(item));
         }
 
         if !time_commands.is_empty() {
