@@ -146,9 +146,14 @@ pub enum SystemCommand {
     /// Show a notification to the user
     ShowNotification(re_ui::notifications::Notification),
 
-    /// Start polling a texture we're reading back from the gpu, and then prompt
-    /// the user to save a png of the texture.
-    ReadbackAndSaveTexture(re_renderer::texture_readback::TextureReadbackId),
+    /// Start polling a texture we're reading back from the gpu.
+    /// Then depending on the given action either:
+    /// - Prompt the user to save a png of the texture.
+    /// - Copy the png to the clipboard.
+    ReadbackAndSaveTexture {
+        texture: re_renderer::texture_readback::TextureReadbackId,
+        action: DownloadAction,
+    },
 
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
@@ -191,6 +196,12 @@ impl SystemCommand {
     pub fn set_selection(selection: impl Into<SetSelection>) -> Self {
         Self::SetSelection(selection.into())
     }
+}
+
+/// What to do with a download.
+pub enum DownloadAction {
+    CopyToClipboard,
+    Save,
 }
 
 /// What triggered this item to be selected?

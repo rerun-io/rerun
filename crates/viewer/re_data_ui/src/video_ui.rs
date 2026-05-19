@@ -443,11 +443,16 @@ fn decoded_frame_ui<'a>(
                         .and_then(|d| d.bit_depth),
                 ),
                 preview_size,
-                &|| match re_renderer::schedule_read_texture(ctx.render_ctx, &texture.inner.texture)
-                {
-                    Ok(id) => ctx
-                        .command_sender
-                        .send_system(re_viewer_context::SystemCommand::ReadbackAndSaveTexture(id)),
+                &|action| match re_renderer::schedule_read_texture(
+                    ctx.render_ctx,
+                    &texture.inner.texture,
+                ) {
+                    Ok(texture) => ctx.command_sender.send_system(
+                        re_viewer_context::SystemCommand::ReadbackAndSaveTexture {
+                            texture,
+                            action,
+                        },
+                    ),
                     Err(err) => {
                         re_log::error!("Failed to save {stream_kind} preview: {err}");
                     }

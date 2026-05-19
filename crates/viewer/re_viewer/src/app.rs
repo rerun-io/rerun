@@ -1361,8 +1361,8 @@ impl App {
                 self.notifications.add(notification);
             }
 
-            SystemCommand::ReadbackAndSaveTexture(texture_readback_id) => {
-                self.texture_readback.push(texture_readback_id);
+            SystemCommand::ReadbackAndSaveTexture { texture, action } => {
+                self.texture_readback.push(texture, action);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -2551,6 +2551,7 @@ impl App {
                         render_ctx,
                         ui,
                         &self.command_sender,
+                        &mut self.notifications,
                     );
 
                     // TODO(RR-3033): `AppState::show` still expects a non-optional `ActiveStoreContext`; fall back to a sentinel empty context for no-store routes.

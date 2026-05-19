@@ -933,7 +933,7 @@ impl TestContext {
                 | SystemCommand::SaveScreenshot { .. }
                 | SystemCommand::ShowNotification { .. }
                 | SystemCommand::RegisterTableBlueprint { .. }
-                | SystemCommand::ReadbackAndSaveTexture(_) => handled = false,
+                | SystemCommand::ReadbackAndSaveTexture { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
                 SystemCommand::EnableInspectBlueprintTimeline(_) => handled = false,
