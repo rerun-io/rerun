@@ -52,6 +52,7 @@ members = [
     "rerun-sdk",
     "rerun-workspace",
     "rgbd",
+    "robot-data-preprocessing",
     "rrt-star",
     "segment-anything-model",
     "server-tables",
@@ -5002,6 +5003,7 @@ examples = [
     { name = "polars" },
     { name = "raw-mesh" },
     { name = "rgbd" },
+    { name = "robot-data-preprocessing" },
     { name = "rrt-star" },
     { name = "segment-anything" },
     { name = "segment-anything-model" },
@@ -5123,6 +5125,7 @@ examples = [
     { name = "polars", specifier = ">=0.12.0" },
     { name = "raw-mesh", editable = "examples/python/raw_mesh" },
     { name = "rgbd", editable = "examples/python/rgbd" },
+    { name = "robot-data-preprocessing", editable = "examples/python/robot_data_preprocessing" },
     { name = "rrt-star", editable = "examples/python/rrt_star" },
     { name = "segment-anything", git = "https://github.com/facebookresearch/segment-anything.git" },
     { name = "segment-anything-model", editable = "examples/python/segment_anything_model" },
@@ -5207,6 +5210,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/fb/d2/8920e102050a0de7bfabeb4c4614a49248cf8d5d7a8d01885fbb24dc767a/rich-14.2.0.tar.gz", hash = "sha256:73ff50c7c0c1c77c8243079283f4edb376f0f6442433aecb8ce7e6d0b92d1fe4", size = 219990, upload-time = "2025-10-09T14:16:53.064Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/25/7a/b0178788f8dc6cafce37a212c99565fa1fe7872c70c6c9c1e1a372d9d88f/rich-14.2.0-py3-none-any.whl", hash = "sha256:76bc51fe2e57d2b1be1f96c524b890b816e334ab4c1e45888799bfaab0021edd", size = 243393, upload-time = "2025-10-09T14:16:51.245Z" },
+]
+
+[[package]]
+name = "robot-data-preprocessing"
+version = "0.1.0"
+source = { editable = "examples/python/robot_data_preprocessing" }
+dependencies = [
+    { name = "pyarrow" },
+    { name = "rerun-sdk" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pyarrow" },
+    { name = "rerun-sdk", editable = "rerun_py" },
 ]
 
 [[package]]

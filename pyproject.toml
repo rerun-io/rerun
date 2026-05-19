@@ -124,6 +124,7 @@ examples = [
   "plots",
   "raw_mesh",
   "rgbd",
+  "robot_data_preprocessing",
   "rrt_star",
   "segment_anything_model",
   "server_tables",
@@ -208,6 +209,7 @@ openstreetmap_data = { workspace = true }
 plots = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
+robot_data_preprocessing = { workspace = true }
 rrt_star = { workspace = true }
 segment_anything_model = { workspace = true }
 server_tables = { workspace = true }
@@ -265,6 +267,7 @@ members = [
   "examples/python/plots",
   "examples/python/raw_mesh",
   "examples/python/rgbd",
+  "examples/python/robot_data_preprocessing",
   "examples/python/rrt_star",
   "examples/python/segment_anything_model",
   "examples/python/server_tables",
