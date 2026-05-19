@@ -12,12 +12,8 @@ TestResult {
             Nanosecond,
             None,
         ),
-        nullable: false,
-        dict_id: 0,
-        dict_is_ordered: false,
-        metadata: {},
     },
-    unfiltered: PrimitiveArray<Timestamp(Nanosecond, None)>
+    unfiltered: PrimitiveArray<Timestamp(ns)>
     [
       2025-09-23T11:47:00,
       2025-09-23T10:47:00,
@@ -27,7 +23,7 @@ TestResult {
       2025-09-24T11:47:00,
       2026-09-23T11:47:00,
     ],
-    filtered: PrimitiveArray<Timestamp(Nanosecond, None)>
+    filtered: PrimitiveArray<Timestamp(ns)>
     [
       2025-09-23T12:47:00,
       2025-09-24T11:47:00,

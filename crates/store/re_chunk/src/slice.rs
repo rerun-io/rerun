@@ -7,7 +7,7 @@ use nohash_hasher::IntSet;
 use re_log_types::TimelineName;
 use re_types_core::{ComponentIdentifier, SerializedComponentColumn};
 
-use crate::{Chunk, RowId, TimeColumn, UnitChunkShared};
+use crate::{Chunk, ChunkId, RowId, TimeColumn, UnitChunkShared};
 
 // ---
 
@@ -18,8 +18,6 @@ impl Chunk {
     /// Returns the cell corresponding to the specified [`RowId`] for a given [`re_types_core::ComponentIdentifier`].
     ///
     /// This is `O(log(n))` if `self.is_sorted()`, and `O(n)` otherwise.
-    ///
-    /// Reminder: duplicated `RowId`s results in undefined behavior.
     pub fn cell(&self, row_id: RowId, component: ComponentIdentifier) -> Option<ArrowArrayRef> {
         let list_array = self.components.get_array(component)?;
 
@@ -41,7 +39,7 @@ impl Chunk {
     /// run out of bounds.
     /// This can result in an empty [`Chunk`] being returned if the slice is completely OOB.
     ///
-    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    /// The returned chunk always gets a new unique [`crate::ChunkId`].
     ///
     /// ## When to use shallow vs. deep slicing?
     ///
@@ -65,8 +63,11 @@ impl Chunk {
     ///
     /// See also [`Self::row_sliced_shallow`].
     pub fn row_sliced_unit_shallow(&self, index: usize) -> UnitChunkShared {
+        let original_chunk_id = self.id();
         #[expect(clippy::unwrap_used)] // cannot fail: we always have exactly one row
-        self.row_sliced_shallow(index, 1).into_unit().unwrap()
+        self.row_sliced_shallow(index, 1)
+            .into_unit_with_original_chunk_id(original_chunk_id)
+            .unwrap()
     }
 
     /// Deep-slices the [`Chunk`] vertically.
@@ -77,7 +78,7 @@ impl Chunk {
     /// run out of bounds.
     /// This can result in an empty [`Chunk`] being returned if the slice is completely OOB.
     ///
-    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    /// The returned chunk always gets a new unique [`crate::ChunkId`].
     ///
     /// ## When to use shallow vs. deep slicing?
     ///
@@ -102,7 +103,7 @@ impl Chunk {
         re_tracing::profile_function!(if deep { "deep" } else { "shallow" });
 
         let Self {
-            id,
+            id: _,
             entity_path,
             heap_size_bytes: _,
             is_sorted,
@@ -128,7 +129,7 @@ impl Chunk {
         let is_sorted = *is_sorted || (len < 2);
 
         let mut chunk = Self {
-            id: *id,
+            id: ChunkId::new(),
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
@@ -177,10 +178,6 @@ impl Chunk {
         // The original chunk is unsorted, but the new sliced one actually ends up being sorted.
         chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
 
-        #[cfg(debug_assertions)]
-        #[expect(clippy::unwrap_used)] // debug-only
-        chunk.sanity_check().unwrap();
-
         chunk
     }
 
@@ -192,12 +189,12 @@ impl Chunk {
     /// If `timeline` is not found within the [`Chunk`], the end result will be the same as the
     /// current chunk but without any timeline column.
     ///
-    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    /// The returned chunk always gets a new unique [`crate::ChunkId`].
     #[must_use]
     #[inline]
     pub fn timeline_sliced(&self, timeline: TimelineName) -> Self {
         let Self {
-            id,
+            id: _,
             entity_path,
             heap_size_bytes: _,
             is_sorted,
@@ -207,7 +204,7 @@ impl Chunk {
         } = self;
 
         let chunk = Self {
-            id: *id,
+            id: ChunkId::new(),
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: *is_sorted,
@@ -227,7 +224,7 @@ impl Chunk {
         chunk
     }
 
-    /// Slices the [`Chunk`] horizontally by keeping only the selected `component`.
+    /// Slices the [`Chunk`] by keeping only the selected `component` column.
     ///
     /// The result is a new [`Chunk`] with the same rows and (at-most) one component column.
     /// All non-component columns will be kept as-is.
@@ -235,12 +232,42 @@ impl Chunk {
     /// If `component` is not found within the [`Chunk`], the end result will be the same as the
     /// current chunk but without any component column.
     ///
-    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    /// The returned chunk always gets a new unique [`crate::ChunkId`].
     #[must_use]
     #[inline]
     pub fn component_sliced(&self, component: ComponentIdentifier) -> Self {
+        self.components_sliced(&[component])
+    }
+
+    /// Slices the [`Chunk`] by removing the specified `component` column.
+    ///
+    /// The result is a new [`Chunk`] with the same rows and all component columns
+    /// except the one matching `component`. All non-component columns are kept as-is.
+    ///
+    /// If `component` is not found within the [`Chunk`], the chunk is returned unchanged
+    /// (preserving the original [`crate::ChunkId`]).
+    /// Otherwise, the returned chunk gets a new unique [`crate::ChunkId`].
+    #[must_use]
+    #[inline]
+    pub fn component_dropped(&self, component: ComponentIdentifier) -> Self {
+        self.components_dropped(&[component])
+    }
+
+    /// Slices the [`Chunk`] by keeping only the listed component columns.
+    ///
+    /// The result is a new [`Chunk`] with the same rows but only the component columns
+    /// whose [`ComponentIdentifier`] appears in `components_to_keep`.
+    /// All non-component columns (entity path, timelines, row IDs) are preserved.
+    ///
+    /// If none of the listed components exist in the [`Chunk`], the end result will be the same as the
+    /// current chunk but without any component column.
+    ///
+    /// The returned chunk always gets a new unique [`crate::ChunkId`].
+    #[must_use]
+    #[inline]
+    pub fn components_sliced(&self, components_to_keep: &[ComponentIdentifier]) -> Self {
         let Self {
-            id,
+            id: _,
             entity_path,
             heap_size_bytes: _,
             is_sorted,
@@ -250,21 +277,78 @@ impl Chunk {
         } = self;
 
         let chunk = Self {
-            id: *id,
+            id: ChunkId::new(),
+            entity_path: entity_path.clone(),
+            heap_size_bytes: Default::default(),
+            is_sorted: *is_sorted,
+            row_ids: row_ids.clone(),
+            timelines: timelines.clone(),
+            components: components_to_keep
+                .iter()
+                .filter_map(|c| {
+                    components.get(*c).map(|column| {
+                        SerializedComponentColumn::new(
+                            column.list_array.clone(),
+                            column.descriptor.clone(),
+                        )
+                    })
+                })
+                .collect(),
+        };
+
+        #[cfg(debug_assertions)]
+        #[expect(clippy::unwrap_used)] // debug-only
+        chunk.sanity_check().unwrap();
+
+        chunk
+    }
+
+    /// Slices the [`Chunk`] by removing the listed component columns.
+    ///
+    /// The result is a new [`Chunk`] with the same rows and all component columns
+    /// except those whose [`ComponentIdentifier`] appears in `components_to_drop`.
+    /// All non-component columns are kept as-is.
+    ///
+    /// If none of the listed components exist in the [`Chunk`], the chunk is returned unchanged
+    /// (preserving the original [`crate::ChunkId`]).
+    /// Otherwise, the returned chunk gets a new unique [`crate::ChunkId`].
+    #[must_use]
+    #[inline]
+    pub fn components_dropped(&self, components_to_drop: &[ComponentIdentifier]) -> Self {
+        if !self
+            .components
+            .keys()
+            .any(|id| components_to_drop.contains(id))
+        {
+            return self.clone_with_same_id();
+        }
+
+        let Self {
+            id: _,
+            entity_path,
+            heap_size_bytes: _,
+            is_sorted,
+            row_ids,
+            timelines,
+            components,
+        } = self;
+
+        let chunk = Self {
+            id: ChunkId::new(),
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: *is_sorted,
             row_ids: row_ids.clone(),
             timelines: timelines.clone(),
             components: components
-                .get(component)
-                .map(|column| {
+                .iter()
+                .filter(|(id, _)| !components_to_drop.contains(id))
+                .map(|(_id, column)| {
                     SerializedComponentColumn::new(
                         column.list_array.clone(),
                         column.descriptor.clone(),
                     )
                 })
-                .into_iter()
                 .collect(),
         };
 
@@ -283,12 +367,12 @@ impl Chunk {
     /// If none of the selected timelines exist in the [`Chunk`], the end result will be the same as the
     /// current chunk but without any timeline column.
     ///
-    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    /// The returned chunk always gets a new unique [`crate::ChunkId`].
     #[must_use]
     #[inline]
     pub fn timelines_sliced(&self, timelines_to_keep: &IntSet<TimelineName>) -> Self {
         let Self {
-            id,
+            id: _,
             entity_path,
             heap_size_bytes: _,
             is_sorted,
@@ -298,7 +382,7 @@ impl Chunk {
         } = self;
 
         let chunk = Self {
-            id: *id,
+            id: ChunkId::new(),
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: *is_sorted,
@@ -326,17 +410,17 @@ impl Chunk {
     /// The result is a new [`Chunk`] where the `component_pov` column is guaranteed to be dense.
     ///
     /// If `component_pov` doesn't exist in this [`Chunk`], or if it is already dense, this method
-    /// is a no-op.
+    /// is a no-op (preserving the original [`crate::ChunkId`]).
     ///
     /// Returns `false` if the operation was a no-op (i.e. the chunk was already dense), true otherwise
     /// (i.e. the data had to be reallocated).
     ///
-    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    /// If not a no-op, the returned chunk gets a new unique [`crate::ChunkId`].
     #[must_use]
     #[inline]
     pub fn densified(&self, component_pov: ComponentIdentifier) -> (Self, bool) {
         let Self {
-            id,
+            id: _,
             entity_path,
             heap_size_bytes: _,
             is_sorted,
@@ -346,15 +430,15 @@ impl Chunk {
         } = self;
 
         if self.is_empty() {
-            return (self.clone(), false);
+            return (self.clone_with_same_id(), false);
         }
 
         let Some(component_list_array) = self.components.get_array(component_pov) else {
-            return (self.clone(), false);
+            return (self.clone_with_same_id(), false);
         };
 
         let Some(validity) = component_list_array.nulls() else {
-            return (self.clone(), false);
+            return (self.clone_with_same_id(), false);
         };
 
         re_tracing::profile_function!();
@@ -364,7 +448,7 @@ impl Chunk {
         let validity_filter = ArrowBooleanArray::from(mask);
 
         let mut chunk = Self {
-            id: *id,
+            id: ChunkId::new(),
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
@@ -422,12 +506,12 @@ impl Chunk {
     ///
     /// The result is a new [`Chunk`] with the same columns but zero rows.
     ///
-    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    /// The returned chunk always gets a new unique [`crate::ChunkId`].
     #[must_use]
     #[inline]
     pub fn emptied(&self) -> Self {
         let Self {
-            id,
+            id: _,
             entity_path,
             heap_size_bytes: _,
             is_sorted: _,
@@ -439,7 +523,7 @@ impl Chunk {
         re_tracing::profile_function!();
 
         Self {
-            id: *id,
+            id: ChunkId::new(),
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: true,
@@ -469,12 +553,12 @@ impl Chunk {
     /// The result is a new [`Chunk`] with the same number of rows and the same index columns, but
     /// no components.
     ///
-    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    /// The returned chunk always gets a new unique [`crate::ChunkId`].
     #[must_use]
     #[inline]
     pub fn components_removed(self) -> Self {
         let Self {
-            id,
+            id: _,
             entity_path,
             heap_size_bytes: _,
             is_sorted,
@@ -484,7 +568,7 @@ impl Chunk {
         } = self;
 
         Self {
-            id,
+            id: ChunkId::new(),
             entity_path,
             heap_size_bytes: Default::default(), // (!) lazily recompute
             is_sorted,
@@ -544,7 +628,7 @@ impl Chunk {
         };
 
         let chunk = Self {
-            id: self.id,
+            id: ChunkId::new(),
             entity_path: self.entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: self.is_sorted,
@@ -587,12 +671,13 @@ impl Chunk {
     ///
     /// [filter]: arrow::compute::kernels::filter
     ///
-    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    /// If the chunk is empty, the original [`crate::ChunkId`] is preserved.
+    /// Otherwise, the returned chunk gets a new unique [`crate::ChunkId`].
     #[must_use]
     #[inline]
     pub fn filtered(&self, filter: &ArrowBooleanArray) -> Option<Self> {
         let Self {
-            id,
+            id: _,
             entity_path,
             heap_size_bytes: _,
             is_sorted,
@@ -607,7 +692,7 @@ impl Chunk {
         }
 
         if self.is_empty() {
-            return Some(self.clone());
+            return Some(self.clone_with_same_id());
         }
 
         let num_filtered = filter.values().iter().filter(|&b| b).count();
@@ -620,7 +705,7 @@ impl Chunk {
         let is_sorted = *is_sorted || num_filtered < 2;
 
         let mut chunk = Self {
-            id: *id,
+            id: ChunkId::new(),
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
@@ -673,12 +758,12 @@ impl Chunk {
     ///
     /// [take]: arrow::compute::kernels::take
     ///
-    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    /// The returned chunk always gets a new unique [`crate::ChunkId`].
     #[must_use]
     #[inline]
     pub fn taken(&self, indices: &arrow::array::Int32Array) -> Self {
         let Self {
-            id,
+            id: _,
             entity_path,
             heap_size_bytes: _,
             is_sorted,
@@ -700,7 +785,7 @@ impl Chunk {
         let is_sorted = *is_sorted || (indices.len() < 2);
 
         let mut chunk = Self {
-            id: *id,
+            id: ChunkId::new(),
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
@@ -1706,6 +1791,140 @@ mod tests {
         );
 
         eprintln!("✓ Raw arrow array slice memory calculation test passed!");
+
+        Ok(())
+    }
+
+    #[test]
+    fn components_sliced() -> anyhow::Result<()> {
+        let points_descr = MyPoints::descriptor_points();
+        let colors_descr = MyPoints::descriptor_colors();
+        let labels_descr = MyPoints::descriptor_labels();
+
+        let row_id = RowId::new();
+        let timepoint = [(Timeline::new_sequence("frame"), 1)];
+
+        let chunk = Chunk::builder("my/entity")
+            .with_sparse_component_batches(
+                row_id,
+                timepoint,
+                [
+                    (points_descr.clone(), Some(&[MyPoint::new(1.0, 2.0)] as _)),
+                    (
+                        colors_descr.clone(),
+                        Some(&[MyColor::from_rgb(255, 0, 0)] as _),
+                    ),
+                    (labels_descr.clone(), Some(&[MyLabel("hello".into())] as _)),
+                ],
+            )
+            .build()?;
+        assert_eq!(chunk.num_components(), 3);
+
+        // Keep points and labels — colors removed
+        let sliced = chunk.components_sliced(&[points_descr.component, labels_descr.component]);
+        assert_eq!(sliced.num_components(), 2);
+        assert!(
+            sliced
+                .components()
+                .contains_component(points_descr.component)
+        );
+        assert!(
+            !sliced
+                .components()
+                .contains_component(colors_descr.component)
+        );
+        assert!(
+            sliced
+                .components()
+                .contains_component(labels_descr.component)
+        );
+        assert_eq!(sliced.num_rows(), chunk.num_rows());
+        assert_ne!(sliced.id(), chunk.id());
+
+        // Partial: keep [points, nonexistent] — only points survives
+        let partial = chunk.components_sliced(&[
+            points_descr.component,
+            ComponentIdentifier::from("Nonexistent:foo"),
+        ]);
+        assert_eq!(partial.num_components(), 1);
+        assert!(
+            partial
+                .components()
+                .contains_component(points_descr.component)
+        );
+
+        // None present — empty component set
+        let empty = chunk.components_sliced(&[
+            ComponentIdentifier::from("Nonexistent:a"),
+            ComponentIdentifier::from("Nonexistent:b"),
+        ]);
+        assert_eq!(empty.num_components(), 0);
+        assert_eq!(empty.num_rows(), chunk.num_rows());
+
+        Ok(())
+    }
+
+    #[test]
+    fn components_dropped() -> anyhow::Result<()> {
+        let points_descr = MyPoints::descriptor_points();
+        let colors_descr = MyPoints::descriptor_colors();
+        let labels_descr = MyPoints::descriptor_labels();
+
+        let row_id = RowId::new();
+        let timepoint = [(Timeline::new_sequence("frame"), 1)];
+
+        let chunk = Chunk::builder("my/entity")
+            .with_sparse_component_batches(
+                row_id,
+                timepoint,
+                [
+                    (points_descr.clone(), Some(&[MyPoint::new(1.0, 2.0)] as _)),
+                    (
+                        colors_descr.clone(),
+                        Some(&[MyColor::from_rgb(255, 0, 0)] as _),
+                    ),
+                    (labels_descr.clone(), Some(&[MyLabel("hello".into())] as _)),
+                ],
+            )
+            .build()?;
+        assert_eq!(chunk.num_components(), 3);
+
+        // Drop points and colors — labels remain
+        let dropped = chunk.components_dropped(&[points_descr.component, colors_descr.component]);
+        assert_eq!(dropped.num_components(), 1);
+        assert!(
+            !dropped
+                .components()
+                .contains_component(points_descr.component)
+        );
+        assert!(
+            !dropped
+                .components()
+                .contains_component(colors_descr.component)
+        );
+        assert!(
+            dropped
+                .components()
+                .contains_component(labels_descr.component)
+        );
+        assert_eq!(dropped.num_rows(), chunk.num_rows());
+        assert_ne!(dropped.id(), chunk.id());
+
+        // Drop nonexistent — chunk unchanged (same id)
+        let noop = chunk.components_dropped(&[
+            ComponentIdentifier::from("Nonexistent:a"),
+            ComponentIdentifier::from("Nonexistent:b"),
+        ]);
+        assert_eq!(noop.num_components(), 3);
+        assert_eq!(noop.id(), chunk.id());
+
+        // Drop all — empty component set
+        let all_dropped = chunk.components_dropped(&[
+            points_descr.component,
+            colors_descr.component,
+            labels_descr.component,
+        ]);
+        assert_eq!(all_dropped.num_components(), 0);
 
         Ok(())
     }

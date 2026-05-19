@@ -347,7 +347,8 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component: ComponentIdentifier,
     ) -> u64 {
-        self.timelines()
+        self.schema
+            .timelines()
             .keys()
             .map(|timeline| {
                 self.num_physical_temporal_events_for_component_on_timeline(
@@ -371,8 +372,7 @@ impl SizeBytes for ChunkStore {
             temporal_chunk_ids_per_entity_per_component,
             id,
             config,
-            time_type_registry,
-            per_column_metadata,
+            schema,
             physical_chunk_ids_per_min_row_id,
             chunks_lineage,
             dangling_splits,
@@ -425,12 +425,8 @@ impl SizeBytes for ChunkStore {
             + id.heap_size_bytes()
             + config.heap_size_bytes()
             + {
-                profile_scope!("time_type_registry");
-                time_type_registry.heap_size_bytes()
-            }
-            + {
-                profile_scope!("per_column_metadata");
-                per_column_metadata.heap_size_bytes()
+                profile_scope!("schema");
+                schema.heap_size_bytes()
             }
             + {
                 profile_scope!("physical_chunk_ids_per_min_row_id");
@@ -484,12 +480,17 @@ impl MemUsageTreeCapture for ChunkStore {
             }
         }
 
-        let mut node = MemUsageNode::new();
-
+        let mut entities_node = MemUsageNode::new();
         for (entity_path, size) in memory_per_entity {
-            node.add(entity_path.to_string(), MemUsageTree::Bytes(size));
+            entities_node.add(entity_path.to_string(), MemUsageTree::Bytes(size));
         }
 
-        node.with_total_size_bytes(self.total_size_bytes())
+        MemUsageNode::new()
+            .with_child(
+                "schema",
+                MemUsageTree::Bytes(self.schema.total_size_bytes()),
+            )
+            .with_child("entities", entities_node.into_tree())
+            .with_total_size_bytes(self.total_size_bytes())
     }
 }

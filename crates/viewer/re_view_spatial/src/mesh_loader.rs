@@ -89,16 +89,11 @@ impl LoadedMesh {
             _ => anyhow::bail!("{media_type} files are not supported"),
         };
 
-        // Overwriting albedo_factor of CpuMesh if specified in the Asset3D
         if let Some(albedo_factor) = albedo_factor {
-            for instance in &cpu_model.instances {
-                for material in &mut cpu_model.meshes[instance.mesh].materials {
-                    material.albedo_factor = albedo_factor;
-                }
-            }
+            cpu_model.override_albedo_factor(albedo_factor);
         }
 
-        let bbox = cpu_model.bbox;
+        let bbox = cpu_model.bbox();
         let mesh_instances = cpu_model.into_gpu_meshes(render_ctx)?;
 
         Ok(Self {
@@ -171,12 +166,12 @@ impl LoadedMesh {
 
         let bbox = {
             re_tracing::profile_scope!("bbox");
-            macaw::BoundingBox::from_points(vertex_positions.iter().copied())
+            re_renderer::util::bounding_box_from_points(vertex_positions.iter().copied())
         };
 
         let albedo = try_get_or_create_albedo_texture(
-            &albedo_texture_buffer,
-            &albedo_texture_format,
+            albedo_texture_buffer.as_ref(),
+            albedo_texture_format.as_ref(),
             render_ctx,
             texture_key,
             &name,
@@ -226,8 +221,8 @@ impl LoadedMesh {
 }
 
 fn try_get_or_create_albedo_texture(
-    albedo_texture_buffer: &Option<datatypes::Blob>,
-    albedo_texture_format: &Option<datatypes::ImageFormat>,
+    albedo_texture_buffer: Option<&datatypes::Blob>,
+    albedo_texture_format: Option<&datatypes::ImageFormat>,
     render_ctx: &RenderContext,
     texture_key: u64,
     name: &str,

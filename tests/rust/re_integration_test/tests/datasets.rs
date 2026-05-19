@@ -8,7 +8,10 @@ use re_sdk::{
     external::{re_log_types::AbsoluteTimeRange, re_tuid},
 };
 use re_viewer::{
-    external::{re_chunk::TimelineName, re_viewer_context::open_url::ViewerOpenUrl},
+    external::{
+        re_chunk::TimelineName, re_entity_db::FetchStage,
+        re_viewer_context::open_url::ViewerOpenUrl,
+    },
     viewer_test_utils::{self, HarnessOptions},
 };
 
@@ -45,22 +48,20 @@ pub async fn dataset_ui_test() {
     harness.get_by_label("Add").click();
     harness.run_ok();
 
+    // Wait for both datasets to appear.
     viewer_test_utils::step_until(
-        "Redap server dataset appears",
+        "Redap server datasets appear",
         &mut harness,
-        // The label eventually appears twice: first in the left panel, and in the entries table
-        // when it refreshes. Here we wait for both to appear. Later we pick the first one (in the
-        // left panel).
         |harness| harness.query_all_by_label_contains("my_dataset").count() == 2,
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
 
-    // We pick the first one.
+    // Click the dataset (pick the first match, which is in the left panel).
     harness
         .get_all_by_label("my_dataset")
         .next()
-        .unwrap()
+        .expect("my_dataset label should be present")
         .click();
 
     viewer_test_utils::step_until(
@@ -132,6 +133,9 @@ pub async fn start_with_segment_fragment_url() {
 
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         startup_url: Some(url.sharable_url(None).expect("Should be a sharable url")),
+        app_options_editor: Some(Box::new(|app_options| {
+            app_options.max_fetch_stage = FetchStage::Everything;
+        })),
         ..Default::default()
     });
 
@@ -140,7 +144,7 @@ pub async fn start_with_segment_fragment_url() {
         &mut harness,
         |harness| {
             harness.query_by_label_contains("Streams").is_some()
-                && harness.query_by_label("Loading etries…").is_none()
+                && harness.query_by_label("Loading entries…").is_none()
         },
         Duration::from_millis(100),
         Duration::from_secs(5),

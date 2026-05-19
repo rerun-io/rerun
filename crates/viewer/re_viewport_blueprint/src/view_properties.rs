@@ -1,5 +1,6 @@
 use arrow::array::ArrayRef;
 use re_chunk::ComponentIdentifier;
+use re_chunk_store::EntityTree;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_entity_db::external::re_query::LatestAtResults;
@@ -7,7 +8,6 @@ use re_log_types::EntityPath;
 use re_sdk_types::{
     Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, DeserializationError,
 };
-use re_viewer_context::external::re_entity_db::EntityTree;
 use re_viewer_context::{
     BlueprintContext, ComponentFallbackError, QueryContext, ViewContext, ViewId,
     ViewSystemExecutionError, ViewerContext,
@@ -76,8 +76,9 @@ impl ViewProperty {
         archetype_name: ArchetypeName,
         component_descrs: Vec<ComponentDescriptor>,
     ) -> Self {
+        let engine = blueprint_db.storage_engine();
         let blueprint_store_path =
-            entity_path_for_view_property(view_id, blueprint_db.tree(), archetype_name);
+            entity_path_for_view_property(view_id, engine.store().entity_tree(), archetype_name);
 
         let query_results = blueprint_db.latest_at(
             &blueprint_query,
@@ -161,10 +162,13 @@ impl ViewProperty {
         self.query_results.get(component)?.row_id()
     }
 
+    /// Returns `None` for empty arrays, which are written by
+    /// [`ViewerContext::clear_blueprint_component`] to represent an unset value.
     pub fn component_raw(&self, component: ComponentIdentifier) -> Option<arrow::array::ArrayRef> {
         self.query_results
             .get(component)?
             .component_batch_raw(component)
+            .filter(|a| !a.is_empty())
     }
 
     fn component_or_fallback_raw(
@@ -179,7 +183,7 @@ impl ViewProperty {
         }
 
         ctx.viewer_ctx
-            .component_fallback_registry
+            .component_fallback_registry()
             .fallback_for(descr, &self.query_context(ctx))
     }
 
@@ -241,8 +245,9 @@ impl ViewProperty {
         let blueprint_storage_engine = ctx.blueprint_db().storage_engine();
         let blueprint_store = blueprint_storage_engine.store();
         for component in self.query_results.components.keys().copied() {
-            if let Some(component_descr) =
-                blueprint_store.entity_component_descriptor(&self.blueprint_store_path, component)
+            if let Some(component_descr) = blueprint_store
+                .schema()
+                .entity_component_descriptor(&self.blueprint_store_path, component)
             {
                 ctx.clear_blueprint_component(self.blueprint_store_path.clone(), component_descr);
             }

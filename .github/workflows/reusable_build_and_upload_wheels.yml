@@ -173,7 +173,7 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           targets: ${{ needs.set-config.outputs.TARGET }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
 
@@ -217,7 +217,8 @@ jobs:
           rm -rf dist
           pixi run js-build-base
           pixi run uvpy scripts/ci/build_and_upload_rerun_notebook.py \
-            --dir commit/${{ steps.get-sha.outputs.sha }}/wheels
+            --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \
+            --notebook-dir commit/${{ steps.get-sha.outputs.sha }}/notebook
 
       - name: Save rerun_notebook wheel artifact
         if: ${{ (inputs.MODE == 'pypi' || inputs.MODE == 'extra') && inputs.PLATFORM == 'linux-x64' }}

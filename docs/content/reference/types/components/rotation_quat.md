@@ -15,7 +15,7 @@ If normalization fails the rotation is treated as an invalid transform.
 
 ## Arrow datatype
 ```
-FixedSizeList<4, float32>
+FixedSizeList(4 x non-null Float32)
 ```
 
 ## API reference links
@@ -30,5 +30,6 @@ FixedSizeList<4, float32>
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
+* [`GridMap`](../archetypes/grid_map.md?speculative-link)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
 * [`Transform3D`](../archetypes/transform3d.md)

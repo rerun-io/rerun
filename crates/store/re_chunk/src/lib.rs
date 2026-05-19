@@ -6,7 +6,6 @@
 
 mod builder;
 mod chunk;
-mod helpers;
 mod iter;
 mod latest_at;
 mod merge;
@@ -15,6 +14,7 @@ mod shuffle;
 mod slice;
 mod split;
 mod transport;
+mod unit_chunk;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod batcher;
@@ -37,13 +37,13 @@ pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
 pub use self::chunk::{
     Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn, TimeColumnError,
 };
-pub use self::helpers::{ChunkShared, UnitChunkShared};
 pub use self::iter::{
     ChunkComponentIter, ChunkComponentIterItem, ChunkComponentSlicer, ChunkIndicesIter,
 };
 pub use self::latest_at::LatestAtQuery;
 pub use self::range::{RangeQuery, RangeQueryOptions};
 pub use self::split::ChunkSplitConfig;
+pub use self::unit_chunk::{ChunkShared, UnitChunkShared};
 
 pub mod external {
     #[cfg(not(target_arch = "wasm32"))]

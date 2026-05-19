@@ -8,6 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load the MCAP file
     rec.log_file_from_path(path_to_mcap, None, false)?;
+    rec.flush_blocking()?;
 
     Ok(())
 }

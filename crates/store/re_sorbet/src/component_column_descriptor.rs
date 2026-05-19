@@ -66,6 +66,27 @@ pub struct ComponentColumnDescriptor {
     pub is_semantically_empty: bool,
 }
 
+impl re_byte_size::SizeBytes for ComponentColumnDescriptor {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            entity_path,
+            archetype,
+            component,
+            component_type,
+            store_datatype,
+            is_static: _,
+            is_tombstone: _,
+            is_semantically_empty: _,
+        } = self;
+        entity_path.heap_size_bytes()
+            + archetype.heap_size_bytes()
+            + component.heap_size_bytes()
+            + component_type.heap_size_bytes()
+            + store_datatype.heap_size_bytes()
+    }
+}
+
 impl PartialOrd for ComponentColumnDescriptor {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
@@ -263,10 +284,9 @@ impl ComponentColumnDescriptor {
 
             dt => {
                 re_log::warn_once!(
-                    "Component '{}' on entity '{}' has unexpected non-list-array type: {}",
+                    "Component '{}' on entity '{}' has unexpected non-list-array type: {dt}",
                     self.component,
                     self.entity_path,
-                    re_arrow_util::format_data_type(&dt),
                 );
                 dt
             }

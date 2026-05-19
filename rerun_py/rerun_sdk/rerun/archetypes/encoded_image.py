@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -62,6 +63,8 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.EncodedImage"
+
     # __init__ can be found in encoded_image_ext.py
 
     def __attrs_clear__(self) -> None:
@@ -71,6 +74,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
             media_type=None,
             opacity=None,
             draw_order=None,
+            magnification_filter=None,
         )
 
     @classmethod
@@ -89,6 +93,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
         media_type: datatypes.Utf8Like | None = None,
         opacity: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> EncodedImage:
         """
         Update only some specific fields of a `EncodedImage`.
@@ -116,6 +121,8 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+        magnification_filter:
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel).
 
         """
 
@@ -126,6 +133,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
                 "media_type": media_type,
                 "opacity": opacity,
                 "draw_order": draw_order,
+                "magnification_filter": magnification_filter,
             }
 
             if clear_unset:
@@ -142,6 +150,46 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
         """Clear all the fields of a `EncodedImage`."""
         return cls.from_fields(clear_unset=True)
 
+    @staticmethod
+    def descriptor_blob() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedImage:blob",
+            archetype=EncodedImage.NAME,
+            component_type=components.BlobBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_media_type() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedImage:media_type",
+            archetype=EncodedImage.NAME,
+            component_type=components.MediaTypeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_opacity() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedImage:opacity",
+            archetype=EncodedImage.NAME,
+            component_type=components.OpacityBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_draw_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedImage:draw_order",
+            archetype=EncodedImage.NAME,
+            component_type=components.DrawOrderBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_magnification_filter() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EncodedImage:magnification_filter",
+            archetype=EncodedImage.NAME,
+            component_type=components.MagnificationFilterBatch._COMPONENT_TYPE,
+        )
+
     @classmethod
     def columns(
         cls,
@@ -150,6 +198,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
         media_type: datatypes.Utf8ArrayLike | None = None,
         opacity: datatypes.Float32ArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
+        magnification_filter: components.MagnificationFilterArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -180,6 +229,8 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+        magnification_filter:
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel).
 
         """
 
@@ -190,6 +241,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
                 media_type=media_type,
                 opacity=opacity,
                 draw_order=draw_order,
+                magnification_filter=magnification_filter,
             )
 
         batches = inst.as_component_batches()
@@ -201,6 +253,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
             "EncodedImage:media_type": media_type,
             "EncodedImage:opacity": opacity,
             "EncodedImage:draw_order": draw_order,
+            "EncodedImage:magnification_filter": magnification_filter,
         }
         columns = []
 
@@ -211,17 +264,21 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
-                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
-                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
-                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
-                    # we have `num_rows` single element batches (each element is a fixed sized list).
-                    # (This should have been already validated by conversion to the arrow_array)
-                    batch_length = 1
-                else:
-                    batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+
+                if pa.types.is_fixed_size_list(arrow_array.type):
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                    if arrow_array.type.list_size == elem_flat_len:
+                        # The product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # so we have `num_rows` single element batches (each element is a fixed sized list).
+                        batch_length = 1
+                    else:
+                        batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                else:
+                    # For primitive types, derive batch_length from the actual arrow array length
+                    # since the input shape can be misleading (e.g. colors [R,G,B] -> single uint32).
+                    batch_length = len(arrow_array) // num_rows if num_rows > 0 else 1
+
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.
@@ -275,6 +332,15 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
     # An optional floating point value that specifies the 2D drawing order.
     #
     # Objects with higher values are drawn on top of those with lower values.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    magnification_filter: components.MagnificationFilterBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
+    )
+    # Optional filter used when a texel is magnified (displayed larger than a screen pixel).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

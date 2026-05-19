@@ -1,0 +1,22 @@
+namespace rerun.archetypes;
+
+/// A status update, representing a change in the status of an entity.
+///
+/// Useful for representing discrete state machines, mode transitions, or
+/// status changes over time. Each logged [archetypes.Status] marks a new status
+/// at the given time. A `null` status is ignored by the Status view.
+///
+/// The Status view displays these as horizontal colored lanes over time.
+///
+/// \example archetypes/status title="Status changes over time" image="https://static.rerun.io/status/8f224c6e4a9cbbb4b1e279c56a426ec4c6bfca50/1200w.png"
+table Status (
+  "attr.docs.category": "Plotting",
+  "attr.docs.unreleased",
+  "attr.docs.view_types": "StatusView",
+  "attr.rerun.state": "unstable",
+  "attr.rerun.visualizer": "StatusVisualizer",
+  "attr.rust.derive": "PartialEq"
+) {
+  /// The new status value. A `null` status is ignored, it can be used to partially update a multi-instance status array.
+  status: rerun.components.Text ("attr.rerun.component_required", nullable, order: 100);
+}

@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, BinaryArray, BooleanArray, FixedSizeBinaryBuilder, ListBuilder, RecordBatch,
-    RecordBatchOptions, StringArray, StringBuilder, TimestampNanosecondArray, UInt8Array,
-    UInt64Array,
+    Array, ArrayRef, BinaryArray, BooleanArray, DictionaryArray, FixedSizeBinaryBuilder,
+    Int64Array, ListBuilder, PrimitiveDictionaryBuilder, RecordBatch, RecordBatchOptions,
+    StringArray, StringBuilder, TimestampNanosecondArray, UInt8Array, UInt64Array,
 };
-use arrow::datatypes::{DataType, Field, FieldRef, Schema, TimeUnit};
+use arrow::datatypes::{DataType, Field, FieldRef, Int32Type, Int64Type, Schema, TimeUnit};
 use arrow::error::ArrowError;
 use prost::Name as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -242,6 +242,7 @@ impl crate::cloud::v1alpha1::UnregisterFromDatasetRequest {
 #[derive(Debug, Clone)]
 pub struct QueryDatasetRequest {
     pub segment_ids: Vec<crate::common::v1alpha1::ext::SegmentId>,
+    pub generate_direct_urls: bool,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
     pub select_all_entity_paths: bool,
@@ -264,6 +265,7 @@ impl Default for QueryDatasetRequest {
             exclude_temporal_data: false,
             scan_parameters: None,
             query: None,
+            generate_direct_urls: false,
         }
     }
 }
@@ -284,6 +286,7 @@ impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
             exclude_temporal_data: value.exclude_temporal_data,
             scan_parameters: value.scan_parameters.map(Into::into),
             query: value.query.map(Into::into),
+            generate_direct_urls: value.generate_direct_urls,
         }
     }
 }
@@ -334,6 +337,8 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
                 .transpose()?,
 
             query: value.query.map(|q| q.try_into()).transpose()?,
+
+            generate_direct_urls: value.generate_direct_urls,
         })
     }
 }
@@ -349,7 +354,11 @@ impl QueryDatasetResponse {
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
+    pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
     pub const FIELD_CHUNK_BYTE_LENGTH: &str = "chunk_byte_len";
+    pub const FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED: &str = "chunk_byte_size_uncompressed";
+    pub const FIELD_DIRECT_URL: &str = "rerun_layer_direct_url";
+    pub const FIELD_DIRECT_URL_EXPIRES_AT: &str = "rerun_layer_direct_url_expires_at";
 
     pub fn field_chunk_id() -> FieldRef {
         lazy_field_ref!(
@@ -423,6 +432,52 @@ impl QueryDatasetResponse {
         ))
     }
 
+    pub fn field_chunk_byte_len_uncompressed() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED,
+            DataType::UInt64,
+            true
+        ))
+    }
+
+    pub fn field_direct_url() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_DIRECT_URL,
+            DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8)),
+            true
+        ))
+    }
+
+    pub fn field_direct_url_expires_at() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_DIRECT_URL_EXPIRES_AT,
+            DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Int64)),
+            true
+        ))
+    }
+
+    /// Per-timeline `{timeline_name}:start` column that carries `time_min` for each chunk.
+    ///
+    /// Consumed by the client's `build_segment_manifests` to compute the per-segment safe
+    /// horizon; no other downstream consumer reads the time range, so there is no matching
+    /// `:end` column.
+    ///
+    /// The column type is `Int64` because all rerun time types store `i64` internally.
+    pub fn field_timeline_start(timeline_name: &str) -> FieldRef {
+        let metadata = std::collections::HashMap::from([
+            ("rerun:index".to_owned(), timeline_name.to_owned()),
+            (
+                re_sorbet::metadata::RERUN_KIND.to_owned(),
+                "index".to_owned(),
+            ),
+            ("rerun:index_marker".to_owned(), "start".to_owned()),
+        ]);
+        Arc::new(
+            Field::new(format!("{timeline_name}:start"), DataType::Int64, true)
+                .with_metadata(metadata),
+        )
+    }
+
     pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_chunk_id(),
@@ -432,6 +487,9 @@ impl QueryDatasetResponse {
             Self::field_chunk_entity_path(),
             Self::field_chunk_is_static(),
             Self::field_chunk_byte_len(),
+            Self::field_chunk_byte_len_uncompressed(),
+            Self::field_direct_url(),
+            Self::field_direct_url_expires_at(),
         ]
     }
 
@@ -452,10 +510,47 @@ impl QueryDatasetResponse {
         chunk_entity_paths: Vec<String>,
         chunk_is_static: Vec<bool>,
         chunk_byte_lengths: Vec<u64>,
+        chunk_byte_lengths_uncompressed: Vec<Option<u64>>,
+        chunk_direct_urls: Vec<Option<String>>,
+        chunk_direct_urls_expiry: Vec<Option<i64>>,
     ) -> arrow::error::Result<RecordBatch> {
-        let schema = Arc::new(Self::schema());
+        Self::create_dataframe_with_timelines(
+            chunk_ids,
+            chunk_segment_ids,
+            chunk_layer_names,
+            chunk_keys,
+            chunk_entity_paths,
+            chunk_is_static,
+            chunk_byte_lengths,
+            chunk_byte_lengths_uncompressed,
+            chunk_direct_urls,
+            chunk_direct_urls_expiry,
+            &Default::default(),
+        )
+    }
 
-        let columns: Vec<ArrayRef> = vec![
+    #[expect(clippy::too_many_arguments)]
+    pub fn create_dataframe_with_timelines(
+        chunk_ids: Vec<re_chunk::ChunkId>,
+        chunk_segment_ids: Vec<String>,
+        chunk_layer_names: Vec<String>,
+        chunk_keys: Vec<&[u8]>,
+        chunk_entity_paths: Vec<String>,
+        chunk_is_static: Vec<bool>,
+        chunk_byte_lengths: Vec<u64>,
+        chunk_byte_lengths_uncompressed: Vec<Option<u64>>,
+        chunk_direct_urls: Vec<Option<String>>,
+        chunk_direct_urls_expiry: Vec<Option<i64>>,
+        timelines: &std::collections::BTreeMap<String, (DataType, Vec<Option<i64>>)>,
+    ) -> arrow::error::Result<RecordBatch> {
+        let num_rows = chunk_ids.len();
+
+        let mut chunk_direct_url_expiry_builder =
+            PrimitiveDictionaryBuilder::<Int32Type, Int64Type>::new();
+        chunk_direct_url_expiry_builder.extend(chunk_direct_urls_expiry);
+
+        let mut fields: Vec<FieldRef> = Self::fields();
+        let mut columns: Vec<ArrayRef> = vec![
             chunk_ids
                 .to_arrow()
                 .expect("to_arrow for ChunkIds never fails"),
@@ -465,12 +560,28 @@ impl QueryDatasetResponse {
             Arc::new(StringArray::from(chunk_entity_paths)),
             Arc::new(BooleanArray::from(chunk_is_static)),
             Arc::new(UInt64Array::from(chunk_byte_lengths)),
+            Arc::new(UInt64Array::from(chunk_byte_lengths_uncompressed)),
+            Arc::new(
+                chunk_direct_urls
+                    .iter()
+                    .map(|s| s.as_deref())
+                    .collect::<DictionaryArray<Int32Type>>(),
+            ),
+            Arc::new(chunk_direct_url_expiry_builder.finish()),
         ];
 
+        // Caller is responsible for producing the same `timelines` set for every response of a
+        // single query, so all batches share a schema and the client can concatenate them.
+        for (timeline_name, (_data_type, mins)) in timelines {
+            fields.push(Self::field_timeline_start(timeline_name));
+            columns.push(Arc::new(Int64Array::from(mins.clone())) as ArrayRef);
+        }
+
+        let schema = Arc::new(Schema::new(fields));
         RecordBatch::try_new_with_options(
             schema,
             columns,
-            &RecordBatchOptions::default().with_row_count(Some(chunk_ids.len())),
+            &RecordBatchOptions::default().with_row_count(Some(num_rows)),
         )
     }
 }
@@ -682,46 +793,14 @@ impl crate::cloud::v1alpha1::EntryFilter {
     }
 }
 
+pub use crate::EntryName;
+
 // --- EntryDetails ---
-
-/// Maximum length of an entry name.
-const MAX_ENTRY_NAME_LENGTH: usize = 180;
-
-/// Validate an entry name.
-///
-/// Entry names must:
-/// - Be at most 180 characters long
-/// - Only contain ASCII alphanumeric characters, underscores, hyphens, dots, and spaces
-///
-// TODO(RR-3718): Entry names should support a broader set of characters.
-pub fn validate_entry_name(name: &str) -> Result<(), String> {
-    if name.len() > MAX_ENTRY_NAME_LENGTH {
-        return Err(format!(
-            "name '{name}' exceeds maximum length of {MAX_ENTRY_NAME_LENGTH} characters (got {})",
-            name.len()
-        ));
-    }
-
-    if let Some(ch) = name.chars().find(|c| {
-        !c.is_ascii_alphanumeric()
-            && *c != '_'
-            && *c != '-'
-            && *c != '.'
-            && *c != ' '
-            && *c != '['
-            && *c != ']'
-            && *c != ':'
-    }) {
-        return Err(format!("name '{name}' contains invalid character '{ch}'"));
-    }
-
-    Ok(())
-}
 
 #[derive(Debug, Clone)]
 pub struct EntryDetails {
     pub id: re_log_types::EntryId,
-    pub name: String,
+    pub name: EntryName,
     pub kind: crate::cloud::v1alpha1::EntryKind,
     pub created_at: jiff::Timestamp,
     pub updated_at: jiff::Timestamp,
@@ -736,9 +815,11 @@ impl TryFrom<crate::cloud::v1alpha1::EntryDetails> for EntryDetails {
                 .id
                 .ok_or(missing_field!(crate::cloud::v1alpha1::EntryDetails, "id"))?
                 .try_into()?,
-            name: value
-                .name
-                .ok_or(missing_field!(crate::cloud::v1alpha1::EntryDetails, "name"))?,
+            name: EntryName::new(
+                value
+                    .name
+                    .ok_or(missing_field!(crate::cloud::v1alpha1::EntryDetails, "name"))?,
+            )?,
             kind: value.entry_kind.try_into()?,
             created_at: {
                 let ts = value.created_at.ok_or(missing_field!(
@@ -762,7 +843,7 @@ impl From<EntryDetails> for crate::cloud::v1alpha1::EntryDetails {
     fn from(value: EntryDetails) -> Self {
         Self {
             id: Some(value.id.into()),
-            name: Some(value.name),
+            name: Some(value.name.to_string()),
             entry_kind: value.kind as _,
             created_at: {
                 let ts = value.created_at;
@@ -881,7 +962,7 @@ impl From<DatasetEntry> for crate::cloud::v1alpha1::DatasetEntry {
 #[derive(Debug, Clone)]
 pub struct CreateDatasetEntryRequest {
     /// Entry name (must be unique in catalog).
-    pub name: String,
+    pub name: EntryName,
 
     /// Override, use at your own risk.
     pub id: Option<EntryId>,
@@ -890,7 +971,7 @@ pub struct CreateDatasetEntryRequest {
 impl From<CreateDatasetEntryRequest> for crate::cloud::v1alpha1::CreateDatasetEntryRequest {
     fn from(value: CreateDatasetEntryRequest) -> Self {
         Self {
-            name: Some(value.name),
+            name: Some(value.name.to_string()),
             id: value.id.map(Into::into),
         }
     }
@@ -902,12 +983,12 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryRequest> for CreateDatase
     fn try_from(
         value: crate::cloud::v1alpha1::CreateDatasetEntryRequest,
     ) -> Result<Self, Self::Error> {
+        let name_str = value.name.ok_or(missing_field!(
+            crate::cloud::v1alpha1::CreateDatasetEntryRequest,
+            "name"
+        ))?;
         Ok(Self {
-            name: value.name.ok_or(missing_field!(
-                crate::cloud::v1alpha1::CreateDatasetEntryRequest,
-                "name"
-            ))?,
-
+            name: EntryName::new(name_str).map_err(TypeConversionError::InvalidEntryName)?,
             id: value.id.map(TryInto::try_into).transpose()?,
         })
     }
@@ -950,7 +1031,7 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryResponse> for CreateDatas
 
 #[derive(Debug, Clone)]
 pub struct CreateTableEntryRequest {
-    pub name: String,
+    pub name: EntryName,
     pub schema: Schema,
     pub provider_details: Option<ProviderDetails>,
 }
@@ -959,7 +1040,7 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
     type Error = TypeConversionError;
     fn try_from(value: CreateTableEntryRequest) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name,
+            name: value.name.to_string(),
             schema: Some((&value.schema).try_into()?),
             provider_details: value
                 .provider_details
@@ -975,7 +1056,8 @@ impl TryFrom<&crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEn
         value: &crate::cloud::v1alpha1::CreateTableEntryRequest,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name.clone(),
+            name: EntryName::new(value.name.clone())
+                .map_err(TypeConversionError::InvalidEntryName)?,
             schema: value
                 .schema
                 .as_ref()
@@ -1164,20 +1246,28 @@ impl TryFrom<crate::cloud::v1alpha1::DeleteEntryRequest> for re_log_types::Entry
 
 #[derive(Debug, Clone, Default)]
 pub struct EntryDetailsUpdate {
-    pub name: Option<String>,
+    pub name: Option<EntryName>,
 }
 
 impl TryFrom<crate::cloud::v1alpha1::EntryDetailsUpdate> for EntryDetailsUpdate {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::cloud::v1alpha1::EntryDetailsUpdate) -> Result<Self, Self::Error> {
-        Ok(Self { name: value.name })
+        Ok(Self {
+            name: value
+                .name
+                .map(EntryName::new)
+                .transpose()
+                .map_err(TypeConversionError::InvalidEntryName)?,
+        })
     }
 }
 
 impl From<EntryDetailsUpdate> for crate::cloud::v1alpha1::EntryDetailsUpdate {
     fn from(value: EntryDetailsUpdate) -> Self {
-        Self { name: value.name }
+        Self {
+            name: value.name.map(|name| name.to_string()),
+        }
     }
 }
 
@@ -1306,7 +1396,7 @@ impl TryFrom<crate::cloud::v1alpha1::ReadTableEntryResponse> for ReadTableEntryR
 
 #[derive(Debug, Clone)]
 pub struct RegisterTableRequest {
-    pub name: String,
+    pub name: EntryName,
     pub provider_details: ProviderDetails,
 }
 
@@ -1314,7 +1404,7 @@ impl TryFrom<RegisterTableRequest> for crate::cloud::v1alpha1::RegisterTableRequ
     type Error = TypeConversionError;
     fn try_from(value: RegisterTableRequest) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name,
+            name: value.name.to_string(),
             provider_details: Some((&value.provider_details).try_into()?),
         })
     }
@@ -1325,7 +1415,7 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterTableRequest> for RegisterTableRequ
 
     fn try_from(value: crate::cloud::v1alpha1::RegisterTableRequest) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name,
+            name: EntryName::new(value.name).map_err(TypeConversionError::InvalidEntryName)?,
             provider_details: ProviderDetails::try_from(&value.provider_details.ok_or(
                 missing_field!(
                     crate::cloud::v1alpha1::RegisterTableRequest,
@@ -2727,6 +2817,27 @@ impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
 
 // ---
 
+/// Ergonomic counterpart to the codegen'd [`crate::cloud::v1alpha1::VersionResponse`].
+pub struct VersionResponse {
+    pub build_info: Option<re_build_info::BuildInfo>,
+    pub version: String,
+    pub cloud_provider: Option<String>,
+    pub cloud_region: Option<String>,
+}
+
+impl From<crate::cloud::v1alpha1::VersionResponse> for VersionResponse {
+    fn from(value: crate::cloud::v1alpha1::VersionResponse) -> Self {
+        Self {
+            build_info: value.build_info.map(Into::into),
+            version: value.version,
+            cloud_provider: value.cloud_provider,
+            cloud_region: value.cloud_region,
+        }
+    }
+}
+
+// ---
+
 #[cfg(test)]
 mod tests {
     use arrow::datatypes::ToByteSlice as _;
@@ -2742,6 +2853,10 @@ mod tests {
         let chunk_entity_paths = vec!["/".to_owned(), "/".to_owned()];
         let chunk_is_static = vec![true, false];
         let chunk_byte_lengths = vec![1024u64, 2048u64];
+        let direct_urls = vec![None, None];
+        let direct_urls_expiry = vec![None, None];
+
+        let chunk_byte_lengths_uncompressed = vec![Some(2048u64), Some(4096u64)];
 
         QueryDatasetResponse::create_dataframe(
             chunk_ids,
@@ -2751,6 +2866,9 @@ mod tests {
             chunk_entity_paths,
             chunk_is_static,
             chunk_byte_lengths,
+            chunk_byte_lengths_uncompressed,
+            direct_urls,
+            direct_urls_expiry,
         )
         .unwrap();
     }

@@ -3,7 +3,6 @@ use egui::{Id, Key, KeyboardShortcut, Modifiers};
 use smallvec::{SmallVec, smallvec};
 
 use crate::context_ext::ContextExt as _;
-use crate::egui_ext::context_ext::ContextExt as _;
 
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {
@@ -59,6 +58,9 @@ pub enum UICommand {
 
     #[cfg(not(target_arch = "wasm32"))]
     OpenProfiler,
+
+    #[cfg(not(target_arch = "wasm32"))]
+    CaptureProfileTrace,
 
     TogglePanelStateOverrides,
     ToggleMemoryPanel,
@@ -226,6 +228,12 @@ impl UICommand {
             Self::OpenProfiler => (
                 "Open profiler",
                 "Starts a profiler, showing what makes the viewer run slow",
+            ),
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::CaptureProfileTrace => (
+                "Capture profile trace…",
+                "Capture profiling data and save them as a .puffin file",
             ),
 
             Self::ToggleMemoryPanel => (
@@ -461,6 +469,8 @@ impl UICommand {
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => smallvec![ctrl_shift(Key::P)],
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::CaptureProfileTrace => smallvec![],
             Self::ToggleMemoryPanel => smallvec![ctrl_shift(Key::M)],
             Self::TogglePanelStateOverrides => smallvec![],
             Self::ToggleTopPanel => smallvec![],
@@ -493,7 +503,7 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::ZoomReset => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_RESET],
 
-            Self::ToggleCommandPalette => smallvec![cmd(Key::P)],
+            Self::ToggleCommandPalette => smallvec![cmd(Key::P), cmd(Key::K)],
 
             Self::PlaybackTogglePlayPause => smallvec![key(Key::Space)],
             Self::PlaybackFollow => smallvec![alt(Key::ArrowRight)],

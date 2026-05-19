@@ -31,7 +31,8 @@ def test_component_filtering(readonly_test_dataset: DatasetEntry) -> None:
 def test_segment_ordering(readonly_test_dataset: DatasetEntry) -> None:
     for time_index in ["time_1", "time_2", "time_3"]:
         streams = (
-            readonly_test_dataset.reader(index=time_index, fill_latest_at=True)
+            readonly_test_dataset
+            .reader(index=time_index, fill_latest_at=True)
             .select("rerun_segment_id", time_index)
             .execute_stream_partitioned()
         )

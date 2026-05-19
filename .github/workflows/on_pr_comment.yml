@@ -46,6 +46,14 @@ jobs:
     if: needs.parse-command.outputs.command == 'full-check'
     runs-on: ubuntu-latest
     steps:
+      - name: Acknowledge command (eyes reaction)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api -X POST \
+            /repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content=eyes
+
       - name: Checkout repository
         uses: actions/checkout@v4
 

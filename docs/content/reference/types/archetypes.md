@@ -6,7 +6,7 @@ order: 1
 
 Archetypes are bundles of components for which the Rerun viewer has first-class
 built-in support. See [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md) and
-[Visualizers and Overrides](../../concepts/visualization/visualizers-and-overrides.md) for more information.
+[Visualizers and Overrides](../../concepts/visualization/customize-views.md) for more information.
 
 This page lists all built-in archetypes.
 
@@ -42,6 +42,7 @@ This page lists all built-in archetypes.
 * [`Scalars`](archetypes/scalars.md): One or more double-precision scalar values, e.g. for use for time-series plots.
 * [`SeriesLines`](archetypes/series_lines.md): Define the style properties for one or more line series in a chart.
 * [`SeriesPoints`](archetypes/series_points.md): Define the style properties for one or more point series (scatter plot) in a chart.
+* [`Status`](archetypes/status.md): A status update, representing a change in the status of an entity.
 
 ## Spatial 2D
 
@@ -58,6 +59,7 @@ This page lists all built-in archetypes.
 * [`Capsules3D`](archetypes/capsules3d.md): 3D capsules; cylinders with hemispherical caps.
 * [`Cylinders3D`](archetypes/cylinders3d.md): 3D cylinders with flat caps.
 * [`Ellipsoids3D`](archetypes/ellipsoids3d.md): 3D ellipsoids or spheres.
+* [`GridMap`](archetypes/grid_map.md): A 2D grid map stored as raster data in an image buffer, with a cell size in scene units and pose.
 * [`InstancePoses3D`](archetypes/instance_poses3d.md): One or more transforms applied on the current entity's transform frame.
 * [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
 * [`Mesh3D`](archetypes/mesh3d.md): A 3D triangle mesh as specified by its per-mesh and per-vertex properties.

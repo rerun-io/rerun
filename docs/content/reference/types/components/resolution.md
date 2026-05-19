@@ -13,7 +13,7 @@ Typically in integer units, but for some use cases floating point may be used.
 
 ## Arrow datatype
 ```
-FixedSizeList<2, float32>
+FixedSizeList(2 x non-null Float32)
 ```
 
 ## API reference links

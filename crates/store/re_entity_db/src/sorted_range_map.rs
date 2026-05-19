@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 /// A sorted, immutable collection of inclusive ranges mapped to values.
 ///
 /// Supports O(log N) queries for overlapping ranges.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SortedRangeMap<K, V> {
     /// Entries sorted by `range.start()`.
     entries: Vec<(RangeInclusive<K>, V)>,
@@ -11,6 +11,15 @@ pub struct SortedRangeMap<K, V> {
     /// `max_end[i] = maximum range.end()` for `entries[0..=i]`.
     /// Used to prune the search space.
     max_end: Vec<K>,
+}
+
+impl<K, V> Default for SortedRangeMap<K, V> {
+    fn default() -> Self {
+        Self {
+            entries: Vec::new(),
+            max_end: Vec::new(),
+        }
+    }
 }
 
 impl<K, V> re_byte_size::SizeBytes for SortedRangeMap<K, V>
@@ -25,24 +34,6 @@ where
 }
 
 impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
-    pub fn new(mut entries: Vec<(RangeInclusive<K>, V)>) -> Self {
-        entries.sort_by(|a, b| a.0.start().cmp(b.0.start()));
-
-        let mut max_end = Vec::with_capacity(entries.len());
-        let mut running_max = None::<K>;
-
-        for (range, _) in &entries {
-            let new_max = match running_max {
-                Some(m) => m.max(*range.end()),
-                None => *range.end(),
-            };
-            running_max = Some(new_max);
-            max_end.push(new_max);
-        }
-
-        Self { entries, max_end }
-    }
-
     /// Returns an iterator over all (range, value) pairs that overlap with `query`.
     /// Results are yielded in order of `range.start()` (ascending).
     ///
@@ -58,11 +49,46 @@ impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
         }
     }
 
+    /// Resume a previously suspended overlap query from a saved cursor.
+    #[inline]
+    pub fn resume_query(
+        &self,
+        query: RangeInclusive<K>,
+        cursor: OverlapIterState,
+    ) -> OverlapIter<'_, K, V> {
+        OverlapIter {
+            map: self,
+            query,
+            idx: cursor.0,
+        }
+    }
+
     /// Find the first index that could possibly overlap with the query.
     #[inline]
     fn find_first_possible(&self, query: &RangeInclusive<K>) -> usize {
         // We need max_end[i] >= query.start for any overlap to be possible
         self.max_end.partition_point(|max| *max < *query.start())
+    }
+
+    /// Append new entries and re-sort.
+    pub fn extend(&mut self, new_entries: Vec<(RangeInclusive<K>, V)>) {
+        self.entries.extend(new_entries);
+        self.entries.sort_by(|a, b| a.0.start().cmp(b.0.start()));
+        self.update_max_end();
+    }
+
+    fn update_max_end(&mut self) {
+        self.max_end.clear();
+        self.max_end.reserve_exact(self.entries.len());
+        let mut running_max = None::<K>;
+        for (range, _) in &self.entries {
+            let new_max = match running_max {
+                Some(m) => m.max(*range.end()),
+                None => *range.end(),
+            };
+            running_max = Some(new_max);
+            self.max_end.push(new_max);
+        }
     }
 
     #[inline]
@@ -78,12 +104,28 @@ impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
     }
 }
 
+/// Opaque position within an [`OverlapIter`].
+///
+/// Obtain one via [`OverlapIter::cursor`] and pass it to
+/// [`SortedRangeMap::resume_query`] to continue iteration later.
+#[derive(Debug, Clone, Copy)]
+pub struct OverlapIterState(usize);
+
 /// Non-allocating iterator over overlapping ranges.
 #[derive(Debug, Clone)]
 pub struct OverlapIter<'a, K, V> {
     map: &'a SortedRangeMap<K, V>,
     query: RangeInclusive<K>,
     idx: usize,
+}
+
+impl<K, V> OverlapIter<'_, K, V> {
+    /// Snapshot the current position so the query can be resumed later
+    /// via [`SortedRangeMap::resume_query`].
+    #[inline]
+    pub fn cursor(&self) -> OverlapIterState {
+        OverlapIterState(self.idx)
+    }
 }
 
 impl<'a, K: Ord + Copy, V> Iterator for OverlapIter<'a, K, V> {
@@ -121,6 +163,19 @@ impl<K: Ord + Copy, V> std::iter::FusedIterator for OverlapIter<'_, K, V> {}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
+        pub fn new(mut entries: Vec<(RangeInclusive<K>, V)>) -> Self {
+            entries.sort_by(|a, b| a.0.start().cmp(b.0.start()));
+
+            let mut slf = Self {
+                entries,
+                max_end: vec![],
+            };
+            slf.update_max_end();
+            slf
+        }
+    }
 
     #[test]
     fn test_basic_overlap() {

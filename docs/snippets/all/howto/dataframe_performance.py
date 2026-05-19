@@ -1,10 +1,13 @@
 """Sample snippets highlighting common performance-related improvements"""
 
 import tempfile
-import rerun as rr
-from datafusion import functions as F, col
 from pathlib import Path
+
 import pyarrow as pa
+from datafusion import col
+from datafusion import functions as F
+
+import rerun as rr
 
 TMP_FILE = tempfile.NamedTemporaryFile(suffix=".rrd")
 RRD_PATH = TMP_FILE.name

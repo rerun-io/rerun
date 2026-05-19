@@ -1,29 +1,20 @@
-use std::collections::BTreeSet;
+use std::fmt::Write as _;
 
 use egui::NumExt as _;
 use jiff::SignedDuration;
 use jiff::fmt::friendly::{FractionalUnit, SpanPrinter};
-use re_byte_size::SizeBytes as _;
-use re_chunk_store::Chunk;
 use re_chunk_store::ChunkStoreConfig;
-use re_entity_db::{EntityDb, RrdManifestIndex};
+use re_entity_db::{EntityDb, entity_db::RedapConnectionState};
 use re_format::{format_bytes, format_uint};
 use re_log_channel::LogSource;
-use re_log_types::{EntityPath, StoreKind};
+use re_log_types::StoreKind;
 use re_ui::UiExt as _;
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::{AppContext, UiLayout};
 
 use crate::item_ui::{app_id_button_ui, data_source_button_ui};
 
-impl crate::DataUi for EntityDb {
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        _query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
+impl crate::AppUi for EntityDb {
+    fn app_ui(&self, ctx: &AppContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         re_tracing::profile_function!();
 
         if ui_layout.is_single_line() {
@@ -32,16 +23,16 @@ impl crate::DataUi for EntityDb {
             // contexts).
             let mut string = self.store_id().recording_id().to_string();
             if let Some(data_source) = &self.data_source {
-                string += &format!(", {data_source}");
+                write!(string, ", {data_source}").ok();
             }
-            string += &format!(", {}", self.store_id().application_id());
+            write!(string, ", {}", self.store_id().application_id()).ok();
 
             ui.label(string);
             return;
         }
 
         egui::Grid::new("entity_db").num_columns(2).show(ui, |ui| {
-            grid_content_ui(self, ctx, ui, ui_layout);
+            grid_content_ui(ctx, self, ui, ui_layout);
         });
 
         let hub = ctx.store_hub();
@@ -50,60 +41,56 @@ impl crate::DataUi for EntityDb {
             StoreKind::Recording => {}
 
             StoreKind::Blueprint => {
-                let active_app_id = ctx.store_context.application_id();
-                let is_active_app_id = self.application_id() == active_app_id;
+                if let Some(active_app_id) = ctx.active_store_context.map(|sc| sc.application_id())
+                {
+                    let is_active_app_id = self.application_id() == active_app_id;
 
-                if is_active_app_id {
-                    let is_default =
-                        hub.default_blueprint_id_for_app(active_app_id) == Some(self.store_id());
-                    let is_active =
-                        hub.active_blueprint_id_for_app(active_app_id) == Some(self.store_id());
+                    if is_active_app_id {
+                        let is_default = hub.default_blueprint_id_for_app(active_app_id)
+                            == Some(self.store_id());
+                        let is_active =
+                            hub.active_blueprint_id_for_app(active_app_id) == Some(self.store_id());
 
-                    match (is_default, is_active) {
-                        (false, false) => {}
-                        (true, false) => {
-                            ui.add_space(8.0);
-                            ui.label("This is the default blueprint for the current application.");
+                        match (is_default, is_active) {
+                            (false, false) => {}
+                            (true, false) => {
+                                ui.add_space(8.0);
+                                ui.label(
+                                    "This is the default blueprint for the current application.",
+                                );
 
-                            if let Some(active_blueprint) =
-                                hub.active_blueprint_for_app(active_app_id)
-                                && active_blueprint.cloned_from() == Some(self.store_id())
-                            {
-                                // The active blueprint is a clone of the selected blueprint.
-                                if self.latest_row_id() == active_blueprint.latest_row_id() {
-                                    ui.label("The active blueprint is a clone of this blueprint.");
-                                } else {
-                                    ui.label("The active blueprint is a modified clone of this blueprint.");
+                                if let Some(active_blueprint) =
+                                    hub.active_blueprint_for_app(active_app_id)
+                                    && active_blueprint.cloned_from() == Some(self.store_id())
+                                {
+                                    // The active blueprint is a clone of the selected blueprint.
+                                    if self.latest_row_id() == active_blueprint.latest_row_id() {
+                                        ui.label(
+                                            "The active blueprint is a clone of this blueprint.",
+                                        );
+                                    } else {
+                                        ui.label("The active blueprint is a modified clone of this blueprint.");
+                                    }
                                 }
                             }
+                            (false, true) => {
+                                ui.add_space(8.0);
+                                ui.label(format!("This is the active blueprint for the current application, '{active_app_id}'"));
+                            }
+                            (true, true) => {
+                                ui.add_space(8.0);
+                                ui.label(format!("This is both the active and default blueprint for the current application, '{active_app_id}'"));
+                            }
                         }
-                        (false, true) => {
-                            ui.add_space(8.0);
-                            ui.label(format!("This is the active blueprint for the current application, '{active_app_id}'"));
-                        }
-                        (true, true) => {
-                            ui.add_space(8.0);
-                            ui.label(format!("This is both the active and default blueprint for the current application, '{active_app_id}'"));
-                        }
+                    } else {
+                        ui.add_space(8.0);
+                        ui.label("This blueprint is not for the active application");
                     }
-                } else {
-                    ui.add_space(8.0);
-                    ui.label("This blueprint is not for the active application");
                 }
             }
         }
 
-        if ctx.app_options().show_metrics
-            && self.can_fetch_chunks_from_redap()
-            && ui_layout.is_selection_panel()
-        {
-            ui.add_space(4.0);
-            ui.collapsing_header("In-flight chunk requests", false, |ui| {
-                chunk_requests_ui(ui, self.rrd_manifest_index());
-            });
-        }
-
-        if cfg!(debug_assertions) && !ctx.app_ctx.is_test {
+        if cfg!(debug_assertions) && !ctx.is_test {
             ui.collapsing_header("Debug info", true, |ui| {
                 debug_ui(ui, self);
             });
@@ -111,7 +98,9 @@ impl crate::DataUi for EntityDb {
     }
 }
 
-fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
+fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_layout: UiLayout) {
+    re_tracing::profile_function!();
+
     {
         ui.grid_left_hand_label(&format!("{} ID", db.store_id().kind()));
         ui.label(db.store_id().recording_id().to_string());
@@ -165,7 +154,7 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
         ui.end_row();
     }
 
-    let show_last_modified_time = !ctx.app_ctx.is_test;
+    let show_last_modified_time = !ctx.is_test;
     // Hide in tests because it is non-deterministic (it's based on `RowId`).
     if show_last_modified_time
         && let Some(latest_row_id) = db.latest_row_id()
@@ -173,7 +162,7 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
     {
         let time = re_log_types::Timestamp::from_nanos_since_epoch(nanos_since_epoch);
         ui.grid_left_hand_label("Modified");
-        ui.label(time.format(ctx.app_options().timestamp_format));
+        ui.label(time.format(ctx.app_options.timestamp_format));
         ui.end_row();
     }
 
@@ -221,7 +210,7 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
         if db.rrd_manifest_index().has_manifest() {
             ui.grid_left_hand_label("Downloaded");
 
-            let memory_limit = ctx.app_ctx.memory_limit;
+            let memory_limit = ctx.app_options.memory_limit;
             let max_downloaded_bytes = if db.rrd_manifest_index().is_fully_loaded() {
                 full_size_bytes
             } else {
@@ -241,7 +230,11 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
                     }
                 }
 
-                if num_fully_loaded == num_root_chunks {
+                if db.redap_connection_state() == RedapConnectionState::PartialManifest {
+                    ui.label(format!("{current_size} / ?"));
+                    ui.label(format!("({} / ? chunks)", format_uint(num_fully_loaded)));
+                    ui.end_row();
+                } else if num_fully_loaded == num_root_chunks {
                     ui.label("100%");
                 } else {
                     ui.label(format!("{current_size} / {max_downloaded}"));
@@ -267,6 +260,31 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
 
             ui.end_row();
         }
+    }
+
+    {
+        // Stats like number of columns, rows, etc
+
+        let storage_engine = db.storage_engine();
+        let store = storage_engine.store();
+        let schema = store.schema().chunk_column_descriptors();
+
+        ui.grid_left_hand_label("Entities")
+            .on_hover_text("In the ChunkStore");
+        ui.label(re_format::format_uint(store.all_entities().len()));
+        ui.end_row();
+
+        ui.grid_left_hand_label("Timeline columns");
+        ui.label(re_format::format_uint(schema.indices.len()));
+        ui.end_row();
+
+        ui.grid_left_hand_label("Data columns");
+        ui.label(re_format::format_uint(schema.components.len()));
+        ui.end_row();
+
+        ui.grid_left_hand_label("Rows");
+        ui.label(re_format::format_uint(store.stats().total().num_rows));
+        ui.end_row();
     }
 
     if ui_layout.is_selection_panel() {
@@ -308,7 +326,7 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
 
                     This compaction process is an ephemeral, in-memory optimization of the Rerun viewer.\
                     It will not modify the recording itself: use the `Save` command of the viewer, or the \
-                    `rerun rrd compact` CLI tool if you wish to persist the compacted results, which will \
+                    `rerun rrd optimize` CLI tool if you wish to persist the compacted results, which will \
                     make future runs cheaper.
                     ",
                         chunk_max_rows = re_format::format_uint(chunk_max_rows),
@@ -331,150 +349,27 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
     }
 }
 
-fn chunk_requests_ui(ui: &mut egui::Ui, rrd_manifest_index: &RrdManifestIndex) {
-    let Some(rrd_manifest) = rrd_manifest_index.manifest() else {
-        return;
-    };
-
-    let chunk_requests = rrd_manifest_index.chunk_requests();
-    let requests = chunk_requests.pending_requests();
-
-    let col_chunk_entity_path_raw = rrd_manifest.col_chunk_entity_path_raw();
-
-    let mut entities = BTreeSet::<EntityPath>::new();
-    let mut total_in_flight_bytes = 0;
-    let mut total_uncompressed_bytes = 0;
-    let mut total_chunks = 0;
-    for request in &requests {
-        total_in_flight_bytes += request.size_bytes_on_wire;
-        total_uncompressed_bytes += request.size_bytes_uncompressed;
-        total_chunks += request.row_indices.len() as u64;
-
-        for &row_idx in &request.row_indices {
-            let path = col_chunk_entity_path_raw.value(row_idx);
-            entities.insert(EntityPath::parse_forgiving(path));
-        }
-    }
-
-    ui.label("Data currently being downloaded from the server");
-
-    egui::Grid::new("chunk-requests").show(ui, |ui| {
-        ui.label("Speed");
-        if let Some(bytes_per_second) = chunk_requests.bandwidth() {
-            ui.label(format!("{}/s", format_bytes(bytes_per_second)));
-            if 0.0 < bytes_per_second {
-                ui.request_repaint(); // Show latest estimate
-            }
-        }
-        ui.end_row();
-
-        ui.label("Requests");
-        ui.label(format_uint(requests.len()));
-        ui.end_row();
-
-        ui.label("Chunks");
-        ui.label(format_uint(total_chunks));
-        ui.end_row();
-
-        ui.label("Recently canceled");
-        ui.label(format_uint(
-            chunk_requests
-                .recently_canceled
-                .iter()
-                .map(|(_time, count)| count)
-                .sum::<usize>(),
-        ));
-        ui.end_row();
-
-        ui.label("Bytes (compressed)");
-        ui.label(format_bytes(total_in_flight_bytes as _));
-        ui.end_row();
-
-        ui.label("Bytes (uncompressed)");
-        ui.label(format_bytes(total_uncompressed_bytes as _));
-        ui.end_row();
-
-        ui.label("Entities");
-        ui.label(format_uint(entities.len()));
-        ui.end_row();
-    });
-
-    for entity in &entities {
-        ui.label(format!("  - {entity}"));
-    }
-}
-
 fn debug_ui(ui: &mut egui::Ui, db: &EntityDb) {
     ui.weak("(only visible in debug builds)");
     egui::Grid::new("debug-info").show(ui, |ui| {
+        if let Some(manifest) = db.rrd_manifest_index().manifest() {
+            ui.label("Entities");
+            ui.label(format_uint(
+                manifest.recording_schema().all_entities().len(),
+            ));
+            ui.end_row();
+        }
+
         ui.label("is_buffering");
         ui.label(db.is_buffering().to_string());
         ui.end_row();
 
+        ui.label("Connection");
+        ui.label(format!("{:?}", db.redap_connection_state()));
+        ui.end_row();
+
         ui.label("Physical chunks");
         ui.label(format_bytes(db.byte_size_of_physical_chunks() as _));
-        ui.end_row();
-
-        ui.label("App overhead");
-        if let Some(overhead) = db.estimated_application_overhead_bytes {
-            ui.label(format_bytes(overhead as _));
-        }
-        ui.end_row();
-    });
-
-    protected_chunks_ui(ui, db);
-}
-
-fn protected_chunks_ui(ui: &mut egui::Ui, db: &EntityDb) {
-    #![expect(clippy::iter_over_hash_type)] // just summing sizes, order doesn't matter
-
-    let rrd_manifest_index = db.rrd_manifest_index();
-    let protected = rrd_manifest_index.chunk_prioritizer().protected_chunks();
-
-    if protected.roots.is_empty() && protected.physical.is_empty() {
-        return;
-    }
-
-    let manifest = rrd_manifest_index.manifest();
-    let store = db.storage_engine();
-    let store = store.store();
-
-    // Compute root (virtual) chunk sizes from the manifest
-    let mut roots_total_bytes: u64 = 0;
-    if let Some(manifest) = &manifest {
-        let col_sizes = manifest.col_chunk_byte_size_uncompressed();
-        for root_id in &protected.roots {
-            if let Some(info) = rrd_manifest_index.root_chunk_info(root_id) {
-                roots_total_bytes += col_sizes[info.row_id];
-            }
-        }
-    }
-
-    // Compute physical chunk sizes from the store
-    let mut physical_total_bytes: u64 = 0;
-    for chunk_id in &protected.physical {
-        if let Some(chunk) = store.physical_chunk(chunk_id) {
-            physical_total_bytes += Chunk::total_size_bytes(chunk.as_ref());
-        }
-    }
-
-    ui.add_space(4.0);
-    ui.label("Protected chunks");
-    egui::Grid::new("protected-chunks").show(ui, |ui| {
-        ui.label("Roots");
-        ui.label(format!(
-            "{} chunks, {}",
-            format_uint(protected.roots.len()),
-            format_bytes(roots_total_bytes as _),
-        ));
-        ui.end_row();
-
-        ui.label("Physical");
-        ui.label(format!(
-            "{} chunks, {}",
-            format_uint(protected.physical.len()),
-            format_bytes(physical_total_bytes as _),
-        ));
         ui.end_row();
     });
 }

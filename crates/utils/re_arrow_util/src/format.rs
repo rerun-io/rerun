@@ -9,7 +9,21 @@ use comfy_table::{Cell, Row, Table, presets};
 use itertools::{Either, Itertools as _};
 use re_tuid::Tuid;
 
-use crate::{ArrowArrayDowncastRef as _, format_field_datatype};
+use crate::ArrowArrayDowncastRef as _;
+
+// ---
+
+/// Format the datatype of a field (column) with optional nullability
+pub fn format_field_datatype(field: &Field) -> String {
+    if field.is_nullable() {
+        field.data_type().to_string()
+    } else {
+        // This follows the notation set by arrow-rs.
+        // If we change this, we should probably change
+        // arrow-rs and datafusion to match.
+        format!("non-null {}", field.data_type())
+    }
+}
 
 // ---
 

@@ -114,7 +114,9 @@ fn context_menu_ui_for_item_with_context_impl(
             // handle selection
             match selection_update_behavior {
                 SelectionUpdateBehavior::UseSelection => {
-                    if !ctx.selection().contains_item(item) {
+                    if ctx.selection().contains_item(item) {
+                        show_context_menu(ctx.selection());
+                    } else {
                         // When the context menu is triggered open, we check if we're part of the selection,
                         // and, if not, we update the selection to include only the item that was clicked.
                         if item_response.hovered() && item_response.secondary_clicked() {
@@ -124,8 +126,6 @@ fn context_menu_ui_for_item_with_context_impl(
                         } else {
                             show_context_menu(ctx.selection());
                         }
-                    } else {
-                        show_context_menu(ctx.selection());
                     }
                 }
 
@@ -386,8 +386,10 @@ trait ContextMenuAction {
                 }
                 Item::Container(container_id) => self.process_container(ctx, container_id),
                 Item::RedapServer(origin) => self.process_redap_server(ctx, origin),
-                Item::RedapEntry(entry) => {
-                    self.process_redap_entry(ctx, &entry.entry_id);
+                Item::RedapEntry { kind, .. } => {
+                    if let Some(entry_id) = kind.entry_id() {
+                        self.process_redap_entry(ctx, &entry_id);
+                    }
                 }
             }
         }

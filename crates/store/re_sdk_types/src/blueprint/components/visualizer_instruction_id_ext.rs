@@ -1,3 +1,5 @@
+use re_log_types::EntityPath;
+
 use super::VisualizerInstructionId;
 use crate::datatypes::Uuid;
 
@@ -19,8 +21,11 @@ impl VisualizerInstructionId {
     /// This is used internally for generating stable IDs for heuristically
     /// created visualizers.
     #[inline]
-    pub fn new_deterministic(hash: u64, index: usize) -> Self {
-        Self(Uuid::from(uuid::Uuid::from_u64_pair(hash, index as u64)))
+    pub fn new_deterministic(entity_path: &EntityPath, index: usize) -> Self {
+        Self(Uuid::from(uuid::Uuid::from_u64_pair(
+            entity_path.calculate_deterministic_hash(),
+            index as u64,
+        )))
     }
 }
 

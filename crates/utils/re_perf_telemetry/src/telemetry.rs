@@ -3,14 +3,15 @@ use std::sync::Arc;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithTonicConfig as _;
 use opentelemetry_sdk::logs::SdkLoggerProvider;
-use opentelemetry_sdk::metrics::SdkMeterProvider;
+use opentelemetry_sdk::metrics::{Aggregation, SdkMeterProvider};
 use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor, SdkTracerProvider};
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Layer as _};
 
 use crate::shared_reader::SharedManualReader;
-use crate::{LogFormat, TelemetryArgs, TraceIdLayer};
+use crate::trace_id_format::TraceIdFormat;
+use crate::{BenchmarkIdLayer, LogFormat, SpanMetadataCleanupLayer, TelemetryArgs};
 
 // ---
 
@@ -230,6 +231,7 @@ impl Telemetry {
                 //
                 .add_directive_if_absent(base, "lance::index", "off")?
                 .add_directive_if_absent(base, "lance::io::exec", "off")?
+                .add_directive_if_absent(base, "lance::execution", "warn")?
                 .add_directive_if_absent(base, "lance::dataset::scanner", "off")?
                 .add_directive_if_absent(base, "lance_index", "off")?
                 .add_directive_if_absent(base, "lance::dataset::builder", "off")?
@@ -268,8 +270,10 @@ impl Telemetry {
 
             // Everything is generically typed, which is why this is such a nightmare to do.
             macro_rules! handle_format {
-                ($format:ident) => {{
-                    let layer = layer.$format();
+                ($format:ident, $is_json:expr) => {{
+                    let layer = layer
+                        .$format()
+                        .map_event_format(|f| TraceIdFormat::new(f, $is_json));
                     if log_test_output {
                         layer.with_test_writer().boxed()
                     } else {
@@ -278,9 +282,9 @@ impl Telemetry {
                 }};
             }
             let layer = match log_format {
-                LogFormat::Pretty => handle_format!(pretty),
-                LogFormat::Compact => handle_format!(compact),
-                LogFormat::Json => handle_format!(json),
+                LogFormat::Pretty => handle_format!(pretty, false),
+                LogFormat::Compact => handle_format!(compact, false),
+                LogFormat::Json => handle_format!(json, true),
             };
 
             layer.with_filter(create_filter(&log_filter, "warn")?)
@@ -392,6 +396,32 @@ impl Telemetry {
         let (metric_provider, metrics_reader) = if otel_enabled {
             let mut builder = SdkMeterProvider::builder();
 
+            // Use base-2 exponential histograms (OTel equivalent of Prometheus native
+            // histograms) instead of explicit bucket histograms. This avoids hardcoding
+            // bucket boundaries and lets the SDK auto-scale resolution.
+            builder = builder.with_view(|instrument: &opentelemetry_sdk::metrics::Instrument| {
+                if instrument.kind() == opentelemetry_sdk::metrics::InstrumentKind::Histogram {
+                    opentelemetry_sdk::metrics::Stream::builder()
+                        .with_aggregation(Aggregation::Base2ExponentialHistogram {
+                            // Max buckets per positive/negative range. Negative buckets
+                            // stay empty for duration/size metrics. Comparable to the
+                            // ~10 explicit buckets we had before, but with auto-scaling
+                            // boundaries.
+                            max_size: 20,
+                            // Starting resolution scale. The base of each bucket is
+                            // 2^(2^(-scale)). At scale 20 (the maximum), buckets are
+                            // extremely fine-grained; the SDK automatically downscales
+                            // when observations exceed max_size buckets.
+                            max_scale: 20,
+                            record_min_max: true,
+                        })
+                        .build()
+                        .ok()
+                } else {
+                    None
+                }
+            });
+
             // OTLP exporter for push-based metrics
             let otlp_exporter = opentelemetry_otlp::MetricExporter::builder()
                 .with_temporality(opentelemetry_sdk::metrics::Temporality::Cumulative)
@@ -432,7 +462,8 @@ impl Telemetry {
                     .with(layer_logs_otlp)
                     .with(layer_logs_and_traces_stdio)
                     .with(layer_traces_otlp)
-                    .with(TraceIdLayer::default())
+                    .with(BenchmarkIdLayer::default())
+                    .with(SpanMetadataCleanupLayer::default())
                     .with(self::tracy::tracy_layer())
                     .try_init()?;
             }
@@ -446,7 +477,8 @@ impl Telemetry {
                 .with(layer_logs_otlp)
                 .with(layer_logs_and_traces_stdio)
                 .with(layer_traces_otlp)
-                .with(TraceIdLayer::default())
+                .with(BenchmarkIdLayer::default())
+                .with(SpanMetadataCleanupLayer::default())
                 .try_init()?;
         }
 

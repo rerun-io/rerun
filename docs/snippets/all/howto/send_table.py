@@ -1,6 +1,7 @@
 """Sets the recording properties."""
 
 import pyarrow as pa
+
 from rerun.experimental import ViewerClient
 
 client = ViewerClient(addr="rerun+http://0.0.0.0:9876/proxy")

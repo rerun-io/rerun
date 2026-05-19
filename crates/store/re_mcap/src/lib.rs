@@ -1,13 +1,16 @@
 //! Library providing utilities to load MCAP files with Rerun.
 
+pub mod decoders;
 mod error;
-pub mod layers;
 
 pub(crate) mod parsers;
 pub(crate) mod util;
 
+pub use decoders::{
+    Decoder, DecoderIdentifier, DecoderRegistry, MessageDecoder, SelectedDecoders, TopicFilter,
+};
+
 pub use error::Error;
-pub use layers::{Layer, LayerIdentifier, LayerRegistry, MessageLayer, SelectedLayers};
 pub use parsers::ros2msg::sensor_msgs::{
     ImageEncoding, decode_image_encoding, decode_image_format,
 };

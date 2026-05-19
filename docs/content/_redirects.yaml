@@ -55,15 +55,21 @@ concepts/visualization/visualizers-and-overrides: concepts/visualization/customi
 # Reference section
 reference/dataframes: concepts/query-and-transform/dataframe-queries
 concepts/query-and-transform/dataframes: concepts/query-and-transform/dataframe-queries
-reference/data-loaders: concepts/logging-and-ingestion/data-loaders/overview
-reference/data-loaders/cpp: concepts/logging-and-ingestion/data-loaders/cpp
-reference/data-loaders/overview: concepts/logging-and-ingestion/data-loaders/overview
-reference/data-loaders/python: concepts/logging-and-ingestion/data-loaders/python
-reference/data-loaders/rust: concepts/logging-and-ingestion/data-loaders/rust
+reference/data-loaders: concepts/logging-and-ingestion/importers/overview
+reference/data-loaders/cpp: concepts/logging-and-ingestion/importers/cpp
+reference/data-loaders/overview: concepts/logging-and-ingestion/importers/overview
+reference/data-loaders/python: concepts/logging-and-ingestion/importers/python
+reference/data-loaders/rust: concepts/logging-and-ingestion/importers/rust
+concepts/logging-and-ingestion/data-loaders: concepts/logging-and-ingestion/importers
+concepts/logging-and-ingestion/data-loaders/overview: concepts/logging-and-ingestion/importers/overview
+concepts/logging-and-ingestion/data-loaders/python: concepts/logging-and-ingestion/importers/python
+concepts/logging-and-ingestion/data-loaders/rust: concepts/logging-and-ingestion/importers/rust
+concepts/logging-and-ingestion/data-loaders/cpp: concepts/logging-and-ingestion/importers/cpp
 reference/entity-queries: concepts/visualization/entity-queries
 reference/mcap: concepts/logging-and-ingestion/mcap/message-formats
 reference/mcap/cli-reference: concepts/logging-and-ingestion/mcap/cli-reference
-reference/mcap/layers-explained: concepts/logging-and-ingestion/mcap/layers-explained
+reference/mcap/layers-explained: concepts/logging-and-ingestion/mcap/decoders-explained
+reference/mcap/decoders-explained: concepts/logging-and-ingestion/mcap/decoders-explained
 reference/mcap/message-formats: concepts/logging-and-ingestion/mcap/message-formats
 reference/migration-0-9: reference/migration/migration-0-9
 reference/sdk: reference/sdk/logging-controls
@@ -75,7 +81,7 @@ reference/viewer: reference/viewer/overview
 # Howto section
 howto/build-a-blueprint-programmatically: howto/visualization/build-a-blueprint-programmatically
 howto/callbacks: howto/visualization/callbacks
-howto/configure-viewer-through-code: getting-started/configure-the-viewer#programmatic-blueprints
+howto/configure-viewer-through-code: getting-started/configure-the-viewer/navigating-the-viewer#programmatic-blueprints
 howto/dataframe-api: howto/query-and-transform/get-data-out
 howto/embed-rerun-viewer: howto/integrations/embed-web
 howto/fixed-window-plot: howto/visualization/fixed-window-plot

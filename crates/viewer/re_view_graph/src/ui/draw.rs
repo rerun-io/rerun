@@ -12,7 +12,7 @@ use re_sdk_types::ArrowString;
 use re_ui::list_item;
 use re_viewer_context::{
     DataResultInteractionAddress, HoverHighlight, InteractionHighlight, Item, SelectionHighlight,
-    SystemCommand, SystemCommandSender as _, UiLayout, ViewHighlights, ViewQuery, ViewerContext,
+    StoreViewContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewHighlights, ViewQuery,
 };
 
 use crate::graph::{Graph, Node};
@@ -324,7 +324,7 @@ pub fn draw_entity_rect(
 /// Draws the graph using the layout.
 pub fn draw_graph(
     ui: &mut Ui,
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     graph: &Graph,
     layout: &Layout,
     query: &ViewQuery<'_>,
@@ -362,16 +362,9 @@ pub fn draw_graph(
 
                 response = response.on_hover_ui(|ui| {
                     list_item::list_item_scope(ui, "graph_node_hover", |ui| {
-                        item_ui::instance_path_button(
-                            ctx,
-                            &query.latest_at_query(),
-                            ctx.recording(),
-                            ui,
-                            Some(query.view_id),
-                            &instance_path,
-                        );
+                        item_ui::instance_path_button(ctx, ui, Some(query.view_id), &instance_path);
 
-                        instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                        instance_path.data_ui(ctx, ui, UiLayout::Tooltip);
                     });
                 });
 

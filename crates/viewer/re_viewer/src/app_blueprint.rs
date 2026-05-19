@@ -7,6 +7,7 @@ use re_log_types::EntityPath;
 use re_sdk_types::AsComponents;
 use re_sdk_types::blueprint::archetypes::{PanelBlueprint, TimePanelBlueprint};
 use re_sdk_types::blueprint::components::PanelState;
+use re_sdk_types::reflection::Enum as _;
 use re_viewer_context::{
     CommandSender, SystemCommand, SystemCommandSender as _, TIME_PANEL_PATH,
     blueprint_timepoint_for_writes,
@@ -16,12 +17,20 @@ const TOP_PANEL_PATH: &str = "top_panel";
 const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";
 const SELECTION_PANEL_PATH: &str = "selection_panel";
 
+/// egui memory id for panel states when there is no backing blueprint store
+/// (e.g. while browsing Redap catalogs).
+const FALLBACK_PANEL_STATES_ID: &str = "re_viewer.app_blueprint.fallback_panel_states";
+
 /// Blueprint for top-level application
 pub struct AppBlueprint<'a> {
     blueprint_db: Option<&'a EntityDb>,
     is_narrow_screen: bool,
     panel_states: PanelStates,
     overrides: Option<PanelStateOverrides>,
+
+    /// Used to persist panel state across frames when there is no backing
+    /// blueprint store to write it to.
+    egui_ctx: egui::Context,
 }
 
 #[derive(Debug, Clone)]
@@ -32,6 +41,31 @@ pub struct PanelStates {
     pub time: PanelState,
 }
 
+impl serde::Serialize for PanelStates {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        [
+            self.top as u8,
+            self.blueprint as u8,
+            self.selection as u8,
+            self.time as u8,
+        ]
+        .serialize(serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for PanelStates {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let [top, blueprint, selection, time] = <[u8; 4]>::deserialize(deserializer)?;
+        let from_u8 = |value| PanelState::try_from_integer(value).unwrap_or(PanelState::Expanded);
+        Ok(Self {
+            top: from_u8(top),
+            blueprint: from_u8(blueprint),
+            selection: from_u8(selection),
+            time: from_u8(time),
+        })
+    }
+}
+
 impl<'a> AppBlueprint<'a> {
     pub fn new(
         blueprint_db: Option<&'a EntityDb>,
@@ -40,28 +74,30 @@ impl<'a> AppBlueprint<'a> {
         overrides: Option<PanelStateOverrides>,
     ) -> Self {
         let screen_size = egui_ctx.content_rect().size();
+        let default_panel_states = PanelStates {
+            top: PanelState::Expanded,
+            blueprint: if screen_size.x > 750.0 {
+                PanelState::Expanded
+            } else {
+                PanelState::Collapsed
+            },
+            selection: if screen_size.x > 1000.0 {
+                PanelState::Expanded
+            } else {
+                PanelState::Collapsed
+            },
+            time: if screen_size.y > 600.0 {
+                PanelState::Expanded
+            } else {
+                PanelState::Collapsed
+            },
+        };
         let mut ret = Self {
             blueprint_db,
             is_narrow_screen: screen_size.x < 600.0,
-            panel_states: PanelStates {
-                top: PanelState::Expanded,
-                blueprint: if screen_size.x > 750.0 {
-                    PanelState::Expanded
-                } else {
-                    PanelState::Collapsed
-                },
-                selection: if screen_size.x > 1000.0 {
-                    PanelState::Expanded
-                } else {
-                    PanelState::Collapsed
-                },
-                time: if screen_size.y > 600.0 {
-                    PanelState::Expanded
-                } else {
-                    PanelState::Collapsed
-                },
-            },
+            panel_states: default_panel_states.clone(),
             overrides,
+            egui_ctx: egui_ctx.clone(),
         };
 
         if let Some(blueprint_db) = blueprint_db {
@@ -85,6 +121,15 @@ impl<'a> AppBlueprint<'a> {
             if let Some(state) = load_panel_state(&TIME_PANEL_PATH.into(), blueprint_db, query) {
                 ret.panel_states.time = state;
             }
+        } else {
+            // No blueprint store (e.g. Redap catalog browsing, loading screen).
+            // Persist panel states across frames in egui memory so the toggle buttons still work.
+            let id = egui::Id::new(FALLBACK_PANEL_STATES_ID);
+            ret.panel_states = egui_ctx.memory_mut(|m| {
+                m.data
+                    .get_persisted::<PanelStates>(id)
+                    .unwrap_or(default_panel_states)
+            });
         }
 
         ret
@@ -228,6 +273,27 @@ impl AppBlueprint<'_> {
                 blueprint_db.store_id().clone(),
                 vec![chunk],
             ));
+        } else {
+            // No blueprint to write to; persist in egui memory instead so the
+            // change survives across frames.
+            let id = egui::Id::new(FALLBACK_PANEL_STATES_ID);
+            self.egui_ctx.memory_mut(|m| {
+                let mut states = m
+                    .data
+                    .get_persisted::<PanelStates>(id)
+                    .unwrap_or_else(|| self.panel_states.clone());
+                match panel_name {
+                    TOP_PANEL_PATH => states.top = value,
+                    BLUEPRINT_PANEL_PATH => states.blueprint = value,
+                    SELECTION_PANEL_PATH => states.selection = value,
+                    p if p == TIME_PANEL_PATH => states.time = value,
+                    _ => {
+                        re_log::debug_assert!(false, "Unknown panel name: {panel_name}");
+                    }
+                }
+                m.data.insert_persisted(id, states);
+            });
+            self.egui_ctx.request_repaint();
         }
     }
 }

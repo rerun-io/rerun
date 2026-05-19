@@ -33,7 +33,7 @@ Find both the minimum and maximum values in the range, then use the average of t
 
 ## Arrow datatype
 ```
-uint8
+UInt8
 ```
 
 ## API reference links

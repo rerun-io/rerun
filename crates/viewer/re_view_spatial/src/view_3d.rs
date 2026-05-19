@@ -1,4 +1,5 @@
 use ahash::HashSet;
+use egui::NumExt as _;
 use glam::Vec3;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
@@ -17,14 +18,12 @@ use re_tf::query_view_coordinates;
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass,
-    QueryContext, RecommendedView, RecommendedVisualizers, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, QueryContext, RecommendedView,
+    RecommendedVisualizers, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext,
+    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableReason,
 };
 use re_viewport_blueprint::ViewProperty;
-use smallvec::SmallVec;
 
 use crate::contexts::register_spatial_contexts;
 use crate::heuristics::IndicatedVisualizableEntities;
@@ -136,7 +135,7 @@ impl ViewClass for SpatialView3D {
 
                 let speed = match kind {
                     Eye3DKind::FirstPerson => {
-                        let l = view_state.bounding_boxes.current.size().length() as f64;
+                        let l = view_state.bounding_boxes.region_of_interest_current.size().length() as f64;
                         if l.is_finite() {
                             (0.1 * l).max(MIN_SPEED)
                         } else {
@@ -169,7 +168,7 @@ impl ViewClass for SpatialView3D {
                     );
                     return Position3D::ZERO;
                 };
-                let center = view_state.bounding_boxes.current.center();
+                let center = view_state.bounding_boxes.region_of_interest_current.center();
 
                 if !center.is_finite() {
                     return Position3D::ZERO;
@@ -188,16 +187,18 @@ impl ViewClass for SpatialView3D {
                     );
                     return Position3D::ZERO;
                 };
-                let mut center = view_state.bounding_boxes.current.center();
+                let mut center = view_state.bounding_boxes.region_of_interest_current.center();
 
                 if !center.is_finite() {
                     center = Vec3::ZERO;
                 }
 
-                let mut radius = 1.5 * view_state.bounding_boxes.current.half_size().length();
+                let mut radius = 1.5 * view_state.bounding_boxes.region_of_interest_current.half_size().length();
                 if !radius.is_finite() || radius == 0.0 {
                     radius = 1.0;
                 }
+
+                radius = radius.at_least(crate::eye::EyeController::MIN_ORBIT_DISTANCE);
 
 
                 let scene_view_coordinates =
@@ -325,16 +326,11 @@ impl ViewClass for SpatialView3D {
     fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
+        indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let axes_viz = TransformAxes3DVisualizer::identifier();
         let camera_viz = CamerasVisualizer::identifier();
-
-        let visualizable: HashSet<&ViewSystemIdentifier> = visualizable_entities_per_visualizer
-            .iter()
-            .filter_map(|(visualizer, ents)| ents.contains_key(entity_path).then_some(visualizer))
-            .collect();
 
         let indicated: HashSet<&ViewSystemIdentifier> = indicated_entities_per_visualizer
             .iter()
@@ -348,14 +344,15 @@ impl ViewClass for SpatialView3D {
             .collect();
 
         // Start with all the entities which are both indicated and visualizable.
-        let mut enabled_visualizers: SmallVec<[ViewSystemIdentifier; 4]> = indicated
-            .intersection(&visualizable)
-            .copied()
-            .copied()
+        let mut enabled_visualizers: Vec<_> = visualizers_with_reason
+            .iter()
+            .filter_map(|(viz, _reason)| indicated.contains(viz).then_some(*viz))
             .collect();
 
         // Arrow visualizer is not enabled yet but we could…
-        if !enabled_visualizers.contains(&axes_viz) && visualizable.contains(&axes_viz) {
+        if !enabled_visualizers.contains(&axes_viz)
+            && visualizers_with_reason.iter().any(|(v, _)| *v == axes_viz)
+        {
             // …if we already have the [`CamerasVisualizer`] active.
             if enabled_visualizers.contains(&camera_viz) {
                 enabled_visualizers.push(axes_viz);
@@ -378,7 +375,6 @@ impl ViewClass for SpatialView3D {
         } = IndicatedVisualizableEntities::new(
             ctx,
             Self::identifier(),
-            SpatialViewKind::ThreeD,
             include_entity,
             |indicated_entities| {
                 // ViewCoordinates is a strong indicator that a 3D view is needed.
@@ -390,9 +386,9 @@ impl ViewClass for SpatialView3D {
                 // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
                 // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
                 let engine = ctx.recording_engine();
-                ctx.recording().tree().visit_children_recursively(|path| {
-                    if let Some(components) = engine.store().all_components_for_entity(path)
-                        && components.into_iter().any(|component| {
+                engine.store().entity_tree().visit_children_recursively(|path| {
+                    if let Some(components) = engine.schema().all_components_for_entity(path)
+                        && components.iter().any(|&component| {
                             archetypes::Pinhole::all_components().iter().any(|c| c.component == component)
                             // TODO(#2663): Note that the view coordinates component may be logged by different archetypes.
                                 || component
@@ -523,7 +519,13 @@ impl ViewClass for SpatialView3D {
             state.bounding_box_ui(ui, SpatialViewKind::ThreeD);
 
             #[cfg(debug_assertions)]
-            ui.re_checkbox(&mut state.state_3d.show_smoothed_bbox, "Smoothed bbox");
+            {
+                ui.re_checkbox(&mut state.state_3d.show_smoothed_bbox, "Smoothed bbox");
+                ui.re_checkbox(
+                    &mut state.state_3d.show_per_entity_bbox,
+                    "Per-entity bboxes",
+                );
+            }
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {

@@ -42,7 +42,7 @@ namespace rerun::blueprint::archetypes {
         /// Should empty cells be filled with latest-at queries?
         std::optional<ComponentBatch> apply_latest_at;
 
-        /// Selected columns. If unset, all columns are selected.
+        /// Selected columns. If unset, only the active timeline and all component columns are selected.
         std::optional<ComponentBatch> select;
 
         /// The order of entity path column groups. If unset, the default order is used.
@@ -156,7 +156,7 @@ namespace rerun::blueprint::archetypes {
             return std::move(*this);
         }
 
-        /// Selected columns. If unset, all columns are selected.
+        /// Selected columns. If unset, only the active timeline and all component columns are selected.
         DataframeQuery with_select(const rerun::blueprint::components::SelectedColumns& _select
         ) && {
             select = ComponentBatch::from_loggable(_select, Descriptor_select).value_or_throw();

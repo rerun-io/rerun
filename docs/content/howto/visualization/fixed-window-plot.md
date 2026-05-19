@@ -32,10 +32,10 @@ To create a trailing 5 second window plot, you can specify your `TimeSeriesView`
 rrb.TimeSeriesView(
     origin="plot_path",
     time_ranges=rrb.VisibleTimeRange(
-            timeline="time",
-            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-5.0),
-            end=rrb.TimeRangeBoundary.cursor_relative(),
-        )
+        timeline="time",
+        start=rrb.TimeRangeBoundary.cursor_relative(seconds=-5.0),
+        end=rrb.TimeRangeBoundary.cursor_relative(),
+    ),
 )
 ```
 

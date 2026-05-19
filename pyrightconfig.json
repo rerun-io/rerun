@@ -17,6 +17,7 @@
   "defineConstant": {
     "DEBUG": true
   },
-  "venv": "venv",
+  "venvPath": ".",
+  "venv": ".venv",
   "reportPrivateImportUsage": false
 }

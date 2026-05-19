@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// [`VisualizerComponentMapping`] but without the target.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum VisualizerComponentSource {
     /// See [`ComponentSourceKind::SourceComponent`].
     SourceComponent {
@@ -97,7 +97,7 @@ pub type VisualizerComponentMappings = BTreeMap<ComponentIdentifier, VisualizerC
 ///
 /// The invariant is that the identity mapping is always a valid state (i.e. `Default` produces
 /// an empty/identity mapping that any visualizer satisfies).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RecommendedMappings {
     mandatory_mappings: VisualizerComponentMappings,
 }
@@ -233,7 +233,7 @@ impl VisualizerInstruction {
             re_sdk_types::blueprint::archetypes::VisualizerInstruction::new(
                 self.visualizer_type.as_str(),
             )
-            // We always have ti write the component map because it we may need to clear out old mappings.
+            // We always have to write the component map because it we may need to clear out old mappings.
             // TODO(andreas): can we avoid writing out needless data here? Often there are no mappings, so we keep writing empty arrays.
             .with_component_map(self.component_mappings.iter().map(|(target, mapping)| {
                 let target = target.as_str().into();
@@ -267,6 +267,26 @@ impl VisualizerInstruction {
             }));
 
         ctx.save_blueprint_archetype(self.override_path.clone(), &new_visualizer_instruction);
+    }
+
+    /// Saves an override for the given component and value, and updates the blueprint instruction if necessary.
+    pub fn save_override(
+        &self,
+        ctx: &ViewerContext<'_>,
+        descriptor: &re_sdk_types::ComponentDescriptor,
+        new_value: &dyn re_sdk_types::ComponentBatch,
+    ) {
+        if self.component_mappings.get(&descriptor.component)
+            != Some(&VisualizerComponentSource::Override)
+        {
+            let mut new_instruction = self.clone();
+            new_instruction
+                .component_mappings
+                .insert(descriptor.component, VisualizerComponentSource::Override);
+            new_instruction.write_instruction_to_blueprint(ctx);
+        }
+
+        ctx.save_blueprint_component(self.override_path.clone(), descriptor, new_value);
     }
 }
 

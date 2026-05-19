@@ -54,10 +54,14 @@ df = dataset.dataframe_query_view(
 print(df.count())
 ```
 
-* Example of out-of-process profiling using Jaeger (run `pixi run compose-dev` in the Redap repository to start a Jaeger instance):
+* Example of out-of-process profiling using Jaeger (run `pixi run compose-dev` in the Redap repository to start a Jaeger instance, or `docker run --rm -p 16686:16686 -p 4317:4317 jaegertracing/jaeger:2.11.0` for a standalone instance):
   ```sh
-  # Build the SDK with performance telemetry enabled, in the 'examples' environment:
-  $ py-build-perf-examples
+  # `perf_telemetry` is a default feature of `rerun_py`, so a plain build is enough for OTel/Jaeger:
+  $ pixi run py-build
+
+  # If you additionally want Python-side spans (e.g. via the `@with_tracing` decorator in `rerun._tracing`),
+  # install the tracing extra so the OpenTelemetry Python packages are available:
+  $ pixi run uv pip install 'rerun-sdk[tracing]'
 
   # Run your script with both telemetry and the OpenTelemetry integration enabled:
   $ TELEMETRY_ENABLED=true OTEL_SDK_ENABLED=true <your_script>
@@ -74,8 +78,8 @@ print(df.count())
 
 * Example of in-process profiling using Tracy:
   ```sh
-  # Build the SDK with performance telemetry enabled, in the 'examples' environment:
-  $ py-build-perf-examples
+  # Build the SDK with Tracy support (the `tracy` Cargo feature on `re_perf_telemetry`):
+  $ pixi run py-build-perf-debug     # or `py-build-perf-release`
 
   # Run your script with both telemetry and the Tracy integration enabled:
   $ TELEMETRY_ENABLED=true TRACY_ENABLED=true <your_script>

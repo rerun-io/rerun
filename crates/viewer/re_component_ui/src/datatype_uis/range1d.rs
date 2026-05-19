@@ -4,7 +4,7 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::{MaybeMutRef, UiLayout};
 
 pub fn edit_view_range1d(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = Range1D>>,
 ) -> egui::Response {

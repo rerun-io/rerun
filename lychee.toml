@@ -21,7 +21,7 @@
 
 # Maximum number of concurrent link checks.
 # Workaround for "too many open files" error on MacOS, see https://github.com/lycheeverse/lychee/issues/1248
-max_concurrency = 32
+max_concurrency = 96
 
 # Check links inside `<code>` and `<pre>` blocks as well as Markdown code blocks.
 include_verbatim = true
@@ -53,6 +53,7 @@ exclude_path = [
   ".pixi",
   "build",
   "docs/python/",
+  "landing",
   "rerun_cpp/_deps",
   "rerun_cpp/docs/html",
   "rerun_cpp/docs/xml",
@@ -66,9 +67,14 @@ exclude_path = [
   "target",
   "venv",
 
+  # Generated ghat action definitions (contain upstream URLs we don't control)
+  ".github/ghat/actions",
+
   # Actually ignored files beyond .gitignore
+  "lychee.toml", # Contains regex patterns with URL-like strings that aren't actual links.
   "crates/store/re_uri/src/lib.rs", # Contains some malformed URLs, but they are not actual links.
   "crates/store/re_uri/src/redap_uri.rs", # Same as above.
+  "crates/store/re_grpc_server/src/lib.rs", # Contains CORS tests with fake origin URLs
   "crates/utils/re_analytics/src/event.rs", # Contains test with malformed urls
   "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
   "docs/snippets/INDEX.md", # The snippet index is guaranteed should be correct by design.
@@ -116,21 +122,23 @@ exclude = [
   'https://github.com/rerun-io/rerun/issues/\.*', # Ignore links to our own issues.
 
   # Intentionally faked links.
+  'file:///does/not/exist.rrd',
+  'file:///path/to/file',
+  'file:///tmp/droidnano/Fri_Aug_18_09:46:43_2023.rrd',
   'file://foo',
+  'file://path/to/file.rrd',
+  'file://somehost/file/path.rrd',
   'http://foo.*',
+  'http://x/',
   'https://foo.*',
   'https://link.to',
   'https://rerun.rs',
   'https://static.rerun.io/my_screenshot/',
-  'https://your-hosted-asset-url.com/widget.js',
   'https://your-hosted-asset-url.com/re_viewer_bg.wasm',
-  'file:///path/to/file',
+  'https://your-hosted-asset-url.com/widget.js',
   'rerun://localhost:51234/recording/some-recording-id',
-  'file:///does/not/exist.rrd',
-  'file://path/to/file.rrd',
-  'file://somehost/file/path.rrd',
-  'file:///tmp/droidnano/Fri_Aug_18_09:46:43_2023.rrd',
 
+  'https://customer.cloud.rerun.io/.*',
   'https://redap.rerun.io',
   'http://wrong-scheme',
   'rerun\+http://localhost:\{grpc_port\}/proxy',
@@ -149,11 +157,15 @@ exclude = [
   'https://9p.io/sys/doc/lexnames.html', # Works locally but on CI we get: `Failed: Network error: error:0A000152:SSL routines:final_renegotiate:unsafe legacy renegotiation disabled:ssl/statem/extensions.c:946:`
   'https://claude.site/artifacts/*', # Giving a 500, but only from CI
   'https://fifteen-thirtyeight.rerun.io/script.js', # Gives 403 forbidden on CI.
+  'https://github.com/user-attachments/assets/.*', # Gives Not Found on CI, but works locally.
   'https://lib.rs/*', # Gives 403 forbidden on CI.
   'https://math.stackexchange.com/*', # Gives 403 forbidden on CI.
   'https://pixabay.com/photos/brother-sister-girl-family-boy-977170/', # Gives 403 forbidden on CI.
   'https://stackoverflow.com/*', # Stackoverflow links are no longer accessible from CI.
   'https://vimeo.com/*', # Gives 403 forbidden on CI.
+  'https://vimeo/', # Malformed URL extracted from code doing startsWith checks.
+  'https://player.vimeo.com/*', # Gives 403 forbidden on CI.
+  'https://www.youtube-nocookie.com/*', # Gives 403 forbidden on CI.
   'https://www.npmjs.com/*', # Gives 403 forbidden on CI.
   'https://www.reddit.com/*', # Gives 403 forbidden on CI.
   'https://www.shadertoy.com/*', # 403 on CI
@@ -168,11 +180,14 @@ exclude = [
   # Needs authentication
   'https://.*\.eks\.amazonaws\.com/', # EKS API server endpoints in CI workflows.
   'https://.*\.blob\.core\.windows\.net/', # Azure blob storage, requires auth.
-  'https://edge.meilisearch.com',
+  'https://rerun\.grafana\.net/api/datasources/.*', # Grafana API endpoints, requires auth.
+  'https://ms-b22605aed932-7275.fra.meilisearch.io',
   'https://eu.posthog.com/project/', # Requires to be logged in on PostHog.
   'https://github.com/rerun-io/internal-test-assets/\.*',
   'https://github.com/google/mediapipe/issues/5188', # For some reason that link has always failed.
   'https://www.figma.com/.*',
+
+  'https://stilearning.com/*', # License header URL, site unreachable from CI.
 
   # Temporarily down or not accessible.
   'https://dl.acm.org/doi/10.1145/3638550.3643617', # We might be getting rate-limited here.
@@ -189,6 +204,7 @@ exclude = [
 
   # These are APIs:
   'https://api.linear.app/graphql',
+  'https://api.rootly.com/.*',
   'https://api.workos.com/.*',
   'https://rerun.io/api',
   'https://rerun.io/login',

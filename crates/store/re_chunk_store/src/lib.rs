@@ -14,16 +14,24 @@
 #![doc = document_features::document_features!()]
 //!
 
+mod compact;
 mod dataframe;
+
 mod drop_time_range;
+pub mod entity_tree;
 mod events;
 mod gc;
+#[cfg(not(target_arch = "wasm32"))]
+mod lazy_rrd_store;
 mod lineage;
 mod missing_chunk_reporter;
 mod properties;
 mod query;
+mod rebatch_videos;
+mod split_thick_thin;
 mod stats;
 mod store;
+mod store_schema;
 mod subscribers;
 mod writes;
 
@@ -38,13 +46,16 @@ pub use {
     re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor},
 };
 
+pub use self::compact::{CompactionOptions, IsStartOfGop};
 pub use self::dataframe::{
     Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, StaticColumnSelection,
     ViewContentsSelector,
 };
+pub use self::entity_tree::EntityTree;
 pub use self::events::{
-    ChunkComponentMeta, ChunkMeta, ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreDiffDeletion,
-    ChunkStoreDiffVirtualAddition, ChunkStoreEvent,
+    ChunkComponentMeta, ChunkDeletionReason, ChunkMeta, ChunkStoreDiff, ChunkStoreDiffAddition,
+    ChunkStoreDiffDeletion, ChunkStoreDiffSchemaAddition, ChunkStoreDiffVirtualAddition,
+    ChunkStoreEvent,
 };
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::lineage::{ChunkDirectLineage, ChunkDirectLineageReport};
@@ -56,9 +67,13 @@ pub use self::store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ChunkStoreHandleWeak,
     ColumnMetadata, QueriedChunkIdTracker,
 };
+pub use self::store_schema::StoreSchema;
 pub use self::subscribers::{
     ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::lazy_rrd_store::LazyRrdStore;
 
 pub(crate) use self::store::ColumnMetadataState;
 
@@ -104,6 +119,7 @@ pub enum ChunkTrackingMode {
 
     /// Panic when a chunk is missing.
     ///
-    /// Only use this in tests!
+    /// Only use this in tests, or contexts where there really can't be
+    /// any virtual chunks, and you rather panic than have silent bugs.
     PanicOnMissing,
 }

@@ -2,12 +2,12 @@ use itertools::Itertools as _;
 use rayon::prelude::*;
 use re_sdk_types::archetypes::SeriesPoints;
 use re_sdk_types::components::{self, MarkerShape, MarkerSize};
-use re_sdk_types::{Archetype as _, Component as _, Loggable as _, archetypes};
-use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
+use re_sdk_types::{Archetype as _, Loggable as _, archetypes};
+use re_view::{ChunksWithComponent, clamped_or_nothing, range_with_blueprint_resolved_data};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    AnyPhysicalDatatypeRequirement, IdentifiedViewSystem, ViewContext, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext, ViewQuery,
+    ViewStateExt as _, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
     VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
 };
 
@@ -15,16 +15,16 @@ use crate::series_query::{
     all_scalars_indices, allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars,
     collect_series_name, collect_series_visibility, determine_num_series,
 };
-use crate::{
-    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, ViewPropertyQueryError,
-    util,
-};
+use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, util};
+
+/// Output data from [`SeriesPointsSystem`].
+pub struct SeriesPointsOutput {
+    pub all_series: Vec<PlotSeries>,
+}
 
 /// The system for rendering [`archetypes::SeriesPoints`] archetypes.
 #[derive(Default, Debug)]
-pub struct SeriesPointsSystem {
-    pub all_series: Vec<PlotSeries>,
-}
+pub struct SeriesPointsSystem;
 
 impl IdentifiedViewSystem for SeriesPointsSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -39,12 +39,11 @@ impl VisualizerSystem for SeriesPointsSystem {
     ) -> VisualizerQueryInfo {
         VisualizerQueryInfo {
             relevant_archetype: archetypes::SeriesPoints::name().into(),
-            required: AnyPhysicalDatatypeRequirement {
-                target_component: archetypes::Scalars::descriptor_scalars().component,
-                semantic_type: components::Scalar::name(),
-                physical_types: util::series_supported_datatypes().into_iter().collect(),
-                allow_static_data: false,
-            }
+            constraints: SingleRequiredComponentConstraint::new::<components::Scalar>(
+                &archetypes::Scalars::descriptor_scalars(),
+            )
+            .with_additional_physical_types(util::series_supported_datatypes())
+            .with_allow_static_data(false)
             .into(),
             queried: archetypes::Scalars::all_components()
                 .iter()
@@ -55,7 +54,7 @@ impl VisualizerSystem for SeriesPointsSystem {
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context: &re_viewer_context::ViewContextCollection,
@@ -64,15 +63,16 @@ impl VisualizerSystem for SeriesPointsSystem {
 
         let output = VisualizerExecutionOutput::default();
 
-        let plot_mem =
-            egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
-        let time_per_pixel = util::determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
+        let time_per_pixel = ctx
+            .view_state
+            .downcast_ref::<crate::view_class::TimeSeriesViewState>()
+            .map_or(1.0, |state| state.time_per_pixel);
 
         let data_results: Vec<_> = query
             .iter_visualizer_instruction_for(Self::identifier())
             .collect();
 
-        let all_series: Result<Vec<_>, _> = data_results
+        let all_series: Vec<_> = data_results
             .par_iter()
             .map(|(data_result, instruction)| {
                 Self::load_series(
@@ -86,9 +86,96 @@ impl VisualizerSystem for SeriesPointsSystem {
             })
             .collect();
 
-        self.all_series.extend(all_series?.into_iter().flatten());
+        let mut all_series_flat = Vec::new();
+        all_series_flat.extend(all_series.into_iter().flatten());
 
-        Ok(output)
+        // Build instanced-mesh draw data for the scatter markers (one mesh per `MarkerShape`).
+        let draw_data = Self::build_draw_data(ctx, query, &all_series_flat);
+
+        Ok(output
+            .with_draw_data(draw_data)
+            .with_visualizer_data(SeriesPointsOutput {
+                all_series: all_series_flat,
+            }))
+    }
+}
+
+impl SeriesPointsSystem {
+    fn build_draw_data(
+        ctx: &ViewContext<'_>,
+        query: &ViewQuery<'_>,
+        all_series: &[PlotSeries],
+    ) -> Vec<re_renderer::QueueableDrawData> {
+        re_tracing::profile_function!();
+
+        let render_ctx = ctx.viewer_ctx.render_ctx();
+
+        let view_state = ctx
+            .view_state
+            .as_any()
+            .downcast_ref::<crate::view_class::TimeSeriesViewState>();
+
+        let time_offset = view_state.map_or(0, |state| state.time_offset);
+        let Some(plot_transform) = view_state.and_then(|state| state.plot_transform) else {
+            // First frame: no transform available yet.
+            return Vec::new();
+        };
+
+        let Some(marker_meshes) = ctx
+            .viewer_ctx
+            .store_context
+            .memoizer(|cache: &mut crate::markers::MarkerMeshCache| cache.get_or_build(render_ctx))
+        else {
+            return Vec::new();
+        };
+
+        let mut instances = Vec::new();
+        for series in all_series {
+            if !series.visible || series.points.is_empty() {
+                continue;
+            }
+            let crate::PlotSeriesKind::Scatter(scatter_attrs) = series.kind else {
+                continue;
+            };
+
+            let mut radius = series.radius_ui;
+            if crate::series_query::is_series_highlighted(query, series) {
+                radius += crate::markers::HIGHLIGHT_RADIUS_EXPANSION;
+            }
+
+            let mesh = marker_meshes.for_shape(scatter_attrs.marker);
+
+            for &(time, value) in &series.points {
+                if !value.is_finite() {
+                    continue;
+                }
+
+                // We don't do gpu transforms since that would transform the shape of things, and we
+                // only want to transform the center position.
+                let center = plot_transform.position_from_point(&egui_plot::PlotPoint::new(
+                    (time.saturating_sub(time_offset)) as f64,
+                    value,
+                ));
+                instances.push(crate::markers::marker_instance(
+                    mesh.clone(),
+                    glam::vec2(center.x, center.y),
+                    radius,
+                    series.color,
+                ));
+            }
+        }
+
+        if instances.is_empty() {
+            return Vec::new();
+        }
+
+        match re_renderer::renderer::MeshDrawData::new(render_ctx, &instances) {
+            Ok(draw_data) => vec![draw_data.into()],
+            Err(err) => {
+                re_log::error_once!("Failed to build scatter marker MeshDrawData: {err}");
+                Vec::new()
+            }
+        }
     }
 }
 
@@ -100,7 +187,7 @@ impl SeriesPointsSystem {
         data_result: &re_viewer_context::DataResult,
         instruction: &re_viewer_context::VisualizerInstruction,
         output: &VisualizerExecutionOutput,
-    ) -> Result<Vec<PlotSeries>, ViewPropertyQueryError> {
+    ) -> Vec<PlotSeries> {
         re_tracing::profile_function!(data_result.entity_path.to_string());
 
         let current_query = ctx.current_query();
@@ -108,7 +195,17 @@ impl SeriesPointsSystem {
 
         let data_time_range =
             util::data_result_time_range(ctx.viewer_ctx, data_result, view_query.timeline);
-        let query_range = util::determine_query_range(ctx, data_time_range)?;
+        let query_range = match util::determine_query_range(ctx, data_time_range) {
+            Ok(range) => range,
+            Err(err) => {
+                output.report_unspecified_source(
+                    instruction.id,
+                    VisualizerReportSeverity::Error,
+                    format!("Failed to determine query range: {err}"),
+                );
+                return Vec::new();
+            }
+        };
         let query = re_chunk_store::RangeQuery::new(view_query.timeline, query_range);
 
         let mut results = range_with_blueprint_resolved_data(
@@ -146,12 +243,25 @@ impl SeriesPointsSystem {
         // Wrap results for convenient error-reporting iteration
         let results = re_view::BlueprintResolvedResults::Range(query.clone(), results);
         let results =
-            re_view::VisualizerInstructionQueryResults::new(instruction.id, &results, output);
+            re_view::VisualizerInstructionQueryResults::new(instruction, &results, output);
 
         // If we have no scalars, we can't do anything.
-        let scalar_iter =
-            results.iter_required(archetypes::Scalars::descriptor_scalars().component);
+        let scalar_component = archetypes::Scalars::descriptor_scalars().component;
+        let scalar_iter = results.iter_required(scalar_component);
         let all_scalar_chunks = scalar_iter.chunks();
+
+        // Filter out static times if any slipped in.
+        // It's enough to check the first one chunk since an entire column has to be either temporal or static.
+        let empty_chunks;
+        let all_scalar_chunks = if let Some(chunk) = all_scalar_chunks.chunks.first()
+            && chunk.is_static()
+        {
+            results.report_for_component(scalar_component, VisualizerReportSeverity::Error, "Can't plot data that was logged statically in a time series since there's no temporal dimension");
+            empty_chunks = ChunksWithComponent::empty(scalar_component);
+            &empty_chunks // Proceed with empty data so we catch other errors as well.
+        } else {
+            all_scalar_chunks
+        };
 
         // All the default values for a `PlotPoint`, accounting for both overrides and default values.
         // We know there's only a single value fallback for stroke width, so this is fine, albeit a bit hacky in case we add an array fallback later.
@@ -181,7 +291,6 @@ impl SeriesPointsSystem {
 
         collect_scalars(all_scalar_chunks, &mut points_per_series);
         collect_colors(
-            &query_ctx,
             &query,
             &results,
             all_scalar_chunks,
@@ -232,7 +341,7 @@ impl SeriesPointsSystem {
 
                     let fallback_array = query_ctx
                         .viewer_ctx()
-                        .component_fallback_registry
+                        .component_fallback_registry()
                         .fallback_for(&SeriesPoints::descriptor_markers(), &query_ctx);
                     if let Ok(marker_array) = MarkerShape::from_arrow(&fallback_array) {
                         for (points, marker) in points_per_series
@@ -297,13 +406,11 @@ impl SeriesPointsSystem {
         }
 
         let series_visibility = collect_series_visibility(
-            &query_ctx,
             &results,
             num_series,
             &archetypes::SeriesPoints::descriptor_visible_series(),
         );
         let series_names = collect_series_name(
-            &query_ctx,
             &results,
             num_series,
             &archetypes::SeriesPoints::descriptor_names(),
@@ -330,7 +437,7 @@ impl SeriesPointsSystem {
                 InstancePath::instance(data_result.entity_path.clone(), instance as u64)
             };
 
-            if let Err(err) = util::points_to_series(
+            util::points_to_series(
                 instance_path,
                 time_per_pixel,
                 visible,
@@ -342,14 +449,9 @@ impl SeriesPointsSystem {
                 re_sdk_types::components::AggregationPolicy::Off,
                 &mut series,
                 instruction.id,
-            ) {
-                results.report_unspecified_source(
-                    VisualizerReportSeverity::Error,
-                    format!("Failed to create series: {err}"),
-                );
-            }
+            );
         }
 
-        Ok(series)
+        series
     }
 }

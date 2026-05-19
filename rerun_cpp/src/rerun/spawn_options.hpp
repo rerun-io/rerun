@@ -51,7 +51,7 @@ namespace rerun {
         /// Defaults to `rerun` if unset.
         std::string_view executable_name = "rerun";
 
-        /// Enforce a specific executable to use instead of searching though PATH
+        /// Enforce a specific executable to use instead of searching through PATH
         /// for `SpawnOptions::executable_name`.
         std::string_view executable_path;
 

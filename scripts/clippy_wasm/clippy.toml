@@ -81,6 +81,7 @@ disallowed-methods = [
   { path = "egui::Ui::spinner", reason = "Use `ui.loading_indicator` from `re_ui::UiEx" },
   { path = "glam::Vec2::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
   { path = "glam::Vec3::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
+  { path = "macaw::BoundingBox::from_points", reason = "from_points propagates NaN/inf. Use re_renderer::util::bounding_box_from_points instead" },
   { path = "poll_promise::Promise::block_and_take", reason = "Cannot block on Web" },
   { path = "poll_promise::Promise::block_until_ready_mut", reason = "Cannot block on Web" },
   { path = "poll_promise::Promise::block_until_ready", reason = "Cannot block on Web" },
@@ -108,9 +109,9 @@ disallowed-methods = [
   { path = "std::time::SystemTime::now", reason = "use `web-time` or `time` crates instead for wasm/web compatibility" },
   { path = "tokio::spawn", reason = "no Tokio runtime on web" },
   { path = "tokio::sync::mpsc::unbounded_channel", reason = "Use bounded channels on native to apply backpressure." },
-  { path = "tokio::time::sleep", reason = "no Tokio runtime on web" },
   { path = "tokio::task::spawn_blocking", reason = "no Tokio runtime on web" },
   { path = "tokio::task::spawn", reason = "no Tokio runtime on web" },
+  { path = "tokio::time::sleep", reason = "no Tokio runtime on web" },
 ]
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
@@ -126,6 +127,7 @@ disallowed-types = [
   { path = "std::sync::RwLock", reason = "Use parking_lot instead" },
   { path = "std::thread::Builder", reason = "Cannot spawn threads on wasm" },
   # { path = "std::path::PathBuf" }, # We allow having paths, just not resolving them to files
+  { path = "wgpu::PollType", reason = "Cannot block on Web. Technically only `wgpu::PollType::Wait` is disallowed, but we can't check for that. `wgpu::PollType::Poll` is technically fine, but it is a no-op on WebGPU, so if we rely on it this may hint at a problem." },
 ]
 
 # Allow-list of words for markdown in docstrings https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
@@ -138,6 +140,8 @@ doc-valid-idents = [
   "GitHub",
   "GLB",
   "GLTF",
+  "GoP", # Group of Pictures - common video term
+  "GoPs", # Group of Pictures - common video term
   "iOS",
   "IPv4",
   "IPv6",

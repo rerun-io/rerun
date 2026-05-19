@@ -74,6 +74,7 @@ thiserror.workspace = true
 typenum.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
 web-time.workspace = true
+xxhash-rust.workspace = true
 
 
 # Optional dependencies:

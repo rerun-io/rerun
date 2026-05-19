@@ -122,7 +122,7 @@ def generate_config_file(output_path: Path) -> bool:
         f"abi3={abi3}",
         f"lib_name={config['lib_name']}",
         f"lib_dir={config['lib_dir']}",
-        f"executable={str(python_path)}",
+        f"executable={python_path!s}",
         f"pointer_width={config['pointer_width']}",
         f"build_flags={config['build_flags']}",
         f"suppress_build_script_link_lines={suppress_link_lines}",

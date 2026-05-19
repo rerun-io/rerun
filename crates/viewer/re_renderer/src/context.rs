@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -7,7 +8,7 @@ use type_map::concurrent::TypeMap;
 
 use crate::allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt};
 use crate::device_caps::DeviceCaps;
-use crate::error_handling::{ErrorTracker, WgpuErrorScope};
+use crate::error_handling::ErrorTracker;
 use crate::global_bindings::GlobalBindings;
 use crate::renderer::{Renderer, RendererExt};
 use crate::resource_managers::TextureManager2D;
@@ -21,7 +22,7 @@ const STARTUP_FRAME_IDX: u64 = u64::MAX;
 pub enum RenderContextError {
     #[error(
         "The GPU/graphics driver is lacking some abilities: {0}. \
-        Check the troubleshooting guide at https://rerun.io/docs/getting-started/troubleshooting and consider updating your graphics driver."
+        Check the troubleshooting guide at https://rerun.io/docs/overview/installing-rerun/troubleshooting and consider updating your graphics driver."
     )]
     InsufficientDeviceCapabilities(#[from] crate::device_caps::InsufficientDeviceCapabilities),
 }
@@ -126,7 +127,7 @@ pub struct RenderContext {
     /// See <https://www.w3.org/TR/webgpu/#programming-model-timelines>.
     frame_index_for_uncaptured_errors: Arc<AtomicU64>,
 
-    /// Error tracker used for `top_level_error_scope` and [`wgpu::Device::on_uncaptured_error`].
+    /// Error tracker used for [`wgpu::Device::on_uncaptured_error`].
     top_level_error_tracker: Arc<ErrorTracker>,
 
     pub gpu_resources: WgpuResourcePools, // Last due to drop order.
@@ -221,6 +222,35 @@ impl Renderers {
             .get(key.0 as usize)
             .map(|r| r.as_ref())
     }
+
+    /// Returns a remap table where `remap[key.bits()]` is the `u8` sort key for that renderer.
+    ///
+    /// The sort key is the rank of each renderer's Rust type name ([`RendererExt::name`])
+    /// among all currently registered renderers, compared lexicographically. Because type
+    /// names are stable within a build, the relative ordering of any two renderers is too —
+    /// regardless of which was registered first in this session. This is what makes draw
+    /// order deterministic across sessions.
+    ///
+    /// Intended for use at sort time on packed `u8` [`RendererTypeId`] values.
+    pub(crate) fn name_sort_remap(&self) -> [u8; 256] {
+        // Unused slots remain 0; they won't appear in any drawable.
+        let mut remap = [0u8; 256];
+
+        // Sort (name, key) pairs by renderer type name.
+        let mut pairs: smallvec::SmallVec<[(&'static str, u8); 16]> = self
+            .renderers_by_key
+            .iter()
+            .enumerate()
+            .map(|(key, r)| (r.name(), key as u8))
+            .collect();
+        pairs.sort_by_key(|&(name, _)| name);
+
+        for (rank, (_name, key)) in pairs.into_iter().enumerate() {
+            remap[key as usize] = rank as u8;
+        }
+
+        remap
+    }
 }
 
 impl RenderContext {
@@ -229,16 +259,16 @@ impl RenderContext {
     /// 32MiB chunk size (as big as a for instance a 2048x1024 float4 texture)
     /// (it's tempting to use something smaller on Web, but this may just cause more
     /// buffers to be allocated the moment we want to upload a bigger chunk)
-    const CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
-        wgpu::BufferSize::new(1024 * 1024 * 32);
+    pub const CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE: wgpu::BufferSize =
+        wgpu::BufferSize::new(1024 * 1024 * 32).unwrap();
 
     /// Chunk size for our gpu->cpu buffer manager.
     ///
     /// We expect large screenshots to be rare occurrences, so we go with fairly small chunks of just 64 kiB.
     /// (this is as much memory as a 128x128 rgba8 texture, or a little bit less than a 64x64 picking target with depth)
     /// I.e. screenshots will end up in dedicated chunks.
-    const GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
-        wgpu::BufferSize::new(1024 * 64);
+    const GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE: wgpu::BufferSize =
+        wgpu::BufferSize::new(1024 * 64).unwrap();
 
     /// Limit maximum number of in flight submissions to this number.
     ///
@@ -276,12 +306,6 @@ impl RenderContext {
         let frame_index_for_uncaptured_errors = Arc::new(AtomicU64::new(STARTUP_FRAME_IDX));
 
         // Make sure to catch all errors, never crash, and deduplicate reported errors.
-        // `on_uncaptured_error` is a last-resort handler which we should never hit,
-        // since there should always be an open error scope.
-        //
-        // Note that this handler may not be called for all errors!
-        // (as of writing, wgpu-core will always call it when there's no open error scope, but Dawn doesn't!)
-        // Therefore, it is important to always have a `WgpuErrorScope` open!
         // See https://www.w3.org/TR/webgpu/#telemetry
         let top_level_error_tracker = {
             let err_tracker = Arc::new(ErrorTracker::default());
@@ -297,7 +321,6 @@ impl RenderContext {
             });
             err_tracker
         };
-        let top_level_error_scope = Some(WgpuErrorScope::start(&device));
 
         log_adapter_info(&adapter.get_info());
 
@@ -310,7 +333,6 @@ impl RenderContext {
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
             frame_index: STARTUP_FRAME_IDX,
-            top_level_error_scope,
             num_view_builders_created: AtomicU64::new(0),
         };
 
@@ -330,10 +352,10 @@ impl RenderContext {
         }
 
         let cpu_write_gpu_read_belt = Mutex::new(CpuWriteGpuReadBelt::new(
-            Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
+            Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE,
         ));
         let gpu_readback_belt = Mutex::new(GpuReadbackBelt::new(
-            Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
+            Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE,
         ));
 
         Ok(Self {
@@ -366,25 +388,26 @@ impl RenderContext {
             .len()
             .saturating_sub(Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS);
 
-        if let Some(newest_submission_to_wait_for) = self
+        if let Some(_newest_submission_to_wait_for) = self
             .inflight_queue_submissions
             .drain(0..num_submissions_to_wait_for)
             .next_back()
         {
             // Disable error reporting on Web:
-            // * On WebGPU poll is a no-op and we don't get here.
-            // * On WebGL we'll just immediately timeout since we can't actually wait for frames.
-            if !cfg!(target_arch = "wasm32")
-                && let Err(err) = self.device.poll(wgpu::PollType::Wait {
-                    submission_index: Some(newest_submission_to_wait_for),
-                    timeout: None,
-                })
+            // * On WebGPU poll is a no-op.
+            // * On WebGL we'd just immediately timeout since we can't actually wait for frames.
+            #[cfg(not(target_arch = "wasm32"))]
             {
-                re_log::warn_once!(
-                    "Failed to limit number of in-flight GPU frames to {}: {:?}",
-                    Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS,
-                    err
-                );
+                if let Err(err) = self.device.poll(wgpu::PollType::Wait {
+                    submission_index: Some(_newest_submission_to_wait_for),
+                    timeout: None,
+                }) {
+                    re_log::warn_once!(
+                        "Failed to limit number of in-flight GPU frames to {}: {:?}",
+                        Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS,
+                        err
+                    );
+                }
             }
         }
     }
@@ -419,36 +442,28 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         // Ideally we'd do this as closely as possible to the last submission containing any gpu->cpu operations as possible.
         self.gpu_readback_belt.get_mut().after_queue_submit();
 
-        // Close previous' frame error scope.
-        if let Some(top_level_error_scope) = self.active_frame.top_level_error_scope.take() {
-            let frame_index_for_uncaptured_errors = self.frame_index_for_uncaptured_errors.clone();
-            self.top_level_error_tracker.handle_error_future(
-                self.device_caps.backend_type,
-                top_level_error_scope.end(),
-                self.active_frame.frame_index,
-                move |err_tracker, frame_index| {
-                    // Update last completed frame index.
-                    //
-                    // Note that this means that the device timeline has now finished this frame as well!
-                    // Reminder: On WebGPU the device timeline may be arbitrarily behind the content timeline!
-                    // See <https://www.w3.org/TR/webgpu/#programming-model-timelines>.
-                    frame_index_for_uncaptured_errors.store(frame_index, Ordering::Release);
-                    err_tracker.on_device_timeline_frame_finished(frame_index);
-
-                    // TODO(#4507): Once we support creating more error handlers,
-                    // we need to tell all of them here that the frame has finished.
-                },
-            );
-        }
+        // Mark the previous frame as finished on the device timeline.
+        // This retains only errors that occurred during this frame; older ones are removed
+        // so they can be re-reported if they recur after a gap.
+        //
+        // On native (wgpu-core), the device timeline is always in sync with the content timeline,
+        // so we can update this directly. On WebGPU the device timeline may lag behind,
+        // but we don't currently have a good async mechanism for tracking it.
+        self.top_level_error_tracker
+            .on_device_timeline_frame_finished(self.active_frame.frame_index);
 
         // New active frame!
         self.active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index.wrapping_add(1),
-            top_level_error_scope: Some(WgpuErrorScope::start(&self.device)),
             num_view_builders_created: AtomicU64::new(0),
         };
         let frame_index = self.active_frame.frame_index;
+
+        // Update the frame index used by the on_uncaptured_error callback to tag new errors.
+        // Must happen after incrementing so errors during this frame are tagged with the correct index.
+        self.frame_index_for_uncaptured_errors
+            .store(frame_index, Ordering::Release);
 
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.
@@ -576,8 +591,9 @@ impl FrameGlobalCommandEncoder {
     fn new(device: &wgpu::Device) -> Self {
         Self(Some(device.create_command_encoder(
             &wgpu::CommandEncoderDescriptor {
-                label:
-                    crate::DebugLabel::from("global \"before viewbuilder\" command encoder").get(),
+                label: Some(
+                    crate::Label::from("global \"before viewbuilder\" command encoder").get(),
+                ),
             },
         )))
     }
@@ -614,16 +630,6 @@ pub struct ActiveFrameContext {
     /// behind both of the `device timeline` and `queue timeline`.
     /// See <https://www.w3.org/TR/webgpu/#programming-model-timelines>
     pub frame_index: u64,
-
-    /// Top level device error scope, created at startup and closed & reopened on every frame.
-    ///
-    /// According to documentation, not all errors may be caught by [`wgpu::Device::on_uncaptured_error`].
-    /// <https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror>
-    /// Therefore, we should make sure that we _always_ have an error scope open!
-    /// Additionally, we use this to update [`RenderContext::frame_index_for_uncaptured_errors`].
-    ///
-    /// The only time this is allowed to be `None` is during shutdown and when closing an old and opening a new scope.
-    top_level_error_scope: Option<WgpuErrorScope>,
 
     /// Number of view builders created in this frame so far.
     pub num_view_builders_created: AtomicU64,
@@ -666,12 +672,12 @@ fn log_adapter_info(info: &wgpu::AdapterInfo) {
         re_log::debug_once!("wgpu adapter {human_readable_summary}");
     } else if is_software_rasterizer_with_known_crashes {
         re_log::warn_once!(
-            "Bad software rasterizer detected - expect poor performance and crashes. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues"
+            "Bad software rasterizer detected - expect poor performance and crashes. See: https://www.rerun.io/docs/overview/installing-rerun/troubleshooting#graphics-issues"
         );
         re_log::info_once!("wgpu adapter {human_readable_summary}");
     } else if info.device_type == wgpu::DeviceType::Cpu {
         re_log::warn_once!(
-            "Software rasterizer detected - expect poor performance. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues"
+            "Software rasterizer detected - expect poor performance. See: https://www.rerun.io/docs/overview/installing-rerun/troubleshooting#graphics-issues"
         );
         re_log::info_once!("wgpu adapter {human_readable_summary}");
     } else {
@@ -686,9 +692,13 @@ pub fn adapter_info_summary(info: &wgpu::AdapterInfo) -> String {
         vendor: _, // skip integer id
         device: _, // skip integer id
         device_type,
+        device_pci_bus_id: _,
         driver,
         driver_info,
         backend,
+        subgroup_min_size: _,
+        subgroup_max_size: _,
+        transient_saves_memory: _,
     } = &info;
 
     // Example values:
@@ -699,13 +709,13 @@ pub fn adapter_info_summary(info: &wgpu::AdapterInfo) -> String {
     let mut summary = format!("backend: {backend:?}, device_type: {device_type:?}");
 
     if !name.is_empty() {
-        summary += &format!(", name: {name:?}");
+        write!(summary, ", name: {name:?}").ok();
     }
     if !driver.is_empty() {
-        summary += &format!(", driver: {driver:?}");
+        write!(summary, ", driver: {driver:?}").ok();
     }
     if !driver_info.is_empty() {
-        summary += &format!(", driver_info: {driver_info:?}");
+        write!(summary, ", driver_info: {driver_info:?}").ok();
     }
 
     summary

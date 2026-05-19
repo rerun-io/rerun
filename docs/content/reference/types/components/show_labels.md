@@ -15,7 +15,7 @@ blueprints.
 
 ## Arrow datatype
 ```
-boolean
+Boolean
 ```
 
 ## API reference links

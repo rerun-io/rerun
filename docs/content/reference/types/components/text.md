@@ -11,7 +11,7 @@ A string of text, e.g. for labels and text documents.
 
 ## Arrow datatype
 ```
-utf8
+Utf8
 ```
 
 ## API reference links
@@ -36,5 +36,6 @@ utf8
 * [`McapSchema`](../archetypes/mcap_schema.md)
 * [`Points2D`](../archetypes/points2d.md)
 * [`Points3D`](../archetypes/points3d.md)
+* [`Status`](../archetypes/status.md?speculative-link)
 * [`TextDocument`](../archetypes/text_document.md)
 * [`TextLog`](../archetypes/text_log.md)

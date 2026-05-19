@@ -11,6 +11,12 @@ use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Instance, hash:
 static FORGIVING_PARSE_CACHE: LazyLock<RwLock<IntMap<Hash64, EntityPath>>> =
     LazyLock::new(|| RwLock::new(IntMap::default()));
 
+/// Approximate heap usage of the global forgiving path parse cache.
+pub fn forgiving_parse_cache_bytes_used() -> u64 {
+    use re_byte_size::SizeBytes as _;
+    FORGIVING_PARSE_CACHE.read().heap_size_bytes()
+}
+
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PathParseError {
     #[error("Expected path, found empty string")]

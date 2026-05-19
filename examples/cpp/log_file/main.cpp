@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
 
     cxxopts::Options options(
         "rerun_example_log_file",
-        "Demonstrates how to log any file from the SDK using the `DataLoader` machinery."
+        "Demonstrates how to log any file from the SDK using the `Importer` machinery."
     );
 
     // clang-format off

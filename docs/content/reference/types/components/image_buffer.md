@@ -13,7 +13,7 @@ To interpret the contents of this buffer, see, [`components.ImageFormat`](https:
 
 ## Arrow datatype
 ```
-List<uint8>
+List(non-null UInt8)
 ```
 
 ## API reference links
@@ -25,6 +25,7 @@ List<uint8>
 ## Used by
 
 * [`DepthImage`](../archetypes/depth_image.md)
+* [`GridMap`](../archetypes/grid_map.md?speculative-link)
 * [`Image`](../archetypes/image.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)

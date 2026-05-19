@@ -15,8 +15,11 @@ mod view_context;
 mod view_context_system;
 mod view_query;
 mod view_states;
-mod visualizer_entity_subscriber;
+mod visualizability_constraints;
+pub(crate) mod visualizer_entity_subscriber;
 mod visualizer_system;
+
+use std::sync::Arc;
 
 pub use highlights::{
     OptionalViewEntityHighlight, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
@@ -28,7 +31,7 @@ pub use system_execution_output::{
 };
 pub use view_class::{
     RecommendedVisualizers, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState,
-    ViewStateExt,
+    ViewStateExt, VisualizersSectionOutput, VisualizersSectionUi,
 };
 pub use view_class_placeholder::ViewClassPlaceholder;
 pub use view_class_registry::{ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator};
@@ -41,10 +44,12 @@ pub use view_query::{
     VisualizerComponentSource, VisualizerInstruction, VisualizerInstructionsPerType,
 };
 pub use view_states::ViewStates;
+pub use visualizability_constraints::{
+    BufferAndFormatConstraint, SingleRequiredComponentConstraint, VisualizabilityConstraints,
+};
 pub use visualizer_system::{
-    AnyPhysicalDatatypeRequirement, RequiredComponents, VisualizerCollection,
-    VisualizerExecutionOutput, VisualizerInstructionReport, VisualizerQueryInfo,
-    VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
+    VisualizerCollection, VisualizerExecutionOutput, VisualizerInstructionReport,
+    VisualizerQueryInfo, VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
 };
 
 // ---------------------------------------------------------------------------
@@ -53,7 +58,7 @@ pub use visualizer_system::{
 ///
 /// Whenever possible, prefer [`VisualizerExecutionOutput::reports_per_instruction`] to report failures with
 /// individual entities rather than stopping visualization entirely.
-#[derive(Debug, thiserror::Error)]
+#[derive(Clone, Debug, thiserror::Error)]
 pub enum ViewSystemExecutionError {
     #[error("View context system {0} not found")]
     ContextSystemNotFound(&'static str),
@@ -62,13 +67,13 @@ pub enum ViewSystemExecutionError {
     VisualizerSystemNotFound(&'static str),
 
     #[error(transparent)]
-    QueryError(Box<re_query::QueryError>),
+    QueryError(Arc<re_query::QueryError>),
 
     #[error(transparent)]
-    DeserializationError(Box<re_sdk_types::DeserializationError>),
+    DeserializationError(Arc<re_sdk_types::DeserializationError>),
 
     #[error("Failed to create draw data: {0}")]
-    DrawDataCreationError(Box<dyn std::error::Error + Send + Sync>),
+    DrawDataCreationError(Arc<dyn std::error::Error + Send + Sync>),
 
     #[error("Error accessing map view tiles.")]
     MapTilesError,
@@ -84,6 +89,9 @@ pub enum ViewSystemExecutionError {
 
     #[error(transparent)]
     ViewBuilderError(#[from] re_renderer::view_builder::ViewBuilderError),
+
+    #[error("Missing output data for view system {0}.")]
+    MissingOutputData(ViewSystemIdentifier),
 }
 
 const _: () = assert!(
@@ -95,18 +103,18 @@ const _: () = assert!(
 
 impl From<re_renderer::renderer::LineDrawDataError> for ViewSystemExecutionError {
     fn from(val: re_renderer::renderer::LineDrawDataError) -> Self {
-        Self::DrawDataCreationError(Box::new(val))
+        Self::DrawDataCreationError(Arc::new(val))
     }
 }
 
 impl From<re_renderer::renderer::PointCloudDrawDataError> for ViewSystemExecutionError {
     fn from(val: re_renderer::renderer::PointCloudDrawDataError) -> Self {
-        Self::DrawDataCreationError(Box::new(val))
+        Self::DrawDataCreationError(Arc::new(val))
     }
 }
 
 impl From<re_sdk_types::DeserializationError> for ViewSystemExecutionError {
     fn from(val: re_sdk_types::DeserializationError) -> Self {
-        Self::DeserializationError(Box::new(val))
+        Self::DeserializationError(Arc::new(val))
     }
 }

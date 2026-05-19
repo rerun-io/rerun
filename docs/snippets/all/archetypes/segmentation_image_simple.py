@@ -1,6 +1,7 @@
 """Create and log a segmentation image."""
 
 import numpy as np
+
 import rerun as rr
 
 # Create a segmentation image

@@ -17,6 +17,7 @@ const COLOR_MAPPER_TEXTURE       = 4u;
 
 const FILTER_NEAREST  = 1u;
 const FILTER_BILINEAR = 2u;
+const FILTER_BICUBIC  = 3u;
 
 // ----------------------------------------------------------------------------
 // See enum TextureAlpha

@@ -669,8 +669,8 @@ impl Object {
                 class.is_enum()
                     || val
                         .union_type()
-                        .filter(|utype| utype.base_type() != FbsBaseType::None)
-                        .is_some()
+                        .as_ref()
+                        .is_some_and(|utype| utype.base_type() != FbsBaseType::None)
             })
             .map(|val| {
                 ObjectField::from_raw_enum_value(reporter, include_dir_path, enums, objs, enm, &val)
@@ -887,6 +887,16 @@ impl EnumIntegerType {
             Self::U16 => format!("0x{:0X}", value as u16),
             Self::U32 => format!("0x{:0X}", value as u32),
             Self::U64 => format!("0x{value:0X}"),
+        }
+    }
+
+    /// Returns the suffix used for the repr type, e.g. `"u8"`, `"u16"`, etc.
+    pub fn type_str(self) -> &'static str {
+        match self {
+            Self::U8 => "u8",
+            Self::U16 => "u16",
+            Self::U32 => "u32",
+            Self::U64 => "u64",
         }
     }
 }

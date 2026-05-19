@@ -21,7 +21,7 @@ pub fn typed_fallback_for<C: Component>(
 ) -> C {
     let array = query_context
         .viewer_ctx()
-        .component_fallback_registry
+        .component_fallback_registry()
         .fallback_for(
             &re_types_core::ComponentDescriptor::partial(component).with_component_type(C::name()),
             query_context,
@@ -38,7 +38,7 @@ pub fn typed_fallback_for<C: Component>(
 }
 
 /// Error type for a fallback request.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Clone, Debug)]
 pub enum ComponentFallbackError {
     /// Not directly returned by the fallback provider, but useful when serializing a fallback value.
     #[error("Fallback value turned up to be empty when we expected a value.")]
@@ -300,9 +300,8 @@ fn placeholder_for(
     } else {
         let entity_path = ctx.target_entity_path;
         viewer_ctx.recording_engine()
-                .store()
-                .lookup_component_type(entity_path, component_identifier)
-                .or_else(|| viewer_ctx.blueprint_engine().store().lookup_component_type(entity_path, component_identifier))
+                .schema().lookup_component_type(entity_path, component_identifier)
+                .or_else(|| viewer_ctx.blueprint_engine().schema().lookup_component_type(entity_path, component_identifier))
                 .map(|(_component_type, datatype)| datatype)
                 .unwrap_or_else(|| {
                          re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");

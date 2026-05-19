@@ -12,6 +12,9 @@ mod view_properties;
 mod viewport_blueprint;
 mod viewport_command;
 
+#[cfg(test)]
+mod test_view_class;
+
 pub use container::ContainerBlueprint;
 pub use entity_add_info::{CanAddToView, EntityAddInfo, create_entity_add_info};
 use re_chunk::EntityPath;

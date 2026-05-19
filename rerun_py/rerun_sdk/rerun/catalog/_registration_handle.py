@@ -16,8 +16,8 @@ class SegmentRegistrationResult:
     uri: str
     """The source URI that was registered."""
 
-    segment_id: str | None
-    """The resulting segment ID. May be `None` if registration failed."""
+    segment_id: str
+    """The resulting segment ID."""
 
     error: str | None
     """Error message if registration failed, or `None` if successful."""
@@ -105,3 +105,16 @@ class RegistrationHandle:
         """
         segment_ids = self._internal.wait(timeout_secs)
         return RegistrationResult(segment_ids=segment_ids)
+
+    def cancel(self) -> None:
+        """
+        Cancel dataset registration. If the registration is already done, this is a noop.
+
+        Raises
+        ------
+        ValueError
+            If the cancellation fails.
+
+        """
+
+        self._internal.cancel()

@@ -32,7 +32,7 @@ The visualizations in this example were created with the following Rerun code.
 
 ### Timelines
 
-For each processed video frame, all data sent to Rerun is associated with the two [`timelines`](https://www.rerun.io/docs/concepts/timelines) `time` and `frame_idx`.
+For each processed video frame, all data sent to Rerun is associated with the two [`timelines`](https://www.rerun.io/docs/concepts/logging-and-ingestion/timelines) `time` and `frame_idx`.
 
 ```python
 rr.set_time("time", duration=bgr_frame.time)
@@ -42,10 +42,7 @@ rr.set_time("frame_idx", sequence=bgr_frame.idx)
 ### Video
 The input video is logged as a sequence of [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) objects to the 'Video' entity.
 ```python
-rr.log(
-    "video/image",
-    rr.Image(frame).compress(jpeg_quality=75)
-)
+rr.log("video/image", rr.Image(frame).compress(jpeg_quality=75))
 ```
 
 ### Face landmark points
@@ -104,7 +101,7 @@ for i, klass in enumerate(classes):
 rr.log("video/landmarker", rr.AnnotationContext(class_descriptions), static=True)
 rr.log("reconstruction", rr.AnnotationContext(class_descriptions), static=True)
 
-rr.log("reconstruction", rr.ViewCoordinates.RDF, static=True) # properly align the 3D face in the viewer
+rr.log("reconstruction", rr.ViewCoordinates.RDF, static=True)  # properly align the 3D face in the viewer
 ```
 
 With the below annotation, the keypoints will be connected with lines to enhance visibility in the `video/detector` entity.
@@ -122,9 +119,7 @@ rr.log(
 ```python
 rr.log(
     f"video/detector/faces/{i}/bbox",
-    rr.Boxes2D(
-        array=[bbox.origin_x, bbox.origin_y, bbox.width, bbox.height], array_format=rr.Box2DFormat.XYWH
-    ),
+    rr.Boxes2D(array=[bbox.origin_x, bbox.origin_y, bbox.width, bbox.height], array_format=rr.Box2DFormat.XYWH),
     rr.AnyValues(index=index, score=score),
 )
 ```
@@ -133,10 +128,7 @@ rr.log(
 #### 2D points
 
 ```python
-rr.log(
-    f"video/detector/faces/{i}/keypoints",
-    rr.Points2D(pts, radii=3, keypoint_ids=list(range(6)))
-)
+rr.log(f"video/detector/faces/{i}/keypoints", rr.Points2D(pts, radii=3, keypoint_ids=list(range(6))))
 ```
 
 ```python

@@ -18,6 +18,7 @@ The Rerun command-line interface:
 
 * `analytics`: Configure the behavior of our analytics.
 * `auth`: Authentication with the redap.
+* `download`: Download recordings and save them as .rrd files.
 * `man`: Generates the Rerun CLI manual (markdown).
 * `mcap`: Manipulate the contents of .mcap files.
 * `reset`: Reset the memory of the Rerun Viewer.
@@ -32,7 +33,7 @@ The Rerun command-line interface:
 > - A path to a Rerun .rrd recording
 > - A path to a Rerun .rbl blueprint
 > - An HTTP(S) URL to an .rrd or .rbl file to load
-> - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/reference/data-loaders/overview)
+> - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link)
 >
 > If no arguments are given, a server will be hosted which a Rerun SDK can connect to.
 
@@ -49,8 +50,7 @@ The Rerun command-line interface:
 > An upper limit on how much memory the Rerun Viewer should use.
 > When this limit is reached, Rerun will drop the oldest data.
 > Example: `16GB` or `50%` (of system total).
->
-> [Default: `75%`]
+> You can also set this in the settings panel.
 
 * `--server-memory-limit <SERVER_MEMORY_LIMIT>`
 > An upper limit on how much memory the gRPC server (`--serve-web`) should use.
@@ -65,6 +65,13 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
+* `--cors-allow-origin <CORS_ALLOW_ORIGIN>`
+> Additional origin patterns allowed to make CORS requests to the gRPC server.
+>
+> Use this when hosting a custom viewer on a different domain. Patterns are matched against the full Origin header (e.g. `https://example.com:8080`), using glob-style matching where `*` matches any sequence of characters. Can be specified multiple times.
+>
+> Examples: `--cors-allow-origin "https://*.example.com"` `--cors-allow-origin "https://example.com:8080"` `--cors-allow-origin "https://example.com:*"`
+
 * `--persist-state <PERSIST_STATE>`
 > Whether the Rerun Viewer should persist the state of the viewer to disk.
 > When persisted, the state will be stored at the following locations:
@@ -77,7 +84,16 @@ The Rerun command-line interface:
 * `--port <PORT>`
 > What port do we listen to for SDKs to connect to over gRPC.
 >
+> Use `auto` to always start a new viewer with a free port if the default is taken.
+>
 > [Default: `9876`]
+
+* `--new <NEW>`
+> Alias for `--port auto`. Always start a new viewer.
+>
+> If the port is already in use, a free port will be picked automatically.
+>
+> [Default: `false`]
 
 * `--profile <PROFILE>`
 > Start with the puffin profiler running.
@@ -315,6 +331,26 @@ It's closer to an API key than an access token, as it can be revoked before it e
 >
 > [Default: `read`]
 
+## rerun download
+
+Download recordings and save them as .rrd files.
+
+Supports downloading from Rerun Cloud as well as any other supported URI.
+
+**Usage**: `rerun download [OPTIONS] <URLS>…`
+
+**Arguments**
+
+* `<URLS>`
+> One or more URIs to download.
+
+**Options**
+
+* `-o, --output-dir <OUTPUT_DIR>`
+> Override the output directory for the downloaded `.rrd` files.
+>
+> Defaults to the current working directory.
+
 ## rerun mcap
 
 Manipulate the contents of .mcap files.
@@ -344,11 +380,11 @@ Convert an .mcap file to an .rrd.
 * `--application-id <APPLICATION_ID>`
 > If set, specifies the application id of the output.
 
-* `-l, --layer <SELECTED_LAYERS>`
-> Specifies which layers to apply during conversion.
+* `-d, --decoder <SELECTED_DECODERS>`
+> Specifies which decoders to apply during conversion.
 
 * `--disable-raw-fallback <DISABLE_RAW_FALLBACK>`
-> Disable using the raw layer as a fallback for unsupported channels. By default, channels that cannot be handled by semantic layers (protobuf, ROS2) will be processed by the raw layer.
+> Disable using the raw decoder as a fallback for unsupported channels. By default, channels that cannot be handled by semantic decoders (protobuf, ROS2) will be processed by the raw decoder.
 >
 > [Default: `false`]
 
@@ -356,6 +392,32 @@ Convert an .mcap file to an .rrd.
 > If set, specifies the recording id of the output.
 >
 > When this flag is set and multiple input .rdd files are specified, blueprint activation commands will be dropped from the resulting output.
+
+* `--timestamp-offset-ns <TIMESTAMP_OFFSET_NS>`
+> If set, an offset in nanoseconds to add to all timestamp timelines.
+>
+> This can be used to shift all timestamps of the MCAP file if they are not yet relative to the UNIX epoch.
+>
+> Duration and sequence timelines are not affected by this offset.
+
+* `--timeline-type <TIMELINE_TYPE>`
+> The timeline type to use for timestamp timelines.
+>
+> "timestamp" (default) creates `TimestampNs` timelines (nanoseconds since Unix epoch). "duration" creates `DurationNs` timelines (nanosecond durations).
+>
+> [Default: `timestamp`]
+
+* `-y, --include-topic-regex <INCLUDE_TOPIC_REGEX>`
+> Include only topics matching this regex (RE2 syntax). Repeatable.
+>
+> If omitted, all topics are included. Patterns are not implicitly anchored; use `^` / `$` if you need anchoring.
+>
+> Example: `-y "^/tf.*" -n ".*depth.*" -y "^/camera/(compressed|camera_info)$"`
+
+* `-n, --exclude-topic-regex <EXCLUDE_TOPIC_REGEX>`
+> Exclude topics matching this regex (RE2 syntax). Repeatable.
+>
+> Applied after includes: a topic is kept only if it matches an include (or no includes are set) AND matches no exclude.
 
 ## rerun rrd
 
@@ -365,79 +427,16 @@ Manipulate the contents of .rrd and .rbl files.
 
 **Commands**
 
-* `compact`: Compacts the contents of one or more .rrd/.rbl files/streams and writes the result standard output.
 * `compare`: Compares the data between 2 .rrd files, returning a successful shell exit code if they match.
 * `filter`: Filters out data from .rrd/.rbl files/streams, and writes the result to standard output.
-* `split`: Optimally splits a recording on a specified timeline.
 * `merge`: Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
 * `migrate`: Migrate one or more .rrd files to the newest Rerun version.
+* `optimize`: Optimizes the contents of one or more .rrd/.rbl files/streams by compacting chunks, and writes the result to standard output.
 * `print`: Print the contents of one or more .rrd/.rbl files/streams.
 * `route`: Manipulates the metadata of log message streams without decoding the payloads.
+* `split`: Optimally splits a recording on a specified timeline.
 * `stats`: Compute important statistics for one or more .rrd/.rbl files/streams.
 * `verify`: Verify the that the .rrd file can be loaded and correctly interpreted.
-
-## rerun rrd compact
-
-Compacts the contents of one or more .rrd/.rbl files/streams and writes the result standard output.
-
-Reads from standard input if no paths are specified.
-
-Uses the usual environment variables to control the compaction thresholds: `RERUN_CHUNK_MAX_ROWS`, `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`, `RERUN_CHUNK_MAX_BYTES`.
-
-Unless explicit flags are passed, in which case they will override environment values.
-
-⚠️ This will automatically migrate the data to the latest version of the RRD protocol, if needed. ⚠️
-
-Examples:
-
-* `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun rrd compact /my/recordings/*.rrd -o output.rrd`
-
-* `rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > output.rrd`
-
-**Usage**: `rerun rrd compact [OPTIONS] [PATH_TO_INPUT_RRDS]…`
-
-**Arguments**
-
-* `<PATH_TO_INPUT_RRDS>`
-> Paths to read from. Reads from standard input if none are specified.
-
-**Options**
-
-* `-o, --output <dst.(rrd|rbl)>`
-> Path to write to. Writes to standard output if unspecified.
-
-* `--max-bytes <MAX_BYTES>`
-> What is the threshold, in bytes, after which a Chunk cannot be compacted any further?
->
-> Overrides `RERUN_CHUNK_MAX_BYTES` if set.
-
-* `--max-rows <MAX_ROWS>`
-> What is the threshold, in rows, after which a Chunk cannot be compacted any further?
->
-> Overrides `RERUN_CHUNK_MAX_ROWS` if set.
-
-* `--max-rows-if-unsorted <MAX_ROWS_IF_UNSORTED>`
-> What is the threshold, in rows, after which a Chunk cannot be compacted any further?
->
-> This specifically applies to _non_ time-sorted chunks.
->
-> Overrides `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` if set.
-
-* `--num-pass <NUM_EXTRA_PASSES>`
-> Configures the number of extra compaction passes to run on the data.
->
-> Compaction in Rerun is an iterative, convergent process: every single pass will improve the quality of the compaction (with diminishing returns), until it eventually converges into a stable state. The more passes, the better the compaction quality.
->
-> Under the hood, you can think of it as a kind of clustering algorithm: every incoming chunk finds the most appropriate chunk to merge into, thereby creating a new cluster, which is itself just a bigger chunk. On the next pass, these new clustered chunks will themselves look for other clusters to merge into, yielding even bigger clusters, which again are also just chunks. And so on and so forth.
->
-> If/When the data reaches a stable optimum, the computation will stop immediately, regardless of how many passes are left.
->
-> [Default: `50`]
-
-* `--continue-on-error <CONTINUE_ON_ERROR>`
-> If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
->
-> [Default: `false`]
 
 ## rerun rrd compare
 
@@ -505,55 +504,6 @@ Example: `rerun rrd filter --drop-timeline log_tick /my/recordings/*.rrd > outpu
 >
 > [Default: `false`]
 
-## rerun rrd split
-
-Optimally splits a recording on a specified timeline.
-
-The sum of the generated splits will always exactly match the original recording.
-
-Example: `rerun rrd split --output-dir ./splits --timeline log_tick --time 33 --time 66 ./my_video.rrd`
-
-**Usage**: `rerun rrd split [OPTIONS] --output-dir <output directory> --timeline <TIMELINE> <PATH_TO_INPUT_RRD>`
-
-**Arguments**
-
-* `<PATH_TO_INPUT_RRD>`
-> Path to read from.
-
-**Options**
-
-* `-o, --output-dir <output directory>`
-> Path to the output directory. All generated RRD files will end up there.
-
-* `--timeline <TIMELINE>`
-> The timeline used to compute the splits.
->
-> The other timelines will be kept in the output, which might or might not make sense depending on the density of the dataset. Use `--drop-unused-timelines` to discard them.
-
-* `-t, --time <TIMES>`
-> The timestamps at which to perform the splits. Incompatible with `--num-parts`/`-n`.
->
-> There are always `number_of_times + 1` resulting splits.
->
-> For example, given `-t 10 -t 20 -t 30`, this command will output 4 splits: [-inf:10), [10:20), [20:30), [30:+inf).
-
-* `-n, --num-parts <NUM_PARTS>`
-> The number of parts to split the recording into. Incompatible with `--time`/`-t`.
->
-> There will be exactly that number of resulting splits. Each split will cover an equal time span in the timeline.
-
-* `--recording-id <recording ID prefix>`
-> The recording ID prefix to be used for the output recordings.
->
-> If left unspecified, the ID of the original recording, suffixed with a `-`, will be used as a prefix.
->
-> Each split will use `<recording_id_prefix><i>` as their respective recording ID, where `i` is the index of the split.
-
-* `--drop-unused-timelines <DISCARD_UNUSED_TIMELINES>`
-> If true, timelines other than the one specified with `--timeline` will be discarded.
->
-> [Default: `false`]
-
 ## rerun rrd merge
 
 Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
@@ -593,6 +543,87 @@ Example: `rerun rrd migrate foo.rrd` Results in a `foo.backup.rrd` (copy of the 
 
 * `<PATH_TO_INPUT_RRDS>`
 > Paths to rrd files to migrate.
+
+## rerun rrd optimize
+
+Optimizes the contents of one or more .rrd/.rbl files/streams by compacting chunks, and writes the result to standard output.
+
+Reads from standard input if no paths are specified.
+
+Uses the usual environment variables to control the compaction thresholds: `RERUN_CHUNK_MAX_ROWS`, `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`, `RERUN_CHUNK_MAX_BYTES`.
+
+Unless explicit flags are passed, in which case they will override environment values.
+
+Video stream chunks are also rebatched on GoP (keyframe) boundaries so that each chunk holds one or more complete GoPs. Pass `--no-rebatch-videos` to disable that.
+
+⚠️ This will automatically migrate the data to the latest version of the RRD protocol, if needed. ⚠️
+
+Examples:
+
+* `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun rrd optimize /my/recordings/*.rrd -o output.rrd`
+
+* `rerun rrd optimize --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > output.rrd`
+
+**Usage**: `rerun rrd optimize [OPTIONS] [PATH_TO_INPUT_RRDS]…`
+
+**Arguments**
+
+* `<PATH_TO_INPUT_RRDS>`
+> Paths to read from. Reads from standard input if none are specified.
+
+**Options**
+
+* `-o, --output <dst.(rrd|rbl)>`
+> Path to write to. Writes to standard output if unspecified.
+
+* `--max-bytes <MAX_BYTES>`
+> What is the threshold, in bytes, after which a Chunk cannot be compacted any further?
+>
+> Overrides `RERUN_CHUNK_MAX_BYTES` if set.
+
+* `--max-rows <MAX_ROWS>`
+> What is the threshold, in rows, after which a Chunk cannot be compacted any further?
+>
+> Overrides `RERUN_CHUNK_MAX_ROWS` if set.
+
+* `--max-rows-if-unsorted <MAX_ROWS_IF_UNSORTED>`
+> What is the threshold, in rows, after which a Chunk cannot be compacted any further?
+>
+> This specifically applies to _non_ time-sorted chunks.
+>
+> Overrides `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` if set.
+
+* `--num-pass <NUM_EXTRA_PASSES>`
+> Configures the number of extra compaction passes to run on the data.
+>
+> Compaction in Rerun is an iterative, convergent process: every single pass will improve the quality of the compaction (with diminishing returns), until it eventually converges into a stable state. The more passes, the better the compaction quality.
+>
+> Under the hood, you can think of it as a kind of clustering algorithm: every incoming chunk finds the most appropriate chunk to merge into, thereby creating a new cluster, which is itself just a bigger chunk. On the next pass, these new clustered chunks will themselves look for other clusters to merge into, yielding even bigger clusters, which again are also just chunks. And so on and so forth.
+>
+> If/When the data reaches a stable optimum, the computation will stop immediately, regardless of how many passes are left.
+>
+> [Default: `50`]
+
+* `--continue-on-error <CONTINUE_ON_ERROR>`
+> If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
+>
+> [Default: `false`]
+
+* `--no-rebatch-videos <NO_REBATCH_VIDEOS>`
+> Disable rebatching of video stream chunks to GoP (Group of Pictures) boundaries.
+>
+> By default, after compaction, video stream chunks are rebatched on GoP boundaries so that each chunk contains one or more complete GoPs. This flag disables that behavior.
+>
+> Note: GoP rebatching never splits a GoP across chunks, so streams with long keyframe intervals (e.g. 10+ seconds between I-frames) can produce chunks much larger than `--max-bytes`.
+>
+> [Default: `false`]
+
+* `--split-size-ratio <SPLIT_SIZE_RATIO>`
+> If set, split chunks so no two archetype groups sharing a chunk differ in byte size by more than this factor. Values should be `>= 1`; at `1.0`, every archetype is forced into its own chunk.
+>
+> This keeps "thick" columns (images, videos, blobs) out of the same chunk as "thin" columns (scalars, transforms, text), so the viewer can fetch just the thin data without dragging along the thick payload. Components belonging to the same archetype are always kept together.
+>
+> A good starting value is 10.0. If unset, no thick/thin split is performed.
 
 ## rerun rrd print
 
@@ -688,6 +719,55 @@ Note: Because the payload of the messages is never decoded, no migration or veri
 >
 > When this flag is set and multiple input .rdd files are specified, blueprint activation commands will be dropped from the resulting output.
 
+## rerun rrd split
+
+Optimally splits a recording on a specified timeline.
+
+The sum of the generated splits will always exactly match the original recording.
+
+Example: `rerun rrd split --output-dir ./splits --timeline log_tick --time 33 --time 66 ./my_video.rrd`
+
+**Usage**: `rerun rrd split [OPTIONS] --output-dir <output directory> --timeline <TIMELINE> <PATH_TO_INPUT_RRD>`
+
+**Arguments**
+
+* `<PATH_TO_INPUT_RRD>`
+> Path to read from.
+
+**Options**
+
+* `-o, --output-dir <output directory>`
+> Path to the output directory. All generated RRD files will end up there.
+
+* `--timeline <TIMELINE>`
+> The timeline used to compute the splits.
+>
+> The other timelines will be kept in the output, which might or might not make sense depending on the density of the dataset. Use `--drop-unused-timelines` to discard them.
+
+* `-t, --time <TIMES>`
+> The timestamps at which to perform the splits. Incompatible with `--num-parts`/`-n`.
+>
+> There are always `number_of_times + 1` resulting splits.
+>
+> For example, given `-t 10 -t 20 -t 30`, this command will output 4 splits: [-inf:10), [10:20), [20:30), [30:+inf).
+
+* `-n, --num-parts <NUM_PARTS>`
+> The number of parts to split the recording into. Incompatible with `--time`/`-t`.
+>
+> There will be exactly that number of resulting splits. Each split will cover an equal time span in the timeline.
+
+* `--recording-id <recording ID prefix>`
+> The recording ID prefix to be used for the output recordings.
+>
+> If left unspecified, the ID of the original recording, suffixed with a `-`, will be used as a prefix.
+>
+> Each split will use `<recording_id_prefix><i>` as their respective recording ID, where `i` is the index of the split.
+
+* `--drop-unused-timelines <DISCARD_UNUSED_TIMELINES>`
+> If true, timelines other than the one specified with `--timeline` will be discarded.
+>
+> [Default: `false`]
+
 ## rerun rrd stats
 
 Compute important statistics for one or more .rrd/.rbl files/streams.
@@ -768,6 +848,11 @@ In-memory Rerun data server.
 
 * `--bandwidth-limit <BANDWIDTH_LIMIT>`
 > Artificial bandwidth limit for responses (e.g. '10MB' for 10 megabytes per second).
+
+* `--cors-allow-origin <CORS_ALLOW_ORIGIN>`
+> Additional origin patterns allowed to make cross-origin requests to the server (can be specified multiple times).
+>
+> By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed. Patterns are matched against the full `Origin` header value, using glob-style matching where `*` matches any sequence of characters.
 
 * `-V, --version `
 > Print version.

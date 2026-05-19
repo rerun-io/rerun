@@ -1,15 +1,14 @@
 mod app_testing_ext;
 
+use crate::{
+    App, AppEnvironment, AsyncRuntimeHandle, MainThreadToken, StartupOptions,
+    customize_eframe_and_setup_renderer,
+};
 #[cfg(feature = "testing")]
 pub use app_testing_ext::AppTestingExt;
 use egui_kittest::Harness;
 use re_build_info::build_info;
 use re_viewer_context::AppOptions;
-
-use crate::{
-    App, AppEnvironment, AsyncRuntimeHandle, MainThreadToken, StartupOptions,
-    customize_eframe_and_setup_renderer,
-};
 
 pub type AppOptionsEditor = Box<dyn Fn(&mut AppOptions)>;
 
@@ -20,6 +19,10 @@ pub struct HarnessOptions {
     pub step_dt: Option<f32>,
     pub startup_url: Option<String>,
     pub enable_component_mapping: bool,
+    pub enable_experimental_status_view: bool,
+
+    /// Allows the test to set `AppOptions` at start.
+    pub app_options_editor: Option<AppOptionsEditor>,
 }
 
 /// Convenience function for creating a kittest harness of the viewer App.
@@ -46,8 +49,7 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
                 // Don't show the welcome / example screen in tests.
                 // See also: https://github.com/rerun-io/rerun/issues/10989
                 hide_welcome_screen: true,
-                // Don't calculate memory limit in tests.
-                memory_limit: re_memory::MemoryLimit::UNLIMITED,
+                enable_experimental_status_view: options.enable_experimental_status_view,
                 ..Default::default()
             },
             cc,
@@ -58,6 +60,13 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
         // Force the FFmpeg path to be wrong so we have a reproducible behavior.
         app.app_options_mut().video.ffmpeg_path = "/fake/ffmpeg/path".to_owned();
         app.app_options_mut().video.override_ffmpeg_path = true;
+
+        // Enable experimental grid view in tests.
+        app.app_options_mut().experimental.table_grid_view = true;
+
+        if let Some(editor) = &options.app_options_editor {
+            editor(app.app_options_mut());
+        }
 
         // This is slightly different than calling this after we created the harness since
         // the harness will do some stepping upon creation.

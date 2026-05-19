@@ -13,7 +13,7 @@ Used to identify specific channels within an MCAP file.
 
 ## Arrow datatype
 ```
-uint16
+UInt16
 ```
 
 ## API reference links

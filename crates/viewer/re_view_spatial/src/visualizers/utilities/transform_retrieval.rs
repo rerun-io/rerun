@@ -18,6 +18,22 @@ pub fn spatial_view_kind_from_view_class(class: ViewClassIdentifier) -> SpatialV
     }
 }
 
+/// Derive the spatial view kind from an optional view class affinity.
+///
+/// Returns `None` if the affinity is `None` or not a spatial view class.
+pub fn spatial_view_kind_from_affinity(
+    affinity: Option<ViewClassIdentifier>,
+) -> Option<SpatialViewKind> {
+    let class = affinity?;
+    if class == crate::SpatialView3D::identifier() {
+        Some(SpatialViewKind::ThreeD)
+    } else if class == crate::SpatialView2D::identifier() {
+        Some(SpatialViewKind::TwoD)
+    } else {
+        None
+    }
+}
+
 /// Retrieves the transform info for the given entity and checks if it is valid for the archetype's space kind.
 pub fn transform_info_for_archetype_or_report_error<'a>(
     entity_path: &EntityPath,
@@ -30,7 +46,8 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
     re_tracing::profile_function!();
 
     let result = transform_context.target_from_entity_path(entity_path.hash());
-    let transform_info = match format_transform_info_result(transform_context, result) {
+    let transform_info = match format_transform_info_result(entity_path, transform_context, result)
+    {
         Ok(transform_info) => transform_info,
         Err(err_msg) => {
             output.report_unspecified_source(
@@ -43,6 +60,7 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
     };
 
     is_valid_space_for_content(
+        entity_path,
         instruction_id,
         transform_context,
         transform_info,
@@ -55,32 +73,83 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
 
 /// Formats the result of a transform retrieval into a user-friendly message.
 pub fn format_transform_info_result<'a>(
+    entity_path: &EntityPath,
     transform_context: &TransformTreeContext,
     result: Option<&'a Result<TransformInfo, re_tf::TransformFromToError>>,
 ) -> Result<&'a TransformInfo, String> {
     match result {
-        None => Err("No transform relation known for this entity.".to_owned()),
+        None => {
+            if transform_context
+                .is_empty_frame_name(transform_context.transform_frame_id_for(entity_path.hash()))
+            {
+                Err(
+                    "Transform relation can't be resolved due to empty coordinate frame name."
+                        .to_owned(),
+                )
+            } else {
+                Err("No transform relation known for this entity.".to_owned())
+            }
+        }
 
         Some(Err(re_tf::TransformFromToError::NoPathBetweenFrames { src, target, .. })) => {
-            let src = transform_context.format_frame(*src);
-            let target = transform_context.format_frame(*target);
+            let src = if let Some(frame_id) =
+                transform_context.format_frame_or_debug_warn(*src, entity_path)
+            {
+                format!("{frame_id:?}")
+            } else {
+                format!("{entity_path}:?")
+            };
+            let target = if let Some(target) =
+                transform_context.format_frame_or_debug_warn(*target, entity_path)
+            {
+                format!(" ({target:?})")
+            } else {
+                String::new()
+            };
+
             Err(format!(
-                "No transform path from {src:?} to the view's target frame ({target:?})."
+                "No transform path from {src} to the view's target frame{target}."
             ))
         }
 
         Some(Err(re_tf::TransformFromToError::UnknownTargetFrame(target))) => {
-            // The target frame is the view's target frame.
-            // This means this could be hit if the view's target frame doesn't show up in any data.
-            let target = transform_context.format_frame(*target);
-            Err(format!("The view's target frame {target:?} is unknown."))
+            if transform_context
+                .lookup_frame_id(*target)
+                .is_some_and(|frame_id| frame_id.as_str().is_empty())
+            {
+                return Err(
+                    "View target frame can't be resolved due to empty coordinate frame name."
+                        .to_owned(),
+                );
+            }
+
+            let target = if let Some(target) =
+                transform_context.format_frame_or_debug_warn(*target, entity_path)
+            {
+                format!("target frame {target:?}")
+            } else {
+                "target frame".to_owned()
+            };
+
+            Err(format!("The view's {target} is unknown."))
         }
 
         Some(Err(re_tf::TransformFromToError::UnknownSourceFrame(src))) => {
-            // Unclear how we'd hit this. This means that when processing transforms we encountered a coordinate frame that the transform cache didn't know about.
-            // That would imply that the cache is lagging behind.
-            let src = transform_context.format_frame(*src);
-            Err(format!("The entity's coordinate frame {src:?} is unknown."))
+            if transform_context.is_empty_frame_name(*src) {
+                return Err(
+                    "Transform relation can't be resolved due to empty coordinate frame name."
+                        .to_owned(),
+                );
+            }
+
+            let src = if let Some(frame_id) =
+                transform_context.format_frame_or_debug_warn(*src, entity_path)
+            {
+                format!("{frame_id:?}")
+            } else {
+                format!("{entity_path:?}")
+            };
+            Err(format!("The entity's coordinate frame {src} is unknown."))
         }
 
         Some(Ok(transform_info)) => Ok(transform_info),
@@ -88,6 +157,7 @@ pub fn format_transform_info_result<'a>(
 }
 
 pub fn is_valid_space_for_content(
+    entity_path: &EntityPath,
     instruction_id: &VisualizerInstructionId,
     transform_context: &TransformTreeContext,
     transform: &TransformInfo,
@@ -111,12 +181,16 @@ pub fn is_valid_space_for_content(
     if view_kind == SpatialViewKind::ThreeD
         && let Some(target_frame_pinhole_root) = target_frame_pinhole_root
     {
-        let origin = transform_context.format_frame(target_frame_pinhole_root);
-        output.report_unspecified_source(
-            *instruction_id,
-            VisualizerReportSeverity::Error,
-            format!("The origin of the 3D view ({origin:?}) is under pinhole projection which is not supported by most 3D visualizations."),
-        );
+        let origin = if let Some(origin) =
+            transform_context.format_frame_or_debug_warn(target_frame_pinhole_root, entity_path)
+        {
+            format!("The origin of the 3D view ({origin:?})")
+        } else {
+            "The origin of the 3D view".to_owned()
+        };
+        output.report_unspecified_source(*instruction_id, VisualizerReportSeverity::Error, format!(
+                "{origin} is under pinhole projection which is not supported by most 3D visualizations."
+            ));
         return false;
     }
 

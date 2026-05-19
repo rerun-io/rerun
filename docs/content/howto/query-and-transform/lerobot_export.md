@@ -119,4 +119,4 @@ rerun_export \
   --video wrist:/camera/wrist
 ```
 
-See the [rerun_export example](../../../../examples/python/rerun_export) for the complete implementation.
+See the [rerun_export example](https://rerun.io/examples/python/rerun_export) for the complete implementation.

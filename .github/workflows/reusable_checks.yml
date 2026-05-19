@@ -47,7 +47,7 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
 
@@ -74,7 +74,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
 
@@ -100,7 +100,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
 
@@ -115,7 +115,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
 
@@ -130,7 +130,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
 
@@ -145,7 +145,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
 
@@ -160,7 +160,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
 
@@ -178,7 +178,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
 
@@ -201,7 +201,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
 
@@ -230,7 +230,7 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
       - name: Check spelling of entire workspace
-        uses: crate-ci/typos@v1.37.3
+        uses: crate-ci/typos@v1.45.1
 
   # ---------------------------------------------------------------------------
 
@@ -242,7 +242,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
 
@@ -278,7 +278,7 @@ jobs:
 
       - name: Set up pixi for PR Link Checker
         if: ${{ inputs.CHANNEL == 'pr' }}
-        uses: prefix-dev/setup-pixi@v0.9.1
+        uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
 
@@ -296,12 +296,11 @@ jobs:
       - name: Full Link Checker
         if: ${{ inputs.CHANNEL == 'nightly' }}
         id: lychee
-        uses: lycheeverse/lychee-action@v2.7.0
+        uses: lycheeverse/lychee-action@v2.8.0
         with:
           fail: true
-          lycheeVersion: "v0.21.0"
+          lycheeVersion: "v0.23.0"
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
-          # Pass --verbose, so that all considered links are printed, making it easier to debug.
           # If updating version or args update the pixi.toml to match.
           args: |
-            --verbose --cache --max-cache-age 1d . --root-dir $(pwd) "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
+            --cache --max-cache-age 1d . --root-dir $(pwd) "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"

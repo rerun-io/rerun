@@ -12,7 +12,7 @@ from rerun.datatypes.color_model import ColorModel
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from .. import datatypes
+    from .. import components, datatypes
 
     ImageLike = (
         npt.NDArray[np.float16]
@@ -54,6 +54,7 @@ class Mesh3DExt:
         vertex_texcoords: datatypes.Vec2DArrayLike | None = None,
         albedo_texture: ImageLike | None = None,
         albedo_factor: datatypes.Rgba32Like | None = None,
+        face_rendering: components.MeshFaceRenderingLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ) -> None:
         """
@@ -80,6 +81,9 @@ class Mesh3DExt:
             Optional albedo texture. Used with `vertex_texcoords` on `Mesh3D`.
             Currently supports only sRGB(A) textures, ignoring alpha.
             (meaning that the texture must have 3 or 4 channels)
+        face_rendering:
+            Determines which faces of the mesh are rendered.
+            The default is `DoubleSided`, meaning both front and back faces are shown.
         class_ids:
             Optional class Ids for the vertices.
             The class ID provides colors and labels if not specified explicitly.
@@ -126,6 +130,7 @@ class Mesh3DExt:
                 albedo_texture_buffer=albedo_texture_buffer,
                 albedo_texture_format=albedo_texture_format,
                 albedo_factor=albedo_factor,
+                face_rendering=face_rendering,
                 class_ids=class_ids,
             )
             return

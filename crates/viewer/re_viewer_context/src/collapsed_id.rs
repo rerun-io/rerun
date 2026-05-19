@@ -49,7 +49,7 @@ impl CollapseScope {
             | Item::StoreId(_)
             | Item::ComponentPath(_)
             | Item::RedapServer(_)
-            | Item::RedapEntry(_)
+            | Item::RedapEntry { .. }
             | Item::TableId(_) => None,
         }
     }

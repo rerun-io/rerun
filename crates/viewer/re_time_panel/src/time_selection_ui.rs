@@ -213,6 +213,11 @@ pub fn loop_selection_ui(
         selection_context_menu(ui, ctx, time_commands, is_on_selection);
     });
 
+    // Click outside the selection to remove it:
+    if timeline_response.clicked() && time_ctrl.time_selection().is_some() {
+        time_commands.push(TimeControlCommand::RemoveTimeSelection);
+    }
+
     // Start new selection?
     if !timeline_response.context_menu_opened()
         && timeline_response.hovered()
@@ -341,7 +346,7 @@ fn selection_context_menu(
             .send_ui(UICommand::SaveRecordingSelection);
     }
 
-    let mut url = ViewerOpenUrl::from_context(ctx);
+    let mut url = ViewerOpenUrl::from_context(&ctx.app_ctx);
     let has_time_range = url.as_mut().is_ok_and(|url| url.fragment_mut().is_some());
     let copy_command = url.and_then(|url| url.copy_url_command());
     if ui
@@ -351,10 +356,10 @@ fn selection_context_menu(
         )
         .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
             format!("Can't share links to the current recording: {err}")
-        } else if !has_time_range {
-            "The current recording doesn't support time selection links".to_owned()
-        } else {
+        } else if has_time_range {
             "Open the context menu on selected time to copy link".to_owned()
+        } else {
+            "The current recording doesn't support time selection links".to_owned()
         })
         .clicked()
         && let Ok(copy_command) = copy_command

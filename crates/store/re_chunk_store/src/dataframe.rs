@@ -3,16 +3,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::{Deref, DerefMut};
 
-use arrow::array::ListArray as ArrowListArray;
-use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
-use itertools::Itertools as _;
+use arrow::datatypes::DataType as ArrowDatatype;
 use re_chunk::{ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
     IndexColumnDescriptor, TimeColumnSelector,
 };
-use tap::Tap as _;
 
 use crate::{ChunkStore, ColumnMetadata};
 
@@ -308,76 +305,6 @@ impl QueryExpression {
 // ---
 
 impl ChunkStore {
-    /// Returns the full schema of the store.
-    ///
-    /// This will include a column descriptor for every timeline and every component on every
-    /// entity that has been written to the store so far.
-    ///
-    /// The order of the columns is guaranteed to be in a specific order:
-    /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
-    /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
-    pub fn schema(&self) -> ChunkColumnDescriptors {
-        re_tracing::profile_function!();
-
-        let indices = self
-            .timelines()
-            .values()
-            .map(|timeline| IndexColumnDescriptor::from(*timeline))
-            .collect();
-
-        let components = self
-            .per_column_metadata
-            .iter()
-            .flat_map(|(entity_path, per_identifier)| {
-                per_identifier
-                    .values()
-                    .map(move |(descr, _, datatype)| (entity_path, descr, datatype))
-            })
-            .filter_map(|(entity_path, component_descr, datatype)| {
-                let metadata =
-                    self.lookup_column_metadata(entity_path, component_descr.component)?;
-
-                Some(((entity_path, component_descr), (metadata, datatype)))
-            })
-            .map(|((entity_path, component_descr), (metadata, datatype))| {
-                let ColumnMetadata {
-                    is_static,
-                    is_tombstone,
-                    is_semantically_empty,
-                } = metadata;
-
-                if let Some(c) = component_descr.component_type {
-                    c.sanity_check();
-                }
-
-                ComponentColumnDescriptor {
-                    // NOTE: The data is always a at least a list, whether it's latest-at or range.
-                    // It might be wrapped further in e.g. a dict, but at the very least
-                    // it's a list.
-                    store_datatype: ArrowListArray::DATA_TYPE_CONSTRUCTOR(
-                        ArrowField::new("item", datatype.clone(), true).into(),
-                    ),
-
-                    entity_path: entity_path.clone(),
-                    archetype: component_descr.archetype,
-                    component: component_descr.component,
-                    component_type: component_descr.component_type,
-                    is_static,
-                    is_tombstone,
-                    is_semantically_empty,
-                }
-            })
-            .collect_vec()
-            .tap_mut(|components| components.sort());
-
-        ChunkColumnDescriptors {
-            row_id: self.row_id_descriptor(),
-            indices,
-            components,
-        }
-        .tap(|schema| schema.sanity_check())
-    }
-
     #[expect(clippy::unused_self)]
     pub fn row_id_descriptor(&self) -> re_sorbet::RowIdColumnDescriptor {
         re_sorbet::RowIdColumnDescriptor::from_sorted(false)
@@ -385,7 +312,7 @@ impl ChunkStore {
 
     /// Given a [`TimeColumnSelector`], returns the corresponding [`IndexColumnDescriptor`].
     pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> IndexColumnDescriptor {
-        let timelines = self.timelines();
+        let timelines = self.schema.timelines();
 
         let timeline = timelines
             .get(&selector.timeline)
@@ -421,21 +348,22 @@ impl ChunkStore {
             is_semantically_empty: false,
         };
 
-        let per_identifier = self.per_column_metadata.get(&selector.entity_path)?;
+        let per_identifier = self
+            .schema
+            .per_column_metadata_for_entity(&selector.entity_path)?;
 
         // We perform a scan over all component descriptors in the queried entity path.
-        let (component_descr, _, datatype) =
-            per_identifier.get(&selector.component.as_str().into())?;
+        let entry = per_identifier.get(&selector.component.as_str().into())?;
 
-        result.store_datatype = datatype.clone();
-        result.archetype = component_descr.archetype;
-        result.component_type = component_descr.component_type;
+        result.store_datatype = entry.datatype.clone();
+        result.archetype = entry.descriptor.archetype;
+        result.component_type = entry.descriptor.component_type;
 
         if let Some(ColumnMetadata {
             is_static,
             is_tombstone,
             is_semantically_empty,
-        }) = self.lookup_column_metadata(&selector.entity_path, component_descr.component)
+        }) = self.lookup_column_metadata(&selector.entity_path, entry.descriptor.component)
         {
             result.is_static = is_static;
             result.is_tombstone = is_tombstone;
@@ -455,7 +383,9 @@ impl ChunkStore {
 
         let filter = Self::create_component_filter_from_query(query);
 
-        self.schema().filter_components(filter)
+        self.schema
+            .chunk_column_descriptors()
+            .filter_components(filter)
     }
 
     pub fn create_component_filter_from_query(

@@ -103,14 +103,18 @@ impl framework::Example for Render2D {
             let mut line_batch = line_strip_builder.batch("line cap variations");
             for (i, flags) in [
                 LineStripFlags::empty(),
-                LineStripFlags::FLAG_CAP_START_ROUND,
-                LineStripFlags::FLAG_CAP_END_ROUND,
-                LineStripFlags::FLAG_CAP_START_TRIANGLE,
-                LineStripFlags::FLAG_CAP_END_TRIANGLE,
-                LineStripFlags::FLAG_CAP_START_ROUND | LineStripFlags::FLAG_CAP_END_ROUND,
-                LineStripFlags::FLAG_CAP_START_ROUND | LineStripFlags::FLAG_CAP_END_TRIANGLE,
-                LineStripFlags::FLAG_CAP_START_TRIANGLE | LineStripFlags::FLAG_CAP_END_ROUND,
-                LineStripFlags::FLAG_CAP_START_TRIANGLE | LineStripFlags::FLAG_CAP_END_TRIANGLE,
+                LineStripFlags::STRIP_FLAG_CAP_START_ROUND,
+                LineStripFlags::STRIP_FLAG_CAP_END_ROUND,
+                LineStripFlags::STRIP_FLAG_CAP_START_TRIANGLE,
+                LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE,
+                LineStripFlags::STRIP_FLAG_CAP_START_ROUND
+                    | LineStripFlags::STRIP_FLAG_CAP_END_ROUND,
+                LineStripFlags::STRIP_FLAG_CAP_START_ROUND
+                    | LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE,
+                LineStripFlags::STRIP_FLAG_CAP_START_TRIANGLE
+                    | LineStripFlags::STRIP_FLAG_CAP_END_ROUND,
+                LineStripFlags::STRIP_FLAG_CAP_START_TRIANGLE
+                    | LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE,
             ]
             .iter()
             .enumerate()
@@ -119,7 +123,7 @@ impl framework::Example for Render2D {
                 line_batch
                     .add_segment_2d(glam::vec2(70.0, y), glam::vec2(400.0, y))
                     .radius(Size::new_scene_units(15.0))
-                    .flags(*flags | LineStripFlags::FLAG_COLOR_GRADIENT);
+                    .flags(*flags | LineStripFlags::STRIP_FLAG_COLOR_GRADIENT);
             }
         }
 
@@ -130,9 +134,12 @@ impl framework::Example for Render2D {
                 .triangle_cap_length_factor(15.0)
                 .triangle_cap_width_factor(3.0);
             for (i, flags) in [
-                LineStripFlags::FLAG_CAP_START_TRIANGLE | LineStripFlags::FLAG_CAP_END_ROUND,
-                LineStripFlags::FLAG_CAP_START_ROUND | LineStripFlags::FLAG_CAP_END_TRIANGLE,
-                LineStripFlags::FLAG_CAP_START_TRIANGLE | LineStripFlags::FLAG_CAP_END_TRIANGLE,
+                LineStripFlags::STRIP_FLAG_CAP_START_TRIANGLE
+                    | LineStripFlags::STRIP_FLAG_CAP_END_ROUND,
+                LineStripFlags::STRIP_FLAG_CAP_START_ROUND
+                    | LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE,
+                LineStripFlags::STRIP_FLAG_CAP_START_TRIANGLE
+                    | LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE,
             ]
             .iter()
             .enumerate()
@@ -214,7 +221,7 @@ impl framework::Example for Render2D {
                     .add_segment_2d(glam::vec2(x, y_range.start), glam::vec2(x, y_range.end))
                     .color(Hsva::new(0.25 / num_lines as f32 * i as f32, 1.0, 0.5, 1.0).into())
                     .radius(Size::new_ui_points(10.0))
-                    .flags(LineStripFlags::FLAG_COLOR_GRADIENT);
+                    .flags(LineStripFlags::STRIP_FLAG_COLOR_GRADIENT);
             }
 
             let num_points = 8;

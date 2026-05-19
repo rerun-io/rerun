@@ -172,7 +172,6 @@ impl ExecutionPlan for SizedCoalesceBatchesExec {
 
     fn partition_statistics(&self, partition: Option<usize>) -> Result<Statistics> {
         self.input.partition_statistics(partition)?.with_fetch(
-            self.schema(),
             self.coalescer_options.max_rows,
             0,
             1,

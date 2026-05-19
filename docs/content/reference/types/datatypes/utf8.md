@@ -8,7 +8,7 @@ A string of text, encoded as UTF-8.
 
 ## Arrow datatype
 ```
-utf8
+Utf8
 ```
 
 ## API reference links

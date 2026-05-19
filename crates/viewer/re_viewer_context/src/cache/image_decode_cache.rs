@@ -34,6 +34,9 @@ pub struct ImageDecodeCache {
 }
 
 impl ImageDecodeCache {
+    // TODO(isse): Remove this, we want to use the video player instead of this
+    //             but hard to do for the only remaining usage in `redap_thumbnail`.
+    #[deprecated = "Use video stream cache instead if possible."]
     /// Decode some image data and cache the result.
     ///
     /// The `RowId`, if available, may be used to generate the cache key.
@@ -256,12 +259,7 @@ fn decode_rvl_depth(
     ))
 }
 
-impl Cache for ImageDecodeCache
-where
-    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
-    ImageInfo: Send + Sync,
-    ImageLoadError: Send + Sync,
-{
+impl Cache for ImageDecodeCache {
     fn name(&self) -> &'static str {
         "ImageDecodeCache"
     }
@@ -318,12 +316,7 @@ where
     }
 }
 
-impl re_byte_size::MemUsageTreeCapture for ImageDecodeCache
-where
-    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
-    ImageInfo: Send + Sync,
-    ImageLoadError: Send + Sync,
-{
+impl re_byte_size::MemUsageTreeCapture for ImageDecodeCache {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
         let mut node = re_byte_size::MemUsageNode::new();
 

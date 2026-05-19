@@ -5,18 +5,20 @@ use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::{AsComponents, ComponentBatch, ComponentDescriptor, ViewClassIdentifier};
 
 use super::VisualizerCollection;
-use crate::blueprint_helpers::BlueprintContext as _;
 use crate::{DataQueryResult, DataResult, QueryContext, ViewId};
+use crate::{ViewerContext, blueprint_helpers::BlueprintContext as _};
 
 /// The context associated with a view.
 ///
-/// This combines our [`crate::ViewerContext`] with [`crate::ViewState`]
+/// This combines our [`ViewerContext`] with [`crate::ViewState`]
 /// and other view-specific information. This is used as the interface for
 /// execution of view systems and selection panel UI elements that happen
 /// within the context of a view to simplify plumbing of the necessary
 /// information to resolve a query with possible overrides and fallback values.
+///
+/// Never use [`ViewContext`] where [`ViewerContext`] would suffice.
 pub struct ViewContext<'a> {
-    pub viewer_ctx: &'a crate::ViewerContext<'a>,
+    pub viewer_ctx: &'a ViewerContext<'a>,
     pub view_id: ViewId,
     pub view_class_identifier: ViewClassIdentifier,
     // TODO(RR-3076): Eventually we want to get rid of the _general_ concept of `space_origin`.

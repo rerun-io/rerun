@@ -84,21 +84,54 @@ def update_url_map_rewrite_rules(project: str, version: str, language: str, dry_
     if not url_map.path_matchers:
         url_map.path_matchers = []
 
-    # Find or create the default path matcher
-    path_matcher_idx = None
+    # Initialize host_rules if it doesn't exist
+    if not url_map.host_rules:
+        url_map.host_rules = []
+
+    # --- Ensure ref.rerun.io path matcher exists (serves gs://rerun-docs) ---
+
+    ref_pm_idx = None
     for idx, pm in enumerate(url_map.path_matchers):
         if pm.name == "path-matcher-1":
-            path_matcher_idx = idx
+            ref_pm_idx = idx
             break
 
-    if path_matcher_idx is None:
-        logging.info("Creating new path matcher")
+    if ref_pm_idx is None:
+        logging.info("Creating path matcher for ref.rerun.io")
         path_matcher = compute_v1.types.PathMatcher(name="path-matcher-1", default_service=backend_url, path_rules=[])
         url_map.path_matchers.append(path_matcher)
-        path_matcher_idx = len(url_map.path_matchers) - 1
+        ref_pm_idx = len(url_map.path_matchers) - 1
 
-    # Work directly with the path matcher in url_map (protobuf makes a copy on append)
-    pm = url_map.path_matchers[path_matcher_idx]
+    if not any("ref.rerun.io" in hr.hosts for hr in url_map.host_rules):
+        logging.info("Adding host rule for ref.rerun.io")
+        url_map.host_rules.append(compute_v1.types.HostRule(hosts=["ref.rerun.io"], path_matcher="path-matcher-1"))
+
+    # --- Ensure docs.rerun.io path matcher exists (serves gs://rerun-prose) ---
+
+    prose_backend_url = (
+        f"https://www.googleapis.com/compute/v1/projects/{project}/global/backendBuckets/rerun-prose-backend"
+    )
+
+    prose_pm_idx = None
+    for idx, pm in enumerate(url_map.path_matchers):
+        if pm.name == "prose-path-matcher":
+            prose_pm_idx = idx
+            break
+
+    if prose_pm_idx is None:
+        logging.info("Creating path matcher for docs.rerun.io")
+        prose_pm = compute_v1.types.PathMatcher(
+            name="prose-path-matcher", default_service=prose_backend_url, path_rules=[]
+        )
+        url_map.path_matchers.append(prose_pm)
+
+    if not any("docs.rerun.io" in hr.hosts for hr in url_map.host_rules):
+        logging.info("Adding host rule for docs.rerun.io")
+        url_map.host_rules.append(compute_v1.types.HostRule(hosts=["docs.rerun.io"], path_matcher="prose-path-matcher"))
+
+    # --- Update stable rewrite rules for ref.rerun.io ---
+
+    pm = url_map.path_matchers[ref_pm_idx]
 
     # Remove existing stable rewrite rule for the specified language
     stable_prefix = f"/docs/{language}/stable"
@@ -119,12 +152,6 @@ def update_url_map_rewrite_rules(project: str, version: str, language: str, dry_
 
     # Insert at the beginning (higher priority)
     pm.path_rules.insert(0, new_rule)
-
-    # Ensure there's a host rule pointing to the path matcher
-    # Without a host rule, the path matcher is never evaluated
-    if not url_map.host_rules:
-        logging.info("Adding host rule to connect path matcher")
-        url_map.host_rules = [compute_v1.types.HostRule(hosts=["ref.rerun.io"], path_matcher="path-matcher-1")]
 
     # Capture the "after" state
     after_state = format_url_map(url_map)

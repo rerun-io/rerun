@@ -1,6 +1,7 @@
+use re_chunk::ChunkId;
 use re_log_types::{ApplicationId, StoreId, TableId};
 
-use crate::{Item, open_url::EXAMPLES_ORIGIN};
+use crate::{Item, RedapEntryKind, open_url::EXAMPLES_ORIGIN};
 
 /// What are we currently showing in the viewer?
 // TODO(RR-3033): This needs to be further cleaned up
@@ -25,17 +26,24 @@ pub enum Route {
 
     LocalTable(TableId),
 
-    /// The Redap server/catalog/collection browser.
-    RedapEntry(re_uri::EntryUri),
+    /// The Redap server/catalog/collection or folder browser.
+    RedapEntry {
+        origin: re_uri::Origin,
+        kind: RedapEntryKind,
+    },
 
-    /// The top-level view of a Redap Server
+    /// The top-level view of a Redap Server.
     ///
     /// Also used for the example/welcome page, using [`EXAMPLES_ORIGIN`].
     RedapServer(re_uri::Origin),
 
-    /// A debug-view into the raw chunks of a recording.
+    /// A debug-view into the raw chunks of a store (recording or blueprint).
     ChunkStoreBrowser {
-        recording_id: StoreId,
+        /// The store to browse. `None` when opened from a route that has
+        /// no active store — the chunk browser's internal picker will
+        /// let the user choose one.
+        store_id: Option<StoreId>,
+        selected_chunk: Option<ChunkId>,
 
         /// What to return to when exiting this mode.
         previous: Box<Self>,
@@ -49,10 +57,19 @@ impl std::fmt::Debug for Route {
             Self::Loading(source) => write!(f, "Loading({source})"),
             Self::LocalRecording { recording_id } => write!(f, "LocalRecording({recording_id:?})"),
             Self::LocalTable(table_id) => write!(f, "LocalTable({table_id})"),
-            Self::RedapEntry(uri) => write!(f, "RedapEntry({uri})"),
-            Self::RedapServer(origin) => write!(f, "RedapServer({origin})"),
-            Self::ChunkStoreBrowser { recording_id, .. } => {
-                write!(f, "ChunkStoreBrowser({recording_id:?})")
+            Self::RedapEntry { origin, kind } => match kind {
+                RedapEntryKind::Entry(id) => write!(f, "RedapEntry({origin}, {id})"),
+                RedapEntryKind::Folder(path_prefix) => {
+                    write!(f, "RedapFolder({origin}, {path_prefix})")
+                }
+            },
+            Self::RedapServer(server) => write!(f, "RedapServer({server})"),
+            Self::ChunkStoreBrowser {
+                store_id,
+                selected_chunk,
+                ..
+            } => {
+                write!(f, "ChunkStoreBrowser({store_id:?}, {selected_chunk:?})")
             }
         }
     }
@@ -67,10 +84,10 @@ impl Route {
     /// The active recording [`StoreId`], if any.
     pub fn recording_id(&self) -> Option<&StoreId> {
         match self {
-            Self::LocalRecording { recording_id }
-            | Self::ChunkStoreBrowser { recording_id, .. } => Some(recording_id),
-            Self::Settings { .. }
-            | Self::Loading { .. }
+            Self::LocalRecording { recording_id } => Some(recording_id),
+            Self::ChunkStoreBrowser { store_id, .. } => store_id.as_ref(),
+            Self::Settings { previous } => previous.recording_id(),
+            Self::Loading { .. }
             | Self::LocalTable { .. }
             | Self::RedapEntry { .. }
             | Self::RedapServer { .. } => None,
@@ -80,11 +97,13 @@ impl Route {
     // TODO(RR-3033): remove this app-id centric world
     pub fn app_id(&self) -> Option<&ApplicationId> {
         match self {
-            Self::LocalRecording { recording_id }
-            | Self::ChunkStoreBrowser { recording_id, .. } => Some(recording_id.application_id()),
+            Self::LocalRecording { recording_id } => Some(recording_id.application_id()),
+            Self::ChunkStoreBrowser { store_id, .. } => {
+                store_id.as_ref().map(StoreId::application_id)
+            }
             Self::Settings { previous } => previous.app_id(),
-            Self::RedapServer(origin) => {
-                if origin == &*EXAMPLES_ORIGIN {
+            Self::RedapServer(server) => {
+                if server == &*EXAMPLES_ORIGIN {
                     Some(crate::StoreHub::welcome_screen_app_id())
                 } else {
                     None
@@ -108,12 +127,15 @@ impl Route {
 
     pub fn item(&self) -> Option<Item> {
         match self {
-            Self::LocalRecording { recording_id }
-            | Self::ChunkStoreBrowser { recording_id, .. } => {
-                Some(Item::StoreId(recording_id.clone()))
+            Self::LocalRecording { recording_id } => Some(Item::StoreId(recording_id.clone())),
+            Self::ChunkStoreBrowser { store_id, .. } => {
+                store_id.as_ref().map(|id| Item::StoreId(id.clone()))
             }
             Self::LocalTable(table_id) => Some(Item::TableId(table_id.clone())),
-            Self::RedapEntry(entry_uri) => Some(Item::RedapEntry(entry_uri.clone())),
+            Self::RedapEntry { origin, kind } => Some(Item::RedapEntry {
+                origin: origin.clone(),
+                kind: kind.clone(),
+            }),
             Self::RedapServer(origin) => Some(Item::RedapServer(origin.clone())),
             Self::Settings { .. } | Self::Loading { .. } => None,
         }
@@ -125,7 +147,10 @@ impl Route {
                 recording_id: store_id.clone(),
             }),
             Item::TableId(table_id) => Some(Self::LocalTable(table_id.clone())),
-            Item::RedapEntry(entry_uri) => Some(Self::RedapEntry(entry_uri.clone())),
+            Item::RedapEntry { origin, kind } => Some(Self::RedapEntry {
+                origin: origin.clone(),
+                kind: kind.clone(),
+            }),
             Item::RedapServer(origin) => Some(Self::RedapServer(origin.clone())),
 
             Item::AppId { .. }
@@ -137,17 +162,29 @@ impl Route {
             | Item::DataResult { .. } => None,
         }
     }
+}
 
+impl From<re_uri::EntryUri> for Route {
+    fn from(uri: re_uri::EntryUri) -> Self {
+        Self::RedapEntry {
+            origin: uri.origin,
+            kind: RedapEntryKind::Entry(uri.entry_id),
+        }
+    }
+}
+
+impl Route {
     /// Returns the redap origin for the current route, if any.
     ///
     /// Proxy origins are excluded because they are local and don't represent
     /// a remote server connection.
     pub fn redap_origin(&self, store_hub: &crate::StoreHub) -> Option<re_uri::Origin> {
         match self {
-            Self::LocalTable { .. } => None,
-
             Self::LocalRecording { recording_id }
-            | Self::ChunkStoreBrowser { recording_id, .. } => {
+            | Self::ChunkStoreBrowser {
+                store_id: Some(recording_id),
+                ..
+            } => {
                 let db = store_hub.entity_db(recording_id)?;
                 let source = db.data_source.as_ref()?;
                 let uri = source.redap_uri()?;
@@ -160,7 +197,12 @@ impl Route {
                 Some(uri.origin().clone())
             }
 
-            Self::Settings { previous } => previous.redap_origin(store_hub),
+            Self::Settings { previous }
+            | Self::ChunkStoreBrowser {
+                store_id: None,
+                previous,
+                ..
+            } => previous.redap_origin(store_hub),
 
             Self::Loading(log_source) => {
                 let uri = log_source.redap_uri()?;
@@ -172,8 +214,10 @@ impl Route {
 
                 Some(uri.origin().clone())
             }
-            Self::RedapEntry(entry) => Some(entry.origin.clone()),
-            Self::RedapServer(origin) => Some(origin.clone()),
+            Self::RedapEntry { origin, .. } => Some(origin.clone()),
+            Self::RedapServer(server) => Some(server.clone()),
+
+            Self::LocalTable { .. } => None,
         }
     }
 }

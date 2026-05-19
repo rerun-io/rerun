@@ -239,6 +239,10 @@ impl private::Sealed for crate::sink::GrpcSink {}
 
 impl MultiSinkCompatible for crate::sink::GrpcSink {}
 
+impl private::Sealed for crate::binary_stream_sink::BinaryStreamSink {}
+
+impl MultiSinkCompatible for crate::binary_stream_sink::BinaryStreamSink {}
+
 // ----------------------------------------------------------------------------
 
 /// Store log messages in memory until you call [`LogSink::drain_backlog`].
@@ -433,9 +437,7 @@ impl MemorySinkStorage {
             let mut inner = sink.inner.lock();
             inner.has_been_used = true;
 
-            for message in &inner.msgs {
-                encoder.append(message)?;
-            }
+            encoder.extend(inner.msgs.iter().map(Ok))?;
         }
 
         encoder.finish()?;

@@ -111,17 +111,16 @@ impl ::re_types_core::Loggable for ColorModel {
             .with_context("rerun.datatypes.ColorModel#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::L)),
-                Some(2) => Ok(Some(Self::RGB)),
-                Some(3) => Ok(Some(Self::RGBA)),
-                Some(4) => Ok(Some(Self::BGR)),
-                Some(5) => Ok(Some(Self::BGRA)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.ColorModel")?)
@@ -141,6 +140,8 @@ impl std::fmt::Display for ColorModel {
 }
 
 impl ::re_types_core::reflection::Enum for ColorModel {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[Self::L, Self::RGB, Self::RGBA, Self::BGR, Self::BGRA]
@@ -155,6 +156,13 @@ impl ::re_types_core::reflection::Enum for ColorModel {
             Self::BGR => "Blue, Green, Red",
             Self::BGRA => "Blue, Green, Red, Alpha",
         }
+    }
+
+    #[inline]
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }
 

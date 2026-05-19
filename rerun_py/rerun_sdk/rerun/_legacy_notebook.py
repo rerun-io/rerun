@@ -77,16 +77,16 @@ def as_html(
 
     Parameters
     ----------
-    width : int
+    width:
         The width of the viewer in pixels.
-    height : int
+    height:
         The height of the viewer in pixels.
-    app_url : str
+    app_url:
         Alternative HTTP url to find the Rerun web viewer. This will default to using `https://app.rerun.io`
         or localhost if [rerun.start_web_viewer_server][] has been called.
-    timeout_ms : int
+    timeout_ms:
         The number of milliseconds to wait for the Rerun web viewer to load.
-    blueprint : BlueprintLike
+    blueprint:
         The blueprint to display in the viewer.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -149,16 +149,16 @@ def legacy_notebook_show(
 
     Parameters
     ----------
-    width : int
+    width:
         The width of the viewer in pixels.
-    height : int
+    height:
         The height of the viewer in pixels.
-    app_url : str
+    app_url:
         Alternative HTTP url to find the Rerun web viewer. This will default to using `https://app.rerun.io`
         or localhost if [rerun.start_web_viewer_server][] has been called.
-    timeout_ms : int
+    timeout_ms:
         The number of milliseconds to wait for the Rerun web viewer to load.
-    blueprint : BlueprintLike
+    blueprint:
         The blueprint to display in the viewer.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.

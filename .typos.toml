@@ -26,6 +26,7 @@ somes = "somes" # many `Some`
 teh = "teh" # part of @teh-cmc
 trak = "trak" # mp4 crate spelling
 typ = "typ" # We cannot write "type" in rust
+writeable = "writeable" # NumPy's attribute is `ndarray.flags.writeable`, not `writable`
 ws = "ws" # web-sockets, as in "ws://…"
 Yoh = "Yoh" # Part of @YohDeadfall
 
@@ -182,4 +183,6 @@ extend-ignore-re = [
   "@[a-zA-Z]+", # GitHub user names
 
   "\\[[a-f0-9]{7}\\]\\(https://github\\.com/rerun-io/rerun/commit/", # Commit SHA links in changelog
+
+  "SELECTed", # Past tense of SQL SELECT
 ]

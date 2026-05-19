@@ -25,12 +25,17 @@ namespace rerun::archetypes {
         archetype.draw_order =
             ComponentBatch::empty<rerun::components::DrawOrder>(Descriptor_draw_order)
                 .value_or_throw();
+        archetype.magnification_filter =
+            ComponentBatch::empty<rerun::components::MagnificationFilter>(
+                Descriptor_magnification_filter
+            )
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> DepthImage::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(7);
+        columns.reserve(8);
         if (buffer.has_value()) {
             columns.push_back(buffer.value().partitioned(lengths_).value_or_throw());
         }
@@ -51,6 +56,9 @@ namespace rerun::archetypes {
         }
         if (draw_order.has_value()) {
             columns.push_back(draw_order.value().partitioned(lengths_).value_or_throw());
+        }
+        if (magnification_filter.has_value()) {
+            columns.push_back(magnification_filter.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -77,6 +85,9 @@ namespace rerun::archetypes {
         if (draw_order.has_value()) {
             return columns(std::vector<uint32_t>(draw_order.value().length(), 1));
         }
+        if (magnification_filter.has_value()) {
+            return columns(std::vector<uint32_t>(magnification_filter.value().length(), 1));
+        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::archetypes
@@ -88,7 +99,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(7);
+        cells.reserve(8);
 
         if (archetype.buffer.has_value()) {
             cells.push_back(archetype.buffer.value());
@@ -110,6 +121,9 @@ namespace rerun {
         }
         if (archetype.draw_order.has_value()) {
             cells.push_back(archetype.draw_order.value());
+        }
+        if (archetype.magnification_filter.has_value()) {
+            cells.push_back(archetype.magnification_filter.value());
         }
 
         return rerun::take_ownership(std::move(cells));

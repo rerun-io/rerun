@@ -1,9 +1,13 @@
 use std::fmt::Display;
 
+use re_log::debug_assert;
+
 use crate::{UnsignedAbs, format_int, format_uint};
 
 /// Returns either "1 $NOUN" (if `count` is one), otherwise returns `$N $NOUNs`.
 pub fn format_plural_s(count: impl num_traits::Unsigned + Display, noun: &'static str) -> String {
+    debug_assert!(!noun.ends_with('s'), "Expected singular, got {noun:?}");
+
     if count.is_one() {
         format!("1 {noun}")
     } else {
@@ -17,6 +21,8 @@ where
     Int: num_traits::Signed + Display + PartialOrd + num_traits::Zero + UnsignedAbs,
     Int::Unsigned: Display + num_traits::Unsigned,
 {
+    debug_assert!(!noun.ends_with('s'), "Expected singular, got {noun:?}");
+
     if count.abs().is_one() {
         format!("{} {noun}", format_int(count))
     } else {

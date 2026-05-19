@@ -7,41 +7,45 @@ use arrow::record_batch::RecordBatch;
 use cfg_if::cfg_if;
 use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{
-    Chunk, ChunkStore, ChunkStoreHandle, ChunkTrackingMode, LatestAtQuery, RangeQuery,
+    Chunk, ChunkId, ChunkStore, ChunkStoreHandle, ChunkTrackingMode, LatestAtQuery, RangeQuery,
 };
 use re_log_encoding::ToTransport as _;
-use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::LanceTable;
-use re_protos::cloud::v1alpha1::ext::{
-    self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-    CreateTableEntryResponse, DataSource, EntryDetailsUpdate, ProviderDetails, QueryDatasetRequest,
-    ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode, UpdateDatasetEntryRequest,
-    UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
-};
+use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, Timeline};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
-    GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
-    GetRrdManifestResponse, GetSegmentTableSchemaResponse, QueryDatasetResponse,
-    QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
-    QueryTasksResponse, RegisterTableRequest, RegisterTableResponse, RegisterWithDatasetResponse,
-    ScanDatasetManifestRequest, ScanDatasetManifestResponse, ScanSegmentTableResponse,
-    ScanTableResponse,
+    CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, EntryDetails, EntryKind,
+    FetchChunksRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
+    GetDatasetSchemaResponse, GetRrdManifestResponse, GetSegmentTableSchemaResponse,
+    QueryDatasetResponse, QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse,
+    QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
+    RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
+    ScanSegmentTableResponse, ScanTableResponse,
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_protos::headers::RerunHeadersExtractorExt as _;
 use re_protos::missing_field;
+use re_protos::{
+    EntryName,
+    cloud::v1alpha1::ext::{
+        self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
+        CreateTableEntryResponse, DataSource, EntryDetailsUpdate, LanceTable, ProviderDetails,
+        QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
+        UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
+        UpdateEntryResponse,
+    },
+};
 use re_tuid::Tuid;
 
 use crate::OnError;
 use crate::entrypoint::NamedPath;
+use crate::store::ResolvedStore;
 use crate::store::{
     ChunkKey, Dataset, Error, InMemoryStore, StoreSlotId, TASK_ID_SUCCESS, Table, TaskResult,
 };
@@ -89,7 +93,7 @@ impl RerunCloudHandlerBuilder {
 
     pub async fn with_rrds_as_dataset(
         mut self,
-        dataset_name: String,
+        dataset_name: EntryName,
         rrd_paths: Vec<PathBuf>,
         on_duplicate: IfDuplicateBehavior,
         on_error: crate::OnError,
@@ -136,6 +140,14 @@ impl RerunCloudHandlerBuilder {
         Ok(self)
     }
 
+    pub fn with_eager_chunk_store_config(
+        mut self,
+        config: re_chunk_store::ChunkStoreConfig,
+    ) -> Self {
+        self.store.set_eager_chunk_store_config(config);
+        self
+    }
+
     pub fn build(self) -> RerunCloudHandler {
         RerunCloudHandler::new(self.settings, self.store)
     }
@@ -145,14 +157,16 @@ impl RerunCloudHandlerBuilder {
 
 pub struct RerunCloudHandler {
     settings: RerunCloudHandlerSettings,
-
+    eager_chunk_store_config: re_chunk_store::ChunkStoreConfig,
     store: tokio::sync::RwLock<InMemoryStore>,
 }
 
 impl RerunCloudHandler {
     pub fn new(settings: RerunCloudHandlerSettings, store: InMemoryStore) -> Self {
+        let eager_chunk_store_config = store.eager_chunk_store_config();
         Self {
             settings,
+            eager_chunk_store_config,
             store: tokio::sync::RwLock::new(store),
         }
     }
@@ -165,7 +179,7 @@ impl RerunCloudHandler {
         &self,
         dataset_id: EntryId,
         segment_ids: &[SegmentId],
-    ) -> tonic::Result<Vec<(SegmentId, String, StoreSlotId, ChunkStoreHandle)>> {
+    ) -> tonic::Result<Vec<(SegmentId, String, StoreSlotId, ResolvedStore)>> {
         let store = self.store.read().await;
         let dataset = store.dataset(dataset_id)?;
 
@@ -177,7 +191,7 @@ impl RerunCloudHandler {
                         segment_id.clone(),
                         layer_name.to_owned(),
                         layer.store_slot_id(),
-                        layer.store_handle().clone(),
+                        layer.resolved_store().clone(),
                     )
                 })
             })
@@ -313,9 +327,9 @@ impl RerunCloudHandler {
     async fn find_datasets(
         &self,
         entry_id: Option<EntryId>,
-        name: Option<String>,
+        name: Option<EntryName>,
         store_kind: Option<StoreKind>,
-    ) -> Result<Vec<EntryDetails>, Status> {
+    ) -> tonic::Result<Vec<EntryDetails>> {
         let store = self.store.read().await;
 
         let dataset = match (entry_id, name) {
@@ -354,8 +368,8 @@ impl RerunCloudHandler {
     async fn find_tables(
         &self,
         entry_id: Option<EntryId>,
-        name: Option<String>,
-    ) -> Result<Vec<EntryDetails>, Status> {
+        name: Option<EntryName>,
+    ) -> tonic::Result<Vec<EntryDetails>> {
         let store = self.store.read().await;
 
         let table = match (entry_id, name) {
@@ -422,6 +436,22 @@ impl RerunCloudService for RerunCloudHandler {
             re_protos::cloud::v1alpha1::VersionResponse {
                 build_info: Some(build_info.into()),
                 version: re_build_info::exposed_version!().to_owned(),
+                cloud_provider: None,
+                cloud_region: None,
+            },
+        ))
+    }
+
+    async fn who_am_i(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::WhoAmIRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::WhoAmIResponse>> {
+        // The local server has no authentication, so grant full access.
+        Ok(tonic::Response::new(
+            re_protos::cloud::v1alpha1::WhoAmIResponse {
+                user_id: None,
+                can_read: true,
+                can_write: true,
             },
         ))
     }
@@ -438,7 +468,12 @@ impl RerunCloudService for RerunCloudHandler {
             .and_then(|filter| filter.id)
             .map(TryInto::try_into)
             .transpose()?;
-        let name = filter.as_ref().and_then(|filter| filter.name.clone());
+        let name = filter
+            .as_ref()
+            .and_then(|filter| filter.name.clone())
+            .map(EntryName::new)
+            .transpose()
+            .map_err(|err| Status::invalid_argument(err.to_string()))?;
         let kind = filter
             .and_then(|filter| filter.entry_kind)
             .map(EntryKind::try_from)
@@ -627,6 +662,7 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::RegisterWithDatasetResponse>>
     {
         let mut store = self.store.write().await;
+
         let dataset_id = get_entry_id_from_headers(&store, &request)?;
 
         let ext::RegisterWithDatasetRequest {
@@ -657,7 +693,7 @@ impl RerunCloudService for RerunCloudHandler {
             },
             Memory {
                 store_slot_id: StoreSlotId,
-                store_handle: ChunkStoreHandle,
+                resolved: ResolvedStore,
                 segment_id: SegmentId,
                 layer_name: String,
             },
@@ -699,12 +735,12 @@ impl RerunCloudService for RerunCloudHandler {
             // Handle memory:// URLs (re-registration of existing stores)
             if storage_url.scheme() == "memory" {
                 let store_slot_id = parse_memory_url(&storage_url)?;
-                let store_handle = store.resolve_store(&store_slot_id).ok_or_else(|| {
+                let resolved = store.resolve_store(&store_slot_id).ok_or_else(|| {
                     tonic::Status::not_found(format!(
                         "store not found for memory URL: {storage_url}"
                     ))
                 })?;
-                let store_id = store_handle.read().id().clone();
+                let store_id = resolved.store_id();
                 if store_id.kind() != store_kind {
                     continue;
                 }
@@ -713,7 +749,7 @@ impl RerunCloudService for RerunCloudHandler {
                 seen.entry(key).or_default().push(storage_url.clone());
                 validated_sources.push(ValidatedSource::Memory {
                     store_slot_id,
-                    store_handle,
+                    resolved,
                     segment_id,
                     layer_name: layer,
                 });
@@ -789,7 +825,7 @@ impl RerunCloudService for RerunCloudHandler {
         // Phase 2: Load file sources and unify with memory sources into a common form.
         struct ReadySource {
             store_slot_id: StoreSlotId,
-            store_handle: ChunkStoreHandle,
+            resolved: ResolvedStore,
             segment_id: SegmentId,
             layer_name: String,
             storage_url: String,
@@ -801,14 +837,14 @@ impl RerunCloudService for RerunCloudHandler {
             match source {
                 ValidatedSource::Memory {
                     store_slot_id,
-                    store_handle,
+                    resolved,
                     segment_id,
                     layer_name,
                 } => {
                     ready_sources.push(ReadySource {
                         storage_url: format!("memory:///store/{store_slot_id}"),
                         store_slot_id,
-                        store_handle,
+                        resolved,
                         segment_id,
                         layer_name,
                     });
@@ -820,22 +856,12 @@ impl RerunCloudService for RerunCloudHandler {
                     storage_url,
                 } => {
                     re_log::info!("Loading RRD: {}", rrd_path.display());
-                    let contents = ChunkStore::handle_from_rrd_filepath(
-                        &InMemoryStore::chunk_store_config(),
-                        &rrd_path,
-                    )
-                    .map_err(|err| {
-                        tonic::Status::internal(format!("Failed to load RRD: {err:#}"))
-                    })?;
 
-                    for (store_id, chunk_store) in contents {
-                        if store_id.kind() != store_kind {
-                            continue;
-                        }
-
+                    for (store_id, resolved) in ResolvedStore::load_rrd_file(&rrd_path, store_kind)?
+                    {
                         ready_sources.push(ReadySource {
                             store_slot_id: StoreSlotId::new(),
-                            store_handle: chunk_store,
+                            resolved,
                             segment_id: SegmentId::new(store_id.recording_id().to_string()),
                             layer_name: layer_name.clone(),
                             storage_url: storage_url.to_string(),
@@ -854,7 +880,7 @@ impl RerunCloudService for RerunCloudHandler {
         let mut failed_task_results: Vec<(TaskId, TaskResult)> = vec![];
 
         for source in &ready_sources {
-            store.register_store_with_id(source.store_slot_id, &source.store_handle);
+            store.register_store_with_id(source.store_slot_id, &source.resolved);
         }
 
         {
@@ -866,7 +892,7 @@ impl RerunCloudService for RerunCloudHandler {
                         source.segment_id.clone(),
                         source.layer_name.clone(),
                         source.store_slot_id,
-                        source.store_handle,
+                        source.resolved,
                         on_duplicate,
                     )
                     .await;
@@ -923,7 +949,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn unregister_from_dataset(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::UnregisterFromDatasetRequest>,
-    ) -> tonic::Result<Response<Self::UnregisterFromDatasetStream>, Status> {
+    ) -> tonic::Result<Response<Self::UnregisterFromDatasetStream>> {
         let mut store = self.store.write().await;
 
         let entry_id = get_entry_id_from_headers(&store, &request)?;
@@ -1010,7 +1036,7 @@ impl RerunCloudService for RerunCloudHandler {
                             entry_id.to_string(),
                             segment_id.id.clone(),
                         ),
-                        InMemoryStore::chunk_store_config(),
+                        self.eager_chunk_store_config.clone(),
                     )
                 })
                 .insert_chunk(&chunk)
@@ -1025,21 +1051,21 @@ impl RerunCloudService for RerunCloudHandler {
         let handles: Vec<_> = chunk_stores
             .into_iter()
             .map(|(segment_id, chunk_store)| {
-                let handle = ChunkStoreHandle::new(chunk_store);
-                let store_slot_id = store.register_store(&handle);
-                (segment_id, store_slot_id, handle)
+                let resolved = ResolvedStore::Eager(ChunkStoreHandle::new(chunk_store));
+                let store_slot_id = store.register_store(&resolved);
+                (segment_id, store_slot_id, resolved)
             })
             .collect();
 
         let dataset = store.dataset_mut(entry_id)?;
 
-        for (entity_path, store_slot_id, handle) in handles {
+        for (entity_path, store_slot_id, resolved) in handles {
             dataset
                 .add_layer(
                     entity_path,
                     DataSource::DEFAULT_LAYER.to_owned(),
                     store_slot_id,
-                    handle,
+                    resolved,
                     IfDuplicateBehavior::Error,
                 )
                 .await?;
@@ -1167,7 +1193,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn get_dataset_manifest_schema(
         &self,
         request: Request<GetDatasetManifestSchemaRequest>,
-    ) -> Result<Response<GetDatasetManifestSchemaResponse>, Status> {
+    ) -> tonic::Result<Response<GetDatasetManifestSchemaResponse>> {
         let store = self.store.read().await;
 
         let entry_id = get_entry_id_from_headers(&store, &request)?;
@@ -1194,7 +1220,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn scan_dataset_manifest(
         &self,
         request: Request<ScanDatasetManifestRequest>,
-    ) -> Result<Response<Self::ScanDatasetManifestStream>, Status> {
+    ) -> tonic::Result<Response<Self::ScanDatasetManifestStream>> {
         let store = self.store.read().await;
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
@@ -1386,6 +1412,7 @@ impl RerunCloudService for RerunCloudHandler {
             exclude_temporal_data,
             scan_parameters,
             query,
+            generate_direct_urls: _,
         } = request.into_inner().try_into()?;
 
         if scan_parameters.is_some() {
@@ -1414,9 +1441,72 @@ impl RerunCloudService for RerunCloudHandler {
             ));
         }
 
+        // Compute the union of timelines across every (segment, layer) touched by this query, so
+        // every response we emit below carries the same `{timeline}:start` columns and the client
+        // can concatenate them. Individual responses fill in `None` for timelines their chunks
+        // don't contain.
+        let all_timelines: BTreeMap<String, arrow::datatypes::DataType> = chunk_stores
+            .iter()
+            .flat_map(|(_, _, _, resolved)| {
+                resolved
+                    .schema()
+                    .timelines()
+                    .into_values()
+                    .map(|tl| (tl.name().as_str().to_owned(), tl.datatype()))
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+
         let stream = futures::stream::iter(chunk_stores.into_iter().map(
-            move |(segment_id, layer_name, store_slot_id, store_handle)| {
-                let num_chunks = store_handle.read().num_physical_chunks();
+            move |(segment_id, layer_name, store_slot_id, resolved)| {
+                // Build metadata for all relevant chunks (physical + virtual).
+
+                let metadata_vec: Vec<ChunkMetadata> = if let Some(query) = &query {
+                    let (chunks, missing_virtual) =
+                        get_chunks_for_query_results(&resolved, &entity_paths, query);
+
+                    let mut metas: Vec<_> = chunks
+                        .iter()
+                        .map(|c| ChunkMetadata::from_chunk(c))
+                        .collect();
+                    if let ResolvedStore::Lazy(lazy) = &resolved {
+                        for chunk_id in &missing_virtual {
+                            if let Some(idx) = lazy.chunk_row_index(chunk_id) {
+                                metas.push(ChunkMetadata::from_manifest(
+                                    lazy.manifest(),
+                                    *chunk_id,
+                                    idx,
+                                    lazy.timeline_ranges().get(chunk_id),
+                                ));
+                            }
+                        }
+                    }
+                    metas
+                } else {
+                    match &resolved {
+                        ResolvedStore::Eager(h) => h
+                            .read()
+                            .iter_physical_chunks()
+                            .map(|c| ChunkMetadata::from_chunk(c))
+                            .collect(),
+                        ResolvedStore::Lazy(lazy) => lazy
+                            .manifest()
+                            .col_chunk_ids()
+                            .iter()
+                            .enumerate()
+                            .map(|(idx, &chunk_id)| {
+                                ChunkMetadata::from_manifest(
+                                    lazy.manifest(),
+                                    chunk_id,
+                                    idx,
+                                    lazy.timeline_ranges().get(&chunk_id),
+                                )
+                            })
+                            .collect(),
+                    }
+                };
+
+                let num_chunks = metadata_vec.len();
 
                 let mut chunk_ids = Vec::with_capacity(num_chunks);
                 let mut chunk_segment_ids = Vec::with_capacity(num_chunks);
@@ -1424,89 +1514,90 @@ impl RerunCloudService for RerunCloudHandler {
                 let mut chunk_entity_path = Vec::with_capacity(num_chunks);
                 let mut chunk_is_static = Vec::with_capacity(num_chunks);
                 let mut chunk_byte_sizes = Vec::with_capacity(num_chunks);
+                let mut chunk_byte_sizes_uncompressed = Vec::with_capacity(num_chunks);
+                let mut chunk_direct_urls = Vec::with_capacity(num_chunks);
+                let mut chunk_direct_url_expiry = Vec::with_capacity(num_chunks);
 
-                let mut timelines = BTreeMap::new();
+                // Seed with the full set of timelines the query can see so the response schema
+                // matches every other response in this stream, even for segments/layers whose
+                // chunks don't use all those timelines.
+                let mut timelines: BTreeMap<
+                    String,
+                    (arrow::datatypes::DataType, Vec<Option<i64>>),
+                > = all_timelines
+                    .iter()
+                    .map(|(name, dtype)| {
+                        (
+                            name.clone(),
+                            (dtype.clone(), Vec::with_capacity(num_chunks)),
+                        )
+                    })
+                    .collect();
 
-                let chunks = if let Some(query) = &query {
-                    get_chunks_for_query(&store_handle, &entity_paths, query)
-                } else {
-                    store_handle
-                        .read()
-                        .iter_physical_chunks()
-                        .map(Clone::clone)
-                        .collect()
-                };
-
-                for chunk in chunks {
-                    if !entity_paths.is_empty() && !entity_paths.contains(chunk.entity_path()) {
+                for meta in &metadata_vec {
+                    if !entity_paths.is_empty()
+                        && !entity_paths.contains(&EntityPath::from(meta.entity_path.as_str()))
+                    {
                         continue;
                     }
 
-                    if !requested_chunk_ids.is_empty() && !requested_chunk_ids.contains(&chunk.id())
+                    if !requested_chunk_ids.is_empty()
+                        && !requested_chunk_ids.contains(&meta.chunk_id)
                     {
                         continue;
                     }
 
                     // Filter by static/temporal data
-                    if exclude_static_data && chunk.is_static() {
+                    if exclude_static_data && meta.is_static {
                         continue;
                     }
-                    if exclude_temporal_data && !chunk.is_static() {
+                    if exclude_temporal_data && !meta.is_static {
                         continue;
                     }
 
-                    let mut missing_timelines: BTreeSet<_> = timelines.keys().copied().collect();
-                    for (timeline_name, timeline_col) in chunk.timelines() {
-                        let range = timeline_col.time_range();
-                        let time_min = range.min();
-                        let time_max = range.max();
-
-                        let timeline_name = timeline_name.as_str();
+                    let mut missing_timelines: BTreeSet<String> =
+                        timelines.keys().cloned().collect();
+                    for (timeline, range) in &meta.timelines {
+                        let timeline_name = timeline.name().as_str();
                         missing_timelines.remove(timeline_name);
-                        let timeline_data_type = timeline_col.times_array().data_type().to_owned();
 
-                        let timeline_data = timelines.entry(timeline_name).or_insert_with(|| {
-                            (
-                                timeline_data_type,
-                                vec![None; chunk_segment_ids.len()],
-                                vec![None; chunk_segment_ids.len()],
-                            )
-                        });
+                        let timeline_data = timelines
+                            .get_mut(timeline_name)
+                            .expect("timeline was pre-seeded from chunk stores");
 
-                        timeline_data.1.push(Some(time_min.as_i64()));
-                        timeline_data.2.push(Some(time_max.as_i64()));
+                        timeline_data.1.push(Some(range.min().as_i64()));
                     }
                     for timeline_name in missing_timelines {
                         let timeline_data = timelines
-                            .get_mut(timeline_name)
-                            .expect("timeline_names already checked"); // Already checked
+                            .get_mut(&timeline_name)
+                            .expect("timeline_names already checked");
 
                         timeline_data.1.push(None);
-                        timeline_data.2.push(None);
                     }
 
                     chunk_segment_ids.push(segment_id.id.clone());
-                    chunk_ids.push(chunk.id());
-                    chunk_entity_path.push(chunk.entity_path().to_string());
-                    chunk_is_static.push(chunk.is_static());
-
-                    // Calculate chunk byte size for batching optimization
-                    let chunk_size_bytes =
-                        re_byte_size::SizeBytes::total_size_bytes(chunk.as_ref());
-                    chunk_byte_sizes.push(chunk_size_bytes);
+                    chunk_ids.push(meta.chunk_id);
+                    chunk_entity_path.push(meta.entity_path.clone());
+                    chunk_is_static.push(meta.is_static);
+                    chunk_byte_sizes.push(meta.byte_size);
+                    // OSS server stores decoded data, so compressed == uncompressed.
+                    chunk_byte_sizes_uncompressed.push(Some(meta.byte_size));
 
                     chunk_keys.push(
                         ChunkKey {
-                            chunk_id: chunk.id(),
+                            chunk_id: meta.chunk_id,
                             store_slot_id,
                         }
                         .encode()?,
                     );
+
+                    chunk_direct_urls.push(None);
+                    chunk_direct_url_expiry.push(None);
                 }
 
                 let chunk_layer_names = vec![layer_name.clone(); chunk_ids.len()];
                 let chunk_key_refs = chunk_keys.iter().map(|v| v.as_slice()).collect();
-                let batch = QueryDatasetResponse::create_dataframe(
+                let batch = QueryDatasetResponse::create_dataframe_with_timelines(
                     chunk_ids,
                     chunk_segment_ids,
                     chunk_layer_names,
@@ -1514,6 +1605,10 @@ impl RerunCloudService for RerunCloudHandler {
                     chunk_entity_path,
                     chunk_is_static,
                     chunk_byte_sizes,
+                    chunk_byte_sizes_uncompressed,
+                    chunk_direct_urls,
+                    chunk_direct_url_expiry,
+                    &timelines,
                 )
                 .map_err(|err| {
                     tonic::Status::internal(format!("Failed to create dataframe: {err:#}"))
@@ -1667,7 +1762,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn get_table_schema(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::GetTableSchemaRequest>,
-    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::GetTableSchemaResponse>, Status> {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetTableSchemaResponse>> {
         let store = self.store.read().await;
         let Some(entry_id) = request.into_inner().table_id else {
             return Err(Status::not_found("Table ID not specified in request"));
@@ -1694,7 +1789,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn scan_table(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ScanTableRequest>,
-    ) -> Result<tonic::Response<Self::ScanTableStream>, Status> {
+    ) -> tonic::Result<tonic::Response<Self::ScanTableStream>> {
         let store = self.store.read().await;
         let Some(entry_id) = request.into_inner().table_id else {
             return Err(Status::not_found("Table ID not specified in request"));
@@ -1804,6 +1899,14 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
+    async fn cancel_tasks(
+        &self,
+        _request: tonic::Request<CancelTasksRequest>,
+    ) -> tonic::Result<tonic::Response<CancelTasksResponse>> {
+        // Cancelling tasks is a noop in the OSS server
+        Ok(tonic::Response::new(CancelTasksResponse {}))
+    }
+
     async fn do_maintenance(
         &self,
         _request: tonic::Request<re_protos::cloud::v1alpha1::DoMaintenanceRequest>,
@@ -1826,11 +1929,11 @@ impl RerunCloudService for RerunCloudHandler {
     async fn create_table_entry(
         &self,
         request: Request<re_protos::cloud::v1alpha1::CreateTableEntryRequest>,
-    ) -> Result<Response<re_protos::cloud::v1alpha1::CreateTableEntryResponse>, Status> {
+    ) -> tonic::Result<Response<re_protos::cloud::v1alpha1::CreateTableEntryResponse>> {
         let mut store = self.store.write().await;
 
         let request: CreateTableEntryRequest = request.into_inner().try_into()?;
-        let table_name = &request.name;
+        let table_name = request.name;
 
         let schema = Arc::new(request.schema);
 
@@ -1877,7 +1980,7 @@ impl RerunCloudService for RerunCloudHandler {
 ///
 /// Returns a deduplicated set because a single RRD can contain duplicate
 /// `SetStoreInfo` messages for the same store.
-fn load_store_ids(rrd_path: &std::path::Path) -> Result<BTreeSet<StoreId>, tonic::Status> {
+fn load_store_ids(rrd_path: &std::path::Path) -> tonic::Result<BTreeSet<StoreId>> {
     let reader = std::io::BufReader::new(
         std::fs::File::open(rrd_path)
             .map_err(|err| tonic::Status::internal(format!("Failed to open RRD file: {err:#}")))?,
@@ -1898,7 +2001,7 @@ fn load_store_ids(rrd_path: &std::path::Path) -> Result<BTreeSet<StoreId>, tonic
 }
 
 /// Parses a `memory:///store/{store_slot_id}` URL and returns the [`StoreSlotId`].
-fn parse_memory_url(url: &url::Url) -> Result<StoreSlotId, tonic::Status> {
+fn parse_memory_url(url: &url::Url) -> tonic::Result<StoreSlotId> {
     let path = url.path();
     let slot_id_str = path.strip_prefix("/store/").ok_or_else(|| {
         tonic::Status::invalid_argument(format!(
@@ -1943,91 +2046,113 @@ fn latest_at_or_static(latest_at: &ext::QueryLatestAt) -> LatestAtQuery {
     }
 }
 
-/// Utility function to determine the chunks to return based on query parameters
-fn get_chunks_for_query(
-    store_handle: &ChunkStoreHandle,
+/// Metadata for a single chunk, extractable from either a physical `Chunk` or a manifest.
+struct ChunkMetadata {
+    chunk_id: ChunkId,
+    entity_path: String,
+    is_static: bool,
+    byte_size: u64,
+    timelines: IntMap<Timeline, AbsoluteTimeRange>,
+}
+
+impl ChunkMetadata {
+    fn from_chunk(chunk: &Chunk) -> Self {
+        let timelines = chunk
+            .timelines()
+            .values()
+            .map(|col| (*col.timeline(), col.time_range()))
+            .collect();
+        Self {
+            chunk_id: chunk.id(),
+            entity_path: chunk.entity_path().to_string(),
+            is_static: chunk.is_static(),
+            byte_size: re_byte_size::SizeBytes::total_size_bytes(chunk),
+            timelines,
+        }
+    }
+
+    fn from_manifest(
+        manifest: &re_log_encoding::RrdManifest,
+        chunk_id: ChunkId,
+        row_idx: usize,
+        chunk_timelines: Option<&IntMap<Timeline, AbsoluteTimeRange>>,
+    ) -> Self {
+        Self {
+            chunk_id,
+            entity_path: manifest
+                .col_chunk_entity_path_raw()
+                .value(row_idx)
+                .to_owned(),
+            is_static: manifest.col_chunk_is_static_raw().value(row_idx),
+            byte_size: manifest.col_chunk_byte_size_uncompressed()[row_idx],
+            timelines: chunk_timelines.cloned().unwrap_or_default(),
+        }
+    }
+}
+
+/// Returns physical chunks and missing virtual chunk IDs for a query.
+fn get_chunks_for_query_results(
+    resolved: &ResolvedStore,
     entity_paths: &IntSet<EntityPath>,
     query: &ext::Query,
-) -> Vec<Arc<Chunk>> {
+) -> (Vec<Arc<Chunk>>, Vec<ChunkId>) {
+    // Contract: a Query with neither `latest_at` nor `range` means "all chunks", regardless of
+    // entity filter. This is exercised by the shared `re_redap_tests::query_dataset` "default" test
+    // case.
+    if query.latest_at.is_none() && query.range.is_none() {
+        return match resolved {
+            ResolvedStore::Eager(h) => (h.read().iter_physical_chunks().cloned().collect(), vec![]),
+            ResolvedStore::Lazy(lazy) => (vec![], lazy.manifest().col_chunk_ids().to_vec()),
+        };
+    }
+
     let paths = if entity_paths.is_empty() {
-        store_handle.read().all_entities()
+        resolved.all_entities()
     } else {
         entity_paths.clone()
     };
-    match (&query.latest_at, &query.range) {
-        (Some(latest_at), Some(range)) => {
-            let latest_at = latest_at_or_static(latest_at);
-            let range = RangeQuery::new(range.index.clone().into(), range.index_range);
 
-            // We have both a latest at and a range, so we need to combine
-            // chunks and ensure no duplicates
-            paths
-                .iter()
-                .flat_map(|entity_path| {
-                    let read_lock = store_handle.read();
-                    let mut latest_at = read_lock
-                        .latest_at_relevant_chunks_for_all_components(
-                            ChunkTrackingMode::Report,
-                            &latest_at,
-                            entity_path,
-                            true,
-                        )
-                        .chunks;
-                    let mut range = read_lock
-                        .range_relevant_chunks_for_all_components(
-                            ChunkTrackingMode::Report,
-                            &range.clone(),
-                            entity_path,
-                            true,
-                        )
-                        .chunks;
+    let mut all_chunks: Vec<Arc<Chunk>> = vec![];
+    let mut all_missing: BTreeSet<ChunkId> = BTreeSet::new();
+    let mut seen_physical: BTreeSet<ChunkId> = BTreeSet::new();
 
-                    range.retain(|chunk| !latest_at.contains(chunk));
-                    latest_at.extend(range);
-
-                    latest_at
-                })
-                .collect::<Vec<_>>()
+    for entity_path in &paths {
+        if let Some(latest_at) = &query.latest_at {
+            let latest_at_q = latest_at_or_static(latest_at);
+            let results = resolved.latest_at_relevant_chunks_for_all_components(
+                ChunkTrackingMode::Report,
+                &latest_at_q,
+                entity_path,
+                true,
+            );
+            for chunk in results.chunks {
+                if seen_physical.insert(chunk.id()) {
+                    all_chunks.push(chunk);
+                }
+            }
+            all_missing.extend(results.missing_virtual);
         }
-        (Some(latest_at), None) => {
-            let latest_at = latest_at_or_static(latest_at);
-
-            paths
-                .iter()
-                .flat_map(|entity_path| {
-                    store_handle
-                        .read()
-                        .latest_at_relevant_chunks_for_all_components(
-                            ChunkTrackingMode::Report,
-                            &latest_at.clone(),
-                            entity_path,
-                            true,
-                        )
-                        .chunks
-                })
-                .collect::<Vec<_>>()
+        if let Some(range) = &query.range {
+            let range_q = RangeQuery::new(range.index.clone().into(), range.index_range);
+            let results = resolved.range_relevant_chunks_for_all_components(
+                ChunkTrackingMode::Report,
+                &range_q,
+                entity_path,
+                true,
+            );
+            for chunk in results.chunks {
+                if seen_physical.insert(chunk.id()) {
+                    all_chunks.push(chunk);
+                }
+            }
+            all_missing.extend(results.missing_virtual);
         }
-        (None, Some(range)) => {
-            let range = RangeQuery::new(range.index.clone().into(), range.index_range);
-            paths
-                .iter()
-                .flat_map(|entity_path| {
-                    store_handle
-                        .read()
-                        .range_relevant_chunks_for_all_components(
-                            ChunkTrackingMode::Report,
-                            &range.clone(),
-                            entity_path,
-                            true,
-                        )
-                        .chunks
-                })
-                .collect::<Vec<_>>()
-        }
-        (None, None) => store_handle
-            .read()
-            .iter_physical_chunks()
-            .map(Clone::clone)
-            .collect(),
     }
+
+    // Remove any virtual IDs that turned out to be physical in another entity's result.
+    for id in &seen_physical {
+        all_missing.remove(id);
+    }
+
+    (all_chunks, all_missing.into_iter().collect())
 }

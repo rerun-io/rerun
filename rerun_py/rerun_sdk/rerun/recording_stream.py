@@ -6,7 +6,9 @@ import inspect
 import math
 import uuid
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeVar, overload
+from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
+
+from typing_extensions import Self
 
 import rerun as rr
 from rerun import bindings
@@ -259,14 +261,14 @@ class RecordingStream:
 
         Parameters
         ----------
-        application_id : str
+        application_id:
             Your Rerun recordings will be categorized by this application id, so
             try to pick a unique one for each application that uses the Rerun SDK.
 
             For example, if you have one application doing object detection
             and another doing camera calibration, you could have
             `rerun.init("object_detector")` and `rerun.init("calibrator")`.
-        recording_id : Optional[str]
+        recording_id:
             Set the recording ID that this process is logging to, as a UUIDv4.
 
             The default recording_id is based on `multiprocessing.current_process().authkey`
@@ -277,13 +279,13 @@ class RecordingStream:
             processes to log to the same Rerun instance (and be part of the same recording),
             you will need to manually assign them all the same recording_id.
             Any random UUIDv4 will work, or copy the recording id for the parent process.
-        make_default : bool
+        make_default:
             If true (_not_ the default), the newly initialized recording will replace the current
             active one (if any) in the global scope.
-        make_thread_default : bool
+        make_thread_default:
             If true (_not_ the default), the newly initialized recording will replace the current
             active one (if any) in the thread-local scope.
-        default_enabled : bool
+        default_enabled:
             Should Rerun logging be on by default?
             Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
         send_properties
@@ -346,7 +348,7 @@ class RecordingStream:
         self._disconnect_orphaned_recordings = bindings.disconnect_orphaned_recordings
         return self
 
-    def __enter__(self) -> RecordingStream:
+    def __enter__(self) -> Self:
         self.context_token = active_recording_stream.set(self)
         self._prev = set_thread_local_data_recording(self)
         return self
@@ -602,6 +604,7 @@ class RecordingStream:
         default_blueprint: BlueprintLike | None = None,
         server_memory_limit: str = "1GiB",
         newest_first: bool = False,
+        cors_allow_origin: list[str] | None = None,
     ) -> str:
         """
         Serve log-data over gRPC.
@@ -634,6 +637,13 @@ class RecordingStream:
         newest_first:
             If `True`, the server will start sending back the newest messages _first_.
             If `False`, the messages will be played back in the order they arrived.
+        cors_allow_origin:
+            Additional origin patterns allowed to make CORS requests to the gRPC server.
+            By default, only localhost and rerun.io are allowed.
+            Patterns are matched against the full `Origin` header (e.g. `"https://example.com:8080"`),
+            using glob-style matching where `*` matches any sequence of characters.
+            Examples: `"https://*.example.com"`, `"https://example.com:8080"`,
+            `"https://example.com:*"`.
 
         """
 
@@ -645,6 +655,7 @@ class RecordingStream:
             server_memory_limit=server_memory_limit,
             recording=self,
             newest_first=newest_first,
+            cors_allow_origin=cors_allow_origin,
         )
 
     def send_blueprint(
@@ -682,7 +693,7 @@ class RecordingStream:
         """
         Send a `Recording` loaded from a `.rrd` to the `RecordingStream`.
 
-        .. warning::
+        !!! Warning
             ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
 
         Parameters
@@ -763,11 +774,11 @@ class RecordingStream:
 
         Parameters
         ----------
-        width : int
+        width:
             The width of the viewer in pixels.
-        height : int
+        height:
             The height of the viewer in pixels.
-        blueprint : BlueprintLike
+        blueprint:
             A blueprint object to send to the viewer.
             It will be made active and set as the default blueprint in the recording.
 
@@ -821,7 +832,7 @@ class RecordingStream:
 
         Parameters
         ----------
-        name : str
+        name:
             The name of the recording.
 
         """
@@ -838,7 +849,7 @@ class RecordingStream:
 
         Parameters
         ----------
-        nanos : int
+        nanos:
             The start time of the recording.
 
         """
@@ -883,7 +894,7 @@ class RecordingStream:
 
         Parameters
         ----------
-        timeline : str
+        timeline:
             The name of the timeline to set the time for.
         sequence:
             Used for sequential indices, like `frame_nr`.
@@ -916,7 +927,7 @@ class RecordingStream:
 
         Parameters
         ----------
-        timeline : str
+        timeline:
             The name of the timeline to clear the time for.
 
         """
@@ -952,7 +963,7 @@ class RecordingStream:
         This is the main entry point for logging data to rerun. It can be used to log anything
         that implements the [`rerun.AsComponents`][] interface, or a collection of [`rerun.ComponentBatchLike`][] objects.
 
-        When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/entity-path)
+        When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path)
         for identifying the data. Note that paths prefixed with "__" are considered reserved for use by the Rerun SDK
         itself and should not be used for logging user data. This is where Rerun will log additional information
         such as properties and warnings.
@@ -989,7 +1000,7 @@ class RecordingStream:
             This means that logging to `"world/my\ image\!"` is the same as logging
             to ["world", "my image!"].
 
-            See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+            See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 
         entity:
             Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype.
@@ -1027,11 +1038,11 @@ class RecordingStream:
         static: bool = False,
     ) -> None:
         r"""
-        Logs the given `file_contents` using all `DataLoader`s available.
+        Logs the given `file_contents` using all `Importer`s available.
 
-        A single `path` might be handled by more than one loader.
+        A single `path` might be handled by more than one importer.
 
-        This method blocks until either at least one `DataLoader` starts
+        This method blocks until either at least one `Importer` starts
         streaming data in or all of them fail.
 
         See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.
@@ -1076,11 +1087,11 @@ class RecordingStream:
         static: bool = False,
     ) -> None:
         r"""
-        Logs the file at the given `path` using all `DataLoader`s available.
+        Logs the file at the given `path` using all `Importer`s available.
 
-        A single `path` might be handled by more than one loader.
+        A single `path` might be handled by more than one importer.
 
-        This method blocks until either at least one `DataLoader` starts
+        This method blocks until either at least one `Importer` starts
         streaming data in or all of them fail.
 
         See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.
@@ -1138,7 +1149,7 @@ class RecordingStream:
         entity_path:
             Path to the entity in the space hierarchy.
 
-            See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+            See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
         indexes:
             The time values of this batch of data. Each `TimeColumnLike` object represents a single column
             of timestamps. Generally, you should use one of the provided class [`TimeColumn`][rerun.TimeColumn].
@@ -1157,6 +1168,13 @@ class RecordingStream:
         from ._send_columns import send_columns
 
         send_columns(entity_path=entity_path, indexes=indexes, columns=columns, strict=strict, recording=self)
+
+    def send_chunk(self, chunk: rr.experimental.Chunk) -> None:
+        """Send a pre-built [`Chunk`][rerun.experimental.Chunk] to this recording stream."""
+
+        from .experimental._send_chunk import send_chunk
+
+        send_chunk(chunk, recording=self)
 
     def send_record_batch(self, batch: pa.RecordBatch) -> None:
         """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
@@ -1337,7 +1355,7 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
 
     Parameters
     ----------
-    application_id : str
+    application_id:
         The application ID that this recording is associated with.
 
     """
@@ -1367,7 +1385,7 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
                 finally:
                     gen.close()
 
-            return generator_wrapper  # type: ignore[return-value]
+            return cast("_TFunc", generator_wrapper)
         else:
 
             @functools.wraps(func)
@@ -1376,7 +1394,7 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
                     gen = func(*args, **kwargs)
                     return gen
 
-            return wrapper  # type: ignore[return-value]
+            return cast("_TFunc", wrapper)
 
     return decorator
 
@@ -1454,6 +1472,6 @@ def recording_stream_generator_ctx(func: _TFunc) -> _TFunc:
                     current_recording.__enter__()
                 gen.close()
 
-        return generator_wrapper  # type: ignore[return-value]
+        return cast("_TFunc", generator_wrapper)
     else:
         raise ValueError("Only generator functions can be decorated with `recording_stream_generator_ctx`")

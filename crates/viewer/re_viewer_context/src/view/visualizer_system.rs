@@ -1,16 +1,19 @@
+use std::any::TypeId;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use parking_lot::Mutex;
 use re_chunk_store::MissingChunkReporter;
 use vec1::Vec1;
 
-use re_chunk::{ArchetypeName, ComponentType};
+use re_chunk::ArchetypeName;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
-use re_sdk_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, ViewClassIdentifier};
 
 use crate::{
-    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    ViewSystemIdentifier,
+    BufferAndFormatConstraint, SingleRequiredComponentConstraint, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
+    VisualizabilityConstraints,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -40,90 +43,94 @@ impl FromIterator<ComponentDescriptor> for SortedComponentSet {
     }
 }
 
-pub type DatatypeSet = std::collections::BTreeSet<arrow::datatypes::DataType>;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AnyPhysicalDatatypeRequirement {
-    /// The required component that this requirement is targeting.
-    pub target_component: ComponentIdentifier,
-
-    /// The semantic type the visualizer is working with.
-    ///
-    /// Matches with the semantic type are generally preferred.
-    pub semantic_type: ComponentType,
-
-    /// All supported physical Arrow data types.
-    ///
-    /// Has to contain the physical data type that is covered by the Rerun semantic type.
-    pub physical_types: DatatypeSet,
-
-    /// If false, ignores all static components.
-    ///
-    /// This is useful if you rely on ranges queries as done by the time series view.
-    pub allow_static_data: bool,
-}
-
-impl From<AnyPhysicalDatatypeRequirement> for RequiredComponents {
-    fn from(req: AnyPhysicalDatatypeRequirement) -> Self {
-        Self::AnyPhysicalDatatype(req)
-    }
-}
-
-/// Specifies how component requirements should be evaluated for visualizer entity matching.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub enum RequiredComponents {
-    /// No component requirements - all entities are candidates.
-    #[default]
-    None,
-
-    /// Entity must have _all_ of these components.
-    AllComponents(ComponentSet),
-
-    /// Entity must have _any one_ of these components.
-    AnyComponent(ComponentSet),
-
-    /// Entity must have _any one_ of these physical Arrow data types.
-    ///
-    /// For instance, we may not put views into the "recommended" section or visualizer entities proactively unless they support the native type.
-    AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement),
-}
-
 // TODO(grtlr): Eventually we will want to hide these fields to prevent visualizers doing too much shenanigans.
 pub struct VisualizerQueryInfo {
     /// This is not required, but if it is found, it is a strong indication that this
     /// system should be active (if also the `required_components` are found).
+    ///
+    /// This information results in the "indicated visualizer" list.
     pub relevant_archetype: Option<ArchetypeName>,
 
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
-    pub required: RequiredComponents,
+    pub constraints: VisualizabilityConstraints,
 
     /// Returns the list of components that the system _queries_.
     ///
     /// Must include required components.
     /// Order should reflect order in archetype docs & user code as well as possible.
     ///
-    /// Note that we need full descriptors here in order to write overrides from the UI.
-    pub queried: SortedComponentSet, // TODO(grtlr, wumpf): This can probably be removed?
+    /// We use this to determine which components should be shown in the UI.
+    pub queried: SortedComponentSet,
 }
 
 impl VisualizerQueryInfo {
-    pub fn from_archetype<A: Archetype>() -> Self {
-        Self {
-            relevant_archetype: A::name().into(),
-            required: RequiredComponents::AllComponents(
-                A::required_components()
-                    .iter()
-                    .map(|c| c.component)
-                    .collect(),
-            ),
-            queried: A::all_components().iter().cloned().collect(),
-        }
+    /// Creates a query info for a visualizer that requires both a buffer and a format component.
+    ///
+    /// Both components have to be part of the queried components.
+    /// See [`BufferAndFormatConstraint`] for more details.
+    pub fn buffer_and_format<Buffer: re_sdk_types::Component, Format: re_sdk_types::Component>(
+        buffer_descriptor: &ComponentDescriptor,
+        format_descriptor: &ComponentDescriptor,
+        all_queried_components: &[ComponentDescriptor],
+    ) -> Self {
+        let query_info = Self {
+            relevant_archetype: format_descriptor.archetype,
+            constraints: BufferAndFormatConstraint::new::<Buffer, Format>(
+                buffer_descriptor,
+                format_descriptor,
+            )
+            .into(),
+            queried: all_queried_components.iter().cloned().collect(),
+        };
+
+        re_log::debug_assert!(
+            query_info
+                .queried
+                .iter()
+                .any(|desc| desc == buffer_descriptor),
+            "The buffer component must be part of the queried components."
+        );
+        re_log::debug_assert!(
+            query_info
+                .queried
+                .iter()
+                .any(|desc| desc == format_descriptor),
+            "The format component must be part of the queried components."
+        );
+
+        query_info
+    }
+
+    /// Creates a query info for a visualizer that requires a single component.
+    ///
+    /// The target component has to be part of the queried components.
+    /// See [`SingleRequiredComponentConstraint`] for more details.
+    pub fn single_required_component<C: re_sdk_types::Component>(
+        target_component_descriptor: &ComponentDescriptor,
+        all_queried_components: &[ComponentDescriptor],
+    ) -> Self {
+        let query_info = Self {
+            relevant_archetype: target_component_descriptor.archetype,
+            constraints: SingleRequiredComponentConstraint::new::<C>(target_component_descriptor)
+                .into(),
+            queried: all_queried_components.iter().cloned().collect(),
+        };
+
+        re_log::debug_assert!(
+            query_info
+                .queried
+                .iter()
+                .any(|desc| desc == target_component_descriptor),
+            "The required component must be part of the queried components."
+        );
+
+        query_info
     }
 
     pub fn empty() -> Self {
         Self {
             relevant_archetype: Default::default(),
-            required: RequiredComponents::None,
+            constraints: VisualizabilityConstraints::None,
             queried: SortedComponentSet::default(),
         }
     }
@@ -211,30 +218,47 @@ impl re_byte_size::SizeBytes for VisualizerInstructionReport {
 }
 
 /// Result of running [`VisualizerSystem::execute`].
+///
+/// Contains two kinds of output:
+/// - [`Self::draw_data`]: GPU render commands, queued by the view for rendering.
+/// - Typed visualizer data: CPU-side typed data read back by the view's own code
+///   (picking, labels, bounding boxes, camera info, plot series, etc.);
+///   see [`Self::with_visualizer_data`].
 #[derive(Default)]
 pub struct VisualizerExecutionOutput {
-    /// Draw data produced by the visualizer.
+    /// GPU render commands produced by the visualizer.
     ///
     /// It's the view's responsibility to queue this data for rendering.
     pub draw_data: Vec<re_renderer::QueueableDrawData>,
 
-    /// Reports (errors and warnings) encountered during execution, mapped to the visualizer instructions that caused them.
+    /// The view class this visualizer has affinity to, i.e. the value returned by
+    /// [`VisualizerSystem::affinity`].
     ///
-    /// Reports from last frame will be shown in the UI for the respective visualizer instruction.
+    /// Populated automatically by the execution framework after calling [`VisualizerSystem::execute`].
+    pub affinity: Option<ViewClassIdentifier>,
+
+    /// Per-instruction diagnostics (errors and warnings) encountered during execution.
+    ///
+    /// Shown in the UI for the respective visualizer instruction.
     /// For errors that prevent any visualization at all, return a
     /// [`ViewSystemExecutionError`] instead.
     ///
-    /// It's mutex protected to make it easier to append errors while processing instructions in parallel.
+    /// Mutex-protected to allow parallel appending across instructions.
     pub reports_per_instruction:
         Mutex<BTreeMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>>,
 
     /// Used to indicate that some chunks were missing
     missing_chunk_reporter: MissingChunkReporter,
-    //
-    // TODO(andreas): We should put other output here as well instead of passing around visualizer
-    // structs themselves which is rather surprising.
-    // Same applies to context systems.
-    // This mechanism could easily replace `VisualizerSystem::data`!
+
+    /// CPU-side typed data produced by the visualizer for consumption by the view.
+    ///
+    /// Keyed by type — each type can appear at most once. A visualizer can store multiple
+    /// independent values of different types (e.g. both `SpatialViewVisualizerData` and
+    /// a visualizer-specific output struct).
+    ///
+    /// Use [`Self::with_visualizer_data`] to store and [`crate::SystemExecutionOutput::visualizer_data`]
+    /// or [`crate::SystemExecutionOutput::iter_visualizer_data`] to retrieve.
+    visualizer_data: HashMap<TypeId, Box<dyn std::any::Any + Send + Sync>>,
 }
 
 impl VisualizerExecutionOutput {
@@ -293,6 +317,23 @@ impl VisualizerExecutionOutput {
         self.draw_data.extend(draw_data);
         self
     }
+
+    /// Add a typed output payload for this visualizer.
+    ///
+    /// Each type can be stored at most once. Calling this multiple times with the same type
+    /// overwrites the previous value.
+    pub fn with_visualizer_data<T: std::any::Any + Send + Sync>(mut self, data: T) -> Self {
+        self.visualizer_data
+            .insert(TypeId::of::<T>(), Box::new(data));
+        self
+    }
+
+    /// Retrieve a typed output payload previously stored with [`Self::with_visualizer_data`].
+    pub fn get_visualizer_data<T: std::any::Any>(&self) -> Option<&T> {
+        self.visualizer_data
+            .get(&TypeId::of::<T>())
+            .and_then(|b| b.downcast_ref::<T>())
+    }
 }
 
 /// Element of a scene derived from a single archetype query.
@@ -308,24 +349,23 @@ pub trait VisualizerSystem: Send + Sync + std::any::Any {
     /// they may not be taken into account.
     fn visualizer_query_info(&self, app_options: &crate::AppOptions) -> VisualizerQueryInfo;
 
+    /// View class that this visualizer prefers to be used in, eg: 2D or 3D.
+    /// Useful for visualizers that can be displayed in 2D and 3D, so heuristics
+    /// can determine the best view to use for the visualizer.
+    fn affinity(&self) -> Option<ViewClassIdentifier> {
+        None
+    }
+
     /// Queries the chunk store and performs data conversions to make it ready for display.
     ///
     /// Mustn't query any data outside of the archetype.
+    /// All output data should be placed in the returned [`VisualizerExecutionOutput`].
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError>;
-
-    /// Optionally retrieves a chunk store reference from the scene element.
-    ///
-    /// This is useful for retrieving data that is common to several visualizers of a [`crate::ViewClass`].
-    /// For example, if most visualizers produce ui elements, a concrete [`crate::ViewClass`]
-    /// can pick those up in its [`crate::ViewClass::ui`] method by iterating over all visualizers.
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        None
-    }
 }
 
 pub struct VisualizerCollection {
@@ -333,18 +373,6 @@ pub struct VisualizerCollection {
 }
 
 impl VisualizerCollection {
-    #[inline]
-    pub fn get<T: VisualizerSystem + IdentifiedViewSystem + 'static>(
-        &self,
-    ) -> Result<&T, ViewSystemExecutionError> {
-        self.systems
-            .get(&T::identifier())
-            .and_then(|s| (s.as_ref() as &dyn std::any::Any).downcast_ref())
-            .ok_or_else(|| {
-                ViewSystemExecutionError::VisualizerSystemNotFound(T::identifier().as_str())
-            })
-    }
-
     #[inline]
     pub fn get_by_type_identifier(
         &self,
@@ -368,11 +396,7 @@ impl VisualizerCollection {
         self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
     }
 
-    /// Iterate over all visualizer data that can be downcast to the given type.
-    pub fn iter_visualizer_data<SpecificData: 'static>(
-        &self,
-    ) -> impl Iterator<Item = &'_ SpecificData> {
-        self.iter()
-            .filter_map(|visualizer| visualizer.data()?.downcast_ref::<SpecificData>())
+    pub fn contains_visualizer_type(&self, name: ViewSystemIdentifier) -> bool {
+        self.systems.contains_key(&name)
     }
 }

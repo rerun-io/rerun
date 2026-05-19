@@ -12,7 +12,7 @@ Range of expected or valid values, specifying a lower and upper bound.
 
 ## Arrow datatype
 ```
-FixedSizeList<2, float64>
+FixedSizeList(2 x non-null Float64)
 ```
 
 ## API reference links

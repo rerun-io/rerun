@@ -11,13 +11,13 @@ The metadata describing the contents of a [`components.ImageBuffer`](https://rer
 
 ## Arrow datatype
 ```
-Struct {
-    width: uint32
-    height: uint32
-    pixel_format: nullable uint8
-    color_model: nullable uint8
-    channel_datatype: nullable uint8
-}
+Struct(
+    "width": non-null UInt32
+    "height": non-null UInt32
+    "pixel_format": UInt8
+    "color_model": UInt8
+    "channel_datatype": UInt8
+)
 ```
 
 ## API reference links
@@ -29,6 +29,7 @@ Struct {
 ## Used by
 
 * [`DepthImage`](../archetypes/depth_image.md)
+* [`GridMap`](../archetypes/grid_map.md?speculative-link)
 * [`Image`](../archetypes/image.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)

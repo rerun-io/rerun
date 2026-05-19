@@ -83,7 +83,7 @@ NUM_POINTS = 100
 
 # Points and colors are both np.array((NUM_POINTS, 3))
 points1, colors1 = build_color_spiral(NUM_POINTS)
-points2, colors2 = build_color_spiral(NUM_POINTS, angular_offset=tau*0.5)
+points2, colors2 = build_color_spiral(NUM_POINTS, angular_offset=tau * 0.5)
 
 rr.log("dna/structure/left", rr.Points3D(points1, colors=colors1, radii=0.08))
 rr.log("dna/structure/right", rr.Points3D(points2, colors=colors2, radii=0.08))
@@ -121,7 +121,7 @@ archetypes altogether.
 
 For more information on how the Rerun data model works, refer to our section on [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md).
 
-Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.build_color_spiral?speculative-link) in this example are vanilla `numpy` arrays.
+Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/stable/common/utilities/#rerun.utilities.build_color_spiral) in this example are vanilla `numpy` arrays.
 Rerun takes care of mapping those arrays to actual Rerun components depending on the context (e.g. we're calling [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D) in this case).
 
 ### Entities & hierarchies
@@ -147,10 +147,7 @@ Good news is: once you've digested all of the above, logging any other entity wi
 We can represent the scaffolding using a batch of 3D line strips:
 
 ```python
-rr.log(
-    "dna/structure/scaffolding",
-    rr.LineStrips3D(np.stack((points1, points2), axis=1), colors=[128, 128, 128])
-)
+rr.log("dna/structure/scaffolding", rr.LineStrips3D(np.stack((points1, points2), axis=1), colors=[128, 128, 128]))
 ```
 
 Which only leaves the beads:
@@ -165,7 +162,7 @@ rr.log(
 )
 ```
 
-Once again, although we are getting fancier and fancier with our [`numpy` incantations](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.util.bounce_lerp?speculative-link),
+Once again, although we are getting fancier and fancier with our [`numpy` incantations](https://ref.rerun.io/docs/python/stable/common/utilities/#rerun.utilities.util.bounce_lerp),
 there is nothing new here: it's all about building out `numpy` arrays and feeding them to the Rerun API.
 
 <picture>
@@ -314,4 +311,4 @@ For more details and potential limitations, please refer to [our blog post](http
 
 This closes our whirlwind tour of logging with Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
-As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, browse the [Types](../../reference/types.md) section for more simple examples of how to use the main datatypes, or dig deeper into [querying your logged data](../data-out.md).
+As a next step, browse through our [example gallery](https://rerun.io/examples) for some more realistic example use-cases, browse the [Types](../../reference/types.md) section for more simple examples of how to use the main datatypes, or dig deeper into [querying your logged data](../data-out.md).

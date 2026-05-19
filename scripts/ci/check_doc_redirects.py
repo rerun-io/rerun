@@ -61,7 +61,7 @@ def load_redirects() -> dict[str, str]:
 def check_destination_exists(destination: str) -> bool:
     """Check if the redirect destination exists (internal paths only)."""
     # External URLs are assumed valid
-    if destination.startswith("http://") or destination.startswith("https://"):
+    if destination.startswith(("http://", "https://")):
         return True
 
     # Handle anchor links

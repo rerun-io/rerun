@@ -22,6 +22,7 @@ from .geo_line_strings import GeoLineStrings
 from .geo_points import GeoPoints
 from .graph_edges import GraphEdges
 from .graph_nodes import GraphNodes
+from .grid_map import GridMap
 from .image import Image
 from .instance_poses3d import InstancePoses3D
 from .line_strips2d import LineStrips2D
@@ -39,6 +40,7 @@ from .scalars import Scalars
 from .segmentation_image import SegmentationImage
 from .series_lines import SeriesLines
 from .series_points import SeriesPoints
+from .status import Status
 from .tensor import Tensor
 from .text_document import TextDocument
 from .text_log import TextLog
@@ -69,6 +71,7 @@ __all__ = [
     "GeoPoints",
     "GraphEdges",
     "GraphNodes",
+    "GridMap",
     "Image",
     "InstancePoses3D",
     "LineStrips2D",
@@ -86,6 +89,7 @@ __all__ = [
     "SegmentationImage",
     "SeriesLines",
     "SeriesPoints",
+    "Status",
     "Tensor",
     "TextDocument",
     "TextLog",

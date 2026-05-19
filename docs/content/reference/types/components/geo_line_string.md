@@ -8,7 +8,7 @@ A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude
 
 ## Arrow datatype
 ```
-List<FixedSizeList<2, float64>>
+List(non-null FixedSizeList(2 x non-null Float64))
 ```
 
 ## API reference links

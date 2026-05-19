@@ -4,7 +4,7 @@ use re_viewer_context::{MaybeMutRef, UiLayout};
 
 /// Generic singleline string editor.
 pub fn edit_singleline_string(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = Utf8>>,
 ) -> egui::Response {
@@ -28,7 +28,7 @@ fn edit_singleline_string_impl(
             .show(ui)
             .response;
         *value = edit_name.into();
-        response
+        response.response
     } else {
         UiLayout::List.data_label(ui, SyntaxHighlightedBuilder::new().with_string_value(value))
     }
@@ -36,7 +36,7 @@ fn edit_singleline_string_impl(
 
 /// Generic multiline string editor.
 pub fn edit_multiline_string(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = Utf8>>,
 ) -> egui::Response {
@@ -56,7 +56,7 @@ fn edit_multiline_string_impl(
         let mut edit_name = value.to_string();
         let response = egui::TextEdit::multiline(&mut edit_name).show(ui).response;
         *value = edit_name.into();
-        response
+        response.response
     } else {
         UiLayout::SelectionPanel
             .data_label(ui, SyntaxHighlightedBuilder::new().with_string_value(value))

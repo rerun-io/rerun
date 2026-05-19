@@ -4,11 +4,11 @@ use re_log_types::EntityPathHash;
 use re_sdk_types::{
     Archetype as _,
     archetypes::EncodedDepthImage,
-    components::{Colormap, MediaType},
+    components::{Blob, Colormap, MagnificationFilter, MediaType},
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageDecodeCache, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    IdentifiedViewSystem, ImageDecodeCache, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
     VisualizerReportSeverity, VisualizerSystem,
 };
 
@@ -19,28 +19,19 @@ use super::{
 };
 use crate::{
     contexts::TransformTreeContext,
-    view_kind::SpatialViewKind,
     visualizers::{
         depth_images::{DepthImageProcessResult, populate_depth_visualizer_execution_result},
         first_copied,
     },
 };
+use re_sdk_types::reflection::Enum as _;
 
-pub struct EncodedDepthImageVisualizer {
-    pub data: SpatialViewVisualizerData,
-
-    /// Expose image infos for depth clouds - we need this for picking interaction.
+pub struct EncodedDepthImageVisualizerOutput {
     pub depth_cloud_entities: IntMap<EntityPathHash, DepthImageProcessResult>,
 }
 
-impl Default for EncodedDepthImageVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
-            depth_cloud_entities: Default::default(),
-        }
-    }
-}
+#[derive(Default)]
+pub struct EncodedDepthImageVisualizer;
 
 impl IdentifiedViewSystem for EncodedDepthImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -53,27 +44,35 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<EncodedDepthImage>()
+        VisualizerQueryInfo::single_required_component::<Blob>(
+            &EncodedDepthImage::descriptor_blob(),
+            &EncodedDepthImage::all_components(),
+        )
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView2D::identifier())
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let preferred_view_kind = self.data.preferred_view_kind;
         let output = VisualizerExecutionOutput::default();
         let mut depth_clouds = Vec::new();
+        let mut data = SpatialViewVisualizerData::default();
+        let mut depth_cloud_entities = IntMap::default();
 
         let transforms = context_systems.get::<TransformTreeContext>(&output)?;
 
-        process_archetype::<Self, EncodedDepthImage, _>(
+        process_archetype::<EncodedDepthImage, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            preferred_view_kind,
+            self,
             |ctx, spatial_ctx, results| {
                 let all_blobs =
                     results.iter_required(EncodedDepthImage::descriptor_blob().component);
@@ -90,6 +89,8 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     results.iter_optional(EncodedDepthImage::descriptor_meter().component);
                 let all_fill_ratios = results
                     .iter_optional(EncodedDepthImage::descriptor_point_fill_ratio().component);
+                let all_magnification_filters = results
+                    .iter_optional(EncodedDepthImage::descriptor_magnification_filter().component);
 
                 for (
                     (_time, row_id),
@@ -99,13 +100,15 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     value_range,
                     depth_meter,
                     fill_ratio,
-                ) in re_query::range_zip_1x5(
+                    magnification_filter,
+                ) in re_query::range_zip_1x6(
                     all_blobs.slice::<&[u8]>(),
                     all_media_types.slice::<String>(),
                     all_colormaps.slice::<u8>(),
                     all_value_ranges.slice::<[f64; 2]>(),
                     all_depth_meters.slice::<f32>(),
                     all_fill_ratios.slice::<f32>(),
+                    all_magnification_filters.slice::<u8>(),
                 ) {
                     let Some(blob) = blobs.first() else {
                         // If missing we already reported an error.
@@ -116,7 +119,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                         .and_then(|types| types.first().cloned())
                         .map(|mt| MediaType(mt.into()));
 
-                    let image = match ctx.store_ctx().caches.entry(|c: &mut ImageDecodeCache| {
+                    let image = match ctx.store_ctx().memoizer(|c: &mut ImageDecodeCache| {
                         c.entry_encoded_depth(
                             row_id,
                             EncodedDepthImage::descriptor_blob().component,
@@ -135,12 +138,15 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                         }
                     };
 
-                    let data = DepthImageComponentData {
+                    let component_data = DepthImageComponentData {
                         image,
                         depth_meter: first_copied(depth_meter).map(Into::into),
                         fill_ratio: first_copied(fill_ratio).map(Into::into),
-                        colormap: first_copied(colormap).and_then(Colormap::from_u8),
+                        colormap: colormap.and_then(|s| Colormap::from_integer_slice(s).next()?),
                         value_range: first_copied(value_range),
+                        magnification_filter: first_copied(magnification_filter)
+                            .and_then(MagnificationFilter::from_u8)
+                            .unwrap_or_default(),
                     };
 
                     let mut report_error = |error: String| {
@@ -150,11 +156,11 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     process_depth_image_data(
                         ctx,
                         spatial_ctx,
-                        &mut self.data,
-                        &mut self.depth_cloud_entities,
+                        &mut data,
+                        &mut depth_cloud_entities,
                         &mut depth_clouds,
                         transforms,
-                        data,
+                        component_data,
                         EncodedDepthImage::name(),
                         EncodedDepthImage::descriptor_meter().component,
                         EncodedDepthImage::descriptor_colormap().component,
@@ -166,10 +172,12 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
             },
         )?;
 
-        populate_depth_visualizer_execution_result(ctx, &self.data, depth_clouds, output)
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        populate_depth_visualizer_execution_result(ctx, &data, depth_clouds, output).map(|output| {
+            output.with_visualizer_data(data).with_visualizer_data(
+                EncodedDepthImageVisualizerOutput {
+                    depth_cloud_entities,
+                },
+            )
+        })
     }
 }

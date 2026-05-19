@@ -1,3 +1,4 @@
+use std::hash::{Hash as _, Hasher as _};
 use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
@@ -78,7 +79,7 @@ impl std::fmt::Debug for EntityPathHash {
 /// When written as a string, some characters in the parts need to be escaped with a `\`
 /// (only character, numbers, `.`, `-`, `_` does not need escaping).
 ///
-/// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+/// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 ///
 /// This is basically implemented as a list of strings, but is reference-counted internally, so it is cheap to clone.
 /// It also has a precomputed hash and implemented [`nohash_hasher::IsEnabled`],
@@ -267,6 +268,16 @@ impl EntityPath {
     #[inline]
     pub fn hash64(&self) -> u64 {
         self.hash.hash64()
+    }
+
+    /// Calculates a deterministic hash of the entity path.
+    ///
+    /// This is useful for generating deterministic IDs for visualizer instructions. By default,
+    /// self.hash is generated using ahash, which works differently on web and native.
+    pub fn calculate_deterministic_hash(&self) -> u64 {
+        let mut hasher = xxhash_rust::xxh64::Xxh64::new(0);
+        self.parts.hash(&mut hasher);
+        hasher.finish()
     }
 
     /// Return [`None`] if root.

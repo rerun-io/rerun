@@ -1,6 +1,7 @@
 use std::str::FromStr as _;
 use std::sync::Arc;
 
+use ahash::HashMap;
 use anyhow::Context as _;
 use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
@@ -15,10 +16,9 @@ use re_entity_db::entity_db::EntityDb;
 use re_log::debug_assert;
 use re_log_channel::{
     DataSourceMessage, DataSourceUiCommand, LogReceiver, LogReceiverSet, LogSource,
+    RecordingOpenBehavior,
 };
-use re_log_types::{
-    ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg, TimelinePoint,
-};
+use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
@@ -27,16 +27,15 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, AuthContext, CommandReceiver, CommandSender,
-    ComponentUiRegistry, EditRedapServerModalCommand, FallbackProviderRegistry, Item,
-    MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable, Route, StorageContext, StoreContext,
-    SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError, command_channel, sanitize_file_name,
+    ActiveStoreContext, AppBlueprintCtx, AppOptions, AsyncRuntimeHandle, AuthContext,
+    CommandReceiver, CommandSender, ComponentUiRegistry, EditRedapServerModalCommand,
+    FallbackProviderRegistry, Item, MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable,
+    Route, StorageContext, SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand,
+    ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel, sanitize_file_name,
 };
 
 use crate::AppState;
 use crate::app_blueprint::{AppBlueprint, PanelStateOverrides};
-use crate::app_blueprint_ctx::AppBlueprintCtx;
 use crate::app_state::WelcomeScreenState;
 use crate::background_tasks::BackgroundTasks;
 use crate::event::ViewerEventDispatcher;
@@ -77,12 +76,17 @@ pub struct App {
     ram_limit_warner: re_memory::RamLimitWarner,
     pub(crate) egui_ctx: egui::Context,
     screenshotter: crate::screenshotter::Screenshotter,
+    texture_readback: crate::texture_readback::TextureReadbacks,
 
     #[cfg(target_arch = "wasm32")]
     pub(crate) popstate_listener: Option<crate::web_history::PopstateListener>,
 
     #[cfg(not(target_arch = "wasm32"))]
     profiler: re_tracing::Profiler,
+
+    /// Active in-memory profile capture, if any.
+    #[cfg(not(target_arch = "wasm32"))]
+    profile_capture: Option<re_tracing::ProfileCapture>,
 
     /// Listens to the local text log stream
     text_log_rx: crossbeam::channel::Receiver<re_log::LogMsg>,
@@ -109,6 +113,10 @@ pub struct App {
 
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
+
+    /// Cached app overhead: total memory use minus sum of all recording chunk sizes.
+    /// Updated during GC when we have a fresh memory snapshot.
+    cached_app_overhead_bytes: Option<u64>,
 
     egui_debug_panel_open: bool,
 
@@ -196,9 +204,12 @@ impl App {
         if connection_registry.should_use_stored_credentials() {
             let command_sender = command_channel.0.clone();
             re_auth::credentials::subscribe_auth_changes(move |user| {
-                command_sender.send_system(SystemCommand::OnAuthChanged(
-                    user.map(|user| AuthContext { email: user.email }),
-                ));
+                command_sender.send_system(SystemCommand::OnAuthChanged(user.map(|user| {
+                    AuthContext {
+                        email: user.email,
+                        org_name: user.org_name,
+                    }
+                })));
             });
 
             // Call get_token once so the auth state is initialized.
@@ -270,8 +281,11 @@ impl App {
         }
 
         if app_env.is_test() {
-            // Disable certain labels/warnings/etc that would be flaky or not CI-runner-agnostic in snapshot tests.
-            state.app_options.show_metrics = false;
+            state.app_options = AppOptions::test();
+        }
+
+        if startup_options.enable_experimental_status_view {
+            state.app_options.experimental.enable_status_view = true;
         }
 
         let reflection = re_sdk_types::reflection::generate_reflection().unwrap_or_else(|err| {
@@ -409,12 +423,16 @@ impl App {
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             egui_ctx: creation_context.egui_ctx.clone(),
             screenshotter,
+            texture_readback: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
             popstate_listener: None,
 
             #[cfg(not(target_arch = "wasm32"))]
             profiler: Default::default(),
+
+            #[cfg(not(target_arch = "wasm32"))]
+            profile_capture: None,
 
             text_log_rx,
             component_ui_registry,
@@ -434,6 +452,7 @@ impl App {
 
             memory_panel: Default::default(),
             memory_panel_open: false,
+            cached_app_overhead_bytes: None,
 
             egui_debug_panel_open: false,
 
@@ -505,13 +524,19 @@ impl App {
 
     /// Open a content URL in the viewer.
     pub fn open_url_or_file(&self, url: &str) {
-        match ViewerOpenUrl::from_str(url) {
+        match ViewerOpenUrl::parse_with_options(
+            url,
+            &re_data_source::FromUriOptions {
+                accept_extensionless_http: true,
+                ..Default::default()
+            },
+        ) {
             Ok(url) => {
                 url.open(
                     &self.egui_ctx,
                     &OpenUrlOptions {
                         follow: false,
-                        select_redap_source_when_loaded: true,
+                        recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                         show_loader: true,
                     },
                     &self.command_sender,
@@ -598,7 +623,7 @@ impl App {
                 // If there's no active recording, we should not trigger any callbacks, but since there's an active recording here,
                 // we want to diff state changes.
                 let response = time_ctrl.update(
-                    recording.timeline_histograms(),
+                    recording,
                     &re_viewer_context::TimeControlUpdateParams {
                         stable_dt,
                         more_data_is_streaming_in,
@@ -624,7 +649,7 @@ impl App {
                     timeline_change: _,
                     time_change: _,
                 } = self.state.blueprint_time_control.update(
-                    bp_ctx.current_blueprint.timeline_histograms(),
+                    bp_ctx.current_blueprint,
                     &re_viewer_context::TimeControlUpdateParams {
                         stable_dt,
                         more_data_is_streaming_in: true,
@@ -700,9 +725,10 @@ impl App {
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
         route: &Route,
     ) {
+        re_tracing::profile_function!();
         while let Some(cmd) = self.command_receiver.recv_ui() {
             self.run_ui_command(
                 egui_ctx,
@@ -720,9 +746,7 @@ impl App {
     ///
     /// Otherwise this updates the viewer tracked history.
     fn update_history(&mut self, store_hub: &StoreHub) {
-        if !self.startup_options().web_history_enabled() {
-            self.update_viewer_history(store_hub);
-        } else {
+        if self.startup_options().web_history_enabled() {
             // We don't want to spam the web history API with changes, because
             // otherwise it will start complaining about it being an insecure
             // operation.
@@ -739,6 +763,8 @@ impl App {
             {
                 self.update_web_history(store_hub);
             }
+        } else {
+            self.update_viewer_history(store_hub);
         }
     }
 
@@ -824,6 +850,49 @@ impl App {
         }
     }
 
+    fn close_recording(&self, store_hub: &mut StoreHub, entry: &RecordingOrTable) {
+        // TODO(#9464): Find a better successor here.
+
+        if let RecordingOrTable::Recording { store_id } = entry {
+            store_hub.set_opened(store_id, false);
+        }
+
+        let data_source = match entry {
+            RecordingOrTable::Recording { store_id } => {
+                store_hub.entity_db_entry(store_id).data_source.clone()
+            }
+            RecordingOrTable::Table { .. } => None,
+        };
+        if let Some(data_source) = data_source {
+            // Only certain sources should be closed.
+            #[expect(clippy::match_same_arms)]
+            let should_close = match &data_source {
+                // Specific files should stop streaming when closing them.
+                LogSource::File { .. } => true,
+
+                // Specific HTTP streams should stop streaming when closing them.
+                LogSource::HttpStream { .. } => true,
+
+                // Specific GRPC streams should stop streaming when closing them.
+                // TODO(#10967): We still stream in some data after that.
+                LogSource::RedapGrpcStream { .. } => true,
+
+                // Don't close generic connections (like to an SDK) that may feed in different recordings over time.
+                LogSource::RrdWebEvent
+                | LogSource::JsChannel { .. }
+                | LogSource::Sdk
+                | LogSource::Stdin
+                | LogSource::MessageProxy(_) => false,
+            };
+
+            if should_close {
+                self.rx_log.retain(|r| r.source() != &data_source);
+            }
+        }
+
+        store_hub.remove(entry);
+    }
+
     fn run_system_command(
         &mut self,
         sent_from: &std::panic::Location<'_>, // Who sent this command? Useful for debugging!
@@ -840,15 +909,26 @@ impl App {
             } => {
                 match store_id.kind() {
                     StoreKind::Recording => {
-                        store_hub.load_blueprint_and_caches(&store_id); // Ensure caches and blueprints
+                        store_hub.load_blueprint_and_caches(&store_id, &self.view_class_registry); // Ensure caches and blueprints
                         let route = Route::LocalRecording {
                             recording_id: store_id.clone(),
                         };
                         let (storage_ctx, store_ctx) = store_hub.read_context(&route); // Materialize the target blueprint on-demand
 
+                        let Some(store_ctx) = store_ctx else {
+                            re_log::debug_panic!(
+                                "No store context found for recording {store_id:?} when handling time control commands sent from {sent_from}. This should never happen for local recording routes.",
+                            );
+                            re_log::error_once!(
+                                "Can't change time for recording {store_id:?} because it is not active."
+                            );
+                            return;
+                        };
+
                         let target_blueprint = store_ctx.blueprint;
-                        let blueprint_query =
-                            self.state.blueprint_query_for_viewer(target_blueprint);
+                        let blueprint_query = self
+                            .state
+                            .blueprint_query_for_viewer(Some(target_blueprint));
 
                         let blueprint_ctx = AppBlueprintCtx {
                             command_sender: &self.command_sender,
@@ -865,7 +945,7 @@ impl App {
 
                         let response = time_ctrl.handle_time_commands(
                             Some(&blueprint_ctx),
-                            store_ctx.recording.timeline_histograms(),
+                            store_ctx.recording,
                             &time_commands,
                         );
 
@@ -884,7 +964,7 @@ impl App {
                             let blueprint_ctx: Option<&AppBlueprintCtx<'_>> = None;
                             let response = self.state.blueprint_time_control.handle_time_commands(
                                 blueprint_ctx,
-                                target_store.timeline_histograms(),
+                                target_store,
                                 &time_commands,
                             );
 
@@ -919,7 +999,7 @@ impl App {
             SystemCommand::ActivateApp(app_id) => {
                 store_hub.load_persisted_blueprints_for_app(&app_id);
                 if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
-                    store_hub.load_blueprint_and_caches(&recording_id);
+                    store_hub.load_blueprint_and_caches(&recording_id, &self.view_class_registry);
                     self.state
                         .navigation
                         .replace(Route::LocalRecording { recording_id });
@@ -935,42 +1015,7 @@ impl App {
             }
 
             SystemCommand::CloseRecordingOrTable(entry) => {
-                // TODO(#9464): Find a better successor here.
-
-                let data_source = match &entry {
-                    RecordingOrTable::Recording { store_id } => {
-                        store_hub.entity_db_entry(store_id).data_source.clone()
-                    }
-                    RecordingOrTable::Table { .. } => None,
-                };
-                if let Some(data_source) = data_source {
-                    // Only certain sources should be closed.
-                    #[expect(clippy::match_same_arms)]
-                    let should_close = match &data_source {
-                        // Specific files should stop streaming when closing them.
-                        LogSource::File { .. } => true,
-
-                        // Specific HTTP streams should stop streaming when closing them.
-                        LogSource::HttpStream { .. } => true,
-
-                        // Specific GRPC streams should stop streaming when closing them.
-                        // TODO(#10967): We still stream in some data after that.
-                        LogSource::RedapGrpcStream { .. } => true,
-
-                        // Don't close generic connections (like to an SDK) that may feed in different recordings over time.
-                        LogSource::RrdWebEvent
-                        | LogSource::JsChannel { .. }
-                        | LogSource::Sdk
-                        | LogSource::Stdin
-                        | LogSource::MessageProxy(_) => false,
-                    };
-
-                    if should_close {
-                        self.rx_log.retain(|r| r.source() != &data_source);
-                    }
-                }
-
-                store_hub.remove(&entry);
+                self.close_recording(store_hub, &entry);
             }
 
             SystemCommand::CloseAllEntries => {
@@ -1016,7 +1061,8 @@ impl App {
                 }
 
                 if let Some(recording_id) = new_route.recording_id() {
-                    store_hub.load_blueprint_and_caches(recording_id);
+                    store_hub.set_opened(recording_id, true);
+                    store_hub.load_blueprint_and_caches(recording_id, &self.view_class_registry);
                 }
 
                 if matches!(new_route, Route::Loading(_)) {
@@ -1039,20 +1085,31 @@ impl App {
                 re_analytics::record(|| re_analytics::event::SettingsOpened {});
             }
 
-            SystemCommand::OpenChunkStoreBrowser => {
-                if let Some(recording_id) = self.state.navigation.current().recording_id().cloned()
-                {
+            SystemCommand::OpenChunkStoreBrowser {
+                store_id,
+                selected_chunk,
+            } => match self.state.navigation.current() {
+                Route::ChunkStoreBrowser {
+                    store_id: current_store_id,
+                    previous,
+                    ..
+                } => {
                     self.state.navigation.replace(Route::ChunkStoreBrowser {
-                        recording_id,
-                        previous: Box::new(self.state.navigation.current().clone()),
+                        // History/share URLs may carry an explicit store; otherwise keep
+                        // using the current chunk browser store context.
+                        store_id: store_id.or_else(|| current_store_id.clone()),
+                        selected_chunk,
+                        previous: previous.clone(),
                     });
-                } else {
-                    re_log::debug!(
-                        "Cannot activate chunk store browser from current route: {:?}",
-                        self.state.navigation.current()
-                    );
                 }
-            }
+                current => {
+                    self.state.navigation.replace(Route::ChunkStoreBrowser {
+                        store_id: store_id.or_else(|| current.recording_id().cloned()),
+                        selected_chunk,
+                        previous: Box::new(current.clone()),
+                    });
+                }
+            },
 
             SystemCommand::ResetRoute => {
                 self.state.navigation.reset();
@@ -1074,6 +1131,30 @@ impl App {
                     self.state.navigation.replace(Route::RedapServer(origin));
                 }
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
+            }
+
+            SystemCommand::RemoveRedapServer(origin) => {
+                // Clearing blueprints must happen before closing the recordings (so we can know
+                // what to close)
+                store_hub.clear_blueprints_for_origin(&origin);
+
+                // Close any recordings streaming from this server, otherwise their
+                // still-open connections keep emitting "Failed to connect to remote
+                // data source" warnings.
+                let recordings_to_close: Vec<_> = store_hub
+                    .store_bundle()
+                    .recordings_for_origin(&origin)
+                    .map(|db| db.store_id().clone())
+                    .collect();
+
+                // Close the recordings before removing the server, to avoid a race
+                for store_id in recordings_to_close {
+                    self.close_recording(store_hub, &store_id.into());
+                }
+
+                self.state
+                    .redap_servers
+                    .remove_server(&origin, &self.connection_registry);
             }
 
             SystemCommand::EditRedapServerModal(command) => {
@@ -1222,7 +1303,8 @@ impl App {
                     // If the selected item has its own page, switch to it.
                     if let Some(route) = Route::from_item(item) {
                         if let Route::LocalRecording { recording_id } = &route {
-                            store_hub.load_blueprint_and_caches(recording_id);
+                            store_hub
+                                .load_blueprint_and_caches(recording_id, &self.view_class_registry);
                         }
                         self.state.navigation.replace(route);
                     }
@@ -1238,6 +1320,10 @@ impl App {
 
             SystemCommand::ShowNotification(notification) => {
                 self.notifications.add(notification);
+            }
+
+            SystemCommand::ReadbackAndSaveTexture(texture_readback_id) => {
+                self.texture_readback.push(texture_readback_id);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1268,7 +1354,12 @@ impl App {
                 }
             }
             SystemCommand::Logout => {
-                match re_auth::oauth::clear_credentials() {
+                let signed_out_url = self
+                    .startup_options
+                    .login
+                    .as_ref()
+                    .map(|l| l.signed_out_url.as_str());
+                match re_auth::oauth::clear_credentials(signed_out_url) {
                     Ok(Some(outcome)) => {
                         // Open the WorkOS logout URL to also end the browser session.
                         // This opens in a new tab/window so the viewer state is preserved.
@@ -1395,9 +1486,12 @@ impl App {
         // Go through all sources that are still loading and those that are already in the store_hub.
         // (if we look only at the one from the store_hub, we might miss those that haven't hit it yet)
         let active_sources = self.rx_log.sources();
+        // Only consider recordings for dedup, not blueprints.
+        // Blueprints loaded alongside a recording share the same `data_source`,
+        // but they should not prevent re-opening a closed recording.
         let store_sources = store_hub
             .store_bundle()
-            .entity_dbs()
+            .recordings()
             .filter_map(|db| db.data_source.as_ref());
         let mut all_sources = store_sources.chain(active_sources.iter().map(|s| s.as_ref()));
 
@@ -1456,27 +1550,34 @@ impl App {
                 }
             }
 
-            LogDataSource::RedapDatasetSegment {
-                uri,
-                select_when_loaded,
-            } => {
+            LogDataSource::RedapDatasetSegment { uri, open_behavior } => {
                 let new_source = LogSource::RedapGrpcStream {
                     uri: uri.clone(),
-                    select_when_loaded: *select_when_loaded,
+                    open_behavior: *open_behavior,
                 };
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     // We're already receiving from the exact same data source!
-                    // But we still should select if requested according to the fragments if any.
-                    if *select_when_loaded {
-                        // First make the recording itself active.
-                        // `go_to_dataset_data` may override the selection again, but this is important regardless,
-                        // since `go_to_dataset_data` does not change the active recording.
-                        drop(all_sources);
-                        self.make_store_active_and_highlight(store_hub, egui_ctx, &uri.store_id());
+                    // But we still should navigate if requested according to the fragments if any.
+                    drop(all_sources);
+                    match *open_behavior {
+                        RecordingOpenBehavior::Background => {}
+                        RecordingOpenBehavior::Open => {
+                            store_hub.set_opened(&uri.store_id(), true);
+                        }
+                        RecordingOpenBehavior::OpenAndSelect => {
+                            // First make the recording itself active.
+                            // `go_to_dataset_data` may override the selection again, but this is important regardless,
+                            // since `go_to_dataset_data` does not change the active recording.
+                            self.make_store_active_and_highlight(
+                                store_hub,
+                                egui_ctx,
+                                &uri.store_id(),
+                            );
+                        }
                     }
 
                     // Note that applying the fragment changes the per-recording settings like the active time cursor.
-                    // Therefore, we apply it even when `select_when_loaded` is false.
+                    // Therefore, we apply it even when open_behavior is Background.
                     self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
 
                     return;
@@ -1575,7 +1676,7 @@ impl App {
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
         route: &Route,
         cmd: UICommand,
     ) {
@@ -1767,7 +1868,7 @@ impl App {
                         egui_ctx,
                         &OpenUrlOptions {
                             follow: true,
-                            select_redap_source_when_loaded: true,
+                            recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                             show_loader: true,
                         },
                         &self.command_sender,
@@ -1780,7 +1881,7 @@ impl App {
                         egui_ctx,
                         &OpenUrlOptions {
                             follow: true,
-                            select_redap_source_when_loaded: true,
+                            recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                             show_loader: true,
                         },
                         &self.command_sender,
@@ -1838,6 +1939,14 @@ impl App {
                 self.profiler.start();
             }
 
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::CaptureProfileTrace => {
+                if self.profile_capture.is_none() {
+                    self.profile_capture = Some(re_tracing::ProfileCapture::start(5));
+                    egui_ctx.request_repaint();
+                }
+            }
+
             UICommand::ToggleMemoryPanel => {
                 self.memory_panel_open ^= true;
             }
@@ -1871,16 +1980,11 @@ impl App {
                 }
 
                 current => {
-                    if let Some(recording_id) = current.recording_id().cloned() {
-                        self.state.navigation.replace(Route::ChunkStoreBrowser {
-                            recording_id,
-                            previous: Box::new(current.clone()),
-                        });
-                    } else {
-                        re_log::debug!(
-                            "Cannot toggle chunk store browser from current route: {current:?}",
-                        );
-                    }
+                    self.state.navigation.replace(Route::ChunkStoreBrowser {
+                        store_id: current.recording_id().cloned(),
+                        selected_chunk: None,
+                        previous: Box::new(current.clone()),
+                    });
                 }
             },
 
@@ -2248,21 +2352,25 @@ impl App {
     fn copy_entity_hierarchy_to_clipboard(
         &mut self,
         egui_ctx: &egui::Context,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
     ) {
         let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
             re_log::warn!("Could not copy entity hierarchy: No active recording");
             return;
         };
 
+        use std::fmt::Write as _;
+
         let mut hierarchy_text = String::new();
 
         // Add application ID and recording ID header
-        hierarchy_text.push_str(&format!(
+        write!(
+            hierarchy_text,
             "Application ID: {}\nRecording ID: {}\n\n",
             entity_db.application_id(),
             entity_db.recording_id()
-        ));
+        )
+        .ok();
 
         hierarchy_text.push_str(&entity_db.format_with_components());
 
@@ -2281,6 +2389,7 @@ impl App {
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
+        storage_context: &re_viewer_context::StorageContext<'_>,
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
@@ -2294,10 +2403,11 @@ impl App {
             .show_animated_inside(ui, self.memory_panel_open, |ui| {
                 self.memory_panel.ui(
                     ui,
-                    &self.startup_options.memory_limit,
+                    &self.state.app_options().memory_limit,
                     mem_usage_tree,
                     gpu_resource_stats,
                     store_stats,
+                    storage_context,
                 );
             });
     }
@@ -2344,7 +2454,7 @@ impl App {
         frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_context: &StoreContext<'_>,
+        store_context: Option<&ActiveStoreContext<'_>>,
         storage_context: &StorageContext<'_>,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
@@ -2366,13 +2476,19 @@ impl App {
                     frame,
                     self,
                     app_blueprint,
-                    Some(store_context),
+                    store_context,
                     storage_context.hub,
                     gpu_resource_stats,
                     ui,
                 );
 
-                self.memory_panel_ui(ui, gpu_resource_stats, mem_usage_tree, store_stats);
+                self.memory_panel_ui(
+                    ui,
+                    gpu_resource_stats,
+                    mem_usage_tree,
+                    store_stats,
+                    storage_context,
+                );
 
                 self.egui_debug_panel_ui(ui);
 
@@ -2397,18 +2513,27 @@ impl App {
                             &self.connection_registry,
                             &self.async_runtime,
                             &self.egui_ctx,
+                            self.startup_options.login_enabled(),
                         );
                     }
 
-                    let mut startup_options = self.startup_options.clone();
+                    self.texture_readback.poll_and_save_texture_readbacks(
+                        render_ctx,
+                        ui,
+                        &self.command_sender,
+                    );
+
+                    // TODO(RR-3033): `AppState::show` still expects a non-optional `ActiveStoreContext`; fall back to a sentinel empty context for no-store routes.
+                    let empty_store_context = ActiveStoreContext::empty();
+                    let active_store_context = store_context.unwrap_or(&empty_store_context);
 
                     self.state.show(
                         &self.app_env,
-                        &mut startup_options,
+                        &self.startup_options,
                         app_blueprint,
                         ui,
                         render_ctx,
-                        store_context,
+                        active_store_context,
                         storage_context,
                         &self.reflection,
                         &self.component_ui_registry,
@@ -2424,7 +2549,6 @@ impl App {
                         &self.connection_registry,
                         &self.async_runtime,
                     );
-                    self.startup_options = startup_options;
                     render_ctx.before_submit();
 
                     self.show_text_logs_as_notifications();
@@ -2475,19 +2599,42 @@ impl App {
                 }
             };
 
+            // We centralize "new store" detection and `data_source` attachment here, so that the `on_new_store`
+            // side effects (like `set_opened(true)` for `OpenAndSelect`) fire regardless of which message type
+            // happens to come first.
+            let msg_store_id = match &msg {
+                DataSourceMessage::RrdManifest(store_id, _)
+                | DataSourceMessage::RrdManifestComplete(store_id) => Some(store_id.clone()),
+                DataSourceMessage::LogMsg(log_msg) => Some(log_msg.store_id().clone()),
+                DataSourceMessage::TableMsg(_) | DataSourceMessage::UiCommand(_) => None,
+            };
+
+            let maybe_new_store = msg_store_id
+                .as_ref()
+                .filter(|sid| !store_hub.store_bundle().contains(sid));
+
+            if let Some(sid) = &msg_store_id {
+                let entity_db = store_hub.entity_db_entry(sid);
+                if entity_db.data_source.is_none() {
+                    entity_db.data_source = Some((*channel_source).clone());
+                }
+            }
+
             match msg {
                 DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_entry(&store_id);
-                    entity_db.add_rrd_manifest_message(rrd_manifest);
+                    let store_events = entity_db.add_rrd_manifest_message(rrd_manifest);
 
-                    if let Some(caches) = store_hub.caches_for_store(&store_id) {
-                        // Downgrade to read-only, so we can access caches.
-                        let entity_db = store_hub
-                            .entity_db(&store_id)
-                            .expect("Just queried it mutable and that was fine.");
-
-                        caches.on_rrd_manifest(entity_db);
+                    if let Some((entity_db, cache)) =
+                        store_hub.entity_db_and_cache(&store_id, &self.view_class_registry)
+                    {
+                        cache.on_store_events(&store_events, entity_db);
                     }
+                }
+
+                DataSourceMessage::RrdManifestComplete(store_id) => {
+                    let entity_db = store_hub.entity_db_entry(&store_id);
+                    entity_db.mark_rrd_manifest_complete();
                 }
 
                 DataSourceMessage::LogMsg(msg) => {
@@ -2501,6 +2648,12 @@ impl App {
                 DataSourceMessage::UiCommand(ui_command) => {
                     self.receive_data_source_ui_command(ui_command, &channel_source);
                 }
+            }
+
+            // Handle any action that is triggered by a new store _after_ processing the message
+            // that caused it.
+            if let Some(sid) = &maybe_new_store {
+                self.on_new_store(egui_ctx, sid, &channel_source, store_hub);
             }
 
             if start.elapsed() > web_time::Duration::from_millis(10) {
@@ -2534,14 +2687,10 @@ impl App {
             );
         }
 
-        // Note that the `SetStoreInfo` message might be missing. It's not strictly necessary to add a new store.
-        let msg_will_add_new_store = !store_hub.store_bundle().contains(store_id);
-
+        // NOTE: store materialization, `data_source` attachment, and the `on_new_store`
+        // dispatch are handled in `receive_messages` so that they also fire for stores first
+        // introduced by `RrdManifest` / `RrdManifestComplete` messages.
         let entity_db = store_hub.entity_db_entry(store_id);
-        if entity_db.data_source.is_none() {
-            entity_db.data_source = Some((*channel_source).clone());
-        }
-
         let was_empty = entity_db.num_physical_chunks() == 0;
         let entity_db_add_result = entity_db.add_log_msg(msg);
 
@@ -2566,8 +2715,11 @@ impl App {
         let is_empty = entity_db.num_physical_chunks() == 0;
         if was_empty && !is_empty {
             // Hack: we cannot go to a specific timeline or entity until we know about it.
-            // Now we _hopefully_ do.
-            if let LogSource::RedapGrpcStream { uri, .. } = channel_source {
+            // Now we _hopefully_ do. The `LogMsg` could also belong to the blueprint, so
+            // we need to check for that as well.
+            if let LogSource::RedapGrpcStream { uri, .. } = channel_source
+                && &uri.store_id() == store_id
+            {
                 self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
             }
         }
@@ -2617,7 +2769,10 @@ impl App {
                                 if let Some(recording_id) =
                                     store_hub.earliest_recording_for_app(&app_id)
                                 {
-                                    store_hub.load_blueprint_and_caches(&recording_id);
+                                    store_hub.load_blueprint_and_caches(
+                                        &recording_id,
+                                        &self.view_class_registry,
+                                    );
                                     self.state
                                         .selection_state
                                         .set_selection(Item::StoreId(recording_id.clone()));
@@ -2626,8 +2781,8 @@ impl App {
                                         .replace(Route::LocalRecording { recording_id });
                                 } else {
                                     // TODO(RR-3713): show a blueprint for it anyway
-                                    re_log::warn_once!(
-                                        "Can't show {app_id} at this time - we have no recording for it"
+                                    re_log::debug_once!(
+                                        "Received BlueprintActivationCommand for app '{app_id}', but we have no recording for it"
                                     );
                                 }
                             }
@@ -2647,16 +2802,11 @@ impl App {
                 }
             },
         }
-
-        // Handle any action that is triggered by a new store _after_ processing the message that caused it.
-        if msg_will_add_new_store {
-            self.on_new_store(egui_ctx, store_id, channel_source, store_hub);
-        }
     }
 
     fn process_store_events_for_db(
         &self,
-        store_hub: &StoreHub,
+        store_hub: &mut StoreHub,
         store_id: &StoreId,
         store_events: &[re_chunk_store::ChunkStoreEvent],
     ) {
@@ -2664,10 +2814,10 @@ impl App {
 
         // Keep all caches up to date, even if they're in the background.
         // This ensures that when we switch to a different recording, the caches are already valid.
-        if let Some(entity_db) = store_hub.entity_db(store_id)
-            && let Some(caches) = store_hub.caches_for_store(store_id)
+        if let Some((entity_db, cache)) =
+            store_hub.entity_db_and_cache(store_id, &self.view_class_registry)
         {
-            caches.on_store_events(store_events, entity_db);
+            cache.on_store_events(store_events, entity_db);
         }
 
         self.validate_loaded_events(store_events);
@@ -2714,20 +2864,30 @@ impl App {
         channel_source: &LogSource,
         store_hub: &mut StoreHub,
     ) {
-        if channel_source.select_when_loaded() {
-            // Set the recording-id after potentially creating the store in the hub.
-            // This ordering is important because the `StoreHub` internally
-            // updates the app-id when changing the recording.
-            match store_id.kind() {
-                StoreKind::Recording => {
-                    re_log::trace!("Opening a new recording: '{store_id:?}'");
-                    self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
+        match channel_source.open_behavior() {
+            RecordingOpenBehavior::Background => {}
+
+            RecordingOpenBehavior::Open => {
+                if store_id.kind() == StoreKind::Recording {
+                    store_hub.set_opened(store_id, true);
                 }
-                StoreKind::Blueprint => {
-                    // We wait with activating blueprints until they are fully loaded,
-                    // so that we don't run heuristics on half-loaded blueprints.
-                    // Otherwise on a mixed connection (SDK sending both blueprint and recording)
-                    // the blueprint won't be activated until the whole _recording_ has finished loading.
+            }
+
+            RecordingOpenBehavior::OpenAndSelect => {
+                // Set the recording-id after potentially creating the store in the hub.
+                // This ordering is important because the `StoreHub` internally
+                // updates the app-id when changing the recording.
+                match store_id.kind() {
+                    StoreKind::Recording => {
+                        re_log::trace!("Opening a new recording: '{store_id:?}'");
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
+                    }
+                    StoreKind::Blueprint => {
+                        // We wait with activating blueprints until they are fully loaded,
+                        // so that we don't run heuristics on half-loaded blueprints.
+                        // Otherwise on a mixed connection (SDK sending both blueprint and recording)
+                        // the blueprint won't be activated until the whole _recording_ has finished loading.
+                    }
                 }
             }
         }
@@ -2744,7 +2904,7 @@ impl App {
                     re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
                     re_ui::Link {
                         text: "Install…".into(),
-                        url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
+                        url: "https://rerun.io/docs/overview/installing-rerun/viewer#installing-the-viewer".into(),
                     }
                 )
                     .no_toast()
@@ -2842,7 +3002,8 @@ impl App {
             return;
         }
 
-        store_hub.load_blueprint_and_caches(store_id);
+        store_hub.set_opened(store_id, true);
+        store_hub.load_blueprint_and_caches(store_id, &self.view_class_registry);
         self.state.navigation.replace(Route::LocalRecording {
             recording_id: store_id.clone(),
         });
@@ -2880,7 +3041,7 @@ impl App {
                             }
                         }
                     } else {
-                        re_log::debug_once!("Unknown archetype: {archetype_name}");
+                        re_log::trace_once!("Unknown archetype: {archetype_name}");
                     }
                 }
             }
@@ -2893,7 +3054,7 @@ impl App {
         use re_format::format_bytes;
         use re_memory::MemoryUse;
 
-        let limit = self.startup_options.memory_limit;
+        let limit = self.app_options().memory_limit;
         let mem_use_before = MemoryUse::capture();
 
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
@@ -2918,15 +3079,10 @@ impl App {
                 );
             }
 
-            let active_recording_id = self.active_recording_id();
-            let time_cursor_for = |store_id: &StoreId| -> Option<TimelinePoint> {
-                let time_ctrl = self.state.time_controls.get(store_id)?;
-                Some((*time_ctrl.timeline()?, time_ctrl.time_int()?).into())
-            };
             store_hub.purge_fraction_of_ram(
                 fraction_to_purge,
-                active_recording_id,
-                &time_cursor_for,
+                self.active_recording_id(),
+                &|store_id| self.state.time_cursor_for(store_id).map(|t| t.time_cursor),
             );
 
             let mem_use_after = MemoryUse::capture();
@@ -2944,17 +3100,16 @@ impl App {
                 );
             }
 
-            if store_hub.store_bundle().recordings().count() == 1 {
-                // We're in a unique spot to accurately estimate how much
-                // EXTRA memory we use, beyond the raw chunks of memory.
-                // This is the true overhead of all book-keeping and unaccounted memory.
-                // This is the (currently) unevictable memory!
-                if let Some(current_mem_use) = mem_use_after.counted.or(mem_use_after.resident)
-                    && let Some(entity_db) = store_hub.store_bundle_mut().recordings_mut().next()
-                {
-                    entity_db.estimated_application_overhead_bytes =
-                        Some(current_mem_use - entity_db.byte_size_of_physical_chunks());
-                }
+            // Cache app overhead = total memory use minus all recording chunk data.
+            // This captures fonts, UI state, indices, and other unevictable memory.
+            if let Some(current_mem_use) = mem_use_after.counted.or(mem_use_after.resident) {
+                let total_chunk_bytes: u64 = store_hub
+                    .store_bundle()
+                    .recordings()
+                    .map(|r| r.byte_size_of_physical_chunks())
+                    .sum();
+                self.cached_app_overhead_bytes =
+                    Some(current_mem_use.saturating_sub(total_chunk_bytes));
             }
 
             self.memory_panel.note_memory_purge();
@@ -3000,6 +3155,8 @@ impl App {
         if dropped_files.is_empty() {
             return;
         }
+
+        egui_ctx.request_repaint();
 
         let mut force_store_info = false;
 
@@ -3272,7 +3429,7 @@ impl App {
             let db = store_hub.entity_db_entry(&store_id);
 
             if cfg!(debug_assertions) && db.can_fetch_chunks_from_redap() {
-                // Some sanity checks:
+                re_tracing::profile_scope!("debug-sanity-check");
                 let storage_engine = db.storage_engine();
                 let store = storage_engine.store();
 
@@ -3349,160 +3506,87 @@ impl App {
     fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
+        use crate::prefetch_chunks::{RecordingOpenKind, RecordingPrefetchInfo};
+        use re_entity_db::ChunkPrefetchOptions;
+
         let active_recording_id = self.active_recording_id();
 
-        // Even if we wanted, we cannot get rid of this overhead
-        let unpurgable_cache_size = active_recording_id
-            .and_then(|id| store_hub.caches_for_store(id))
-            .map_or(0, |caches| caches.memory_use_after_last_purge());
-
+        // Fixed overhead for the app (fonts, icons, caches, etc.) that we cannot purge.
+        // We also want some headroom for spikes.
         const APP_OVERHEAD_BYTES: u64 = 300_000_000;
+
+        // When we have a measured overhead we need less extra headroom.
+        // When we don't, use a larger fraction to be safe.
         const FIXED_FRACTION_OVERHEAD: f32 = 0.10;
         const FALLBACK_FIXED_FRACTION_OVERHEAD: f32 = 0.20;
-        // Prefetch new chunks for the active recording (if any):
 
-        let active_recording = active_recording_id.and_then(|active_recording_id| {
-            store_hub.store_bundle_mut().get_mut(active_recording_id)
-        });
-
-        let mut memory_limit = if let Some(active_recording) = active_recording {
-            if active_recording.is_currently_downloading_manifest() {
-                return;
-            }
-
-            // What is our memory budget for this recording?
-            // If need be, we can evict all other recordings and their caches.
-
-            // There is some fixed overhead in the process that we cannot purge.
-            // This includes things like fonts, icons, etc.
-            // We also want some headroom for spikes.
-            let overhead = active_recording
-                .estimated_application_overhead_bytes
-                .unwrap_or(APP_OVERHEAD_BYTES + unpurgable_cache_size);
-
-            // Leave some extra headroom (beyond the fixed overhead) for
-            // * secondary indices
-            // * failures in our accounting
-            let fixed_fraction_overhead = if active_recording
-                .estimated_application_overhead_bytes
-                .is_some()
-            {
-                FIXED_FRACTION_OVERHEAD // We have a good estimate, so we need less headroom
-            } else {
-                FALLBACK_FIXED_FRACTION_OVERHEAD
-            };
-
-            let memory_budget = self.startup_options.memory_limit.saturating_sub(overhead);
-
-            let memory_budget = memory_budget.split(fixed_fraction_overhead).1;
-
-            if memory_budget == re_memory::MemoryLimit::ZERO {
-                re_log::warn_once!("Very little memory budget left for active recording.");
-            }
-
-            // eprintln!("Memory budget for active recording: {memory_budget}");
-
-            let time_ctrl = self.state.time_controls.get(active_recording.store_id());
-
-            crate::prefetch_chunks::prefetch_chunks_for_recording(
-                &self.egui_ctx,
-                // If we can't afford at least this much for data, then what is even the point?
-                memory_budget.at_least(100_000_000),
-                active_recording,
-                time_ctrl,
-                self.connection_registry(),
-            );
-
-            memory_budget
+        let overhead = self.cached_app_overhead_bytes.unwrap_or(APP_OVERHEAD_BYTES);
+        let fixed_fraction_overhead = if self.cached_app_overhead_bytes.is_some() {
+            FIXED_FRACTION_OVERHEAD
         } else {
-            // No recording is open, use the memory limit with some memory left for the app.
-            self.startup_options
-                .memory_limit
-                .saturating_sub(APP_OVERHEAD_BYTES + unpurgable_cache_size)
-                .split(FALLBACK_FIXED_FRACTION_OVERHEAD)
-                .1
+            FALLBACK_FIXED_FRACTION_OVERHEAD
         };
 
-        let active_recording = active_recording_id
-            .and_then(|active_recording_id| store_hub.store_bundle().get(active_recording_id));
+        let memory_limit = self
+            .app_options()
+            .memory_limit
+            .saturating_sub(overhead)
+            .split(fixed_fraction_overhead)
+            .1;
 
-        // Fetch background recordings if we have space for them.
-        if active_recording.is_none_or(|rec| !rec.can_load_more()) {
-            re_tracing::profile_scope!("fetch_background_recordings");
+        if memory_limit == re_memory::MemoryLimit::ZERO {
+            re_log::warn_once!("Very little memory budget left for prefetching recordings.");
+        }
 
-            const BACKGROUND_HEADROOM_FRACTION: f32 = 0.2;
-            const RECORDING_HEADROOM_BYTES: u64 = 10_000_000;
+        let mut recordings_info: HashMap<StoreId, RecordingPrefetchInfo> = HashMap::default();
 
-            // Leave a good amount of extra headroom for downloading background
-            // recordings.
-            memory_limit = memory_limit.split(BACKGROUND_HEADROOM_FRACTION).1;
-
-            // Subtract all already loaded physical chunks from the memory limit.
-            for recording in store_hub.store_bundle().recordings() {
-                if recording.is_currently_downloading_manifest() {
-                    // If any are downloading manifest, don't prefetch background recordings.
-                    memory_limit = re_memory::MemoryLimit::ZERO;
-                    break;
-                }
-
-                let fixed_fraction_overhead =
-                    if recording.estimated_application_overhead_bytes.is_some() {
-                        FIXED_FRACTION_OVERHEAD // We have a good estimate, so we need less headroom
-                    } else {
-                        FALLBACK_FIXED_FRACTION_OVERHEAD
-                    };
-
-                let size = recording.byte_size_of_physical_chunks()
-                    + recording.estimated_application_overhead_bytes.unwrap_or(0);
-
-                let estimated_size = ((1.0 + fixed_fraction_overhead as f64) * size as f64) as u64
-                    + RECORDING_HEADROOM_BYTES;
-
-                memory_limit = memory_limit.saturating_sub(estimated_size);
-
-                if memory_limit == re_memory::MemoryLimit::ZERO {
-                    break;
-                }
+        for recording in store_hub.store_bundle().recordings() {
+            if recording.is_downloading_first_part_of_manifest() {
+                // We need at least ONE part of the manifest before prefetching chunks.
+                continue;
             }
 
-            if memory_limit != re_memory::MemoryLimit::ZERO {
-                for recording in store_hub.store_bundle_mut().recordings_mut() {
-                    // This means we skip the active recording, since we're only
-                    // in this block to begin with if there is no active recording
-                    // or the active recording cannot load more.
-                    if !recording.can_load_more() {
-                        continue;
-                    }
+            let is_active = Some(recording.store_id()) == active_recording_id;
+            let usage = store_hub.usage(recording.store_id());
 
-                    // For this stores memory limit, add back the size of all physical chunks
-                    // since that's considered in `prefetch_chunks_for_recording`.
-                    let memory_limit =
-                        memory_limit.saturating_add(recording.byte_size_of_physical_chunks());
+            let open_kind = if is_active {
+                RecordingOpenKind::Active
+            } else if usage.was_preview() {
+                RecordingOpenKind::Preview
+            } else if usage.opened {
+                RecordingOpenKind::Inactive
+            } else {
+                continue;
+            };
 
-                    if memory_limit
-                        .checked_sub(recording.rrd_manifest_index().full_uncompressed_size())
-                        .is_none()
-                    {
-                        // Continue if this recording doesn't fit, smaller ones
-                        // might.
-                        continue;
-                    }
-
-                    let time_ctrl = self.state.time_controls.get(recording.store_id());
-
-                    crate::prefetch_chunks::prefetch_chunks_for_recording(
-                        &self.egui_ctx,
-                        memory_limit,
-                        recording,
-                        time_ctrl,
-                        &self.connection_registry,
-                    );
-
-                    // Only prefetch for one at a time.
-                    break;
-                }
+            let time_cursor = self.state.time_cursor_for(recording.store_id());
+            if let Some(redap_uri) = recording.redap_uri() {
+                let store_id = recording.store_id().clone();
+                recordings_info.insert(
+                    store_id.clone(),
+                    RecordingPrefetchInfo {
+                        store_id,
+                        open_kind,
+                        time_cursor,
+                        origin: redap_uri.origin.clone(),
+                    },
+                );
             }
         }
+
+        let total_bytes_in_memory = memory_limit.at_least(100_000_000).as_bytes();
+
+        crate::prefetch_chunks::prefetch_chunks_for_recordings(
+            &self.egui_ctx,
+            store_hub.store_bundle_mut(),
+            &recordings_info,
+            total_bytes_in_memory,
+            self.connection_registry(),
+            &ChunkPrefetchOptions {
+                max_fetch_stage: self.app_options().max_fetch_stage,
+                ..ChunkPrefetchOptions::default()
+            },
+        );
     }
 }
 
@@ -3513,6 +3597,7 @@ fn blueprint_loader() -> BlueprintPersistence {
         loader: None,
         saver: None,
         validator: Some(Box::new(crate::blueprint::is_valid_blueprint)),
+        deleter: None,
     }
 }
 
@@ -3568,6 +3653,7 @@ fn blueprint_loader() -> BlueprintPersistence {
         loader: Some(Box::new(load_blueprint_from_disk)),
         saver: Some(Box::new(save_blueprint_to_disk)),
         validator: Some(Box::new(crate::blueprint::is_valid_blueprint)),
+        deleter: Some(Box::new(crate::saving::delete_blueprint)),
     }
 }
 
@@ -3614,9 +3700,85 @@ impl eframe::App for App {
         }
     }
 
+    /// Called before each call to `ui`, but ALSO when the app is
+    /// hidden (occluded, minimized, …) if something has called `request_repaint`.
+    ///
+    /// We put things here that are unrelated to the UI,
+    /// and that we still want to happen if the application is hidden.
+    fn logic(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
+        let mut store_hub = self
+            .store_hub
+            .take()
+            .expect("Failed to take store hub from the Viewer");
+
+        {
+            // Respect memory budget:
+            self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
+
+            if self.app_options().blueprint_gc {
+                store_hub.gc_blueprints(&self.state.blueprint_undo_state);
+            }
+        }
+
+        {
+            // Download/ingest data:
+            self.receive_messages(&mut store_hub, egui_ctx);
+            self.receive_fetched_chunks(&mut store_hub);
+            self.prefetch_chunks(&mut store_hub);
+        }
+
+        self.run_pending_system_commands(&mut store_hub, egui_ctx);
+
+        {
+            // We also need to check for Ui commands, especially `UiCommand::Quit`.
+
+            let route = self.state.navigation.current().clone();
+            let (storage_context, store_context) = store_hub.read_context(&route);
+
+            let blueprint = store_context.as_ref().map(|ctx| ctx.blueprint);
+            let blueprint_query = self.state.blueprint_query_for_viewer(blueprint);
+
+            let app_blueprint = AppBlueprint::new(
+                blueprint,
+                &blueprint_query,
+                egui_ctx,
+                self.panel_state_overrides_active
+                    .then_some(self.panel_state_overrides),
+            );
+
+            self.run_pending_ui_commands(
+                egui_ctx,
+                &app_blueprint,
+                &storage_context,
+                store_context.as_ref(),
+                &route,
+            );
+        }
+
+        self.state.cleanup(&store_hub);
+
+        // Return the `StoreHub` to the Viewer so we have it on the next frame
+        self.store_hub = Some(store_hub);
+    }
+
+    /// Called when application need to be repainted
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry_tracy"))]
         re_perf_telemetry::external::tracing_tracy::client::frame_mark();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(capture) = &self.profile_capture {
+            if capture.is_done() {
+                if let Some(capture) = self.profile_capture.take()
+                    && let Err(err) = save_profile_trace(&capture.finish())
+                {
+                    re_log::error!("Failed to save profile trace: {err}");
+                }
+            } else {
+                ui.ctx().request_repaint();
+            }
+        }
 
         if let Some(seconds) = frame.info().cpu_usage {
             self.frame_time_history.add(ui.input(|i| i.time), seconds);
@@ -3670,7 +3832,7 @@ impl eframe::App for App {
             return;
         }
 
-        if self.startup_options.memory_limit.is_unlimited() {
+        if self.app_options().memory_limit.is_unlimited() {
             // we only warn about high memory usage if the user hasn't specified a limit
             self.ram_limit_warner.update();
         }
@@ -3720,8 +3882,14 @@ impl eframe::App for App {
         let store_stats = self.memory_panel_open.then(|| store_hub.stats());
 
         // do early, before doing too many allocations
-        self.memory_panel
-            .update(&gpu_resource_stats, store_stats.as_ref());
+        let store_bundle_for_streaming = self
+            .memory_panel_open
+            .then(|| store_hub.store_bundle() as &re_entity_db::StoreBundle);
+        self.memory_panel.update(
+            &gpu_resource_stats,
+            store_stats.as_ref(),
+            store_bundle_for_streaming,
+        );
 
         self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
 
@@ -3731,16 +3899,8 @@ impl eframe::App for App {
         if is_start_of_new_frame {
             // IMPORTANT: only call this once per FRAME even if we run multiple passes.
             // Otherwise we might incorrectly evict something that was invisible in the first (discarded) pass.
-            store_hub.begin_frame_caches(); // Call AFTER `purge_memory_if_needed`
+            store_hub.begin_frame_caches(self.active_recording_id()); // Call AFTER `purge_memory_if_needed`
         }
-
-        self.receive_messages(&mut store_hub, ui);
-
-        if self.app_options().blueprint_gc {
-            store_hub.gc_blueprints(&self.state.blueprint_undo_state);
-        }
-
-        self.state.cleanup(&store_hub);
 
         file_saver_progress_ui(ui, &mut self.background_tasks); // toasts for background file saver
 
@@ -3748,9 +3908,28 @@ impl eframe::App for App {
         // Must be called before `read_context` below.
         if let Route::Loading(source) = self.state.navigation.current() {
             if !self.msg_receive_set().contains(source) {
-                self.state.navigation.reset();
+                // The stream finished and may have produced a recording without triggering
+                // automatic navigation. So we try that before defaulting to showing the
+                // Welcome screen.
+                let loaded_recording = store_hub
+                    .find_recording_store_by_source(source)
+                    .map(|db| db.store_id().clone());
+
+                if let Some(store_id) = loaded_recording {
+                    re_log::debug!("Stream completed, navigating to loaded recording {store_id:?}");
+                    store_hub.load_blueprint_and_caches(&store_id, &self.view_class_registry);
+                    self.state.navigation.replace(Route::LocalRecording {
+                        recording_id: store_id,
+                    });
+                } else {
+                    re_log::debug!("No recording found from loading source, resetting navigation");
+                    self.state.navigation.reset();
+                }
             }
-        } else {
+        } else if !matches!(
+            self.state.navigation.current(),
+            Route::ChunkStoreBrowser { .. }
+        ) {
             // If the current route points to a stale recording, find a new valid state.
             let route_is_valid = self
                 .state
@@ -3770,7 +3949,8 @@ impl eframe::App for App {
                 if let Some(app_id) = any_other_app_id {
                     store_hub.load_persisted_blueprints_for_app(&app_id);
                     if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
-                        store_hub.load_blueprint_and_caches(&recording_id);
+                        store_hub
+                            .load_blueprint_and_caches(&recording_id, &self.view_class_registry);
                         self.state
                             .selection_state
                             .set_selection(Item::StoreId(recording_id.clone()));
@@ -3786,19 +3966,15 @@ impl eframe::App for App {
             }
         }
 
-        self.receive_fetched_chunks(&mut store_hub);
-        self.prefetch_chunks(&mut store_hub);
-
         {
             let (storage_context, store_context) =
                 store_hub.read_context(self.state.navigation.current());
 
-            let blueprint_query = self
-                .state
-                .blueprint_query_for_viewer(store_context.blueprint);
+            let blueprint = store_context.as_ref().map(|ctx| ctx.blueprint);
+            let blueprint_query = self.state.blueprint_query_for_viewer(blueprint);
 
             let app_blueprint = AppBlueprint::new(
-                Some(store_context.blueprint),
+                blueprint,
                 &blueprint_query,
                 ui,
                 self.panel_state_overrides_active
@@ -3810,7 +3986,7 @@ impl eframe::App for App {
                 frame,
                 &app_blueprint,
                 &gpu_resource_stats,
-                &store_context,
+                store_context.as_ref(),
                 &storage_context,
                 mem_usage_tree,
                 store_stats.as_ref(),
@@ -3830,13 +4006,20 @@ impl eframe::App for App {
                         self.command_sender.send_ui(cmd);
                     }
                     re_ui::CommandPaletteAction::OpenUrl(url_desc) => {
-                        match url_desc.url.parse::<ViewerOpenUrl>() {
+                        match ViewerOpenUrl::parse_with_options(
+                            &url_desc.url,
+                            &re_data_source::FromUriOptions {
+                                accept_extensionless_http: true,
+                                ..Default::default()
+                            },
+                        ) {
                             Ok(url) => {
                                 url.open(
                                     ui,
                                     &OpenUrlOptions {
                                         follow: false,
-                                        select_redap_source_when_loaded: true,
+                                        recording_open_behavior:
+                                            RecordingOpenBehavior::OpenAndSelect,
                                         show_loader: true,
                                     },
                                     &self.command_sender,
@@ -3862,7 +4045,7 @@ impl eframe::App for App {
                 ui,
                 &app_blueprint,
                 &storage_context,
-                Some(&store_context),
+                store_context.as_ref(),
                 &route,
             );
         }
@@ -4017,8 +4200,8 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 fn open_file_dialog_native(_: crate::MainThreadToken) -> Vec<std::path::PathBuf> {
     re_tracing::profile_function!();
 
-    let supported: Vec<_> = if re_data_loader::iter_external_loaders().len() == 0 {
-        re_data_loader::supported_extensions().collect()
+    let supported: Vec<_> = if re_importer::iter_external_importers().len() == 0 {
+        re_importer::supported_extensions().collect()
     } else {
         vec![]
     };
@@ -4035,7 +4218,7 @@ fn open_file_dialog_native(_: crate::MainThreadToken) -> Vec<std::path::PathBuf>
 
 #[cfg(target_arch = "wasm32")]
 async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
-    let supported: Vec<_> = re_data_loader::supported_extensions().collect();
+    let supported: Vec<_> = re_importer::supported_extensions().collect();
 
     let files = rfd::AsyncFileDialog::new()
         .add_filter("Supported files", &supported)
@@ -4064,7 +4247,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
 
 fn save_active_recording(
     app: &mut App,
-    store_context: Option<&StoreContext<'_>>,
+    store_context: Option<&ActiveStoreContext<'_>>,
     loop_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
 ) -> anyhow::Result<()> {
     let Some(entity_db) = store_context.as_ref().map(|view| view.recording) else {
@@ -4109,7 +4292,10 @@ fn save_recording(
     )
 }
 
-fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> anyhow::Result<()> {
+fn save_blueprint(
+    app: &mut App,
+    store_context: Option<&ActiveStoreContext<'_>>,
+) -> anyhow::Result<()> {
     let Some(store_context) = store_context else {
         anyhow::bail!("No blueprint to save");
     };
@@ -4157,6 +4343,26 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     let title = "Save blueprint";
 
     save_entity_db(app, rrd_version, file_name, title.to_owned(), messages)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn save_profile_trace(view: &re_tracing::reexports::puffin::FrameView) -> anyhow::Result<()> {
+    let Some(path) = rfd::FileDialog::new()
+        .set_file_name("rerun.puffin")
+        .set_title("Save profile trace")
+        .add_filter("Puffin profile", &["puffin"])
+        .save_file()
+    else {
+        re_log::info!("Profile trace capture cancelled by user.");
+        return Ok(());
+    };
+
+    let file = std::fs::File::create(&path)?;
+    let mut writer = std::io::BufWriter::new(file);
+    view.write(&mut writer)?;
+
+    re_log::info!("Saved profile trace to {}", path.display());
+    Ok(())
 }
 
 // TODO(emilk): unify this with `ViewerContext::save_file_dialog`
@@ -4268,6 +4474,19 @@ impl MemUsageTreeCapture for App {
         node.add("state", self.state.capture_mem_usage_tree());
         node.add("rx_log", self.rx_log.capture_mem_usage_tree());
         node.add("store_hub", self.store_hub.capture_mem_usage_tree());
+        node.add(
+            "store_subscribers",
+            re_chunk_store::ChunkStore::capture_all_subscribers_mem_usage_tree(),
+        );
+
+        let mut globals = re_byte_size::MemUsageNode::new();
+        globals.add(
+            "forgiving_parse_cache",
+            re_log_types::forgiving_parse_cache_bytes_used(),
+        );
+        globals.add("string_interner", re_string_interner::bytes_used() as u64);
+        node.add("globals", globals.into_tree());
+
         node.into_tree()
     }
 }

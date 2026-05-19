@@ -55,7 +55,7 @@ impl ToTransport for crate::RrdFooter {
     type Output = re_protos::log_msg::v1alpha1::RrdFooter;
     type Context<'a> = ();
 
-    fn to_transport(&self, _: Self::Context<'_>) -> Result<Self::Output, CodecError> {
+    fn to_transport(&self, (): Self::Context<'_>) -> Result<Self::Output, CodecError> {
         let manifests: Result<Vec<_>, _> = self
             .manifests
             .values()

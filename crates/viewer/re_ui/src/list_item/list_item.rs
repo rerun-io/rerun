@@ -435,6 +435,7 @@ impl ListItem {
         }
     }
 
+    /// Always call this from within a scope
     fn ui<'a>(
         self,
         ui: &mut Ui,
@@ -624,6 +625,14 @@ impl ListItem {
             layout_info,
             visuals,
         };
+
+        if interactive {
+            // Clicks and drags on content labels should be ignored,
+            // and go to the parent instead:
+            ui.style_mut().interaction.selectable_labels = false;
+            // (we can just modify the parent `ui` here because
+            // this function is always called from within an `ui.scope`)
+        }
 
         let prev_widgets = ui.style_mut().visuals.widgets.clone();
         content.ui(ui, &content_ctx);

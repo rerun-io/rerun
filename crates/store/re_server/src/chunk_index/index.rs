@@ -11,7 +11,7 @@ use arrow::error::ArrowError;
 use lance::deps::arrow_array::UInt8Array;
 use lance_index::DatasetIndexExt as _;
 use re_chunk_store::Chunk;
-use re_log_types::{EntityPath, TimelineName};
+use re_log_types::{ComponentPath, EntityPath, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{IndexConfig, IndexProperties};
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_types_core::ComponentIdentifier;
@@ -333,9 +333,9 @@ pub async fn create_index(
         &config.time_index,
     )
     .ok_or_else(|| {
-        StoreError::EntryNameNotFound(format!(
-            "{}#{}",
-            config.column.entity_path, config.column.descriptor.component
+        StoreError::ComponentPathNotFound(ComponentPath::new(
+            config.column.entity_path.clone(),
+            config.column.descriptor.component,
         ))
     })?;
 
@@ -492,8 +492,13 @@ fn find_datatypes(
 ) -> Option<IndexDataTypes> {
     for segment in dataset.segments().values() {
         for layer in segment.layers().values() {
-            let chunk_store = layer.store_handle().read();
-            for chunk in chunk_store.iter_physical_chunks() {
+            let chunks: Vec<Arc<Chunk>> = match layer.resolved_store() {
+                crate::store::ResolvedStore::Eager(h) => {
+                    h.read().iter_physical_chunks().cloned().collect()
+                }
+                crate::store::ResolvedStore::Lazy(lazy) => lazy.collect_physical_chunks().ok()?,
+            };
+            for chunk in chunks {
                 if chunk.entity_path() == entity_path
                     && let Some(component) = chunk.components().0.get(component)
                     && let Some(timeline) = chunk.timelines().get(timeline_name)

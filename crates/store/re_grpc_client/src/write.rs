@@ -190,7 +190,7 @@ impl Client {
             }
         } else {
             self.cmd_tx.blocking_send(cmd)
-        }.map_err(|_ignored_details| ())
+        }.map_err(|_ignored_err| ())
     }
 
     /// Whether the client is connected to a remote server.
@@ -256,15 +256,15 @@ impl Client {
                         });
                     }
 
-                    if !has_emitted_slow_warning && very_slow <= start.elapsed() {
+                    if !has_emitted_slow_warning && very_slow <= elapsed {
                         if timeout < Duration::from_secs(10_000) {
-                            re_log::info!(
+                            re_log::warn!(
                                 "Flushing the gRPC stream has taken over {:.1}s seconds (timeout: {:.0}s); will keep waiting…",
                                 elapsed.as_secs_f32(),
                                 timeout.as_secs_f32(),
                             );
                         } else {
-                            re_log::info!(
+                            re_log::warn!(
                                 "Flushing the gRPC stream has taken over {:.1}s seconds; will keep waiting…",
                                 elapsed.as_secs_f32()
                             );
@@ -365,7 +365,7 @@ async fn message_proxy_client(
                         re_log::debug!("Shutting down client without flush");
                         return;
                     }
-                    _ = tokio::time::sleep(Duration::from_millis(100)) => {
+                    () = tokio::time::sleep(Duration::from_millis(100)) => {
                     }
                 }
             }
@@ -438,18 +438,13 @@ async fn message_proxy_client(
         }
     };
 
-    let disconnect_result = if let Err(status) = client.write_messages(stream).await {
+    let disconnect_result = if let Err(err) = client.write_messages(stream).await {
         re_log::error!(
             "Write messages call failed: {}",
-            TonicStatusError::from(status.clone())
+            TonicStatusError::from(err.clone())
         );
 
-        // Ignore status code "Unknown" since this was observed to happen on regular Viewer shutdowns.
-        if status.code() != tonic::Code::Ok && status.code() != tonic::Code::Unknown {
-            Err(ClientConnectionFailure::FailedToSendMessages(status.code()))
-        } else {
-            Ok(())
-        }
+        Err(ClientConnectionFailure::FailedToSendMessages(err.code()))
     } else {
         Ok(())
     };

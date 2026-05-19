@@ -33,7 +33,7 @@ fn query_latest_component<C: re_types_core::Component>(
         .to_iter()
         .unwrap()
         .filter_map(|chunk| {
-            let unit = chunk.latest_at(query, component).into_unit()?;
+            let unit = chunk.latest_at(query, component)?;
             unit.index(&query.timeline()).map(|index| (index, unit))
         })
         .max_by_key(|(index, _unit)| *index)?;

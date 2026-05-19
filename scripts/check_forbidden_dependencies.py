@@ -22,9 +22,9 @@ import sys
 # crate_spec is the workspace crate name, optionally followed by
 # `--all-features` or `--no-default-features`.
 FORBIDDEN_DEPENDENCIES: list[tuple[str, set[str]]] = [
-    ("re_sdk", {"datafusion", "egui"}),
-    ("re_sdk --all-features", {"datafusion", "egui"}),
-    ("rerun-cli --no-default-features", {"datafusion", "egui"}),
+    ("re_sdk", {"datafusion", "egui", "lance"}),
+    ("re_sdk --all-features", {"datafusion", "egui", "lance"}),
+    ("rerun-cli --no-default-features", {"datafusion", "egui", "lance"}),
 ]
 
 

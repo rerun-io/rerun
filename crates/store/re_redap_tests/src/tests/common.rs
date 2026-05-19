@@ -4,6 +4,7 @@ use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
 use re_log_types::{EntityPath, TimeType};
+use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
@@ -13,6 +14,11 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
+
+/// Test helper: parse a string into an `EntryName`, panicking on invalid names.
+pub fn entry_name(name: &str) -> EntryName {
+    EntryName::new(name).unwrap()
+}
 use re_types_core::AsComponents;
 use tonic::async_trait;
 use url::Url;
@@ -94,7 +100,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
             on_duplicate: re_protos::common::v1alpha1::IfDuplicateBehavior::from(on_duplicate)
                 as i32,
         })
-        .with_entry_name(dataset_name)
+        .with_entry_name(entry_name(dataset_name))
         .expect("Failed to create a request");
 
         register_with_dataset_blocking(self, request).await;
@@ -122,7 +128,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         };
 
         let request = tonic::Request::new(request.into())
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .expect("Failed to create a request");
 
         use futures::TryStreamExt as _;
@@ -161,7 +167,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
             re_protos::cloud::v1alpha1::ext::LanceTable { table_url },
         );
         let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
-            name: table_name.to_owned(),
+            name: entry_name(table_name),
             provider_details,
         };
         let request = tonic::Request::new(request.try_into().expect("Failed to convert request"));

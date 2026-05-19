@@ -82,6 +82,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct CoordinateFrame {
     /// The coordinate frame to use for the current entity.
+    ///
+    /// Note that empty strings are not valid transform frame IDs.
     pub frame: Option<SerializedComponentBatch>,
 }
 
@@ -237,6 +239,8 @@ impl CoordinateFrame {
     }
 
     /// The coordinate frame to use for the current entity.
+    ///
+    /// Note that empty strings are not valid transform frame IDs.
     #[inline]
     pub fn with_frame(mut self, frame: impl Into<crate::components::TransformFrameId>) -> Self {
         self.frame = try_serialize_field(Self::descriptor_frame(), [frame]);

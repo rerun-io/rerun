@@ -54,7 +54,7 @@ use crate::wgpu_resources::{
     GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
     PoolError, RenderPipelineDesc, SamplerDesc,
 };
-use crate::{DebugLabel, RenderContext, include_shader_module};
+use crate::{Label, RenderContext, include_shader_module};
 
 /// What outline (if any) should be drawn.
 ///
@@ -118,7 +118,7 @@ pub struct OutlineConfig {
 
 // TODO(andreas): Is this a sort of DrawPhase implementor? Need a system for this.
 pub struct OutlineMaskProcessor {
-    label: DebugLabel,
+    label: Label,
 
     mask_texture: GpuTexture,
     mask_depth: GpuTexture,
@@ -155,8 +155,8 @@ impl OutlineMaskProcessor {
         format: Self::MASK_DEPTH_FORMAT,
         // Use GreaterEQUAL in order to make outlines overridable.
         // This is useful when a large batch shares a common outline, but some of the items in the batch are rendered again with different outlines.
-        depth_compare: wgpu::CompareFunction::GreaterEqual,
-        depth_write_enabled: true,
+        depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
+        depth_write_enabled: Some(true),
         stencil: wgpu::StencilState {
             front: wgpu::StencilFaceState::IGNORE,
             back: wgpu::StencilFaceState::IGNORE,
@@ -169,6 +169,26 @@ impl OutlineMaskProcessor {
             clamp: 0.0,
         },
     });
+
+    /// Depth state for outline mask pipelines that should follow draw order instead of depth.
+    /// Use for special cases like coplanar geometries that would otherwise have z-fighting.
+    pub const MASK_DEPTH_STATE_NO_DEPTH: Option<wgpu::DepthStencilState> =
+        Some(wgpu::DepthStencilState {
+            format: Self::MASK_DEPTH_FORMAT,
+            depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
+            depth_write_enabled: Some(false),
+            stencil: wgpu::StencilState {
+                front: wgpu::StencilFaceState::IGNORE,
+                back: wgpu::StencilFaceState::IGNORE,
+                read_mask: 0,
+                write_mask: 0,
+            },
+            bias: wgpu::DepthBiasState {
+                constant: 0,
+                slope_scale: 0.0,
+                clamp: 0.0,
+            },
+        });
 
     /// Holds two pairs of pixel coordinates (one for each layer).
     const VORONOI_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
@@ -196,11 +216,11 @@ impl OutlineMaskProcessor {
     pub fn new(
         ctx: &RenderContext,
         config: &OutlineConfig,
-        view_name: &DebugLabel,
+        view_name: &Label,
         resolution_in_pixel: [u32; 2],
     ) -> Self {
         re_tracing::profile_function!();
-        let instance_label: DebugLabel = format!("{view_name} - OutlineMaskProcessor").into();
+        let instance_label: Label = format!("{view_name} - OutlineMaskProcessor").into();
 
         // ------------- Textures -------------
         let texture_pool = &ctx.gpu_resources.textures;
@@ -335,7 +355,7 @@ impl OutlineMaskProcessor {
         encoder: &'a mut wgpu::CommandEncoder,
     ) -> wgpu::RenderPass<'a> {
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: DebugLabel::from(format!("{} - mask pass", self.label)).get(),
+            label: Label::from(format!("{} - mask pass", self.label)).wgpu_label(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.mask_texture.default_view,
                 depth_slice: None,
@@ -355,6 +375,7 @@ impl OutlineMaskProcessor {
             }),
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         })
     }
 
@@ -371,7 +392,7 @@ impl OutlineMaskProcessor {
         // Initialize the jump flooding into voronoi texture 0 by looking at the mask texture.
         {
             let mut jumpflooding_init = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: DebugLabel::from(format!("{} - jumpflooding_init", self.label)).get(),
+                label: Label::from(format!("{} - jumpflooding_init", self.label)).wgpu_label(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &self.voronoi_textures[0].default_view,
                     depth_slice: None,
@@ -381,6 +402,7 @@ impl OutlineMaskProcessor {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             let render_pipeline_init = pipelines.get(self.render_pipeline_jumpflooding_init)?;
@@ -393,7 +415,7 @@ impl OutlineMaskProcessor {
         let render_pipeline_step = pipelines.get(self.render_pipeline_jumpflooding_step)?;
         for (i, bind_group) in self.bind_group_jumpflooding_steps.iter().enumerate() {
             let mut jumpflooding_step = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: DebugLabel::from(format!("{} - jumpflooding_step {i}", self.label)).get(),
+                label: Label::from(format!("{} - jumpflooding_step {i}", self.label)).wgpu_label(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     // Start with texture 1 since the init step wrote to texture 0
                     view: &self.voronoi_textures[(i + 1) % 2].default_view,
@@ -404,6 +426,7 @@ impl OutlineMaskProcessor {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             jumpflooding_step.set_pipeline(render_pipeline_step);
@@ -416,7 +439,7 @@ impl OutlineMaskProcessor {
 
     fn create_bind_group_jumpflooding_init(
         ctx: &RenderContext,
-        instance_label: &DebugLabel,
+        instance_label: &Label,
         mask_texture: &GpuTexture,
     ) -> (GpuBindGroup, GpuBindGroupLayoutHandle) {
         let bind_group_layout_jumpflooding_init =
@@ -453,7 +476,7 @@ impl OutlineMaskProcessor {
     fn create_bind_groups_for_jumpflooding_steps(
         config: &OutlineConfig,
         ctx: &RenderContext,
-        instance_label: &DebugLabel,
+        instance_label: &Label,
         voronoi_textures: &[GpuTexture; 2],
     ) -> (Vec<GpuBindGroup>, GpuBindGroupLayoutHandle) {
         let bind_group_layout_jumpflooding_step =

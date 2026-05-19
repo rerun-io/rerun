@@ -8,7 +8,7 @@ use super::buffer_pool::{GpuBuffer, GpuBufferHandle, GpuBufferPool};
 use super::dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc};
 use super::sampler_pool::{GpuSamplerHandle, GpuSamplerPool};
 use super::texture_pool::{GpuTexture, GpuTextureHandle, GpuTexturePool};
-use crate::debug_label::DebugLabel;
+use crate::label::Label;
 
 slotmap::new_key_type! { pub struct GpuBindGroupHandle; }
 
@@ -60,7 +60,7 @@ pub enum BindGroupEntry {
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct BindGroupDesc {
     /// Debug label of the bind group. This will show up in graphics debuggers for easy identification.
-    pub label: DebugLabel,
+    pub label: Label,
     pub entries: SmallVec<[BindGroupEntry; 4]>,
     pub layout: GpuBindGroupLayoutHandle,
 }
@@ -157,7 +157,7 @@ impl GpuBindGroupPool {
             let samplers = pools.samplers.resources();
 
             device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: desc.label.get(),
+                label: Some(desc.label.get()),
                 entries: &desc
                     .entries
                     .iter()

@@ -8,7 +8,8 @@ use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use crate::{
-    DataResult, StoreContext, ViewContext, ViewId, ViewState, ViewerContext, blueprint_timeline,
+    ActiveStoreContext, AppContext, DataResult, ViewContext, ViewId, ViewState, ViewerContext,
+    blueprint_timeline,
 };
 
 slotmap::new_key_type! {
@@ -17,6 +18,8 @@ slotmap::new_key_type! {
 }
 
 /// Context for a latest-at query in a specific view.
+///
+/// Never use [`QueryContext`] where [`ViewContext`] would suffice.
 // TODO(andreas) this is centered around latest-at queries. Does it have to be? Makes sense for UI, but that means it won't scale much into Visualizer queriers.
 // This is currently used only for fallback providers, but the expectation is that we're using this more widely as the primary context object
 // in all places where we query a specific entity in a specific view.
@@ -43,12 +46,17 @@ pub struct QueryContext<'a> {
 
 impl QueryContext<'_> {
     #[inline]
+    pub fn app_ctx(&self) -> &AppContext<'_> {
+        &self.view_ctx.viewer_ctx.app_ctx
+    }
+
+    #[inline]
     pub fn viewer_ctx(&self) -> &ViewerContext<'_> {
         self.view_ctx.viewer_ctx
     }
 
     #[inline]
-    pub fn store_ctx(&self) -> &StoreContext<'_> {
+    pub fn store_ctx(&self) -> &ActiveStoreContext<'_> {
         self.view_ctx.viewer_ctx.store_context
     }
 

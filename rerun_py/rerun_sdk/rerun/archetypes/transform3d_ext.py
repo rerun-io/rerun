@@ -108,7 +108,7 @@ class Transform3DExt:
                 try:
                     if isinstance(rotation, RotationAxisAngle):
                         is_rotation_axis_angle = True
-                    elif isinstance(rotation[0], RotationAxisAngle):  # type: ignore[index]
+                    elif isinstance(rotation[0], RotationAxisAngle):  # type: ignore[index]  # ty: ignore[not-subscriptable]
                         is_rotation_axis_angle = True
                 except Exception:  # Failed to subscript rotation.
                     pass
@@ -120,7 +120,7 @@ class Transform3DExt:
                     try:
                         if isinstance(rotation, Quaternion):
                             is_quaternion = True
-                        elif isinstance(rotation[0], Quaternion):  # type: ignore[index]
+                        elif isinstance(rotation[0], Quaternion):  # type: ignore[index]  # ty: ignore[not-subscriptable]
                             is_quaternion = True
                     except Exception:  # Failed to subscript quaternion.
                         pass

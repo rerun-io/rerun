@@ -38,6 +38,7 @@ testing = ["dep:egui_kittest", "re_analytics/testing"]
 [dependencies]
 re_analytics = { workspace = true, optional = true }
 re_entity_db.workspace = true # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
+re_error.workspace = true
 re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true # syntax-highlighting for EntityPath
@@ -49,7 +50,6 @@ anyhow.workspace = true
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
-egui_tiles.workspace = true
 egui.workspace = true
 getrandom.workspace = true
 itertools.workspace = true
@@ -74,13 +74,13 @@ notify.workspace = true # Only used with the `hot_reload_design_tokens` feature
 
 # Mac-specific
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2-app-kit.workspace = true
 raw-window-handle.workspace = true
 
 
 [dev-dependencies]
 crossbeam.workspace = true
 egui_kittest.workspace = true
+egui_tiles.workspace = true
 re_quota_channel.workspace = true
 rand = { workspace = true, features = ["std", "thread_rng"] }
 

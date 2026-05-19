@@ -204,7 +204,7 @@ def fetch_pr_info(pr_number: int) -> PrInfo | None:
 
 
 def get_commit_info(commit: Any) -> CommitInfo:
-    match = re.match(r"(.*) \(#(\d+)\)", commit.summary)
+    match = re.match(r"(.*) \(#(\d+)\)$", commit.summary)
     if match:
         title = str(match.group(1))
         pr_number = int(match.group(2))

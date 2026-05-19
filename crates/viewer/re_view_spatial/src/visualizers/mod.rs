@@ -11,7 +11,7 @@ mod cylinders3d;
 mod depth_images;
 mod ellipsoids;
 mod encoded_depth_image;
-mod encoded_image;
+mod grid_map;
 mod images;
 mod lines2d;
 mod lines3d;
@@ -23,14 +23,14 @@ mod transform_axes_3d;
 pub mod utilities;
 mod video;
 
-pub use cameras::CamerasVisualizer;
-pub use depth_images::{DepthImageProcessResult, DepthImageVisualizer};
-pub use encoded_depth_image::EncodedDepthImageVisualizer;
-use re_sdk_types::{ComponentDescriptor, archetypes};
+pub use cameras::{CamerasVisualizer, CamerasVisualizerOutput};
+pub use depth_images::{DepthImageProcessResult, DepthImageVisualizer, DepthImageVisualizerOutput};
+pub use encoded_depth_image::{EncodedDepthImageVisualizer, EncodedDepthImageVisualizerOutput};
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, archetypes};
 pub use transform_axes_3d::{TransformAxes3DVisualizer, add_axis_arrows};
 pub use utilities::{
     SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget, entity_iterator,
-    process_labels_3d, textured_rect_from_image,
+    iter_spatial_data, process_labels_3d, textured_rect_from_image,
 };
 
 /// Shows a loading animation in a spatial view.
@@ -55,10 +55,11 @@ pub struct LoadingIndicator {
 use ahash::HashMap;
 use re_entity_db::EntityPath;
 use re_sdk_types::datatypes::{KeypointId, KeypointPair};
-use re_view::clamped_or_nothing;
+use re_view::clamped_or_else;
 use re_viewer_context::{
-    Annotations, IdentifiedViewSystem as _, ViewClassRegistryError, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewSystemRegistrator, VisualizerCollection, auto_color_egui,
+    Annotations, IdentifiedViewSystem as _, QueryContext, SystemExecutionOutput,
+    ViewClassRegistryError, ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
+    auto_color_egui, typed_fallback_for,
 };
 
 /// Collection of keypoints for annotation context.
@@ -78,7 +79,8 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<encoded_depth_image::EncodedDepthImageVisualizer>()?;
-    system_registry.register_visualizer::<encoded_image::EncodedImageVisualizer>()?;
+    system_registry.register_visualizer::<video::EncodedImageVisualizer>()?;
+    system_registry.register_visualizer::<grid_map::GridMapVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
@@ -106,7 +108,8 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<encoded_depth_image::EncodedDepthImageVisualizer>()?;
-    system_registry.register_visualizer::<encoded_image::EncodedImageVisualizer>()?;
+    system_registry.register_visualizer::<video::EncodedImageVisualizer>()?;
+    system_registry.register_visualizer::<grid_map::GridMapVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
@@ -142,12 +145,16 @@ pub fn visualizers_processing_draw_order()
             archetypes::EncodedDepthImage::descriptor_draw_order(),
         ),
         (
-            encoded_image::EncodedImageVisualizer::identifier(),
+            video::EncodedImageVisualizer::identifier(),
             archetypes::EncodedImage::descriptor_draw_order(),
         ),
         (
             images::ImageVisualizer::identifier(),
             archetypes::Image::descriptor_draw_order(),
+        ),
+        (
+            grid_map::GridMapVisualizer::identifier(),
+            archetypes::GridMap::descriptor_draw_order(),
         ),
         (
             lines2d::Lines2DVisualizer::identifier(),
@@ -173,48 +180,38 @@ pub fn visualizers_processing_draw_order()
     .into_iter()
 }
 
-pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
-    visualizers
-        .iter_visualizer_data::<SpatialViewVisualizerData>()
-        .flat_map(|data| data.ui_labels.iter().cloned())
+pub fn collect_ui_labels(system_output: &SystemExecutionOutput) -> Vec<UiLabel> {
+    iter_spatial_data(system_output)
+        .flat_map(|(_affinity, data)| data.ui_labels.iter().cloned())
         .collect()
 }
 
 /// Process [`re_sdk_types::components::Radius`] components to [`re_renderer::Size`] using auto size
 /// where no radius is specified.
 pub fn process_radius_slice(
+    ctx: &QueryContext<'_>,
     entity_path: &EntityPath,
     num_instances: usize,
     radii: &[re_sdk_types::components::Radius],
-    fallback_radius: re_sdk_types::components::Radius,
+    component: ComponentIdentifier,
 ) -> Vec<re_renderer::Size> {
     re_tracing::profile_function!();
 
-    if let Some(last_radius) = radii.last() {
-        if radii.len() == num_instances {
-            // Common happy path
-            radii
-                .iter()
-                .map(|radius| process_radius(entity_path, *radius))
-                .collect()
-        } else if radii.len() == 1 {
-            // Common happy path
-            let last_radius = process_radius(entity_path, *last_radius);
-            vec![last_radius; num_instances]
-        } else {
-            clamped_or_nothing(radii, num_instances)
-                .map(|radius| process_radius(entity_path, *radius))
-                .collect()
-        }
-    } else {
-        vec![re_renderer::Size(*fallback_radius.0); num_instances]
-    }
+    clamped_or_else(radii, || {
+        // TODO(RR-3840): Fallback should be already incorporated into the query.
+        typed_fallback_for::<re_sdk_types::components::Radius>(ctx, component)
+    })
+    .take(num_instances)
+    .map(|radius| process_radius(entity_path, radius))
+    .collect()
 }
 
 fn process_radius(
     entity_path: &EntityPath,
     radius: re_sdk_types::components::Radius,
 ) -> re_renderer::Size {
+    // TODO(andreas): surface as visualizer warning. Handle correctly when cached!
+    // TODO(andreas): array casting _is_ possible here. Maybe it's faster to do these checks separately?
     if radius.0.is_infinite() {
         re_log::warn_once!("Found infinite radius in entity {entity_path}");
     } else if radius.0.is_nan() {
@@ -289,7 +286,7 @@ pub fn load_keypoint_connections(
                 .add_segment(*a, *b)
                 .radius(line_radius)
                 .color(color)
-                .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
+                .flags(re_renderer::renderer::LineStripFlags::STRIP_FLAG_COLOR_GRADIENT)
                 // Select the entire object when clicking any of the lines.
                 .picking_instance_id(re_renderer::PickingLayerInstanceId(
                     re_log_types::Instance::ALL.get(),

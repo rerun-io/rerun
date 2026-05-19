@@ -2,7 +2,9 @@ use re_protos::cloud::v1alpha1::GetDatasetSchemaRequest;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 
-use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
+use super::common::{
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name,
+};
 use crate::SchemaTestExt as _;
 
 pub async fn simple_dataset_schema(service: impl RerunCloudService) {
@@ -44,7 +46,7 @@ async fn dataset_schema_snapshot(
     let schema = service
         .get_dataset_schema(
             tonic::Request::new(GetDatasetSchemaRequest {})
-                .with_entry_name(dataset_name)
+                .with_entry_name(entry_name(dataset_name))
                 .unwrap(),
         )
         .await

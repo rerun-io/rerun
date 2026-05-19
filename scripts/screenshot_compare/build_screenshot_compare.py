@@ -139,12 +139,12 @@ def build_snippets() -> None:
         "--no-cpp-build",
     ]
 
-    for name in SNIPPET_URLS.keys():
+    for name in SNIPPET_URLS:
         run([*cmd, name], cwd=RERUN_DIR)
 
 
 def collect_snippets() -> Iterable[Example]:
-    for name in sorted(SNIPPET_URLS.keys()):
+    for name in sorted(SNIPPET_URLS):
         rrd = SNIPPETS_DIR / "all" / f"{name}_rust.rrd"
         if rrd.exists():
             yield Example(name=name, title=name, rrd=rrd, screenshot_url=SNIPPET_URLS[name])

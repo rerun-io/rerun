@@ -18,7 +18,7 @@ The Viewer's UI scaling defaults to the OS scaling which typically is 100% for f
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links

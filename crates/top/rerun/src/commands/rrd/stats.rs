@@ -48,13 +48,16 @@ impl StatsCommand {
 
         let (rx_raw, _) = read_raw_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
-        let (tx_uncompressed, rx_uncompressed) = crossbeam::channel::bounded(100);
+        // Each message is accompanied by the original compressed payload size (in bytes).
+        // For uncompressed messages, this equals the payload size.
+        let (tx_uncompressed, rx_uncompressed) =
+            crossbeam::channel::bounded::<(u64, anyhow::Result<Msg>)>(100);
         let decompress_thread_handle = std::thread::Builder::new()
             .name("decompress".to_owned())
             .spawn(move || {
                 for (_source, res) in rx_raw {
                     let Ok(Msg::ArrowMsg(mut msg)) = res else {
-                        send_crossbeam(&tx_uncompressed, res)?;
+                        send_crossbeam(&tx_uncompressed, (0, res))?;
                         continue;
                     };
 
@@ -63,6 +66,8 @@ impl StatsCommand {
                     const COMPRESSION_NONE: i32 =
                         re_protos::common::v1alpha1::Compression::None as _;
                     const COMPRESSION_LZ4: i32 = re_protos::common::v1alpha1::Compression::Lz4 as _;
+
+                    let compressed_size = msg.payload.len() as u64;
 
                     match msg.compression {
                         COMPRESSION_NONE => {}
@@ -82,7 +87,10 @@ impl StatsCommand {
 
                     send_crossbeam(
                         &tx_uncompressed,
-                        Ok(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(msg)),
+                        (
+                            compressed_size,
+                            Ok(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(msg)),
+                        ),
                     )?;
                 }
 
@@ -92,13 +100,13 @@ impl StatsCommand {
         re_log::info!("processing input…");
         let mut num_msgs = 0;
         let mut last_checkpoint = std::time::Instant::now();
-        for res in rx_uncompressed {
+        for (compressed_size, res) in rx_uncompressed {
             let mut is_success = true;
 
             match res {
                 Ok(msg) => {
                     num_msgs += 1;
-                    match compute_stats(!*no_decode, &msg) {
+                    match compute_stats(!*no_decode, compressed_size, &msg) {
                         Ok(Some(stats)) => {
                             num_chunks += 1;
 
@@ -348,13 +356,13 @@ struct ChunkStatsApplication {
     num_components: u64,
 }
 
-fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
+fn compute_stats(app: bool, compressed_size: u64, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
     if let Msg::ArrowMsg(arrow_msg) = msg {
         let re_protos::log_msg::v1alpha1::ArrowMsg {
             store_id: _,
             chunk_id: _,
             compression: _,
-            uncompressed_size,
+            uncompressed_size: _,
             encoding: _,
             payload,
             is_static: _,
@@ -458,14 +466,16 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
             None
         };
 
+        let ipc_size_bytes_uncompressed = payload.len() as u64;
         return Ok(Some(ChunkStats {
             app,
             transport: ChunkStatsTransport {
-                ipc_size_bytes_compressed: payload.len() as _,
-                ipc_size_bytes_uncompressed: *uncompressed_size,
+                ipc_size_bytes_compressed: compressed_size,
+                ipc_size_bytes_uncompressed,
 
                 ipc_schema_size_bytes,
-                ipc_data_size_bytes: *uncompressed_size - ipc_schema_size_bytes,
+                ipc_data_size_bytes: ipc_size_bytes_uncompressed
+                    .saturating_sub(ipc_schema_size_bytes),
             },
         }));
     }

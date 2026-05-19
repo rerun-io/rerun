@@ -245,7 +245,7 @@ def cargo_deny(results: list[Result]) -> None:
     # Note: running just `cargo deny check` without a `--target` can result in
     # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
     # Installing is quite quick if it's already installed.
-    results.append(run_cargo("install", "--locked cargo-deny@^0.18"))
+    results.append(run_cargo("install", "--locked cargo-deny@^0.19"))
 
     for target in deny_targets:
         results.append(
@@ -313,7 +313,11 @@ def wasm(results: list[Result]) -> None:
     )
     # Check re_renderer examples for wasm32.
     results.append(
-        run_cargo("check", "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples"),
+        run_cargo(
+            "clippy",
+            "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer_examples",
+            clippy_conf="scripts/clippy_wasm",  # Use ./scripts/clippy_wasm/clippy.toml
+        ),
     )
 
 

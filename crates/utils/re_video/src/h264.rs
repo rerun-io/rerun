@@ -87,7 +87,7 @@ impl h264_reader::push::AccumulatedNalHandler for H264GopDetectionState {
                         }
                         Ok(coding_details)
                     }
-                    Err(sps_error) => Err(format!("Failed reading SPS: {sps_error:?}")), // h264 errors don't implement display
+                    Err(sps_err) => Err(format!("Failed reading SPS: {sps_err:?}")), // NOLINT: h264 errors don't implement display
                 },
             );
         } else if nal_unit_type == nal::UnitType::SliceLayerWithoutPartitioningIdr {

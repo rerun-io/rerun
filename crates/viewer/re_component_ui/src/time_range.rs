@@ -7,20 +7,25 @@ use re_ui::{
     RelativeTimeRange, TimeDragValue, UiExt as _, relative_time_range_boundary_label_text,
     relative_time_range_label_text,
 };
-use re_viewer_context::{MaybeMutRef, TimeControlCommand};
+use re_viewer_context::{MaybeMutRef, StoreViewContext, TimeControlCommand};
 
-pub fn time_range_multiline_edit_or_view_ui(
-    ctx: &re_viewer_context::ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    value: &mut MaybeMutRef<'_, TimeRange>,
-) -> egui::Response {
-    let Some(time_type) = ctx.time_ctrl.time_type() else {
-        return ui.weak("No active timeline");
-    };
+struct RecordingTimeContext {
+    time_type: TimeType,
+    time_drag_value: TimeDragValue,
+    current_time: TimeInt,
+}
+
+/// Resolve the recording's time context from a (possibly blueprint) store view context.
+///
+/// The `TimeRange` component is stored in the blueprint but represents a range on the
+/// recording timeline, so we need the active recording's time control and data.
+fn recording_time_context(ctx: &StoreViewContext<'_>) -> Option<RecordingTimeContext> {
+    let time_ctrl = ctx.active_time_ctrl()?;
+    let time_type = time_ctrl.time_type()?;
 
     let time_drag_value = if let Some(range) = ctx
-        .recording()
-        .time_range_for(ctx.time_ctrl.timeline_name())
+        .active_recording()
+        .and_then(|r| r.time_range_for(time_ctrl.timeline_name()))
     {
         TimeDragValue::from_abs_time_range(range)
     } else {
@@ -28,11 +33,32 @@ pub fn time_range_multiline_edit_or_view_ui(
     };
 
     let current_time = TimeInt(
-        ctx.time_ctrl
+        time_ctrl
             .time_i64()
             .unwrap_or_default()
             .at_least(*time_drag_value.range.start()),
     ); // accounts for static time (TimeInt::MIN)
+
+    Some(RecordingTimeContext {
+        time_type,
+        time_drag_value,
+        current_time,
+    })
+}
+
+pub fn time_range_multiline_edit_or_view_ui(
+    ctx: &StoreViewContext<'_>,
+    ui: &mut egui::Ui,
+    value: &mut MaybeMutRef<'_, TimeRange>,
+) -> egui::Response {
+    let Some(RecordingTimeContext {
+        time_type,
+        time_drag_value,
+        current_time,
+    }) = recording_time_context(ctx)
+    else {
+        return ui.weak("No active timeline");
+    };
 
     let response = match value {
         MaybeMutRef::Ref(value) => {
@@ -46,7 +72,7 @@ pub fn time_range_multiline_edit_or_view_ui(
             let response_y = ui.list_item().interactive(false).show_hierarchical(
                 ui,
                 re_ui::list_item::PropertyContent::new("end").value_fn(|ui, _| {
-                    view_visible_history_boundary_ui(ctx, ui, &value.start, time_type, false);
+                    view_visible_history_boundary_ui(ctx, ui, &value.end, time_type, false);
                 }),
             );
 
@@ -54,7 +80,7 @@ pub fn time_range_multiline_edit_or_view_ui(
                 current_time,
                 time_type,
                 value,
-                ctx.app_options().timestamp_format,
+                ctx.app_options.timestamp_format,
             );
 
             let mut response_z = ui
@@ -79,7 +105,7 @@ pub fn time_range_multiline_edit_or_view_ui(
                 value,
                 resolved_range: AbsoluteTimeRange::new(current_start, current_end),
                 time_type,
-                timestamp_format: ctx.app_options().timestamp_format,
+                timestamp_format: ctx.app_options.timestamp_format,
                 current_time,
             }
             .ui(ui);
@@ -94,42 +120,33 @@ pub fn time_range_multiline_edit_or_view_ui(
 
     if ui.rect_contains_pointer(response.rect) {
         let absolute_range = AbsoluteTimeRange::from_relative_time_range(value, current_time);
-        ctx.send_time_commands([TimeControlCommand::HighlightRange(absolute_range)]);
+        ctx.send_time_commands_to_active_recording([TimeControlCommand::HighlightRange(
+            absolute_range,
+        )]);
     }
 
     response
 }
 
 pub fn time_range_singleline_view_ui(
-    ctx: &re_viewer_context::ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, TimeRange>,
 ) -> egui::Response {
-    let Some(time_type) = ctx.time_ctrl.time_type() else {
+    let Some(RecordingTimeContext {
+        time_type,
+        current_time,
+        ..
+    }) = recording_time_context(ctx)
+    else {
         return ui.weak("No active timeline");
     };
-
-    let time_drag_value = if let Some(range) = ctx
-        .recording()
-        .time_range_for(ctx.time_ctrl.timeline_name())
-    {
-        TimeDragValue::from_abs_time_range(range)
-    } else {
-        TimeDragValue::from_time_range(0..=0)
-    };
-
-    let current_time = TimeInt(
-        ctx.time_ctrl
-            .time_i64()
-            .unwrap_or_default()
-            .at_least(*time_drag_value.range.start()),
-    ); // accounts for static time (TimeInt::MIN)
 
     let (text, on_hover) = relative_time_range_label_text(
         current_time,
         time_type,
         value,
-        ctx.app_options().timestamp_format.with_short(true),
+        ctx.app_options.timestamp_format.with_short(true),
     );
 
     let mut res = ui.label(text);
@@ -140,14 +157,16 @@ pub fn time_range_singleline_view_ui(
 
     if res.hovered() {
         let absolute_range = AbsoluteTimeRange::from_relative_time_range(value, current_time);
-        ctx.send_time_commands([TimeControlCommand::HighlightRange(absolute_range)]);
+        ctx.send_time_commands_to_active_recording([TimeControlCommand::HighlightRange(
+            absolute_range,
+        )]);
     }
 
     res
 }
 
 fn view_visible_history_boundary_ui(
-    ctx: &re_viewer_context::ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     visible_history_boundary: &TimeRangeBoundary,
     time_type: TimeType,
@@ -166,11 +185,11 @@ fn view_visible_history_boundary_ui(
                     TimeType::Sequence => TimeType::Sequence,
                     TimeType::DurationNs | TimeType::TimestampNs => TimeType::DurationNs,
                 }
-                .format(*time_int, ctx.app_options().timestamp_format),
+                .format(*time_int, ctx.app_options.timestamp_format),
             );
         }
         TimeRangeBoundary::Absolute(time_int) => {
-            ui.label(time_type.format(*time_int, ctx.app_options().timestamp_format));
+            ui.label(time_type.format(*time_int, ctx.app_options.timestamp_format));
         }
         TimeRangeBoundary::Infinite => {}
     }

@@ -1,18 +1,12 @@
 //! Lenses allow you to extract, transform, and restructure component data. They
-//! are applied to chunks that match the specified entity path filter and contain
-//! the target component.
+//! are applied to chunks that contain the target component.
 //!
 //! See [`Lens`] for more details and assumptions.
 
-mod ast;
-mod builder;
-mod error;
-mod op;
-mod semantic;
+pub mod op;
 
-pub use self::{
-    ast::{Lens, Lenses, Op, OutputMode, PartialChunk},
-    builder::{ColumnsBuilder, LensBuilder, ScatterColumnsBuilder, StaticColumnsBuilder},
-    error::LensError,
-    op::OpError,
+// Re-export core types for backward compatibility.
+pub use re_lenses_core::{
+    ChunkExt, Lens, LensBuilder, LensBuilderError, LensRuntimeError, Lenses, OutputBuilder,
+    OutputMode, PartialChunk,
 };

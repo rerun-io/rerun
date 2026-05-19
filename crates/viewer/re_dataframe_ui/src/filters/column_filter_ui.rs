@@ -89,7 +89,8 @@ impl FilterState {
     ) {
         // From there on, we always want to show the "today" date, because not doing so leads
         // to some very confusing display.
-        let timestamp_format = timestamp_format.with_hide_today_date(false);
+        let timestamp_format =
+            timestamp_format.with_date_visibility(re_log_types::DateVisibility::ShowDate);
 
         let action = self.filter_bar_ui_impl(ui, timestamp_format);
 
@@ -200,7 +201,7 @@ impl ColumnFilter {
             .with_body_default(self.field.name())
             .with_keyword(" ")
             .with(&TimestampFormatted::new(&self.filter, timestamp_format))
-            .into_job(ui.style());
+            .to_job(ui.style());
 
         atoms.push_right(layout_job);
 

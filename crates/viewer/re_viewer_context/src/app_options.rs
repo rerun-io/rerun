@@ -1,4 +1,6 @@
+use re_entity_db::FetchStage;
 use re_log_types::TimestampFormat;
+use re_memory::MemoryLimit;
 use re_video::{DecodeHardwareAcceleration, DecodeSettings};
 
 const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
@@ -41,10 +43,26 @@ pub struct AppOptions {
     /// Video decoding options.
     pub video: VideoOptions,
 
+    /// Whether per-visualizer instance/element limits are enabled.
+    ///
+    /// Several visualizers (3D shapes, time series lines, etc.) cap the number of elements
+    /// they process to avoid hangs. When disabled, those caps are removed entirely,
+    /// which may cause the viewer to become unresponsive with very large data sets.
+    pub visualizer_limits_enabled: bool,
+
     /// Mapbox API key (used to enable Mapbox-based map view backgrounds).
     ///
     /// Can also be set using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
     pub mapbox_access_token: String,
+
+    /// When the total process RAM reaches this limit, we GC old data.
+    pub memory_limit: MemoryLimit,
+
+    /// Only prefetch chunks up to (and including) this stage.
+    ///
+    /// Useful for debugging and for users who want to limit how aggressively
+    /// we prefetch data ahead of what is strictly needed.
+    pub max_fetch_stage: FetchStage,
 
     /// Path to the directory suitable for storing cache data.
     ///
@@ -80,7 +98,18 @@ impl Default for AppOptions {
 
             video: Default::default(),
 
+            visualizer_limits_enabled: true,
+
             mapbox_access_token: String::new(),
+
+            memory_limit: if cfg!(target_arch = "wasm32") {
+                // On wasm32 we only have 4GB of memory to play around with.
+                re_memory::MemoryLimit::from_bytes(2_500_000_000)
+            } else {
+                MemoryLimit::from_fraction_of_total(0.75)
+            },
+
+            max_fetch_stage: FetchStage::default(),
 
             #[cfg(not(target_arch = "wasm32"))]
             cache_directory: Self::default_cache_directory(),
@@ -89,6 +118,14 @@ impl Default for AppOptions {
 }
 
 impl AppOptions {
+    pub fn test() -> Self {
+        Self {
+            memory_limit: MemoryLimit::UNLIMITED,
+            show_metrics: false, // flaky in snapshot tests
+            ..Default::default()
+        }
+    }
+
     pub fn mapbox_access_token(&self) -> Option<String> {
         if self.mapbox_access_token.is_empty() {
             std::env::var(MAPBOX_ACCESS_TOKEN_ENV_VAR).ok()
@@ -153,5 +190,12 @@ pub struct VideoOptions {
 #[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct ExperimentalAppOptions {
-    // None currently
+    /// Enable the experimental Status view.
+    pub enable_status_view: bool,
+
+    /// Enable grid view mode for data tables.
+    ///
+    /// When enabled, a list/grid toggle appears in the table title bar,
+    /// allowing users to switch between the traditional table and a card-based grid layout.
+    pub table_grid_view: bool,
 }

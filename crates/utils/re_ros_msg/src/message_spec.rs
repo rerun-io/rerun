@@ -80,11 +80,55 @@ impl MessageSpecification {
             }
         }
 
-        Ok(Self {
+        let spec = Self {
             name: name.to_owned(),
             fields,
             constants,
-        })
+        };
+
+        // Sanity check: if this is an enum-like message that only contains constants,
+        // try if we can determine the underlying type or fail early here.
+        spec.underlying_type_if_enum_like()?;
+
+        Ok(spec)
+    }
+
+    /// Returns the primitive type of a constants-only enum-like specification.
+    ///
+    /// A spec can be assumed enum-like when it has only constants definitions, no data fields,
+    /// and all constants share the same built-in type.
+    ///
+    /// For example, this has `int8` as its underlying type:
+    /// ```text
+    /// int8 FOO=0
+    /// int8 BAR=1
+    /// ```
+    pub fn underlying_type_if_enum_like(&self) -> Result<Option<&BuiltInType>, ParseError> {
+        if !self.fields.is_empty() || self.constants.is_empty() {
+            return Ok(None);
+        }
+
+        let Some(Type::BuiltIn(first_type)) = self.constants.first().map(|constant| &constant.ty)
+        else {
+            // This is unreachable for real ROS message definitions.
+            // Parsed constants are always built-in; this only guards manually constructed specs.
+            return Err(ParseError::Validate(format!(
+                "Encountered constant with spec `{}` with non-built-in types. This must be a bug.",
+                self.name
+            )));
+        };
+
+        for constant in &self.constants[1..] {
+            if constant.ty != Type::BuiltIn(first_type.clone()) {
+                // Ambiguous typing can't be handled.
+                return Err(ParseError::Validate(format!(
+                    "constants-only spec `{}` uses mixed constant types",
+                    self.name
+                )));
+            }
+        }
+
+        Ok(Some(first_type))
     }
 }
 
@@ -693,6 +737,39 @@ mod tests {
     #[test]
     fn invalid_field() {
         assert!(Field::parse(Type::BuiltIn(BuiltInType::Bool), "enabled", "maybe").is_err()); // invalid bool literal
+    }
+
+    /// Tests that the underlying type of a constants-only message definition
+    /// can be retrieved, if the constants' types are all the same.
+    #[test]
+    fn constants_only_spec_has_enum_underlying_type() {
+        let spec = MessageSpecification::parse(
+            "test/DummyEnum",
+            r#"
+int8 FOO=0
+int8 BAR=1
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            spec.underlying_type_if_enum_like().unwrap(),
+            Some(&BuiltInType::Int8)
+        );
+    }
+
+    /// Tests that constants-only enum-like specs reject mixed primitive constant types.
+    #[test]
+    fn constants_only_spec_rejects_mixed_enum_types() {
+        let result = MessageSpecification::parse(
+            "test/DummyEnum",
+            r#"
+int8 FOO=0
+uint8 BAR=1
+"#,
+        );
+
+        assert!(result.is_err());
     }
 
     #[test]

@@ -4,7 +4,6 @@ use std::sync::Arc;
 use itertools::Itertools as _;
 
 use re_chunk::{Chunk, ChunkId};
-use re_log_encoding::RrdManifest;
 
 use crate::ChunkStore;
 
@@ -19,7 +18,7 @@ use crate::ChunkStore;
 /// This makes it usable in virtual contexts where lineage information alone should never force the
 /// underlying data to remain in local memory, such as the store's virtual indexes.
 /// Use [`ChunkDirectLineage::to_report`] to generate a [`ChunkDirectLineageReport`] instead.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum ChunkDirectLineage {
     /// This chunk resulted from the splitting of that other chunk. It must have siblings, somewhere.
     ///
@@ -58,7 +57,7 @@ pub enum ChunkDirectLineage {
     ///
     /// Even if it gets garbage collected, it can be re-fetched as needed (as long as the backing
     /// Redap server is still available).
-    ReferencedFrom(Arc<RrdManifest>),
+    RootFromManifest { is_static: bool },
 
     /// This chunk's data was originally logged from volatile memory.
     ///
@@ -73,10 +72,7 @@ impl re_byte_size::SizeBytes for ChunkDirectLineage {
                 chunk_id.heap_size_bytes() + chunk_ids.heap_size_bytes()
             }
             Self::CompactedFrom(btree_set) => btree_set.heap_size_bytes(),
-            Self::ReferencedFrom(_rrd_manifest) => {
-                0 // calculating the size of each RrdManifest over and over again is too slow. It is also amortized, so doesn't matter much.
-            }
-            Self::Volatile => 0,
+            Self::RootFromManifest { .. } | Self::Volatile => 0,
         }
     }
 }
@@ -94,9 +90,8 @@ impl std::fmt::Debug for ChunkDirectLineage {
                 chunk_ids.iter().join(", ")
             )),
 
-            Self::ReferencedFrom(rrd_manifest) => {
-                // We don't compute the sha256 here, because it is too expensive
-                write!(f, "origin:{rrd_manifest:?}")
+            Self::RootFromManifest { is_static } => {
+                write!(f, "origin:(static: {is_static})")
             }
 
             Self::Volatile => f.write_str("origin:<volatile> (cannot be re-fetched)"),
@@ -122,9 +117,9 @@ impl From<&ChunkDirectLineageReport> for ChunkDirectLineage {
                 Self::CompactedFrom(chunks.keys().copied().collect())
             }
 
-            ChunkDirectLineageReport::ReferencedFrom(rrd_manifest) => {
-                Self::ReferencedFrom(rrd_manifest.clone())
-            }
+            ChunkDirectLineageReport::RootFromManifest { is_static } => Self::RootFromManifest {
+                is_static: *is_static,
+            },
 
             ChunkDirectLineageReport::Volatile => Self::Volatile,
         }
@@ -165,9 +160,11 @@ impl ChunkDirectLineage {
                 Some(ChunkDirectLineageReport::CompactedFrom(chunks))
             }
 
-            Self::ReferencedFrom(rrd_manifest) => Some(ChunkDirectLineageReport::ReferencedFrom(
-                rrd_manifest.clone(),
-            )),
+            Self::RootFromManifest { is_static } => {
+                Some(ChunkDirectLineageReport::RootFromManifest {
+                    is_static: *is_static,
+                })
+            }
 
             Self::Volatile => Some(ChunkDirectLineageReport::Volatile),
         }
@@ -223,7 +220,7 @@ pub enum ChunkDirectLineageReport {
     ///
     /// Even if it gets garbage collected, it can be re-fetched as needed (as long as the backing
     /// Redap server is still available).
-    ReferencedFrom(Arc<RrdManifest>),
+    RootFromManifest { is_static: bool },
 
     /// This chunk's data was originally logged from volatile memory.
     ///
@@ -243,8 +240,8 @@ impl std::fmt::Debug for ChunkDirectLineageReport {
                 .debug_map()
                 .entries(map.iter().map(|(k, v)| (k, v.id())))
                 .finish(),
-            Self::ReferencedFrom(_manifest) => {
-                f.debug_tuple("ReferencedFrom").finish_non_exhaustive()
+            Self::RootFromManifest { is_static } => {
+                write!(f, "RootFromManifest(static: {is_static})")
             }
             Self::Volatile => write!(f, "Volatile"),
         }
@@ -263,15 +260,12 @@ impl ChunkStore {
             }
 
             // OTOH, if it has been offloaded, now we need to track down its roots and determine
-            // from an RRD manifest whether it is static or not, if possible.
-            for (_, rrd_manifest) in store.find_root_rrd_manifests(chunk_id) {
-                for (id, is_static) in itertools::izip!(
-                    rrd_manifest.col_chunk_ids(),
-                    rrd_manifest.col_chunk_is_static(),
-                ) {
-                    if chunk_id == id {
-                        return if is_static { "yes" } else { "no" };
-                    }
+            // whether it is static or not from the lineage info.
+            for root_id in store.find_root_manifest_chunks(chunk_id) {
+                if let Some(ChunkDirectLineage::RootFromManifest { is_static }) =
+                    store.chunks_lineage.get(&root_id)
+                {
+                    return if *is_static { "yes" } else { "no" };
                 }
             }
 
@@ -349,7 +343,7 @@ impl ChunkStore {
         };
         matches!(
             lineage,
-            ChunkDirectLineage::ReferencedFrom(_) | ChunkDirectLineage::Volatile
+            ChunkDirectLineage::RootFromManifest { .. } | ChunkDirectLineage::Volatile
         )
     }
 
@@ -359,7 +353,7 @@ impl ChunkStore {
     /// possible (and even common) for a chunk to have more than one root.
     ///
     /// The resulting root chunks might or might not be volatile.
-    /// If you only care about chunks that are still available for download, see [`Self::find_root_rrd_manifests`].
+    /// If you only care about chunks that are still available for download, see [`Self::find_root_manifest_chunks`].
     pub fn find_root_chunks(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
         let mut roots = Vec::new();
         self.collect_root_ids(chunk_id, &mut roots);
@@ -380,7 +374,7 @@ impl ChunkStore {
                 }
             }
 
-            Some(ChunkDirectLineage::ReferencedFrom(_) | ChunkDirectLineage::Volatile) => {
+            Some(ChunkDirectLineage::RootFromManifest { .. } | ChunkDirectLineage::Volatile) => {
                 roots.push(*chunk_id);
             }
 
@@ -395,34 +389,30 @@ impl ChunkStore {
     /// one RRD manifest.
     ///
     /// The resulting root chunks are guaranteed to be backed by an RRD manifest (non-volatile).
-    /// If you want to find all root chunks regardless of their origin, refer to [`Self::find_root_rrd_manifests`]
+    /// If you want to find all root chunks regardless of their origin, refer to [`Self::find_root_chunks`]
     /// instead.
-    pub fn find_root_rrd_manifests(&self, chunk_id: &ChunkId) -> Vec<(ChunkId, Arc<RrdManifest>)> {
+    pub fn find_root_manifest_chunks(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
         let mut roots = Vec::new();
-        self.collect_root_rrd_manifests(chunk_id, &mut roots);
+        self.collect_root_manifest_chunks(chunk_id, &mut roots);
         roots
     }
 
-    /// See [`Self::find_root_rrd_manifests`].
-    pub fn collect_root_rrd_manifests(
-        &self,
-        chunk_id: &ChunkId,
-        roots: &mut Vec<(ChunkId, Arc<RrdManifest>)>,
-    ) {
+    /// See [`Self::find_root_manifest_chunks`].
+    fn collect_root_manifest_chunks(&self, chunk_id: &ChunkId, roots: &mut Vec<ChunkId>) {
         let lineage = self.chunks_lineage.get(chunk_id);
         match lineage {
             Some(ChunkDirectLineage::SplitFrom(chunk_id, _sibling_ids)) => {
-                self.collect_root_rrd_manifests(chunk_id, roots);
+                self.collect_root_manifest_chunks(chunk_id, roots);
             }
 
             Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
                 for chunk_id in chunk_ids {
-                    self.collect_root_rrd_manifests(chunk_id, roots);
+                    self.collect_root_manifest_chunks(chunk_id, roots);
                 }
             }
 
-            Some(ChunkDirectLineage::ReferencedFrom(rrd_manifest)) => {
-                roots.push((*chunk_id, rrd_manifest.clone()));
+            Some(ChunkDirectLineage::RootFromManifest { .. }) => {
+                roots.push(*chunk_id);
             }
 
             _ => {}
@@ -541,6 +531,7 @@ impl ChunkStore {
 #[expect(clippy::bool_assert_comparison)] // I like it that way, sue me
 mod tests {
     use re_chunk::{Chunk, EntityPath, RowId, Timeline};
+    use re_log_encoding::RrdManifest;
     use re_log_types::StoreId;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
@@ -593,8 +584,7 @@ mod tests {
 
         for chunk in &chunks {
             let events = store.insert_chunk(chunk).unwrap();
-            for event in events {
-                let diff = event.to_addition().unwrap();
+            for diff in events.iter().filter_map(|event| event.to_addition()) {
                 if let ChunkDirectLineageReport::SplitFrom(src, _siblings) = &diff.direct_lineage {
                     assert_eq!(
                         diff.chunk_before_processing.id(),
@@ -616,7 +606,7 @@ mod tests {
                 "all these chunks' respective roots should come from the starting set"
             );
             assert!(
-                store.find_root_rrd_manifests(&chunk.id()).is_empty(),
+                store.find_root_manifest_chunks(&chunk.id()).is_empty(),
                 "none of these chunks should have a root RRD manifest"
             );
         }
@@ -669,7 +659,7 @@ mod tests {
         );
 
         // Load it virtually.
-        store.insert_rrd_manifest(rrd_manifest.clone()).unwrap();
+        let _ignored_events = store.insert_rrd_manifest(rrd_manifest.clone());
 
         // Load it physically.
         for chunk in &chunks {
@@ -684,8 +674,11 @@ mod tests {
                 assert_eq!(chunk.id(), diff.chunk.id(), "ghost index");
             }
 
-            for event in events.into_iter().skip(1) {
-                let diff = event.to_addition().unwrap();
+            for diff in events
+                .iter()
+                .filter_map(|event| event.to_addition())
+                .skip(1)
+            {
                 if let ChunkDirectLineageReport::SplitFrom(src, _siblings) = &diff.direct_lineage {
                     assert_eq!(
                         diff.chunk_before_processing.id(),
@@ -710,12 +703,11 @@ mod tests {
                 "all these chunks' respective roots should come from the starting set"
             );
 
-            for (root_chunk_id, root_manifest) in store.find_root_rrd_manifests(&chunk.id()) {
+            for root_chunk_id in store.find_root_manifest_chunks(&chunk.id()) {
                 assert!(
                     chunks.iter().any(|c| c.id() == root_chunk_id),
                     "all these chunks' respective roots should come from the starting manifest",
                 );
-                assert_eq!(rrd_manifest, root_manifest);
             }
         }
     }
@@ -756,12 +748,16 @@ mod tests {
 
         // We will end up with 4 split chunks.
         let events = store.insert_chunk(&chunk).unwrap();
-        assert_eq!(4, events.len());
-        for event in &events {
+        assert_eq!(5, events.len());
+        assert!(
+            events[4].is_schema_addition(),
+            "the first write should emit a schema addition for newly seen columns"
+        );
+        for event in &events[..4] {
             assert_eq!(true, event.is_addition());
 
             // Check that splits are always flattened, very important!
-            let siblings = events
+            let siblings = events[..4]
                 .iter()
                 .filter(|e| e.delta_chunk().unwrap().id() != event.delta_chunk().unwrap().id())
                 .map(|e| e.delta_chunk().unwrap().clone())
@@ -856,10 +852,14 @@ mod tests {
 
         // We will end up with 2 split chunks, both below the num_rows threshold.
         let events = store.insert_chunk(&chunk1).unwrap();
-        assert_eq!(2, events.len());
-        for event in events {
+        assert_eq!(3, events.len());
+        for event in &events[..2] {
             assert_eq!(true, event.is_addition());
         }
+        assert!(
+            events[2].is_schema_addition(),
+            "the first write should emit a schema addition for newly seen columns"
+        );
 
         assert_eq!(2, store.num_physical_chunks());
         for chunk in store.iter_physical_chunks() {
@@ -878,7 +878,8 @@ mod tests {
         {
             let chunk_ids = store
                 .physical_chunk_ids_per_min_row_id
-                .values()
+                .iter()
+                .map(|(_, id)| id)
                 .collect_vec();
 
             assert_eq!(true, store.descends_from_a_split(chunk_ids[0]));
@@ -909,7 +910,8 @@ mod tests {
         {
             let chunk_ids = store
                 .physical_chunk_ids_per_min_row_id
-                .values()
+                .iter()
+                .map(|(_, id)| id)
                 .collect_vec();
 
             assert_eq!(true, store.descends_from_a_split(chunk_ids[0]));
@@ -959,15 +961,16 @@ mod tests {
         let chunk2 = build_chunk(9);
 
         let events = store.insert_chunk(&chunk1).unwrap();
-        assert_eq!(1, events.len());
-        for event in events {
-            assert_eq!(true, event.is_addition());
-        }
+        assert_eq!(2, events.len());
+        assert_eq!(true, events[0].is_addition());
+        assert!(
+            events[1].is_schema_addition(),
+            "the first write should emit a schema addition for newly seen columns"
+        );
+
         let events = store.insert_chunk(&chunk2).unwrap();
         assert_eq!(1, events.len());
-        for event in events {
-            assert_eq!(true, event.is_addition());
-        }
+        assert_eq!(true, events[0].is_addition());
 
         // The chunks should just not get compacted since the result would be beyond the num_rows
         // threshold, and therefore will never be split either since there will never be a chunk
@@ -1022,11 +1025,21 @@ mod tests {
         let chunks = (0..10).map(|_| build_chunk(1)).collect_vec();
 
         let mut prev_chunk: Option<Arc<Chunk>> = None;
+        let mut is_first_insert = true;
         for chunk in chunks {
             let mut events = store.insert_chunk(&chunk).unwrap();
-            assert_eq!(1, events.len());
+            if is_first_insert {
+                assert_eq!(2, events.len());
+                assert!(
+                    events[1].is_schema_addition(),
+                    "the first write should emit a schema addition for newly seen columns"
+                );
+                is_first_insert = false;
+            } else {
+                assert_eq!(1, events.len());
+            }
 
-            let event = events.pop().unwrap();
+            let event = events.remove(0);
             let event = event.to_addition().unwrap();
             assert_eq!(chunk.id(), event.chunk_before_processing.id());
 
@@ -1043,8 +1056,8 @@ mod tests {
                 store.descends_from_a_split(&event.chunk_after_processing.id())
             );
 
+            let lineage: ChunkDirectLineage = event.direct_lineage.clone().into();
             if let Some(prev_chunk) = prev_chunk.take() {
-                let lineage: ChunkDirectLineage = event.direct_lineage.clone().into();
                 let expected = ChunkDirectLineage::CompactedFrom(
                     [chunk.id(), prev_chunk.id()].into_iter().collect(),
                 );
@@ -1054,7 +1067,6 @@ mod tests {
                     store.descends_from_a_compaction(&event.chunk_after_processing.id())
                 );
             } else {
-                let lineage: ChunkDirectLineage = event.direct_lineage.clone().into();
                 let expected = ChunkDirectLineage::Volatile;
                 assert_eq!(expected, lineage);
                 assert_eq!(

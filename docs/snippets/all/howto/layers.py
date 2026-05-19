@@ -1,22 +1,20 @@
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import atexit
+import pathlib
 import shutil
 import tempfile
-import pathlib
-import pyarrow as pa
 
+import pyarrow as pa
 
 TMP_DIR = pathlib.Path(tempfile.mkdtemp())
 atexit.register(lambda: shutil.rmtree(TMP_DIR) if TMP_DIR.exists() else None)
 
 
 # region: setup
-import rerun as rr
-
 from pathlib import Path
+
+import rerun as rr
 
 sample_5_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
 
@@ -25,7 +23,8 @@ client = server.client()
 dataset = client.get_dataset(name="sample_dataset")
 
 print(
-    dataset.segment_table()
+    dataset
+    .segment_table()
     .select(
         "rerun_segment_id",
         "rerun_layer_names",
@@ -82,7 +81,8 @@ dataset.register([p.as_uri() for p in rrd_paths], layer_name="tracking_error").w
 
 # region: check_layer_names
 segment_table = (
-    dataset.segment_table()
+    dataset
+    .segment_table()
     .select(
         "rerun_segment_id",
         "rerun_layer_names",
@@ -98,7 +98,8 @@ from datafusion import functions as F
 
 tracking = dataset.filter_contents(["/derived/tracking_error"]).reader(index="real_time")
 quality_stats = pa.table(
-    tracking.aggregate(
+    tracking
+    .aggregate(
         col("rerun_segment_id"),
         [F.avg(col("/derived/tracking_error:Scalars:scalars")[0]).alias("mean_error")],
     )
@@ -123,7 +124,8 @@ dataset.register([p.as_uri() for p in rrd_paths], layer_name="quality").wait()
 # region: verify
 # The segment table now shows both layers and the derived property
 segment_table = (
-    dataset.segment_table()
+    dataset
+    .segment_table()
     .select(
         "rerun_segment_id",
         "rerun_layer_names",
@@ -136,7 +138,8 @@ print(segment_table)
 
 # region: manifest
 manifest = (
-    dataset.manifest()
+    dataset
+    .manifest()
     .select(
         "rerun_segment_id",
         "rerun_layer_name",

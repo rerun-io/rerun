@@ -1,7 +1,6 @@
 use egui::{
-    Color32, Popup, PopupCloseBehavior, Response, Rgba, Ui, Vec2, Widget,
-    color_picker::{Alpha, color_picker_hsva_2d},
-    epaint::Hsva,
+    Color32, Popup, PopupCloseBehavior, Response, Ui, Vec2, Widget,
+    color_picker::{Alpha, color_picker_color32},
 };
 use re_sdk_types::datatypes::Rgba32;
 use re_ui::UiExt as _;
@@ -22,9 +21,6 @@ impl<'a> ColorSwatch<'a> {
 impl Widget for ColorSwatch<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let [r, g, b, a] = self.color.to_array();
-        #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
-        let egui_color = Color32::from_rgba_unmultiplied(r, g, b, a);
-
         // Draw the color box.
         let size = Vec2::splat(ui.tokens().color_swatch_size);
         let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
@@ -34,8 +30,14 @@ impl Widget for ColorSwatch<'_> {
             } else {
                 ui.tokens().color_swatch_noninteractive_stroke
             };
-            ui.painter()
-                .rect(rect, 3.0, egui_color, stroke, egui::StrokeKind::Inside);
+            ui.painter().rect(
+                rect,
+                3.0,
+                #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
+                Color32::from_rgb(r, g, b),
+                stroke,
+                egui::StrokeKind::Inside,
+            );
         }
 
         // Show the color code on hover.
@@ -45,7 +47,7 @@ impl Widget for ColorSwatch<'_> {
         });
 
         // Allow editing the color if it's mutable.
-        if let Some(color) = self.color.as_mut() {
+        if let Some(target_color) = self.color.as_mut() {
             let popup_id = ui.auto_id_with("popup");
             const COLOR_SLIDER_WIDTH: f32 = 275.0;
             let mut color_changed = false;
@@ -54,11 +56,12 @@ impl Widget for ColorSwatch<'_> {
                 .close_behavior(PopupCloseBehavior::CloseOnClickOutside)
                 .show(|ui| {
                     ui.spacing_mut().slider_width = COLOR_SLIDER_WIDTH;
-                    let mut hsva = Hsva::from(egui_color);
 
-                    if color_picker_hsva_2d(ui, &mut hsva, Alpha::Opaque) {
-                        let new_color = Color32::from(Rgba::from(hsva));
-                        *color = Rgba32::from(new_color);
+                    #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
+                    let mut egui_color = Color32::from_rgba_unmultiplied(r, g, b, a);
+
+                    if color_picker_color32(ui, &mut egui_color, Alpha::OnlyBlend) {
+                        *target_color = Rgba32::from(egui_color);
                         color_changed = true;
                     }
                 });

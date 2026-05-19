@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -28,6 +29,8 @@ class ViewportBlueprint(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.ViewportBlueprint"
 
     def __init__(
         self: Any,
@@ -163,6 +166,46 @@ class ViewportBlueprint(Archetype):
     def cleared(cls) -> ViewportBlueprint:
         """Clear all the fields of a `ViewportBlueprint`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_root_container() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ViewportBlueprint:root_container",
+            archetype=ViewportBlueprint.NAME,
+            component_type=blueprint_components.RootContainerBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_maximized() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ViewportBlueprint:maximized",
+            archetype=ViewportBlueprint.NAME,
+            component_type=blueprint_components.ViewMaximizedBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_auto_layout() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ViewportBlueprint:auto_layout",
+            archetype=ViewportBlueprint.NAME,
+            component_type=blueprint_components.AutoLayoutBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_auto_views() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ViewportBlueprint:auto_views",
+            archetype=ViewportBlueprint.NAME,
+            component_type=blueprint_components.AutoViewsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_past_viewer_recommendations() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ViewportBlueprint:past_viewer_recommendations",
+            archetype=ViewportBlueprint.NAME,
+            component_type=blueprint_components.ViewerRecommendationHashBatch._COMPONENT_TYPE,
+        )
 
     root_container: blueprint_components.RootContainerBatch | None = field(
         metadata={"component": True},

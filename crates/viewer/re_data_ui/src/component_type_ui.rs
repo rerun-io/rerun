@@ -1,18 +1,11 @@
 use re_types_core::ComponentType;
 use re_ui::UiExt as _;
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::{StoreViewContext, UiLayout};
 
 use super::DataUi;
 
 impl DataUi for ComponentType {
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        _query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
+    fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         if ui_layout.is_single_line() {
             ui.label(self.full_name());
         } else {
@@ -27,7 +20,8 @@ impl DataUi for ComponentType {
 
                 // Only show the first line of the docs:
                 if let Some(markdown) = ctx
-                    .reflection()
+                    .app_ctx
+                    .reflection
                     .components
                     .get(self)
                     .map(|info| info.docstring_md)

@@ -1,10 +1,13 @@
-use egui::{Atom, Button, Color32, Id, Image, NumExt as _, Popup, RichText, Sense, include_image};
+use egui::{
+    Align, Atom, Button, Color32, Id, Image, Layout, NumExt as _, Popup, RichText, Sense,
+    include_image,
+};
 use emath::{Rect, RectAlign, Vec2};
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_sorbet::TimestampLocation;
 use re_ui::{ContextExt as _, UICommand, UiExt as _, icons};
-use re_viewer_context::{StoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{ActiveStoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
 
 use crate::App;
 use crate::app_blueprint::AppBlueprint;
@@ -14,7 +17,7 @@ pub fn top_panel(
     frame: &eframe::Frame,
     app: &mut App,
     app_blueprint: &AppBlueprint<'_>,
-    store_context: Option<&StoreContext<'_>>,
+    store_context: Option<&ActiveStoreContext<'_>>,
     store_hub: &StoreHub,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
     ui: &mut egui::Ui,
@@ -71,10 +74,10 @@ pub fn top_panel(
 
     // On MacOS, we show the close/minimize/maximize buttons in the top panel.
     // We _always_ want to show the top panel in that case, and only hide its content.
-    if !re_ui::native_window_bar(ui.os()) {
-        panel.show_inside(ui, |ui| content(ui, is_expanded));
-    } else {
+    if re_ui::native_window_bar(ui.os()) {
         panel.show_animated_inside(ui, is_expanded, |ui| content(ui, is_expanded));
+    } else {
+        panel.show_inside(ui, |ui| content(ui, is_expanded));
     }
 }
 
@@ -82,7 +85,7 @@ fn top_bar_ui(
     frame: &eframe::Frame,
     app: &mut App,
     app_blueprint: &AppBlueprint<'_>,
-    store_context: Option<&StoreContext<'_>>,
+    store_context: Option<&ActiveStoreContext<'_>>,
     store_hub: &StoreHub,
     ui: &mut egui::Ui,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
@@ -239,7 +242,7 @@ fn software_rasterizer_warning_ui(ui: &mut egui::Ui, info: &wgpu::AdapterInfo) {
         egui::RichText::new("⚠ Software rasterizer")
             .small()
             .color(ui.visuals().warn_fg_color),
-        "https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues",
+        "https://www.rerun.io/docs/overview/installing-rerun/troubleshooting#graphics-issues",
     )
     .on_hover_ui(|ui| {
         ui.label("Software rasterizer detected - expect poor performance.");
@@ -471,14 +474,23 @@ fn panel_buttons_r2l(
                     ui.vertical(|ui| {
                         ui.spacing_mut().item_spacing.y = 2.0;
                         ui.label(RichText::new(&auth.email).color(ui.tokens().text_default));
+                        if let Some(org_name) = &auth.org_name {
+                            ui.label(RichText::new(org_name).color(ui.tokens().text_subdued));
+                        }
+                    })
+                });
+
+                // Avoid increasing the width of the popup, ignore this button when egui calculates the size.
+                if !ui.is_sizing_pass() {
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui
-                            .link(RichText::new("Log out").color(ui.tokens().text_subdued))
+                            .add(re_ui::ReButton::new("Log out").small().primary())
                             .clicked()
                         {
                             app.command_sender.send_system(SystemCommand::Logout);
                         }
-                    })
-                });
+                    });
+                }
             });
     }
 }

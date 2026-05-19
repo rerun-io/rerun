@@ -113,6 +113,7 @@ impl re_renderer::renderer::DrawData for HeightFieldDrawData {
                 re_renderer::DrawPhase::Opaque | re_renderer::DrawPhase::PickingLayer,
                 DrawDataDrawable {
                     distance_sort_key: 0.0,
+                    secondary_sort_key: 0.0,
                     draw_data_payload: i as u32,
                 },
             );
@@ -122,6 +123,7 @@ impl re_renderer::renderer::DrawData for HeightFieldDrawData {
                     re_renderer::DrawPhase::OutlineMask,
                     DrawDataDrawable {
                         distance_sort_key: 0.0,
+                        secondary_sort_key: 0.0,
                         draw_data_payload: i as u32,
                     },
                 );

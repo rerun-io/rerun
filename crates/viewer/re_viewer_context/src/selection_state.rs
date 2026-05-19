@@ -101,6 +101,7 @@ impl ApplicationSelectionState {
         if self.selection.is_empty()
             && let Some(fallback_selection) = fallback_selection
         {
+            re_log::trace!("Current selection invalid in this context; switching to fallback");
             self.selection = ItemCollection::from(fallback_selection);
         }
 
@@ -168,7 +169,7 @@ impl ApplicationSelectionState {
                 | Item::StoreId(_)
                 | Item::View(_)
                 | Item::Container(_)
-                | Item::RedapEntry(_)
+                | Item::RedapEntry { .. }
                 | Item::RedapServer(_) => current == test,
 
                 Item::ComponentPath(component_path) => match test {
@@ -178,7 +179,7 @@ impl ApplicationSelectionState {
                     | Item::StoreId(_)
                     | Item::View(_)
                     | Item::Container(_)
-                    | Item::RedapEntry(_)
+                    | Item::RedapEntry { .. }
                     | Item::RedapServer(_) => false,
 
                     Item::ComponentPath(test_component_path) => {
@@ -202,15 +203,15 @@ impl ApplicationSelectionState {
                     | Item::ComponentPath(_)
                     | Item::View(_)
                     | Item::Container(_)
-                    | Item::RedapEntry(_)
+                    | Item::RedapEntry { .. }
                     | Item::RedapServer(_) => false,
 
                     Item::InstancePath(instance_path)
                     | Item::DataResult(DataResultInteractionAddress { instance_path, .. }) => {
                         current_instance_path.entity_path == instance_path.entity_path
                             && either_none_or_same(
-                                &current_instance_path.instance.specific_index(),
-                                &instance_path.instance.specific_index(),
+                                current_instance_path.instance.specific_index().as_ref(),
+                                instance_path.instance.specific_index().as_ref(),
                             )
                     }
                 },
@@ -223,15 +224,19 @@ impl ApplicationSelectionState {
                     | Item::ComponentPath(_)
                     | Item::View(_)
                     | Item::Container(_)
-                    | Item::RedapEntry(_)
+                    | Item::RedapEntry { .. }
                     | Item::RedapServer(_) => false,
 
                     Item::InstancePath(instance_path)
                     | Item::DataResult(DataResultInteractionAddress { instance_path, .. }) => {
                         current_data_result.instance_path.entity_path == instance_path.entity_path
                             && either_none_or_same(
-                                &current_data_result.instance_path.instance.specific_index(),
-                                &instance_path.instance.specific_index(),
+                                current_data_result
+                                    .instance_path
+                                    .instance
+                                    .specific_index()
+                                    .as_ref(),
+                                instance_path.instance.specific_index().as_ref(),
                             )
                     }
                 },
@@ -244,6 +249,6 @@ impl ApplicationSelectionState {
     }
 }
 
-fn either_none_or_same<T: PartialEq>(a: &Option<T>, b: &Option<T>) -> bool {
+fn either_none_or_same<T: PartialEq>(a: Option<&T>, b: Option<&T>) -> bool {
     a.is_none() || b.is_none() || a == b
 }

@@ -128,9 +128,16 @@ namespace rerun {
 
     Result<std::string> RecordingStream::serve_grpc(
         std::string_view bind_ip, uint16_t port, std::string_view server_memory_limit,
-        PlaybackBehavior playback_behavior
+        PlaybackBehavior playback_behavior, std::vector<std::string> cors_allow_origins
     ) const {
         bool newest_first = playback_behavior == PlaybackBehavior::NewestFirst;
+
+        std::vector<rr_string> c_cors_origins;
+        c_cors_origins.reserve(cors_allow_origins.size());
+        for (const auto& origin : cors_allow_origins) {
+            c_cors_origins.push_back(detail::to_rr_string(origin));
+        }
+
         rr_error status = {};
         rr_recording_stream_serve_grpc(
             _id,
@@ -138,6 +145,8 @@ namespace rerun {
             port,
             detail::to_rr_string(server_memory_limit),
             newest_first,
+            c_cors_origins.data(),
+            static_cast<uint32_t>(c_cors_origins.size()),
             &status
         );
         RR_RETURN_NOT_OK(status);

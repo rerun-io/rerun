@@ -2,7 +2,7 @@ use re_log_types::StoreId;
 
 use crate::{
     CatalogUri, DEFAULT_PROXY_PORT, DEFAULT_REDAP_PORT, DatasetSegmentUri, EntryUri, Error,
-    Fragment, Origin, ProxyUri,
+    FolderUri, Fragment, Origin, ProxyUri,
 };
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
@@ -13,6 +13,9 @@ pub enum RedapUri {
 
     /// `/entry`
     Entry(EntryUri),
+
+    /// `/folder/<dotted.path>` — a dataset-name prefix grouping.
+    Folder(FolderUri),
 
     /// `/dataset`
     DatasetData(DatasetSegmentUri),
@@ -26,6 +29,7 @@ impl RedapUri {
         match self {
             Self::Catalog(uri) => &uri.origin,
             Self::Entry(uri) => &uri.origin,
+            Self::Folder(uri) => &uri.origin,
             Self::DatasetData(uri) => &uri.origin,
             Self::Proxy(uri) => &uri.origin,
         }
@@ -34,14 +38,14 @@ impl RedapUri {
     /// Return the parsed `#fragment` of the URI, if any.
     pub fn fragment(&self) -> Option<&Fragment> {
         match self {
-            Self::Catalog(_) | Self::Proxy(_) | Self::Entry(_) => None,
+            Self::Catalog(_) | Self::Proxy(_) | Self::Entry(_) | Self::Folder(_) => None,
             Self::DatasetData(dataset_data_endpoint) => Some(&dataset_data_endpoint.fragment),
         }
     }
 
     pub fn store_id(&self) -> Option<StoreId> {
         match self {
-            Self::Catalog(_) | Self::Entry(_) | Self::Proxy(_) => None,
+            Self::Catalog(_) | Self::Entry(_) | Self::Folder(_) | Self::Proxy(_) => None,
             Self::DatasetData(dataset_data_uri) => Some(dataset_data_uri.store_id()),
         }
     }
@@ -52,6 +56,7 @@ impl std::fmt::Display for RedapUri {
         match self {
             Self::Catalog(uri) => write!(f, "{uri}",),
             Self::Entry(uri) => write!(f, "{uri}",),
+            Self::Folder(uri) => write!(f, "{uri}",),
             Self::DatasetData(uri) => write!(f, "{uri}",),
             Self::Proxy(uri) => write!(f, "{uri}",),
         }
@@ -61,21 +66,27 @@ impl std::fmt::Display for RedapUri {
 impl std::str::FromStr for RedapUri {
     type Err = Error;
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        // If someone manually visits `https://rerun.io/viewer?url=rerun+https://…` then
+        // that `+` will be turned into a space. So let's gracefully handle that here:
+        let input = &input
+            .replace("rerun http", "rerun+http")
+            .replace("rerun https", "rerun+https");
+
         // Hacky, but I don't want to have to memorize ports.
-        let default_localhost_port = if value.contains("/proxy") {
+        let default_localhost_port = if input.contains("/proxy") {
             DEFAULT_PROXY_PORT
         } else {
             DEFAULT_REDAP_PORT
         };
 
-        let (origin, http_url) = Origin::replace_and_parse(value, Some(default_localhost_port))?;
+        let (origin, http_url) = Origin::replace_and_parse(input, Some(default_localhost_port))?;
 
         // :warning: We limit the amount of segments, which might need to be
         // adjusted when adding additional resources.
         let segments = http_url
             .path_segments()
-            .ok_or_else(|| Error::UnexpectedBaseUrl(value.to_owned()))?
+            .ok_or_else(|| Error::UnexpectedBaseUrl(input.to_owned()))?
             .take(2)
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
@@ -89,6 +100,16 @@ impl std::str::FromStr for RedapUri {
                 let entry_id =
                     re_log_types::EntryId::from_str(entry_id).map_err(Error::InvalidTuid)?;
                 Ok(Self::Entry(EntryUri::new(origin, entry_id)))
+            }
+
+            ["folder", path] => {
+                let decoded = percent_encoding::percent_decode_str(path)
+                    .decode_utf8()
+                    .map_err(|_err| Error::UnexpectedUri(format!("folder/{path}")))?;
+                if decoded.is_empty() {
+                    return Err(Error::UnexpectedUri("folder/".to_owned()));
+                }
+                Ok(Self::Folder(FolderUri::new(origin, decoded.into_owned())))
             }
 
             ["dataset", dataset_id] => {
@@ -137,15 +158,14 @@ mod tests {
 
     #[test]
     fn scheme_conversion() {
-        assert_eq!(Scheme::Rerun.as_http_scheme(), "https");
-        assert_eq!(Scheme::RerunHttp.as_http_scheme(), "http");
         assert_eq!(Scheme::RerunHttps.as_http_scheme(), "https");
+        assert_eq!(Scheme::RerunHttp.as_http_scheme(), "http");
     }
 
     #[test]
     fn origin_conversion() {
         let origin = crate::Origin {
-            scheme: Scheme::Rerun,
+            scheme: Scheme::RerunHttps,
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
         };
@@ -175,7 +195,7 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.scheme, Scheme::RerunHttps);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
         assert_eq!(
@@ -200,7 +220,7 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.scheme, Scheme::RerunHttps);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
         assert_eq!(
@@ -250,7 +270,7 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.scheme, Scheme::RerunHttps);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
         assert_eq!(
@@ -286,7 +306,7 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.scheme, Scheme::RerunHttps);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
         assert_eq!(
@@ -380,7 +400,7 @@ mod tests {
 
         let expected = RedapUri::Proxy(ProxyUri {
             origin: Origin {
-                scheme: Scheme::Rerun,
+                scheme: Scheme::RerunHttps,
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
             },
@@ -395,13 +415,29 @@ mod tests {
     }
 
     #[test]
+    fn test_proxy_endpoint_with_space() {
+        let url = "rerun http://127.0.0.1:9876/proxy";
+        let address: Result<RedapUri, _> = url.parse();
+
+        let expected = RedapUri::Proxy(ProxyUri {
+            origin: Origin {
+                scheme: Scheme::RerunHttp,
+                host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
+                port: 9876,
+            },
+        });
+
+        assert_eq!(address.unwrap(), expected);
+    }
+
+    #[test]
     fn test_parsing() {
         let test_cases = [
             (
                 "rerun://localhost/catalog",
                 RedapUri::Catalog(CatalogUri {
                     origin: Origin {
-                        scheme: Scheme::Rerun,
+                        scheme: Scheme::RerunHttps,
                         host: url::Host::Domain("localhost".to_owned()),
                         port: DEFAULT_REDAP_PORT,
                     },
@@ -461,7 +497,7 @@ mod tests {
                 "rerun://example.com",
                 RedapUri::Catalog(CatalogUri {
                     origin: Origin {
-                        scheme: Scheme::Rerun,
+                        scheme: Scheme::RerunHttps,
                         host: url::Host::Domain("example.com".to_owned()),
                         port: 443,
                     },
@@ -471,7 +507,7 @@ mod tests {
                 "rerun://example.com:420/catalog",
                 RedapUri::Catalog(CatalogUri {
                     origin: Origin {
-                        scheme: Scheme::Rerun,
+                        scheme: Scheme::RerunHttps,
                         host: url::Host::Domain("example.com".to_owned()),
                         port: 420,
                     },
@@ -496,7 +532,7 @@ mod tests {
 
         let expected = RedapUri::Catalog(CatalogUri {
             origin: Origin {
-                scheme: Scheme::Rerun,
+                scheme: Scheme::RerunHttps,
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
             },
@@ -516,12 +552,52 @@ mod tests {
 
         let expected = RedapUri::Catalog(CatalogUri {
             origin: Origin {
-                scheme: Scheme::Rerun,
+                scheme: Scheme::RerunHttps,
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 123,
             },
         });
 
         assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
+    }
+
+    #[test]
+    fn test_folder_endpoint_roundtrip() {
+        let url = "rerun://localhost:51234/folder/perception.detection";
+        let parsed: RedapUri = url.parse().unwrap();
+
+        let RedapUri::Folder(folder_uri) = &parsed else {
+            panic!("expected Folder variant, got {parsed:?}");
+        };
+        assert_eq!(folder_uri.path, "perception.detection");
+        assert_eq!(folder_uri.origin.host.to_string(), "localhost");
+        assert_eq!(folder_uri.origin.port, 51234);
+
+        // Display → parse roundtrips back to the same URI.
+        let displayed = parsed.to_string();
+        let reparsed: RedapUri = displayed.parse().unwrap();
+        assert_eq!(parsed, reparsed);
+    }
+
+    #[test]
+    fn test_folder_endpoint_percent_encoded() {
+        // Path containing a `/` must be percent-encoded as `%2F` to survive a roundtrip.
+        let url = "rerun://localhost:51234/folder/odd%2Fname";
+        let parsed: RedapUri = url.parse().unwrap();
+
+        let RedapUri::Folder(folder_uri) = &parsed else {
+            panic!("expected Folder variant, got {parsed:?}");
+        };
+        assert_eq!(folder_uri.path, "odd/name");
+
+        let reparsed: RedapUri = parsed.to_string().parse().unwrap();
+        assert_eq!(parsed, reparsed);
+    }
+
+    #[test]
+    fn test_folder_endpoint_empty_path_rejected() {
+        let url = "rerun://localhost:51234/folder/";
+        let address: Result<RedapUri, _> = url.parse();
+        assert!(address.is_err());
     }
 }

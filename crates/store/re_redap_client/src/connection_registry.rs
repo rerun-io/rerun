@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::error::Error as _;
+use std::fmt::Write as _;
 use std::sync::Arc;
 
 use re_auth::Jwt;
 use re_auth::credentials::CredentialsProviderError;
-use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
+use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest, WhoAmIRequest};
 use re_uri::Origin;
 use tokio::sync::RwLock;
 use tonic::Code;
@@ -108,6 +109,9 @@ pub enum ClientCredentialsError {
 
     #[error("{0}")]
     HostMismatch(re_auth::HostMismatchError),
+
+    #[error("the server requires authentication for read access")]
+    NotAuthorized,
 }
 
 /// Registry of all tokens and connections to the redap servers.
@@ -130,6 +134,22 @@ pub enum Credentials {
 
     /// Credentials from local storage
     Stored,
+}
+
+impl Credentials {
+    /// Whether these credentials have write permission.
+    ///
+    /// Returns `None` for [`Credentials::Stored`] (resolved at connect time,
+    /// permissions unknown) or if the token claims cannot be decoded.
+    pub fn has_write_permission(&self) -> Option<bool> {
+        match self {
+            Self::Token(jwt) => {
+                let claims: re_auth::Claims = jwt.decode_claims().ok()?;
+                Some(claims.has_write_permission())
+            }
+            Self::Stored => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -203,6 +223,7 @@ impl ConnectionRegistryHandle {
     /// - Local credentials for Rerun Cloud
     ///
     /// Failing that, no token will be used.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn client(&self, origin: re_uri::Origin) -> ApiResult<ConnectionClient> {
         // happy path
         {
@@ -286,6 +307,7 @@ impl ConnectionRegistryHandle {
     /// Try creating (and validating) a raw client using whatever token we might have available.
     ///
     /// If successful, returns both the client and the working token.
+    #[tracing::instrument(level = "info", skip_all)]
     async fn try_create_raw_client(
         origin: re_uri::Origin,
         possible_credentials: impl Iterator<Item = SourcedCredentials>,
@@ -331,6 +353,57 @@ impl ConnectionRegistryHandle {
         }
     }
 
+    /// Probe `{origin}/version` to detect non-Rerun endpoints (e.g. user typed
+    /// `asdf.rerun.io` instead of `api.asdf.rerun.io`).
+    ///
+    /// Returns `Ok(())` if the probe is inconclusive (server responded as expected),
+    /// `Err(_)` with a friendly diagnostic if the origin is clearly not a Rerun server.
+    #[tracing::instrument(level = "info", skip_all)]
+    async fn ensure_is_rerun_server(origin: &re_uri::Origin) -> ApiResult<()> {
+        let res = crate::with_retry("http_version_fetch", || async {
+            ehttp::fetch_async(ehttp::Request::get(format!("{}/version", origin.as_url())))
+                .await
+                .map_err(|err| {
+                    let mut msg = format!("failed to connect to server '{origin}': {err}");
+                    if let Some(suggested) = suggest_api_prefix(origin) {
+                        write!(msg, ". Did you mean '{suggested}'?").ok();
+                    }
+                    ApiError::connection(msg)
+                })
+        })
+        .await?;
+
+        if res.ok {
+            // Server responded as expected — probe is inconclusive about why gRPC failed.
+            return Ok(());
+        }
+
+        let hint = suggest_api_prefix(origin).map(|suggested| {
+            format!("Did you mean '{suggested}'? Rerun Cloud endpoints require the 'api.' prefix")
+        });
+        // Truncate the body so we don't dump an entire HTML error page into the error.
+        let body_snippet = std::str::from_utf8(&res.bytes)
+            .ok()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(|s| {
+                const MAX: usize = 200;
+                if s.len() > MAX {
+                    format!("{}…", &s[..s.floor_char_boundary(MAX)])
+                } else {
+                    s.to_owned()
+                }
+            });
+        Err(ApiError::invalid_server_with_response(
+            origin.clone(),
+            res.status,
+            &res.status_text,
+            body_snippet.as_deref(),
+            hint.as_deref(),
+        ))
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
     async fn create_and_validate_raw_client_with_token(
         origin: re_uri::Origin,
         credentials: Option<SourcedCredentials>,
@@ -345,6 +418,7 @@ impl ConnectionRegistryHandle {
                 Some(Credentials::Token(token)) => {
                     token.for_host(&host).map_err(|err| {
                         ApiError::credentials_with_source(
+                            None,
                             ClientCredentialsError::HostMismatch(err),
                             format!("token not allowed for host '{host}'"),
                         )
@@ -359,6 +433,7 @@ impl ConnectionRegistryHandle {
                     if let Ok(Some(c)) = re_auth::oauth::load_credentials() {
                         c.access_token().jwt().for_host(&host).map_err(|err| {
                             ApiError::credentials_with_source(
+                                None,
                                 ClientCredentialsError::HostMismatch(err),
                                 format!("stored token not allowed for host '{host}'"),
                             )
@@ -369,69 +444,92 @@ impl ConnectionRegistryHandle {
                 None => None,
             };
 
-        // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
-        // so if what we're trying to connect to is not a valid Rerun server, then cut out
-        // a layer of noise:
-        {
-            let res = crate::with_retry("http_version_fetch", || async {
-                match ehttp::fetch_async(ehttp::Request::get(format!(
-                    "{}/version",
-                    origin.as_url()
-                )))
-                .await
-                {
-                    Ok(res) => Ok(res),
-                    Err(err) => {
-                        let mut msg = format!("failed to connect to server '{origin}': {err}");
-                        if let Some(suggested) = suggest_api_prefix(&origin) {
-                            msg.push_str(&format!(". Did you mean '{suggested}'?"));
-                        }
-                        Err(ApiError::connection(msg))
-                    }
-                }
-            })
-            .await?;
+        let mut raw_client = match crate::grpc::client(origin.clone(), provider).await {
+            Ok(client) => client,
+            Err(grpc_err) => {
+                // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
+                // so if what we're trying to connect to is not a valid Rerun server, then cut out
+                // a layer of noise:
+                Self::ensure_is_rerun_server(&origin).await?;
 
-            if !res.ok {
-                let hint = suggest_api_prefix(&origin).map(|suggested| {
-                    format!(
-                        "Did you mean '{suggested}'? Rerun Cloud endpoints require the 'api.' prefix"
-                    )
-                });
-                return Err(ApiError::invalid_server(origin.clone(), hint.as_deref()));
+                return Err(grpc_err);
             }
-        }
+        };
 
-        let mut raw_client = crate::grpc::client(origin.clone(), provider).await?;
+        // Call the WhoAmI endpoint to check that authentication is successful. It's ok to do
+        // this since we're caching the client, so we're not spamming such a request unnecessarily.
+        let request_result = raw_client.who_am_i(WhoAmIRequest {}).await;
 
-        // Call the version endpoint to check that authentication is successful. It's ok to do this
-        // since we're caching the client, so we're not spamming such a request unnecessarily.
-        // TODO(rerun-io/dataplatform#1069): use the `whoami` endpoint instead when it exists.
-        let request_result = raw_client
-            .find_entries(FindEntriesRequest {
-                filter: Some(EntryFilter {
-                    id: None,
-                    name: None,
-                    entry_kind: None,
-                }),
-            })
-            .await;
+        // TODO(rerun-io/dataplatform#1069): remove the `FindEntries` fallback once all servers
+        // have been updated to support the `WhoAmI` endpoint.
+        let request_result = match request_result {
+            Err(err) if err.code() == Code::Unimplemented => {
+                re_log::debug_once!(
+                    "Server at {origin} does not support WhoAmI, falling back to FindEntries"
+                );
+                raw_client
+                    .find_entries(FindEntriesRequest {
+                        filter: Some(EntryFilter {
+                            id: None,
+                            name: None,
+                            entry_kind: None,
+                        }),
+                    })
+                    .await
+                    .map(drop)
+            }
+            Ok(resp) => {
+                let trace_id = crate::extract_trace_id(resp.metadata());
+                let re_protos::cloud::v1alpha1::WhoAmIResponse {
+                    user_id,
+                    can_read,
+                    can_write,
+                } = resp.into_inner();
+                let is_anonymous = user_id.is_none();
+                let user_id = user_id.as_deref().unwrap_or("<anonymous>");
+                re_log::debug_once!(
+                    "Connected to {origin}: {user_id}, can_read={can_read}, can_write={can_write}",
+                );
+                if !can_read {
+                    if is_anonymous {
+                        // Anonymous user without read access — treat as a credentials error
+                        // so the auth flow is triggered.
+                        return Err(ApiError::credentials_with_source(
+                            trace_id,
+                            ClientCredentialsError::NotAuthorized,
+                            "the server requires authentication for read access",
+                        ));
+                    }
+                    return Err(ApiError::permission_denied(
+                        trace_id,
+                        "the server reports that you do not have read access",
+                    ));
+                }
+                Ok(())
+            }
+            Err(err) => Err(err),
+        };
 
         match request_result {
+            Ok(()) => Ok(raw_client),
+
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {
+                let trace_id = crate::extract_trace_id(err.metadata());
                 if let Some(credentials) = credentials {
                     Err(ApiError::credentials_with_source(
+                        trace_id,
                         ClientCredentialsError::UnauthenticatedBadToken {
                             status: err.into(),
                             credentials,
                         },
-                        "verifying connection to server",
+                        "unauthenticated: bad token",
                     ))
                 } else {
                     Err(ApiError::credentials_with_source(
+                        trace_id,
                         ClientCredentialsError::UnauthenticatedMissingToken(err.into()),
-                        "verifying connection to server",
+                        "unauthenticated: missing token",
                     ))
                 }
             }
@@ -443,12 +541,14 @@ impl ConnectionRegistryHandle {
                     match cred_error {
                         CredentialsProviderError::SessionExpired => {
                             Err(ApiError::credentials_with_source(
+                                None,
                                 ClientCredentialsError::SessionExpired,
                                 "session expired",
                             ))
                         }
                         CredentialsProviderError::Custom(_) => {
                             Err(ApiError::credentials_with_source(
+                                None,
                                 ClientCredentialsError::RefreshError(err.into()),
                                 "refreshing credentials",
                             ))
@@ -458,8 +558,6 @@ impl ConnectionRegistryHandle {
                     Err(ApiError::tonic(err, "verifying connection to server"))
                 }
             }
-
-            Ok(_) => Ok(raw_client),
         }
     }
 

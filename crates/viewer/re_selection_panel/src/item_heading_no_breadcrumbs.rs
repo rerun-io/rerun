@@ -27,7 +27,7 @@ pub fn item_title_list_item(
                 item_heading_no_breadcrumbs(ctx, viewport, ui, item);
             }),
         );
-    cursor_interact_with_selectable(ctx, response, item.clone());
+    cursor_interact_with_selectable(&ctx.app_ctx, response, item.clone());
 }
 
 /// Fully descriptive heading for an item, without any breadcrumbs.
@@ -44,7 +44,7 @@ fn item_heading_no_breadcrumbs(
         | Item::TableId(_)
         | Item::Container(_)
         | Item::View(_)
-        | Item::RedapEntry(_)
+        | Item::RedapEntry { .. }
         | Item::RedapServer(_) => {
             let ItemTitle {
                 icon,

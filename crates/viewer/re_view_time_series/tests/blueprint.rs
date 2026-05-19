@@ -5,7 +5,7 @@ use re_log_types::external::arrow::array::{
 };
 use re_log_types::external::arrow::datatypes::{DataType, Field};
 use re_log_types::{EntityPath, TimePoint, Timeline, TimelineName};
-use re_sdk_types::archetypes::{self, Scalars, SeriesLines, SeriesPoints};
+use re_sdk_types::archetypes::{self, Scalars, SeriesLines, SeriesPoints, Transform3D};
 use re_sdk_types::blueprint;
 use re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
 use re_sdk_types::datatypes::{self, TimeRange};
@@ -570,7 +570,7 @@ pub fn test_builtin_enum_not_visualizable_as_scalar() {
         data_result_tree.lookup_result_by_path(EntityPath::from("plots/markers_only").hash());
 
     assert!(
-        result.is_none() || result.is_some_and(|r| r.visualizer_instructions.is_empty()),
+        result.is_none_or(|r| r.visualizer_instructions.is_empty()),
         "Entity with only a builtin enum component (MarkerShape/UInt8) should not have any \
          active visualizers, even when explicitly configured in the blueprint, but got: {result:?}",
     );
@@ -666,6 +666,100 @@ fn setup_blueprint_with_explicit_mapping_nested(test_context: &mut TestContext) 
         ];
 
         ctx.save_visualizers(&EntityPath::from("plots/sigmoids"), view.id, visualizers);
+
+        blueprint.add_view_at_root(view)
+    })
+}
+
+#[test]
+pub fn test_transform3d_time_series() {
+    let mut test_context = TestContext::new();
+    test_context.register_view_class::<TimeSeriesView>();
+
+    let timeline = test_context.active_timeline().unwrap();
+    log_data_transform3d(&mut test_context, timeline);
+
+    let view_id = setup_blueprint_transform3d(&mut test_context);
+
+    let size = egui::vec2(300.0, 300.0);
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "transform3d_time_series",
+        size,
+        None,
+    ));
+}
+
+fn log_data_transform3d(test_context: &mut TestContext, timeline: re_log_types::Timeline) {
+    for i in 0..=MAX_TIME {
+        let timepoint = TimePoint::from([(timeline, i)]);
+        let t = i as f64 / 8.0;
+
+        // Phase offsets ensure no translation component is ever exactly zero.
+        let translation = [
+            (t + 0.2).sin() as f32,
+            (t * 0.7 + 0.4).sin() as f32,
+            (t * 0.5 + 0.6).sin() as f32,
+        ];
+
+        // Rotate around a general axis (1, 2, 3) with an initial angle offset
+        // so all four quaternion components are always non-zero.
+        let angle = t as f32 + 0.5;
+        let half = angle / 2.0;
+        let norm = (1.0_f32 + 4.0 + 9.0).sqrt();
+        let (ax, ay, az) = (1.0 / norm, 2.0 / norm, 3.0 / norm);
+
+        test_context.log_entity("plots/transform", |builder| {
+            builder.with_archetype_auto_row(
+                timepoint,
+                &Transform3D::from_translation_rotation(
+                    translation,
+                    datatypes::Quaternion::from_xyzw([
+                        ax * half.sin(),
+                        ay * half.sin(),
+                        az * half.sin(),
+                        half.cos(),
+                    ]),
+                ),
+            )
+        });
+    }
+}
+
+fn setup_blueprint_transform3d(test_context: &mut TestContext) -> ViewId {
+    test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
+
+        let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
+
+        let translation_source = Transform3D::descriptor_translation().component.as_str();
+        let quaternion_source = Transform3D::descriptor_quaternion().component.as_str();
+
+        ctx.save_visualizers(
+            &EntityPath::from("plots/transform"),
+            view.id,
+            [
+                SeriesLines::new().visualizer().with_mappings([
+                    blueprint::components::VisualizerComponentMapping(VisualizerComponentMapping {
+                        target: Scalars::descriptor_scalars().component.as_str().into(),
+                        source_kind: ComponentSourceKind::SourceComponent,
+                        source_component: Some(translation_source.into()),
+                        // TODO(RR-3435): Once we can index into `FixedSizeListArray` using selectors,
+                        // we should unroll the translation components via `[0]` to test that too.
+                        selector: Some("[]".into()),
+                    }),
+                ]),
+                SeriesLines::new().visualizer().with_mappings([
+                    blueprint::components::VisualizerComponentMapping(VisualizerComponentMapping {
+                        target: Scalars::descriptor_scalars().component.as_str().into(),
+                        source_kind: ComponentSourceKind::SourceComponent,
+                        source_component: Some(quaternion_source.into()),
+                        selector: Some("[]".into()),
+                    }),
+                ]),
+            ],
+        );
 
         blueprint.add_view_at_root(view)
     })

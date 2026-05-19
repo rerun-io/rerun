@@ -26,7 +26,7 @@ dev = [
   "rerun-dev-fixup",
   "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
   "maturin>=1.0.0",
-  "ruff==0.12.10",
+  "ruff==0.15.7",
   "mypy==1.19.1",
   "nbqa==1.9.1",
   # Packages needed for running scripts + their type stubs for mypy
@@ -35,13 +35,11 @@ dev = [
   "requests>=2.28",
   "types-requests==2.32.4.20250913",
   "tqdm>=4.60",
-  "ty==0.0.11",
+  "ty==0.0.31",
   "types-tqdm==4.67.0.20250809",
   "colorama>=0.4",
   "types-colorama>=0.4.15",
-  # It looks like we end up with slightly different binary encodings of the same image on different OSes starting with Pillow 11
-  # Don't bump this until you want to spend time debugging that.
-  "Pillow>=10.0.0,<11.0.0", # has py.typed, no stubs needed
+  "Pillow>=12.2.0,<13", # has py.typed, no stubs needed
   # Typed packages needed for linting scripts/examples
   "attrs>=23.1.0",
   "semver>=3.0,<3.1",
@@ -67,13 +65,16 @@ dev = [
   "pyyaml>=6.0",
   "types-pyyaml>=6.0",
   "wheel>=0.46",
-  # Needed by lerobot dataloader example
+  # Needed by lerobot importer example
   "huggingface-hub<1.0",
   # Typed packages for dataframe/arrow operations (needed for linting examples/tests)
   "polars>=1.0",
   "datafusion>=50.0",
   "jupyter>=1.0",
   "types-protobuf", # Needed by mcap-protobuf-support
+  # Needed for pretty-printing tables in `fetch_patch_candidates.py`
+  "tabulate>=0.9.0",
+  "types-tabulate>=0.9.0",
 ]
 snippets = ["rerun-sdk", "av", "pandas", "mcap-protobuf-support"]
 examples = [
@@ -89,6 +90,7 @@ examples = [
   # Example packages from workspace
   "air_traffic_data",
   "animated_urdf",
+  "any_scalar",
   "arkit_scenes",
   "blueprint",
   "blueprint_stocks",
@@ -127,6 +129,7 @@ examples = [
   "shared_recording",
   "stdio",
   "structure_from_motion",
+  "using_index_values",
   # TODO(RR-3223): fix opentelemetry conflicts
   # "face_tracking",
   # "gesture_detection",
@@ -162,6 +165,7 @@ rerun-dev-fixup = { path = "rerun_py/rerun_dev_fixup", editable = false }
 # Example packages
 air_traffic_data = { workspace = true }
 animated_urdf = { workspace = true }
+any_scalar = { workspace = true }
 arkit_scenes = { workspace = true }
 blueprint = { workspace = true }
 blueprint_stocks = { workspace = true }
@@ -196,6 +200,7 @@ open_photogrammetry_format = { workspace = true }
 openstreetmap_data = { workspace = true }
 # TODO(RR-3548): Figure out a way to include this, without lerobot causing dependency issues.
 # rerun_export = { workspace = true }
+# dataloader = { workspace = true }  # Excluded: same RR-3548 reason (lerobot pins old rerun-sdk).
 plots = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
@@ -205,6 +210,7 @@ server_tables = { workspace = true }
 shared_recording = { workspace = true }
 stdio = { workspace = true }
 structure_from_motion = { workspace = true }
+using_index_values = { workspace = true }
 
 [tool.uv.workspace]
 members = [
@@ -213,9 +219,10 @@ members = [
   # Examples
   "examples/python/air_traffic_data",
   "examples/python/animated_urdf",
+  "examples/python/any_scalar",
   "examples/python/arkit_scenes",
-  "examples/python/blueprint",
   "examples/python/blueprint_stocks",
+  "examples/python/blueprint",
   "examples/python/camera_video_stream",
   "examples/python/clock",
   "examples/python/controlnet",
@@ -249,6 +256,7 @@ members = [
   "examples/python/open_photogrammetry_format",
   "examples/python/openstreetmap_data",
   # "examples/python/rerun_export" # Excluded: causes dependency issues,
+  # "examples/python/dataloader" # Excluded: same RR-3548 reason (lerobot).
   "examples/python/plots",
   "examples/python/raw_mesh",
   "examples/python/rgbd",
@@ -260,6 +268,7 @@ members = [
   "examples/python/structure_from_motion",
   "examples/python/table_zoo",
   "examples/python/template",
+  "examples/python/using_index_values",
 ]
 
 [tool.ruff]
@@ -302,6 +311,29 @@ extend-exclude = [
   "examples/python/structure_from_motion/structure_from_motion/read_write_model.py",
 ]
 
+[tool.ruff.lint]
+ignore = [
+  # Rules that became active with the ruff upgrade to 0.15:
+  # TODO(emilk): enable more of these
+  "B005", # Using `.strip()` with multi-character strings
+  "BLE001", # Do not catch blind exception: `Exception`
+  "DTZ001", # `datetime.datetime()` called without a `tzinfo` argument
+  "DTZ002", # `datetime.datetime.today()` used
+  "DTZ005", # `datetime.datetime.now()` called without a `tz` argument
+  "DTZ006", # `datetime.fromtimestamp()` called without a `tz` argument
+  "DTZ007", # `datetime.strptime()` without `%z`
+  "LOG015", # Root logger call
+  "PLR1704", # Redefining argument with the local name
+  "PLW0602", # Using global for variable that is not assigned
+  "PLW1510", # `subprocess.run` without explicit `check` argument
+  "RUF012", # Mutable class variables should be annotated with `typing.ClassVar`
+  "S110", # `try`-`except`-`pass` detected
+  "SIM102", # Use a single `if` statement instead of nested `if` statements
+  "SIM115", # Use context handler for opening files
+  "TRY002", # Create your own exception
+  "TRY004", # Prefer `TypeError` exception for invalid type
+]
+
 [tool.ruff.lint.per-file-ignores]
 "docs/snippets/all/*" = [
   # Missing required import: `from __future__ import annotations`
@@ -337,6 +369,9 @@ extend-exclude = [
 ######################
 
 [tool.mypy]
+# Force mypy to check against 3.10 stdlib, even though pixi runs 3.11.
+# This catches imports like `from typing import Self` that don't exist in 3.10.
+python_version = "3.10"
 # Examples and docs are managed independently of the SDK.
 # in ini file adjacent to this.
 files = [
@@ -396,6 +431,7 @@ include = [
 [tool.ty.rules]
 # parsing disagrees with mypy
 unused-ignore-comment = "ignore"
+unused-type-ignore-comment = "ignore"
 # Stricter parsing than mypy
 invalid-argument-type = "ignore"
 # this is our api draft need to figure out that config

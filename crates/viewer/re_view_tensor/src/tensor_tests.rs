@@ -1,18 +1,11 @@
-#![expect(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used)]
 
 use re_sdk_types::datatypes::{TensorBuffer, TensorData};
 use re_sdk_types::tensor_data::TensorCastError;
 
 #[test]
 fn convert_tensor_to_ndarray_u8() {
-    let t = TensorData::new(
-        vec![
-            TensorDimension::unnamed(3),
-            TensorDimension::unnamed(4),
-            TensorDimension::unnamed(5),
-        ],
-        TensorBuffer::U8(vec![0; 60].into()),
-    );
+    let t = TensorData::new(vec![3, 4, 5], TensorBuffer::U8(vec![0; 60].into()));
 
     let n = ndarray::ArrayViewD::<u8>::try_from(&t).unwrap();
 
@@ -21,14 +14,7 @@ fn convert_tensor_to_ndarray_u8() {
 
 #[test]
 fn convert_tensor_to_ndarray_u16() {
-    let t = TensorData::new(
-        vec![
-            TensorDimension::unnamed(3),
-            TensorDimension::unnamed(4),
-            TensorDimension::unnamed(5),
-        ],
-        TensorBuffer::U16(vec![0_u16; 60].into()),
-    );
+    let t = TensorData::new(vec![3, 4, 5], TensorBuffer::U16(vec![0_u16; 60].into()));
 
     let n = ndarray::ArrayViewD::<u16>::try_from(&t).unwrap();
 
@@ -37,14 +23,7 @@ fn convert_tensor_to_ndarray_u16() {
 
 #[test]
 fn convert_tensor_to_ndarray_f32() {
-    let t = TensorData::new(
-        vec![
-            TensorDimension::unnamed(3),
-            TensorDimension::unnamed(4),
-            TensorDimension::unnamed(5),
-        ],
-        TensorBuffer::F32(vec![0_f32; 60].into()),
-    );
+    let t = TensorData::new(vec![3, 4, 5], TensorBuffer::F32(vec![0_f32; 60].into()));
 
     let n = ndarray::ArrayViewD::<f32>::try_from(&t).unwrap();
 
@@ -56,10 +35,7 @@ fn convert_ndarray_u8_to_tensor() {
     let n = ndarray::array![[1., 2., 3.], [4., 5., 6.]];
     let t = TensorData::try_from(n).unwrap();
 
-    assert_eq!(
-        t.shape(),
-        &[TensorDimension::unnamed(2), TensorDimension::unnamed(3)]
-    );
+    assert_eq!(t.shape(), &[2, 3]);
 }
 
 #[test]
@@ -68,17 +44,13 @@ fn convert_ndarray_slice_to_tensor() {
     let n = &n.slice(ndarray::s![.., 1]);
     let t = TensorData::try_from(*n).unwrap();
 
-    assert_eq!(t.shape(), &[TensorDimension::unnamed(2)]);
+    assert_eq!(t.shape(), &[2]);
 }
 
 #[test]
 fn check_slices() {
     let t = TensorData::new(
-        vec![
-            TensorDimension::unnamed(3),
-            TensorDimension::unnamed(4),
-            TensorDimension::unnamed(5),
-        ],
+        vec![3, 4, 5],
         TensorBuffer::U16((0_u16..60).collect::<Vec<u16>>().into()),
     );
 
@@ -112,14 +84,7 @@ fn check_slices() {
 
 #[test]
 fn check_tensor_shape_error() {
-    let t = TensorData::new(
-        vec![
-            TensorDimension::unnamed(3),
-            TensorDimension::unnamed(4),
-            TensorDimension::unnamed(5),
-        ],
-        TensorBuffer::U8(vec![0; 59].into()),
-    );
+    let t = TensorData::new(vec![3, 4, 5], TensorBuffer::U8(vec![0; 59].into()));
 
     let n = ndarray::ArrayViewD::<u8>::try_from(&t);
 
@@ -133,14 +98,7 @@ fn check_tensor_shape_error() {
 
 #[test]
 fn check_tensor_type_error() {
-    let t = TensorData::new(
-        vec![
-            TensorDimension::unnamed(3),
-            TensorDimension::unnamed(4),
-            TensorDimension::unnamed(5),
-        ],
-        TensorBuffer::U16(vec![0; 60].into()),
-    );
+    let t = TensorData::new(vec![3, 4, 5], TensorBuffer::U16(vec![0; 60].into()));
 
     let n = ndarray::ArrayViewD::<u8>::try_from(&t);
 

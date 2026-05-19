@@ -7,22 +7,22 @@ A connection between two [`datatypes.KeypointId`](https://rerun.io/docs/referenc
 
 ## Fields
 #### `keypoint0`
-Type: [`KeypointId`](../datatypes/keypoint_id.md)
+Type: non-null [`KeypointId`](../datatypes/keypoint_id.md)
 
 The first point of the pair.
 
 #### `keypoint1`
-Type: [`KeypointId`](../datatypes/keypoint_id.md)
+Type: non-null [`KeypointId`](../datatypes/keypoint_id.md)
 
 The second point of the pair.
 
 
 ## Arrow datatype
 ```
-Struct {
-    keypoint0: uint16
-    keypoint1: uint16
-}
+Struct(
+    "keypoint0": non-null UInt16
+    "keypoint1": non-null UInt16
+)
 ```
 
 ## API reference links

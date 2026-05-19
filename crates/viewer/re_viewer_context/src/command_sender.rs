@@ -1,5 +1,6 @@
 use std::panic::Location;
 
+use re_chunk::ChunkId;
 use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::LogDataSource;
@@ -33,6 +34,9 @@ pub enum SystemCommand {
     /// Add a new server to the redap browser.
     AddRedapServer(re_uri::Origin),
 
+    /// Remove a server from the redap browser and clean up associated blueprints.
+    RemoveRedapServer(re_uri::Origin),
+
     /// Open a modal to edit this redap server.
     EditRedapServerModal(EditRedapServerModalCommand),
 
@@ -40,7 +44,10 @@ pub enum SystemCommand {
     OpenSettings,
 
     /// Activates the chunk store route.
-    OpenChunkStoreBrowser,
+    OpenChunkStoreBrowser {
+        store_id: Option<StoreId>,
+        selected_chunk: Option<ChunkId>,
+    },
 
     SetRoute(Route),
 
@@ -134,10 +141,14 @@ pub enum SystemCommand {
     /// or a frame may be highlighted for a few frames.
     ///
     /// Just like selection highlighting, the exact behavior of focusing is up to the receiving views.
-    SetFocus(crate::Item),
+    SetFocus(crate::FocusTarget),
 
     /// Show a notification to the user
     ShowNotification(re_ui::notifications::Notification),
+
+    /// Start polling a texture we're reading back from the gpu, and then prompt
+    /// the user to save a png of the texture.
+    ReadbackAndSaveTexture(re_renderer::texture_readback::TextureReadbackId),
 
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]

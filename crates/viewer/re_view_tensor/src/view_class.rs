@@ -15,10 +15,10 @@ use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizerType,
-    PerVisualizerTypeInViewClass, RecommendedVisualizers, SystemCommand, SystemCommandSender as _,
-    TensorStatsCache, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId,
-    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
-    VisualizableEntities, gpu_bridge, suggest_view_for_each_entity,
+    RecommendedVisualizers, SystemCommand, SystemCommandSender as _, TensorStatsCache, ViewClass,
+    ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableReason, gpu_bridge, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -98,18 +98,18 @@ Set the displayed dimensions in a selection panel.",
 
     fn recommended_visualizers_for_entity(
         &self,
-        entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
-        _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        _entity_path: &EntityPath,
+        visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
+        _indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
         // Default implementation would not suggest the Tensor visualizer for images,
         // since they're not indicated with a Tensor indicator.
         // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
 
         // Keeping this implementation simple: We know there's only a single visualizer here.
-        if visualizable_entities_per_visualizer
-            .get(&TensorSystem::identifier())
-            .is_some_and(|entities| entities.contains_key(entity_path))
+        if visualizers_with_reason
+            .iter()
+            .any(|(viz, _)| *viz == TensorSystem::identifier())
         {
             RecommendedVisualizers::default(TensorSystem::identifier())
         } else {
@@ -135,7 +135,7 @@ Set the displayed dimensions in a selection panel.",
                 ..
             }) = &state.tensor
             {
-                let tensor_stats = ctx.store_context.caches.entry(|c: &mut TensorStatsCache| {
+                let tensor_stats = ctx.store_context.memoizer(|c: &mut TensorStatsCache| {
                     c.entry(Hash64::hash(*tensor_row_id), tensor)
                 });
 
@@ -220,7 +220,8 @@ Set the displayed dimensions in a selection panel.",
         let state = state.downcast_mut::<ViewTensorState>()?;
         state.tensor = None;
 
-        let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
+        let tensors =
+            system_output.visualizer_data::<Vec<TensorVisualization>>(TensorSystem::identifier())?;
 
         let response = {
             let mut ui = ui.new_child(egui::UiBuilder::new().sense(egui::Sense::click()));
@@ -422,7 +423,9 @@ impl TensorView {
         let texture_options = egui::TextureOptions {
             magnification: match mag_filter {
                 MagnificationFilter::Nearest => egui::TextureFilter::Nearest,
-                MagnificationFilter::Linear => egui::TextureFilter::Linear,
+                MagnificationFilter::Linear | MagnificationFilter::Bicubic => {
+                    egui::TextureFilter::Linear
+                }
             },
             minification: egui::TextureFilter::Linear, // TODO(andreas): allow for mipmapping based filter
             wrap_mode: egui::TextureWrapMode::ClampToEdge,
@@ -435,7 +438,7 @@ impl TensorView {
             image_rect,
             colormapped_texture,
             texture_options,
-            re_renderer::DebugLabel::from("tensor_slice"),
+            re_renderer::Label::from("tensor_slice"),
         )?;
 
         Ok((response, image_rect))

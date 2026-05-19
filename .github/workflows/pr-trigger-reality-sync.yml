@@ -68,6 +68,15 @@ jobs:
             reality
             rerun
 
+      - name: Acknowledge command (eyes reaction)
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api -X POST \
+            /repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content=eyes
+
       - name: Determine PR number
         id: pr-info
         run: |

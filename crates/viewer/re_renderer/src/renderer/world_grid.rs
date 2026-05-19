@@ -73,7 +73,8 @@ impl DrawData for WorldGridDrawData {
                 // The grid is everywhere, making it a bit hard to sort against other transparent objects.
                 // We could use distance from the plane, but we rather use a stable sorting here to avoid flickering,
                 // therefore we want to draw it before any other "real" transparentobjects.
-                distance_sort_key: -1.0,
+                distance_sort_key: f32::MAX,
+                secondary_sort_key: 0.0,
                 draw_data_payload: 0,
             },
         );
@@ -170,8 +171,8 @@ impl Renderer for WorldGridRenderer {
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: ViewBuilder::MAIN_TARGET_DEPTH_FORMAT,
-                    depth_compare: wgpu::CompareFunction::GreaterEqual,
-                    depth_write_enabled: false,
+                    depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
+                    depth_write_enabled: Some(false),
                     stencil: wgpu::StencilState::default(),
                     bias: wgpu::DepthBiasState::default(),
                 }),

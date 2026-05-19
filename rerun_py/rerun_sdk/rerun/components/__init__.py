@@ -17,6 +17,7 @@ from .annotation_context import (
 )
 from .axis_length import AxisLength, AxisLengthBatch
 from .blob import Blob, BlobBatch
+from .cell_size import CellSize, CellSizeBatch
 from .channel_id import ChannelId, ChannelIdBatch
 from .channel_message_counts import (
     ChannelMessageCounts,
@@ -67,6 +68,12 @@ from .magnification_filter import (
 from .marker_shape import MarkerShape, MarkerShapeArrayLike, MarkerShapeBatch, MarkerShapeLike
 from .marker_size import MarkerSize, MarkerSizeBatch
 from .media_type import MediaType, MediaTypeBatch
+from .mesh_face_rendering import (
+    MeshFaceRendering,
+    MeshFaceRenderingArrayLike,
+    MeshFaceRenderingBatch,
+    MeshFaceRenderingLike,
+)
 from .name import Name, NameBatch
 from .opacity import Opacity, OpacityBatch
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch
@@ -125,6 +132,8 @@ __all__ = [
     "AxisLengthBatch",
     "Blob",
     "BlobBatch",
+    "CellSize",
+    "CellSizeBatch",
     "ChannelId",
     "ChannelIdBatch",
     "ChannelMessageCounts",
@@ -217,6 +226,10 @@ __all__ = [
     "MarkerSizeBatch",
     "MediaType",
     "MediaTypeBatch",
+    "MeshFaceRendering",
+    "MeshFaceRenderingArrayLike",
+    "MeshFaceRenderingBatch",
+    "MeshFaceRenderingLike",
     "Name",
     "NameBatch",
     "Opacity",

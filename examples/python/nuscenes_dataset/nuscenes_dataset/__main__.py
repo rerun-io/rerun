@@ -8,9 +8,10 @@ from typing import Any, Final
 
 import matplotlib
 import numpy as np
+from nuscenes import nuscenes
+
 import rerun as rr
 import rerun.blueprint as rrb
-from nuscenes import nuscenes
 
 from .download_dataset import MINISPLIT_SCENES, download_minisplit
 from .export_gps import derive_latlon

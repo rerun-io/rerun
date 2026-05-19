@@ -51,7 +51,7 @@ fn setup_store() -> (EntityDb, Vec<ChunkStoreEvent>) {
             }
             let chunk = builder.build().unwrap();
 
-            events.extend(entity_db.add_chunk(&Arc::new(chunk)).unwrap().into_iter());
+            events.extend(entity_db.add_chunk(&Arc::new(chunk)).unwrap());
         }
     }
     (entity_db, events)

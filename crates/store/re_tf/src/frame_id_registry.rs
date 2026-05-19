@@ -82,9 +82,15 @@ impl FrameIdRegistry {
             archetypes::CoordinateFrame::descriptor_frame().component,
         ];
 
+        // Warn on empty frame IDs, but collect the affected components first.
+        // Avoids warning multiple times for entities with multiple frame names, e.g. pinhole.
         for component in frame_components {
             for frame_id_strings in chunk.iter_slices::<String>(component) {
                 for frame_id_string in frame_id_strings {
+                    if frame_id_string.is_empty() {
+                        continue;
+                    }
+
                     let (frame_id_hash, entity_path) =
                         TransformFrameIdHash::from_str_with_optional_derived_path(
                             frame_id_string.as_str(),
@@ -115,7 +121,7 @@ impl FrameIdRegistry {
     }
 
     /// Registers entity path derived frame id and all its parents.
-    fn register_frame_id_from_entity_path(&mut self, entity_path: &EntityPath) {
+    pub fn register_frame_id_from_entity_path(&mut self, entity_path: &EntityPath) {
         // Ensure all implicit frames from this entity all the way up to the root are known.
         // Note that in-between entities may never be mentioned in any chunk, but we want to make sure they're known to the system.
         let mut entity_path = entity_path; // Have to redeclare to make borrow-checker happy.

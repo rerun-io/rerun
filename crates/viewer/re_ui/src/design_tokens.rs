@@ -79,6 +79,10 @@ pub struct DesignTokens {
     /// Opacity multiplier for the background of 2D labels in spatial views.
     pub spatial_label_bg_opacity: f32,
 
+    /// Animation duration in seconds for some things that should feel smooth,
+    /// (as opposed as the default egui animaion that should feel _snappy_).
+    pub slow_animation_duration_sec: f32,
+
     /// Background color for viewport views.
     pub viewport_background: Color32,
 
@@ -125,6 +129,10 @@ pub struct DesignTokens {
     pub panel_bg_color: Color32,
 
     pub text_edit_bg_color: Color32,
+
+    pub form_field_bg_color: Color32,
+    pub form_selectable_bg_color: Color32,
+    pub form_selectable_stroke_color: Color32,
 
     /// Color for blueprint time panel background
     pub blueprint_time_panel_bg_fill: Color32,
@@ -175,6 +183,8 @@ pub struct DesignTokens {
 
     pub floating_color: Color32,
     pub faint_bg_color: Color32,
+    pub plot_grid_color: Color32,
+    pub plot_grid_fade: f32,
     pub extreme_bg_color: Color32,
     pub extreme_fg_color: Color32,
     pub widget_inactive_bg_fill: Color32,
@@ -224,12 +234,15 @@ pub struct DesignTokens {
     pub list_item_active_bg: Color32,
     pub list_item_collapse_default: Color32,
 
-    // Visualizer list (selection panel)
-    pub visualizer_list_title_text_color: Color32,
-    pub visualizer_list_path_text_color: Color32,
     pub color_swatch_size: f32,
     pub color_swatch_interactive_stroke: Stroke,
     pub color_swatch_noninteractive_stroke: Stroke,
+
+    // Visualizer list (selection panel)
+    pub visualizer_list_title_text_color: Color32,
+    pub visualizer_list_title_text_invisible_color: Color32,
+    pub visualizer_list_path_text_color: Color32,
+    pub visualizer_list_path_text_invisible_color: Color32,
     pub visualizer_list_pill_bg_color: Color32,
     pub visualizer_list_pill_bg_color_hovered: Color32,
 
@@ -241,6 +254,25 @@ pub struct DesignTokens {
 
     // Table filter UI
     pub table_filter_frame_stroke: Stroke,
+
+    // Grid view cards
+    pub table_grid_view_card_min_width: f32,
+    pub table_grid_view_card_spacing: f32,
+    pub table_grid_view_card_inner_margin: f32,
+    pub table_grid_view_card_corner_radius: f32,
+    pub table_grid_view_card_fill: Color32,
+    pub table_grid_view_card_hover_fill: Color32,
+
+    // Flag button — three visual tiers: idle, card-hovered, flag-hovered
+    pub flag_untoggled_bg: Color32,
+    pub flag_untoggled_bg_card_hover: Color32,
+    pub flag_untoggled_bg_hover: Color32,
+    pub flag_toggled_bg: Color32,
+    pub flag_toggled_bg_card_hover: Color32,
+    pub flag_toggled_bg_hover: Color32,
+    pub flag_untoggled_icon: Color32,
+    pub flag_untoggled_icon_hover: Color32,
+    pub flag_toggled_icon: Color32,
 
     pub bg_fill_inverse: Color32,
     pub bg_fill_inverse_hover: Color32,
@@ -300,6 +332,7 @@ impl DesignTokens {
             info_text_color: get_color("info_text_color"),
 
             spatial_label_bg_opacity: get_scalar("spatial_label_bg_opacity")?,
+            slow_animation_duration_sec: get_scalar("slow_animation_duration_sec")?,
 
             viewport_background: get_color("viewport_background"),
 
@@ -330,6 +363,9 @@ impl DesignTokens {
 
             panel_bg_color: get_color("panel_bg_color"),
             text_edit_bg_color: get_color("text_edit_bg_color"),
+            form_field_bg_color: get_color("form_field_bg_color"),
+            form_selectable_bg_color: get_color("form_selectable_bg_color"),
+            form_selectable_stroke_color: get_color("form_selectable_stroke_color"),
             blueprint_time_panel_bg_fill: get_color("blueprint_time_panel_bg_fill"),
             notification_panel_background_color: get_color("notification_panel_background_color"),
             notification_background_color: get_color("notification_background_color"),
@@ -353,6 +389,8 @@ impl DesignTokens {
 
             floating_color: get_color("floating_color"),
             faint_bg_color: get_color("faint_bg_color"),
+            plot_grid_color: get_color("plot_grid_color"),
+            plot_grid_fade: get_scalar("plot_grid_fade")?,
             extreme_bg_color: get_color("extreme_bg_color"),
             extreme_fg_color: get_color("extreme_fg_color"),
             widget_inactive_bg_fill: get_color("widget_inactive_bg_fill"),
@@ -400,11 +438,18 @@ impl DesignTokens {
             list_item_active_bg: get_color("list_item_active_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
 
-            visualizer_list_title_text_color: get_color("visualizer_list_title_text_color"),
-            visualizer_list_path_text_color: get_color("visualizer_list_path_text_color"),
             color_swatch_size: get_scalar("color_swatch_size")?,
             color_swatch_interactive_stroke: get_stroke("color_swatch_interactive_stroke"),
             color_swatch_noninteractive_stroke: get_stroke("color_swatch_noninteractive_stroke"),
+
+            visualizer_list_title_text_color: get_color("visualizer_list_title_text_color"),
+            visualizer_list_title_text_invisible_color: get_color(
+                "visualizer_list_title_text_invisible_color",
+            ),
+            visualizer_list_path_text_color: get_color("visualizer_list_path_text_color"),
+            visualizer_list_path_text_invisible_color: get_color(
+                "visualizer_list_path_text_invisible_color",
+            ),
             visualizer_list_pill_bg_color: get_color("visualizer_list_pill_bg_color"),
             visualizer_list_pill_bg_color_hovered: get_color(
                 "visualizer_list_pill_bg_color_hovered",
@@ -417,6 +462,23 @@ impl DesignTokens {
 
             code_keyword_color: get_color("code_keyword_color"),
             table_filter_frame_stroke: get_stroke("table_filter_frame_stroke"),
+
+            table_grid_view_card_min_width: get_scalar("table_grid_view_card_min_width")?,
+            table_grid_view_card_spacing: get_scalar("table_grid_view_card_spacing")?,
+            table_grid_view_card_inner_margin: get_scalar("table_grid_view_card_inner_margin")?,
+            table_grid_view_card_corner_radius: get_scalar("table_grid_view_card_corner_radius")?,
+            table_grid_view_card_fill: get_color("table_grid_view_card_fill"),
+            table_grid_view_card_hover_fill: get_color("table_grid_view_card_hover_fill"),
+
+            flag_untoggled_bg: get_color("flag_untoggled_bg"),
+            flag_untoggled_bg_card_hover: get_color("flag_untoggled_bg_card_hover"),
+            flag_untoggled_bg_hover: get_color("flag_untoggled_bg_hover"),
+            flag_toggled_bg: get_color("flag_toggled_bg"),
+            flag_toggled_bg_card_hover: get_color("flag_toggled_bg_card_hover"),
+            flag_toggled_bg_hover: get_color("flag_toggled_bg_hover"),
+            flag_untoggled_icon: get_color("flag_untoggled_icon"),
+            flag_untoggled_icon_hover: get_color("flag_untoggled_icon_hover"),
+            flag_toggled_icon: get_color("flag_toggled_icon"),
 
             bg_fill_inverse: get_color("bg_fill_inverse"),
             bg_fill_inverse_hover: get_color("bg_fill_inverse-hover"),
@@ -544,6 +606,17 @@ impl DesignTokens {
         egui_style.spacing.scroll.bar_inner_margin = 2.0;
         egui_style.spacing.scroll.bar_width = 6.0;
         egui_style.spacing.scroll.bar_outer_margin = 2.0;
+
+        match self.theme {
+            Theme::Dark => {
+                egui_style.spacing.scroll.fade.strength = 0.60;
+                egui_style.spacing.scroll.fade.size = 15.0;
+            }
+            Theme::Light => {
+                egui_style.spacing.scroll.fade.strength = 0.15;
+                egui_style.spacing.scroll.fade.size = 40.0;
+            }
+        }
 
         egui_style.spacing.tooltip_width = 600.0;
 
@@ -908,7 +981,7 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
 
     let mut color = if color.starts_with('#') {
         Color32::from_hex(color)
-            .map_err(|color_error| anyhow::anyhow!("Invalid hex color: {color_error:?}"))?
+            .map_err(|color_err| anyhow::anyhow!("Invalid hex color: {color_err:?}"))? // NOLINT: error doesn't implement Display
     } else if color.starts_with('{') {
         let color = color
             .strip_prefix('{')

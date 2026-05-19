@@ -30,11 +30,15 @@ The converter loads RRD files into the OSS server, infers data types from the re
 
 ### Installation
 
-To install the example and its dependencies:
+This example has its own `uv` project, separate from the workspace `.venv`, because LeRobot pins an
+incompatible `rerun-sdk`. From the repo root:
 
 ```bash
-pip install -e examples/python/rerun_export
+cd examples/python/rerun_export
+uv sync                         # builds local rerun-sdk + installs lerobot into ./.venv
 ```
+
+Then either `source .venv/bin/activate` or prefix subsequent commands with `uv run`.
 
 ### Basic usage
 

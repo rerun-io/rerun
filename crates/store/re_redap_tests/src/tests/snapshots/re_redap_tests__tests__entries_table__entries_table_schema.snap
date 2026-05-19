@@ -5,8 +5,8 @@ expression: schema.format_snapshot()
 top-level metadata: [
     sorbet:version: "0.1.3"
 ]
-created_at: Timestamp(ns)
-entry_kind: i32
-id: FixedSizeBinary[16]
-name: Utf8
-updated_at: Timestamp(ns)
+created_at: non-null Timestamp(ns)
+entry_kind: non-null Int32
+id: non-null FixedSizeBinary(16)
+name: non-null Utf8
+updated_at: non-null Timestamp(ns)

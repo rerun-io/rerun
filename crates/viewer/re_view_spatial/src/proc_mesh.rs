@@ -717,7 +717,7 @@ fn push_cylinder_solid(mesh_gen: &mut MeshGen, radius: f32, height: f32, subdivi
 }
 
 fn mesh_from_mesh_gen(
-    label: re_renderer::DebugLabel,
+    label: re_renderer::Label,
     mg: MeshGen,
     render_ctx: &RenderContext,
     bbox: macaw::BoundingBox,

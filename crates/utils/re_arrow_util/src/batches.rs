@@ -498,7 +498,7 @@ mod tests {
         );
         batch_concat.schema_metadata_mut().clear();
 
-        insta::assert_debug_snapshot!(batch_concat, @r###"
+        insta::assert_debug_snapshot!(batch_concat, @r#"
         RecordBatch {
             schema: Schema {
                 fields: [
@@ -506,33 +506,21 @@ mod tests {
                         name: "col1",
                         data_type: Int32,
                         nullable: true,
-                        dict_id: 0,
-                        dict_is_ordered: false,
-                        metadata: {},
                     },
                     Field {
                         name: "col2",
                         data_type: Utf8,
                         nullable: true,
-                        dict_id: 0,
-                        dict_is_ordered: false,
-                        metadata: {},
                     },
                     Field {
                         name: "col3",
                         data_type: Boolean,
                         nullable: true,
-                        dict_id: 0,
-                        dict_is_ordered: false,
-                        metadata: {},
                     },
                     Field {
                         name: "col4",
                         data_type: UInt64,
                         nullable: true,
-                        dict_id: 0,
-                        dict_is_ordered: false,
-                        metadata: {},
                     },
                 ],
                 metadata: {},
@@ -565,7 +553,7 @@ mod tests {
             ],
             row_count: 3,
         }
-        "###);
+        "#);
     }
 
     #[test]

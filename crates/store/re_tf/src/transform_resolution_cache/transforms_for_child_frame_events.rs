@@ -5,7 +5,7 @@ use re_log_types::TimeInt;
 
 use super::cached_transform_value::CachedTransformValue;
 use super::parent_from_child_transform::ParentFromChildTransform;
-use super::resolved_pinhole_projection::ResolvedPinholeProjection;
+use super::resolved_pinhole_projection::ResolvedPinholeProjectionCached;
 
 // TODO(RR-3539): replace this with a range-map, mapping non-overlapping
 // time ranges to transforms. That way we can avoid storing the same value multiple times, saving a lot of memory.
@@ -17,7 +17,7 @@ pub type FrameTransformTimeMap =
 // time ranges to transforms. That way we can avoid storing the same value multiple times, saving a lot of memory.
 // Then we probably wouldn't need the BookkeepingBTreeMap either.
 pub type PinholeProjectionMap =
-    BookkeepingBTreeMap<TimeInt, CachedTransformValue<ResolvedPinholeProjection>>;
+    BookkeepingBTreeMap<TimeInt, CachedTransformValue<ResolvedPinholeProjectionCached>>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransformsForChildFrameEvents {

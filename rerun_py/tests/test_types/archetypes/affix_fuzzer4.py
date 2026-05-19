@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -13,6 +13,7 @@ from attrs import define, field
 from rerun._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from rerun.error_utils import catch_and_log_exceptions
 
@@ -23,6 +24,8 @@ __all__ = ["AffixFuzzer4"]
 
 @define(str=False, repr=False, init=False)
 class AffixFuzzer4(Archetype):
+    NAME: ClassVar[str] = "rerun.testing.archetypes.AffixFuzzer4"
+
     def __init__(
         self: Any,
         *,
@@ -165,6 +168,150 @@ class AffixFuzzer4(Archetype):
         """Clear all the fields of a `AffixFuzzer4`."""
         return cls.from_fields(clear_unset=True)
 
+    @staticmethod
+    def descriptor_fuzz2101() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2101",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer1Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2102() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2102",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer2Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2103() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2103",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer3Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2104() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2104",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer4Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2105() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2105",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer5Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2106() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2106",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer6Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2107() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2107",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer7Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2108() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2108",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer8Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2109() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2109",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer9Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2110() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2110",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer10Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2111() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2111",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer11Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2112() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2112",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer12Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2113() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2113",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer13Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2114() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2114",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer14Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2115() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2115",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer15Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2116() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2116",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer16Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2117() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2117",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer17Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fuzz2118() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "AffixFuzzer4:fuzz2118",
+            archetype=AffixFuzzer4.NAME,
+            component_type=components.AffixFuzzer18Batch._COMPONENT_TYPE,
+        )
+
     @classmethod
     def columns(
         cls,
@@ -253,17 +400,21 @@ class AffixFuzzer4(Archetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
-                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
-                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
-                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
-                    # we have `num_rows` single element batches (each element is a fixed sized list).
-                    # (This should have been already validated by conversion to the arrow_array)
-                    batch_length = 1
-                else:
-                    batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+
+                if pa.types.is_fixed_size_list(arrow_array.type):
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                    if arrow_array.type.list_size == elem_flat_len:
+                        # The product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # so we have `num_rows` single element batches (each element is a fixed sized list).
+                        batch_length = 1
+                    else:
+                        batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                else:
+                    # For primitive types, derive batch_length from the actual arrow array length
+                    # since the input shape can be misleading (e.g. colors [R,G,B] -> single uint32).
+                    batch_length = len(arrow_array) // num_rows if num_rows > 0 else 1
+
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

@@ -12,8 +12,8 @@ use re_chunk::{Chunk, ChunkId, TimelineName};
 use re_log_types::{AbsoluteTimeRange, TimeInt};
 
 use crate::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffDeletion, ChunkStoreEvent,
-    ChunkStoreStats,
+    ChunkDeletionReason, ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffDeletion,
+    ChunkStoreEvent, ChunkStoreStats,
 };
 
 // Used all over in docstrings.
@@ -236,25 +236,9 @@ impl ChunkStore {
             "GC done"
         );
 
-        let events: Vec<_> = diffs
-            .into_iter()
-            .map(|diff| ChunkStoreEvent {
-                store_id: self.id.clone(),
-                store_generation: self.generation(),
-                event_id: self
-                    .event_id
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                diff,
-            })
-            .collect();
-        if cfg!(debug_assertions) {
-            let any_event_other_than_deletion = events.iter().any(|e| !e.is_deletion());
-            assert!(!any_event_other_than_deletion);
-        }
+        re_log::debug_assert!(diffs.iter().all(|d| d.is_deletion()));
 
-        if self.config.enable_changelog {
-            Self::on_events(&events);
-        }
+        let events = self.finalize_events(diffs);
 
         (events, stats_before - stats_after)
     }
@@ -276,10 +260,10 @@ impl ChunkStore {
         self.temporal_chunk_ids_per_entity_per_component
             .values()
             .flat_map(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline.iter().flat_map(
-                    |(_timeline, temporal_chunk_ids_per_component)| {
-                        temporal_chunk_ids_per_component.iter().flat_map(
-                            |(_, temporal_chunk_ids_per_time)| {
+                temporal_chunk_ids_per_timeline.values().flat_map(
+                    |temporal_chunk_ids_per_component| {
+                        temporal_chunk_ids_per_component.values().flat_map(
+                            |temporal_chunk_ids_per_time| {
                                 itertools::chain!(
                                     temporal_chunk_ids_per_time
                                         .per_start_time
@@ -362,12 +346,18 @@ impl ChunkStore {
                 };
 
             let now = Instant::now();
-            let dels1 =
-                self.remove_chunks_shallow(chunks_to_be_shallow_removed, Some(sweep_time_budget));
+            let dels1 = self.remove_chunks_shallow(
+                chunks_to_be_shallow_removed,
+                Some(sweep_time_budget),
+                ChunkDeletionReason::GarbageCollection,
+            );
 
             let remaining_budget = sweep_time_budget.saturating_sub(now.elapsed());
-            let dels2 =
-                self.remove_chunks_deep(chunks_to_be_deeply_removed, Some(remaining_budget));
+            let dels2 = self.remove_chunks_deep(
+                chunks_to_be_deeply_removed,
+                Some(remaining_budget),
+                ChunkDeletionReason::GarbageCollection,
+            );
 
             dels1.into_iter().chain(dels2).map(Into::into).collect()
         }
@@ -450,7 +440,8 @@ impl ChunkStore {
 
             let chunks_in_priority_order = self
                 .physical_chunk_ids_per_min_row_id
-                .values()
+                .iter()
+                .map(|(_, chunk_id)| chunk_id)
                 .filter(move |chunk_id| !protected_chunk_ids.contains(chunk_id))
                 .filter_map(|chunk_id| self.physical_chunks_per_chunk_id.get(chunk_id).cloned()) // physical only
                 .filter(|chunk| !chunk.is_static()) // cannot gc static data
@@ -502,6 +493,7 @@ impl ChunkStore {
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
+        reason: ChunkDeletionReason,
     ) -> Vec<ChunkStoreDiffDeletion> {
         re_tracing::profile_function!();
 
@@ -510,13 +502,12 @@ impl ChunkStore {
         // The deep diff is always a superset of the shallow one (because you can remove physical
         // chunks while keeping virtual ones, but not vice-versa).
         let deletions_shallow =
-            self.remove_chunks_shallow(chunks_to_be_removed.clone(), time_budget);
+            self.remove_chunks_shallow(chunks_to_be_removed.clone(), time_budget, reason);
 
         let Self {
             id: _,
             config: _,
-            time_type_registry: _,                // purely additive
-            per_column_metadata: _,               // purely additive
+            schema: _,                            // purely additive
             physical_chunks_per_chunk_id: _,      // handled by shallow impl
             physical_chunk_ids_per_min_row_id: _, // handled by shallow impl
             chunks_lineage,                       // purely additive
@@ -633,7 +624,7 @@ impl ChunkStore {
             }
 
             if was_removed {
-                deletions.push(ChunkStoreDiffDeletion { chunk });
+                deletions.push(ChunkStoreDiffDeletion { chunk, reason });
             }
         }
 
@@ -673,14 +664,14 @@ impl ChunkStore {
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
+        reason: ChunkDeletionReason,
     ) -> Vec<ChunkStoreDiffDeletion> {
         re_tracing::profile_function!();
 
         let Self {
             id: _,
             config: _,
-            time_type_registry: _,  // purely additive
-            per_column_metadata: _, // purely additive
+            schema: _, // purely additive
             physical_chunks_per_chunk_id,
             physical_chunk_ids_per_min_row_id,
             chunks_lineage: _,                              // virtual
@@ -704,7 +695,7 @@ impl ChunkStore {
         let mut deletions = Vec::with_capacity(chunks_to_be_removed.len());
         for chunk in chunks_to_be_removed {
             if let Some(row_id_min) = chunk.row_id_range().map(|(min, _)| min) {
-                physical_chunk_ids_per_min_row_id.remove(&row_id_min);
+                physical_chunk_ids_per_min_row_id.remove(&(row_id_min, chunk.id()));
             }
             let Some(chunk) = physical_chunks_per_chunk_id.remove(&chunk.id()) else {
                 continue;
@@ -718,7 +709,7 @@ impl ChunkStore {
 
             *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(&chunk);
 
-            deletions.push(ChunkStoreDiffDeletion { chunk });
+            deletions.push(ChunkStoreDiffDeletion { chunk, reason });
 
             // Only check time budget once we have removed at least one chunk.
             if time_budget <= start_time.elapsed() {

@@ -18,7 +18,8 @@ import platform
 import subprocess
 from enum import Enum
 
-from google.cloud.storage import Bucket, Client as Gcs
+from google.cloud.storage import Bucket
+from google.cloud.storage import Client as Gcs
 
 
 def run(
@@ -70,11 +71,11 @@ def build_and_upload(
         run("pixi run rerun-build-web-release")
 
     if mode is BuildMode.PYPI:
-        maturin_feature_flags = "--no-default-features --features pypi"
+        maturin_feature_flags = "--no-default-features --features perf_telemetry,pypi"
     elif mode is BuildMode.PR:
-        maturin_feature_flags = "--no-default-features --features extension-module"
+        maturin_feature_flags = "--no-default-features --features perf_telemetry,extension-module"
     elif mode is BuildMode.EXTRA:
-        maturin_feature_flags = "--no-default-features --features pypi,extra"
+        maturin_feature_flags = "--no-default-features --features perf_telemetry,pypi,extra"
 
     dist = f"dist/{target}"
 

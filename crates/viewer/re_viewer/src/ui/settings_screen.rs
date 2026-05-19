@@ -1,20 +1,14 @@
 use std::str::FromStr as _;
 
 use egui::{NumExt as _, Ui};
+use re_entity_db::FetchStage;
 use re_log_types::{Timestamp, TimestampFormat};
 use re_memory::MemoryLimit;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::{AppOptions, ExperimentalAppOptions, VideoOptions};
 
-use crate::StartupOptions;
-
-pub fn settings_screen_ui(
-    ui: &mut egui::Ui,
-    app_options: &mut AppOptions,
-    startup_options: &mut StartupOptions,
-    keep_open: &mut bool,
-) {
+pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
     egui::Frame {
         inner_margin: egui::Margin::same(5),
         ..Default::default()
@@ -31,7 +25,7 @@ pub fn settings_screen_ui(
             .auto_shrink(false)
             .show(&mut child_ui, |ui| {
                 ui.set_min_width(MIN_WIDTH);
-                settings_screen_ui_impl(ui, app_options, startup_options, keep_open);
+                settings_screen_ui_impl(ui, app_options, keep_open);
             });
 
         if ui.input_mut(|ui| ui.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
@@ -40,12 +34,7 @@ pub fn settings_screen_ui(
     });
 }
 
-fn settings_screen_ui_impl(
-    ui: &mut egui::Ui,
-    app_options: &mut AppOptions,
-    startup_options: &mut StartupOptions,
-    keep_open: &mut bool,
-) {
+fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
     //
     // Title
     //
@@ -87,16 +76,6 @@ fn settings_screen_ui_impl(
         egui::global_theme_preference_buttons(ui);
     });
 
-    ui.add_space(8.0);
-
-    ui.horizontal(|ui| {
-        ui.label("Memory budget");
-        memory_budget_section_ui(ui, startup_options);
-        ui.help_button(|ui| {
-            ui.label("When this limit is reached we start purging data from RAM");
-        });
-    });
-
     let AppOptions {
         experimental,
         warn_e2e_latency: _, // not yet exposed
@@ -106,13 +85,39 @@ fn settings_screen_ui_impl(
         show_picking_debug_overlay: _, // not yet exposed
         inspect_blueprint_timeline: _, // not yet exposed
         blueprint_gc: _,               // not yet exposed
+        visualizer_limits_enabled,
         timestamp_format,
         video,
         mapbox_access_token,
+        memory_limit,
+        max_fetch_stage,
 
         #[cfg(not(target_arch = "wasm32"))]
             cache_directory: _, // not yet exposed
     } = app_options;
+
+    ui.add_space(8.0);
+
+    egui::Grid::new("prefetcher").num_columns(2).show(ui, |ui| {
+        ui.label("Memory budget");
+        memory_budget_section_ui(ui, memory_limit);
+        ui.help_button(|ui| {
+            ui.label("When this limit is reached we start purging data from RAM");
+        });
+        ui.end_row();
+
+        ui.label("Prefetch");
+        prefetch_stage_combo_box_ui(ui, max_fetch_stage);
+        ui.help_button(|ui| {
+            ui.label(
+                "Controls how aggressively we prefetch chunks ahead of what is strictly needed.\n\n\
+                • Required: only chunks required to render the current time cursor.\n\
+                • Similar: also prefetch chunks on the same component paths as required chunks up to a given real-time duration.\n\
+                • Everything: also prefetch every chunk in the recording.",
+            );
+        });
+        ui.end_row();
+    });
 
     ui.add_space(8.0);
 
@@ -127,6 +132,17 @@ fn settings_screen_ui_impl(
     ui.re_checkbox(show_notification_toasts, "Show notification toasts")
         .on_hover_text("Show toasts for log messages and other notifications");
 
+    ui.re_checkbox(
+        visualizer_limits_enabled,
+        "Limit number of primitives in a view",
+    )
+    .on_hover_text(
+        "Caps the number of elements individual visualizers process \
+             (e.g. instance caps for 3D shapes, line limits for time series). \
+             Disabling this may cause the viewer to become unresponsive \
+             with very large data sets.",
+    );
+
     separator_with_some_space(ui);
     ui.collapsing_header("Timestamp format", false, |ui| {
         time_format_section_ui(ui, timestamp_format);
@@ -140,20 +156,30 @@ fn settings_screen_ui_impl(
     ui.strong("Video");
     video_section_ui(ui, video);
 
-    if false {
-        // There are currently no experimental features
-        let ExperimentalAppOptions {} = experimental;
+    {
+        let ExperimentalAppOptions {
+            enable_status_view,
+            table_grid_view,
+        } = experimental;
         separator_with_some_space(ui);
         ui.strong("Experimental");
-        // experimental_section_ui(ui, experimental);
+        ui.re_checkbox(enable_status_view, "Enable Status view (requires restart)")
+            .on_hover_text(
+                "Show the experimental Status view for visualizing status transitions over time.",
+            );
+        ui.re_checkbox(table_grid_view, "Table grid view")
+            .on_hover_text(
+                "Enable grid view mode for server supplied tables.\n\n\
+                 When enabled, a list/grid toggle appears in the table title bar.",
+            );
     }
 }
 
-fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
+fn memory_budget_section_ui(ui: &mut Ui, memory_limit: &mut MemoryLimit) {
     const BYTES_PER_GIB: u64 = 1024 * 1024 * 1024;
     const UPPER_LIMIT_BYTES: u64 = 1_000 * BYTES_PER_GIB;
 
-    let mut bytes = startup_options.memory_limit.as_bytes();
+    let mut bytes = memory_limit.as_bytes();
 
     let speed = (0.02 * bytes as f32).clamp(0.01 * BYTES_PER_GIB as f32, BYTES_PER_GIB as f32);
 
@@ -181,9 +207,77 @@ fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
     );
 
     if bytes < UPPER_LIMIT_BYTES {
-        startup_options.memory_limit = MemoryLimit::from_bytes(bytes);
+        *memory_limit = MemoryLimit::from_bytes(bytes);
     } else {
-        startup_options.memory_limit = MemoryLimit::UNLIMITED;
+        *memory_limit = MemoryLimit::UNLIMITED;
+    }
+}
+
+fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage) {
+    fn label(stage: FetchStage) -> &'static str {
+        match stage {
+            FetchStage::Required => "Required",
+            FetchStage::Similar(_) => "Similar",
+            FetchStage::Everything => "Everything",
+        }
+    }
+
+    egui::ComboBox::from_id_salt("max_fetch_stage")
+        .selected_text(label(*max_fetch_stage))
+        .show_ui(ui, |ui| {
+            for stage in [
+                FetchStage::Required,
+                FetchStage::default(),
+                FetchStage::Everything,
+            ] {
+                ui.selectable_value(max_fetch_stage, stage, label(stage));
+            }
+        });
+
+    /// Maps t in [0, 1] to a log scale value in [min, max],
+    /// where t=1.0 maps to `f64::INFINITY`.
+    fn log_slider_to_value(t: f64, min: f64, max_finite: f64) -> f64 {
+        if t >= 1.0 {
+            return f64::INFINITY;
+        }
+        // Remap t in [0, 1) to log scale over [min, max_finite]
+        let log_min = min.log10();
+        let log_max = max_finite.log10();
+        10f64.powf(log_min + t * (log_max - log_min))
+    }
+
+    fn value_to_log_slider(value: f64, min: f64, max_finite: f64) -> f64 {
+        if value.is_infinite() {
+            return 1.0;
+        }
+        let log_min = min.log10();
+        let log_max = max_finite.log10();
+        (value.log10() - log_min) / (log_max - log_min)
+    }
+
+    match max_fetch_stage {
+        FetchStage::Similar(range) => {
+            const MIN: f64 = 1.0;
+            const MAX_FINITE: f64 = 600.0;
+
+            let seconds = range.map(|d| d.as_secs_f64()).unwrap_or(f64::INFINITY);
+
+            let mut value = value_to_log_slider(seconds, MIN, MAX_FINITE);
+            ui.add(egui::Slider::new(&mut value, 0.0..=1.0).show_value(false));
+
+            *range =
+                std::time::Duration::try_from_secs_f64(log_slider_to_value(value, MIN, MAX_FINITE))
+                    .ok();
+
+            let label = if let Some(range) = range {
+                format!("{}s", range.as_secs())
+            } else {
+                "∞".to_owned()
+            };
+
+            ui.label(label);
+        }
+        FetchStage::Required | FetchStage::Everything => {}
     }
 }
 

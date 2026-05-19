@@ -22,7 +22,9 @@ pub use demux::{
     SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod, VideoEncodingDetails,
     VideoLoadError,
 };
-pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
+pub use gop_detection::{
+    DetectGopStartError, GopStartDetection, detect_gop_start, is_start_of_gop,
+};
 // AnnexB conversions are useful for testing.
 pub use h264::{write_avc_chunk_to_annexb, write_avc_chunk_to_nalu_stream};
 pub use h265::{write_hevc_chunk_to_annexb, write_hevc_chunk_to_nalu_stream};

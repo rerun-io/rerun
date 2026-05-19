@@ -8,6 +8,7 @@ graph_view.py linguist-generated=true
 map_view.py linguist-generated=true
 spatial2d_view.py linguist-generated=true
 spatial3d_view.py linguist-generated=true
+status_view.py linguist-generated=true
 tensor_view.py linguist-generated=true
 text_document_view.py linguist-generated=true
 text_log_view.py linguist-generated=true

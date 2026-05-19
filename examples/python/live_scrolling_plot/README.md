@@ -46,7 +46,6 @@ rr.send_blueprint(
         ]
     ),
 )
-
 ```
 
 ## Run the code

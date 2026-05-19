@@ -131,25 +131,17 @@ impl KeyboardHandler {
         self.state.any_active()
     }
 
-    /// Draw keyboard overlay HUD at bottom-right of the 3D viewport area.
+    /// Draw keyboard overlay HUD anchored to the bottom-right of the viewport.
     /// Clickable: clicking the overlay toggles engaged state.
     pub fn draw_overlay(&mut self, ctx: &egui::Context) {
-        let screen_rect = ctx.content_rect();
-        // Default position: bottom-left, just above the timeline bar
-        let overlay_height = 160.0;
-        let left_margin = 12.0;
-        let bottom_timeline_offset = 120.0;
-        let default_pos = egui::pos2(
-            screen_rect.min.x + left_margin,
-            screen_rect.max.y - overlay_height - bottom_timeline_offset,
-        );
-
-        let area_response = egui::Area::new("keyboard_hud".into())
-            .pivot(egui::Align2::LEFT_BOTTOM)
-            .default_pos(default_pos)
-            .movable(true)
+        let area_response = egui::Area::new("dimos_keyboard_hud_br".into())
+            .anchor(egui::Align2::RIGHT_BOTTOM, egui::vec2(-5.0, -5.0))
             .order(egui::Order::Foreground)
             .interactable(true)
+            // Sense drags too (default for a non-movable interactable Area is
+            // CLICK-only), otherwise click-with-tiny-mouse-motion leaks through
+            // to the 3D viewport's camera-drag handler.
+            .sense(egui::Sense::click_and_drag())
             .show(ctx, |ui| {
                 let border_color = if self.engaged {
                     egui::Color32::from_rgb(60, 180, 75) // green border when active

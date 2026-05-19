@@ -105,23 +105,13 @@ impl ChunkId {
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`ChunkId::new`] when unsure.
+    ///
+    /// Only available in debug builds (tests). Use [`ChunkId::new`] in production.
+    #[cfg(debug_assertions)]
     #[must_use]
     #[inline]
     pub fn next(&self) -> Self {
         Self(self.0.next())
-    }
-
-    /// Returns the `n`-next logical [`ChunkId`].
-    ///
-    /// This is equivalent to calling [`ChunkId::next`] `n` times.
-    /// Wraps the monotonically increasing back to zero on overflow.
-    ///
-    /// Beware: wrong usage can easily lead to conflicts.
-    /// Prefer [`ChunkId::new`] when unsure.
-    #[must_use]
-    #[inline]
-    pub fn incremented_by(&self, n: u64) -> Self {
-        Self(self.0.incremented_by(n))
     }
 
     #[inline]

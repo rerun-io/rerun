@@ -52,7 +52,7 @@ pub fn highlights_for_view(
             | Item::TableId(_)
             | Item::View(_)
             | Item::Container(_)
-            | Item::RedapEntry(_)
+            | Item::RedapEntry { .. }
             | Item::RedapServer(_) => {}
 
             Item::ComponentPath(component_path) => {
@@ -104,7 +104,7 @@ pub fn highlights_for_view(
             | Item::TableId(_)
             | Item::View(_)
             | Item::Container(_)
-            | Item::RedapEntry(_)
+            | Item::RedapEntry { .. }
             | Item::RedapServer(_) => {}
 
             Item::ComponentPath(component_path) => {

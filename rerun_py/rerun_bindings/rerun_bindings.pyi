@@ -1,23 +1,22 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 
 import datafusion as dfn
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from typing_extensions import deprecated
 
 from .types import (
     IndexValuesLike as IndexValuesLike,
     VectorDistanceMetricLike as VectorDistanceMetricLike,
 )
-
-if TYPE_CHECKING:
-    from rerun.catalog import Schema
 
 # NOTE
 #
@@ -190,74 +189,68 @@ class SchemaInternal:
     ) -> ComponentColumnDescriptor: ...
     def __arrow_c_schema__(self) -> Any: ...
 
-class Recording:
-    """
-    A single Rerun recording.
+class RecordingInternal:
+    def schema(self) -> SchemaInternal: ...
+    def recording_id(self) -> str: ...
+    def application_id(self) -> str: ...
+    def chunks(self) -> ChunkIterator: ...
+    def save(self, path: str) -> None: ...
 
-    This can be loaded from an RRD file using [`load_recording()`][rerun.recording.load_recording].
+class RRDArchiveInternal:
+    def num_recordings(self) -> int: ...
+    def all_recordings(self) -> list[RecordingInternal]: ...
 
-    A recording is a collection of data that was logged to Rerun. This data is organized
-    as a column for each index (timeline) and each entity/component pair that was logged.
+class ChunkInternal:
+    @property
+    def id(self) -> str: ...
+    @property
+    def entity_path(self) -> str: ...
+    @property
+    def num_rows(self) -> int: ...
+    @property
+    def num_columns(self) -> int: ...
+    @property
+    def is_static(self) -> bool: ...
+    @property
+    def is_empty(self) -> bool: ...
+    @property
+    def timeline_names(self) -> list[str]: ...
+    def to_record_batch(self) -> pa.RecordBatch: ...
+    @staticmethod
+    def from_record_batch(record_batch: pa.RecordBatch) -> ChunkInternal: ...
+    @staticmethod
+    def from_columns(
+        entity_path: str,
+        timelines: dict[str, Any],
+        components: dict[ComponentDescriptor, Any],
+    ) -> ChunkInternal: ...
+    def format(self, *, width: int = 240, redact: bool = False) -> str: ...
+    def apply_lenses(self, lenses: list[LensInternal]) -> list[ChunkInternal]: ...
+    def apply_selector(self, source: str, selector: SelectorInternal) -> ChunkInternal: ...
+    def __repr__(self) -> str: ...
+    def __len__(self) -> int: ...
 
-    You can examine the [`.schema()`][rerun.recording.Recording.schema] of the recording to see
-    what data is available.
-    """
+class ChunkIterator:
+    """An iterator over chunks in a recording."""
 
-    def schema(self) -> Schema:
-        """The schema describing all the columns available in the recording."""
+    def __iter__(self) -> ChunkIterator:
+        """Implement iter(self)."""
 
-    def recording_id(self) -> str:
-        """The recording ID of the recording."""
+    def __next__(self) -> ChunkInternal:
+        """Implement next(self)."""
 
-    def application_id(self) -> str:
-        """The application ID of the recording."""
+def recording_from_chunks(
+    chunks: Any,
+    application_id: str,
+    recording_id: str,
+) -> RecordingInternal:
+    """Create a new recording from an iterable of chunks."""
 
-class RRDArchive:
-    """
-    An archive loaded from an RRD.
+def load_recording(path_to_rrd: str | os.PathLike[str]) -> RecordingInternal:
+    """Load a single recording from an RRD file."""
 
-    RRD archives may include 1 or more recordings or blueprints.
-    """
-
-    def num_recordings(self) -> int:
-        """The number of recordings in the archive."""
-
-    def all_recordings(self) -> list[Recording]:
-        """All the recordings in the archive."""
-
-def load_recording(path_to_rrd: str | os.PathLike[str]) -> Recording:
-    """
-    Load a single recording from an RRD file.
-
-    Will raise a `ValueError` if the file does not contain exactly one recording.
-
-    Parameters
-    ----------
-    path_to_rrd:
-        The path to the file to load.
-
-    Returns
-    -------
-    Recording
-        The loaded recording.
-
-    """
-
-def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
-    """
-    Load a rerun archive from an RRD file.
-
-    Parameters
-    ----------
-    path_to_rrd:
-        The path to the file to load.
-
-    Returns
-    -------
-    RRDArchive
-        The loaded archive.
-
-    """
+def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchiveInternal:
+    """Load a rerun archive from an RRD file."""
 
 # AI generated stubs for `PyRecordingStream` related class and functions
 # TODO(#9187): this will be entirely replaced when `RecordingStream` is itself written in Rust
@@ -288,19 +281,19 @@ class ChunkBatcherConfig:
 
         Parameters
         ----------
-        flush_tick : int | float | timedelta | None
+        flush_tick:
             Duration of the periodic tick, by default `None`.
             Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
 
-        flush_num_bytes : int | None
+        flush_num_bytes:
             Flush if the accumulated payload has a size in bytes equal or greater than this, by default `None`.
             Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
 
-        flush_num_rows : int | None
+        flush_num_rows:
             Flush if the accumulated payload has a number of rows equal or greater than this, by default `None`.
             Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
 
-        chunk_max_rows_if_unsorted : int | None
+        chunk_max_rows_if_unsorted:
             Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted,
             by default `None`.
             Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
@@ -729,6 +722,7 @@ def serve_grpc(
     newest_first: bool = False,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    cors_allow_origin: list[str] = ...,  # type: ignore[assignment]
 ) -> str:
     """
     Spawn a gRPC server which an SDK or Viewer can connect to.
@@ -750,6 +744,7 @@ def serve_web(
     server_memory_limit: str,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    cors_allow_origin: list[str] = ...,  # type: ignore[assignment]
 ) -> None:
     """Serve a web-viewer AND host a gRPC server."""
 
@@ -840,6 +835,12 @@ def send_arrow_chunk(
         A dictionary mapping component types to their values.
     """
 
+def send_chunk(
+    chunk: ChunkInternal,
+    recording: PyRecordingStream | None = None,
+) -> None:
+    """Send a pre-built chunk to the recording stream."""
+
 def log_file_from_path(
     file_path: str | os.PathLike[str],
     entity_path_prefix: str | None = None,
@@ -865,11 +866,11 @@ def send_blueprint(
 ) -> None:
     """Send a blueprint to the given recording stream."""
 
-def send_recording(rrd: Recording, recording: PyRecordingStream | None = None) -> None:
+def send_recording(rrd: RecordingInternal, recording: PyRecordingStream | None = None) -> None:
     """
     Send all chunks from a [`PyRecording`] to the given recording stream.
 
-    .. warning::
+    !!! Warning
         ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
     """
 
@@ -1011,10 +1012,13 @@ class DatasetEntryInternal:
 
     # ---
 
-    def download_segment(self, segment_id: str) -> Recording: ...
+    def download_segment(self, segment_id: str) -> RecordingInternal: ...
 
     # ---
 
+    @deprecated(
+        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def create_fts_search_index(
         self,
         *,
@@ -1023,6 +1027,9 @@ class DatasetEntryInternal:
         store_position: bool = False,
         base_tokenizer: str = "simple",
     ) -> None: ...
+    @deprecated(
+        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def create_vector_search_index(
         self,
         *,
@@ -1037,11 +1044,17 @@ class DatasetEntryInternal:
         self,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
     ) -> list[IndexConfig]: ...
+    @deprecated(
+        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def search_fts(
         self,
         query: str,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
     ) -> dfn.DataFrame: ...
+    @deprecated(
+        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def search_vector(
         self,
         query: Any,  # VectorLike
@@ -1101,7 +1114,7 @@ class TableEntryInternal:
 
     # ---
 
-    def __datafusion_table_provider__(self) -> Any: ...
+    def __datafusion_table_provider__(self, session: Any) -> Any: ...
     def reader(self) -> dfn.DataFrame: ...
     def to_arrow_reader(self) -> pa.RecordBatchReader: ...
 
@@ -1126,9 +1139,17 @@ class _UrdfTreeInternal:
     """Internal Rust implementation of a parsed URDF tree."""
 
     @staticmethod
-    def from_file_path(path: str | os.PathLike[str], entity_path_prefix: str | None = None) -> _UrdfTreeInternal: ...
+    def from_file_path(
+        path: str | os.PathLike[str],
+        entity_path_prefix: str | None = None,
+        *,
+        frame_prefix: str | None = None,
+        static_transform_entity_path: str | None = None,
+    ) -> _UrdfTreeInternal: ...
     @property
     def name(self) -> str: ...
+    @property
+    def frame_prefix(self) -> str | None: ...
     def root_link(self) -> _UrdfLinkInternal: ...
     def joints(self) -> list[_UrdfJointInternal]: ...
     def get_joint_by_name(self, joint_name: str) -> _UrdfJointInternal | None: ...
@@ -1136,6 +1157,8 @@ class _UrdfTreeInternal:
     def get_link_by_name(self, link_name: str) -> _UrdfLinkInternal | None: ...
     def get_collision_geometry_paths(self, link: str | _UrdfLinkInternal) -> list[str]: ...
     def get_visual_geometry_paths(self, link: str | _UrdfLinkInternal) -> list[str]: ...
+    def log(self, recording: PyRecordingStream | None = None) -> None: ...
+    def stream(self, *, include_joint_transforms: bool = True) -> LazyChunkStreamInternal: ...
 
 class _UrdfJointInternal:
     """Internal Rust representation of a URDF joint."""
@@ -1162,6 +1185,10 @@ class _UrdfJointInternal:
     def limit_effort(self) -> float: ...
     @property
     def limit_velocity(self) -> float: ...
+    @property
+    def mimic(self) -> _UrdfMimicInternal | None:
+        """The ``<mimic>`` tag for this joint, or ``None`` if this is not a mimic joint."""
+
     def compute_transform(self, value: float, clamp: bool = False) -> dict[str, Any]:
         """
         Compute the transform components for this joint at the given value.
@@ -1183,6 +1210,16 @@ class _UrdfJointInternal:
         If `clamp` is False (default), values outside limits are used as-is without warnings.
         """
 
+class _UrdfMimicInternal:
+    """Internal Rust representation of a URDF ``<mimic>`` tag."""
+
+    @property
+    def joint(self) -> str: ...
+    @property
+    def multiplier(self) -> float: ...
+    @property
+    def offset(self) -> float: ...
+
 class _UrdfLinkInternal:
     """Internal Rust representation of a URDF link."""
 
@@ -1191,10 +1228,11 @@ class _UrdfLinkInternal:
 
 class _IndexValuesLikeInternal:
     """
-    A Python wrapper for testing [`IndexValuesLike`] extraction functionality.
+    A Python wrapper for [`IndexValuesLike`] extraction and conversion.
 
-    This wrapper allows testing the `extract_bound` functionality by providing
-    a Python-accessible interface to create and convert index values.
+    Provides a Python-accessible interface to normalize various index value
+    representations (PyArrow arrays, NumPy arrays, ChunkedArrays) into sorted
+    int64 index values.
     """
 
     def __init__(self, values: IndexValuesLike) -> None: ...
@@ -1263,6 +1301,7 @@ class CatalogClientInternal:
 
     # ---
 
+    def version_info(self) -> tuple[str, str | None, str | None]: ...
     def datasets(self, include_hidden: bool) -> list[DatasetEntryInternal]: ...
     def tables(self, include_hidden: bool) -> list[TableEntryInternal]: ...
 
@@ -1287,8 +1326,9 @@ class CatalogClientInternal:
     def _entry_id_from_entry_name(self, name: str) -> EntryId: ...
 
 class RegistrationHandleInternal:
-    def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str | None, str | None]]: ...
+    def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str, str | None]]: ...
     def wait(self, timeout_secs: int | None = None) -> list[str]: ...
+    def cancel(self) -> None: ...
 
 #####################################################################################################################
 ## VIEWER_CLIENT                                                                                                   ##
@@ -1306,6 +1346,28 @@ class NotFoundError(Exception):
 
 class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
+
+class SelectorInternal:
+    def __init__(self, query: str) -> None: ...
+    def execute(self, source: pa.Array) -> pa.Array | None: ...
+    def execute_per_row(self, source: pa.Array) -> pa.Array | None: ...
+    def pipe(self, func: Any) -> SelectorInternal: ...
+    def __repr__(self) -> str: ...
+    def __str__(self) -> str: ...
+
+class LensOutputInternal:
+    def __init__(self) -> None: ...
+    def to_component(self, component: ComponentDescriptor, selector: SelectorInternal) -> LensOutputInternal: ...
+    def to_timeline(self, timeline_name: str, timeline_type: str, selector: SelectorInternal) -> LensOutputInternal: ...
+
+class LensInternal:
+    def __init__(
+        self,
+        input_component: str,
+        output: LensOutputInternal | None = None,
+        *,
+        to_entity: Mapping[str, LensOutputInternal] | None = None,
+    ) -> None: ...
 
 class _ServerInternal:
     def __init__(
@@ -1340,6 +1402,8 @@ class _ServerInternal:
     def host(self) -> str: ...
     def shutdown(self) -> None: ...
     def is_running(self) -> bool: ...
+    def inject_error(self, method: str) -> None: ...
+    def clear_injected_error(self, method: str) -> None: ...
 
 #####################################################################################################################
 ## AUTH                                                                                                            ##
@@ -1394,5 +1458,151 @@ class Credentials:
 def get_credentials() -> Credentials | None:
     """Returns the credentials for the current user."""
 
-def rerun_trace_context() -> Any:
-    """Get the trace context ContextVar for distributed tracing propagation."""
+def logout() -> str | None:
+    """
+    Log out by clearing stored credentials.
+
+    Returns
+    -------
+    str | None
+        The logout URL to end the session, or `None` if already logged out.
+
+    """
+
+def _get_trace_context_var() -> Any:
+    """
+    Return the `ContextVar` that Python uses to pass trace headers to Rust.
+
+    This is the **write side** of the bridge — Python's `with_tracing` decorator
+    calls this to get the `ContextVar`, then writes W3C trace headers into it.
+    Rust later reads them back via [`read_trace_context_from_python`].
+
+    Returns `None` when `perf_telemetry` is disabled.
+    """
+
+#####################################################################################################################
+## PIPELINE APIS                                                                                                   ##
+#####################################################################################################################
+
+class ChunkStoreInternal:
+    """Internal implementation. Use ChunkStore from rerun.experimental instead."""
+
+    @staticmethod
+    def from_chunks(chunks: list[ChunkInternal]) -> ChunkStoreInternal: ...
+    def schema(self) -> SchemaInternal: ...
+    def num_chunks(self) -> int: ...
+    def summary(self) -> str: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+
+class RrdReaderInternal:
+    """Internal implementation. Use RrdReader from rerun.experimental instead."""
+
+    def __init__(self, path: str) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    def store(self) -> ChunkStoreInternal: ...
+    @property
+    def application_id(self) -> str | None: ...
+    @property
+    def recording_id(self) -> str | None: ...
+    @property
+    def path(self) -> Path: ...
+
+class McapReaderInternal:
+    """Internal implementation. Use McapReader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: str,
+        timeline_type: str,
+        timestamp_offset_ns: int | None,
+        decoders: list[str] | None,
+        include_topic_regex: list[str] | None,
+        exclude_topic_regex: list[str] | None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> Path: ...
+    @staticmethod
+    def available_decoders() -> list[str]: ...
+
+class ParquetReaderInternal:
+    """Internal implementation. Use ParquetReader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: str,
+        entity_path_prefix: str | None = None,
+        column_grouping: str = "prefix",
+        delimiter: str = "_",
+        prefixes: list[str] | None = None,
+        use_structs: bool = True,
+        static_columns: list[str] | None = None,
+        index_columns: list[tuple[str, str, str | None]] | None = None,
+        column_rules: list[Any] | None = None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> Path: ...
+
+class LazyChunkStreamInternal:
+    """Internal implementation. Use LazyChunkStream from rerun.experimental instead."""
+
+    def filter(
+        self,
+        *,
+        content: list[str] | None = None,
+        has_timeline: str | None = None,
+        is_static: bool | None = None,
+        components: list[str] | None = None,
+    ) -> LazyChunkStreamInternal: ...
+    def drop_matching(
+        self,
+        *,
+        content: list[str] | None = None,
+        has_timeline: str | None = None,
+        is_static: bool | None = None,
+        components: list[str] | None = None,
+    ) -> LazyChunkStreamInternal: ...
+    def split(
+        self,
+        *,
+        content: list[str] | None = None,
+        has_timeline: str | None = None,
+        is_static: bool | None = None,
+        components: list[str] | None = None,
+    ) -> tuple[LazyChunkStreamInternal, LazyChunkStreamInternal]: ...
+    def lenses(
+        self,
+        lenses: list[LensInternal],
+        output_mode: str,
+        content: list[str] | None,
+    ) -> LazyChunkStreamInternal: ...
+    def map(self, callable: Callable[[ChunkInternal], ChunkInternal]) -> LazyChunkStreamInternal: ...
+    def flat_map(self, callable: Callable[[ChunkInternal], list[ChunkInternal]]) -> LazyChunkStreamInternal: ...
+    @staticmethod
+    def merge(streams: list[LazyChunkStreamInternal]) -> LazyChunkStreamInternal: ...
+    def write_rrd(self, path: str, application_id: str, recording_id: str) -> None: ...
+    def collect(
+        self,
+        *,
+        max_bytes: int | None = None,
+        max_rows: int | None = None,
+        max_rows_if_unsorted: int | None = None,
+        extra_passes: int = 0,
+        gop_batching: bool = False,
+        split_size_ratio: float | None = None,
+    ) -> ChunkStoreInternal:
+        """Consume the stream and materialize all chunks into a ChunkStore."""
+    def to_chunks(self) -> list[ChunkInternal]: ...
+    def __iter__(self) -> LazyChunkStreamIterator: ...
+    @staticmethod
+    def from_iter(iterable: Any) -> LazyChunkStreamInternal: ...
+
+class LazyChunkStreamIterator:
+    """Iterator over chunks from a compiled stream."""
+
+    def __iter__(self) -> LazyChunkStreamIterator:
+        """Implement iter(self)."""
+
+    def __next__(self) -> ChunkInternal:
+        """Implement next(self)."""

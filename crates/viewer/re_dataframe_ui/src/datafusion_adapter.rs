@@ -17,6 +17,7 @@ use re_sorbet::{BatchType, SorbetBatch, SorbetSchema};
 use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::ColumnFilter;
+use crate::grid_view::FlagChangeEvent;
 use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, SortBy, TableBlueprint};
 use crate::table_selection::TableSelectionState;
 
@@ -54,6 +55,8 @@ impl From<&TableBlueprint> for DataFusionQueryData {
             entry_links,
             prefilter,
             column_filters,
+            grid_view_card_title: _,
+            flag_column: _,
         } = value;
 
         Self {
@@ -79,6 +82,33 @@ pub struct DataFusionQueryResult {
     pub sorbet_schema: re_sorbet::SorbetSchema,
 
     pub finished: bool,
+}
+
+impl DataFusionQueryResult {
+    /// Resolve a global row index to `(batch_index, row_offset_within_batch)`.
+    fn find_row_indices(&self, global_row: u64) -> Option<(usize, usize)> {
+        let mut remaining = global_row as usize;
+        for (batch_idx, batch) in self.sorbet_batches.iter().enumerate() {
+            let num_rows = batch.num_rows();
+            if remaining < num_rows {
+                return Some((batch_idx, remaining));
+            }
+            remaining -= num_rows;
+        }
+        None
+    }
+
+    /// Resolve a global row index to a batch reference and the row offset within that batch.
+    pub fn find_row_batch(&self, global_row: u64) -> Option<(&SorbetBatch, usize)> {
+        let (idx, offset) = self.find_row_indices(global_row)?;
+        Some((&self.sorbet_batches[idx], offset))
+    }
+
+    /// Mutable variant of [`Self::find_row_batch`].
+    pub fn find_row_batch_mut(&mut self, global_row: u64) -> Option<(&mut SorbetBatch, usize)> {
+        let (idx, offset) = self.find_row_indices(global_row)?;
+        Some((&mut self.sorbet_batches[idx], offset))
+    }
 }
 
 /// A table blueprint along with the context required to execute the corresponding datafusion query.
@@ -467,6 +497,78 @@ impl DataFusionAdapter {
         ui.data_mut(|data| {
             data.insert_temp(self.id, self);
         });
+    }
+
+    /// Apply flag toggle changes to the in-memory query results.
+    ///
+    /// Note that this only manipulates in-memory state.
+    /// Sending this to wherever we got the data from has to happen separately.
+    ///
+    /// The flag column must already exist as a boolean column in the sorbet schema.
+    /// Does nothing otherwise.
+    pub fn apply_flag_changes(
+        &mut self,
+        ui: &egui::Ui,
+        flag_column_name: &str,
+        changes: &[FlagChangeEvent],
+    ) {
+        let Some(Ok(results)) = &mut self.results else {
+            return;
+        };
+
+        let Some(col_idx) = results.sorbet_schema.columns.iter().position(|desc| {
+            matches!(desc, re_sorbet::ColumnDescriptor::Component(c) if c.component.as_str() == flag_column_name)
+        }) else {
+            return;
+        };
+
+        update_existing_flag_column(results, col_idx, changes);
+
+        ui.data_mut(|data| {
+            data.insert_temp(self.id, self.clone());
+        });
+    }
+}
+
+/// Update an existing boolean flag column with the given changes.
+///
+/// Since Arrow arrays are immutable, we must rebuild the entire column even for single-cell changes.
+fn update_existing_flag_column(
+    results: &mut DataFusionQueryResult,
+    col_idx: usize,
+    changes: &[FlagChangeEvent],
+) {
+    use arrow::array::{Array as _, BooleanArray};
+
+    for change in changes {
+        let Some((batch, row_offset)) = results.find_row_batch_mut(change.row) else {
+            continue;
+        };
+
+        let Some(old_col) = batch
+            .column(col_idx)
+            .as_any()
+            .downcast_ref::<BooleanArray>()
+        else {
+            re_log::warn_once!("Flag column at index {col_idx} is not a boolean column");
+            break;
+        };
+
+        let new_col: BooleanArray = (0..batch.num_rows())
+            .map(|i| {
+                if i == row_offset {
+                    Some(change.new_value)
+                } else if old_col.is_null(i) {
+                    None
+                } else {
+                    Some(old_col.value(i))
+                }
+            })
+            .collect();
+
+        if let Some(new_batch) = batch.with_replaced_column(col_idx, std::sync::Arc::new(new_col)) {
+            *batch = new_batch;
+        }
     }
 }
 

@@ -6,7 +6,8 @@ rr.init("rerun_example_any_values", spawn=True)
 
 rr.log(
     "any_values",
-    rr.AnyValues(
+    rr
+    .AnyValues(
         # Using arbitrary Arrow data.
         homepage="https://www.rerun.io",
         repository="https://github.com/rerun-io/rerun",

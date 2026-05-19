@@ -125,23 +125,16 @@ impl ::re_types_core::Loggable for ChannelDatatype {
             .with_context("rerun.datatypes.ChannelDatatype#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(6) => Ok(Some(Self::U8)),
-                Some(7) => Ok(Some(Self::I8)),
-                Some(8) => Ok(Some(Self::U16)),
-                Some(9) => Ok(Some(Self::I16)),
-                Some(10) => Ok(Some(Self::U32)),
-                Some(11) => Ok(Some(Self::I32)),
-                Some(12) => Ok(Some(Self::U64)),
-                Some(13) => Ok(Some(Self::I64)),
-                Some(33) => Ok(Some(Self::F16)),
-                Some(34) => Ok(Some(Self::F32)),
-                Some(35) => Ok(Some(Self::F64)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.ChannelDatatype")?)
@@ -167,6 +160,8 @@ impl std::fmt::Display for ChannelDatatype {
 }
 
 impl ::re_types_core::reflection::Enum for ChannelDatatype {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[
@@ -198,6 +193,24 @@ impl ::re_types_core::reflection::Enum for ChannelDatatype {
             Self::F16 => "16-bit IEEE-754 floating point, also known as `half`.",
             Self::F32 => "32-bit IEEE-754 floating point, also known as `float` or `single`.",
             Self::F64 => "64-bit IEEE-754 floating point, also known as `double`.",
+        }
+    }
+
+    #[inline]
+    fn try_from_integer(value: u8) -> Option<Self> {
+        match value {
+            6 => Some(Self::U8),
+            7 => Some(Self::I8),
+            8 => Some(Self::U16),
+            9 => Some(Self::I16),
+            10 => Some(Self::U32),
+            11 => Some(Self::I32),
+            12 => Some(Self::U64),
+            13 => Some(Self::I64),
+            33 => Some(Self::F16),
+            34 => Some(Self::F32),
+            35 => Some(Self::F64),
+            _ => None,
         }
     }
 }

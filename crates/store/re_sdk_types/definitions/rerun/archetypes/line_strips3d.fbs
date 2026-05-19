@@ -18,7 +18,7 @@ table LineStrips3D (
   // --- Required ---
 
   /// All the actual 3D line strips that make up the batch.
-  strips: [rerun.components.LineStrip3D] ("attr.rerun.component_required", order: 1000);
+  strips: [rerun.components.LineStrip3D] ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 
   // --- Recommended ---
 

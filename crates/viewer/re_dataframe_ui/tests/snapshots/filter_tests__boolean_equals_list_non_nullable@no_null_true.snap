@@ -12,16 +12,8 @@ TestResult {
             Field {
                 name: "column",
                 data_type: Boolean,
-                nullable: false,
-                dict_id: 0,
-                dict_is_ordered: false,
-                metadata: {},
             },
         ),
-        nullable: false,
-        dict_id: 0,
-        dict_is_ordered: false,
-        metadata: {},
     },
     unfiltered: ListArray
     [

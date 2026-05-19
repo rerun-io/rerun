@@ -23,7 +23,7 @@ namespace rerun::blueprint::archetypes {
     struct TextLogColumns {
         /// What timeline columns to show.
         ///
-        /// Defaults to displaying all timelines.
+        /// Defaults to displaying only the active timeline.
         std::optional<ComponentBatch> timeline_columns;
 
         /// All columns to be displayed.
@@ -63,7 +63,7 @@ namespace rerun::blueprint::archetypes {
 
         /// What timeline columns to show.
         ///
-        /// Defaults to displaying all timelines.
+        /// Defaults to displaying only the active timeline.
         TextLogColumns with_timeline_columns(
             const Collection<rerun::blueprint::components::TimelineColumn>& _timeline_columns
         ) && {

@@ -7,6 +7,7 @@ This is semantically equivalent to the `scalar_row_updates` example, albeit much
 from __future__ import annotations
 
 import numpy as np
+
 import rerun as rr
 
 rr.init("rerun_example_scalar_column_updates", spawn=True)

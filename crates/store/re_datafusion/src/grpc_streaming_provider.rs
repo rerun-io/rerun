@@ -2,6 +2,7 @@ use std::any::Any;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use crate::IntoDfError as _;
 use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use crate::batch_coalescer::coalescer::CoalescerOptions;
 use arrow::array::RecordBatch;
@@ -17,6 +18,7 @@ use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::streaming::{PartitionStream, StreamingTableExec};
 use datafusion::prelude::Expr;
 use futures_util::StreamExt as _;
+use re_redap_client::{ApiResponseStream, ApiResult};
 use tokio_stream::Stream;
 
 #[async_trait]
@@ -25,14 +27,13 @@ pub trait GrpcStreamToTable:
 {
     type GrpcStreamData;
 
-    async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef>;
+    async fn fetch_schema(&mut self) -> ApiResult<SchemaRef>;
 
-    fn process_response(&mut self, response: Self::GrpcStreamData)
-    -> DataFusionResult<RecordBatch>;
+    fn process_response(&mut self, response: Self::GrpcStreamData) -> ApiResult<RecordBatch>;
 
     async fn send_streaming_request(
         &mut self,
-    ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>>;
+    ) -> ApiResult<ApiResponseStream<Self::GrpcStreamData>>;
 
     fn supports_filters_pushdown(
         &self,
@@ -62,7 +63,10 @@ pub struct GrpcStreamProvider<T: GrpcStreamToTable> {
 
 impl<T: GrpcStreamToTable> GrpcStreamProvider<T> {
     pub async fn prepare(mut client: T) -> Result<Arc<Self>, DataFusionError> {
-        let schema = client.fetch_schema().await?;
+        let schema = client
+            .fetch_schema()
+            .await
+            .map_err(|err| err.into_df_error())?;
         Ok(Arc::new(Self { schema, client }))
     }
 }
@@ -174,17 +178,14 @@ impl GrpcStream {
         T: GrpcStreamToTable + Send + 'static,
     {
         let adapted_stream = Box::pin(async_stream::try_stream! {
-            let mut stream = client.send_streaming_request().await.map_err(|err| DataFusionError::External(Box::new(
-                tonic::Status::internal(err.to_string())
-            )))?.into_inner();
+            let mut stream = client.send_streaming_request().await.map_err(|err| err.into_df_error())?;
+            let trace_id = stream.trace_id();
 
             while let Some(msg) = stream.next().await {
-                let msg = msg.map_err(|err| DataFusionError::External(Box::new(err)))?;
+                let msg = msg.map_err(|err| err.into_df_error())?;
                 let processed = client
                     .process_response(msg)
-                    .map_err(|err| DataFusionError::External(Box::new(
-                        tonic::Status::internal(err.to_string())
-                    )))?;
+                    .map_err(|err| err.with_trace_id(trace_id).into_df_error())?;
                 yield processed;
             }
         });

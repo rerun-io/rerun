@@ -28,7 +28,7 @@ class Schema:
 
         Parameters
         ----------
-        inner : SchemaInternal
+        inner:
             The internal schema object from the bindings.
 
         """
@@ -109,9 +109,9 @@ class Schema:
 
         Parameters
         ----------
-        entity_path : str
+        entity_path:
             The entity path to look up.
-        component : str
+        component:
             The component to look up. Example: `Points3D:positions`.
 
         Returns
@@ -130,7 +130,7 @@ class Schema:
 
         Parameters
         ----------
-        selector : str | ComponentColumnSelector | ComponentColumnDescriptor
+        selector:
             The selector to look up.
 
             String arguments are expected to follow the format: `"<entity_path>:<component_type>"`

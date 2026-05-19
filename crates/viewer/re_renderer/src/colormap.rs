@@ -22,10 +22,12 @@ pub enum Colormap {
     CyanToYellow = 7,
     Spectral = 8,
     Twilight = 9,
+    RvizMap = 10,
+    RvizCostmap = 11,
 }
 
 impl Colormap {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 11] = [
         Self::Grayscale,
         Self::Inferno,
         Self::Magma,
@@ -35,6 +37,8 @@ impl Colormap {
         Self::CyanToYellow,
         Self::Spectral,
         Self::Twilight,
+        Self::RvizMap,
+        Self::RvizCostmap,
     ];
 }
 
@@ -50,26 +54,74 @@ impl std::fmt::Display for Colormap {
             Self::CyanToYellow => write!(f, "CyanToYellow"),
             Self::Spectral => write!(f, "Spectral"),
             Self::Twilight => write!(f, "Twilight"),
+            Self::RvizMap => write!(f, "RViz Map"),
+            Self::RvizCostmap => write!(f, "RViz Costmap"),
         }
     }
 }
 
-pub fn colormap_srgb(which: Colormap, t: f32) -> [u8; 4] {
+pub fn colormap_srgba(which: Colormap, t: f32) -> [u8; 4] {
     match which {
-        Colormap::Grayscale => grayscale_srgb(t),
-        Colormap::Turbo => colormap_turbo_srgb(t),
-        Colormap::Viridis => colormap_viridis_srgb(t),
-        Colormap::Plasma => colormap_plasma_srgb(t),
-        Colormap::Magma => colormap_magma_srgb(t),
-        Colormap::Inferno => colormap_inferno_srgb(t),
-        Colormap::CyanToYellow => colormap_cyan_to_yellow_srgb(t),
-        Colormap::Spectral => colormap_spectral_srgb(t),
-        Colormap::Twilight => colormap_twilight_srgb(t),
+        Colormap::Grayscale => grayscale_srgba(t),
+        Colormap::Turbo => colormap_turbo_srgba(t),
+        Colormap::Viridis => colormap_viridis_srgba(t),
+        Colormap::Plasma => colormap_plasma_srgba(t),
+        Colormap::Magma => colormap_magma_srgba(t),
+        Colormap::Inferno => colormap_inferno_srgba(t),
+        Colormap::CyanToYellow => colormap_cyan_to_yellow_srgba(t),
+        Colormap::Spectral => colormap_spectral_srgba(t),
+        Colormap::Twilight => colormap_twilight_srgba(t),
+        Colormap::RvizMap => colormap_rviz_map_srgba(t),
+        Colormap::RvizCostmap => colormap_rviz_costmap_srgba(t),
     }
 }
 
-/// Returns an sRGB gray value, assuming `t` is normalized.
-pub fn grayscale_srgb(t: f32) -> [u8; 4] {
+/// Reimplements the "Map" color palette from `RViz`.
+///
+/// Reference: <https://github.com/ros-visualization/rviz/blob/26bbf0a1819253d7515c096a71f1f5cd58f88748/src/rviz/default_plugin/map_display.cpp#L285>
+pub fn colormap_rviz_map_srgba(t: f32) -> [u8; 4] {
+    let value = ((t.clamp(0.0, 1.0) * 255.0) + 0.5) as u8;
+
+    if value <= 100 {
+        let x = (255.0 - (value as f32 * 255.0) / 100.0) as u8;
+        [x, x, x, 255]
+    } else if value < 128 {
+        [0, 255, 0, 255]
+    } else if value < 255 {
+        let x = ((255.0 * (value as f32 - 128.0)) / (254.0 - 128.0)) as u8;
+        [255, x, 0, 255]
+    } else {
+        [112, 137, 134, 255]
+    }
+}
+
+/// Reimplements the "Costmap" color palette from `RViz`.
+///
+/// Reference: <https://github.com/ros-visualization/rviz/blob/26bbf0a1819253d7515c096a71f1f5cd58f88748/src/rviz/default_plugin/map_display.cpp#L323>
+pub fn colormap_rviz_costmap_srgba(t: f32) -> [u8; 4] {
+    let value = ((t.clamp(0.0, 1.0) * 255.0) + 0.5) as u8;
+
+    if value == 0 {
+        [0, 0, 0, 0]
+    } else if value < 99 {
+        let x = (value as f32 * 255.0 / 100.0) as u8;
+        [x, 0, 255 - x, 255]
+    } else if value == 99 {
+        [0, 255, 255, 255]
+    } else if value == 100 {
+        [255, 0, 255, 255]
+    } else if value < 128 {
+        [0, 255, 0, 255]
+    } else if value < 255 {
+        let x = ((255.0 * (value as f32 - 128.0)) / (254.0 - 128.0)) as u8;
+        [255, x, 0, 255]
+    } else {
+        [112, 137, 134, 255]
+    }
+}
+
+/// Returns an sRGBA gray value, assuming `t` is normalized.
+pub fn grayscale_srgba(t: f32) -> [u8; 4] {
     debug_assert!((0.0..=1.0).contains(&t));
 
     let t = ((t * u8::MAX as f32) + 0.5) as u8;
@@ -90,8 +142,8 @@ pub fn grayscale_srgb(t: f32) -> [u8; 4] {
 //   Colormap Design: Anton Mikhailov (mikhailov@google.com)
 //   GLSL Approximation: Ruofei Du (ruofei@google.com)
 
-/// Returns sRGB polynomial approximation from Turbo color map, assuming `t` is normalized.
-pub fn colormap_turbo_srgb(t: f32) -> [u8; 4] {
+/// Returns sRGBA polynomial approximation from Turbo color map, assuming `t` is normalized.
+pub fn colormap_turbo_srgba(t: f32) -> [u8; 4] {
     const R4: Vec4 = Vec4::new(0.13572138, 4.61539260, -42.66032258, 132.13108234);
     const G4: Vec4 = Vec4::new(0.09140261, 2.19418839, 4.84296658, -14.18503333);
     const B4: Vec4 = Vec4::new(0.10667330, 12.64194608, -60.58204836, 110.36276771);
@@ -127,8 +179,8 @@ pub fn colormap_turbo_srgb(t: f32) -> [u8; 4] {
 //
 // Data fitted from https://github.com/BIDS/colormap/blob/bc549477db0c12b54a5928087552ad2cf274980f/colormaps.py (CC0).
 
-/// Returns sRGB polynomial approximation from Viridis color map, assuming `t` is normalized.
-pub fn colormap_viridis_srgb(t: f32) -> [u8; 4] {
+/// Returns sRGBA polynomial approximation from Viridis color map, assuming `t` is normalized.
+pub fn colormap_viridis_srgba(t: f32) -> [u8; 4] {
     const C0: Vec3A = Vec3A::new(0.2777273272234177, 0.005407344544966578, 0.3340998053353061);
     const C1: Vec3A = Vec3A::new(0.1050930431085774, 1.404613529898575, 1.384590162594685);
     const C2: Vec3A = Vec3A::new(-0.3308618287255563, 0.214847559468213, 0.09509516302823659);
@@ -145,8 +197,8 @@ pub fn colormap_viridis_srgb(t: f32) -> [u8; 4] {
     [c.x as u8, c.y as u8, c.z as u8, 255]
 }
 
-/// Returns sRGB polynomial approximation from Plasma color map, assuming `t` is normalized.
-pub fn colormap_plasma_srgb(t: f32) -> [u8; 4] {
+/// Returns sRGBA polynomial approximation from Plasma color map, assuming `t` is normalized.
+pub fn colormap_plasma_srgba(t: f32) -> [u8; 4] {
     const C0: Vec3A = Vec3A::new(0.05873234392399702, 0.02333670892565664, 0.5433401826748754);
     const C1: Vec3A = Vec3A::new(2.176514634195958, 0.2383834171260182, 0.7539604599784036);
     const C2: Vec3A = Vec3A::new(-2.689460476458034, -7.455851135738909, 3.110799939717086);
@@ -163,8 +215,8 @@ pub fn colormap_plasma_srgb(t: f32) -> [u8; 4] {
     [c.x as u8, c.y as u8, c.z as u8, 255]
 }
 
-/// Returns sRGB polynomial approximation from Magma color map, assuming `t` is normalized.
-pub fn colormap_magma_srgb(t: f32) -> [u8; 4] {
+/// Returns sRGBA polynomial approximation from Magma color map, assuming `t` is normalized.
+pub fn colormap_magma_srgba(t: f32) -> [u8; 4] {
     const C0: Vec3A = Vec3A::new(-0.002136485053939, -0.000749655052795, -0.005386127855323);
     const C1: Vec3A = Vec3A::new(0.2516605407371642, 0.6775232436837668, 2.494026599312351);
     const C2: Vec3A = Vec3A::new(8.353717279216625, -3.577719514958484, 0.3144679030132573);
@@ -181,8 +233,8 @@ pub fn colormap_magma_srgb(t: f32) -> [u8; 4] {
     [c.x as u8, c.y as u8, c.z as u8, 255]
 }
 
-/// Returns sRGB polynomial approximation from Inferno color map, assuming `t` is normalized.
-pub fn colormap_inferno_srgb(t: f32) -> [u8; 4] {
+/// Returns sRGBA polynomial approximation from Inferno color map, assuming `t` is normalized.
+pub fn colormap_inferno_srgba(t: f32) -> [u8; 4] {
     const C0: Vec3A = Vec3A::new(0.00021894036911922, 0.0016510046310010, -0.019480898437091);
     const C1: Vec3A = Vec3A::new(0.1065134194856116, 0.5639564367884091, 3.932712388889277);
     const C2: Vec3A = Vec3A::new(11.60249308247187, -3.972853965665698, -15.9423941062914);
@@ -206,12 +258,12 @@ pub fn colormap_inferno_srgb(t: f32) -> [u8; 4] {
 // License CC0 (public domain)
 //   https://creativecommons.org/share-your-work/public-domain/cc0/
 
-/// Returns a gamma-space sRGB in 0-255 range.
+/// Returns a gamma-space sRGBA in 0-255 range.
 ///
 /// This is a perceptually uniform colormap which is robust to color blindness.
 /// It is especially suited for visualizing signed values.
 /// It interpolates from cyan to blue to dark gray to brass to yellow.
-pub fn colormap_cyan_to_yellow_srgb(t: f32) -> [u8; 4] {
+pub fn colormap_cyan_to_yellow_srgba(t: f32) -> [u8; 4] {
     let t = t * 2. - 1.;
     [
         ((1. + 3. * t) * (255. / 4.)).max(0.) as u8,
@@ -221,8 +273,8 @@ pub fn colormap_cyan_to_yellow_srgb(t: f32) -> [u8; 4] {
     ]
 }
 
-/// Returns sRGB polynomial approximation from Spectral color map, assuming `t` is normalized.
-pub fn colormap_spectral_srgb(t: f32) -> [u8; 4] {
+/// Returns sRGBA polynomial approximation from Spectral color map, assuming `t` is normalized.
+pub fn colormap_spectral_srgba(t: f32) -> [u8; 4] {
     const C0: Vec3A = Vec3A::new(0.584384543712538, 0.006424432561482, 0.231061410304836);
     const C1: Vec3A = Vec3A::new(3.768572852617221, 2.487082885717158, 2.821174312084977);
     const C2: Vec3A = Vec3A::new(-16.262574054760623, -6.243215992229093, -37.292187460541960);
@@ -243,7 +295,7 @@ pub fn colormap_spectral_srgb(t: f32) -> [u8; 4] {
     [c.x as u8, c.y as u8, c.z as u8, 255]
 }
 
-/// Returns sRGB polynomial approximation from Twilight color map, assuming `t` is normalized.
+/// Returns sRGBA polynomial approximation from Twilight color map, assuming `t` is normalized.
 ///
 /// This is a perceptually uniform cyclic colormap from Matplotlib, it is useful for
 /// visualizing periodic or cyclic data.
@@ -251,7 +303,7 @@ pub fn colormap_spectral_srgb(t: f32) -> [u8; 4] {
 /// It interpolates from white to blue to purple to red to orange and back to white.
 ///
 /// Data from <https://github.com/matplotlib/matplotlib> (matplotlib's twilight colormap).
-pub fn colormap_twilight_srgb(t: f32) -> [u8; 4] {
+pub fn colormap_twilight_srgba(t: f32) -> [u8; 4] {
     const C0: Vec3A = Vec3A::new(0.99435322698120, 0.85170793387210, 0.93942033498486);
     const C1: Vec3A = Vec3A::new(-6.61774273956635, -0.23133259259568, -3.96704343424284);
     const C2: Vec3A = Vec3A::new(41.78124131041812, -7.61851602599826, 38.98566990464263);

@@ -61,6 +61,8 @@ namespace rerun::archetypes {
     /// ```
     struct CoordinateFrame {
         /// The coordinate frame to use for the current entity.
+        ///
+        /// Note that empty strings are not valid transform frame IDs.
         std::optional<ComponentBatch> frame;
 
       public:
@@ -93,6 +95,8 @@ namespace rerun::archetypes {
         static CoordinateFrame clear_fields();
 
         /// The coordinate frame to use for the current entity.
+        ///
+        /// Note that empty strings are not valid transform frame IDs.
         CoordinateFrame with_frame(const rerun::components::TransformFrameId& _frame) && {
             frame = ComponentBatch::from_loggable(_frame, Descriptor_frame).value_or_throw();
             return std::move(*this);

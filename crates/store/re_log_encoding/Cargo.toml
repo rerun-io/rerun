@@ -83,6 +83,7 @@ web-sys = { workspace = true, optional = true, features = ["Window", "MessageEve
 re_arrow_util = { workspace = true, features = ["test"] }
 re_sdk_types.workspace = true
 
+tempfile.workspace = true
 criterion.workspace = true
 insta.workspace = true
 mimalloc.workspace = true

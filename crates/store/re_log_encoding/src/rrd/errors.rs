@@ -81,6 +81,12 @@ pub enum CodecError {
 
     #[error("Integer overflow: {0}")]
     Overflow(#[from] std::num::TryFromIntError),
+
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("Chunk {chunk_id} not found in manifest")]
+    ChunkNotInManifest { chunk_id: re_chunk::ChunkId },
 }
 
 const _: () = assert!(

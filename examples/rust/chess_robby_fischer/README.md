@@ -50,10 +50,10 @@ let _vision_handle = std::thread::spawn(move || {
 
 ### Robot arm
 
-Then, we install the official [URDF dataloader](https://github.com/rerun-io/rerun-loader-python-example-urdf) and use it to log the URDF model.
+Then, we install the official [URDF importer](https://github.com/rerun-io/rerun-loader-python-example-urdf) and use it to log the URDF model.
 
 ```rust
-// Rerun will find the dataloader in the `PATH` and use it to log `arm.urdf`.
+// Rerun will find the importer in the `PATH` and use it to log `arm.urdf`.
 rec.log_file_from_path("arm.urdf", None, false).unwrap();
 
 // Sets the position of the arm and rotates it 180 degrees.
@@ -280,16 +280,14 @@ import rerun.blueprint as rrb
 import argparse
 
 view_defaults = [
-    rr.components.AxisLength(0.0), # To hide the axes of all the transformations.
+    rr.components.AxisLength(0.0),  # To hide the axes of all the transformations.
     rr.components.ImagePlaneDistance(0.3),
 ]
 
 blueprint = rrb.Blueprint(
     rrb.Horizontal(
         rrb.Vertical(
-            rrb.Spatial2DView(
-                origin="a8origin/pinhole/image"
-            ),
+            rrb.Spatial2DView(origin="a8origin/pinhole/image"),
             rrb.Spatial2DView(
                 contents=[
                     "images/mask",
@@ -305,13 +303,11 @@ blueprint = rrb.Blueprint(
             rrb.Spatial3DView(
                 origin="/arm.urdf/base_link/glid_platta_1/bas_1/gemensam_vagg_1/botten_snurr_1/kortarm_kopia_1/led_1/led_axel_1/lang_arm_1/mount_1/ram_1",
                 contents="/**",
-                defaults=view_defaults
-            )
+                defaults=view_defaults,
+            ),
         ),
-        rrb.Spatial3DView(
-            defaults=view_defaults
-        ),
-        column_shares=[2,2,3]
+        rrb.Spatial3DView(defaults=view_defaults),
+        column_shares=[2, 2, 3],
     ),
     auto_views=False,
     collapse_panels=True,

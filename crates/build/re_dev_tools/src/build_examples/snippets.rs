@@ -150,14 +150,11 @@ fn collect_snippets_recursively(
         let backwards_check_opted_out = is_opted_out_backwards_check;
 
         if meta.is_dir() {
-            snippets.extend(
-                collect_snippets_recursively(
-                    Utf8Path::from_path(&path).unwrap(),
-                    config,
-                    snippet_root_path,
-                )?
-                .into_iter(),
-            );
+            snippets.extend(collect_snippets_recursively(
+                Utf8Path::from_path(&path).unwrap(),
+                config,
+                snippet_root_path,
+            )?);
             continue;
         }
 

@@ -101,16 +101,16 @@ impl ::re_types_core::Loggable for ValuedEnum {
             .with_context("rerun.testing.datatypes.ValuedEnum#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::One)),
-                Some(2) => Ok(Some(Self::Two)),
-                Some(3) => Ok(Some(Self::Three)),
-                Some(42) => Ok(Some(Self::TheAnswer)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.testing.datatypes.ValuedEnum")?)
@@ -129,6 +129,8 @@ impl std::fmt::Display for ValuedEnum {
 }
 
 impl ::re_types_core::reflection::Enum for ValuedEnum {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[Self::One, Self::Two, Self::Three, Self::TheAnswer]
@@ -141,6 +143,17 @@ impl ::re_types_core::reflection::Enum for ValuedEnum {
             Self::Two => "Two.",
             Self::Three => "Three.",
             Self::TheAnswer => "The answer to life, the universe, and everything.",
+        }
+    }
+
+    #[inline]
+    fn try_from_integer(value: u8) -> Option<Self> {
+        match value {
+            1 => Some(Self::One),
+            2 => Some(Self::Two),
+            3 => Some(Self::Three),
+            42 => Some(Self::TheAnswer),
+            _ => None,
         }
     }
 }

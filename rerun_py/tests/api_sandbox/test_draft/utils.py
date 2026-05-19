@@ -9,7 +9,12 @@ if TYPE_CHECKING:
 
 def segment_stable_snapshot(df: datafusion.DataFrame) -> str:
     """Create a stable snapshot of a segment DataFrame by sorting and dropping unstable columns."""
-    return str(df.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id"))
+    # `rerun_size_bytes` is the on-disk IPC byte length (matching the commercial
+    # redap impl), which varies by a few bytes between runs due to timestamp/metadata
+    # differences in the written RRDs.
+    return str(
+        df.drop("rerun_storage_urls", "rerun_last_updated_at", "rerun_size_bytes").sort("rerun_segment_id"),
+    )
 
 
 def sorted_schema_str(schema: pa.Schema, with_metadata: bool = False) -> str:

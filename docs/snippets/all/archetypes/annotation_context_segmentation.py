@@ -1,6 +1,7 @@
 """Log a segmentation image with annotations."""
 
 import numpy as np
+
 import rerun as rr
 
 rr.init("rerun_example_annotation_context_segmentation", spawn=True)

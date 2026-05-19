@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
@@ -38,6 +39,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
     ### Depth to 3D example:
     ```python
     import numpy as np
+
     import rerun as rr
 
     depth_image = 65535 * np.ones((200, 300), dtype=np.uint16)
@@ -71,6 +73,8 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.DepthImage"
+
     # __init__ can be found in depth_image_ext.py
 
     def __attrs_clear__(self) -> None:
@@ -83,6 +87,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
             depth_range=None,
             point_fill_ratio=None,
             draw_order=None,
+            magnification_filter=None,
         )
 
     @classmethod
@@ -104,6 +109,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
         depth_range: datatypes.Range1DLike | None = None,
         point_fill_ratio: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> DepthImage:
         """
         Update only some specific fields of a `DepthImage`.
@@ -155,6 +161,12 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
 
             Objects with higher values are drawn on top of those with lower values.
             Defaults to `-20.0`.
+        magnification_filter:
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
+
+            The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+
+            Has no effect in 3D views.
 
         """
 
@@ -168,6 +180,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
                 "depth_range": depth_range,
                 "point_fill_ratio": point_fill_ratio,
                 "draw_order": draw_order,
+                "magnification_filter": magnification_filter,
             }
 
             if clear_unset:
@@ -184,6 +197,70 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
         """Clear all the fields of a `DepthImage`."""
         return cls.from_fields(clear_unset=True)
 
+    @staticmethod
+    def descriptor_buffer() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DepthImage:buffer",
+            archetype=DepthImage.NAME,
+            component_type=components.ImageBufferBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_format() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DepthImage:format",
+            archetype=DepthImage.NAME,
+            component_type=components.ImageFormatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_meter() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DepthImage:meter",
+            archetype=DepthImage.NAME,
+            component_type=components.DepthMeterBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colormap() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DepthImage:colormap",
+            archetype=DepthImage.NAME,
+            component_type=components.ColormapBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_depth_range() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DepthImage:depth_range",
+            archetype=DepthImage.NAME,
+            component_type=components.ValueRangeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_point_fill_ratio() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DepthImage:point_fill_ratio",
+            archetype=DepthImage.NAME,
+            component_type=components.FillRatioBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_draw_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DepthImage:draw_order",
+            archetype=DepthImage.NAME,
+            component_type=components.DrawOrderBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_magnification_filter() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DepthImage:magnification_filter",
+            archetype=DepthImage.NAME,
+            component_type=components.MagnificationFilterBatch._COMPONENT_TYPE,
+        )
+
     @classmethod
     def columns(
         cls,
@@ -195,6 +272,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
         depth_range: datatypes.Range1DArrayLike | None = None,
         point_fill_ratio: datatypes.Float32ArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
+        magnification_filter: components.MagnificationFilterArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -249,6 +327,12 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
 
             Objects with higher values are drawn on top of those with lower values.
             Defaults to `-20.0`.
+        magnification_filter:
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
+
+            The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+
+            Has no effect in 3D views.
 
         """
 
@@ -262,6 +346,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
                 depth_range=depth_range,
                 point_fill_ratio=point_fill_ratio,
                 draw_order=draw_order,
+                magnification_filter=magnification_filter,
             )
 
         batches = inst.as_component_batches()
@@ -276,6 +361,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
             "DepthImage:depth_range": depth_range,
             "DepthImage:point_fill_ratio": point_fill_ratio,
             "DepthImage:draw_order": draw_order,
+            "DepthImage:magnification_filter": magnification_filter,
         }
         columns = []
 
@@ -286,17 +372,21 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
-                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
-                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
-                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
-                    # we have `num_rows` single element batches (each element is a fixed sized list).
-                    # (This should have been already validated by conversion to the arrow_array)
-                    batch_length = 1
-                else:
-                    batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+
+                if pa.types.is_fixed_size_list(arrow_array.type):
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                    if arrow_array.type.list_size == elem_flat_len:
+                        # The product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # so we have `num_rows` single element batches (each element is a fixed sized list).
+                        batch_length = 1
+                    else:
+                        batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                else:
+                    # For primitive types, derive batch_length from the actual arrow array length
+                    # since the input shape can be misleading (e.g. colors [R,G,B] -> single uint32).
+                    batch_length = len(arrow_array) // num_rows if num_rows > 0 else 1
+
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.
@@ -395,6 +485,19 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
     #
     # Objects with higher values are drawn on top of those with lower values.
     # Defaults to `-20.0`.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    magnification_filter: components.MagnificationFilterBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
+    )
+    # Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
+    #
+    # The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+    #
+    # Has no effect in 3D views.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

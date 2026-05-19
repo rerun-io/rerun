@@ -121,7 +121,7 @@ impl ::prost::Name for IndexRange {
     }
 }
 /// The unique identifier of an entity, e.g. `camera/3/points`
-/// See <<https://www.rerun.io/docs/concepts/entity-path>> for more on entity paths.
+/// See <<https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path>> for more on entity paths.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EntityPath {
     #[prost(string, tag = "1")]

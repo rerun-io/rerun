@@ -202,7 +202,7 @@ Configure in the selection panel:
         state.latest_time = timelines_match.then(|| ctx.time_ctrl.time_i64()).flatten();
 
         let hide_column_actions = dataframe_ui(
-            ctx,
+            &ctx.active_recording_store_view_context(),
             ui,
             &query_handle,
             &mut state.expanded_rows_cache,

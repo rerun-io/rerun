@@ -24,7 +24,8 @@ In its UI, the Viewer presents (logical) recordings sharing the same application
 In particular, they share the same [blueprint](../visualization/blueprints.md).
 
 
-### Recordings on the Data Platform <!-- NOLINT -->
+<!-- NOLINT -->
+### Recordings on the Data Platform
 
 The Data Platform has a slightly different object model, which you can read more about in [Catalog object model](../query-and-transform/catalog-object-model.md).
 
@@ -60,7 +61,8 @@ Application IDs are arbitrary user-defined strings set when initializing the SDK
 
 snippet: tutorials/custom-application-id
 
-### When application IDs matter <!-- NOLINT -->
+<!-- NOLINT -->
+### When application IDs matter
 
 Application IDs are used by the Viewer when loading recordings directly (not via the Data Platform):
 

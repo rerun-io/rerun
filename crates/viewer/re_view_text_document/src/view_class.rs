@@ -3,9 +3,9 @@ use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::external::re_log_types::EntityPath;
 use re_viewer_context::{
-    Item, SystemCommand, SystemCommandSender as _, ViewClass, ViewClassRegistryError, ViewId,
-    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
-    suggest_view_for_each_entity,
+    IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _, ViewClass,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewerContext, suggest_view_for_each_entity,
 };
 
 use crate::visualizer_system::{TextDocumentEntry, TextDocumentSystem};
@@ -121,7 +121,8 @@ impl ViewClass for TextDocumentView {
     ) -> Result<(), ViewSystemExecutionError> {
         let tokens = ui.tokens();
         let state = state.downcast_mut::<TextDocumentViewState>()?;
-        let text_document = system_output.view_systems.get::<TextDocumentSystem>()?;
+        let text_entries = system_output
+            .visualizer_data::<Vec<TextDocumentEntry>>(TextDocumentSystem::identifier())?;
 
         let frame = egui::Frame::new().inner_margin(tokens.view_padding());
         let response = frame
@@ -132,7 +133,7 @@ impl ViewClass for TextDocumentView {
                 ui.scope_builder(inner_ui_builder, |ui| {
                     egui::ScrollArea::both()
                         .auto_shrink([false, false])
-                        .show(ui, |ui| text_document_ui(ui, state, text_document));
+                        .show(ui, |ui| text_document_ui(ui, state, text_entries));
 
                     ui.response()
                 })
@@ -163,13 +164,13 @@ impl ViewClass for TextDocumentView {
 fn text_document_ui(
     ui: &mut egui::Ui,
     state: &mut TextDocumentViewState,
-    text_document: &TextDocumentSystem,
+    text_entries: &[TextDocumentEntry],
 ) {
-    if text_document.text_entries.is_empty() {
+    if text_entries.is_empty() {
         // We get here if we scroll back time to before the first text document was logged.
         ui.weak("(empty)");
-    } else if text_document.text_entries.len() == 1 {
-        let TextDocumentEntry { body, media_type } = &text_document.text_entries[0];
+    } else if text_entries.len() == 1 {
+        let TextDocumentEntry { body, media_type } = &text_entries[0];
 
         if media_type == &re_sdk_types::components::MediaType::markdown() {
             re_tracing::profile_scope!("egui_commonmark");
@@ -203,7 +204,7 @@ fn text_document_ui(
             "Can only show one text document at a time; was given {}. Update \
                                     the query so that it returns a single text document and create \
                                     additional views for the others.",
-            text_document.text_entries.len()
+            text_entries.len()
         ));
     }
 }

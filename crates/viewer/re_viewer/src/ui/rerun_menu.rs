@@ -1,12 +1,14 @@
 //! The main Rerun drop-down menu found in the top panel.
 
+use std::fmt::Write as _;
+
 #[cfg(debug_assertions)]
 use egui::containers::menu;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::{Button, NumExt as _, ScrollArea};
 use re_ui::menu::menu_style;
 use re_ui::{UICommand, UICommandSender as _, UiExt as _};
-use re_viewer_context::StoreContext;
+use re_viewer_context::ActiveStoreContext;
 
 use crate::App;
 
@@ -16,7 +18,7 @@ impl App {
     pub fn rerun_menu_button_ui(
         &mut self,
         render_state: Option<&egui_wgpu::RenderState>,
-        _store_context: Option<&StoreContext<'_>>,
+        _store_context: Option<&ActiveStoreContext<'_>>,
         ui: &mut egui::Ui,
     ) {
         let desired_icon_height = if ui.max_rect().height() <= 24.0 {
@@ -47,12 +49,13 @@ impl App {
             });
     }
 
-    pub fn navigation_buttons(&mut self, ui: &mut egui::Ui) {
-        let history = &mut self.state.history;
+    pub fn navigation_buttons(&self, ui: &mut egui::Ui) {
+        let has_back = self.state.history.has_back();
+        let has_forward = self.state.history.has_forward();
 
         if ui
             .add_enabled(
-                history.has_back(),
+                has_back,
                 ui.small_icon_button_widget(&re_ui::icons::ARROW_LEFT, "go back"),
             )
             .on_hover_ui(|ui| UICommand::NavigateBack.tooltip_ui(ui))
@@ -63,7 +66,7 @@ impl App {
 
         if ui
             .add_enabled(
-                history.has_forward(),
+                has_forward,
                 ui.small_icon_button_widget(&re_ui::icons::ARROW_RIGHT, "go forward"),
             )
             .on_hover_ui(|ui| UICommand::NavigateForward.tooltip_ui(ui))
@@ -77,7 +80,7 @@ impl App {
         &mut self,
         ui: &mut egui::Ui,
         render_state: Option<&egui_wgpu::RenderState>,
-        _store_context: Option<&StoreContext<'_>>,
+        _store_context: Option<&ActiveStoreContext<'_>>,
     ) {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
         // no wrapping: make as wide as needed
@@ -212,18 +215,18 @@ impl App {
         // It is really the features of `rerun-cli` (the `rerun` binary) that are interesting.
         // For the web-viewer we get `crate_name: "re_viewer"` here, which is much less interesting.
         if crate_name == "rerun-cli" && !features.is_empty() {
-            label += &format!("\n{crate_name} features: {features}");
+            write!(label, "\n{crate_name} features: {features}").ok();
         }
 
         if !rustc_version.is_empty() {
-            label += &format!("\nrustc {rustc_version}");
+            write!(label, "\nrustc {rustc_version}").ok();
             if !llvm_version.is_empty() {
-                label += &format!(", LLVM {llvm_version}");
+                write!(label, ", LLVM {llvm_version}").ok();
             }
         }
 
         if !datetime.is_empty() {
-            label += &format!("\nbuilt {datetime}");
+            write!(label, "\nbuilt {datetime}").ok();
         }
 
         ui.label(label);
@@ -233,7 +236,7 @@ impl App {
         }
     }
 
-    fn save_buttons_ui(&self, ui: &mut egui::Ui, store_ctx: Option<&StoreContext<'_>>) {
+    fn save_buttons_ui(&self, ui: &mut egui::Ui, store_ctx: Option<&ActiveStoreContext<'_>>) {
         use re_ui::UICommandSender as _;
 
         let file_save_in_progress = self.background_tasks.is_file_save_in_progress();
@@ -296,9 +299,13 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
             vendor,
             device,
             device_type,
+            device_pci_bus_id: _,
             driver,
             driver_info,
             backend,
+            subgroup_min_size: _,
+            subgroup_max_size: _,
+            transient_saves_memory: _,
         } = &info;
 
         // Example values:

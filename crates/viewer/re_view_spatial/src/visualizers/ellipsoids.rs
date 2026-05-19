@@ -1,30 +1,25 @@
 use std::iter;
 
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Ellipsoids3D;
 use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels};
+use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{ArrowString, components};
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use super::SpatialViewVisualizerData;
 use super::utilities::{ProcMeshBatch, ProcMeshDrawableBuilder};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::proc_mesh;
-use crate::view_kind::SpatialViewKind;
 
 // ---
-pub struct Ellipsoids3DVisualizer(SpatialViewVisualizerData);
-
-impl Default for Ellipsoids3DVisualizer {
-    fn default() -> Self {
-        Self(SpatialViewVisualizerData::new(Some(
-            SpatialViewKind::ThreeD,
-        )))
-    }
-}
+#[derive(Default)]
+pub struct Ellipsoids3DVisualizer;
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
@@ -40,21 +35,19 @@ impl Ellipsoids3DVisualizer {
             // either world size or screen size (depending on application).
             let subdivisions = match batch.fill_mode {
                 FillMode::DenseWireframe => 2, // Don't make it too crowded - let the user see inside the mesh.
-                FillMode::Solid => 6,          // Smooth, but not too CPU/GPU intensive
+                FillMode::Solid | FillMode::TransparentFillMajorWireframe => 6, // Smooth, but not too CPU/GPU intensive
                 FillMode::MajorWireframe => 12, // Three smooth ellipses
             };
             let proc_mesh_key = proc_mesh::ProcMeshKey::Sphere {
                 subdivisions,
-                axes_only: match batch.fill_mode {
-                    FillMode::MajorWireframe => true,
-                    FillMode::DenseWireframe | FillMode::Solid => false,
-                },
+                axes_only: batch.fill_mode.axes_only(),
             };
 
             builder.add_batch(
                 query_context,
                 ent_context,
                 Ellipsoids3D::descriptor_colors().component,
+                Ellipsoids3D::descriptor_line_radii().component,
                 Ellipsoids3D::descriptor_show_labels().component,
                 glam::Affine3A::IDENTITY,
                 ProcMeshBatch {
@@ -108,31 +101,39 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Ellipsoids3D>()
+        VisualizerQueryInfo::single_required_component::<HalfSize3D>(
+            &Ellipsoids3D::descriptor_half_sizes(),
+            &Ellipsoids3D::all_components(),
+        )
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let preferred_view_kind = self.0.preferred_view_kind;
         let output = VisualizerExecutionOutput::default();
+        let mut data = SpatialViewVisualizerData::default();
         let mut builder = ProcMeshDrawableBuilder::new(
-            &mut self.0,
+            &mut data,
             ctx.viewer_ctx.render_ctx(),
             view_query,
+            &output,
             "ellipsoids",
         );
 
         use super::entity_iterator::process_archetype;
-        process_archetype::<Self, Ellipsoids3D, _>(
+        process_archetype::<Ellipsoids3D, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            preferred_view_kind,
+            self,
             |ctx, spatial_ctx, results| {
                 let all_half_sizes =
                     results.iter_required(Ellipsoids3D::descriptor_half_sizes().component);
@@ -208,10 +209,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                                 .map_or(&[], |line_radii| bytemuck::cast_slice(line_radii)),
                             // fill mode is currently a non-repeated component
                             fill_mode: fill_modes
-                                .unwrap_or_default()
-                                .first()
-                                .copied()
-                                .and_then(FillMode::from_u8)
+                                .and_then(|s| FillMode::from_integer_slice(s).next()?)
                                 .unwrap_or_default(),
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids
@@ -229,10 +227,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
             },
         )?;
 
-        Ok(output.with_draw_data(builder.into_draw_data()?))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.0.as_any())
+        let draw_data = builder.into_draw_data()?;
+        Ok(output.with_draw_data(draw_data).with_visualizer_data(data))
     }
 }

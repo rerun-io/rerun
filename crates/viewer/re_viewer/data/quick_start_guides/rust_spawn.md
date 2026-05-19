@@ -2,7 +2,7 @@
 
 ## Installing Rerun
 
-After you have [installed the viewer](https://www.rerun.io/docs/getting-started/installing-viewer) you can simply add [the Rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
+After you have [installed the viewer](https://www.rerun.io/docs/overview/installing-rerun/viewer) you can simply add [the Rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
 
 Let's try it out in a brand-new Rust project:
 

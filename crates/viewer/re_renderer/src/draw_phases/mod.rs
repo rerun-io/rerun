@@ -26,8 +26,6 @@ pub use screenshot::ScreenshotProcessor;
 ///     Note that this implies sub-phases (e.g. Opaque & background render to the same target).
 ///     Also we should then the higher level one to `RenderPass` or similar!
 ///
-// TODO(#1025, #4787): Add a 2D phase after Background and before Transparent which we can use
-// to draw 2D objects that use a 2D layer key as sorting key
 #[derive(Debug, enumset::EnumSetType)]
 pub enum DrawPhase {
     /// Opaque objects, performing reads/writes to the depth buffer.
@@ -48,6 +46,12 @@ pub enum DrawPhase {
 
     /// Render mask for things that should get outlines.
     OutlineMask,
+
+    /// Outline masks for special cases that should follow draw order
+    /// instead of the regular [`DrawPhase::OutlineMask`] pass depth buffer.
+    ///
+    /// For example outlines for coplanar geometries that would otherwise have z-fighting.
+    OutlineMaskNoDepth,
 
     /// Drawn when compositing with the main target.
     Compositing,

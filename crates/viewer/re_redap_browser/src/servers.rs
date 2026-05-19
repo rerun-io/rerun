@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::task::Poll;
 
 use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
+use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
@@ -14,8 +15,9 @@ use re_redap_client::{
 use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
+use re_uri::DATASET_HIERARCHY_SEPARATOR;
 use re_viewer_context::{
-    AppContext, AsyncRuntimeHandle, EditRedapServerModalCommand, ViewerContext,
+    AppContext, AsyncRuntimeHandle, EditRedapServerModalCommand, StoreViewContext,
 };
 
 use crate::context::Context;
@@ -132,21 +134,14 @@ impl Server {
     /// Central panel UI for when a server is selected.
     fn server_ui(
         &self,
-        viewer_ctx: &ViewerContext<'_>,
+        viewer_ctx: &StoreViewContext<'_>,
         ctx: &Context<'_>,
         ui: &mut egui::Ui,
-        has_active_login_flow: bool,
+        inline_login_flow: &mut Option<(re_uri::Origin, Box<LoginFlow>)>,
     ) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
             self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
-                error_ui(
-                    viewer_ctx,
-                    ctx,
-                    ui,
-                    &self.origin,
-                    err,
-                    has_active_login_flow,
-                );
+                error_ui(viewer_ctx, ctx, ui, &self.origin, err, inline_login_flow);
             });
             return;
         }
@@ -190,9 +185,75 @@ impl Server {
             .show(viewer_ctx, &self.runtime, ui);
     }
 
+    fn folder_ui(
+        &self,
+        viewer_ctx: &StoreViewContext<'_>,
+        ui: &mut egui::Ui,
+        origin: &re_uri::Origin,
+        path_prefix: &str,
+    ) {
+        use re_viewer_context::{RedapEntryKind, Route, SystemCommand, SystemCommandSender as _};
+
+        let command_sender = viewer_ctx.command_sender().clone();
+
+        Frame::new().inner_margin(Margin::same(16)).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                // Navigate up one level.
+                if ui
+                    .small_icon_button(&icons::ARROW_UP, "Go to parent folder")
+                    .on_hover_text("Go to parent folder")
+                    .clicked()
+                {
+                    let parent_route = if let Some((parent, _)) =
+                        path_prefix.rsplit_once(DATASET_HIERARCHY_SEPARATOR)
+                    {
+                        Route::RedapEntry {
+                            origin: origin.clone(),
+                            kind: RedapEntryKind::Folder(parent.to_owned()),
+                        }
+                    } else {
+                        Route::RedapServer(origin.clone())
+                    };
+                    if let Some(parent_item) = parent_route.item() {
+                        command_sender.send_system(SystemCommand::set_selection(parent_item));
+                    }
+                    command_sender.send_system(SystemCommand::SetRoute(parent_route));
+                }
+
+                ui.horizontal_centered(|ui| {
+                    ui.heading(RichText::new(path_prefix.to_owned()).strong());
+                });
+            });
+
+            ui.add_space(12.0);
+
+            match self.entries.state() {
+                Poll::Pending => {
+                    ui.loading_indicator("Loading entries…");
+                }
+                Poll::Ready(Err(err)) => {
+                    Alert::error().show_text(
+                        ui,
+                        format!("Error loading entries for folder {path_prefix:?}"),
+                        Some(err.to_string()),
+                    );
+                }
+                Poll::Ready(Ok(entries)) => {
+                    crate::folder_card_ui::folder_cards_ui(
+                        ui,
+                        origin,
+                        entries,
+                        path_prefix,
+                        &command_sender,
+                    );
+                }
+            }
+        });
+    }
+
     fn dataset_entry_ui(
         &self,
-        viewer_ctx: &ViewerContext<'_>,
+        viewer_ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         dataset: &Dataset,
     ) {
@@ -200,9 +261,9 @@ impl Server {
 
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.clone(),
-            dataset.name(),
+            TableReference::bare(dataset.name().to_string()),
         )
-        .title(dataset.name())
+        .title(dataset.name().to_string())
         .url(re_uri::EntryUri::new(dataset.origin.clone(), dataset.id()).to_string())
         .column_blueprint(|desc| {
             let mut name = default_display_name_for_column(desc);
@@ -252,33 +313,34 @@ impl Server {
         .show(viewer_ctx, &self.runtime, ui);
     }
 
-    fn table_entry_ui(&self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, table: &Table) {
-        re_dataframe_ui::DataFusionTableWidget::new(self.tables_session_ctx.clone(), table.name())
-            .title(table.name())
-            .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
-            .show(viewer_ctx, &self.runtime, ui);
+    fn table_entry_ui(&self, viewer_ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, table: &Table) {
+        re_dataframe_ui::DataFusionTableWidget::new(
+            self.tables_session_ctx.clone(),
+            TableReference::bare(table.name().to_string()),
+        )
+        .title(table.name().to_string())
+        .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
+        .remote_table(re_uri::EntryUri::new(table.origin.clone(), table.id()))
+        .show(viewer_ctx, &self.runtime, ui);
     }
 }
 
 fn error_ui(
-    viewer_ctx: &ViewerContext<'_>,
+    viewer_ctx: &StoreViewContext<'_>,
     ctx: &Context<'_>,
     ui: &mut egui::Ui,
     origin: &re_uri::Origin,
     err: &re_redap_client::ApiError,
-    has_active_login_flow: bool,
+    inline_login_flow: &mut Option<(re_uri::Origin, Box<LoginFlow>)>,
 ) {
     if let Some(conn_err) = err.as_client_credentials_error() {
         let message = match conn_err {
-            ClientCredentialsError::RefreshError { .. } => {
+            ClientCredentialsError::RefreshError { .. }
+            | ClientCredentialsError::UnauthenticatedMissingToken { .. } => {
                 "There was an error refreshing your credentials"
             }
 
             ClientCredentialsError::SessionExpired => "Your session has expired",
-
-            ClientCredentialsError::UnauthenticatedMissingToken { .. } => {
-                "This server requires authentication to access its data."
-            }
 
             ClientCredentialsError::UnauthenticatedBadToken { credentials, .. } => {
                 match credentials.source {
@@ -291,26 +353,57 @@ fn error_ui(
             }
 
             ClientCredentialsError::HostMismatch(_) => "The token is not allowed for this server",
+
+            ClientCredentialsError::NotAuthorized => {
+                "This server requires authentication to access its data."
+            }
         };
 
         let show_login = match conn_err {
             ClientCredentialsError::RefreshError(_)
             | ClientCredentialsError::SessionExpired
             | ClientCredentialsError::UnauthenticatedMissingToken(_)
-            | ClientCredentialsError::UnauthenticatedBadToken { .. } => true,
+            | ClientCredentialsError::UnauthenticatedBadToken { .. }
+            | ClientCredentialsError::NotAuthorized => true,
             ClientCredentialsError::HostMismatch(_) => false,
         };
+
+        let has_active_login_flow = inline_login_flow.as_ref().is_some_and(|(o, _)| o == origin);
 
         if show_login {
             Alert::info().show(ui, |ui| {
                 ui.vertical(|ui| {
                     ui.strong(message);
 
+                    if let Some(auth) = viewer_ctx.app_ctx.auth_context {
+                        let identity = if let Some(org) = &auth.org_name {
+                            format!("Logged in as {} ({})", auth.email, org)
+                        } else {
+                            format!("Logged in as {}", auth.email)
+                        };
+                        ui.weak(identity);
+                    }
+
                     ui.add_space(8.0);
                     if has_active_login_flow {
-                        ui.horizontal(|ui| {
+                        ui.horizontal_centered(|ui| {
+                            // 4.0 = Size::Small vertical padding
+                            let cancel_button_height =
+                                ui.text_style_height(&egui::TextStyle::Button) + 2.0 * 4.0;
+                            ui.set_min_height(cancel_button_height);
                             ui.loading_indicator("Waiting for login");
                             ui.label("Waiting for login…");
+                            ui.add_space(8.0);
+                            if ui
+                                .add(
+                                    re_ui::ReButton::new(("Cancel", &icons::CLOSE))
+                                        .small()
+                                        .primary(),
+                                )
+                                .clicked()
+                            {
+                                *inline_login_flow = None;
+                            }
                         });
                     } else {
                         ui.horizontal(|ui| {
@@ -330,17 +423,27 @@ fn error_ui(
                                     )
                                     .ok();
                                 }
-                            } else {
+                            } else if viewer_ctx.app_ctx.login_enabled {
                                 // User is not logged in — start login flow
+                                // Opening the popup synchronously in the click handler is
+                                // required for Safari, which blocks popups not initiated
+                                // by a direct user gesture.
                                 if ui
                                     .add(re_ui::ReButton::new("Log in").primary().small())
                                     .clicked()
                                 {
-                                    send_crossbeam(
-                                        ctx.command_sender,
-                                        Command::StartLoginFlow(origin.clone()),
-                                    )
-                                    .ok();
+                                    match LoginFlow::open_and_start(
+                                        ui.ctx(),
+                                        viewer_ctx.app_ctx.login_signed_in_url,
+                                    ) {
+                                        Ok(flow) => {
+                                            *inline_login_flow =
+                                                Some((origin.clone(), Box::new(flow)));
+                                        }
+                                        Err(err) => {
+                                            re_log::error!("Failed to start login: {err}");
+                                        }
+                                    }
                                 }
                             }
                             if ui
@@ -362,13 +465,13 @@ fn error_ui(
                 });
             });
         } else {
-            warning_with_edit_button(ctx, ui, origin, message);
+            warning_with_edit_button(ctx, ui, origin, message, viewer_ctx.app_ctx.auth_context);
         }
     } else if matches!(
         &err.kind,
         re_redap_client::ApiErrorKind::InvalidServer | re_redap_client::ApiErrorKind::Connection
     ) {
-        warning_with_edit_button(ctx, ui, origin, &err.to_string());
+        warning_with_edit_button(ctx, ui, origin, &err.to_string(), None);
     } else {
         ui.error_label(err.to_string());
     }
@@ -379,10 +482,20 @@ fn warning_with_edit_button(
     ui: &mut egui::Ui,
     origin: &re_uri::Origin,
     message: &str,
+    auth_context: Option<&re_viewer_context::AuthContext>,
 ) {
     Alert::warning().show(ui, |ui| {
         ui.vertical(|ui| {
             ui.strong(message);
+
+            if let Some(auth) = auth_context {
+                let identity = if let Some(org) = &auth.org_name {
+                    format!("Logged in as {} ({})", auth.email, org)
+                } else {
+                    format!("Logged in as {}", auth.email)
+                };
+                ui.weak(identity);
+            }
             ui.add_space(8.0);
             if ui
                 .add(re_ui::ReButton::new("Edit connection").small())
@@ -504,13 +617,7 @@ pub enum Command {
         on_add: Option<Box<dyn FnOnce() + Send>>,
     },
 
-    /// Remove a server and its token.
-    RemoveServer(re_uri::Origin),
-
     RefreshCollection(re_uri::Origin),
-
-    /// Start an inline login flow for a server.
-    StartLoginFlow(re_uri::Origin),
 
     /// Use the stored account credentials for a server and refresh.
     UseStoredCredentials(re_uri::Origin),
@@ -533,11 +640,9 @@ impl std::fmt::Debug for Command {
                 .field("credentials", credentials)
                 .field("on_add", &on_add.as_ref().map(|_| "…"))
                 .finish(),
-            Self::RemoveServer(origin) => f.debug_tuple("RemoveServer").field(origin).finish(),
             Self::RefreshCollection(origin) => {
                 f.debug_tuple("RefreshCollection").field(origin).finish()
             }
-            Self::StartLoginFlow(origin) => f.debug_tuple("StartLoginFlow").field(origin).finish(),
             Self::UseStoredCredentials(origin) => {
                 f.debug_tuple("UseStoredCredentials").field(origin).finish()
             }
@@ -553,6 +658,16 @@ impl RedapServers {
     /// Whether we already know about a given server (or have it queued to be added).
     pub fn has_server(&self, origin: &re_uri::Origin) -> bool {
         self.servers.contains_key(origin) || self.pending_servers.contains(origin)
+    }
+
+    /// Remove a server and its credentials.
+    pub fn remove_server(
+        &mut self,
+        origin: &re_uri::Origin,
+        connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    ) {
+        self.servers.remove(origin);
+        connection_registry.remove_credentials(origin);
     }
 
     /// Add a server to the hub.
@@ -612,6 +727,7 @@ impl RedapServers {
         connection_registry: &ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
+        login_enabled: bool,
     ) {
         self.pending_servers.drain(..).for_each(|origin| {
             send_crossbeam(
@@ -625,7 +741,13 @@ impl RedapServers {
             .ok();
         });
         while let Ok(command) = self.command_receiver.try_recv() {
-            self.handle_command(connection_registry, runtime, egui_ctx, command);
+            self.handle_command(
+                connection_registry,
+                runtime,
+                egui_ctx,
+                command,
+                login_enabled,
+            );
         }
 
         // Poll inline login flow
@@ -656,16 +778,20 @@ impl RedapServers {
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         command: Command,
+        login_enabled: bool,
     ) {
         match command {
             Command::OpenAddServerModal => {
                 self.server_modal_ui
-                    .open(ServerModalMode::Add, connection_registry);
+                    .open(ServerModalMode::Add, connection_registry, login_enabled);
             }
 
             Command::OpenEditServerModal(origin) => {
-                self.server_modal_ui
-                    .open(ServerModalMode::Edit(origin), connection_registry);
+                self.server_modal_ui.open(
+                    ServerModalMode::Edit(origin),
+                    connection_registry,
+                    login_enabled,
+                );
             }
 
             Command::AddServer {
@@ -676,7 +802,14 @@ impl RedapServers {
                 if let Some(credentials) = credentials {
                     connection_registry.set_credentials(&origin, credentials);
                 }
-                if !self.servers.contains_key(&origin) {
+                if self.servers.contains_key(&origin) {
+                    // Since we persist the server list on disk this happens quite often.
+                    // E.g. run `pixi run rerun "rerun+http://localhost"` more than once.
+                    re_log::debug!(
+                        "Tried to add pre-existing server at {:?}",
+                        origin.to_string()
+                    );
+                } else {
                     self.servers.insert(
                         origin.clone(),
                         Server::new(
@@ -686,41 +819,16 @@ impl RedapServers {
                             origin.clone(),
                         ),
                     );
-                } else {
-                    // Since we persist the server list on disk this happens quite often.
-                    // E.g. run `pixi run rerun "rerun+http://localhost"` more than once.
-                    re_log::debug!(
-                        "Tried to add pre-existing server at {:?}",
-                        origin.to_string()
-                    );
                 }
                 if let Some(on_add) = on_add {
                     on_add();
                 }
             }
 
-            Command::RemoveServer(origin) => {
-                self.servers.remove(&origin);
-                connection_registry.remove_credentials(&origin);
-            }
-
             Command::RefreshCollection(origin) => {
                 self.servers.entry(origin).and_modify(|server| {
                     server.refresh_entries(runtime, egui_ctx);
                 });
-            }
-
-            Command::StartLoginFlow(origin) => {
-                if self.inline_login_flow.is_none() {
-                    match LoginFlow::open_and_start(egui_ctx) {
-                        Ok(flow) => {
-                            self.inline_login_flow = Some((origin, Box::new(flow)));
-                        }
-                        Err(err) => {
-                            re_log::error!("Failed to start login: {err}");
-                        }
-                    }
-                }
             }
 
             Command::UseStoredCredentials(origin) => {
@@ -731,16 +839,30 @@ impl RedapServers {
     }
 
     pub fn server_central_panel_ui(
-        &self,
-        viewer_ctx: &ViewerContext<'_>,
+        &mut self,
+        viewer_ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         origin: &re_uri::Origin,
     ) {
         if let Some(server) = self.servers.get(origin) {
-            let has_login_flow = self.has_active_login_flow(origin);
-            self.with_ctx(|ctx| {
-                server.server_ui(viewer_ctx, ctx, ui, has_login_flow);
-            });
+            let ctx = Context {
+                command_sender: &self.command_sender,
+            };
+            server.server_ui(viewer_ctx, &ctx, ui, &mut self.inline_login_flow);
+        } else {
+            viewer_ctx.revert_to_default_route();
+        }
+    }
+
+    pub fn folder_central_panel_ui(
+        &self,
+        viewer_ctx: &StoreViewContext<'_>,
+        ui: &mut egui::Ui,
+        origin: &re_uri::Origin,
+        path_prefix: &str,
+    ) {
+        if let Some(server) = self.servers.get(origin) {
+            server.folder_ui(viewer_ctx, ui, origin, path_prefix);
         } else {
             viewer_ctx.revert_to_default_route();
         }
@@ -754,24 +876,19 @@ impl RedapServers {
         send_crossbeam(&self.command_sender, Command::OpenEditServerModal(command)).ok();
     }
 
-    pub fn entry_ui(
-        &self,
-        viewer_ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        active_entry: EntryId,
-    ) {
+    pub fn entry_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, active_entry: EntryId) {
         for server in self.servers.values() {
             if let Some(entry) = server.find_entry(active_entry) {
                 match entry.inner() {
                     Ok(crate::entries::EntryInner::Dataset(dataset)) => {
-                        server.dataset_entry_ui(viewer_ctx, ui, dataset);
+                        server.dataset_entry_ui(ctx, ui, dataset);
 
                         // If we're connected twice to the same server, we will find this entry
                         // multiple times. We avoid it by returning here.
                         return;
                     }
                     Ok(crate::entries::EntryInner::Table(table)) => {
-                        server.table_entry_ui(viewer_ctx, ui, table);
+                        server.table_entry_ui(ctx, ui, table);
 
                         // If we're connected twice to the same server, we will find this entry
                         // multiple times. We avoid it by returning here.
@@ -806,20 +923,5 @@ impl RedapServers {
         if let Err(err) = result {
             re_log::warn_once!("Failed to send command: {err}");
         }
-    }
-
-    fn has_active_login_flow(&self, origin: &re_uri::Origin) -> bool {
-        self.inline_login_flow
-            .as_ref()
-            .is_some_and(|(o, _)| o == origin)
-    }
-
-    #[inline]
-    fn with_ctx<R>(&self, func: impl FnOnce(&Context<'_>) -> R) -> R {
-        let ctx = Context {
-            command_sender: &self.command_sender,
-        };
-
-        func(&ctx)
     }
 }

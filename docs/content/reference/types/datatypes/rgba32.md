@@ -11,7 +11,7 @@ byte is `R` and the least significant byte is `A`.
 
 ## Arrow datatype
 ```
-uint32
+UInt32
 ```
 
 ## API reference links

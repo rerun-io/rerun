@@ -15,6 +15,7 @@ use tokio::sync::mpsc;
 use tracing::Instrument as _;
 
 use super::{PyCatalogClientInternal, to_py_err};
+use crate::trace_context::read_trace_context_from_python;
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// Default timeout.
@@ -28,10 +29,10 @@ const DEFAULT_TIMEOUT_SECS: u64 = 60 * 60;
 ///
 /// Tuple of (uri, `segment_id` or None, error or None). This is exposed as a
 /// `SegmentRegistrationResult` dataclass on the Python side.
-type RegistrationResult = (String, Option<String>, Option<String>);
+type RegistrationResult = (String, String, Option<String>);
 
 /// Internal handle exposed to Python for tracking registration tasks.
-#[pyclass( // NOLINT: ignore[py-cls-eq]
+#[pyclass(
     name = "RegistrationHandleInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -75,7 +76,7 @@ impl PyRegistrationHandleInternal {
     }
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PyRegistrationHandleInternal {
     /// Returns a streaming iterator that yields (uri, segment_id, error) tuples
     /// as tasks complete.
@@ -84,6 +85,8 @@ impl PyRegistrationHandleInternal {
         let connection = self.client.borrow(py).connection().clone();
         let task_ids = self.task_ids();
         let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS));
+
+        let span = read_trace_context_from_python(py, "RegistrationHandle.iter_results");
 
         // Spawn a task that queries the completion state and channels it to the iterator object.
         let (tx, rx) = mpsc::channel::<PyResult<Vec<RegistrationResult>>>(32 * 1024);
@@ -134,7 +137,7 @@ impl PyRegistrationHandleInternal {
                     }
                 }
             }
-            .in_current_span(),
+            .instrument(span),
         );
 
         PyRegistrationIterator {
@@ -147,6 +150,8 @@ impl PyRegistrationHandleInternal {
     /// Raises an error if any registration fails.
     #[pyo3(signature = (timeout_secs=None))]
     fn wait(&self, py: Python<'_>, timeout_secs: Option<u64>) -> PyResult<Vec<String>> {
+        let span = read_trace_context_from_python(py, "RegistrationHandle.wait");
+
         let connection = self.client.borrow(py).connection().clone();
         let task_ids = self.task_ids();
         let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS));
@@ -165,9 +170,9 @@ impl PyRegistrationHandleInternal {
                     .await
                     .map_err(to_py_err)?;
 
-                // Track errors by descriptor index
-                let mut errors: HashMap<&RegisterWithDatasetTaskDescriptor, String> =
-                    HashMap::new();
+                // Collect unique error messages (deduplicated across descriptors
+                // that share the same task).
+                let mut unique_errors: Vec<String> = Vec::new();
 
                 while let Some(response) = response_stream.next().await {
                     let response = response.map_err(to_py_err)?.try_into().map_err(to_py_err)?;
@@ -175,27 +180,20 @@ impl PyRegistrationHandleInternal {
                     let results =
                         process_task_response(response, &descriptors, &task_id_to_indices)?;
 
-                    for (uri, _segment_id, error) in results {
-                        if let Some(err) = error {
-                            // Lookup the descriptor index for this URI
-                            for desc in &descriptors {
-                                if desc.storage_url.to_string() == uri {
-                                    errors.insert(desc, err.clone());
-                                }
-                            }
+                    for (_uri, _segment_id, error) in results {
+                        if let Some(err) = error
+                            && !unique_errors.contains(&err)
+                        {
+                            unique_errors.push(err);
                         }
                     }
                 }
 
                 // Check for any errors
-                if !errors.is_empty() {
-                    let error_msgs: Vec<String> = errors
-                        .iter()
-                        .map(|(desc, err)| format!("{}: {err}", desc.storage_url))
-                        .collect();
+                if !unique_errors.is_empty() {
                     return Err(PyValueError::new_err(format!(
-                        "Registration failed for the following URIs:\n{}",
-                        error_msgs.join("\n")
+                        "Registration failed while processing the following segments:\n{}",
+                        unique_errors.join("\n")
                     )));
                 }
 
@@ -204,7 +202,32 @@ impl PyRegistrationHandleInternal {
                     .map(|d| d.segment_id.id.clone())
                     .collect())
             }
-            .in_current_span(),
+            .instrument(span),
+        )
+    }
+
+    /// Cancel dataset registration.
+    /// If the registration is already done, this is a noop.
+    #[pyo3(signature = ())]
+    fn cancel(&self, py: Python<'_>) -> PyResult<()> {
+        let span = read_trace_context_from_python(py, "cancel");
+
+        let connection = self.client.borrow(py).connection().clone();
+        let task_ids = self.task_ids();
+
+        wait_for_future(
+            py,
+            async move {
+                connection
+                    .client()
+                    .await?
+                    .cancel_tasks(task_ids)
+                    .await
+                    .map_err(to_py_err)?;
+
+                Ok(())
+            }
+            .instrument(span),
         )
     }
 }
@@ -254,8 +277,12 @@ fn process_task_response(
             for &idx in indices {
                 let desc = &descriptors[idx];
 
-                let segment_id = Some(desc.segment_id.id.clone());
-                let error = (status != "success").then(|| msg.to_owned());
+                let segment_id = desc.segment_id.id.clone();
+                let error = match status {
+                    "success" => None,
+                    "cancelled" => Some("registration was cancelled".to_owned()),
+                    _ => Some(msg.to_owned()),
+                };
 
                 results.push((desc.storage_url.to_string(), segment_id, error));
             }
@@ -296,7 +323,7 @@ impl PyRegistrationIterator {
         let rx = slf.rx.clone();
 
         // Release the GIL while waiting for data
-        let batch_result = py.allow_threads(|| {
+        let batch_result = py.detach(|| {
             let mut rx_guard = rx.lock();
             rx_guard.blocking_recv()
         });

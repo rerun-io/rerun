@@ -205,7 +205,7 @@ This was already possible before, although with pretty severe limitations.\
 In particular, these APIs had no way of keeping track of the surrounding context in which these logging calls were made (e.g. which archetype?), which created a lot of data modeling related issues.\
 Internally, these new APIs make it possible to implement many long awaited Rerun features, in the long term.
 
-The following snippets give a succinct before/after picture; for more information about partial updates, please [refer to the dedicated documentation](http://rerun.io/docs/howto/logging/send-columns).
+The following snippets give a succinct before/after picture; for more information about partial updates, please [refer to the dedicated documentation](https://rerun.io/docs/howto/logging-and-ingestion/send-columns).
 
 See also the API reference:
 * [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
@@ -498,4 +498,4 @@ To achieve the same effect, you can log any of the following "invalid" transform
 Previously, the `DisconnectedSpace` archetype played a double role by governing view spawn heuristics & being used as a transform placeholder.
 This led to a lot of complexity and often broke or caused confusion (see https://github.com/rerun-io/rerun/issues/6817, https://github.com/rerun-io/rerun/issues/4465, https://github.com/rerun-io/rerun/issues/4221).
 By now, explicit blueprints offer a better way to express which views should be spawned and what content they should query.
-(you can learn more about blueprints [here](../../getting-started/configure-the-viewer#programmatic-blueprints)).
+(you can learn more about blueprints [here](../../getting-started/configure-the-viewer/navigating-the-viewer.md#programmatic-blueprints)).

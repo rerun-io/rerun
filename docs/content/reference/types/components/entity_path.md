@@ -11,7 +11,7 @@ A path to an entity, usually to reference some data that is part of the target e
 
 ## Arrow datatype
 ```
-utf8
+Utf8
 ```
 
 ## API reference links

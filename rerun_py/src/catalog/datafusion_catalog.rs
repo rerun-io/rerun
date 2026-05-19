@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
+use crate::catalog::table_provider_adapter::ffi_logical_codec_from_pycapsule;
+use crate::utils::get_tokio_runtime;
 use datafusion::catalog::CatalogProvider;
 use datafusion_ffi::catalog_provider::FFI_CatalogProvider;
 use pyo3::types::PyCapsule;
-use pyo3::{Bound, PyResult, Python, pyclass, pymethods};
+use pyo3::{Bound, PyAny, PyResult, pyclass, pymethods};
 use re_datafusion::RedapCatalogProvider;
 use re_redap_client::ConnectionClient;
-
-use crate::utils::get_tokio_runtime;
 
 #[pyclass(
     frozen,
@@ -38,15 +38,16 @@ impl PyDataFusionCatalogProvider {
     /// Returns a DataFusion catalog provider capsule.
     fn __datafusion_catalog_provider__<'py>(
         &self,
-        py: Python<'py>,
+        session: &Bound<'py, PyAny>,
     ) -> PyResult<Bound<'py, PyCapsule>> {
         let capsule_name = cr"datafusion_catalog_provider".into();
 
         let provider = Arc::clone(&self.provider) as Arc<dyn CatalogProvider>;
 
         let runtime = get_tokio_runtime().handle().clone();
-        let provider = FFI_CatalogProvider::new(provider, Some(runtime));
+        let codec = ffi_logical_codec_from_pycapsule(session)?;
+        let provider = FFI_CatalogProvider::new_with_ffi_codec(provider, Some(runtime), codec);
 
-        PyCapsule::new(py, provider, Some(capsule_name))
+        PyCapsule::new(session.py(), provider, Some(capsule_name))
     }
 }

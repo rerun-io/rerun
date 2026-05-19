@@ -7,6 +7,7 @@ import numpy as np
 import pyarrow as pa
 import pytest
 from rerun.time import to_nanos, to_nanos_since_epoch
+from typing_extensions import Self
 
 VALID_TO_NANOS_CASES = [
     (0, 0),
@@ -51,7 +52,7 @@ def test_to_nanos_invalid(duration: Any) -> None:
 class MockPandasTimestamp(datetime):
     nanoseconds: int = 0
 
-    def __new__(cls, *args: Any, nanoseconds: int = 0, **kwargs: dict[str, Any]) -> MockPandasTimestamp:
+    def __new__(cls, *args: Any, nanoseconds: int = 0, **kwargs: dict[str, Any]) -> Self:
         instance = super().__new__(cls, *args, **kwargs)  # type: ignore[arg-type]
         object.__setattr__(instance, "nanoseconds", nanoseconds)
         return instance

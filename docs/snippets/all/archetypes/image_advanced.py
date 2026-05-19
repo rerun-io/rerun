@@ -4,8 +4,10 @@ import tempfile
 
 import cv2
 import numpy as np
+from PIL import Image as PILImage
+from PIL import ImageDraw
+
 import rerun as rr
-from PIL import Image as PILImage, ImageDraw
 
 # Save a transparent PNG to a temporary file.
 _, file_path = tempfile.mkstemp(suffix=".png")
@@ -16,7 +18,7 @@ draw.rounded_rectangle((50, 50, 150, 150), fill=(0, 255, 0), radius=20)
 image.save(file_path)
 
 
-rr.init("rerun_example_image_advanced", spawn=True)
+rr.init("rerun_example_image_advanced")
 
 # Log the image from the file.
 rr.log("from_file", rr.EncodedImage(path=file_path))

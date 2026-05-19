@@ -3,7 +3,7 @@ title: Loading URDF models
 order: 900
 ---
 
-Rerun features a built-in [data-loader](https://rerun.io/docs/reference/data-loaders/overview) for [URDF](https://en.wikipedia.org/wiki/URDF) files.
+Rerun features a built-in [importer](https://rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link) for [URDF](https://en.wikipedia.org/wiki/URDF) files.
 
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/urdf-viewer/ebdefa158ab6f26f9dc1cb1924fce4b846fe8db2/full.png" alt="A robot model loaded from an URDF file visualized in Rerun.">
@@ -15,7 +15,7 @@ Rerun features a built-in [data-loader](https://rerun.io/docs/reference/data-loa
 ## Overview
 
 Using a `URDF` in Rerun only requires you to load the file with the logging API.
-This will automatically invoke the data-loader, which will take care of:
+This will automatically invoke the importer, which will take care of:
 * resolving paths to meshes
 * loading meshes and shapes as Rerun entities
 * loading the joint transforms and associated frame IDs of links
@@ -61,6 +61,20 @@ urdf_tree.get_link_by_name("base_link")
 for visual_path in urdf_tree.get_visual_geometry_paths("gripper"):
     rec.log(visual_path, rr.Asset3D.from_fields(albedo_factor=[255, 0, 0, 100]), static=True)
 ```
+
+#### Frame prefix
+
+When loading the same URDF multiple times (e.g. a dual-arm setup), use `frame_prefix` to give each instance unique frame IDs and `entity_path_prefix` to separate their geometry in the entity tree. Use `log_urdf_to_recording()` to log the model with prefixed frame IDs:
+
+```python
+left = rr.urdf.UrdfTree.from_file_path("robot.urdf", entity_path_prefix="left", frame_prefix="left/")
+right = rr.urdf.UrdfTree.from_file_path("robot.urdf", entity_path_prefix="right", frame_prefix="right/")
+
+left.log_urdf_to_recording()
+right.log_urdf_to_recording()
+```
+
+Transforms computed via `joint.compute_transform()` will automatically use the prefixed frame IDs (e.g. `"left/base"`, `"right/shoulder"`).
 
 ### UrdfJoint
 

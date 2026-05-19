@@ -308,7 +308,7 @@ pub use visualizer::{VisualizableArchetype, Visualizer};
 
 // Has to live here otherwise we can't export it from `re_sdk_types`.
 mod colormap_category;
-pub use colormap_category::ColormapCategory;
+pub use colormap_category::{ColormapCategory, ColormapSelection};
 
 #[cfg(feature = "testing")]
 pub mod testing;

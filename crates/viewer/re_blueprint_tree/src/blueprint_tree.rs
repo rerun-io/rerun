@@ -145,10 +145,9 @@ impl BlueprintTree {
             .show(ui, |ui| {
                 re_tracing::profile_scope!("blueprint_tree_scroll_area");
                 ui.panel_content(|ui| {
-                    self.blueprint_tree_scroll_to_item =
-                        ctx.focused_item().as_ref().and_then(|item| {
-                            self.handle_focused_item(ctx, viewport_blueprint, ui, item)
-                        });
+                    self.blueprint_tree_scroll_to_item = ctx.focused_item().and_then(|item| {
+                        self.handle_focused_item(ctx, viewport_blueprint, ui, &item.item)
+                    });
 
                     list_item::list_item_scope(ui, "blueprint tree", |ui| {
                         if let Some(root_container) = &blueprint_tree_data.root_container {
@@ -305,7 +304,7 @@ impl BlueprintTree {
                     ui,
                     view_data,
                     parent_visible,
-                    view_states.per_visualizer_type_reports(view_data.id),
+                    view_states.per_visualizer_type_reports(ctx.store_id(), view_data.id),
                 );
             }
         }
@@ -676,13 +675,10 @@ impl BlueprintTree {
         };
 
         let response = response.on_hover_ui(|ui| {
-            let query = ctx.current_query();
             let include_subtree = false;
             re_data_ui::item_ui::entity_hover_card_ui(
                 ui,
-                ctx,
-                &query,
-                ctx.recording(),
+                &ctx.active_recording_store_view_context(),
                 &data_result_data.entity_path,
                 include_subtree,
             );
@@ -1123,7 +1119,7 @@ impl BlueprintTree {
             | Item::TableId(_)
             | Item::DataSource(_)
             | Item::StoreId(_)
-            | Item::RedapEntry(_)
+            | Item::RedapEntry { .. }
             | Item::RedapServer(_) => None,
 
             Item::Container(container_id) => {
@@ -1136,7 +1132,7 @@ impl BlueprintTree {
             }
             Item::View(view_id) => {
                 self.expand_all_contents_until(viewport, ui.ctx(), &Contents::View(*view_id));
-                ctx.focused_item().clone()
+                ctx.focused_item().map(|focus| focus.item.clone())
             }
             Item::DataResult(data_result) => {
                 self.expand_all_contents_until(
@@ -1151,7 +1147,7 @@ impl BlueprintTree {
                     &data_result.instance_path.entity_path,
                 );
 
-                ctx.focused_item().clone()
+                ctx.focused_item().map(|focus| focus.item.clone())
             }
             Item::InstancePath(instance_path) => {
                 let view_ids =

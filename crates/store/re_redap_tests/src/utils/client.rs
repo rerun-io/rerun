@@ -32,7 +32,7 @@ impl<T: RerunCloudService> std::fmt::Debug for TestClient<T> {
 
 /// Adapter to convert a stream into tonic Streaming format
 struct StreamAdapter<T> {
-    results: VecDeque<Result<T, Status>>,
+    results: VecDeque<tonic::Result<T>>,
 }
 
 impl<T: std::fmt::Debug> tonic::codec::Decoder for StreamAdapter<T> {
@@ -51,10 +51,10 @@ impl<T: std::fmt::Debug> tonic::codec::Decoder for StreamAdapter<T> {
 async fn stream_to_streaming<T, S>(stream: S) -> tonic::codec::Streaming<T>
 where
     T: Send + 'static + std::fmt::Debug,
-    S: Stream<Item = Result<T, Status>> + Send + 'static,
+    S: Stream<Item = tonic::Result<T>> + Send + 'static,
 {
     use futures::StreamExt as _;
-    let results: VecDeque<Result<T, Status>> = stream.collect().await;
+    let results: VecDeque<tonic::Result<T>> = stream.collect().await;
 
     let body_len = 5 * results.len(); // compression_flag (1) + length (4)
     let adapter = StreamAdapter { results };
@@ -74,14 +74,14 @@ impl<T: RerunCloudService> DataframeClientAPI for TestClient<T> {
     async fn get_dataset_schema(
         &mut self,
         request: Request<GetDatasetSchemaRequest>,
-    ) -> Result<Response<GetDatasetSchemaResponse>, Status> {
+    ) -> tonic::Result<Response<GetDatasetSchemaResponse>> {
         self.service.get_dataset_schema(request).await
     }
 
     async fn query_dataset(
         &mut self,
         request: Request<QueryDatasetRequest>,
-    ) -> Result<Response<tonic::codec::Streaming<QueryDatasetResponse>>, Status> {
+    ) -> tonic::Result<Response<tonic::codec::Streaming<QueryDatasetResponse>>> {
         let response = self.service.query_dataset(request).await?;
         let (metadata, stream, _extensions) = response.into_parts();
 
@@ -95,7 +95,7 @@ impl<T: RerunCloudService> DataframeClientAPI for TestClient<T> {
     async fn fetch_chunks(
         &mut self,
         request: Request<FetchChunksRequest>,
-    ) -> Result<Response<tonic::codec::Streaming<FetchChunksResponse>>, Status> {
+    ) -> tonic::Result<Response<tonic::codec::Streaming<FetchChunksResponse>>> {
         let response = self.service.fetch_chunks(request).await?;
         let (metadata, stream, _extensions) = response.into_parts();
 

@@ -74,7 +74,7 @@ class AssetHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header(key, value)
         self.end_headers()
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: ARG002 (intentionally unused args)
+    def log_message(self, format: str, *args: Any) -> None:
         # Disable logging
         return
 

@@ -87,14 +87,14 @@ impl LayoutRequest {
     /// Returns all nodes from all graphs in this request.
     pub(super) fn all_nodes(&self) -> impl Iterator<Item = (NodeId, &NodeTemplate)> + '_ {
         self.graphs
-            .iter()
-            .flat_map(|(_, graph)| graph.nodes.iter().map(|(k, v)| (*k, v)))
+            .values()
+            .flat_map(|graph| graph.nodes.iter().map(|(k, v)| (*k, v)))
     }
 
     /// Returns all edges from all graphs in this request.
     pub(super) fn all_edges(&self) -> impl Iterator<Item = (EdgeId, &[EdgeTemplate])> + '_ {
         self.graphs
-            .iter()
-            .flat_map(|(_, graph)| graph.edges.iter().map(|(k, v)| (*k, v.as_slice())))
+            .values()
+            .flat_map(|graph| graph.edges.iter().map(|(k, v)| (*k, v.as_slice())))
     }
 }

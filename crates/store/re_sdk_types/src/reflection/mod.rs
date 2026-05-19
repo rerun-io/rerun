@@ -679,6 +679,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <CellSize as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The metric size of one grid cell in local scene units.\n\nE.g. for 2D grid maps, this is the physical size represented by a single pixel or cell.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: CellSize::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: CellSize::verify_arrow_array,
+            },
+        ),
+        (
             <ChannelId as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing an MCAP channel.\n\nUsed to identify specific channels within an MCAP file.",
@@ -1022,7 +1033,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <MagnificationFilter as Component>::name(),
             ComponentReflection {
-                docstring_md: "Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.",
+                docstring_md: "Filter used when a single texel/pixel of an image is displayed larger than a single screen pixel.\n\nThis happens when zooming into an image, when displaying a low-resolution image in a large area,\nor when viewing an image up close in 3D space.",
                 deprecation_summary: None,
                 custom_placeholder: Some(MagnificationFilter::default().to_arrow()?),
                 datatype: MagnificationFilter::arrow_datatype(),
@@ -1061,6 +1072,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 datatype: MediaType::arrow_datatype(),
                 is_enum: false,
                 verify_arrow_array: MediaType::verify_arrow_array,
+            },
+        ),
+        (
+            <MeshFaceRendering as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Determines which faces of a mesh are rendered.\n\nFor this purpose, we assume that the winding order of vertices in a mesh is\nconsistent and that front faces are defined as those with vertices in counter clockwise order.",
+                deprecation_summary: None,
+                custom_placeholder: Some(MeshFaceRendering::default().to_arrow()?),
+                datatype: MeshFaceRendering::arrow_datatype(),
+                is_enum: true,
+                verify_arrow_array: MeshFaceRendering::verify_arrow_array,
             },
         ),
         (
@@ -1510,7 +1532,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Vectors",
                         component_type: "rerun.components.Vector2D".into(),
                         docstring_md: "All the vectors for each arrow in the batch.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "origins",
@@ -1577,7 +1599,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Vectors",
                         component_type: "rerun.components.Vector3D".into(),
                         docstring_md: "All the vectors for each arrow in the batch.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "origins",
@@ -1733,7 +1755,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Half sizes",
                         component_type: "rerun.components.HalfSize2D".into(),
                         docstring_md: "All half-extents that make up the batch of boxes.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "centers",
@@ -1800,7 +1822,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Half sizes",
                         component_type: "rerun.components.HalfSize3D".into(),
                         docstring_md: "All half-extents that make up the batch of boxes.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "centers",
@@ -1881,14 +1903,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Lengths",
                         component_type: "rerun.components.Length".into(),
                         docstring_md: "Lengths of the capsules, defined as the distance between the centers of the endcaps.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "radii",
                         display_name: "Radii",
                         component_type: "rerun.components.Radius".into(),
                         docstring_md: "Radii of the capsules.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "translations",
@@ -1983,7 +2005,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     name: "frame",
                     display_name: "Frame",
                     component_type: "rerun.components.TransformFrameId".into(),
-                    docstring_md: "The coordinate frame to use for the current entity.",
+                    docstring_md: "The coordinate frame to use for the current entity.\n\nNote that empty strings are not valid transform frame IDs.",
                     flags: ArchetypeFieldFlags::REQUIRED,
                 }],
             },
@@ -2001,14 +2023,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Lengths",
                         component_type: "rerun.components.Length".into(),
                         docstring_md: "The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "radii",
                         display_name: "Radii",
                         component_type: "rerun.components.Radius".into(),
                         docstring_md: "Radii of the cylinders.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "centers",
@@ -2133,6 +2155,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         docstring_md: "An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `-20.0`.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
+                    ArchetypeFieldReflection {
+                        name: "magnification_filter",
+                        display_name: "Magnification filter",
+                        component_type: "rerun.components.MagnificationFilter".into(),
+                        docstring_md: "Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.\n\nThe filter is applied to the scalar values *before* they are mapped to color via the colormap.\n\nHas no effect in 3D views.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
                 ],
             },
         ),
@@ -2149,7 +2178,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Half sizes",
                         component_type: "rerun.components.HalfSize3D".into(),
                         docstring_md: "For each ellipsoid, half of its size on its three axes.\n\nIf all components are equal, then it is a sphere with that radius.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "centers",
@@ -2274,6 +2303,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         docstring_md: "Optional 2D draw order.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
+                    ArchetypeFieldReflection {
+                        name: "magnification_filter",
+                        display_name: "Magnification filter",
+                        component_type: "rerun.components.MagnificationFilter".into(),
+                        docstring_md: "Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.\n\nThe filter is applied to the scalar values *before* they are mapped to color via the colormap.\n\nHas no effect in 3D views.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
                 ],
             },
         ),
@@ -2311,6 +2347,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Draw order",
                         component_type: "rerun.components.DrawOrder".into(),
                         docstring_md: "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "magnification_filter",
+                        display_name: "Magnification filter",
+                        component_type: "rerun.components.MagnificationFilter".into(),
+                        docstring_md: "Optional filter used when a texel is magnified (displayed larger than a screen pixel).",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],
@@ -2361,7 +2404,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Positions",
                         component_type: "rerun.components.LatLon".into(),
                         docstring_md: "The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "radii",
@@ -2466,6 +2509,80 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.GridMap"),
+            ArchetypeReflection {
+                display_name: "Grid map",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["Spatial3DView", "Spatial2DView"],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "data",
+                        display_name: "Data",
+                        component_type: "rerun.components.ImageBuffer".into(),
+                        docstring_md: "The raw grid data.",
+                        flags: ArchetypeFieldFlags::REQUIRED,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "format",
+                        display_name: "Format",
+                        component_type: "rerun.components.ImageFormat".into(),
+                        docstring_md: "The format of the grid's image data.",
+                        flags: ArchetypeFieldFlags::REQUIRED,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "cell_size",
+                        display_name: "Cell size",
+                        component_type: "rerun.components.CellSize".into(),
+                        docstring_md: "The scene unit size of a single grid cell (e.g. m / pixel).",
+                        flags: ArchetypeFieldFlags::REQUIRED,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "translation",
+                        display_name: "Translation",
+                        component_type: "rerun.components.Translation3D".into(),
+                        docstring_md: "Translation of the lower-left corner of the grid map in space.\n\nTogether with [`components.RotationAxisAngle`](https://rerun.io/docs/reference/types/components/rotation_axis_angle) or [`components.RotationQuat`](https://rerun.io/docs/reference/types/components/rotation_quat), this defines the pose of the\nlower-left image corner relative to the map's parent coordinate frame.\n\nIf not set, the lower-left image corner is placed at origin of the map's parent coordinate frame.",
+                        flags: ArchetypeFieldFlags::empty(),
+                    },
+                    ArchetypeFieldReflection {
+                        name: "rotation_axis_angle",
+                        display_name: "Rotation axis angle",
+                        component_type: "rerun.components.RotationAxisAngle".into(),
+                        docstring_md: "Rotation of the lower-left corner of the grid map in space via axis + angle.\n\nTogether with [`components.Translation3D`](https://rerun.io/docs/reference/types/components/translation3d), this defines the pose of the\nlower-left image corner relative to the map's parent coordinate frame.\n\nNote: either this or [`components.RotationQuat`](https://rerun.io/docs/reference/types/components/rotation_quat) can be set to specify the grid map's rotation, but not both.\nIf both this and [`components.RotationQuat`](https://rerun.io/docs/reference/types/components/rotation_quat) are set, this is ignored in favor of the quaternion.",
+                        flags: ArchetypeFieldFlags::empty(),
+                    },
+                    ArchetypeFieldReflection {
+                        name: "quaternion",
+                        display_name: "Quaternion",
+                        component_type: "rerun.components.RotationQuat".into(),
+                        docstring_md: "Rotation of the lower-left corner of the grid map in space via quaternion.\n\nTogether with [`components.Translation3D`](https://rerun.io/docs/reference/types/components/translation3d), this defines the pose of the\nlower-left image corner relative to the map's parent coordinate frame.",
+                        flags: ArchetypeFieldFlags::empty(),
+                    },
+                    ArchetypeFieldReflection {
+                        name: "opacity",
+                        display_name: "Opacity",
+                        component_type: "rerun.components.Opacity".into(),
+                        docstring_md: "Opacity of the grid map texture after all image decoding and colormap application.\n\nDefaults to 1.0 (fully opaque).",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "draw_order",
+                        display_name: "Draw order",
+                        component_type: "rerun.components.DrawOrder".into(),
+                        docstring_md: "Optional draw order for layering multiple grid maps that overlap in space.\n\nHigher values are drawn on top of lower values.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "colormap",
+                        display_name: "Colormap",
+                        component_type: "rerun.components.Colormap".into(),
+                        docstring_md: "Colormap to use for rendering single-channel grid maps.\n\nIf not set, the grid map is shown using the underlying [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format)\ninterpretation.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.Image"),
             ArchetypeReflection {
                 display_name: "Image",
@@ -2499,6 +2616,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Draw order",
                         component_type: "rerun.components.DrawOrder".into(),
                         docstring_md: "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `-10.0`.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "magnification_filter",
+                        display_name: "Magnification filter",
+                        component_type: "rerun.components.MagnificationFilter".into(),
+                        docstring_md: "Optional filter used when a texel is magnified (displayed larger than a screen pixel).",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],
@@ -2882,6 +3006,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
+                        name: "face_rendering",
+                        display_name: "Face rendering",
+                        component_type: "rerun.components.MeshFaceRendering".into(),
+                        docstring_md: "Determines which faces of the mesh are rendered.\n\nThe default is [`components.MeshFaceRendering#DoubleSided`](https://rerun.io/docs/reference/types/components/mesh_face_rendering), meaning both front and back faces are shown.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
                         name: "albedo_texture_buffer",
                         display_name: "Albedo texture buffer",
                         component_type: "rerun.components.ImageBuffer".into(),
@@ -2985,7 +3116,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Positions",
                         component_type: "rerun.components.Position2D".into(),
                         docstring_md: "All the 2D positions at which the point cloud shows points.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "radii",
@@ -3052,7 +3183,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Positions",
                         component_type: "rerun.components.Position3D".into(),
                         docstring_md: "All the 3D positions at which the point cloud shows points.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "radii",
@@ -3279,6 +3410,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.Status"),
+            ArchetypeReflection {
+                display_name: "Status",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["StatusView"],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "status",
+                    display_name: "Status",
+                    component_type: "rerun.components.Text".into(),
+                    docstring_md: "The new status value. A `null` status is ignored, it can be used to partially update a multi-instance status array.",
+                    flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                }],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.Tensor"),
             ArchetypeReflection {
                 display_name: "Tensor",
@@ -3316,7 +3463,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Text",
                         component_type: "rerun.components.Text".into(),
                         docstring_md: "Contents of the text document.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "media_type",
@@ -3341,7 +3488,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Text",
                         component_type: "rerun.components.Text".into(),
                         docstring_md: "The body of the message.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "level",
@@ -3465,7 +3612,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Timestamp",
                         component_type: "rerun.components.VideoTimestamp".into(),
                         docstring_md: "References the closest video frame to this timestamp.\n\nNote that this uses the closest video frame instead of the latest at this timestamp\nin order to be more forgiving of rounding errors for inprecise timestamp types.\n\nTimestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.\nThis is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames\n(bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "video_reference",
@@ -3558,7 +3705,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name: "Instruction ids",
                     component_type: "rerun.blueprint.components.VisualizerInstructionId".into(),
                     docstring_md: "Id's of the visualizers that should be active.",
-                    flags: ArchetypeFieldFlags::REQUIRED,
+                    flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                 }],
             },
         ),
@@ -3575,7 +3722,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Kind",
                         component_type: "rerun.blueprint.components.BackgroundKind".into(),
                         docstring_md: "The type of the background.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "color",
@@ -3600,7 +3747,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Container kind",
                         component_type: "rerun.blueprint.components.ContainerKind".into(),
                         docstring_md: "The class of the view.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "display_name",
@@ -3694,7 +3841,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "select",
                         display_name: "Select",
                         component_type: "rerun.blueprint.components.SelectedColumns".into(),
-                        docstring_md: "Selected columns. If unset, all columns are selected.",
+                        docstring_md: "Selected columns. If unset, only the active timeline and all component columns are selected.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -4278,7 +4425,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "timeline_columns",
                         display_name: "Timeline columns",
                         component_type: "rerun.blueprint.components.TimelineColumn".into(),
-                        docstring_md: "What timeline columns to show.\n\nDefaults to displaying all timelines.",
+                        docstring_md: "What timeline columns to show.\n\nDefaults to displaying only the active timeline.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -4428,7 +4575,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Class identifier",
                         component_type: "rerun.blueprint.components.ViewClass".into(),
                         docstring_md: "The class of the view.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "display_name",
@@ -4529,7 +4676,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name: "Ranges",
                     component_type: "rerun.blueprint.components.VisibleTimeRange".into(),
                     docstring_md: "The time ranges to show for each timeline unless specified otherwise on a per-entity basis.\n\nIf a timeline is specified more than once, the first entry will be used.",
-                    flags: ArchetypeFieldFlags::REQUIRED,
+                    flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                 }],
             },
         ),
@@ -4545,7 +4692,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name: "Range",
                     component_type: "rerun.blueprint.components.VisualBounds2D".into(),
                     docstring_md: "Controls the visible range of a 2D view.\n\nUse this to control pan & zoom of the view.",
-                    flags: ArchetypeFieldFlags::REQUIRED,
+                    flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                 }],
             },
         ),
@@ -4562,7 +4709,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Visualizer type",
                         component_type: "rerun.blueprint.components.VisualizerType".into(),
                         docstring_md: "The type of the visualizer.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "component_map",

@@ -29,7 +29,6 @@
 
 mod app;
 mod app_blueprint;
-mod app_blueprint_ctx;
 mod app_state;
 mod background_tasks;
 mod default_views;
@@ -44,6 +43,7 @@ mod prefetch_chunks;
 mod saving;
 mod screenshotter;
 mod startup_options;
+mod texture_readback;
 mod ui;
 
 #[cfg(feature = "analytics")]
@@ -71,7 +71,7 @@ pub use re_viewer_context::{
     AsyncRuntimeHandle, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
     command_channel,
 };
-pub use startup_options::StartupOptions;
+pub use startup_options::{LoginOptions, StartupOptions};
 pub(crate) use ui::memory_panel;
 
 pub mod external {
@@ -81,8 +81,8 @@ pub mod external {
     pub use re_viewport::external::*;
     pub use {
         eframe, egui, parking_lot, re_chunk, re_chunk_store, re_data_ui, re_entity_db, re_log,
-        re_log_channel, re_log_types, re_memory, re_renderer, re_sdk_types, re_ui, re_view_spatial,
-        re_viewer_context, re_viewport,
+        re_log_channel, re_log_types, re_memory, re_renderer, re_sdk_types, re_ui, re_view,
+        re_view_spatial, re_viewer_context, re_viewport,
     };
 }
 
@@ -213,40 +213,24 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
     let backends = instance_descriptor.backends;
 
     egui_wgpu::WgpuConfiguration {
-            // When running wgpu on native debug builds, we want some extra control over how
-            // and when a poisoned surface gets recreated.
-            #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-            on_surface_error: std::sync::Arc::new(|err| {
-                // On windows, this error also occurs when the app is minimized.
-                // Silently return here to prevent spamming the console with:
-                // "The underlying surface has changed, and therefore the swap chain
-                //  must be updated"
-                if err == wgpu::SurfaceError::Outdated && !cfg!(target_os = "windows"){
-                    // We haven't been able to present anything to the swapchain for
-                    // a while, because the pipeline is poisoned.
-                    // Recreate a sane surface to restart the cycle and see if the
-                    // user has fixed the issue.
-                    egui_wgpu::SurfaceErrorAction::RecreateSurface
-                } else {
-                    egui_wgpu::SurfaceErrorAction::SkipFrame
-                }
+        wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
+            instance_descriptor,
+
+            // TODO(#8475): Add the ability to pick adapter by name.
+            // (user may e.g. request "nvidia" or "intel" and it should just work!)
+            // Should ideally produce structured reasoning of why which one was picked in the process.
+            native_adapter_selector: Some(std::sync::Arc::new(move |adapters, surface| {
+                re_renderer::device_caps::select_adapter(adapters, backends, surface)
+            })),
+            device_descriptor: std::sync::Arc::new(|adapter| {
+                re_renderer::device_caps::DeviceCaps::from_adapter_without_validation(adapter)
+                    .device_descriptor()
             }),
 
-            wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
-                instance_descriptor,
-
-                // TODO(#8475): Add the ability to pick adapter by name.
-                // (user may e.g. request "nvidia" or "intel" and it should just work!)
-                // Should ideally produce structured reasoning of why which one was picked in the process.
-                native_adapter_selector: Some(std::sync::Arc::new(move |adapters, surface|
-                    re_renderer::device_caps::select_adapter(adapters, backends, surface)
-                )),
-                device_descriptor: std::sync::Arc::new(|adapter| re_renderer::device_caps::DeviceCaps::from_adapter_without_validation(adapter).device_descriptor()),
-
-                ..Default::default()
-             }),
-            ..Default::default()
-        }
+            ..egui_wgpu::WgpuSetupCreateNew::without_display_handle()
+        }),
+        ..Default::default()
+    }
 }
 
 /// Customize eframe and egui to suit the rerun viewer.

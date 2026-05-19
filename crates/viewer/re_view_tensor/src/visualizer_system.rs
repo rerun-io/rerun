@@ -16,9 +16,7 @@ pub struct TensorVisualization {
 }
 
 #[derive(Default)]
-pub struct TensorSystem {
-    pub tensors: Vec<TensorVisualization>,
-}
+pub struct TensorSystem;
 
 impl IdentifiedViewSystem for TensorSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -31,11 +29,14 @@ impl VisualizerSystem for TensorSystem {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Tensor>()
+        VisualizerQueryInfo::single_required_component::<TensorData>(
+            &Tensor::descriptor_data(),
+            &Tensor::all_components(),
+        )
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
@@ -43,6 +44,7 @@ impl VisualizerSystem for TensorSystem {
         re_tracing::profile_function!();
 
         let output = VisualizerExecutionOutput::default();
+        let mut tensors = Vec::new();
 
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
@@ -60,7 +62,7 @@ impl VisualizerSystem for TensorSystem {
             let results =
                 re_view::BlueprintResolvedResults::from((timeline_query, latest_at_results));
             let results =
-                re_view::VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+                re_view::VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let all_tensor_chunks = results.iter_required(Tensor::descriptor_data().component);
             if all_tensor_chunks.is_empty() {
@@ -74,10 +76,10 @@ impl VisualizerSystem for TensorSystem {
             });
             let all_ranges = results.iter_optional(Tensor::descriptor_value_range().component);
 
-            for ((_, tensor_row_id), tensors, data_ranges) in
+            for ((_, tensor_row_id), tensor_values, data_ranges) in
                 re_query::range_zip_1x1(all_tensors_indexed, all_ranges.slice::<[f64; 2]>())
             {
-                let Some(tensor) = tensors.first() else {
+                let Some(tensor) = tensor_values.first() else {
                     continue;
                 };
                 let data_range = data_ranges
@@ -98,7 +100,7 @@ impl VisualizerSystem for TensorSystem {
                         )
                     });
 
-                self.tensors.push(TensorVisualization {
+                tensors.push(TensorVisualization {
                     tensor_row_id,
                     tensor: tensor.clone(),
                     data_range,
@@ -106,6 +108,6 @@ impl VisualizerSystem for TensorSystem {
             }
         }
 
-        Ok(output)
+        Ok(output.with_visualizer_data(tensors))
     }
 }

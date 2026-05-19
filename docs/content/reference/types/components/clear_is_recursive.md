@@ -11,7 +11,7 @@ Configures how a clear operation should behave - recursive or not.
 
 ## Arrow datatype
 ```
-boolean
+Boolean
 ```
 
 ## API reference links

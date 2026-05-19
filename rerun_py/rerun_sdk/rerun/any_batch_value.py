@@ -23,14 +23,14 @@ class _SupportsDLPack(Protocol):
 
 ComponentValueLike: TypeAlias = ComponentBatchLike | pa.Array | npt.ArrayLike | _SupportsDLPack
 """
-Type alias for values accepted by :class:`AnyBatchValue` and :class:`DynamicArchetype`.
+Type alias for values accepted by [`AnyBatchValue`][rerun.any_batch_value.AnyBatchValue] and [`DynamicArchetype`][rerun.dynamic_archetype.DynamicArchetype].
 
 This includes:
-- Rerun component batch types implementing :class:`ComponentBatchLike` (e.g. ``rr.components.ColorBatch(...)``)
-- PyArrow arrays (``pa.Array``)
-- Any numpy-compatible data (``npt.ArrayLike``): scalars (``int``, ``float``, ``str``, ``bool``, ``bytes``),
-  sequences (``list``, ``tuple``), numpy arrays, and objects implementing ``__array__``
-- Objects supporting the DLPack protocol (``__dlpack__``)
+- Rerun component batch types implementing [`ComponentBatchLike`][rerun.ComponentBatchLike] (e.g. `rr.components.ColorBatch(...)`)
+- PyArrow arrays (`pa.Array`)
+- Any numpy-compatible data (`npt.ArrayLike`): scalars (`int`, `float`, `str`, `bool`, `bytes`),
+  sequences (`list`, `tuple`), numpy arrays, and objects implementing `__array__`
+- Objects supporting the DLPack protocol (`__dlpack__`)
 """
 
 
@@ -177,7 +177,7 @@ def _fallback_parse(
                 f"Cannot convert value {value} to arrow array of type {pa_type}."
                 " Inconsistent with previous type provided."
             ) from e
-        raise e
+        raise
     return pa_array, NumpyArrowType(np_value.dtype, pa_array.type)
 
 
@@ -236,8 +236,8 @@ class AnyBatchValue(ComponentBatchLike):
         expect_column:
             If True, the outermost dimension of the data is treated as the row/column dimension
             rather than as part of the data type. This prevents list-typed inference from being
-            cached in the type registry (e.g., ``[[1,2,3], [4,5,6]]`` is treated as 2 rows of
-            ``int64`` data rather than a single batch of ``list<int64>``).
+            cached in the type registry (e.g., `[[1,2,3], [4,5,6]]` is treated as 2 rows of
+            `int64` data rather than a single batch of `list<int64>`).
 
         """
         if isinstance(descriptor, str):
@@ -326,7 +326,7 @@ class AnyBatchValue(ComponentBatchLike):
 
         Returns
         -------
-        The component column, or ``None`` if the value could not be converted.
+        The component column, or `None` if the value could not be converted.
 
         """
         # Normalize flat sequences to list-of-lists so column data is always

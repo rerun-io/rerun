@@ -118,34 +118,18 @@ impl DeviceCapabilityTier {
                 required: required_downlevel_caps_webgpu.shader_model,
                 actual: downlevel_caps.shader_model,
             })
-        } else if !downlevel_caps
+        } else if downlevel_caps
             .flags
             .contains(required_downlevel_caps_webgpu.flags)
         {
+            Ok(())
+        } else {
             Err(InsufficientDeviceCapabilities::MissingCapabilitiesFlags {
                 required: required_downlevel_caps_webgpu.flags,
                 actual: downlevel_caps.flags,
             })
-        } else {
-            Ok(())
         }
     }
-}
-
-/// Type of Wgpu backend.
-///
-/// Used in the rare cases where it's necessary to be aware of the api differences between
-/// wgpu-core and webgpu.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum WgpuBackendType {
-    /// Backend implemented via wgpu-core.
-    ///
-    /// This includes all native backends and WebGL.
-    WgpuCore,
-
-    /// Backend implemented by the browser's WebGPU javascript api.
-    #[cfg(web)]
-    WebGpu,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -189,12 +173,6 @@ pub struct DeviceCaps {
     ///
     /// Since this has a direct effect on how much data a user can wrangle on the gpu, we always pick the highest possible.
     pub max_buffer_size: u64,
-
-    /// Wgpu backend type.
-    ///
-    /// Prefer using `tier` and other properties of this struct for distinguishing between abilities.
-    /// This is useful for making wgpu-core/webgpu api path decisions.
-    pub backend_type: WgpuBackendType,
 }
 
 impl DeviceCaps {
@@ -218,30 +196,12 @@ impl DeviceCaps {
             DeviceCapabilityTier::Limited
         };
 
-        let backend_type = match adapter.get_info().backend {
-            wgpu::Backend::Noop
-            | wgpu::Backend::Vulkan
-            | wgpu::Backend::Metal
-            | wgpu::Backend::Dx12
-            | wgpu::Backend::Gl => WgpuBackendType::WgpuCore,
-            wgpu::Backend::BrowserWebGpu => {
-                #[cfg(web)]
-                {
-                    WgpuBackendType::WebGpu
-                }
-                #[cfg(not(web))]
-                {
-                    unreachable!("WebGPU backend is not supported on native platforms.")
-                }
-            }
-        };
         let limits = adapter.limits();
 
         Self {
             tier,
             max_texture_dimension2d: limits.max_texture_dimension_2d,
             max_buffer_size: limits.max_buffer_size,
-            backend_type,
         }
     }
 
@@ -387,6 +347,7 @@ pub fn instance_descriptor(force_backend: Option<&str>) -> wgpu::InstanceDescrip
             .union(wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER),
         memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
         backend_options: wgpu::BackendOptions::default(),
+        display: None, // Needs to be filled out later.
     }
     // Allow manipulation of all options via environment variables.
     .with_env()
@@ -424,8 +385,8 @@ pub fn testing_instance_descriptor() -> wgpu::InstanceDescriptor {
 ///
 /// Panics if no adapter was found.
 #[cfg(native)]
-pub fn select_testing_adapter(instance: &wgpu::Instance) -> wgpu::Adapter {
-    let mut adapters = instance.enumerate_adapters(wgpu::Backends::all());
+pub async fn select_testing_adapter(instance: &wgpu::Instance) -> wgpu::Adapter {
+    let mut adapters = instance.enumerate_adapters(wgpu::Backends::all()).await;
     assert!(!adapters.is_empty(), "No graphics adapter found!");
 
     re_log::info!("Found the following graphics adapters:");
@@ -541,8 +502,7 @@ pub fn default_backends() -> wgpu::Backends {
         // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
         wgpu::Backends::from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL)
-    } else if is_safari_browser() || is_firefox_browser() {
-        // TODO(#10609): Fix WebGPU on Safari
+    } else if is_firefox_browser() {
         // TODO(#11009): Fix videos on WebGPU firefox
         wgpu::Backends::GL
     } else {
@@ -617,23 +577,6 @@ pub fn validate_graphics_backend_applicability(backend: wgpu::Backend) -> Result
         }
     }
     Ok(())
-}
-
-/// Are we running inside the Safari browser?
-pub fn is_safari_browser() -> bool {
-    #[cfg(target_arch = "wasm32")]
-    fn is_safari_browser_inner() -> Option<bool> {
-        use web_sys::wasm_bindgen::JsValue;
-        let window = web_sys::window()?;
-        Some(window.has_own_property(&JsValue::from("safari")))
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn is_safari_browser_inner() -> Option<bool> {
-        None
-    }
-
-    is_safari_browser_inner().unwrap_or(false)
 }
 
 /// Are we running inside the Firefox browser?

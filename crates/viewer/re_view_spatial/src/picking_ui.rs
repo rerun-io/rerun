@@ -7,8 +7,8 @@ use re_ui::UiExt as _;
 use re_ui::list_item::{PropertyContent, list_item_scope};
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
-    DataResultInteractionAddress, Item, ItemCollection, ItemContext, UiLayout, ViewQuery,
-    ViewSystemExecutionError, ViewerContext, VisualizerCollection,
+    DataResultInteractionAddress, IdentifiedViewSystem as _, Item, ItemCollection, ItemContext,
+    UiLayout, ViewQuery, ViewSystemExecutionError, ViewerContext,
 };
 
 use crate::visualizers::DepthImageProcessResult;
@@ -19,8 +19,9 @@ use crate::{
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{
-        CamerasVisualizer, DepthImageVisualizer, EncodedDepthImageVisualizer,
-        SpatialViewVisualizerData,
+        CamerasVisualizer, CamerasVisualizerOutput, DepthImageVisualizer,
+        DepthImageVisualizerOutput, EncodedDepthImageVisualizer, EncodedDepthImageVisualizerOutput,
+        iter_spatial_data,
     },
 };
 
@@ -68,8 +69,8 @@ pub fn picking(
     let picking_result = picking_context.pick(
         ctx.render_ctx(),
         query.view_id.gpu_readback_id(),
-        &state.previous_picking_result,
-        iter_pickable_rects(&system_output.view_systems),
+        state.previous_picking_result.as_ref(),
+        iter_pickable_rects(system_output),
         ui_rects,
     );
     state.previous_picking_result = Some(picking_result.clone());
@@ -126,7 +127,7 @@ pub fn picking(
                     ui.set_max_width(320.0);
                     ui.vertical(|ui| {
                         textured_rect_hover_ui(
-                            ctx,
+                            &ctx.active_recording_store_view_context(),
                             ui,
                             &instance_path,
                             query,
@@ -144,14 +145,16 @@ pub fn picking(
                 list_item_scope(ui, "spatial_hover", |ui| {
                     hit_ui(ui, hit);
                     item_ui::instance_path_button(
-                        ctx,
-                        &query.latest_at_query(),
-                        ctx.recording(),
+                        &ctx.active_recording_store_view_context(),
                         ui,
                         Some(query.view_id),
                         &instance_path,
                     );
-                    instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    instance_path.data_ui(
+                        &ctx.active_recording_store_view_context(),
+                        ui,
+                        UiLayout::Tooltip,
+                    );
                 });
             })
         };
@@ -207,15 +210,18 @@ pub fn picking(
             },
             SpatialViewKind::ThreeD => {
                 let hovered_point = picking_result.space_position();
-                let cameras_visualizer_output =
-                    system_output.view_systems.get::<CamerasVisualizer>()?;
+                let empty_cameras = Vec::new();
+                let pinhole_cameras = system_output
+                    .visualizer_data::<CamerasVisualizerOutput>(CamerasVisualizer::identifier())
+                    .ok()
+                    .map(|d| &d.pinhole_cameras)
+                    .unwrap_or(&empty_cameras);
 
                 ItemContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
                     tracked_entity: state.last_tracked_entity().cloned(),
-                    point_in_space_cameras: cameras_visualizer_output
-                        .pinhole_cameras
+                    point_in_space_cameras: pinhole_cameras
                         .iter()
                         .map(|cam| {
                             (
@@ -235,11 +241,9 @@ pub fn picking(
 }
 
 fn iter_pickable_rects(
-    visualizers: &VisualizerCollection,
+    system_output: &re_viewer_context::SystemExecutionOutput,
 ) -> impl Iterator<Item = &PickableTexturedRect> {
-    visualizers
-        .iter_visualizer_data::<SpatialViewVisualizerData>()
-        .flat_map(|data| data.pickable_rects.iter())
+    iter_spatial_data(system_output).flat_map(|(_affinity, data)| data.pickable_rects.iter())
 }
 
 /// If available, finds pixel info for a picking hit.
@@ -250,16 +254,16 @@ fn get_pixel_picking_info(
     hit: &crate::picking::PickingRayHit,
 ) -> Option<PickedPixelInfo> {
     let depth_visualizer_output = system_output
-        .view_systems
-        .get::<DepthImageVisualizer>()
+        .visualizer_data::<DepthImageVisualizerOutput>(DepthImageVisualizer::identifier())
         .ok();
     let encoded_depth_visualizer_output = system_output
-        .view_systems
-        .get::<EncodedDepthImageVisualizer>()
+        .visualizer_data::<EncodedDepthImageVisualizerOutput>(
+            EncodedDepthImageVisualizer::identifier(),
+        )
         .ok();
 
     if hit.hit_type == PickingHitType::TexturedRect {
-        iter_pickable_rects(&system_output.view_systems)
+        iter_pickable_rects(system_output)
             .find(|i| i.ent_path.hash() == hit.instance_path_hash.entity_path_hash)
             .and_then(|picked_rect| {
                 if matches!(picked_rect.source_data, PickableRectSourceData::Placeholder) {

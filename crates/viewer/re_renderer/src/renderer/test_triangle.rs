@@ -27,6 +27,7 @@ impl DrawData for TestTriangleDrawData {
             DrawPhase::Opaque,
             DrawDataDrawable {
                 distance_sort_key: 0.0,
+                secondary_sort_key: 0.0,
                 draw_data_payload: 0,
             },
         );
@@ -70,8 +71,8 @@ impl Renderer for TestTriangle {
                 primitive: wgpu::PrimitiveState::default(),
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: ViewBuilder::MAIN_TARGET_DEPTH_FORMAT,
-                    depth_compare: wgpu::CompareFunction::Always,
-                    depth_write_enabled: true, // writes some depth for testing
+                    depth_compare: Some(wgpu::CompareFunction::Always),
+                    depth_write_enabled: Some(true), // writes some depth for testing
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),

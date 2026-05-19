@@ -345,8 +345,8 @@ impl RrdManifestBuilder {
         )) as ArrayRef;
 
         let columns_static = columns_static
-            .into_iter()
-            .flat_map(|(_desc, col)| [create_index_has_data_array(col.has_static_data)]);
+            .into_values()
+            .flat_map(|col| [create_index_has_data_array(col.has_static_data)]);
 
         let columns_temporal = columns_temporal.values().flat_map(|col| {
             [
@@ -355,7 +355,7 @@ impl RrdManifestBuilder {
             ]
         });
 
-        let columns = columns.into_iter().flat_map(|(_key, col)| {
+        let columns = columns.into_values().flat_map(|col| {
             [
                 create_index_bound_array(col.timeline.typ(), &col.index.starts_inclusive),
                 create_index_bound_array(col.timeline.typ(), &col.index.ends_inclusive),

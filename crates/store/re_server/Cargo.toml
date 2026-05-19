@@ -54,7 +54,6 @@ axum.workspace = true
 bincode.workspace = true
 bytes.workspace = true
 cfg-if.workspace = true
-chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["derive", "env"] }
 datafusion.workspace = true
 futures.workspace = true
@@ -63,6 +62,7 @@ http-body.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 nohash-hasher.workspace = true
+opentelemetry.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 tempfile.workspace = true
@@ -73,7 +73,6 @@ tokio-util.workspace = true
 tonic-web.workspace = true
 tonic.workspace = true
 tower.workspace = true
-tower-http.workspace = true
 tower-service.workspace = true
 tracing.workspace = true
 url.workspace = true

@@ -24,7 +24,6 @@ import sys
 import zipfile
 from pathlib import Path
 
-
 MAGIC = b"RERUNWEB"
 MAGIC_LEN = 8
 OFFSET_LEN = 8

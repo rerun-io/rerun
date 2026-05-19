@@ -67,6 +67,31 @@ impl MaxImageDimensionsStoreSubscriber {
     }
 }
 
+impl re_byte_size::SizeBytes for MaxDimensions {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for MaxImageDimensionsStoreSubscriber {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+        let Self {
+            max_dimensions,
+            video_codecs,
+        } = self;
+        re_byte_size::MemUsageTree::Bytes(
+            max_dimensions.heap_size_bytes() + video_codecs.heap_size_bytes(),
+        )
+    }
+}
+
 impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
     #[inline]
     fn name() -> String {

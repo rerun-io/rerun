@@ -6,7 +6,7 @@ order: 250
 By default, each visualizer reads its input components from the - for example, the `Points3D` visualizer reads colors from `Points3D:colors`.
 **Component mappings** let you override this, redirecting any visualizer input to a different component on the same entity. This makes it possible to store multiple variants of the same data and switch between them per view.
 
-To learn more about how visualizers are set up in general, also have a look at the [concept page on customizing Views](https://landing-4rzjg7apg-rerun.vercel.app/docs/concepts/visualization/customize-views#speculative-link).
+To learn more about how visualizers are set up in general, also have a look at the [concept page on customizing Views](https://rerun.io/docs/concepts/visualization/customize-views).
 
 This guide uses a point cloud with two color sets as a running example, but the same technique works for any component!
 
@@ -14,8 +14,8 @@ This guide uses a point cloud with two color sets as a running example, but the 
 
 You can find the full example here:
 
-* 🐍 [Python](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/dual_color_point_cloud.py?speculative-link)
-* 🦀 [Rust](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/dual_color_point_cloud.rs?speculative-link)
+* 🐍 [Python](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/dual_color_point_cloud.py)
+* 🦀 [Rust](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/dual_color_point_cloud.rs)
 
 <picture>
   <img src="https://static.rerun.io/component-mappings-viewer-overview/bb3c3d249b44f1ef7bd569f58481d146380b061d/full.png" alt="">

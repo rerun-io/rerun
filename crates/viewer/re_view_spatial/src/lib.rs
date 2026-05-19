@@ -41,6 +41,9 @@ pub use view_3d::SpatialView3D;
 pub use contexts::TransformTreeContext;
 
 mod view_kind {
+    /// Whether a spatial visualizer prefers 2D or 3D views.
+    ///
+    /// Used by heuristics to determine which entities belong to which spatial view kind.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum SpatialViewKind {
         TwoD,

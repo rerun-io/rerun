@@ -77,17 +77,11 @@ Filter message types and toggle column visibility in a selection panel.",
         system_registry.register_array_fallback_provider(
             TextLogColumns::descriptor_timeline_columns().component,
             |ctx| {
-                ctx.viewer_ctx()
-                    .recording()
-                    .timelines()
-                    .keys()
-                    .map(|t| {
-                        TimelineColumn(bp_datatypes::TimelineColumn {
-                            visible: true.into(),
-                            timeline: t.as_str().into(),
-                        })
-                    })
-                    .collect::<Vec<_>>()
+                let active_timeline = ctx.viewer_ctx().time_ctrl.timeline_name();
+                vec![TimelineColumn(bp_datatypes::TimelineColumn {
+                    visible: true.into(),
+                    timeline: active_timeline.as_str().into(),
+                })]
             },
         );
 
@@ -193,7 +187,7 @@ Filter message types and toggle column visibility in a selection panel.",
 
         let tokens = ui.tokens();
         let state = state.downcast_mut::<TextViewState>()?;
-        let text = system_output.view_systems.get::<TextLogSystem>()?;
+        let text = system_output.visualizer_data::<Vec<Entry>>(TextLogSystem::identifier())?;
 
         let columns_property = ViewProperty::from_archetype::<TextLogColumns>(
             ctx.blueprint_db(),
@@ -232,7 +226,7 @@ Filter message types and toggle column visibility in a selection panel.",
             TextLogRows::descriptor_filter_by_log_level().component,
         )?;
 
-        for te in &text.entries {
+        for te in text {
             if let Some(lvl) = &te.level {
                 state.seen_levels.insert(lvl.to_string());
             }
@@ -241,7 +235,6 @@ Filter message types and toggle column visibility in a selection panel.",
         // TODO(andreas): Should filter text entries in the part-system instead.
         // this likely requires a way to pass state into a context.
         let entries = text
-            .entries
             .iter()
             .filter(|te| {
                 te.level
@@ -372,7 +365,7 @@ fn table_ui(
                 }
 
                 header.col(|ui| {
-                    timeline_button(ctx, ui, &TimelineName::new(&col.timeline));
+                    timeline_button(&ctx.app_ctx, ui, &TimelineName::new(&col.timeline));
                 });
             }
             for col in columns {
@@ -388,8 +381,6 @@ fn table_ui(
             tokens.setup_table_body(&mut body, table_style);
 
             body_clip_rect = Some(body.max_rect());
-
-            let query = ctx.current_query();
 
             let row_heights = entries
                 .iter()
@@ -438,9 +429,7 @@ fn table_ui(
                     row.col(|ui| match col.kind {
                         bp_datatypes::TextLogColumnKind::EntityPath => {
                             item_ui::entity_path_button(
-                                ctx,
-                                &query,
-                                ctx.recording(),
+                                &ctx.active_recording_store_view_context(),
                                 ui,
                                 None,
                                 &entry.entity_path,

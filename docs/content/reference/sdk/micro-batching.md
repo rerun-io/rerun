@@ -29,7 +29,7 @@ Defaults to `RERUN_FLUSH_NUM_BYTES=1048576` (1MiB).
 
 Sets the number of rows that drives the space threshold.
 
-Defaults to `RERUN_FLUSH_NUM_BYTES=18446744073709551615` (`u64::MAX`).
+Defaults to `RERUN_FLUSH_NUM_ROWS=18446744073709551615` (`u64::MAX`).
 
 Or directly from code, in Python & Rust:
 

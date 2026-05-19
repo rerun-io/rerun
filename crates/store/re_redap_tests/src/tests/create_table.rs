@@ -9,6 +9,7 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 
+use super::common::entry_name;
 use crate::SchemaTestExt as _;
 
 pub async fn create_table_entry(service: impl RerunCloudService) {
@@ -28,7 +29,7 @@ pub async fn create_table_entry(service: impl RerunCloudService) {
     let provider_details = ProviderDetails::LanceTable(LanceTable { table_url });
 
     let create_table_request = CreateTableEntryRequest {
-        name: table_name.to_owned(),
+        name: entry_name(table_name),
         schema: schema.clone(),
         provider_details: Some(provider_details),
     }
@@ -48,7 +49,7 @@ pub async fn create_table_entry(service: impl RerunCloudService) {
         .expect("table entry details missing");
     let entry: EntryDetails = response.try_into().expect("convert into entry details");
 
-    assert_eq!(entry.name, table_name);
+    assert_eq!(entry.name, entry_name(table_name));
 
     let schema_response = service
         .get_table_schema(tonic::Request::new(GetTableSchemaRequest {
@@ -84,7 +85,7 @@ pub async fn create_table_entry_duplicate_url(service: impl RerunCloudService) {
     });
 
     let create_table_request = CreateTableEntryRequest {
-        name: "table_1".to_owned(),
+        name: entry_name("table_1"),
         schema: schema.clone(),
         provider_details: Some(provider_details.clone()),
     }
@@ -98,7 +99,7 @@ pub async fn create_table_entry_duplicate_url(service: impl RerunCloudService) {
 
     // Second call with the same URL but a different name should fail with AlreadyExists.
     let create_table_request_2 = CreateTableEntryRequest {
-        name: "table_2".to_owned(),
+        name: entry_name("table_2"),
         schema,
         provider_details: Some(provider_details),
     }
@@ -126,7 +127,7 @@ pub async fn create_table_entry_failed_does_not_leak_name(service: impl RerunClo
     });
 
     let create_table_request = CreateTableEntryRequest {
-        name: table_name.to_owned(),
+        name: entry_name(table_name),
         schema: schema.clone(),
         provider_details: Some(bad_provider),
     }
@@ -147,7 +148,7 @@ pub async fn create_table_entry_failed_does_not_leak_name(service: impl RerunClo
     });
 
     let create_table_request = CreateTableEntryRequest {
-        name: table_name.to_owned(),
+        name: entry_name(table_name),
         schema,
         provider_details: Some(good_provider),
     }

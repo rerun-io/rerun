@@ -19,7 +19,7 @@ pub use entity_path_filter::{
     ResolvedEntityPathFilter, ResolvedEntityPathRule, RuleEffect,
 };
 pub use entity_path_part::EntityPathPart;
-pub use parse_path::{PathParseError, tokenize_by};
+pub use parse_path::{PathParseError, forgiving_parse_cache_bytes_used, tokenize_by};
 
 // ----------------------------------------------------------------------------
 

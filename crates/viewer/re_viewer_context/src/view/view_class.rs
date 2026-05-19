@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_chunk_store::MissingChunkReporter;
 use re_log_types::EntityPath;
@@ -8,10 +9,9 @@ use vec1::Vec1;
 
 use super::ViewContext;
 use crate::{
-    IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
-    RecommendedMappings, SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
-    ViewerContext, VisualizableEntities,
+    IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings, SystemExecutionOutput,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext, VisualizableReason,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
@@ -29,18 +29,35 @@ pub enum ViewClassLayoutPriority {
     High,
 }
 
-pub struct RecommendedVisualizers(
-    /// A _stable_ mapping for which visualizers can visualize which components (with optional selectors).
-    pub BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>>,
-);
+/// Recommended visualizers for an entity, split into all recommendations and the subset to auto-spawn.
+///
+/// `auto_spawned` is always a subset of `all_recommendations`.
+/// By default, all recommendations are also auto-spawned.
+pub struct RecommendedVisualizers {
+    /// All recommended visualizers (used for UI purposes like "add visualizer" menus).
+    all_recommendations: BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>>,
+
+    /// The subset of [`Self::all_recommendations`] that should be automatically spawned.
+    auto_spawned: BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>>,
+}
 
 impl RecommendedVisualizers {
+    /// Creates a new [`RecommendedVisualizers`] where all recommendations are auto-spawned.
+    pub fn new(
+        recommended_and_auto_spawned: BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>>,
+    ) -> Self {
+        Self {
+            auto_spawned: recommended_and_auto_spawned.clone(),
+            all_recommendations: recommended_and_auto_spawned,
+        }
+    }
+
     pub fn empty() -> Self {
-        Self(Default::default())
+        Self::new(Default::default())
     }
 
     pub fn default(visualizer: ViewSystemIdentifier) -> Self {
-        Self(std::iter::once((visualizer, Default::default())).collect())
+        Self::new(std::iter::once((visualizer, Default::default())).collect())
     }
 
     pub fn default_many(visualizers: impl IntoIterator<Item = ViewSystemIdentifier>) -> Self {
@@ -48,8 +65,69 @@ impl RecommendedVisualizers {
             .into_iter()
             .map(|v| (v, Default::default()))
             .collect();
-        Self(recommended)
+        Self::new(recommended)
     }
+
+    /// Inserts visualizer recommendations, merging with any existing mappings for the same visualizer.
+    ///
+    /// Duplicate mappings are removed.
+    /// If `auto_spawn` is true, this recommendation will also spawn a view.
+    pub fn insert(
+        &mut self,
+        visualizer: ViewSystemIdentifier,
+        mappings: Vec1<RecommendedMappings>,
+        auto_spawn: bool,
+    ) {
+        if auto_spawn {
+            Self::extend_mappings_unique(&mut self.auto_spawned, visualizer, mappings.clone());
+        }
+        Self::extend_mappings_unique(&mut self.all_recommendations, visualizer, mappings);
+    }
+
+    /// All recommended visualizers, including those not auto-spawned.
+    pub fn all_recommendations(
+        &self,
+    ) -> &BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>> {
+        &self.all_recommendations
+    }
+
+    /// Consumes self and returns the auto-spawned recommendations.
+    ///
+    /// Auto-spanned recommendations are always a subset of all recommendations.
+    pub fn into_auto_spawned(self) -> BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>> {
+        self.auto_spawned
+    }
+
+    fn extend_mappings_unique(
+        map: &mut BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>>,
+        visualizer: ViewSystemIdentifier,
+        mappings: Vec1<RecommendedMappings>,
+    ) {
+        match map.entry(visualizer) {
+            std::collections::btree_map::Entry::Occupied(mut entry) => {
+                let existing = entry.get_mut();
+                existing.extend(mappings);
+                *existing = Vec1::try_from_vec(existing.iter().cloned().unique().collect())
+                    .expect("There was already at least one mapping.");
+            }
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                entry.insert(mappings);
+            }
+        }
+    }
+}
+
+/// Callback that renders the active visualizers in the selection panel.
+pub type VisualizersSectionUi<'a> = Box<dyn Fn(&mut egui::Ui, &ViewContext<'_>) + 'a>;
+
+/// Output of [`ViewClass::visualizers_section`].
+pub struct VisualizersSectionOutput<'a> {
+    /// Renders the active visualizers in the selection panel.
+    pub ui: VisualizersSectionUi<'a>,
+
+    /// Per-entity options for the "add visualizer" menu.
+    /// Recommended visualizers for an entity may or may not be identical to [`ViewClass::recommended_visualizers_for_entity`].
+    pub add_options: Vec<(EntityPath, RecommendedVisualizers)>,
 }
 
 /// Defines a class of view without any concrete types making it suitable for storage and interfacing.
@@ -142,27 +220,20 @@ pub trait ViewClass: Send + Sync {
     /// Will only be called for entities where the selected visualizers have not
     /// been overridden by the blueprint.
     ///
+    /// `visualizers_with_reason` contains the visualizers that are visualizable for this entity,
+    /// along with the reason why they are visualizable.
+    ///
     /// This interface provides a default implementation which will return all visualizers
     /// which are both visualizable and indicated for the given entity.
     fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
+        indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
-        let available_visualizers =
-            visualizable_entities_per_visualizer
-                .iter()
-                .filter_map(|(visualizer, ents)| {
-                    if ents.contains_key(entity_path) {
-                        Some(visualizer)
-                    } else {
-                        None
-                    }
-                });
-
-        let recommended = available_visualizers
-            .filter_map(|visualizer| {
+        let recommended = visualizers_with_reason
+            .iter()
+            .filter_map(|(visualizer, _reason)| {
                 if indicated_entities_per_visualizer
                     .get(visualizer)
                     .is_some_and(|matching_list| matching_list.contains(entity_path))
@@ -174,7 +245,17 @@ pub trait ViewClass: Send + Sync {
             })
             .collect();
 
-        RecommendedVisualizers(recommended)
+        RecommendedVisualizers::new(recommended)
+    }
+
+    /// Custom UI and add-visualizer options for the "Visualizers" section in the selection panel.
+    ///
+    /// Returns `None` if the view doesn't provide a custom visualizers section (the default).
+    fn visualizers_section<'a>(
+        &'a self,
+        _ctx: &'a ViewContext<'a>,
+    ) -> Option<VisualizersSectionOutput<'a>> {
+        None
     }
 
     /// Determines which views should be spawned by default for this class.
@@ -187,20 +268,6 @@ pub trait ViewClass: Send + Sync {
         ctx: &ViewerContext<'_>,
         include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics;
-
-    /// Ui for quickly navigating the (active) visualizers for a view.
-    ///
-    /// Each view can opt-in to using this feature.
-    #[expect(clippy::type_complexity)]
-    fn visualizers_ui<'a>(
-        &'a self,
-        _ctx: &'a ViewerContext<'a>,
-        _view_id: ViewId,
-        _state: &'a mut dyn ViewState,
-        _space_origin: &'a EntityPath,
-    ) -> Option<Box<dyn Fn(&mut egui::Ui) + 'a>> {
-        None
-    }
 
     /// Ui shown when the user selects a view of this class.
     #[doc(alias = "settings_ui")]

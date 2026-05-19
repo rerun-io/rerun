@@ -39,10 +39,10 @@ pub struct CredentialsLoadError(#[from] storage::LoadError);
 /// Load credentials from storage.
 pub fn load_credentials() -> Result<Option<Credentials>, CredentialsLoadError> {
     if let Some(credentials) = storage::load()? {
-        re_log::debug!("found credentials");
+        re_log::debug_once!("Found credentials for {}", credentials.user.email);
         Ok(Some(credentials))
     } else {
-        re_log::debug!("no credentials stored locally");
+        re_log::debug_once!("No credentials stored locally");
         Ok(None)
     }
 }
@@ -69,10 +69,18 @@ pub struct LogoutOutcome {
 /// On native, this also starts a local callback server so the browser has
 /// somewhere to redirect after the `WorkOS` session is cleared.
 ///
+/// On web, `signed_out_url` is used as the post-logout redirect. If `None`,
+/// no `return_to` is included in the logout URL.
+///
 /// The logout URL should be opened in the user's browser to also end the
 /// `WorkOS` session. If no credentials were stored (or the session ID could
 /// not be determined), `Ok(None)` is returned.
-pub fn clear_credentials() -> Result<Option<LogoutOutcome>, CredentialsClearError> {
+/// `signed_out_url` is only used on web — on native, it is ignored.
+pub fn clear_credentials(
+    signed_out_url: Option<&str>,
+) -> Result<Option<LogoutOutcome>, CredentialsClearError> {
+    let _ = &signed_out_url; // only used on web
+
     // Load credentials before clearing so we can extract the session ID.
     let outcome = storage::load().ok().flatten().map(|creds| {
         #[cfg(not(target_arch = "wasm32"))]
@@ -96,19 +104,16 @@ pub fn clear_credentials() -> Result<Option<LogoutOutcome>, CredentialsClearErro
 
         #[cfg(target_arch = "wasm32")]
         {
-            // On web, redirect to /signed-out on the current origin after logout.
-            let return_to = web_sys::window()
-                .and_then(|w| w.location().origin().ok())
-                .map(|origin| format!("{origin}/signed-out"));
             LogoutOutcome {
-                logout_url: api::logout_url(&creds.claims.sid, return_to.as_deref()),
+                logout_url: api::logout_url(&creds.claims.sid, signed_out_url),
             }
         }
     });
 
-    storage::clear()?;
-
+    crate::credentials::oauth::clear_cache();
     crate::credentials::oauth::auth_update(None);
+    storage::clear()?;
+    re_analytics::set_logged_in(false);
 
     Ok(outcome)
 }
@@ -231,6 +236,10 @@ pub struct RerunCloudClaims {
     /// Subject's email address.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
+
+    /// Organization name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub org_name: Option<String>,
 }
 
 impl RerunCloudClaims {
@@ -283,6 +292,9 @@ pub struct CredentialsStoreError(#[from] storage::StoreError);
 impl InMemoryCredentials {
     /// Ensure credentials are persisted to disk before using them.
     pub fn ensure_stored(self) -> Result<Credentials, CredentialsStoreError> {
+        // Link the analytics ID to the authenticated user.
+        self.0.link_analytics_id_to_user();
+
         storage::store(&self.0)?;
 
         // Normally if re_analytics discovers this is a brand-new configuration,
@@ -299,12 +311,6 @@ impl InMemoryCredentials {
         {
             config.save().ok();
         }
-
-        // Link the analytics ID to the authenticated user
-        re_analytics::record(|| re_analytics::event::SetPersonProperty {
-            email: self.0.user.email.clone(),
-            organization_id: self.0.claims.org_id.clone(),
-        });
 
         crate::credentials::oauth::auth_update(Some(&self.0.user));
 
@@ -325,8 +331,10 @@ impl Credentials {
         let jwt = Jwt(res.access_token);
         let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
         let access_token = AccessToken::try_from_unverified_jwt(jwt)?;
+        let mut user: User = res.user;
+        user.org_name = claims.org_name.clone();
         Ok(InMemoryCredentials(Self {
-            user: res.user,
+            user,
             refresh_token: Some(RefreshToken(res.refresh_token)),
             access_token,
             claims,
@@ -346,6 +354,7 @@ impl Credentials {
         let user = User {
             id: claims.sub.clone(),
             email,
+            org_name: claims.org_name.clone(),
         };
         let access_token = AccessToken {
             token: access_token,
@@ -369,12 +378,27 @@ impl Credentials {
     pub fn user(&self) -> &User {
         &self.user
     }
+
+    /// Link the current analytics ID to this user credentials.
+    pub fn link_analytics_id_to_user(&self) {
+        re_log::debug!("Linking analytics ID to user: '{}'", self.user.email);
+        re_analytics::set_logged_in(true);
+        re_analytics::record(|| re_analytics::event::SetPersonProperty {
+            email: self.user.email.clone(),
+            organization_id: self.claims.org_id.clone(),
+        });
+    }
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct User {
+    /// Opaque user identifier from the auth provider (e.g. `"user_01JZ…"`).
+    ///
+    /// This is NOT a human-readable name; use [`Self::email`] for display purposes.
     pub id: String,
+
     pub email: String,
+    pub org_name: Option<String>,
 }
 
 /// An access token which was valid at some point in the past.

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from rerun import server as _server
 
@@ -31,7 +31,7 @@ class Server:
             tables=tables,
         )
 
-    def __enter__(self) -> Server:
+    def __enter__(self) -> Self:
         self._internal.__enter__()
         return self
 

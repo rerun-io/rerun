@@ -38,7 +38,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
             | Item::DataSource(_)
             | Item::StoreId(_)
             | Item::ComponentPath(_)
-            | Item::RedapEntry(_)
+            | Item::RedapEntry { .. }
             | Item::RedapServer(_)
             | Item::TableId(_) => false,
 
@@ -47,8 +47,9 @@ impl ContextMenuAction for CollapseExpandAllAction {
             //TODO(ab): for DataResult, walk the data result tree instead!
             Item::DataResult(data_result) => ctx
                 .viewer_context
-                .recording()
-                .tree()
+                .recording_engine()
+                .store()
+                .entity_tree()
                 .subtree(&data_result.instance_path.entity_path)
                 .is_some_and(|subtree| !subtree.is_leaf()),
         }

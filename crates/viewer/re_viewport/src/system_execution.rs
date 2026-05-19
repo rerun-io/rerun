@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 use ahash::HashMap;
 use nohash_hasher::IntMap;
@@ -24,9 +23,8 @@ fn run_view_systems(
         ViewContextSystemOncePerFrameResult,
     >,
     context_systems: &mut ViewContextCollection,
-    view_systems: &mut VisualizerCollection,
-) -> PerVisualizerTypeInViewClass<Result<VisualizerExecutionOutput, Arc<ViewSystemExecutionError>>>
-{
+    view_systems: &VisualizerCollection,
+) -> PerVisualizerTypeInViewClass<Result<VisualizerExecutionOutput, ViewSystemExecutionError>> {
     re_tracing::profile_function!(view.class_identifier().as_str());
 
     let view_ctx = view.bundle_context_with_state(ctx, view_state);
@@ -57,11 +55,17 @@ fn run_view_systems(
     re_tracing::profile_wait!("VisualizerSystem::execute");
     let per_visualizer_type_results = view_systems
         .systems
-        .par_iter_mut()
+        .par_iter()
         .map(|(name, vis_system)| {
             re_tracing::profile_scope!("VisualizerSystem::execute", name.as_str());
-            let result = vis_system.execute(&view_ctx, query, context_systems);
-            (*name, result.map_err(Arc::new))
+            let affinity = vis_system.affinity();
+            let result = vis_system
+                .execute(&view_ctx, query, context_systems)
+                .map(|mut output| {
+                    output.affinity = affinity;
+                    output
+                });
+            (*name, result)
         })
         .collect();
 
@@ -122,7 +126,7 @@ pub fn execute_systems_for_view<'a>(
     let mut context_systems = ctx
         .view_class_registry()
         .new_context_collection(view.class_identifier());
-    let mut view_systems = ctx
+    let view_systems = ctx
         .view_class_registry()
         .new_visualizer_collection(view.class_identifier());
 
@@ -133,13 +137,12 @@ pub fn execute_systems_for_view<'a>(
         view_state,
         context_system_once_per_frame_results,
         &mut context_systems,
-        &mut view_systems,
+        &view_systems,
     );
 
     (
         query,
         SystemExecutionOutput {
-            view_systems,
             context_systems,
             visualizer_execution_output,
         },
@@ -154,9 +157,11 @@ pub fn execute_systems_for_all_views<'a>(
 ) -> HashMap<ViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
     re_tracing::profile_wait!("execute_systems");
 
+    let store_id = ctx.store_id();
+
     // During system execution we only have read access to the view states, so we need to ensure they exist ahead of time.
     for (view_id, view) in views {
-        view_states.ensure_state_exists(*view_id, view.class(ctx.view_class_registry()));
+        view_states.ensure_state_exists(store_id, *view_id, view.class(ctx.view_class_registry()));
     }
 
     // Once-per-frame context system execution.
@@ -176,7 +181,7 @@ pub fn execute_systems_for_all_views<'a>(
             match tile {
                 egui_tiles::Tile::Pane(view_id) => {
                     let view = views.get(view_id)?;
-                    let Some(view_state) = view_states.get(*view_id) else {
+                    let Some(view_state) = view_states.get(store_id, *view_id) else {
                         re_log::debug_panic!("View state for view {view_id:?} not found. That shouldn't be possible since we just ensured they exist above.");
                         return None;
                     };

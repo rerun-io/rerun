@@ -16,7 +16,7 @@ I.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d =
 
 ## Arrow datatype
 ```
-FixedSizeList<4, float32>
+FixedSizeList(4 x non-null Float32)
 ```
 
 ## API reference links

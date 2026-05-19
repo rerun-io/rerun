@@ -9,9 +9,9 @@ use re_sdk_types::blueprint::components::{self as blueprint_components, ViewOrig
 use re_sdk_types::components::{Name, Visible};
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    BlueprintContext as _, ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
-    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewContext, ViewId, ViewState,
-    ViewStates, ViewerContext,
+    ActiveStoreContext, BlueprintContext as _, ContentsName, QueryRange, RecommendedView,
+    SystemCommand, SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewContext, ViewId,
+    ViewState, ViewStates, ViewerContext,
 };
 
 use crate::{ViewContents, ViewProperty};
@@ -237,7 +237,7 @@ impl ViewBlueprint {
     /// Creates a new [`ViewBlueprint`] with the same contents, but a different [`ViewId`]
     ///
     /// Also duplicates all the queries in the view.
-    pub fn duplicate(&self, store_context: &StoreContext<'_>, query: &LatestAtQuery) -> Self {
+    pub fn duplicate(&self, store_context: &ActiveStoreContext<'_>, query: &LatestAtQuery) -> Self {
         let mut pending_writes = Vec::new();
         let blueprint = store_context.blueprint;
         let blueprint_engine = blueprint.storage_engine();
@@ -248,7 +248,8 @@ impl ViewBlueprint {
 
         // Create pending write operations to duplicate the entire subtree
         // TODO(jleibs): This should be a helper somewhere.
-        if let Some(tree) = blueprint.tree().subtree(&current_path) {
+        let bp_engine = blueprint.storage_engine();
+        if let Some(tree) = bp_engine.store().entity_tree().subtree(&current_path) {
             tree.visit_children_recursively(|path| {
                 let sub_path: EntityPath = new_path
                     .iter()
@@ -277,7 +278,7 @@ impl ViewBlueprint {
                                     .cache()
                                     .latest_at(query, path, [component])
                                     .component_batch_raw(component)?;
-                                let descriptor = blueprint_engine.store().entity_component_descriptor(path, component)?;
+                                let descriptor = blueprint_engine.schema().entity_component_descriptor(path, component)?;
                                 Some((descriptor, array))
                             }),
                     )
@@ -430,7 +431,7 @@ impl ViewBlueprint {
         let class = ctx
             .view_class_registry()
             .get_class_or_log_error(self.class_identifier());
-        let view_state = view_states.get_mut_or_create(self.id, class);
+        let view_state = view_states.get_mut_or_create(ctx.store_id(), self.id, class);
         self.bundle_context_with_state(ctx, view_state)
     }
 
@@ -461,8 +462,7 @@ mod tests {
     use re_sdk_types::blueprint::archetypes::EntityBehavior;
     use re_test_context::TestContext;
     use re_viewer_context::{
-        PerVisualizerType, PerVisualizerTypeInViewClass, ViewClassPlaceholder,
-        VisualizableEntities, VisualizableReason,
+        PerVisualizerType, ViewClassPlaceholder, VisualizableEntities, VisualizableReason,
     };
 
     use super::*;
@@ -505,11 +505,6 @@ mod tests {
                     )
                 });
         }
-
-        let visualizable_entities = PerVisualizerTypeInViewClass::<VisualizableEntities> {
-            view_class_identifier: ViewClassPlaceholder::identifier(),
-            per_visualizer: visualizable_entities.0.clone(),
-        };
 
         // Basic blueprint - a single view that queries everything.
         test_ctx.register_view_class::<ViewClassPlaceholder>();
@@ -646,7 +641,7 @@ mod tests {
                 add_to_blueprint(&base_override_path, batch.as_ref());
             }
 
-            let query_result = update_overrides(&test_ctx, &view, &visualizable_entities);
+            let query_result = update_overrides(&test_ctx, &view, &visualizable_entities.as_ref());
 
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
@@ -672,15 +667,16 @@ mod tests {
     fn update_overrides(
         test_ctx: &TestContext,
         view: &ViewBlueprint,
-        visualizable_entities: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        visualizable_entities: &PerVisualizerType<&VisualizableEntities>,
     ) -> re_viewer_context::DataQueryResult {
         let mut result = None;
 
         test_ctx.run_in_egui_central_panel(|ctx, _ui| {
             let mut view_states = ViewStates::default();
             let view_state = view_states.get_mut_or_create(
+                ctx.store_id(),
                 view.id,
-                ctx.view_class_registry
+                ctx.view_class_registry()
                     .class(view.class_identifier())
                     .expect("view class should be registered"),
             );
@@ -689,7 +685,7 @@ mod tests {
                 ctx.blueprint_db(),
                 ctx.blueprint_query(),
                 ctx.time_ctrl.timeline(),
-                ctx.view_class_registry,
+                ctx.view_class_registry(),
                 view_state,
             );
 

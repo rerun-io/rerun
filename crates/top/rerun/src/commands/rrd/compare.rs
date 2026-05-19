@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -71,13 +72,6 @@ impl CompareCommand {
             "Application IDs do not match: '{app_id1}' vs. '{app_id2}'"
         );
 
-        anyhow::ensure!(
-            chunks1.len() == chunks2.len(),
-            "Number of Chunks does not match: '{}' vs. '{}'",
-            re_format::format_uint(chunks1.len()),
-            re_format::format_uint(chunks2.len()),
-        );
-
         fn format_chunk(chunk: &Chunk) -> String {
             re_arrow_util::format_record_batch_opts(
                 &chunk.to_record_batch().expect("Cannot fail in practice"),
@@ -112,28 +106,39 @@ impl CompareCommand {
                 let mut error_msg = String::from("Unordered comparison failed:\n");
 
                 if !unmatched_chunks1.is_empty() {
-                    error_msg.push_str(&format!(
-                        "\n{} chunk(s) from {path_to_rrd1:?} could not be matched:\n",
+                    writeln!(
+                        error_msg,
+                        "\n{} chunk(s) from {path_to_rrd1:?} could not be matched:",
                         unmatched_chunks1.len()
-                    ));
+                    )
+                    .ok();
                     for chunk in &unmatched_chunks1 {
-                        error_msg.push_str(&format!("{}\n", format_chunk(chunk)));
+                        writeln!(error_msg, "{}", format_chunk(chunk)).ok();
                     }
                 }
 
                 if !chunks2_remaining.is_empty() {
-                    error_msg.push_str(&format!(
-                        "\n{} chunk(s) from {path_to_rrd2:?} could not be matched:\n",
+                    writeln!(
+                        error_msg,
+                        "\n{} chunk(s) from {path_to_rrd2:?} could not be matched:",
                         chunks2_remaining.len()
-                    ));
+                    )
+                    .ok();
                     for chunk in &chunks2_remaining {
-                        error_msg.push_str(&format!("{}\n", format_chunk(chunk)));
+                        writeln!(error_msg, "{}", format_chunk(chunk)).ok();
                     }
                 }
 
                 anyhow::bail!(error_msg);
             }
         } else {
+            anyhow::ensure!(
+                chunks1.len() == chunks2.len(),
+                "Number of Chunks does not match: '{}' vs. '{}'",
+                re_format::format_uint(chunks1.len()),
+                re_format::format_uint(chunks2.len()),
+            );
+
             for (chunk1, chunk2) in izip!(chunks1, chunks2) {
                 re_chunk::Chunk::ensure_similar(&chunk1, &chunk2).with_context(|| {
                     format!(

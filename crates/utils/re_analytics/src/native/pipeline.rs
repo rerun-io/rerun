@@ -164,7 +164,7 @@ impl Pipeline {
 
 fn try_send_event(event_tx: &channel::Sender<PipelineEvent>, event: PipelineEvent) {
     match event_tx.try_send(event) {
-        Ok(_) => {}
+        Ok(()) => {}
         Err(channel::TrySendError::Full(_)) => {
             re_log::trace!("dropped event, analytics channel is full");
         }
@@ -222,10 +222,10 @@ fn flush_pending_events(
                 sink,
                 abort_signal,
             ) {
-                Ok(_) => {
+                Ok(()) => {
                     re_log::trace!(%analytics_id, %session_id, ?path, "flushed pending events");
                     match std::fs::remove_file(&path) {
-                        Ok(_) => {
+                        Ok(()) => {
                             re_log::trace!(%analytics_id, %session_id, ?path, "removed session file");
                         }
                         Err(err) => {

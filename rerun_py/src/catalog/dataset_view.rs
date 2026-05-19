@@ -13,19 +13,17 @@ use re_log_types::{EntityPathFilter, ResolvedEntityPathFilter};
 #[cfg(feature = "perf_telemetry")]
 use re_perf_telemetry::extract_trace_context_from_contextvar;
 use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
-use tracing::instrument;
 
-#[cfg(feature = "perf_telemetry")]
-use crate::catalog::trace_context::with_trace_span;
 use crate::catalog::{
     IndexValuesLike, PyDatasetEntryInternal, PySchemaInternal, PyTableProviderAdapterInternal,
     to_py_err,
 };
+use crate::trace_context::read_trace_context_from_python;
 use crate::utils::wait_for_future;
 
 /// A view over a dataset with optional segment and content filters applied lazily.
 //TODO(RR-3157): add the ability to filter on components, not just entity paths
-#[pyclass(name = "DatasetViewInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq]
+#[pyclass(name = "DatasetViewInternal", module = "rerun_bindings.rerun_bindings")]
 pub struct PyDatasetViewInternal {
     dataset: Py<PyDatasetEntryInternal>,
 
@@ -62,7 +60,7 @@ impl PyDatasetViewInternal {
             return schema;
         }
 
-        let filter = resolved_entity_path_filter(&self.content_filters);
+        let filter = resolved_entity_path_filter(self.content_filters.as_ref());
 
         // Filter columns: keep non-component columns (row_id, index) and matching component columns
         let filtered_columns: Vec<ColumnDescriptor> = schema
@@ -82,7 +80,7 @@ impl PyDatasetViewInternal {
     }
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PyDatasetViewInternal {
     /// Return the underlying dataset entry.
     #[getter]
@@ -105,9 +103,9 @@ impl PyDatasetViewInternal {
     }
 
     /// Return the schema of the data contained in this view.
-    #[instrument(skip_all)]
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetView.schema").entered();
         let dataset = self_.dataset.borrow(py);
         let PySchemaInternal {
             columns: base_columns,
@@ -123,14 +121,16 @@ impl PyDatasetViewInternal {
     }
 
     /// Return the Arrow schema of the data contained in this view.
-    #[instrument(skip_all)]
     fn arrow_schema(self_: PyRef<'_, Self>) -> PyResult<PyArrowType<ArrowSchema>> {
+        let _span =
+            read_trace_context_from_python(self_.py(), "DatasetView.arrow_schema").entered();
         Ok(Self::schema(self_)?.into_arrow_schema().into())
     }
 
     /// Returns a list of segment IDs for this view (filtered if segment filter is set).
     fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
         let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetView.segment_ids").entered();
         let dataset = self_.dataset.borrow(py);
 
         let all_segment_ids = PyDatasetEntryInternal::segment_ids(dataset)?;
@@ -152,6 +152,7 @@ impl PyDatasetViewInternal {
     ///     A list of segment ID strings.
     fn filter_segments(self_: PyRef<'_, Self>, segment_ids: Vec<String>) -> PyResult<Py<Self>> {
         let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetView.filter_segments").entered();
 
         // Extract segment IDs from input
         let new_segments: HashSet<String> = segment_ids.into_iter().collect();
@@ -179,6 +180,7 @@ impl PyDatasetViewInternal {
     ///     Entity path expressions like "/points/**", "-/text/**".
     fn filter_contents(self_: PyRef<'_, Self>, exprs: Vec<String>) -> PyResult<Py<Self>> {
         let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetView.filter_contents").entered();
 
         // Combine with existing content filters
         let combined_filters = match &self_.content_filters {
@@ -225,7 +227,6 @@ impl PyDatasetViewInternal {
         fill_latest_at = false,
         using_index_values = None,
     ))]
-    #[instrument(skip_all)]
     fn reader<'py>(
         self_: PyRef<'py, Self>,
         index: Option<String>,
@@ -235,6 +236,7 @@ impl PyDatasetViewInternal {
         using_index_values: Option<BTreeMap<String, IndexValuesLike<'_>>>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetView.reader").entered();
 
         // Convert IndexValuesLike to BTreeSet<TimeInt>
         let using_index_values = using_index_values
@@ -251,7 +253,7 @@ impl PyDatasetViewInternal {
             py,
             &self_.dataset,
             self_.segment_filter.clone(),
-            &self_.content_filters,
+            self_.content_filters.as_ref(),
             index,
             include_semantically_empty_columns,
             include_tombstone_columns,
@@ -261,34 +263,15 @@ impl PyDatasetViewInternal {
 
         let table = PyTableProviderAdapterInternal::new(provider, true);
 
-        #[cfg(feature = "perf_telemetry")]
-        {
-            with_trace_span!(py, "reader", {
-                // Get context and call read_table with the reader
-                let dataset = self_.dataset.borrow(py);
-                let client = dataset.client().borrow(py);
-                let ctx = client.ctx(py)?;
-                let ctx = ctx.bind(py);
+        let dataset = self_.dataset.borrow(py);
+        let client = dataset.client().borrow(py);
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
 
-                drop(client);
-                drop(dataset);
+        drop(client);
+        drop(dataset);
 
-                ctx.call_method1("read_table", (table,))
-            })
-        }
-        #[cfg(not(feature = "perf_telemetry"))]
-        {
-            // Get context and call read_table with the reader
-            let dataset = self_.dataset.borrow(py);
-            let client = dataset.client().borrow(py);
-            let ctx = client.ctx(py)?;
-            let ctx = ctx.bind(py);
-
-            drop(client);
-            drop(dataset);
-
-            ctx.call_method1("read_table", (table,))
-        }
+        ctx.call_method1("read_table", (table,))
     }
 }
 
@@ -301,7 +284,7 @@ impl PyDatasetViewInternal {
 /// - `filter_contents("/does/exist")` -> only matching columns
 ///
 /// Also, it always applies the "hide properties by default" implicit behavior.
-fn resolved_entity_path_filter(content_filters: &Option<Vec<String>>) -> ResolvedEntityPathFilter {
+fn resolved_entity_path_filter(content_filters: Option<&Vec<String>>) -> ResolvedEntityPathFilter {
     match content_filters {
         None => {
             // No filter specified - accept everything
@@ -323,7 +306,7 @@ fn resolved_entity_path_filter(content_filters: &Option<Vec<String>>) -> Resolve
 /// Build a `ViewContentsSelector` from content filters.
 fn build_view_contents(
     schema: &ArrowSchema,
-    content_filters: &Option<Vec<String>>,
+    content_filters: Option<&Vec<String>>,
 ) -> ViewContentsSelector {
     let filter = resolved_entity_path_filter(content_filters);
 
@@ -349,7 +332,7 @@ fn build_dataframe_query_table_provider(
     py: Python<'_>,
     dataset: &Py<PyDatasetEntryInternal>,
     segment_filter: Option<HashSet<String>>,
-    content_filters: &Option<Vec<String>>,
+    content_filters: Option<&Vec<String>>,
     index: Option<String>,
     include_semantically_empty_columns: bool,
     include_tombstone_columns: bool,
@@ -422,6 +405,8 @@ fn build_dataframe_query_table_provider(
     let trace_headers_opt = None;
 
     let index_values = using_index_values.map(Arc::new);
+    // Reuse the already-fetched schema so the provider skips its own `GetDatasetSchema` RPC.
+    let arrow_schema = Some(schema);
     wait_for_future(py, async move {
         DataframeQueryTableProvider::new(
             connection.origin().clone(),
@@ -430,6 +415,7 @@ fn build_dataframe_query_table_provider(
             &query_expression,
             &segment_ids,
             index_values,
+            arrow_schema,
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers_opt,
         )

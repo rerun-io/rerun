@@ -26,38 +26,30 @@ pub fn add_to_registry<C: EntityDataUi + re_sdk_types::Component>(
     registry.add_legacy_display_ui(
         C::name(),
         Box::new(
-            |ctx,
-             ui,
-             ui_layout,
-             query,
-             db,
-             entity_path,
-             component_descriptor,
-             row_id,
-             component_raw| match C::from_arrow(component_raw) {
-                Ok(components) => match components.len() {
-                    1 => {
-                        components[0].entity_data_ui(
-                            ctx,
+            |ctx, ui, ui_layout, entity_path, component_descriptor, row_id, component_raw| {
+                match C::from_arrow(component_raw) {
+                    Ok(components) => match components.len() {
+                        1 => {
+                            components[0].entity_data_ui(
+                                ctx,
+                                ui,
+                                ui_layout,
+                                entity_path,
+                                component_descriptor,
+                                row_id,
+                            );
+                        }
+                        _ => arrow_ui(
                             ui,
                             ui_layout,
-                            entity_path,
-                            component_descriptor,
-                            row_id,
-                            query,
-                            db,
-                        );
+                            ctx.app_options.timestamp_format,
+                            component_raw,
+                        ),
+                    },
+                    Err(err) => {
+                        ui.error_with_details_on_hover("(failed to deserialize)")
+                            .on_hover_text(err.to_string());
                     }
-                    _ => arrow_ui(
-                        ui,
-                        ui_layout,
-                        ctx.app_options().timestamp_format,
-                        component_raw,
-                    ),
-                },
-                Err(err) => {
-                    ui.error_with_details_on_hover("(failed to deserialize)")
-                        .on_hover_text(err.to_string());
                 }
             },
         ),

@@ -60,7 +60,7 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
                 println!("Note: Run `rerun auth login --force` to login again.");
                 return Ok(());
             }
-            credentials
+            *credentials
         }
         OauthLoginFlowState::LoginFlowStarted(login_flow) => {
             let progress_bar = ProgressBar::new_spinner();
@@ -113,7 +113,7 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
 
 /// Log out of Rerun by clearing stored credentials.
 pub fn logout(options: &LogoutOptions) -> Result<(), Error> {
-    match crate::oauth::clear_credentials() {
+    match crate::oauth::clear_credentials(None) {
         Ok(Some(outcome)) => {
             if options.open_browser {
                 println!("Opening browser to end your session…");

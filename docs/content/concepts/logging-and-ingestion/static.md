@@ -80,7 +80,7 @@ If you were to log the snippet above to a file (using e.g. `rr.save()`), you'd f
 
 If you wanted the recording file itself to only contain a single static value, you would need to either:
 * Stream the data to the viewer, and then save the recording directly out of the viewer using `Menu > Save recording` (or the equivalent palette command).
-* Manually recompact your recording using the [Rerun CLI](../../reference/cli.md#rerun-rrd-compact) so that the data overwrite semantics can get appropriately applied, e.g.: `rerun rrd compact -o compacted.rrd myrecording.rrd`.
+* Manually recompact your recording using the [Rerun CLI](../../reference/cli.md#rerun-rrd-optimize) so that the data overwrite semantics can get appropriately applied, e.g.: `rerun rrd optimize -o compacted.rrd myrecording.rrd`.
 
 
 ### In the viewer

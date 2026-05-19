@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::EntityPath;
 use re_sdk_types::{
+    Archetype as _,
     archetypes::BarChart,
     components::{self, Length},
     datatypes,
@@ -26,9 +26,7 @@ pub struct BarChartData {
 
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
-pub struct BarChartVisualizerSystem {
-    pub charts: BTreeMap<EntityPath, BarChartData>,
-}
+pub struct BarChartVisualizerSystem;
 
 impl IdentifiedViewSystem for BarChartVisualizerSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -41,11 +39,14 @@ impl VisualizerSystem for BarChartVisualizerSystem {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<BarChart>()
+        VisualizerQueryInfo::single_required_component::<components::TensorData>(
+            &BarChart::descriptor_values(),
+            &BarChart::all_components(),
+        )
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
@@ -53,6 +54,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
         let output = VisualizerExecutionOutput::default();
+        let mut charts = BTreeMap::new();
 
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
@@ -81,7 +83,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                 let results =
                     BlueprintResolvedResults::LatestAt(timeline_query.clone(), latest_at_results);
                 let results =
-                    VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+                    VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
                 let widths = results.iter_optional(BarChart::descriptor_widths().component);
                 let widths: &[f32] = widths
@@ -101,7 +103,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                     .0
                     .into()
                 });
-                self.charts.insert(
+                charts.insert(
                     data_result.entity_path.clone(),
                     BarChartData {
                         abscissa: abscissa.0.clone(),
@@ -113,6 +115,6 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             }
         }
 
-        Ok(output)
+        Ok(output.with_visualizer_data(charts))
     }
 }

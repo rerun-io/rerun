@@ -15,6 +15,7 @@ int main(int argc, char* argv[]) {
 
     // Load the MCAP file
     rec.log_file_from_path(path_to_mcap);
+    rec.flush_blocking(5.0).exit_on_failure();
 
     return 0;
 }

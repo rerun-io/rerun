@@ -7,7 +7,7 @@
 //! that case. You can learn more about these traits below.
 //!
 //! If you are working with actual RRD streams (i.e. everything that does not go through gRPC:
-//! files, standard I/O, HTTP, data loaders, etc), then have a look into the [`rrd`] module.
+//! files, standard I/O, HTTP, importers, etc), then have a look into the [`rrd`] module.
 //! The [`ToTransport`]/[`ToApplication`] traits will also be useful to you. You can learn more
 //! about these traits below.
 //!
@@ -59,7 +59,7 @@
 //! * SDK comms: our legacy gRPC-based protocol, currently used by everything relying on the old
 //!   `StoreHub` model (logging, message proxy, etc).
 //! * RRD streams: the binary protocol that we use for all stream-based interfaces (files, stdio,
-//!   data-loaders, HTTP fetches, etc).
+//!   importers, HTTP fetches, etc).
 //!
 //! *All these protocols use the exact same encoding*. There is only one encoding: the Rerun encoding.
 //! It often happens that one protocol makes use of some types while others don't (e.g. the

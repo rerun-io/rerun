@@ -3,7 +3,7 @@ use re_sdk_types::datatypes::Uuid;
 use re_viewer_context::{MaybeMutRef, ViewId};
 
 pub fn view_view_id(
-    ctx: &re_viewer_context::ViewerContext<'_>,
+    ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = Uuid>>,
 ) -> egui::Response {
@@ -12,10 +12,10 @@ pub fn view_view_id(
 }
 
 fn view_view_id_impl(
-    ctx: &re_viewer_context::ViewerContext<'_>,
+    ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &Uuid,
 ) -> egui::Response {
     let view = ViewId::from(*value);
-    item_ui::blueprint_entity_path_button_to(ctx, ui, &view.as_entity_path(), view.to_string())
+    item_ui::entity_path_button_to(ctx, ui, None, &view.as_entity_path(), view.to_string())
 }

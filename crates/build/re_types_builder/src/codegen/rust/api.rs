@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fmt::Write as _;
 use std::str::FromStr as _;
 
 use anyhow::Context as _;
@@ -19,7 +20,7 @@ use crate::codegen::rust::deserializer::{
 use crate::codegen::rust::serializer::quote_arrow_serializer;
 use crate::codegen::rust::util::{is_tuple_struct_from_obj, quote_doc_line};
 use crate::codegen::{Target, autogen_warning};
-use crate::objects::{EnumIntegerType, ObjectClass};
+use crate::objects::ObjectClass;
 use crate::{
     ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RERUN_VISUALIZER,
@@ -147,9 +148,9 @@ fn generate_object_file(
     target_file: &Utf8Path,
 ) -> String {
     let mut code = String::new();
-    code.push_str(&format!("// {}\n", autogen_warning!()));
+    writeln!(code, "// {}", autogen_warning!()).ok();
     if let Some(source_path) = obj.relative_filepath() {
-        code.push_str(&format!("// Based on {:?}.\n\n", format_path(source_path)));
+        writeln!(code, "// Based on {:?}.\n", format_path(source_path)).ok();
     }
 
     code.push_str("#![allow(unused_braces)]\n");
@@ -204,18 +205,18 @@ fn generate_mod_file(
 
     let mut code = String::new();
 
-    code.push_str(&format!("// {}\n\n", autogen_warning!()));
+    writeln!(code, "// {}\n", autogen_warning!()).ok();
 
     for obj in objects {
         let module_name = obj.snake_case_name();
-        code.push_str(&format!("mod {module_name};\n"));
+        writeln!(code, "mod {module_name};").ok();
 
         // Detect if someone manually created an extension file, and automatically
         // import it if so.
         let mut ext_path = dirpath.join(format!("{module_name}_ext"));
         ext_path.set_extension("rs");
         if ext_path.exists() {
-            code.push_str(&format!("mod {module_name}_ext;\n"));
+            writeln!(code, "mod {module_name}_ext;").ok();
         }
     }
 
@@ -226,7 +227,7 @@ fn generate_mod_file(
         let module_name = obj.snake_case_name();
         let type_name = &obj.name;
 
-        code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
+        writeln!(code, "pub use self::{module_name}::{type_name};").ok();
     }
     // And then deprecated.
     if objects.iter().any(|obj| obj.is_deprecated()) {
@@ -240,7 +241,7 @@ fn generate_mod_file(
             code.push_str("#[expect(deprecated)]\n");
         }
 
-        code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
+        writeln!(code, "pub use self::{module_name}::{type_name};").ok();
     }
 
     files_to_write.insert(path, code);
@@ -604,12 +605,46 @@ fn quote_enum(
         quote!(Self::#quoted_name => #docstring_md)
     });
 
-    let repr_type = match obj.enum_integer_type() {
-        Some(EnumIntegerType::U8) => quote!(u8),
-        Some(EnumIntegerType::U16) => quote!(u16),
-        Some(EnumIntegerType::U32) => quote!(u32),
-        Some(EnumIntegerType::U64) => quote!(u64),
-        None => unreachable!("enums must have an integer type"),
+    let enum_int_type = obj
+        .enum_integer_type()
+        .expect("enums must have an integer type");
+    let repr_type = format_ident!("{}", enum_int_type.type_str());
+
+    // Check if enum variants are sequentially numbered starting at 1
+    // (we assign enum values starting at 1, 0 is reserved).
+    // If so, we can optimize try_from by indexing into the variants() array.
+    let is_sequential_from_one = fields.iter().enumerate().all(|(i, field)| {
+        field
+            .enum_or_union_variant_value
+            .is_some_and(|v| v == (i as u64) + 1)
+    });
+
+    let quoted_try_from_body = if is_sequential_from_one {
+        quote! {
+            Self::variants()
+                .get((value as usize).wrapping_sub(1))
+                .copied()
+        }
+    } else {
+        let try_from_match_arms = fields.iter().map(|field| {
+            let variant_name = format_ident!("{}", field.name);
+            let enum_value = field
+                .enum_or_union_variant_value
+                .expect("enum variants must have values");
+            let value_literal = proc_macro2::Literal::from_str(
+                &obj.enum_integer_type()
+                    .expect("enums must have an integer type")
+                    .format_value(enum_value),
+            )
+            .unwrap();
+            quote!(#value_literal => Some(Self::#variant_name))
+        });
+        quote! {
+            match value {
+                #(#try_from_match_arms,)*
+                _ => None,
+            }
+        }
     };
 
     let tokens = quote! {
@@ -634,6 +669,7 @@ fn quote_enum(
         }
 
         impl ::re_types_core::reflection::Enum for #name {
+            type Repr = #repr_type;
 
             #[inline]
             fn variants() -> &'static [Self] {
@@ -645,6 +681,11 @@ fn quote_enum(
                 match self {
                     #(#docstring_md_match_arms,)*
                 }
+            }
+
+            #[inline]
+            fn try_from_integer(value: #repr_type) -> Option<Self> {
+                #quoted_try_from_body
             }
         }
 

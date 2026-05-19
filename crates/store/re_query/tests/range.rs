@@ -1228,6 +1228,54 @@ fn concurrent_multitenant_edge_case2() {
     );
 }
 
+#[test]
+fn same_row_id_across_chunks() -> anyhow::Result<()> {
+    let store = ChunkStore::new_handle(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+        Default::default(),
+    );
+    let mut caches = QueryCache::new(store.clone());
+
+    let entity_path: EntityPath = "point".into();
+
+    // Two separate chunks at different times share a single RowId.
+    let row_id = RowId::new();
+
+    let timepoint1 = [build_frame_nr(123)];
+    let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
+    let chunk1 = Chunk::builder(entity_path.clone())
+        .with_archetype(row_id, timepoint1, &MyPoints::new(points1.clone()))
+        .build()?;
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk1));
+
+    let timepoint2 = [build_frame_nr(223)];
+    let points2 = vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)];
+    let chunk2 = Chunk::builder(entity_path.clone())
+        .with_archetype(row_id, timepoint2, &MyPoints::new(points2.clone()))
+        .build()?;
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk2));
+
+    let query = RangeQuery::new(
+        *timepoint1[0].0.name(),
+        AbsoluteTimeRange::new(timepoint1[0].1, timepoint2[0].1),
+    );
+
+    let expected_points = &[
+        ((TimeInt::new_temporal(123), row_id), points1.as_slice()),
+        ((TimeInt::new_temporal(223), row_id), points2.as_slice()),
+    ];
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query,
+        &entity_path,
+        expected_points,
+        &[],
+    );
+
+    Ok(())
+}
+
 // // ---
 
 fn insert_and_react(store: &mut ChunkStore, caches: &mut QueryCache, chunk: &Arc<Chunk>) {

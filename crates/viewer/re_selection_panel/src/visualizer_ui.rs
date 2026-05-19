@@ -7,6 +7,7 @@ use re_chunk::ComponentIdentifier;
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::EntityPath;
 use re_sdk_types::Archetype as _;
+use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
@@ -20,13 +21,25 @@ use re_view::{
     BlueprintResolvedResultsExt as _, ChunksWithComponent, latest_at_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
-    AnyPhysicalDatatypeRequirement, BlueprintContext as _, DataResult, DatatypeMatch,
-    PerVisualizerTypeInViewClass, TryShowEditUiResult, UiLayout, ViewContext, ViewSystemIdentifier,
-    VisualizableEntities, VisualizableReason, VisualizerCollection, VisualizerComponentMappings,
+    BlueprintContext as _, DataResult, DatatypeMatch, TryShowEditUiResult, UiLayout, ViewContext,
+    ViewSystemIdentifier, VisualizableReason, VisualizerCollection, VisualizerComponentMappings,
     VisualizerComponentSource, VisualizerInstruction, VisualizerQueryInfo,
     VisualizerReportSeverity, VisualizerSystem, VisualizerViewReport,
 };
 use re_viewport_blueprint::ViewBlueprint;
+
+/// Extracts the list of visualizers (with their reasons) for a specific entity
+/// from the viewer context, without cloning.
+fn visualizers_for_entity<'a>(
+    viewer_ctx: &'a re_viewer_context::ViewerContext<'a>,
+    view_class_identifier: ViewClassIdentifier,
+    entity_path: &EntityPath,
+) -> Vec<(ViewSystemIdentifier, &'a VisualizableReason)> {
+    viewer_ctx
+        .iter_visualizable_entities_for_view_class(view_class_identifier)
+        .filter_map(|(visualizer, ents)| ents.get(entity_path).map(|reason| (visualizer, reason)))
+        .collect()
+}
 
 pub fn visualizer_ui(
     ctx: &ViewContext<'_>,
@@ -112,7 +125,7 @@ pub fn visualizer_ui_impl(
     let override_base_path = data_result.override_base_path();
 
     let remove_visualizer_button = |ui: &mut egui::Ui, visualizer_id: &VisualizerInstructionId| {
-        let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
+        let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Remove visualizer");
         if response.clicked() {
             let active_visualizers = active_visualizers
                 .iter()
@@ -227,17 +240,17 @@ fn visualizer_components(
 
     // Query all components of the entity so we can show them in the source component mapping UI.
     let entity_components_with_datatype = {
-        let components = viewer_ctx
-            .recording_engine()
-            .store()
-            .all_components_for_entity_sorted(&data_result.entity_path)
-            .unwrap_or_default();
+        let engine = viewer_ctx.recording_engine();
+        let store = engine.store();
+        let components = store
+            .schema()
+            .all_components_for_entity(&data_result.entity_path);
         components
             .into_iter()
-            .filter_map(|component_id| {
-                let component_type = viewer_ctx
-                    .recording_engine()
-                    .store()
+            .flatten()
+            .filter_map(|&component_id| {
+                let component_type = store
+                    .schema()
                     .lookup_component_type(&data_result.entity_path, component_id);
                 component_type.map(|(_, arrow_datatype)| (component_id, arrow_datatype))
             })
@@ -315,7 +328,7 @@ fn visualizer_components(
             let multiline = false;
             if let TryShowEditUiResult::Shown { edited_value } =
                 ctx.viewer_ctx.component_ui_registry().try_show_edit_ui(
-                    ctx.viewer_ctx,
+                    &ctx.viewer_ctx.blueprint_store_view_ctx(),
                     ui,
                     re_viewer_context::EditTarget {
                         store_id: ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
@@ -341,12 +354,11 @@ fn visualizer_components(
                 }
             } else {
                 // Display the value without edit ui.
+                let store_view_ctx = ctx.viewer_ctx.active_recording_store_view_context();
                 ctx.viewer_ctx.component_ui_registry().component_ui_raw(
-                    ctx.viewer_ctx,
+                    &store_view_ctx,
                     ui,
                     UiLayout::List,
-                    &store_query,
-                    ctx.recording(),
                     &data_result.entity_path,
                     target_component_descr,
                     current_value_row_id,
@@ -424,7 +436,11 @@ fn visualizer_components(
         if let Some(component_type) = target_component_descr.component_type {
             response.on_hover_ui(|ui| {
                 // TODO(andreas): Add data ui for component descr?
-                component_type.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
+                component_type.data_ui(
+                    &ctx.viewer_ctx.active_recording_store_view_context(),
+                    ui,
+                    UiLayout::Tooltip,
+                );
             });
         }
 
@@ -475,7 +491,7 @@ fn raw_default_or_fallback(
     raw_default_without_fallback(query_result, target_component_descr).unwrap_or_else(|| {
         query_ctx
             .viewer_ctx()
-            .component_fallback_registry
+            .component_fallback_registry()
             .fallback_for(target_component_descr, query_ctx)
     })
 }
@@ -500,30 +516,27 @@ fn collect_source_component_options(
 
     // TODO(andreas): Right now we are _more_ flexible for required components, because there we also support
     // casting in some special cases. Eventually this should always be the case, leaving us always with a list of valid physical types that we filter on.
-    let allowed_physical_types = if let re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
-        AnyPhysicalDatatypeRequirement {
-            target_component,
-            physical_types,
-            ..
-        },
-    ) = &query_info.required
-        && target_component == &mapping_ctx.target_component()
-    {
-        physical_types.clone()
-    } else {
-        // Get arrow datatype of the target component.
-        let reflection = mapping_ctx.viewer_ctx().reflection();
-        let Some(target_component_reflection) = reflection.components.get(target_component_type)
-        else {
-            // No reflection for target component type, that should never happen.
-            re_log::warn_once!(
-                "No reflection information for visualizer target component type {:?} found. Unable to determine valid component mappings.",
-                target_component_type
-            );
-            return Vec::new();
+    let allowed_physical_types =
+        if let re_viewer_context::VisualizabilityConstraints::SingleRequiredComponent(constraint) =
+            &query_info.constraints
+            && constraint.target_component() == mapping_ctx.target_component()
+        {
+            constraint.physical_types().clone()
+        } else {
+            // Get arrow datatype of the target component.
+            let reflection = mapping_ctx.viewer_ctx().reflection();
+            let Some(target_component_reflection) =
+                reflection.components.get(target_component_type)
+            else {
+                // No reflection for target component type, that should never happen.
+                re_log::warn_once!(
+                    "No reflection information for visualizer target component type {:?} found. Unable to determine valid component mappings.",
+                    target_component_type
+                );
+                return Vec::new();
+            };
+            std::iter::once(target_component_reflection.datatype.clone()).collect()
         };
-        std::iter::once(target_component_reflection.datatype.clone()).collect()
-    };
 
     entity_components_with_datatype
         .iter()
@@ -542,11 +555,9 @@ fn collect_source_component_options(
                 )))
             }
             // Match fields in the struct?
-            else if let Some(selectors) =
-                re_arrow_combinators::extract_nested_fields(datatype, |dt| {
-                    allowed_physical_types.contains(dt)
-                })
-            {
+            else if let Some(selectors) = re_lenses_core::extract_nested_fields(datatype, |dt| {
+                allowed_physical_types.contains(dt)
+            }) {
                 Either::Left(Either::Right(selectors.into_iter().map(move |(sel, _)| {
                     VisualizerComponentSource::SourceComponent {
                         source_component,
@@ -755,15 +766,18 @@ fn extract_recommended_source_options(
     // Rule 2: View-recommended mappings are recommended.
     let view_ctx = mapping_ctx.view_ctx();
     let viewer_ctx = mapping_ctx.viewer_ctx();
-    let visualizable_entities_per_visualizer =
-        viewer_ctx.collect_visualizable_entities_for_view_class(view_ctx.view_class_identifier);
+    let visualizers_with_reason = visualizers_for_entity(
+        viewer_ctx,
+        view_ctx.view_class_identifier,
+        &mapping_ctx.data_result.entity_path,
+    );
     let recommended_visualizers = view_ctx.view_class().recommended_visualizers_for_entity(
         &mapping_ctx.data_result.entity_path,
-        &visualizable_entities_per_visualizer,
+        &visualizers_with_reason,
         viewer_ctx.indicated_entities_per_visualizer,
     );
     if let Some(recommended_mappings) = recommended_visualizers
-        .0
+        .all_recommendations()
         .get(&mapping_ctx.instruction.visualizer_type)
     {
         let recommended: Vec<_> = recommended_mappings
@@ -813,12 +827,11 @@ fn source_component_item_ui(
                 ui.label(format!("{} values", re_format::format_uint(num_values)));
             } else {
                 let viewer_ctx = mapping_ctx.viewer_ctx();
+                let store_view_ctx = viewer_ctx.active_recording_store_view_context();
                 viewer_ctx.component_ui_registry().component_ui_raw(
-                    viewer_ctx,
+                    &store_view_ctx,
                     ui,
                     UiLayout::List,
-                    &mapping_ctx.query_ctx.query,
-                    mapping_ctx.view_ctx().recording(),
                     &mapping_ctx.data_result.entity_path,
                     mapping_ctx.target_component_descr,
                     None, // row id doesn't matter since we're only showing a single value here.
@@ -998,60 +1011,109 @@ fn menu_add_new_visualizer(
     active_visualizers: &[VisualizerInstruction],
     available_visualizers: &[ViewSystemIdentifier],
 ) {
-    let override_base_path = data_result.override_base_path();
-
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-    for visualizer_type in available_visualizers {
-        if ui.button(visualizer_type.as_str()).clicked() {
-            let component_mappings = component_mappings_for_new_visualizer(
-                ctx,
-                active_visualizers,
-                visualizer_type,
-                &data_result.entity_path,
-            );
+    // Determine which visualizers are recommended.
+    let visualizers_with_reason = visualizers_for_entity(
+        ctx.viewer_ctx,
+        ctx.view_class_identifier,
+        &data_result.entity_path,
+    );
+    let recommended_visualizers = ctx.view_class().recommended_visualizers_for_entity(
+        &data_result.entity_path,
+        &visualizers_with_reason,
+        ctx.viewer_ctx.indicated_entities_per_visualizer,
+    );
 
-            // To add a visualizer we have to do two things:
-            // * add a visualizer type information for that new visualizer instruction
-            // * add an element to the list of active visualizer ids
-            let new_instruction = VisualizerInstruction::new(
-                VisualizerInstructionId::new_random(),
-                *visualizer_type,
+    let (recommended, other): (Vec<_>, Vec<_>) =
+        available_visualizers.iter().copied().partition(|vis| {
+            recommended_visualizers
+                .all_recommendations()
+                .contains_key(vis)
+        });
+
+    // Don't show categorization if either group is empty.
+    let show_sections = !recommended.is_empty() && !other.is_empty();
+
+    if show_sections {
+        ui.add(re_ui::ComboItemHeader::new("Recommended:"));
+    }
+    for visualizer_type in &recommended {
+        add_new_visualizer_button(ctx, ui, data_result, active_visualizers, *visualizer_type);
+    }
+
+    if show_sections {
+        ui.add(re_ui::ComboItemHeader::new("Other:"));
+    }
+    for visualizer_type in &other {
+        add_new_visualizer_button(ctx, ui, data_result, active_visualizers, *visualizer_type);
+    }
+}
+
+fn add_new_visualizer_button(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    data_result: &DataResult,
+    active_visualizers: &[VisualizerInstruction],
+    visualizer_type: ViewSystemIdentifier,
+) {
+    let override_base_path = data_result.override_base_path();
+
+    let already_active = active_visualizers
+        .iter()
+        .any(|v| v.visualizer_type == visualizer_type);
+
+    if ui
+        .add(ComboItem::new(visualizer_type.as_str()).selected(already_active))
+        .clicked()
+    {
+        let component_mappings = component_mappings_for_new_visualizer(
+            ctx,
+            active_visualizers,
+            &visualizer_type,
+            &data_result.entity_path,
+        );
+
+        // To add a visualizer we have to do two things:
+        // * add a visualizer type information for that new visualizer instruction
+        // * add an element to the list of active visualizer ids
+        let new_instruction = VisualizerInstruction::new(
+            VisualizerInstructionId::new_random(),
+            visualizer_type,
+            override_base_path,
+            component_mappings,
+        );
+        let active_visualizer_archetype = ActiveVisualizers::new(
+            active_visualizers
+                .iter()
+                .map(|v| &v.id)
+                .chain(std::iter::once(&new_instruction.id))
+                .map(|v| v.0),
+        );
+
+        // If this is the first time we log `ActiveVisualizers`, we have to write out the instructions for all
+        // visualizers which would be entirely heuristically generated at this point!
+        let did_not_yet_persist_active_visualizers = ctx
+            .blueprint_db()
+            .latest_at(
+                ctx.blueprint_query(),
                 override_base_path,
-                component_mappings,
-            );
-            let active_visualizer_archetype = ActiveVisualizers::new(
-                active_visualizers
+                ActiveVisualizers::all_components()
                     .iter()
-                    .map(|v| &v.id)
-                    .chain(std::iter::once(&new_instruction.id))
-                    .map(|v| v.0),
-            );
-
-            // If this is the first time we log `ActiveVisualizers`, we have to write out the instructions for all
-            // visualizers which would be entirely heuristically generated at this point!
-            let did_not_yet_persist_active_visualizers = ctx
-                .blueprint_db()
-                .latest_at(
-                    ctx.blueprint_query(),
-                    override_base_path,
-                    ActiveVisualizers::all_components()
-                        .iter()
-                        .map(|c| c.component),
-                )
-                .components
-                .is_empty();
-            if did_not_yet_persist_active_visualizers {
-                for instruction in active_visualizers {
-                    instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
-                }
+                    .map(|c| c.component),
+            )
+            .components
+            .is_empty();
+        if did_not_yet_persist_active_visualizers {
+            for instruction in active_visualizers {
+                instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
             }
-
-            ctx.save_blueprint_archetype(override_base_path.clone(), &active_visualizer_archetype);
-            new_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
-
-            ui.close();
         }
+
+        ctx.save_blueprint_archetype(override_base_path.clone(), &active_visualizer_archetype);
+        new_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
+
+        ui.close();
     }
 }
 
@@ -1075,26 +1137,32 @@ fn component_mappings_for_new_visualizer(
 ) -> VisualizerComponentMappings {
     // Get recommended visualizers with their component mappings so we can use them
     // when the user adds a new visualizer.
-    let visualizable_entities_per_visualizer = ctx
-        .viewer_ctx
-        .collect_visualizable_entities_for_view_class(ctx.view_class_identifier);
+    let entity_visualizers =
+        visualizers_for_entity(ctx.viewer_ctx, ctx.view_class_identifier, entity_path);
     let recommended_visualizers = ctx.view_class().recommended_visualizers_for_entity(
         entity_path,
-        &visualizable_entities_per_visualizer,
+        &entity_visualizers,
         ctx.viewer_ctx.indicated_entities_per_visualizer,
     );
-    let component_mapping_recommendations = recommended_visualizers.0.get(visualizer_type).cloned();
+    let component_mapping_recommendations = recommended_visualizers
+        .all_recommendations()
+        .get(visualizer_type)
+        .cloned();
 
     // Chain in all possible mappings.
+    let visualizable_reason = entity_visualizers
+        .iter()
+        .find(|(viz, _)| viz == visualizer_type)
+        .map(|(_, reason)| *reason);
     let all_mapping_candidates = component_mapping_recommendations
         .into_iter()
         .flatten()
         .map(re_viewer_context::RecommendedMappings::into_mappings)
         .chain(
             component_mappings_for_required_components_from_visualizability(
-                *visualizer_type,
                 entity_path,
-                &visualizable_entities_per_visualizer,
+                visualizer_type,
+                visualizable_reason,
             ),
         );
 
@@ -1118,36 +1186,13 @@ fn component_mappings_for_new_visualizer(
 
 /// Derives component mappings from the visualizability reason when no explicit recommendation exists.
 fn component_mappings_for_required_components_from_visualizability(
-    visualizer_type: ViewSystemIdentifier,
     entity_path: &EntityPath,
-    visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
-) -> impl Iterator<Item = VisualizerComponentMappings> {
-    // Look up why this entity is visualizable for this visualizer type.
-    let reason = visualizable_entities_per_visualizer
-        .get(&visualizer_type)
-        .and_then(|entities| entities.get(entity_path));
-
-    let Some(VisualizableReason::DatatypeMatchAny {
-        matches,
-        target_component,
-    }) = reason
-    else {
-        if reason.is_none() {
-            re_log::debug_panic!(
-                "Entity {entity_path:?} is not visualizable for {visualizer_type:?}, but was offered as an available visualizer"
-            );
-            re_log::warn_once!(
-                "Entity {entity_path:?} is not visualizable for {visualizer_type:?}"
-            );
-        }
-        // For non-datatype-match reasons (ExactMatchAll, ExactMatchAny, Always),
-        // the default identity mapping is correct as it will pick in builtin components.
-        return Either::Left(std::iter::once(VisualizerComponentMappings::default()));
-    };
-
-    // Set up an expression for all possible mappings given this visualization reason.
-    Either::Right(
-        matches
+    visualizer_type: &ViewSystemIdentifier,
+    reason: Option<&VisualizableReason>,
+) -> Vec<VisualizerComponentMappings> {
+    match reason {
+        Some(VisualizableReason::SingleRequiredComponentMatch(matches)) => matches
+            .matches
             .iter()
             .flat_map(|(source_component, match_info)| match match_info {
                 DatatypeMatch::PhysicalDatatypeOnly { selectors, .. } if !selectors.is_empty() => {
@@ -1166,8 +1211,74 @@ fn component_mappings_for_required_components_from_visualizability(
                     },
                 )),
             })
-            .map(|mapping| std::iter::once((*target_component, mapping)).collect()),
-    )
+            .map(|mapping| std::iter::once((matches.target_component, mapping)).collect())
+            .collect(),
+
+        Some(VisualizableReason::BufferAndFormatMatch(matches)) => {
+            // Each (buffer_source, format_component) pair produces a candidate mapping set.
+            // Buffer matches with nested field selectors expand into multiple candidates.
+            let format_mappings: Vec<_> = matches
+                .format_matches
+                .iter()
+                .map(
+                    |format_component| VisualizerComponentSource::SourceComponent {
+                        source_component: *format_component,
+                        selector: String::new(),
+                    },
+                )
+                .collect();
+
+            matches
+                .buffer_matches
+                .iter()
+                .flat_map(|(source_component, match_info)| {
+                    let buffer_sources: Vec<_> = match match_info {
+                        DatatypeMatch::PhysicalDatatypeOnly { selectors, .. }
+                            if !selectors.is_empty() =>
+                        {
+                            selectors
+                                .iter()
+                                .map(|(selector, _)| VisualizerComponentSource::SourceComponent {
+                                    source_component: *source_component,
+                                    selector: selector.to_string(),
+                                })
+                                .collect()
+                        }
+                        _ => vec![VisualizerComponentSource::SourceComponent {
+                            source_component: *source_component,
+                            selector: String::new(),
+                        }],
+                    };
+                    buffer_sources.into_iter().flat_map(|buffer_mapping| {
+                        format_mappings.iter().map(move |format_mapping| {
+                            [
+                                (matches.buffer_target, buffer_mapping.clone()),
+                                (matches.format_target, format_mapping.clone()),
+                            ]
+                            .into_iter()
+                            .collect()
+                        })
+                    })
+                })
+                .collect()
+        }
+
+        // For non-datatype-match reasons (ExactMatchAny, Always),
+        // the default identity mapping is correct as it will pick in builtin components.
+        Some(VisualizableReason::ExactMatchAny | VisualizableReason::Always) => {
+            vec![VisualizerComponentMappings::default()]
+        }
+
+        None => {
+            re_log::debug_panic!(
+                "Entity {entity_path:?} is not visualizable for {visualizer_type:?}, but was offered as an available visualizer"
+            );
+            re_log::warn_once!(
+                "Entity {entity_path:?} is not visualizable for {visualizer_type:?}, but was offered as an available visualizer"
+            );
+            vec![VisualizerComponentMappings::default()]
+        }
+    }
 }
 
 /// Lists all visualizers that are _not_ active for the given entity but could be.

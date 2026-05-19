@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId};
-use re_chunk_store::{ChunkStore, ChunkStoreConfig};
+use re_chunk_store::{ChunkDeletionReason, ChunkStore, ChunkStoreConfig};
 use re_log_types::example_components::{MyColor, MyPoints};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimePoint, Timeline};
 
@@ -111,17 +111,19 @@ fn drop_time_range() -> anyhow::Result<()> {
 
         assert_eq!(num_events(&store), 12);
 
+        let reason = ChunkDeletionReason::ExplicitDrop;
+
         // Drop nothing:
-        store.drop_time_range_deep(timeline.name(), AbsoluteTimeRange::new(10, 100));
-        store.drop_time_range_deep(timeline.name(), AbsoluteTimeRange::new(-100, -10));
+        store.drop_time_range_deep(timeline.name(), AbsoluteTimeRange::new(10, 100), reason);
+        store.drop_time_range_deep(timeline.name(), AbsoluteTimeRange::new(-100, -10), reason);
         assert_eq!(num_events(&store), 12);
 
         // Drop stuff from the middle of the first chunk, and the start of the second:
-        store.drop_time_range_deep(timeline.name(), AbsoluteTimeRange::new(1, 2));
+        store.drop_time_range_deep(timeline.name(), AbsoluteTimeRange::new(1, 2), reason);
         assert_eq!(num_events(&store), 9);
 
         // Drop a bunch in the middle (including all of middle chunk):
-        store.drop_time_range_deep(timeline.name(), AbsoluteTimeRange::new(2, 5));
+        store.drop_time_range_deep(timeline.name(), AbsoluteTimeRange::new(2, 5), reason);
         assert_eq!(num_events(&store), 3);
     }
 

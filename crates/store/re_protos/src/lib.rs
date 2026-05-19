@@ -10,6 +10,9 @@ pub mod external {
 }
 
 pub mod headers;
+pub mod trace_id_layer;
+
+pub use re_log_types::{EntryName, InvalidEntryNameError};
 
 // This extra module is needed, because of how imports from different packages are resolved.
 // For example, `rerun.remote_store.v1alpha1.EncoderVersion` is resolved to `super::super::remote_store::v1alpha1::EncoderVersion`.
@@ -110,6 +113,9 @@ pub enum TypeConversionError {
         package_name: &'static str,
         type_name: &'static str,
     },
+
+    #[error("invalid entry name: {0}")]
+    InvalidEntryName(#[from] InvalidEntryNameError),
 
     #[error("failed to parse timestamp: {0}")]
     InvalidTime(#[from] jiff::Error),

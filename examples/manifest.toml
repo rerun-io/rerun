@@ -50,6 +50,7 @@ examples = [
   "mcap",
   "eye_control",
   "ros_tf",
+  "any_scalar",
 ]
 
 [categories.generative-vision]
@@ -168,6 +169,7 @@ examples = [
   "imu_signals",
   "eye_control",
   "webpage",
+  "any_scalar",
 ]
 
 # These are examples that we explicitly exclude from our website. You can check that all examples are either included
@@ -179,14 +181,15 @@ examples = [
   "blueprint", # Not very pretty
   "custom_callback",
   "custom_collection_adapter",
-  "custom_data_loader",
+  "custom_importer",
   "custom_store_subscriber",
   "custom_view",
   "custom_visualizer",
   "dataframe_query",
+  "dataloader", # Isolated uv project (conflicts with workspace deps via LeRobot), not built by rerun.io
   "drone_lidar",
   "extend_viewer_ui",
-  "external_data_loader",
+  "external_importer",
   "graph_lattice",
   "incremental_logging",
   "lenses",
@@ -198,6 +201,7 @@ examples = [
   "table_zoo",
   "template",
   "viewer_callbacks",
+  "using_index_values",
 
   # TODO(jleibs): We want to bring them back once opentelemtry is fixed
   "human_pose_tracking",

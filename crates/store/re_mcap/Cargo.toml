@@ -29,6 +29,7 @@ byteorder.workspace = true
 cdr-encoding.workspace = true
 mcap.workspace = true
 prost-reflect.workspace = true
+regex-lite.workspace = true
 saturating_cast.workspace = true
 serde.workspace = true
 serde_bytes.workspace = true
@@ -36,7 +37,7 @@ strum = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 
 [dev-dependencies]
-crossbeam.workspace = true
 insta = { workspace = true, features = ["filters", "redactions"] }
 prost-reflect = { workspace = true, features = ["text-format"] }
+re_arrow_util.workspace = true
 re_log = { workspace = true, features = ["setup"] }

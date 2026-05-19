@@ -1,10 +1,10 @@
 use re_format::{format_lat_lon, format_uint};
 use re_sdk_types::components::GeoLineString;
 use re_ui::UiExt as _;
-use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
+use re_viewer_context::{MaybeMutRef, StoreViewContext, UiLayout};
 
 fn singleline_view_geo_line_string(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, GeoLineString>,
 ) -> egui::Response {
@@ -15,7 +15,7 @@ fn singleline_view_geo_line_string(
 }
 
 fn multiline_view_geo_line_string(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, GeoLineString>,
 ) -> egui::Response {

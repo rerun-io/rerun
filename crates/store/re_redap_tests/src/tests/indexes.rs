@@ -12,7 +12,9 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::{ComponentDescriptor, EntityPath, IndexColumnSelector, Timeline};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 
-use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
+use super::common::{
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name,
+};
 
 // --- Tests ---
 
@@ -40,7 +42,7 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
         let code = service
             .search_dataset(
                 tonic::Request::new(req)
-                    .with_entry_name(dataset_name)
+                    .with_entry_name(entry_name(dataset_name))
                     .unwrap(),
             )
             .await
@@ -61,7 +63,7 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
             let code = service
                 .create_index(
                     tonic::Request::new(req)
-                        .with_entry_name(dataset_name)
+                        .with_entry_name(entry_name(dataset_name))
                         .unwrap(),
                 )
                 .await
@@ -110,7 +112,7 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
             let code = service
                 .search_dataset(
                     tonic::Request::new(search_dataset_requests.remove(&column).unwrap())
-                        .with_entry_name(dataset_name)
+                        .with_entry_name(entry_name(dataset_name))
                         .unwrap(),
                 )
                 .await
@@ -191,7 +193,7 @@ pub async fn index_incremental(service: impl RerunCloudService) {
                 }
                 .into(),
             )
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await
@@ -216,7 +218,7 @@ pub async fn index_incremental(service: impl RerunCloudService) {
                 }
                 .into(),
             )
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await
@@ -244,7 +246,7 @@ pub async fn dataset_doesnt_exist(service: impl RerunCloudService) {
     let code = service
         .list_indexes(
             tonic::Request::new(ListIndexesRequest {})
-                .with_entry_name(dataset_name)
+                .with_entry_name(entry_name(dataset_name))
                 .unwrap(),
         )
         .await
@@ -256,7 +258,7 @@ pub async fn dataset_doesnt_exist(service: impl RerunCloudService) {
     let code = service
         .search_dataset(
             tonic::Request::new(search_dataset_request)
-                .with_entry_name(dataset_name)
+                .with_entry_name(entry_name(dataset_name))
                 .unwrap(),
         )
         .await
@@ -268,7 +270,7 @@ pub async fn dataset_doesnt_exist(service: impl RerunCloudService) {
     let code = service
         .create_index(
             tonic::Request::new(create_index_request.clone())
-                .with_entry_name(dataset_name)
+                .with_entry_name(entry_name(dataset_name))
                 .unwrap(),
         )
         .await
@@ -281,7 +283,7 @@ pub async fn dataset_doesnt_exist(service: impl RerunCloudService) {
             tonic::Request::new(DeleteIndexesRequest {
                 column: create_index_request.config.unwrap().column,
             })
-            .with_entry_name(dataset_name)
+            .with_entry_name(entry_name(dataset_name))
             .unwrap(),
         )
         .await
@@ -344,7 +346,7 @@ pub async fn column_doesnt_exist(service: impl RerunCloudService) {
         let code = service
             .search_dataset(
                 tonic::Request::new(req)
-                    .with_entry_name(dataset_name)
+                    .with_entry_name(entry_name(dataset_name))
                     .unwrap(),
             )
             .await
@@ -374,7 +376,7 @@ pub async fn column_doesnt_exist(service: impl RerunCloudService) {
         let code = service
             .create_index(
                 tonic::Request::new(req.clone())
-                    .with_entry_name(dataset_name)
+                    .with_entry_name(entry_name(dataset_name))
                     .unwrap(),
             )
             .await
@@ -561,7 +563,7 @@ async fn create_index(
     req: CreateIndexRequest,
 ) -> tonic::Result<()> {
     let _res = service
-        .create_index(tonic::Request::new(req).with_entry_name(dataset_name)?)
+        .create_index(tonic::Request::new(req).with_entry_name(entry_name(dataset_name))?)
         .await?;
 
     Ok(())
@@ -573,7 +575,7 @@ async fn search_dataset(
     req: SearchDatasetRequest,
 ) -> tonic::Result<RecordBatch> {
     let res = service
-        .search_dataset(tonic::Request::new(req).with_entry_name(dataset_name)?)
+        .search_dataset(tonic::Request::new(req).with_entry_name(entry_name(dataset_name))?)
         .await?;
 
     use futures::StreamExt as _;
@@ -593,7 +595,9 @@ async fn list_indexes(
     dataset_name: &str,
 ) -> tonic::Result<HashMap<IndexColumn, IndexConfig>> {
     let res = service
-        .list_indexes(tonic::Request::new(ListIndexesRequest {}).with_entry_name(dataset_name)?)
+        .list_indexes(
+            tonic::Request::new(ListIndexesRequest {}).with_entry_name(entry_name(dataset_name))?,
+        )
         .await?;
 
     let indexes: HashMap<IndexColumn, IndexConfig> = res
@@ -612,7 +616,7 @@ async fn delete_indexes(
     req: DeleteIndexesRequest,
 ) -> tonic::Result<HashMap<IndexColumn, IndexConfig>> {
     let res = service
-        .delete_indexes(tonic::Request::new(req).with_entry_name(dataset_name)?)
+        .delete_indexes(tonic::Request::new(req).with_entry_name(entry_name(dataset_name))?)
         .await?;
 
     let indexes: HashMap<IndexColumn, IndexConfig> = res

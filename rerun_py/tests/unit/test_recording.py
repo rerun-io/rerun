@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+import subprocess
 import uuid
 from typing import TYPE_CHECKING
 
@@ -280,3 +281,149 @@ def test_load_recording_path_types(tmp_path: pathlib.Path) -> None:
     # Test with Path object
     recording = rr.recording.load_recording(pathlib.Path(tmp_path) / "tmp.rrd")
     assert recording is not None
+
+
+def test_chunk_record_batch(tmp_path: pathlib.Path, snapshot: syrupy.SnapshotAssertion) -> None:
+    """Test that Chunk.format() returns a human-readable table with expected data."""
+
+    rrd = tmp_path / "tmp.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(rrd)
+        # Use send_columns to avoid auto-injected log_time/log_tick timelines
+        rec.send_columns(
+            "points",
+            indexes=[rr.TimeColumn("my_index", sequence=[1, 2])],
+            columns=rr.Points3D.columns(positions=[[1, 2, 3], [4, 5, 6]], colors=[[0, 0, 0], [255, 0, 0]]),
+        )
+        rec.send_columns(
+            "static_text",
+            indexes=[],
+            columns=rr.TextLog.columns(text=["Hello"]),
+        )
+
+    recording = rr.recording.load_recording(rrd)
+    chunks = sorted(recording.chunks(), key=lambda c: c.entity_path)
+
+    parts = []
+    for chunk in chunks:
+        if chunk.entity_path.startswith("/__"):
+            continue
+        parts.append(chunk.format(width=200, redact=True))
+
+    parts.sort()
+    result = "\n".join(parts)
+    assert result == snapshot()
+
+
+def test_save_roundtrip(tmp_path: pathlib.Path) -> None:
+    """Test that save() produces an RRD that preserves metadata and schema."""
+
+    original_rrd = tmp_path / "original.rrd"
+    roundtrip_rrd = tmp_path / "roundtrip.rrd"
+
+    expected_recording_id = uuid.uuid4()
+
+    with rr.RecordingStream(APP_ID, recording_id=expected_recording_id) as rec:
+        rec.save(original_rrd)
+        rec.set_time("my_index", sequence=1)
+        rec.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6]]))
+        rec.set_time("my_index", sequence=2)
+        rec.log("points", rr.Points3D([[7, 8, 9]], colors=[[255, 0, 0]]))
+        rec.log("static_text", rr.TextLog("Hello"), static=True)
+
+    recording = rr.recording.load_recording(original_rrd)
+    recording.save(roundtrip_rrd)
+
+    # Load the roundtripped recording and verify metadata is preserved
+    roundtripped = rr.recording.load_recording(roundtrip_rrd)
+
+    assert roundtripped.application_id() == APP_ID
+    assert roundtripped.recording_id() == str(expected_recording_id)
+
+    # Verify schema is preserved
+    original_schema = recording.schema()
+    roundtrip_schema = roundtripped.schema()
+
+    assert str(original_schema) == str(roundtrip_schema)
+
+
+def test_save_roundtrip_compare(tmp_path: pathlib.Path) -> None:
+    """Test that optimizing then roundtripping produces an identical RRD."""
+
+    original_rrd = tmp_path / "original.rrd"
+    optimized_rrd = tmp_path / "optimized.rrd"
+    roundtrip_rrd = tmp_path / "roundtrip.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(original_rrd)
+        rec.set_time("my_index", sequence=1)
+        rec.log("points", rr.Points3D([[1, 2, 3]]))
+        rec.log("static_text", rr.TextLog("Hello"), static=True)
+
+    # Optimize the original so chunk boundaries match what ChunkStore produces
+    process = subprocess.run(
+        ["rerun", "rrd", "optimize", str(original_rrd), "-o", str(optimized_rrd)],
+        check=False,
+        capture_output=True,
+    )
+    assert process.returncode == 0, f"RRD optimize failed: {process.stderr.decode('utf-8')}"
+
+    # Roundtrip via load + save
+    rr.recording.load_recording(optimized_rrd).save(roundtrip_rrd)
+
+    # Compare optimized vs roundtripped
+    process = subprocess.run(
+        ["rerun", "rrd", "compare", "--unordered", str(optimized_rrd), str(roundtrip_rrd)],
+        check=False,
+        capture_output=True,
+    )
+    if process.returncode != 0:
+        print(process.stdout.decode("utf-8"))
+        print(process.stderr.decode("utf-8"))
+    assert process.returncode == 0, f"RRD compare failed: {process.stderr.decode('utf-8')}"
+
+
+def test_chunk_roundtrip_compare(tmp_path: pathlib.Path) -> None:
+    """Test that roundtripping through chunks produces an identical RRD."""
+
+    original_rrd = tmp_path / "original.rrd"
+    optimized_rrd = tmp_path / "optimized.rrd"
+    roundtrip_rrd = tmp_path / "roundtrip.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(original_rrd)
+        rec.set_time("my_index", sequence=1)
+        rec.log("points", rr.Points3D([[1, 2, 3]]))
+        rec.set_time("my_index", sequence=2)
+        rec.set_time("other_timeline", sequence=10)
+        rec.log("points", rr.Points3D([[4, 5, 6]]))
+        rec.log("static_text", rr.TextLog("Hello"), static=True)
+
+    # Optimize the original so chunk boundaries match what ChunkStore produces
+    process = subprocess.run(
+        ["rerun", "rrd", "optimize", str(original_rrd), "-o", str(optimized_rrd)],
+        check=False,
+        capture_output=True,
+    )
+    assert process.returncode == 0, f"RRD optimize failed: {process.stderr.decode('utf-8')}"
+
+    # Load, roundtrip through chunks, and save
+    recording = rr.recording.load_recording(optimized_rrd)
+    reconstructed = rr.recording.Recording.from_chunks(
+        recording.chunks(),
+        application_id=recording.application_id(),
+        recording_id=recording.recording_id(),
+    )
+    reconstructed.save(roundtrip_rrd)
+
+    # Compare optimized vs roundtripped
+    process = subprocess.run(
+        ["rerun", "rrd", "compare", "--unordered", str(optimized_rrd), str(roundtrip_rrd)],
+        check=False,
+        capture_output=True,
+    )
+    if process.returncode != 0:
+        print(process.stdout.decode("utf-8"))
+        print(process.stderr.decode("utf-8"))
+    assert process.returncode == 0, f"RRD compare failed: {process.stderr.decode('utf-8')}"

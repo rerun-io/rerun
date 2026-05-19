@@ -106,6 +106,7 @@ pub struct ModalWrapper {
     min_width: Option<f32>,
     max_width: Option<f32>,
     min_height: Option<f32>,
+    max_height: Option<f32>,
     default_height: Option<f32>,
     full_span_content: bool,
     set_side_margins: bool,
@@ -120,6 +121,7 @@ impl ModalWrapper {
             min_width: None,
             max_width: None,
             min_height: None,
+            max_height: None,
             default_height: None,
             full_span_content: false,
             set_side_margins: true,
@@ -145,6 +147,13 @@ impl ModalWrapper {
     #[inline]
     pub fn max_width(mut self, max_width: f32) -> Self {
         self.max_width = Some(max_width);
+        self
+    }
+
+    /// Set the maximum height of the modal window.
+    #[inline]
+    pub fn max_height(mut self, max_height: f32) -> Self {
+        self.max_height = Some(max_height);
         self
     }
 
@@ -228,6 +237,9 @@ impl ModalWrapper {
 
                     if let Some(min_height) = self.min_height {
                         ui.set_min_height(min_height);
+                    }
+                    if let Some(max_height) = self.max_height {
+                        ui.set_max_height(max_height);
                     }
 
                     //

@@ -251,7 +251,7 @@ pub fn find_non_empty_dim_indices(shape: &[u64]) -> SmallVec<[usize; 4]> {
     let mut non_unit_indices = shape
         .iter()
         .enumerate()
-        .filter_map(|(ind, &dim)| if dim != 1 { Some(ind) } else { None });
+        .filter_map(|(ind, &dim)| if dim == 1 { None } else { Some(ind) });
 
     // 0 is always a valid index.
     let mut min = non_unit_indices.next().unwrap_or(0);

@@ -1,83 +1,86 @@
-use arrayvec::ArrayVec;
-use egui::ahash::HashMap;
+use ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
-use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
+use egui_plot::{Plot, PlotPoint};
 use itertools::{Either, Itertools as _};
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
-use re_component_ui::color_swatch::ColorSwatch;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
-use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
+use re_log_types::{AbsoluteTimeRange, EntityPath};
 use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
-use re_sdk_types::blueprint::archetypes::{
-    ActiveVisualizers, PlotBackground, PlotLegend, ScalarAxis, TimeAxis,
-};
+use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::blueprint::components::{
     Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
 };
-use re_sdk_types::components::{AggregationPolicy, Color, Name, Range1D, Visible};
+use re_sdk_types::components::{AggregationPolicy, Color, Range1D, Visible};
 use re_sdk_types::datatypes::TimeRange;
-use re_sdk_types::{
-    ComponentBatch as _, ComponentIdentifier, Loggable as _, View as _, ViewClassIdentifier,
-};
+use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
-use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, IdentifiedViewSystem as _,
-    IndicatedEntities, Item, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
-    RecommendedMappings, RecommendedView, RecommendedVisualizers, SystemCommandSender as _,
-    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, VisualizableReason, VisualizerComponentSource,
+    IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings, RecommendedView,
+    RecommendedVisualizers, SingleRequiredComponentMatch, SystemExecutionOutput,
+    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableReason, VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
 use vec1::Vec1;
 
-use crate::PlotSeriesKind;
-use crate::line_visualizer_system::SeriesLinesSystem;
+use crate::line_visualizer_system::{SeriesLinesOutput, SeriesLinesSystem};
 use crate::naming::{SeriesInfo, SeriesNamesContext};
-use crate::point_visualizer_system::SeriesPointsSystem;
+use crate::point_visualizer_system::{SeriesPointsOutput, SeriesPointsSystem};
 use crate::util::data_result_time_range;
+use crate::{MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY, PlotSeriesKind};
 
 // ---
-
-/// We only show this many colors directly.
-const NUM_SHOWN_VISUALIZER_COLORS: usize = 2;
 
 #[derive(Clone)]
 pub struct TimeSeriesViewState {
     /// The range of the scalar values currently on screen.
     ///
     /// None if no values are on screen right now.
-    pub(crate) scalar_range: Option<Range1D>,
+    pub scalar_range: Option<Range1D>,
 
     /// The combined query range of all entities in this view.
     ///
     /// Only entities that are currently _visible_ are considered,
     /// but for these the entire data range in the store is calculated
     /// (not just what we're currently zoomed in on).
-    pub(crate) full_data_time_range: AbsoluteTimeRange,
+    pub full_data_time_range: AbsoluteTimeRange,
 
     /// We offset the time values of the plot so that unix timestamps don't run out of precision.
     ///
     /// Other parts of the system, such as query clamping, need to be aware of that offset in order
     /// to work properly.
-    pub(crate) time_offset: i64,
+    pub time_offset: i64,
 
     /// Cached disambiguated names for visualizers, used when no label is provided.
-    pub(crate) default_series_name_formats: HashMap<VisualizerInstructionId, String>,
+    pub default_series_name_formats: HashMap<VisualizerInstructionId, String>,
 
     /// The number of time series rendered by each visualizer instruction last frame.
     ///
     /// We track egui-ids here because the number of "series" passed to egui can actually be much higher
     /// since every color change, every discontinuity, etc. creates a new series, sharing the same egui id.
-    pub(crate) num_time_series_last_frame_per_instruction:
+    pub num_time_series_last_frame_per_instruction:
         HashMap<VisualizerInstructionId, IntSet<egui::Id>>,
+
+    /// The plot transform from the previous frame, used by visualizers to map
+    /// data-space points to screen-space for `re_renderer` primitives.
+    ///
+    /// `None` on the first frame (before `plot.show()` has run).
+    pub plot_transform: Option<egui_plot::PlotTransform>,
+
+    /// How many time units correspond to a single physical pixel on the plot.
+    ///
+    /// Computed from the plot's transform after each frame and used by visualizers
+    /// on the next frame to determine aggregation levels.
+    /// This avoids relying on `egui_plot::PlotMemory` keyed by view id, which breaks
+    /// when the same blueprint view is shown multiple times.
+    pub time_per_pixel: f64,
 }
 
 impl Default for TimeSeriesViewState {
@@ -88,6 +91,8 @@ impl Default for TimeSeriesViewState {
             time_offset: 0,
             default_series_name_formats: Default::default(),
             num_time_series_last_frame_per_instruction: Default::default(),
+            plot_transform: None,
+            time_per_pixel: 1.0,
         }
     }
 }
@@ -286,18 +291,16 @@ impl ViewClass for TimeSeriesView {
     fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
+        indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let available_visualizers: HashMap<ViewSystemIdentifier, &VisualizableReason> =
-            visualizable_entities_per_visualizer
+            visualizers_with_reason
                 .iter()
-                .filter_map(|(visualizer, ents)| {
-                    ents.get(entity_path).map(|reason| (*visualizer, reason))
-                })
+                .map(|(visualizer, reason)| (*visualizer, *reason))
                 .collect();
 
-        let mut recommended = RecommendedVisualizers(
+        let mut recommended = RecommendedVisualizers::new(
             available_visualizers
                 .iter()
                 .filter_map(|(visualizer, reason)| {
@@ -321,22 +324,89 @@ impl ViewClass for TimeSeriesView {
         );
 
         // If there were no other visualizers, but the SeriesLineSystem is available, use it.
-        if recommended.0.is_empty()
+        if recommended.all_recommendations().is_empty()
             && let Some(series_line_visualizable_reason) =
                 available_visualizers.get(&SeriesLinesSystem::identifier())
         {
-            let all_mappings: Vec<RecommendedMappings> =
+            let mut mappings_with_auto_spawn: Vec<RecommendedMappings> =
                 all_scalar_mappings(series_line_visualizable_reason)
                     .map(|(component, source)| RecommendedMappings::new(component, source))
                     .collect();
-            if let Ok(mappings) = Vec1::try_from_vec(all_mappings) {
-                recommended
-                    .0
-                    .insert(SeriesLinesSystem::identifier(), mappings);
+
+            // Not all automatic recommendations should be spawned by default, since that can lead to
+            // a huge number of visualizers being spawned for a single entity.
+            let recommendation_only = if mappings_with_auto_spawn.len()
+                > MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY
+            {
+                mappings_with_auto_spawn
+                    .split_off(MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY)
+            } else {
+                Vec::new()
+            };
+
+            // First add mappings with auto spawn since they should show up higher in the list.
+            if let Ok(mappings) = Vec1::try_from_vec(mappings_with_auto_spawn) {
+                recommended.insert(SeriesLinesSystem::identifier(), mappings, true);
+            }
+            if let Ok(mappings) = Vec1::try_from_vec(recommendation_only) {
+                recommended.insert(SeriesLinesSystem::identifier(), mappings, false);
             }
         }
 
         recommended
+    }
+
+    fn visualizers_section<'a>(
+        &'a self,
+        ctx: &'a re_viewer_context::ViewContext<'a>,
+    ) -> Option<re_viewer_context::VisualizersSectionOutput<'a>> {
+        let series_line_id = SeriesLinesSystem::identifier();
+        let visualizable_entities = ctx
+            .viewer_ctx
+            .iter_visualizable_entities_for_view_class(Self::identifier())
+            .find(|(viz, _)| *viz == series_line_id)
+            .map(|(_, ents)| ents);
+
+        let data_results = ctx.query_result.tree.iter_data_results();
+        let add_options = data_results
+            .filter_map(|data_result| {
+                if data_result.tree_prefix_only {
+                    return None;
+                }
+
+                // For the "add visualizer" menu, offer a SeriesLine for every possible scalar mapping.
+                // Unlike `recommended_visualizers_for_entity` / `all_scalar_mappings`, we don't filter
+                // by indication or recommended datatypes — we show everything that could be visualized.
+                let VisualizableReason::SingleRequiredComponentMatch(
+                    SingleRequiredComponentMatch {
+                        target_component: _,
+                        matches,
+                    },
+                ) = visualizable_entities?.get(&data_result.entity_path)?
+                else {
+                    return None;
+                };
+
+                let recommended = if let Ok(mappings) =
+                    vec1::Vec1::try_from_vec(all_scalar_mappings_for(matches))
+                {
+                    RecommendedVisualizers::new(
+                        std::iter::once((series_line_id, mappings)).collect(),
+                    )
+                } else {
+                    return None;
+                };
+
+                Some((data_result.entity_path.clone(), recommended))
+            })
+            .collect();
+
+        Some(re_viewer_context::VisualizersSectionOutput {
+            ui: Box::new(move |ui, ctx| {
+                visualizers_section_ui(ui, ctx);
+            }),
+            add_options,
+        })
     }
 
     fn ui(
@@ -346,14 +416,20 @@ impl ViewClass for TimeSeriesView {
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
-        system_output: SystemExecutionOutput,
+        mut system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
-        let line_series = system_output.view_systems.get::<SeriesLinesSystem>()?;
-        let point_series = system_output.view_systems.get::<SeriesPointsSystem>()?;
+        // Drain draw data from visualizer outputs (accessing field directly to avoid
+        // borrow conflict with view_systems which is borrowed via all_plot_series).
+        let re_renderer_draw_data: Vec<_> = system_output.drain_draw_data().collect();
+
+        let line_series =
+            system_output.visualizer_data::<SeriesLinesOutput>(SeriesLinesSystem::identifier())?;
+        let point_series =
+            system_output.visualizer_data::<SeriesPointsOutput>(SeriesPointsSystem::identifier())?;
 
         let all_plot_series: Vec<_> = std::iter::empty()
             .chain(line_series.all_series.iter())
@@ -595,36 +671,34 @@ impl ViewClass for TimeSeriesView {
             )?,
         );
 
-        // TODO(jleibs): If this is allowed to be different, need to track it per line.
-        let aggregation_factor = all_plot_series
-            .first()
-            .map_or(1.0, |line| line.aggregation_factor);
-
-        let aggregator = all_plot_series
-            .first()
-            .map(|line| line.aggregator)
-            .unwrap_or_default();
-
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
         let timestamp_format = ctx.app_options().timestamp_format;
 
-        let plot_id = crate::plot_id(query.view_id);
-
-        set_plot_visibility_from_store(ui.ctx(), &all_plot_series, plot_id);
-
         let min_axis_thickness = ui.tokens().small_icon_size.y;
 
+        let legend_id = egui::Id::new(query.view_id).with("plot_legend");
+        let legend_hovered = ui
+            .ctx()
+            .read_response(re_plot::legend::legend_frame_id(legend_id))
+            .is_some_and(|r| r.contains_pointer());
+
         ui.scope(|ui| {
-            // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
+            // Use timeline_name as part of id, so that egui stores different pan/zoom for different timelines.
+            // Derived from `ui.id()` so it's unique per UI location (i.e. works when the same view is shown multiple times).
             let plot_id_src = ("plot", &timeline_name);
+            let plot_id = ui.make_persistent_id(plot_id_src);
 
             ui.style_mut().visuals.extreme_bg_color = background_color.into();
+            let tokens = re_ui::design_tokens_of_visuals(ui.visuals());
 
             let mut plot = Plot::new(plot_id_src)
                 .id(plot_id)
                 .show_grid(**show_grid)
+                .grid_color(tokens.plot_grid_color)
+                .grid_fade(tokens.plot_grid_fade)
                 .auto_bounds(false)
                 .allow_zoom(!zoom_lock)
+                .allow_scroll(!legend_hovered)
                 .custom_x_axes(vec![
                     egui_plot::AxisHints::new_x()
                         .min_thickness(min_axis_thickness)
@@ -641,37 +715,14 @@ impl ViewClass for TimeSeriesView {
                         .min_thickness(min_axis_thickness)
                         .formatter(move |mark, _| format_y_axis(mark)),
                 ])
-                .label_formatter(move |name, value| {
-                    let name = if name.is_empty() { "y" } else { name };
-                    let label = time_type.format(
-                        TimeInt::new_temporal((value.x as i64).saturating_add(time_offset)),
-                        timestamp_format,
-                    );
-
-                    let y_value = re_format::format_f64(value.y);
-
-                    if aggregator == AggregationPolicy::Off || aggregation_factor <= 1.0 {
-                        format!("{timeline_name}: {label}\n{name}: {y_value}")
-                    } else {
-                        format!(
-                            "{timeline_name}: {label}\n{name}: {y_value}\n\
-                        {aggregator} aggregation over approx. {aggregation_factor:.1} time points",
-                        )
-                    }
-                });
+                // Suppress egui_plot's built-in tooltip so we can render our own.
+                .show_x(false)
+                .show_y(false);
 
             // Sharing the same cursor is always nice:
             plot = plot.link_cursor(timeline.name().as_str(), [true; 2]);
 
-            if *legend_visible.0 {
-                plot = plot.legend(
-                    Legend::default()
-                        .position(legend_corner.into())
-                        .follow_insertion_order(true)
-                        .grouping(egui_plot::LegendGrouping::ById)
-                        .color_conflict_handling(ColorConflictHandling::PickFirst),
-                );
-            }
+            // Legend is rendered separately after plot.show() using our LegendWidget.
 
             match timeline.typ() {
                 TimeType::Sequence => {}
@@ -684,10 +735,10 @@ impl ViewClass for TimeSeriesView {
 
             let mut plot_double_clicked = false;
             let egui_plot::PlotResponse {
-                inner: _,
+                inner: (),
                 response,
                 transform,
-                hovered_plot_item,
+                hovered_plot_item: _,
             } = plot.show(ui, |plot_ui| {
                 if plot_ui.response().secondary_clicked()
                     && let Some(pointer) = plot_ui.pointer_coordinate()
@@ -704,22 +755,59 @@ impl ViewClass for TimeSeriesView {
                 // Let the user pick x and y ranges from the blueprint:
                 plot_ui.set_plot_bounds_y(y_range);
                 plot_ui.set_plot_bounds_x(x_range);
-
-                add_series_to_plot(
-                    plot_ui,
-                    &query.highlights,
-                    &all_plot_series,
-                    time_offset,
-                    &mut state.scalar_range,
-                );
             });
 
-            // Interact with the plot items (lines, scatters, etc.)
-            let hovered_data_result = hovered_plot_item
-                .and_then(|hovered_plot_item| {
-                    plot_item_id_to_data_result_address.get(&hovered_plot_item)
+            // Merge per-series finite ranges from visible series (used as the
+            // fallback for `ScalarAxis::descriptor_range()`).
+            state.scalar_range = None;
+            for series in &all_plot_series {
+                if !series.visible {
+                    continue;
+                }
+                let Some(series_range) = series.value_range else {
+                    continue;
+                };
+                if let Some(range) = state.scalar_range.as_mut() {
+                    if series_range.start() < range.start() {
+                        *range.start_mut() = series_range.start();
+                    }
+                    if series_range.end() > range.end() {
+                        *range.end_mut() = series_range.end();
+                    }
+                } else {
+                    state.scalar_range = Some(series_range);
+                }
+            }
+
+            // Store the transform for next frame's visualizers to use.
+            state.plot_transform = Some(transform);
+
+            // Update time_per_pixel from the plot transform for use by visualizers next frame.
+            {
+                let points_per_time = transform.dpos_dvalue_x();
+                let pixels_per_time = ui.ctx().pixels_per_point() as f64 * points_per_time;
+                state.time_per_pixel = 1.0 / pixels_per_time.max(f64::EPSILON);
+            }
+
+            // Render re_renderer draw data (already in screen space) via ViewBuilder.
+            render_re_renderer_draw_data(ctx, ui, &response, re_renderer_draw_data);
+
+            // Custom hover detection: find nearest actual data point and show tooltip.
+            let hovered_data_result = (!legend_hovered)
+                .then(|| {
+                    find_nearest_data_point_and_show_tooltip(
+                        ui,
+                        &response,
+                        &transform,
+                        &all_plot_series,
+                        time_offset,
+                        time_type,
+                        timestamp_format,
+                        &plot_item_id_to_data_result_address,
+                    )
                 })
-                .map(|address| re_viewer_context::Item::DataResult(address.clone()));
+                .flatten();
+
             if let Some(hovered) = hovered_data_result.clone().or_else(|| {
                 if response.hovered() {
                     Some(re_viewer_context::Item::View(query.view_id))
@@ -740,7 +828,7 @@ impl ViewClass for TimeSeriesView {
                 .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
             if let Some(time_x) = time_x {
-                draw_time_cursor(ctx, ui, &response, &transform, time_offset, time_x);
+                paint_time_cursor(ctx, ui, &response, &transform, time_offset, time_x);
             }
 
             // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.
@@ -799,189 +887,152 @@ impl ViewClass for TimeSeriesView {
                 }
             }
 
-            // Sync visibility of hidden items with the blueprint (user can hide items via the legend).
-            update_series_visibility_overrides_from_plot(
-                ctx,
-                query,
-                &all_plot_series,
-                ui.ctx(),
-                plot_id,
-            );
+            // Render our legend overlay and sync visibility with blueprint.
+            if *legend_visible.0 {
+                // Build a map from label → whether any series with that label is globally hovered.
+                // Multiple series can share a label (e.g. /spiral[0] and /spiral[1]), so we OR
+                // across all of them.
+                let prev_hovered_items = ctx.selection_state().hovered_items();
+                let mut label_hovered: ahash::HashMap<&str, bool> = ahash::HashMap::default();
+                for series in all_plot_series
+                    .iter()
+                    .filter(|s| !matches!(s.kind, PlotSeriesKind::Clear))
+                {
+                    let address = plot_item_id_to_data_result_address[&series.id()].clone();
+                    let is_hovered = prev_hovered_items
+                        .contains_item(&re_viewer_context::Item::DataResult(address.clone()))
+                        || prev_hovered_items.contains_item(&re_viewer_context::Item::DataResult(
+                            address.as_entity_all(),
+                        ));
+                    if is_hovered {
+                        label_hovered.insert(series.label.as_str(), true);
+                    } else {
+                        label_hovered.entry(series.label.as_str()).or_insert(false);
+                    }
+                }
+
+                let legend_widget =
+                    re_plot::legend::LegendWidget::new(re_plot::legend::LegendConfig {
+                        position: legend_corner.into(),
+                        id: legend_id,
+                    });
+
+                // Render the legend overlaid on the plot rect.
+                let plot_rect = response.rect;
+                let mut legend_ui = ui.new_child(
+                    egui::UiBuilder::new()
+                        .max_rect(plot_rect)
+                        .layout(egui::Layout::left_to_right(egui::Align::Min)),
+                );
+
+                let legend_output = legend_widget.show_entries(
+                    &mut legend_ui,
+                    all_plot_series
+                        .iter()
+                        .filter(|s| !matches!(s.kind, PlotSeriesKind::Clear))
+                        .map(|s| re_plot::legend::LegendEntry {
+                            id: s.id(),
+                            label: s.label.clone(),
+                            color: s.color,
+                            visible: s.visible,
+                            hovered: label_hovered
+                                .get(s.label.as_str())
+                                .copied()
+                                .unwrap_or(false),
+                        }),
+                );
+
+                // Legend hover → global item hover (only when no plot item is hovered).
+                if hovered_data_result.is_none()
+                    && let Some(hovered_id) = legend_output.hovered_id
+                    && let Some(address) = plot_item_id_to_data_result_address.get(&hovered_id)
+                {
+                    ctx.selection_state()
+                        .set_hovered(re_viewer_context::Item::DataResult(address.clone()));
+                }
+
+                let hidden_items = legend_output.hidden_ids;
+                update_series_visibility_from_legend(ctx, query, &all_plot_series, &hidden_items);
+            }
 
             Ok(())
         })
         .inner
     }
-
-    fn visualizers_ui<'a>(
-        &'a self,
-        viewer_ctx: &'a re_viewer_context::ViewerContext<'a>,
-        view_id: ViewId,
-        state: &'a mut dyn ViewState,
-        space_origin: &'a EntityPath,
-    ) -> Option<Box<dyn Fn(&mut egui::Ui) + 'a>> {
-        let state = state.downcast_mut::<TimeSeriesViewState>().ok()?;
-
-        let visualizer_body = move |ui: &mut egui::Ui| {
-            list_item::list_item_scope(ui, "time_series_visualizers_ui", |ui| {
-                let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
-                re_tracing::profile_function!();
-                let query_result = ctx.query_result;
-
-                let handles = query_result.tree.data_results_by_path.values().sorted();
-                for handle in handles {
-                    let Some(node) = query_result.tree.data_results.get(*handle) else {
-                        continue;
-                    };
-                    let pill_margin = egui::Margin::symmetric(8, 6);
-                    for instruction in &node.data_result.visualizer_instructions {
-                        if !node.data_result.visible {
-                            continue;
-                        }
-
-                        ui.add_space(10.0);
-
-                        visualizer_ui_element(ui, &ctx, node, pill_margin, instruction);
-                    }
-                }
-            });
-        };
-
-        Some(Box::new(visualizer_body))
-    }
 }
 
-fn visualizer_ui_element(
-    ui: &mut egui::Ui,
-    ctx: &re_viewer_context::ViewContext<'_>,
-    node: &re_viewer_context::DataResultNode,
-    pill_margin: egui::Margin,
-    instruction: &re_viewer_context::VisualizerInstruction,
-) {
-    let entity_path = &node.data_result.entity_path;
+fn all_scalar_mappings_for(
+    matches: &IntMap<ComponentIdentifier, DatatypeMatch>,
+) -> Vec<RecommendedMappings> {
+    let target = Scalars::descriptor_scalars().component;
 
-    let full_path = entity_path.ui_string().trim_start_matches('/').to_owned();
+    matches
+        .iter()
+        .sorted_by_key(|(k, _)| **k)
+        .flat_map(|(source_component, match_info)| match match_info {
+            DatatypeMatch::NativeSemantics { .. } => {
+                Either::Left(std::iter::once(RecommendedMappings::new(
+                    target,
+                    VisualizerComponentSource::SourceComponent {
+                        source_component: *source_component,
+                        selector: String::new(),
+                    },
+                )))
+            }
 
-    let series_color = get_time_series_color(ctx, &node.data_result, instruction);
-    let display_name = get_time_series_name(ctx, &node.data_result, instruction);
-
-    ui.scope(|ui| {
-        // Time travel: retrieve the height of the previous frame so we can set it to the right side of egui::Sides.
-        // In case of `shrink_left`, egui::Sides will render the right side first, and the content can't be centered
-        // vertically since the height of the left side is unknown at that point. By setting the height explicitly,
-        // we can vertically center the right side. It works since the height doesn't change.
-        let previous_frame_height = ui.response().rect.height();
-
-        egui::Sides::new().shrink_left().show(
-            ui,
-            |ui| {
-                let mut frame = egui::Frame::default()
-                    .fill(ui.tokens().visualizer_list_pill_bg_color)
-                    .corner_radius(4.0)
-                    .inner_margin(pill_margin)
-                    .begin(ui);
-                {
-                    let ui = &mut frame.content_ui;
-                    let previous_frame_height = ui.response().rect.height();
-
-                    // Disable text selection so hovering the text only hovers the pill
-                    ui.style_mut().interaction.selectable_labels = false;
-                    egui::Sides::new().shrink_left().show(
-                        ui,
-                        |ui| {
-                            // Visualizer name and entity path
-                            ui.vertical(|ui| {
-                                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-                                ui.label(
-                                    egui::RichText::new(&display_name)
-                                        .color(ui.tokens().visualizer_list_title_text_color),
-                                );
-                                ui.label(
-                                    egui::RichText::new(&full_path)
-                                        .size(10.5)
-                                        .color(ui.tokens().visualizer_list_path_text_color),
-                                );
-                            });
+            DatatypeMatch::PhysicalDatatypeOnly { selectors, .. } => {
+                if selectors.is_empty() {
+                    Either::Left(std::iter::once(RecommendedMappings::new(
+                        target,
+                        VisualizerComponentSource::SourceComponent {
+                            source_component: *source_component,
+                            selector: String::new(),
                         },
-                        |ui| {
-                            if previous_frame_height.is_sign_positive() {
-                                ui.set_height(previous_frame_height);
-                            }
-                            // Color box(es) on the right, vertically centered on the labels.
-                            series_color.ui(ui);
-                        },
-                    );
+                    )))
+                } else {
+                    Either::Right(selectors.iter().map(|(selector, _datatype)| {
+                        RecommendedMappings::new(
+                            target,
+                            VisualizerComponentSource::SourceComponent {
+                                source_component: *source_component,
+                                selector: selector.to_string(),
+                            },
+                        )
+                    }))
                 }
-                let response = frame
-                    .allocate_space(ui)
-                    .interact(egui::Sense::click())
-                    .on_hover_cursor(egui::CursorIcon::PointingHand);
+            }
+        })
+        .collect()
+}
 
-                let is_highlighted =
-                    ctx.viewer_ctx
-                        .hovered()
-                        .iter()
-                        .any(|(hovered, _hover_ctx)| {
-                            if let Item::DataResult(address) = hovered {
-                                address.view_id == ctx.view_id
-                            && address.instance_path.entity_path == *entity_path // Don't care about instance id here.
-                            && address.visualizer.is_none_or(|vid| vid == instruction.id)
-                            } else {
-                                false
-                            }
-                        });
-                if is_highlighted {
-                    frame.frame.fill = ui.tokens().visualizer_list_pill_bg_color_hovered;
-                }
+/// Renders the active visualizer pills for the "Visualizers" section in the selection panel.
+fn visualizers_section_ui(ui: &mut egui::Ui, ctx: &re_viewer_context::ViewContext<'_>) {
+    list_item::list_item_scope(ui, "time_series_visualizers_ui", |ui| {
+        re_tracing::profile_function!();
+        let query_result = ctx.query_result;
 
-                let item = Item::DataResult(DataResultInteractionAddress {
-                    view_id: ctx.view_id,
-                    instance_path: InstancePath::from(entity_path.clone()),
-                    visualizer: Some(instruction.id),
-                });
-
-                if response.hovered() {
-                    frame.frame.fill = ui.tokens().visualizer_list_pill_bg_color_hovered;
-                    ctx.viewer_ctx.selection_state().set_hovered(item.clone());
-                }
-                if response.clicked() {
-                    ctx.viewer_ctx
-                        .command_sender()
-                        .send_system(re_viewer_context::SystemCommand::set_selection(item));
-                }
-                frame.paint(ui);
-            },
-            |ui| {
-                // Trashcan button to remove this visualizer.
-                if previous_frame_height.is_sign_positive() {
-                    ui.set_height(previous_frame_height);
+        let handles = query_result.tree.data_results_by_path.values().sorted();
+        for handle in handles {
+            let Some(node) = query_result.tree.data_results.get(*handle) else {
+                continue;
+            };
+            let pill_margin = egui::Margin::symmetric(8, 6);
+            for instruction in &node.data_result.visualizer_instructions {
+                if !node.data_result.visible {
+                    continue;
                 }
 
-                let remove_response =
-                    ui.small_icon_button(&re_ui::icons::TRASH, "Remove visualizer");
-                if remove_response.clicked() {
-                    let override_base_path = &node.data_result.override_base_path;
+                ui.add_space(10.0);
 
-                    let active_visualizers = node
-                        .data_result
-                        .visualizer_instructions
-                        .iter()
-                        .filter(|v| v.id != instruction.id)
-                        .collect::<Vec<_>>();
-
-                    let archetype =
-                        ActiveVisualizers::new(active_visualizers.iter().map(|v| v.id.0));
-
-                    ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
-
-                    // Ensure the remaining instructions are persisted so that their
-                    // types and mappings are available on the next frame.
-                    for visualizer_instruction in active_visualizers {
-                        visualizer_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
-                    }
-                }
-            },
-        );
+                crate::visualizer_ui::visualizer_ui_element(
+                    ui,
+                    ctx,
+                    node,
+                    pill_margin,
+                    instruction,
+                );
+            }
+        }
     });
 }
 
@@ -1013,20 +1064,17 @@ const RECOMMENDED_DATATYPES: &[DataType] =
 fn all_scalar_mappings(
     reason: &VisualizableReason,
 ) -> impl Iterator<Item = (ComponentIdentifier, VisualizerComponentSource)> {
-    let re_viewer_context::VisualizableReason::DatatypeMatchAny {
-        target_component: _,
-        matches,
-    } = reason
-    else {
+    let re_viewer_context::VisualizableReason::SingleRequiredComponentMatch(m) = reason else {
         return Either::Left(std::iter::empty());
     };
+    let matches = &m.matches;
 
     let target = Scalars::descriptor_scalars();
 
     // Flatten all (component, selector) pairs into a single comparable list
     // to find the globally best match across all components.
     let candidates = matches.iter().flat_map(|(source_component, match_info)| {
-        let is_rerun_native_type = match_info.component_type() == &target.component_type;
+        let is_rerun_native_type = match_info.component_type() == target.component_type.as_ref();
 
         // If it's not the exact semantic type that we're looking for,
         // but it is a Rerun-builtin semantic type then we don't consider it at all.
@@ -1131,26 +1179,151 @@ fn all_scalar_mappings(
     )
 }
 
-fn draw_time_cursor(
+/// Find the nearest actual data point to the cursor and show a custom tooltip.
+///
+/// Returns the hovered data result item for selection/highlighting, or `None` if
+/// no data point is close enough.
+#[expect(clippy::too_many_arguments)]
+fn find_nearest_data_point_and_show_tooltip(
+    ui: &egui::Ui,
+    response: &egui::Response,
+    transform: &egui_plot::PlotTransform,
+    all_plot_series: &[&crate::PlotSeries],
+    time_offset: i64,
+    time_type: TimeType,
+    timestamp_format: re_log_types::TimestampFormat,
+    plot_item_id_to_data_result_address: &ahash::HashMap<egui::Id, DataResultInteractionAddress>,
+) -> Option<re_viewer_context::Item> {
+    let hover_pos = match response.hover_pos() {
+        Some(pos) if response.rect.contains(pos) => pos,
+        _ => return None,
+    };
+
+    // Use a larger radius than the default egui interact_radius (5px) for better UX.
+    // This makes it easier to hover data points without needing pixel-perfect precision.
+    const TOOLTIP_INTERACT_RADIUS: f32 = 16.0;
+    let interact_radius_sq = TOOLTIP_INTERACT_RADIUS.powi(2);
+
+    // Find the closest actual data point across all visible series.
+    let hover_value = transform.value_from_position(hover_pos);
+    let hover_time = (hover_value.x as i64).saturating_add(time_offset);
+
+    let mut closest: Option<(f32, usize)> = None; // (dist_sq, series_index)
+    let mut closest_time: i64 = 0;
+    let mut closest_value: f64 = 0.0;
+
+    for (series_idx, series) in all_plot_series.iter().enumerate() {
+        if !series.visible || series.points.is_empty() {
+            continue;
+        }
+
+        let idx = series
+            .points
+            .binary_search_by_key(&hover_time, |&(t, _)| t)
+            .unwrap_or_else(|i| i);
+
+        // Check the point at `idx` and the one before it (the two nearest candidates).
+        let candidates = [idx.saturating_sub(1), idx.min(series.points.len() - 1)];
+        for &candidate_idx in &candidates {
+            if candidate_idx >= series.points.len() {
+                continue;
+            }
+            let (t, v) = series.points[candidate_idx];
+            let plot_x = (t.saturating_sub(time_offset)) as f64;
+            let screen_pos = transform.position_from_point(&PlotPoint::new(plot_x, v));
+            let dist_sq = hover_pos.distance_sq(screen_pos);
+
+            if dist_sq <= interact_radius_sq && closest.is_none_or(|(best, _)| dist_sq < best) {
+                closest = Some((dist_sq, series_idx));
+                closest_time = t;
+                closest_value = v;
+            }
+        }
+    }
+
+    let (_, series_idx) = closest?;
+    let series = all_plot_series[series_idx];
+
+    // Draw a small dot at the hovered data point (always shown, no delay).
+    let plot_x = (closest_time.saturating_sub(time_offset)) as f64;
+    let point_screen_pos = transform.position_from_point(&PlotPoint::new(plot_x, closest_value));
+    let painter = ui.painter();
+    let series_color = series.color;
+    painter.circle_filled(point_screen_pos, 3.0, series_color);
+
+    // Strip the date to keep the tooltip compact — most recordings don't span midnight.
+    // Formatting still auto-trims trailing zeros (ms → 3 digits, µs → 6, etc.).
+    let time_label = {
+        let tooltip_format = if time_type == TimeType::TimestampNs {
+            timestamp_format.with_date_visibility(re_log_types::DateVisibility::HideDate)
+        } else {
+            timestamp_format
+        };
+        time_type.format(
+            re_log_types::TimeInt::new_temporal(closest_time),
+            tooltip_format,
+        )
+    };
+    let y_value_text = re_format::format_f64(closest_value);
+    let series_name = if series.label.is_empty() {
+        "y".to_owned()
+    } else {
+        series.label.clone()
+    };
+    // Append aggregation policy to the label when data is aggregated.
+    let is_aggregated =
+        series.aggregator != AggregationPolicy::Off && series.aggregation_factor > 1.0;
+    let display_label = if is_aggregated {
+        format!("{series_name}, {}", series.aggregator)
+    } else {
+        series_name
+    };
+
+    re_plot::tooltip::show_plot_tooltip(
+        ui,
+        response,
+        series.id(),
+        &time_label,
+        &display_label,
+        &y_value_text,
+        series_color,
+    );
+
+    // Map the hovered series to a data result for selection/highlighting.
+    plot_item_id_to_data_result_address
+        .get(&series.id())
+        .map(|address| re_viewer_context::Item::DataResult(address.clone()))
+}
+
+fn paint_time_cursor(
     ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
     response: &egui::Response,
     transform: &egui_plot::PlotTransform,
     time_offset: i64,
     mut time_x: f32,
-) -> egui::Response {
+) {
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
     let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
         .expand(interact_radius);
 
     let time_drag_id = ui.id().with("time_drag");
-    let time_cursor_response = ui
-        .interact(line_rect, time_drag_id, egui::Sense::drag())
-        .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
+    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
+    let is_near = ui.rect_contains_pointer(line_rect);
+    let is_being_dragged = ui.is_being_dragged(time_drag_id);
 
-    if time_cursor_response.dragged()
-        && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
+    if is_near || is_being_dragged {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+    }
+
+    if is_near
+        && !is_being_dragged
+        && ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Primary))
     {
+        ui.set_dragged_id(time_drag_id);
+    }
+
+    if is_being_dragged && let Some(pointer_pos) = pointer_pos {
         let aim_radius = ui.input(|i| i.aim_radius());
         let new_offset_time = egui::emath::smart_aim::best_in_range_f64(
             transform
@@ -1171,13 +1344,16 @@ fn draw_time_cursor(
         ]);
     }
 
-    ui.paint_time_cursor(
-        ui.painter(),
-        Some(&time_cursor_response),
-        time_x,
-        time_cursor_response.rect.y_range(),
-    );
-    time_cursor_response
+    let highlighted = is_near || is_being_dragged;
+    let style = if is_being_dragged {
+        &ui.visuals().widgets.active
+    } else if highlighted {
+        &ui.visuals().widgets.hovered
+    } else {
+        &ui.visuals().widgets.inactive
+    };
+
+    ui.paint_time_cursor_with_style(ui.painter(), style, time_x, response.rect.y_range());
 }
 
 fn reset_view(ctx: &ViewerContext<'_>, time_axis: &ViewProperty, scalar_axis: &ViewProperty) {
@@ -1195,37 +1371,15 @@ fn transform_axis_range(transform: egui_plot::PlotTransform, axis: usize) -> Ran
     )
 }
 
-fn set_plot_visibility_from_store(
-    egui_ctx: &egui::Context,
-    plot_series_from_store: &[&crate::PlotSeries],
-    plot_id: egui::Id,
-) {
-    // egui_plot has its own memory about which plots are visible.
-    // We want to store that state in blueprint, so overwrite it (we sync with any changes that ui interaction may do later on, see `update_series_visibility`)
-    if let Some(mut plot_memory) = egui_plot::PlotMemory::load(egui_ctx, plot_id) {
-        plot_memory.hidden_items = plot_series_from_store
-            .iter()
-            .filter(|&series| !series.visible)
-            .map(|series| series.id())
-            .collect();
-        plot_memory.store(egui_ctx, plot_id);
-    }
-}
-
-fn update_series_visibility_overrides_from_plot(
+fn update_series_visibility_from_legend(
     ctx: &ViewerContext<'_>,
     query: &ViewQuery<'_>,
     all_plot_series: &[&crate::PlotSeries],
-    egui_ctx: &egui::Context,
-    plot_id: egui::Id,
+    hidden_items: &egui::IdSet,
 ) {
     let Some(query_results) = ctx.query_results.get(&query.view_id) else {
         return;
     };
-    let Some(plot_memory) = egui_plot::PlotMemory::load(egui_ctx, plot_id) else {
-        return;
-    };
-    let hidden_items = plot_memory.hidden_items;
 
     // Determine which series have changed visibility state.
     let mut per_visualizer_inst_id_series_new_visibility_state: HashMap<
@@ -1307,91 +1461,7 @@ fn update_series_visibility_overrides_from_plot(
     }
 }
 
-fn add_series_to_plot(
-    plot_ui: &mut egui_plot::PlotUi<'_>,
-    highlights: &ViewHighlights,
-    all_plot_series: &[&crate::PlotSeries],
-    time_offset: i64,
-    scalar_range: &mut Option<Range1D>,
-) {
-    re_tracing::profile_function!();
-
-    *scalar_range = None;
-
-    for series in all_plot_series {
-        let points = if series.visible {
-            series
-                .points
-                .iter()
-                .map(|p| {
-                    if let Some(scalar_range) = scalar_range.as_mut() {
-                        if p.1 < scalar_range.start() {
-                            *scalar_range.start_mut() = p.1;
-                        }
-                        if p.1 > scalar_range.end() {
-                            *scalar_range.end_mut() = p.1;
-                        }
-                    } else {
-                        *scalar_range = Some(Range1D::new(p.1, p.1));
-                    }
-
-                    [(p.0.saturating_sub(time_offset)) as _, p.1]
-                })
-                .collect::<Vec<_>>()
-        } else {
-            // TODO(emilk/egui_plot#92): Note we still need to produce a series, so it shows up in the legend.
-            // As of writing, egui_plot gets confused if this is an empty series, so
-            // we still add a single point (but don't have it influence the scalar range!)
-            series
-                .points
-                .first()
-                .map(|p| vec![[(p.0.saturating_sub(time_offset)) as _, p.1]])
-                .unwrap_or_default()
-        };
-
-        let color = series.color;
-
-        let interaction_highlight = highlights
-            .entity_highlight(series.instance_path.entity_path.hash())
-            .index_highlight(
-                series.instance_path.instance,
-                series.visualizer_instruction_id,
-            );
-        let highlight = interaction_highlight.any();
-
-        match series.kind {
-            PlotSeriesKind::Continuous => plot_ui.line(
-                Line::new(&series.label, points)
-                    .color(color)
-                    .width(2.0 * series.radius_ui)
-                    .highlight(highlight)
-                    .id(series.id()),
-            ),
-            PlotSeriesKind::Stepped(mode) => {
-                let stepped_points = to_stepped_points(&points, mode);
-                plot_ui.line(
-                    Line::new(&series.label, stepped_points)
-                        .color(color)
-                        .width(2.0 * series.radius_ui)
-                        .highlight(highlight)
-                        .id(series.id()),
-                );
-            }
-            PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
-                Points::new(&series.label, points)
-                    .color(color)
-                    .radius(series.radius_ui)
-                    .shape(scatter_attrs.marker.into())
-                    .highlight(highlight)
-                    .id(series.id()),
-            ),
-            // Break up the chart. At some point we might want something fancier.
-            PlotSeriesKind::Clear => {}
-        }
-    }
-}
-
-fn to_stepped_points(points: &[[f64; 2]], mode: crate::StepMode) -> Vec<[f64; 2]> {
+pub(crate) fn to_stepped_points(points: &[[f64; 2]], mode: crate::StepMode) -> Vec<[f64; 2]> {
     if points.len() < 2 {
         return points.to_vec();
     }
@@ -1496,6 +1566,15 @@ fn round_nanos_to_start_of_day(ns: i64) -> i64 {
     (ns.saturating_add(nanos_per_day / 2)) / nanos_per_day * nanos_per_day
 }
 
+/// Add a relative margin to a range so the data doesn't touch the plot edges.
+///
+/// `fraction` is the fraction of the range to add on each side (e.g. 0.05 = 5%).
+pub fn add_margin_to_range(range: Range1D, fraction: f64) -> Range1D {
+    let span = range.end() - range.start();
+    let margin = span * fraction;
+    Range1D::new(range.start() - margin, range.end() + margin)
+}
+
 /// Make sure the range is finite and positive, or `egui_plot` might be buggy.
 pub fn make_range_sane(y_range: Range1D) -> Range1D {
     let (mut start, mut end) = (y_range.start(), y_range.end());
@@ -1519,169 +1598,82 @@ pub fn make_range_sane(y_range: Range1D) -> Range1D {
     }
 }
 
-fn strip_instance_number(str: &str) -> String {
-    if let Some(stripped) = str.strip_suffix(']').and_then(|s| {
-        let i = s.rfind('[')?;
-        s[i + 1..]
-            .bytes()
-            .all(|b| b.is_ascii_digit())
-            .then_some(&s[..i])
-    }) {
-        format!("{stripped}[]")
-    } else {
-        str.to_owned()
+/// Render `re_renderer` draw data (lines, points) produced by visualizers in screen space.
+///
+/// The visualizers have already transformed points to screen coordinates using `PlotTransform`,
+/// so we use a simple identity orthographic projection matching the screen rect.
+fn render_re_renderer_draw_data(
+    ctx: &ViewerContext<'_>,
+    ui: &egui::Ui,
+    response: &egui::Response,
+    draw_data: Vec<re_renderer::QueueableDrawData>,
+) {
+    if draw_data.is_empty() {
+        return;
     }
-}
 
-/// Returns the name for a time series visualizer.
-fn get_time_series_name(
-    ctx: &re_viewer_context::ViewContext<'_>,
-    data_result: &re_viewer_context::DataResult,
-    instruction: &re_viewer_context::VisualizerInstruction,
-) -> String {
-    let component = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
-        SeriesLines::descriptor_names().component
-    } else if instruction.visualizer_type == SeriesPointsSystem::identifier() {
-        SeriesPoints::descriptor_names().component
-    } else {
-        return instruction.visualizer_type.to_string();
-    };
+    let render_ctx = ctx.render_ctx();
+    let pixels_per_point = ui.ctx().pixels_per_point();
 
-    let query_result = re_view::latest_at_with_blueprint_resolved_data(
-        ctx,
-        None,
-        &ctx.current_query(),
-        data_result,
-        [component],
-        Some(instruction),
+    // The plot area in screen coordinates.
+    let plot_rect = response.rect;
+
+    // Resolution in physical pixels for the render target.
+    let resolution_in_pixel =
+        re_viewer_context::gpu_bridge::viewport_resolution_in_pixels(plot_rect, pixels_per_point);
+
+    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
+        return;
+    }
+
+    let height = plot_rect.height();
+
+    // Points are already in screen (UI) coordinates from PlotTransform.
+    // Translate so that the plot rect's top-left maps to the origin.
+    let view_from_world = macaw::IsoTransform::from_rotation_translation(
+        glam::Quat::IDENTITY,
+        glam::vec3(-plot_rect.left(), -plot_rect.top(), 0.0),
     );
 
-    let first_name = query_result.get_mono_with_fallback::<Name>(component);
+    let target_config = re_renderer::view_builder::TargetConfiguration {
+        name: "time_series_plot".into(),
+        resolution_in_pixel,
+        view_from_world,
+        projection_from_view: re_renderer::view_builder::Projection::Orthographic {
+            camera_mode: re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
+            vertical_world_size: height,
+            far_plane_distance: 1000.0,
+        },
+        viewport_transformation: re_renderer::RectTransform::IDENTITY,
+        pixels_per_point,
+        blend_with_background: re_renderer::BlendWithBackground::Premultiplied,
+        ..Default::default()
+    };
 
-    // We might have already "injected" the instance number into the name of the series.
-    // So we re-normalize the series name again.
-    strip_instance_number(&first_name)
-}
+    let Ok(mut view_builder) = re_renderer::ViewBuilder::new(render_ctx, target_config) else {
+        return;
+    };
 
-/// List of colors for a time series visualizer.
-#[derive(Default)]
-struct TimeSeriesColors {
-    instance_count: usize,
-    colors: ArrayVec<egui::Color32, NUM_SHOWN_VISUALIZER_COLORS>,
-}
-
-impl TimeSeriesColors {
-    /// Draws color boxes (and an optional "+N" badge) right-aligned and vertically centered on
-    /// the given `center_y`.
-    fn ui(&self, ui: &mut egui::Ui) {
-        if self.colors.is_empty() {
-            return;
-        }
-
-        ui.spacing_mut().item_spacing.x = 4.0;
-
-        let num_boxes = if self.instance_count > 2 {
-            1
-        } else {
-            self.colors.len()
-        };
-
-        // Draw "+N" badge when there are more than 2 instances
-        if self.instance_count > 2 {
-            let badge_text = format!("+{}", self.instance_count - 1);
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-            ui.label(
-                egui::RichText::new(&badge_text)
-                    .color(ui.tokens().visualizer_list_path_text_color)
-                    .size(10.5),
-            );
-        }
-
-        // Draw color boxes from right to left
-        for color in self.colors[..num_boxes].iter().rev() {
-            let rgba = re_sdk_types::datatypes::Rgba32::from(*color);
-            let mut color_ref = re_viewer_context::MaybeMutRef::Ref(&rgba);
-            ui.add(ColorSwatch::new(&mut color_ref));
-        }
+    for dd in draw_data {
+        view_builder.queue_draw(render_ctx, dd);
     }
-}
 
-/// Returns the colors of time series plots.
-fn get_time_series_color(
-    ctx: &re_viewer_context::ViewContext<'_>,
-    data_result: &re_viewer_context::DataResult,
-    instruction: &re_viewer_context::VisualizerInstruction,
-) -> TimeSeriesColors {
-    let color_descr = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
-        SeriesLines::descriptor_colors()
-    } else if instruction.visualizer_type == SeriesPointsSystem::identifier() {
-        SeriesPoints::descriptor_colors()
-    } else {
-        // Unkownn visualizer type, don't show any colors
-        return TimeSeriesColors::default();
-    };
-
-    // Get the colors for each instance
-    let query = ctx.current_query();
-    let color_result = re_view::latest_at_with_blueprint_resolved_data(
-        ctx,
-        None,
-        &query,
-        data_result,
-        [color_descr.component],
-        Some(instruction),
-    );
-
-    let raw_color_cell = if let Some(color_cells) = color_result.get_raw_cell(color_descr.component)
-    {
-        // We have color data either in the store or as overrides
-        color_cells
-    } else {
-        // No color data in the store or overrides, use the fallback
-        ctx.viewer_ctx.component_fallback_registry.fallback_for(
-            &color_descr,
-            &ctx.query_context(data_result, query, instruction.id),
-        )
-    };
-
-    let Ok(color_components) = Color::from_arrow(&raw_color_cell) else {
-        re_log::error_once!("Failed to cast color array to Color");
-        return TimeSeriesColors::default();
-    };
-
-    let colors = color_components
-        .iter()
-        .map(|&value| value.into()) // Color is ABGR, egui uses to RGBA, can't use bytemuck here.
-        .take(NUM_SHOWN_VISUALIZER_COLORS)
-        .collect();
-
-    TimeSeriesColors {
-        instance_count: color_components.len(),
-        colors,
-    }
+    let painter = ui.painter_at(plot_rect);
+    painter.add(re_viewer_context::gpu_bridge::new_renderer_callback(
+        view_builder,
+        plot_rect,
+        re_renderer::Rgba::TRANSPARENT,
+    ));
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use re_viewer_context::SingleRequiredComponentMatch;
 
     #[test]
     fn test_help_view() {
         re_test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
-    }
-
-    fn build_visualizable_entities(
-        entity_path: &EntityPath,
-        reason: VisualizableReason,
-    ) -> PerVisualizerTypeInViewClass<VisualizableEntities> {
-        PerVisualizerTypeInViewClass {
-            view_class_identifier: TimeSeriesView::identifier(),
-            per_visualizer: std::iter::once((
-                SeriesLinesSystem::identifier(),
-                VisualizableEntities(std::iter::once((entity_path.clone(), reason)).collect()),
-            ))
-            .collect(),
-        }
     }
 
     /// Regression: non-recommended physical datatype (`Int32`) must not cause
@@ -1689,9 +1681,8 @@ mod tests {
     #[test]
     fn test_no_recommendation_for_non_recommended_datatype() {
         let entity_path = EntityPath::from("sensor/data");
-        let viz = build_visualizable_entities(
-            &entity_path,
-            VisualizableReason::DatatypeMatchAny {
+        let reason =
+            VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
                 target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
@@ -1702,22 +1693,24 @@ mod tests {
                     },
                 ))
                 .collect(),
-            },
-        );
+            });
+        let visualizers = [(SeriesLinesSystem::identifier(), &reason)];
         let indicated = PerVisualizerType::default();
-        let result =
-            TimeSeriesView.recommended_visualizers_for_entity(&entity_path, &viz, &indicated);
+        let result = TimeSeriesView.recommended_visualizers_for_entity(
+            &entity_path,
+            &visualizers,
+            &indicated,
+        );
 
-        assert!(result.0.is_empty());
+        assert!(result.all_recommendations().is_empty());
     }
 
     /// `SeriesLinesSystem` should be recommended when the datatype is a recommended one, even if not indicated.
     #[test]
     fn test_recommendation_for_recommended_datatype() {
         let entity_path = EntityPath::from("sensor/data");
-        let viz = build_visualizable_entities(
-            &entity_path,
-            VisualizableReason::DatatypeMatchAny {
+        let reason =
+            VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
                 target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
@@ -1727,65 +1720,24 @@ mod tests {
                     },
                 ))
                 .collect(),
-            },
-        );
+            });
+        let visualizers = [(SeriesLinesSystem::identifier(), &reason)];
         let indicated = PerVisualizerType::default();
-        let result =
-            TimeSeriesView.recommended_visualizers_for_entity(&entity_path, &viz, &indicated);
+        let result = TimeSeriesView.recommended_visualizers_for_entity(
+            &entity_path,
+            &visualizers,
+            &indicated,
+        );
 
-        assert!(result.0.contains_key(&SeriesLinesSystem::identifier()));
-        let mappings = &result.0[&SeriesLinesSystem::identifier()];
+        assert!(
+            result
+                .all_recommendations()
+                .contains_key(&SeriesLinesSystem::identifier())
+        );
+        let mappings = &result.all_recommendations()[&SeriesLinesSystem::identifier()];
         assert_eq!(mappings.len(), 1);
         assert!(
             mappings[0].contains_mapping_for_component(&Scalars::descriptor_scalars().component)
         );
     }
-}
-
-#[test]
-fn test_strip_instance_number() {
-    // Empty string
-    assert_eq!(strip_instance_number(""), "");
-
-    // No brackets at all
-    assert_eq!(strip_instance_number("foo"), "foo");
-    assert_eq!(strip_instance_number("hello world"), "hello world");
-
-    // Valid instance numbers should be normalized to []
-    assert_eq!(strip_instance_number("foo[0]"), "foo[]");
-    assert_eq!(strip_instance_number("foo[1]"), "foo[]");
-    assert_eq!(strip_instance_number("foo[123]"), "foo[]");
-
-    // Empty brackets (no digits) should remain unchanged
-    assert_eq!(strip_instance_number("foo[]"), "foo[]");
-
-    // Non-digit content in brackets should remain unchanged
-    assert_eq!(strip_instance_number("foo[abc]"), "foo[abc]");
-    assert_eq!(strip_instance_number("foo[1a]"), "foo[1a]");
-    assert_eq!(strip_instance_number("foo[a1]"), "foo[a1]");
-    assert_eq!(strip_instance_number("foo[ ]"), "foo[ ]");
-    assert_eq!(strip_instance_number("foo[1 2]"), "foo[1 2]");
-
-    // Half-open brackets (only `[`) should remain unchanged
-    assert_eq!(strip_instance_number("foo["), "foo[");
-    assert_eq!(strip_instance_number("["), "[");
-    assert_eq!(strip_instance_number("foo[123"), "foo[123");
-
-    // Half-closed brackets (only `]`) should remain unchanged
-    assert_eq!(strip_instance_number("foo]"), "foo]");
-    assert_eq!(strip_instance_number("]"), "]");
-    assert_eq!(strip_instance_number("123]"), "123]");
-
-    // Multiple bracket pairs - only the last valid instance number is stripped
-    assert_eq!(strip_instance_number("foo[0][1]"), "foo[0][]");
-    assert_eq!(strip_instance_number("foo[abc][123]"), "foo[abc][]");
-
-    // Nested or malformed brackets
-    assert_eq!(strip_instance_number("foo[[0]]"), "foo[[0]]");
-    assert_eq!(strip_instance_number("foo[0]["), "foo[0][");
-    assert_eq!(strip_instance_number("foo][0]"), "foo][]");
-
-    // Edge cases with brackets in the middle
-    assert_eq!(strip_instance_number("foo[0]bar"), "foo[0]bar");
-    assert_eq!(strip_instance_number("foo[0]bar[1]"), "foo[0]bar[]");
 }

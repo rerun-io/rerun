@@ -7,7 +7,7 @@ use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::components::{
     Color, {self},
 };
-use re_sdk_types::{self, ArrowString, archetypes};
+use re_sdk_types::{self, Archetype as _, ArrowString, archetypes};
 use re_view::{DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
@@ -18,9 +18,7 @@ use re_viewer_context::{
 use crate::graph::NodeId;
 
 #[derive(Default)]
-pub struct NodeVisualizer {
-    pub data: ahash::HashMap<EntityPath, NodeData>,
-}
+pub struct NodeVisualizer;
 
 pub const FALLBACK_RADIUS: f32 = 4.0;
 
@@ -63,12 +61,15 @@ impl VisualizerSystem for NodeVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<archetypes::GraphNodes>()
+        VisualizerQueryInfo::single_required_component::<components::GraphNode>(
+            &archetypes::GraphNodes::descriptor_node_ids(),
+            &archetypes::GraphNodes::all_components(),
+        )
     }
 
     /// Populates the visualizer with data from the store.
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
@@ -76,6 +77,7 @@ impl VisualizerSystem for NodeVisualizer {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         let output = VisualizerExecutionOutput::default();
+        let mut node_data: ahash::HashMap<EntityPath, NodeData> = ahash::HashMap::default();
 
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
@@ -90,7 +92,7 @@ impl VisualizerSystem for NodeVisualizer {
                 timeline_query.clone(),
                 latest_at_results,
             ));
-            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let all_nodes = results.iter_required(GraphNodes::descriptor_node_ids().component);
             let all_colors = results.iter_optional(GraphNodes::descriptor_colors().component);
@@ -156,7 +158,7 @@ impl VisualizerSystem for NodeVisualizer {
                 })
                 .collect::<Vec<_>>();
 
-                self.data.insert(
+                node_data.insert(
                     data_result.entity_path.clone(),
                     NodeData {
                         visualizer_instruction_id: instruction.id,
@@ -166,6 +168,6 @@ impl VisualizerSystem for NodeVisualizer {
             }
         }
 
-        Ok(output)
+        Ok(output.with_visualizer_data(node_data))
     }
 }

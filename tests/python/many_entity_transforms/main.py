@@ -45,9 +45,9 @@ def main() -> None:
             rr.log(
                 entity_path,
                 # Have to be careful to not override all other transforms, therefore, use `from_fields`.
-                rr.Transform3D.from_fields(  #
+                rr.Transform3D.from_fields(
                     mat3x3=[
-                        [1.0 + level * 0.1, 0.0, 0.0],  #
+                        [1.0 + level * 0.1, 0.0, 0.0],
                         [0.0, 1.0 + level * 0.1, 0.0],
                         [0.0, 0.0, 1.0 + level * 0.1],
                     ]

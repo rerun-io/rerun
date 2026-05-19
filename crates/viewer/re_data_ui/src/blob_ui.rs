@@ -7,7 +7,7 @@ use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, RowId, archetypes, 
 use re_types_core::Component as _;
 use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::{UiExt as _, icons};
-use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
+use re_viewer_context::{AppContext, StoreViewContext, StoredBlobCacheKey, UiLayout};
 
 use crate::image_ui::ImageUi;
 use crate::video_ui::VideoUi;
@@ -16,14 +16,12 @@ use crate::{EntityDataUi, find_and_deserialize_archetype_mono_component};
 impl EntityDataUi for Blob {
     fn entity_data_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
         component_descriptor: &ComponentDescriptor,
         row_id: Option<RowId>,
-        query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
     ) {
         let compact_size_string = re_format::format_bytes(self.len() as _);
 
@@ -48,7 +46,7 @@ impl EntityDataUi for Blob {
         if ui_layout.is_single_line() {
             ui.horizontal(|ui| {
                 ui.set_truncate_style();
-                blob_ui.data_ui(ctx, ui, ui_layout, query, entity_path);
+                blob_ui.data_ui(ctx, ui, ui_layout, entity_path);
 
                 ui.label(compact_size_string);
 
@@ -81,7 +79,7 @@ impl EntityDataUi for Blob {
                     )
                     .on_hover_text("Failed to detect media type (Mime) from magic header bytes");
                 }
-                blob_ui.data_ui(ctx, ui, ui_layout, query, entity_path);
+                blob_ui.data_ui(ctx, ui, ui_layout, entity_path);
             });
         }
     }
@@ -143,7 +141,7 @@ pub struct BlobUi {
 
 impl BlobUi {
     pub fn from_components(
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         entity_path: &re_log_types::EntityPath,
         blob_descr: &ComponentDescriptor,
         blob_chunk: &UnitChunkShared,
@@ -193,7 +191,7 @@ impl BlobUi {
     }
 
     pub fn new(
-        ctx: &re_viewer_context::ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         entity_path: &re_log_types::EntityPath,
         blob_component_descriptor: &ComponentDescriptor,
         blob_row_id: Option<RowId>,
@@ -236,7 +234,7 @@ impl BlobUi {
 
     pub fn inline_download_button<'a>(
         &'a self,
-        ctx: &'a ViewerContext<'_>,
+        ctx: &'a AppContext<'_>,
         entity_path: &'a EntityPath,
         mut property_content: list_item::PropertyContent<'a>,
     ) -> list_item::PropertyContent<'a> {
@@ -256,7 +254,7 @@ impl BlobUi {
                 file_name.push_str(file_extension);
             }
 
-            ctx.command_sender().save_file_dialog(
+            ctx.command_sender.save_file_dialog(
                 re_capabilities::MainThreadToken::i_promise_i_am_on_the_main_thread(),
                 &file_name,
                 "Save blob".to_owned(),
@@ -267,10 +265,9 @@ impl BlobUi {
 
     pub fn data_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
         entity_path: &EntityPath,
     ) {
         if let Some(row_id) = self.row_id
@@ -284,11 +281,11 @@ impl BlobUi {
         }
 
         if let Some(image) = &self.image {
-            image.data_ui(ctx, ui, ui_layout, query, entity_path);
+            image.data_ui(ctx, ui, ui_layout, entity_path);
         }
 
         if let Some(video) = &self.video {
-            video.data_ui(ctx, ui, ui_layout, query);
+            video.data_ui(ctx, ui, ui_layout);
         }
     }
 }

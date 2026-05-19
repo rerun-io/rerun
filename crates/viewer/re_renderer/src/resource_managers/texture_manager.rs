@@ -278,8 +278,10 @@ impl TextureManager2D {
         // In the future we might handle (lazy?) mipmap generation in here or keep track of lazy upload processing.
 
         let alpha_channel_usage = creation_desc.alpha_channel_usage;
-        let texture =
-            creation_desc.create_target_texture(render_ctx, wgpu::TextureUsages::TEXTURE_BINDING);
+        let texture = creation_desc.create_target_texture(
+            render_ctx,
+            wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC,
+        );
         transfer_image_data_to_texture(render_ctx, creation_desc, &texture)?;
         Ok(GpuTexture2D::new(texture, alpha_channel_usage).expect("Texture is known to be 2D"))
     }
@@ -328,8 +330,10 @@ impl TextureManager2D {
                     .map_err(|err| TextureManager2DError::DataCreation(err))?;
 
                 let alpha_channel_usage = tex_creation_desc.alpha_channel_usage;
-                let texture = tex_creation_desc
-                    .create_target_texture(render_ctx, wgpu::TextureUsages::TEXTURE_BINDING);
+                let texture = tex_creation_desc.create_target_texture(
+                    render_ctx,
+                    wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC,
+                );
                 transfer_image_data_to_texture(render_ctx, tex_creation_desc, &texture)?;
                 entry
                     .insert(GpuTexture2D {

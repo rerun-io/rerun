@@ -9,7 +9,7 @@ use arrow::array::{
 use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer};
 use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
-use re_arrow_util::{ArrowArrayDowncastRef as _, DisplayDataType, widen_binary_arrays};
+use re_arrow_util::{ArrowArrayDowncastRef as _, widen_binary_arrays};
 use re_byte_size::SizeBytes as _;
 use re_log::debug_assert;
 use re_log_types::{
@@ -215,6 +215,9 @@ impl FromIterator<SerializedComponentColumn> for ChunkComponents {
 ///
 /// This is the in-memory representation of a chunk, optimized for efficient manipulation of the
 /// data within. For transport, see [`re_sorbet::ChunkBatch`] instead.
+///
+/// Each [`Chunk`] has a globally unique [`ChunkId`].
+/// Each time a new [`Chunk`] is created or modified, it should be assigned a new [`ChunkId`].
 pub struct Chunk {
     pub(crate) id: ChunkId,
 
@@ -245,6 +248,22 @@ pub struct Chunk {
     ///
     /// Sparse so that we can e.g. log a `Position` at one timestamp but not a `Color`.
     pub(crate) components: ChunkComponents,
+}
+
+/// Generates sequential [`RowId`]s derived from a [`ChunkId`].
+///
+/// A core assumption of the data model is that the value of a cell
+/// defined by (`RowId` x column descriptor) is not allowed to change,
+/// which is why we have to generate new `RowId`s before modifying
+/// components or indexes.
+fn auto_row_ids(id: ChunkId, count: usize) -> FixedSizeBinaryArray {
+    let row_ids: Vec<RowId> =
+        std::iter::successors(Some(RowId::from_tuid((*id).next())), |row_id| {
+            Some(row_id.next())
+        })
+        .take(count)
+        .collect();
+    RowId::arrow_from_slice(&row_ids)
 }
 
 impl std::fmt::Debug for Chunk {
@@ -279,10 +298,11 @@ impl std::fmt::Debug for Chunk {
 }
 
 impl PartialEq for Chunk {
+    /// NOTE: the [`ChunkId`] is _not_ compared, only the data.
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         let Self {
-            id,
+            id: _,
             entity_path,
             heap_size_bytes: _,
             is_sorted,
@@ -291,8 +311,7 @@ impl PartialEq for Chunk {
             components,
         } = self;
 
-        *id == other.id
-            && *entity_path == other.entity_path
+        *entity_path == other.entity_path
             && *is_sorted == other.is_sorted
             && *row_ids == other.row_ids
             && *timelines == other.timelines
@@ -303,9 +322,7 @@ impl PartialEq for Chunk {
 impl Chunk {
     /// Returns a version of us with a new [`ChunkId`].
     ///
-    /// Reminder:
-    /// * The returned [`Chunk`] will re-use the exact same [`RowId`]s as `self`.
-    /// * Duplicated [`RowId`]s in the `ChunkStore` is undefined behavior.
+    /// The returned [`Chunk`] will re-use the exact same [`RowId`]s as `self`.
     #[must_use]
     #[inline]
     pub fn with_id(mut self, id: ChunkId) -> Self {
@@ -406,16 +423,65 @@ impl Chunk {
             && components.0 == other.components.0
     }
 
-    /// Clones the chunk and renames a component.
+    /// Creates a new chunk with a mapped component column.
     ///
-    /// Note: archetype information and component type information is lost.
+    /// The returned chunk always gets a new unique [`ChunkId`] and new auto-generated [`RowId`]s,
+    /// since the component data may have been modified by the closure.
+    ///
+    /// When `target` is `None` the new column will carry over the [`ComponentDescriptor`] from
+    /// the `source` column.
     pub fn with_mapped_component<E>(
+        &self,
+        source: ComponentIdentifier,
+        target: Option<ComponentDescriptor>,
+        f: impl FnOnce(ArrowListArray) -> Result<ArrowListArray, E>,
+    ) -> Result<Self, E> {
+        let mut new_components = self.components.clone();
+        if let Some(old_entry) = new_components.remove(&source) {
+            new_components.insert(SerializedComponentColumn {
+                descriptor: target.unwrap_or(old_entry.descriptor),
+                list_array: f(old_entry.list_array)?,
+            });
+        }
+
+        let id = ChunkId::new();
+        let row_ids = auto_row_ids(id, self.num_rows());
+
+        Ok(Self {
+            id,
+            entity_path: self.entity_path.clone(),
+            heap_size_bytes: AtomicU64::new(0),
+            is_sorted: true,
+            row_ids,
+            timelines: self.timelines.clone(),
+            components: new_components,
+        })
+    }
+
+    /// Creates a new chunk with a mapped component column, keeping the original [`RowId`]s.
+    ///
+    /// The returned chunk gets a new unique [`ChunkId`] but retains the original [`RowId`]s.
+    ///
+    /// In most cases, prefer [`Self::with_mapped_component`] instead, which generates new
+    /// [`RowId`]s to maintain the data model invariants.
+    ///
+    /// # Warning
+    ///
+    /// This is **only safe** when the closure does **not** modify the actual component data
+    /// (e.g. it introduces a new component column). If an existing column is modified, the
+    /// invariant that the value of a cell defined by (`RowId` x column descriptor) is immutable
+    /// will be violated, and the caller has to handle this appropriately.
+    ///
+    /// Note: archetype information and component type information is lost on the mapped component.
+    //
+    // TODO(grtlr): This should be revised when implementing caching of mapped chunks.
+    pub fn with_shadowed_component<E>(
         &self,
         source: ComponentIdentifier,
         target: ComponentIdentifier,
         f: impl FnOnce(ArrowListArray) -> Result<ArrowListArray, E>,
     ) -> Result<Self, E> {
-        let mut new_chunk = self.clone();
+        let mut new_chunk = self.clone_with_new_id();
         if let Some(old_entry) = new_chunk.components.remove(&source) {
             new_chunk.components.insert(SerializedComponentColumn {
                 descriptor: ComponentDescriptor {
@@ -434,8 +500,15 @@ impl Chunk {
 impl Clone for Chunk {
     #[inline]
     fn clone(&self) -> Self {
+        self.clone_with_same_id()
+    }
+}
+
+impl Chunk {
+    #[inline]
+    pub fn clone_with_id(&self, id: ChunkId) -> Self {
         Self {
-            id: self.id,
+            id,
             entity_path: self.entity_path.clone(),
             heap_size_bytes: AtomicU64::new(self.heap_size_bytes.load(Ordering::Relaxed)),
             is_sorted: self.is_sorted,
@@ -443,6 +516,16 @@ impl Clone for Chunk {
             timelines: self.timelines.clone(),
             components: self.components.clone(),
         }
+    }
+
+    #[inline]
+    pub fn clone_with_same_id(&self) -> Self {
+        self.clone_with_id(self.id)
+    }
+
+    #[inline]
+    pub fn clone_with_new_id(&self) -> Self {
+        self.clone_with_id(ChunkId::new())
     }
 }
 
@@ -469,9 +552,8 @@ impl Chunk {
         .collect_vec();
 
         let new_chunk = Self {
-            id,
             row_ids: RowId::arrow_from_slice(&row_ids),
-            ..self.clone()
+            ..self.clone_with_id(id)
         };
 
         // Need to reset the cache size here as `row_ids`'s capacity could have
@@ -490,12 +572,18 @@ impl Chunk {
     }
 
     /// Clones the chunk into a new chunk where all [`RowId`]s are [`RowId::ZERO`].
+    ///
+    /// The returned chunk always gets a new unique [`ChunkId`].
     pub fn zeroed(self) -> Self {
         let row_ids = vec![RowId::ZERO; self.row_ids.len()];
 
         let row_ids = RowId::arrow_from_slice(&row_ids);
 
-        let new_chunk = Self { row_ids, ..self };
+        let new_chunk = Self {
+            id: ChunkId::new(),
+            row_ids,
+            ..self
+        };
 
         // Need to reset the cache size here as `row_ids`'s capacity could have
         // changed here.
@@ -787,7 +875,7 @@ pub enum TimeColumnError {
     ContainsNulls,
 
     #[error("Unsupported data type : {0}")]
-    UnsupportedDataType(DisplayDataType),
+    UnsupportedDataType(arrow::datatypes::DataType),
 }
 
 impl Chunk {
@@ -852,32 +940,93 @@ impl Chunk {
     /// This will fail if the passed in data is malformed in any way -- see [`Self::sanity_check`]
     /// for details.
     ///
-    /// The data is assumed to be sorted in `RowId`-order. Sequential `RowId`s will be generated for each
-    /// row in the chunk.
+    /// The input order will NOT be respected.
+    /// The rows will be stably reordered so that the time columns are non-decreasing
+    /// (lexicographically across timelines, in deterministic timeline-name order).
+    /// Sequential `RowId`s are then assigned to the reordered rows.
+    /// This makes it less likely that we end up with "out-of-order" chunks
+    /// (chunks where some time columns are not sorted with respect to `RowId`).
     pub fn from_auto_row_ids(
         id: ChunkId,
         entity_path: EntityPath,
         timelines: IntMap<TimelineName, TimeColumn>,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
+        re_tracing::profile_function!();
+
         let count = components
             .list_arrays()
             .next()
             .map_or(0, |list_array| list_array.len());
 
-        let row_ids = std::iter::from_fn({
-            let tuid: re_tuid::Tuid = *id;
-            let mut row_id = RowId::from_tuid(tuid.next());
-            move || {
-                let yielded = row_id;
-                row_id = row_id.next();
-                Some(yielded)
-            }
-        })
-        .take(count)
-        .collect_vec();
+        // Compute a stable permutation that lexicographically sorts the rows by their
+        // time-column values. We pick a deterministic timeline order (sorted by name) so the
+        // result does not depend on `IntMap` iteration order.
+        let timeline_order: Vec<TimelineName> = timelines.keys().copied().sorted().collect();
 
-        Self::from_native_row_ids(id, entity_path, Some(true), &row_ids, timelines, components)
+        let mut swaps: Vec<usize> = (0..count).collect();
+        swaps.sort_by(|&a, &b| {
+            for name in &timeline_order {
+                let times = timelines[name].times_raw();
+                let ord = times[a].cmp(&times[b]);
+                if ord != std::cmp::Ordering::Equal {
+                    return ord;
+                }
+            }
+            std::cmp::Ordering::Equal
+        });
+
+        // Build the chunk with placeholder sequential row_ids, then permute everything via
+        // `shuffle_with`, then reassign sequential row_ids so the chunk is RowId-sorted again.
+        let placeholder_row_ids = auto_row_ids(id, count);
+        let mut chunk = Self::new(
+            id,
+            entity_path,
+            Some(true),
+            placeholder_row_ids,
+            timelines,
+            components,
+        )?;
+
+        let already_sorted = swaps
+            .iter()
+            .copied()
+            .enumerate()
+            .all(|(to, from)| to == from);
+        if !already_sorted {
+            chunk.shuffle_with(&swaps);
+            chunk.row_ids = auto_row_ids(chunk.id, count);
+            chunk.is_sorted = true;
+
+            #[cfg(debug_assertions)]
+            #[expect(clippy::unwrap_used)] // dev only
+            chunk.sanity_check().unwrap();
+        }
+
+        Ok(chunk)
+    }
+
+    /// Creates a new [`Chunk`] from columnar data.
+    ///
+    /// Pass an empty iterator for `timelines` to create static data.
+    ///
+    /// The input order will NOT be respected.
+    /// The rows will be stably reordered so that the time columns are non-decreasing
+    /// (lexicographically across timelines, in deterministic timeline-name order).
+    /// Sequential `RowId`s are then assigned to the reordered rows.
+    /// This makes it less likely that we end up with "out-of-order" chunks
+    /// (chunks where some time columns are not sorted with respect to `RowId`).
+    pub fn from_columns(
+        entity_path: impl Into<EntityPath>,
+        timelines: impl IntoIterator<Item = TimeColumn>,
+        components: impl IntoIterator<Item = (ComponentDescriptor, ArrowListArray)>,
+    ) -> ChunkResult<Self> {
+        let timelines: IntMap<TimelineName, TimeColumn> = timelines
+            .into_iter()
+            .map(|tc| (*tc.timeline().name(), tc))
+            .collect();
+        let components: ChunkComponents = components.into_iter().collect();
+        Self::from_auto_row_ids(ChunkId::new(), entity_path.into(), timelines, components)
     }
 
     /// Simple helper for [`Self::new`] for static data.
@@ -924,6 +1073,7 @@ impl Chunk {
         &mut self,
         component_column: SerializedComponentColumn,
     ) -> ChunkResult<()> {
+        self.id = ChunkId::new();
         self.components.insert(component_column);
         self.reset_cached_heap_size_bytes();
         self.sanity_check()
@@ -936,6 +1086,8 @@ impl Chunk {
     /// This will fail if the end result is malformed in any way -- see [`Self::sanity_check`].
     #[inline]
     pub fn add_timeline(&mut self, chunk_timeline: TimeColumn) -> ChunkResult<()> {
+        self.id = ChunkId::new();
+
         self.timelines
             .insert(*chunk_timeline.timeline.name(), chunk_timeline);
         self.reset_cached_heap_size_bytes();
@@ -1164,7 +1316,7 @@ impl TimeColumn {
             Ok((times.values().clone(), times.nulls().cloned()))
         } else {
             Err(TimeColumnError::UnsupportedDataType(
-                array.data_type().clone().into(),
+                array.data_type().clone(),
             ))
         }
     }
@@ -1450,6 +1602,53 @@ impl TimeColumn {
                 }
             })
             .collect()
+    }
+
+    /// Find the earliest time strictly after `after` in this time column.
+    pub fn find_next_time(&self, after: TimeInt) -> Option<TimeInt> {
+        if self.is_sorted() {
+            let times = self.times_raw();
+            let idx = times.partition_point(|&t| t <= after.as_i64());
+            (idx < times.len()).then(|| TimeInt::new_temporal(times[idx]))
+        } else {
+            self.times_raw()
+                .iter()
+                .filter(|&&t| t > after.as_i64())
+                .min()
+                .map(|&t| TimeInt::new_temporal(t))
+        }
+    }
+
+    /// Find the latest time strictly before `before` in this time column.
+    pub fn find_prev_time(&self, before: TimeInt) -> Option<TimeInt> {
+        if self.is_sorted() {
+            let times = self.times_raw();
+            let idx = times.partition_point(|&t| t < before.as_i64());
+            (idx > 0).then(|| TimeInt::new_temporal(times[idx - 1]))
+        } else {
+            self.times_raw()
+                .iter()
+                .filter(|&&t| t < before.as_i64())
+                .max()
+                .map(|&t| TimeInt::new_temporal(t))
+        }
+    }
+
+    /// Returns a new [`TimeColumn`] with all time values offset by `offset_ns` nanoseconds.
+    ///
+    /// Uses saturating arithmetic.
+    pub fn offset_by_nanos(&self, offset_ns: i64) -> Self {
+        let new_times: Vec<i64> = self
+            .times
+            .iter()
+            .map(|&t| NonMinI64::saturating_from_i64(t.saturating_add(offset_ns)).get())
+            .collect();
+
+        Self::new(
+            Some(self.is_sorted),
+            self.timeline,
+            ArrowScalarBuffer::from(new_times),
+        )
     }
 }
 

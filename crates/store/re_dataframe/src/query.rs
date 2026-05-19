@@ -365,7 +365,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         }
     }
 
-    #[tracing::instrument(level = "info", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     #[expect(clippy::unused_self)]
     fn compute_user_selection(
         &self,
@@ -920,7 +920,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             // NOTE: cannot use vec![], it has limitations with non-cloneable options.
             // vec![None; state.view_chunks.len()];
             std::iter::repeat(())
-                .map(|_| None)
+                .map(|()| None)
                 .take(state.view_chunks.len())
                 .collect();
         for (view_column_idx, view_chunks) in state.view_chunks.iter().enumerate() {

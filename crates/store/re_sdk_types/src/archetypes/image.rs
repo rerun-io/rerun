@@ -151,6 +151,9 @@ pub struct Image {
     /// Objects with higher values are drawn on top of those with lower values.
     /// Defaults to `-10.0`.
     pub draw_order: Option<SerializedComponentBatch>,
+
+    /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
+    pub magnification_filter: Option<SerializedComponentBatch>,
 }
 
 impl Image {
@@ -201,6 +204,18 @@ impl Image {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::magnification_filter`].
+    ///
+    /// The corresponding component is [`crate::components::MagnificationFilter`].
+    #[inline]
+    pub fn descriptor_magnification_filter() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.Image".into()),
+            component: "Image:magnification_filter".into(),
+            component_type: Some("rerun.components.MagnificationFilter".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
@@ -209,22 +224,29 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
-    std::sync::LazyLock::new(|| [Image::descriptor_opacity(), Image::descriptor_draw_order()]);
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+    std::sync::LazyLock::new(|| {
+        [
+            Image::descriptor_opacity(),
+            Image::descriptor_draw_order(),
+            Image::descriptor_magnification_filter(),
+        ]
+    });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
     std::sync::LazyLock::new(|| {
         [
             Image::descriptor_buffer(),
             Image::descriptor_format(),
             Image::descriptor_opacity(),
             Image::descriptor_draw_order(),
+            Image::descriptor_magnification_filter(),
         ]
     });
 
 impl Image {
-    /// The total number of components in the archetype: 2 required, 0 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 2 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 impl ::re_types_core::Archetype for Image {
@@ -279,11 +301,20 @@ impl ::re_types_core::Archetype for Image {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_draw_order())
             });
+        let magnification_filter = arrays_by_descr
+            .get(&Self::descriptor_magnification_filter())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_magnification_filter(),
+                )
+            });
         Ok(Self {
             buffer,
             format,
             opacity,
             draw_order,
+            magnification_filter,
         })
     }
 }
@@ -297,6 +328,7 @@ impl ::re_types_core::AsComponents for Image {
             self.format.clone(),
             self.opacity.clone(),
             self.draw_order.clone(),
+            self.magnification_filter.clone(),
         ]
         .into_iter()
         .flatten()
@@ -325,6 +357,7 @@ impl Image {
             format: try_serialize_field(Self::descriptor_format(), [format]),
             opacity: None,
             draw_order: None,
+            magnification_filter: None,
         }
     }
 
@@ -354,6 +387,10 @@ impl Image {
             draw_order: Some(SerializedComponentBatch::new(
                 crate::components::DrawOrder::arrow_empty(),
                 Self::descriptor_draw_order(),
+            )),
+            magnification_filter: Some(SerializedComponentBatch::new(
+                crate::components::MagnificationFilter::arrow_empty(),
+                Self::descriptor_magnification_filter(),
             )),
         }
     }
@@ -389,6 +426,9 @@ impl Image {
             self.draw_order
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.magnification_filter
+                .map(|magnification_filter| magnification_filter.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -405,11 +445,13 @@ impl Image {
         let len_format = self.format.as_ref().map(|b| b.array.len());
         let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
         let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
+        let len_magnification_filter = self.magnification_filter.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_buffer)
             .or(len_format)
             .or(len_opacity)
             .or(len_draw_order)
+            .or(len_magnification_filter)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -498,6 +540,37 @@ impl Image {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
     }
+
+    /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
+    #[inline]
+    pub fn with_magnification_filter(
+        mut self,
+        magnification_filter: impl Into<crate::components::MagnificationFilter>,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            [magnification_filter],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MagnificationFilter`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_magnification_filter`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_magnification_filter(
+        mut self,
+        magnification_filter: impl IntoIterator<
+            Item = impl Into<crate::components::MagnificationFilter>,
+        >,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            magnification_filter,
+        );
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for Image {
@@ -507,5 +580,6 @@ impl ::re_byte_size::SizeBytes for Image {
             + self.format.heap_size_bytes()
             + self.opacity.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
+            + self.magnification_filter.heap_size_bytes()
     }
 }

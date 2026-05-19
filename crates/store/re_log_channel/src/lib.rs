@@ -18,6 +18,23 @@ pub use self::sender::LogSender;
 
 // --- Source ---
 
+/// Controls how a newly loaded recording is treated by the viewer.
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize,
+)]
+pub enum RecordingOpenBehavior {
+    /// Load without affecting the recording panel.
+    ///
+    /// Used for preview views.
+    Background,
+
+    /// Mark as opened in the recording panel, but don't navigate to it.
+    Open,
+
+    /// Mark as opened and make it the active recording.
+    OpenAndSelect,
+}
+
 /// An error that can occur when flushing.
 #[derive(Debug, thiserror::Error)]
 pub enum FlushError {
@@ -78,8 +95,7 @@ pub enum LogSource {
     RedapGrpcStream {
         uri: re_uri::DatasetSegmentUri,
 
-        /// Switch to this recording once it has been loaded?
-        select_when_loaded: bool,
+        open_behavior: RecordingOpenBehavior,
     },
 
     /// The data is streaming in via a message proxy.
@@ -116,7 +132,7 @@ impl LogSource {
         }
     }
 
-    pub fn select_when_loaded(&self) -> bool {
+    pub fn open_behavior(&self) -> RecordingOpenBehavior {
         match self {
             Self::File { .. }
             | Self::Sdk
@@ -124,11 +140,9 @@ impl LogSource {
             | Self::Stdin
             | Self::HttpStream { .. }
             | Self::JsChannel { .. }
-            | Self::MessageProxy { .. } => true,
+            | Self::MessageProxy { .. } => RecordingOpenBehavior::OpenAndSelect,
 
-            Self::RedapGrpcStream {
-                select_when_loaded, ..
-            } => *select_when_loaded,
+            Self::RedapGrpcStream { open_behavior, .. } => *open_behavior,
         }
     }
 
@@ -149,7 +163,10 @@ impl LogSource {
     /// Same as [`Self::redap_uri`], but strips any extra query or fragment from the uri.
     pub fn stripped_redap_uri(&self) -> Option<RedapUri> {
         self.redap_uri().map(|uri| match uri {
-            RedapUri::Catalog(_) | RedapUri::Entry(_) | RedapUri::Proxy(_) => uri,
+            RedapUri::Catalog(_)
+            | RedapUri::Entry(_)
+            | RedapUri::Folder(_)
+            | RedapUri::Proxy(_) => uri,
             RedapUri::DatasetData(uri) => RedapUri::DatasetData(uri.without_query_and_fragment()),
         })
     }

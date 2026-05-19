@@ -33,6 +33,7 @@ class Spatial2DView(View):
     ### Use a blueprint to customize a Spatial2DView.:
     ```python
     import numpy as np
+
     import rerun as rr
     import rerun.blueprint as rrb
 

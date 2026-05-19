@@ -20,7 +20,7 @@ pub enum UiLabelTarget {
     Position3D(glam::Vec3),
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum UiLabelStyle {
     Default,
 
@@ -167,7 +167,8 @@ pub fn process_labels<'a, P: 'a>(
         itertools::izip!(label_positions, labels, colors)
             .enumerate()
             .filter_map(move |(i, (position, label, color))| {
-                label.map(|label| UiLabel {
+                let label = label?;
+                (!label.is_empty()).then(|| UiLabel {
                     text: label,
                     style: if *color == Color32::PLACEHOLDER {
                         UiLabelStyle::Default

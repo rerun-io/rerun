@@ -2,8 +2,8 @@
 
 Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
-[![Latest version](https://img.shields.io/crates/v/re_mutex.svg)](https://crates.io/crates/re_mutex?speculative-link)
-[![Documentation](https://docs.rs/re_mutex/badge.svg)](https://docs.rs/re_mutex?speculative-link)
+[![Latest version](https://img.shields.io/crates/v/re_mutex.svg)](https://crates.io/crates/re_mutex)
+[![Documentation](https://docs.rs/re_mutex/badge.svg)](https://docs.rs/re_mutex)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 

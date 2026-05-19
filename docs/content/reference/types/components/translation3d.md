@@ -11,7 +11,7 @@ A translation vector in 3D space.
 
 ## Arrow datatype
 ```
-FixedSizeList<3, float32>
+FixedSizeList(3 x non-null Float32)
 ```
 
 ## API reference links
@@ -26,5 +26,6 @@ FixedSizeList<3, float32>
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
+* [`GridMap`](../archetypes/grid_map.md?speculative-link)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
 * [`Transform3D`](../archetypes/transform3d.md)

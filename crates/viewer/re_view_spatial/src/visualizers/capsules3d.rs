@@ -4,29 +4,23 @@ use ordered_float::NotNan;
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
 use re_sdk_types::archetypes::Capsules3D;
 use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels};
-use re_sdk_types::{ArrowString, components};
-use re_view::clamped_or_nothing;
+use re_sdk_types::reflection::Enum as _;
+use re_sdk_types::{Archetype as _, ArrowString, components};
+use re_view::clamped_or_else;
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
 use super::utilities::{ProcMeshBatch, ProcMeshDrawableBuilder};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::proc_mesh;
-use crate::view_kind::SpatialViewKind;
 
 // ---
-pub struct Capsules3DVisualizer(SpatialViewVisualizerData);
-
-impl Default for Capsules3DVisualizer {
-    fn default() -> Self {
-        Self(SpatialViewVisualizerData::new(Some(
-            SpatialViewKind::ThreeD,
-        )))
-    }
-}
+#[derive(Default)]
+pub struct Capsules3DVisualizer;
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
@@ -41,28 +35,32 @@ impl Capsules3DVisualizer {
             // Number of instances is determined by whichever is *longer* of `lengths` and `radii`.
             // The other component is clamped (last value repeated) to match.
             let num_instances = batch.radii.len().max(batch.lengths.len());
-            let lengths_iter = clamped_or_nothing(batch.lengths, num_instances);
-            let radii_iter = clamped_or_nothing(batch.radii, num_instances);
+            let lengths_iter = clamped_or_else(batch.lengths, || {
+                typed_fallback_for(query_context, Capsules3D::descriptor_lengths().component)
+            })
+            .take(num_instances);
+            let radii: Vec<Radius> = clamped_or_else(batch.radii, || {
+                typed_fallback_for(query_context, Capsules3D::descriptor_radii().component)
+            })
+            .take(num_instances)
+            .collect();
 
-            let half_sizes: Vec<HalfSize3D> = radii_iter
-                .clone()
+            let half_sizes: Vec<HalfSize3D> = radii
+                .iter()
                 .map(|&Radius(radius)| HalfSize3D::splat(clean_length(radius.0)))
                 .collect();
 
             let subdivisions = match batch.fill_mode {
                 FillMode::DenseWireframe => 3, // Don't make it too crowded - let the user see inside the mesh.
-                FillMode::Solid => 4,          // Smooth, but not too CPU/GPU intensive
+                FillMode::Solid | FillMode::TransparentFillMajorWireframe => 4, // Smooth, but not too CPU/GPU intensive
                 FillMode::MajorWireframe => 10,
             };
 
-            let axes_only = match batch.fill_mode {
-                FillMode::MajorWireframe => true,
-                FillMode::DenseWireframe | FillMode::Solid => false,
-            };
+            let axes_only = batch.fill_mode.axes_only();
 
             let meshes = lengths_iter
-                .zip(radii_iter)
-                .map(|(&Length(length), &Radius(radius))| {
+                .zip(radii.iter())
+                .map(|(Length(length), &Radius(radius))| {
                     let ratio = clean_length(length.0 / radius.0);
 
                     // Avoid generating extremely similar meshes by rounding the ratio.
@@ -83,6 +81,7 @@ impl Capsules3DVisualizer {
                 query_context,
                 ent_context,
                 Capsules3D::descriptor_colors().component,
+                Capsules3D::descriptor_line_radii().component,
                 Capsules3D::descriptor_show_labels().component,
                 glam::Affine3A::IDENTITY,
                 ProcMeshBatch {
@@ -110,9 +109,9 @@ impl Capsules3DVisualizer {
 struct Capsules3DComponentData<'a> {
     // Point of views
     lengths: &'a [Length],
-    radii: &'a [Radius],
 
     // Clamped to edge
+    radii: &'a [Radius],
     translations: &'a [components::Translation3D],
     rotation_axis_angles: ChunkComponentIterItem<components::RotationAxisAngle>,
     quaternions: &'a [components::RotationQuat],
@@ -137,57 +136,49 @@ impl VisualizerSystem for Capsules3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Capsules3D>()
+        // The required component of the archetype is actually both lengths and radii,
+        // But while that makes sense for the user-facing API, we can just use lengths as the required component for visualizability purposes.
+        // This makes the requirements easier, and also means that if a user only provides length,
+        // they will still get a visualizer with (editable) default radii instead of no visualizer at all.
+        VisualizerQueryInfo::single_required_component::<Length>(
+            &Capsules3D::descriptor_lengths(),
+            &Capsules3D::all_components(),
+        )
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let output = VisualizerExecutionOutput::default();
-        let preferred_view_kind = self.0.preferred_view_kind;
+        let mut data = SpatialViewVisualizerData::default();
         let mut builder = ProcMeshDrawableBuilder::new(
-            &mut self.0,
+            &mut data,
             ctx.viewer_ctx.render_ctx(),
             view_query,
+            &output,
             "capsules3d",
         );
 
         use super::entity_iterator::process_archetype;
-        process_archetype::<Self, Capsules3D, _>(
+        process_archetype::<Capsules3D, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            preferred_view_kind,
+            self,
             |ctx, spatial_ctx, results| {
+                // See comment on `visualizer_query_info` for the rationale of treating only lengths as required.
+                // (instead of lengths and radii as noted in the archetype definition).
                 let all_lengths = results.iter_required(Capsules3D::descriptor_lengths().component);
-                if all_lengths.is_empty() {
-                    return Ok(());
-                }
-                let all_radii = results.iter_required(Capsules3D::descriptor_radii().component);
-                if all_radii.is_empty() {
-                    return Ok(());
-                }
 
-                let num_lengths: usize = all_lengths
-                    .chunks()
-                    .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<f32>())
-                    .map(|lengths| lengths.len())
-                    .sum();
-                let num_radii: usize = all_radii
-                    .chunks()
-                    .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<f32>())
-                    .map(|radii| radii.len())
-                    .sum();
-                let num_instances = num_lengths.max(num_radii);
-                if num_instances == 0 {
-                    return Ok(());
-                }
+                let all_radii = results.iter_optional(Capsules3D::descriptor_radii().component);
                 let all_translations =
                     results.iter_optional(Capsules3D::descriptor_translations().component);
                 let all_rotation_axis_angles =
@@ -205,7 +196,7 @@ impl VisualizerSystem for Capsules3DVisualizer {
                 let all_class_ids =
                     results.iter_optional(Capsules3D::descriptor_class_ids().component);
 
-                let data = re_query::range_zip_2x9(
+                let data = re_query::range_zip_1x10(
                     all_lengths.slice::<f32>(),
                     all_radii.slice::<f32>(),
                     all_translations.slice::<[f32; 3]>(),
@@ -235,7 +226,7 @@ impl VisualizerSystem for Capsules3DVisualizer {
                     )| {
                         Capsules3DComponentData {
                             lengths: bytemuck::cast_slice(lengths),
-                            radii: bytemuck::cast_slice(radii),
+                            radii: radii.map_or(&[], bytemuck::cast_slice),
                             translations: translations.map_or(&[], bytemuck::cast_slice),
                             rotation_axis_angles: rotation_axis_angles.unwrap_or_default(),
                             quaternions: quaternions.map_or(&[], bytemuck::cast_slice),
@@ -244,10 +235,7 @@ impl VisualizerSystem for Capsules3DVisualizer {
                             line_radii: line_radii
                                 .map_or(&[], |line_radii| bytemuck::cast_slice(line_radii)),
                             fill_mode: fill_modes
-                                .unwrap_or_default()
-                                .first()
-                                .copied()
-                                .and_then(FillMode::from_u8)
+                                .and_then(|s| FillMode::from_integer_slice(s).next()?)
                                 .unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
@@ -264,11 +252,8 @@ impl VisualizerSystem for Capsules3DVisualizer {
             },
         )?;
 
-        Ok(output.with_draw_data(builder.into_draw_data()?))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.0.as_any())
+        let draw_data = builder.into_draw_data()?;
+        Ok(output.with_draw_data(draw_data).with_visualizer_data(data))
     }
 }
 

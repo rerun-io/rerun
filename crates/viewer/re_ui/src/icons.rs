@@ -125,10 +125,12 @@ pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
 pub const PLAY: Icon = icon_from_path!("../data/icons/play.svg");
 pub const FOLLOW: Icon = icon_from_path!("../data/icons/follow.svg");
 pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.svg");
+pub const CHEVRON: Icon = icon_from_path!("../data/icons/chevron.svg");
 pub const ARROW_LEFT: Icon = icon_from_path!("../data/icons/arrow_left.svg");
 pub const ARROW_RIGHT: Icon = icon_from_path!("../data/icons/arrow_right.svg");
 pub const ARROW_UP: Icon = icon_from_path!("../data/icons/arrow_up.svg");
 pub const ARROW_DOWN: Icon = icon_from_path!("../data/icons/arrow_down.svg");
+pub const COMBO_ARROW: Icon = icon_from_path!("../data/icons/combo_arrow.svg");
 pub const LOOP: Icon = icon_from_path!("../data/icons/loop.svg");
 pub const FILTER: Icon = icon_from_path!("../data/icons/filter.svg");
 
@@ -185,7 +187,7 @@ pub const VIEW_TEXT: Icon = icon_from_path!("../data/icons/view_text.svg");
 pub const VIEW_TIMESERIES: Icon = icon_from_path!("../data/icons/view_timeseries.svg");
 pub const VIEW_UNKNOWN: Icon = icon_from_path!("../data/icons/view_unknown.svg");
 
-pub const GROUP: Icon = icon_from_path!("../data/icons/group.svg");
+//pub const GROUP: Icon = icon_from_path!("../data/icons/group.svg");
 pub const ENTITY: Icon = icon_from_path!("../data/icons/entity.svg");
 pub const ENTITY_EMPTY: Icon = icon_from_path!("../data/icons/entity_empty.svg");
 pub const ENTITY_RESERVED: Icon = icon_from_path!("../data/icons/entity_reserved.svg");
@@ -243,3 +245,10 @@ pub const DOWNLOAD: Icon = icon_from_path!("../data/icons/download.svg");
 // Other non-icon-sized images:
 pub const DROPDOWN_ARROW: Icon = icon_from_path!("../data/icons/dropdown_arrow.svg");
 pub const CHECKED: Icon = icon_from_path!("../data/icons/checked.svg");
+
+// Datafusion tables:
+pub const TABLE_ROW_VIEW: Icon = icon_from_path!("../data/icons/table_row_view.svg");
+pub const TABLE_GRID_VIEW: Icon = icon_from_path!("../data/icons/table_grid_view.svg");
+pub const TABLE_COLUMNS: Icon = icon_from_path!("../data/icons/columns.svg");
+pub const FLAG_UNTOGGLED: Icon = icon_from_path!("../data/icons/flag_untoggled.svg");
+pub const FLAG_TOGGLED: Icon = icon_from_path!("../data/icons/flag_toggled.svg");

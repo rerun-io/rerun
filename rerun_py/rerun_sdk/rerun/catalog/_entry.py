@@ -9,14 +9,16 @@ import pyarrow as pa
 from pyarrow import RecordBatchReader
 from typing_extensions import deprecated
 
+from rerun._tracing import with_tracing
 from rerun_bindings import (
     DatasetEntryInternal,
     DatasetViewInternal,
     TableEntryInternal,
     TableInsertModeInternal,
+    _IndexValuesLikeInternal,
 )
 
-from . import EntryId
+from . import ContentFilter, EntryId
 
 #: Type alias for supported batch input types for TableEntry write methods.
 _BatchesType: TypeAlias = (
@@ -128,7 +130,7 @@ class Entry(ABC, Generic[InternalEntryT]):
 
         Parameters
         ----------
-        name : str
+        name:
             New name for the entry
 
         """
@@ -139,12 +141,9 @@ class Entry(ABC, Generic[InternalEntryT]):
         """
         Update this entry's properties.
 
-        .. deprecated::
-            Use :meth:`set_name` instead.
-
         Parameters
         ----------
-        name : str | None
+        name:
             New name for the entry
 
         """
@@ -205,7 +204,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         if blueprint_dataset is None:
             raise LookupError("a blueprint dataset is not configured for this dataset")
 
-        segment_id = blueprint_dataset.register(uri).wait().segment_ids[0]
+        segment_id = blueprint_dataset.register(uri, on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
 
         if set_default:
             self.set_default_blueprint(segment_id)
@@ -241,6 +240,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return Schema(self._internal.schema())
 
+    @with_tracing("DatasetEntry.segment_ids")
     def segment_ids(self) -> list[str]:
         """Returns a list of segment IDs for the dataset."""
 
@@ -508,9 +508,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
     def download_segment(self, segment_id: str) -> Recording:
         """Download a segment from the dataset."""
+        from rerun.recording import Recording
 
-        return self._internal.download_segment(segment_id)
+        return Recording(self._internal.download_segment(segment_id))
 
+    @with_tracing("DatasetEntry.filter_segments")
     def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
         """
         Return a new DatasetView filtered to the given segment IDs.
@@ -555,7 +557,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
-    def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
+    @with_tracing("DatasetEntry.filter_contents")
+    def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given entity paths.
 
@@ -565,9 +568,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Parameters
         ----------
-        exprs : str | Sequence[str]
-            Entity path expression or list of entity path expressions. Passing `[]` results in filtering out all
-            contents.
+        exprs:
+            A `ContentFilter` built with the fluent builder API, an entity path expression or list of entity
+            path expressions. Passing `[]` results in filtering out all contents.
 
         Returns
         -------
@@ -579,20 +582,30 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ```python
         # Filter to a single entity path
         view = dataset.filter_contents("/points/**")
+        view = dataset.filter_contents(
+            ContentFilter.nothing()
+            .include("/points/**")
+        )
 
         # Filter to specific entity paths
         view = dataset.filter_contents(["/points/**"])
 
         # Exclude certain paths
         view = dataset.filter_contents(["/points/**", "-/text/**"])
+        view = dataset.filter_contents(
+            ContentFilter.nothing()
+            .include("/points", subtree=True)
+            .exclude("/text/**")
+        )
 
         # Chain with segment filters
         view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
         ```
 
         """
-
-        if isinstance(exprs, str):
+        if isinstance(exprs, ContentFilter):
+            exprs = exprs.to_exprs()
+        elif isinstance(exprs, str):
             exprs = [exprs]
 
         return DatasetView(self._internal.filter_contents(list(exprs)))
@@ -657,6 +670,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             using_index_values=using_index_values,
         )
 
+    @deprecated(
+        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def create_fts_search_index(
         self,
         *,
@@ -667,13 +683,21 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
     ) -> None:
         """Create a full-text search index on the given column."""
 
-        return self._internal.create_fts_search_index(
-            column=column,
-            time_index=time_index,
-            store_position=store_position,
-            base_tokenizer=base_tokenizer,
-        )
+        try:
+            return self._internal.create_fts_search_index(  # ty: ignore[deprecated]
+                column=column,
+                time_index=time_index,
+                store_position=store_position,
+                base_tokenizer=base_tokenizer,
+            )
+        except Exception as err:
+            raise NotImplementedError(
+                "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
+            ) from err
 
+    @deprecated(
+        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def create_vector_search_index(
         self,
         *,
@@ -714,13 +738,18 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         """
 
-        return self._internal.create_vector_search_index(
-            column=column,
-            time_index=time_index,
-            target_partition_num_rows=target_partition_num_rows,
-            num_sub_vectors=num_sub_vectors,
-            distance_metric=distance_metric,
-        )
+        try:
+            return self._internal.create_vector_search_index(  # ty: ignore[deprecated]
+                column=column,
+                time_index=time_index,
+                target_partition_num_rows=target_partition_num_rows,
+                num_sub_vectors=num_sub_vectors,
+                distance_metric=distance_metric,
+            )
+        except Exception as err:
+            raise NotImplementedError(
+                "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
+            ) from err
 
     def list_search_indexes(self) -> list[IndexingResult]:
         """List all user-defined indexes in this dataset."""
@@ -735,6 +764,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.delete_search_indexes(column)
 
+    @deprecated(
+        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def search_fts(
         self,
         query: str,
@@ -742,8 +774,16 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
     ) -> datafusion.DataFrame:
         """Search the dataset using a full-text search query."""
 
-        return self._internal.search_fts(query, column)
+        try:
+            return self._internal.search_fts(query, column)  # ty: ignore[deprecated]
+        except Exception as err:
+            raise NotImplementedError(
+                "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
+            ) from err
 
+    @deprecated(
+        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
+    )
     def search_vector(
         self,
         query: Any,  # VectorLike
@@ -752,7 +792,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
     ) -> datafusion.DataFrame:
         """Search the dataset using a vector search query."""
 
-        return self._internal.search_vector(query, column, top_k)
+        try:
+            return self._internal.search_vector(query, column, top_k)  # ty: ignore[deprecated]
+        except Exception as err:
+            raise NotImplementedError(
+                "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
+            ) from err
 
     def do_maintenance(  # noqa: PLR0917
         self,
@@ -768,6 +813,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             optimize_indexes, retrain_indexes, compact_fragments, cleanup_before, unsafe_allow_recent_cleanup
         )
 
+    @with_tracing("DatasetEntry.get_index_ranges")
     def get_index_ranges(self) -> datafusion.DataFrame:
         """Returns the range bounds of all indexes per segment."""
         view = self.filter_contents(["/**"])
@@ -808,7 +854,7 @@ class DatasetView:
 
         Parameters
         ----------
-        internal : DatasetViewInternal
+        internal:
             The internal Rust-side DatasetView object.
 
         """
@@ -846,6 +892,7 @@ class DatasetView:
         """
         return self._internal.arrow_schema()
 
+    @with_tracing("DatasetView.segment_ids")
     def segment_ids(self) -> list[str]:
         """
         Return the segment IDs for this view.
@@ -940,6 +987,9 @@ class DatasetView:
         include_tombstone_columns
             Whether to include tombstone columns.
         using_index_values
+            Index values at which to sample data.
+            If a plain array is provided, values are applied only to segments
+            whose index range covers them (segments outside the range are excluded).
             If a dict is provided, keys are segment IDs and values are the index values
             to sample for that segment (per-segment semantics).
             If a DataFrame is provided, it must have 'rerun_segment_id' and index columns.
@@ -954,7 +1004,7 @@ class DatasetView:
         """
         import logging
 
-        import datafusion
+        import datafusion as dfn
 
         available_segments = set() if using_index_values is None else set(self._internal.segment_ids())
 
@@ -963,15 +1013,18 @@ class DatasetView:
             case None:
                 pass
 
-            case df if isinstance(df, datafusion.DataFrame):
+            case df if isinstance(df, dfn.DataFrame):
                 index_values_dict = self._dataframe_to_index_values_dict(df, index)
 
             case dict() as d:
                 index_values_dict = d
 
             case _ as index_vals:
-                # Scalar IndexValuesLike: apply the same indices to all segments
-                index_values_dict = dict.fromkeys(available_segments, index_vals)
+                # Scalar IndexValuesLike: restrict to segments whose range covers each value
+                if index is None:
+                    raise ValueError("index must be provided when using_index_values is specified")
+                df = self._map_index_values_to_ranges(index, index_vals)
+                index_values_dict = self._dataframe_to_index_values_dict(df, index)
 
         if index_values_dict is not None:
             requested_segments = set(index_values_dict.keys())
@@ -996,6 +1049,7 @@ class DatasetView:
             using_index_values=index_values_dict,
         )
 
+    @with_tracing("DatasetView.filter_segments")
     def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
         """
         Return a new DatasetView filtered to the given segment IDs.
@@ -1040,7 +1094,8 @@ class DatasetView:
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
-    def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
+    @with_tracing("DatasetView.filter_contents")
+    def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given entity paths.
 
@@ -1050,9 +1105,9 @@ class DatasetView:
 
         Parameters
         ----------
-        exprs : str | Sequence[str]
-            Entity path expression or list of entity path expressions. Passing `[]` results in filtering out all
-            contents.
+        exprs:
+            A `ContentFilter` built with the fluent builder API, an entity path expression or list of entity
+            path expressions. Passing `[]` results in filtering out all contents.
 
         Returns
         -------
@@ -1071,12 +1126,21 @@ class DatasetView:
         # Exclude certain paths
         view = dataset.filter_contents(["/points/**", "-/text/**"])
 
+        # Using ContentFilter builder
+        view = dataset.filter_contents(
+            ContentFilter.everything()
+            .exclude("/robot/raw/**")
+            .include("/robot/raw/i_need_this")
+        )
+
         # Chain with segment filters
         view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
         ```
 
         """
-        if isinstance(exprs, str):
+        if isinstance(exprs, ContentFilter):
+            exprs = exprs.to_exprs()
+        elif isinstance(exprs, str):
             exprs = [exprs]
 
         return DatasetView(self._internal.filter_contents(list(exprs)))
@@ -1100,6 +1164,7 @@ class DatasetView:
 
         return f"DatasetView({dataset_str}, {segment_str}, {content_str})"
 
+    @with_tracing("DatasetView.get_index_ranges")
     def get_index_ranges(self) -> datafusion.DataFrame:
         """Returns the range bounds of all indexes per segment."""
         exprs = ["rerun_segment_id"]
@@ -1108,6 +1173,33 @@ class DatasetView:
             exprs.append(f"{index_col.name}:end")
 
         return self.segment_table().select(*exprs)
+
+    def _map_index_values_to_ranges(self, index: str, index_values: IndexValuesLike) -> datafusion.DataFrame:
+        """
+        Filter index values to only those within the range of some segment.
+
+        Joins the requested values against per-segment index ranges so that
+        each value is only associated with segments that actually cover it.
+
+        Note: this queries the segment table via get_index_ranges(), which is
+        more expensive than the previous approach of broadcasting values to all
+        segments. The tradeoff is correctness: segments whose range does not
+        cover a requested value will no longer receive it.
+        """
+        import datafusion as dfn
+
+        ctx = self.dataset.catalog.ctx
+        values = _IndexValuesLikeInternal(index_values).to_index_values()
+
+        df_ranges = self.get_index_ranges()
+        datatype = df_ranges.schema().field(f"{index}:start").type
+        df_indices = ctx.from_pydict({index: pa.array(values, type=datatype)})
+        return df_ranges.join_on(
+            df_indices, (dfn.col(index) >= dfn.col(f"{index}:start")) & (dfn.col(index) <= dfn.col(f"{index}:end"))
+        ).select(
+            "rerun_segment_id",
+            index,
+        )
 
     def _dataframe_to_index_values_dict(
         self, df: datafusion.DataFrame, index: str | None
@@ -1145,10 +1237,10 @@ class TableEntry(Entry[TableEntryInternal]):
     Note: this object acts as a table provider for DataFusion.
     """
 
-    def __datafusion_table_provider__(self) -> Any:
+    def __datafusion_table_provider__(self, session: Any) -> Any:
         """Returns a DataFusion table provider capsule."""
 
-        return self._internal.__datafusion_table_provider__()
+        return self._internal.__datafusion_table_provider__(session)
 
     def reader(self) -> datafusion.DataFrame:
         """Registers the table with the DataFusion context and return a DataFrame."""

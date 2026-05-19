@@ -4,6 +4,7 @@ mod includes;
 mod method;
 
 use std::collections::HashSet;
+use std::fmt::Write as _;
 use std::str::FromStr as _;
 
 use camino::{Utf8Path, Utf8PathBuf};
@@ -75,9 +76,9 @@ fn quote_hide_from_docs() -> TokenStream {
 
 fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf8Path>) -> String {
     let mut code = String::new();
-    code.push_str(&format!("// {}\n", autogen_warning!()));
+    writeln!(code, "// {}", autogen_warning!()).ok();
     if let Some(source_path) = source_path {
-        code.push_str(&format!("// Based on {:?}.\n", format_path(source_path)));
+        writeln!(code, "// Based on {:?}.", format_path(source_path)).ok();
     }
 
     code.push('\n');
@@ -142,9 +143,9 @@ impl crate::CodeGenerator for CppCodeGenerator {
                 object_kind != ObjectKind::View
             })
             .flat_map(|object_kind| {
-                scopes
-                    .par_iter()
-                    .flat_map(|scope| self.generate_folder(reporter, objects, scope, *object_kind))
+                scopes.par_iter().flat_map(|scope| {
+                    self.generate_folder(reporter, objects, scope.as_ref(), *object_kind)
+                })
             })
             .collect()
     }
@@ -161,7 +162,7 @@ impl CppCodeGenerator {
         &self,
         reporter: &Reporter,
         objects: &Objects,
-        scope: &Option<String>,
+        scope: Option<&String>,
         object_kind: ObjectKind,
     ) -> GeneratedFiles {
         let folder_name = if let Some(scope) = scope {
@@ -177,7 +178,7 @@ impl CppCodeGenerator {
         // Generate folder contents:
         let objects_of_kind = objects
             .objects_of_kind(object_kind)
-            .filter(|obj| &obj.scope() == scope)
+            .filter(|obj| obj.scope().as_ref() == scope)
             .collect_vec();
 
         for &obj in &objects_of_kind {

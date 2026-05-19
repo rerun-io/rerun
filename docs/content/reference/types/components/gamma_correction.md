@@ -17,7 +17,7 @@ Defaults to 1.0 unless otherwise specified.
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links

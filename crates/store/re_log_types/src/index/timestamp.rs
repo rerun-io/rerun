@@ -2,8 +2,8 @@ use std::ops::RangeInclusive;
 use std::str::FromStr as _;
 
 use super::{Duration, TimestampFormat};
-use crate::TimestampFormatKind;
 use crate::external::re_types_core;
+use crate::{DateVisibility, TimestampFormatKind};
 
 /// Encodes a timestamp in nanoseconds since unix epoch.
 ///
@@ -197,11 +197,15 @@ impl Timestamp {
                 let tz = timestamp_format.to_jiff_time_zone();
                 let zoned = timestamp.to_zoned(tz.clone());
 
-                let is_today = zoned.date() == jiff::Timestamp::now().to_zoned(tz.clone()).date();
-
-                let formatted = if timestamp_format.short()
-                    || (timestamp_format.hide_today_date() && is_today)
-                {
+                let hide_date = timestamp_format.short()
+                    || match timestamp_format.date_visibility() {
+                        DateVisibility::ShowDate => false,
+                        DateVisibility::HideDate => true,
+                        DateVisibility::HideDateToday => {
+                            zoned.date() == jiff::Timestamp::now().to_zoned(tz.clone()).date()
+                        }
+                    };
+                let formatted = if hide_date {
                     zoned.strftime("%H:%M:%S").to_string()
                 } else {
                     zoned.strftime("%Y-%m-%d %H:%M:%S").to_string()
@@ -289,7 +293,10 @@ impl Timestamp {
             // Parse as seconds and convert to nanoseconds
             let seconds = s.parse::<f64>().ok()?;
             Some(Self::from_secs_since_epoch(seconds))
-        } else if timestamp_format.hide_today_date() {
+        } else if matches!(
+            timestamp_format.date_visibility(),
+            DateVisibility::HideDateToday | DateVisibility::HideDate
+        ) {
             // Maybe this is a naked timestamp without any date?
 
             let tz = timestamp_format.to_jiff_time_zone();
@@ -439,7 +446,7 @@ mod tests {
             .unwrap();
         let datetime = Timestamp::from(today.clone());
         assert_eq!(
-            datetime.format(TimestampFormat::utc().with_hide_today_date(false)),
+            datetime.format(TimestampFormat::utc().with_date_visibility(DateVisibility::ShowDate)),
             format!("{} 22:35:42Z", today.strftime("%Y-%m-%d"))
         );
     }

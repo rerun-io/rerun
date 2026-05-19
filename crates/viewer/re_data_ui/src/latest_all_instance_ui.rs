@@ -3,7 +3,7 @@ use re_log_types::{EntityPath, Instance};
 use re_query::LatestAllComponentResults;
 use re_sdk_types::ComponentIdentifier;
 use re_ui::UiExt as _;
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::{StoreViewContext, UiLayout};
 
 use super::{DataUi, LatestAtInstanceResult};
 
@@ -28,14 +28,7 @@ pub struct LatestAllInstanceResult<'a> {
 }
 
 impl DataUi for LatestAllInstanceResult<'_> {
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
-    ) {
+    fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         let Self {
             entity_path,
             component,
@@ -47,12 +40,13 @@ impl DataUi for LatestAllInstanceResult<'_> {
 
         ui.sanity_check();
 
-        let engine = db.storage_engine();
+        let engine = ctx.db.storage_engine();
 
         let time = hits.time();
-        let timeline = query.timeline();
-        let time_type = db.timeline_type(&query.timeline());
-        let formatted_time = time_type.format(time, ctx.app_options().timestamp_format);
+        let timeline = ctx.timeline();
+        let timeline_name = timeline.name();
+        let time_type = timeline.typ();
+        let formatted_time = time_type.format(time, ctx.app_ctx.app_options.timestamp_format);
 
         if !ui_layout.is_single_line() {
             // Display time and other diagnostic information as a preamble:
@@ -99,7 +93,7 @@ impl DataUi for LatestAllInstanceResult<'_> {
                     ui.horizontal(|ui| {
                         ui.add(re_ui::icons::COMPONENT_TEMPORAL.as_image());
                         ui.label(format!(
-                            "Logged {} at {timeline}={formatted_time}",
+                            "Logged {} at {timeline_name}={formatted_time}",
                             format_plural_s(hits.num_rows(), "time")
                         ));
                     });
@@ -116,7 +110,7 @@ impl DataUi for LatestAllInstanceResult<'_> {
                 instance,
                 unit: &unit,
             }
-            .data_ui(ctx, ui, ui_layout, query, db);
+            .data_ui(ctx, ui, ui_layout);
         } else {
             // Many hits on the same time point (e.g. transforms):
 
@@ -128,7 +122,7 @@ impl DataUi for LatestAllInstanceResult<'_> {
                     ));
                 } else {
                     ui.label(format!(
-                        "Logged {} at {timeline}={formatted_time}",
+                        "Logged {} at {timeline_name}={formatted_time}",
                         format_plural_s(hits.num_rows(), "time")
                     ));
                 }
@@ -144,7 +138,7 @@ impl DataUi for LatestAllInstanceResult<'_> {
                             instance,
                             unit: &unit,
                         }
-                        .data_ui(ctx, ui, ui_layout, query, db);
+                        .data_ui(ctx, ui, ui_layout);
                     });
                 }
             }

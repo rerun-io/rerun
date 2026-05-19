@@ -3,7 +3,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
-from rerun_bindings import _UrdfJointInternal, _UrdfLinkInternal, _UrdfTreeInternal
+from rerun_bindings import _UrdfJointInternal, _UrdfLinkInternal, _UrdfMimicInternal, _UrdfTreeInternal
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -11,8 +11,40 @@ if TYPE_CHECKING:
 
     from . import Transform3D
     from ._baseclasses import ComponentColumnList
+    from .experimental import LazyChunkStream
+    from .recording_stream import RecordingStream
 
-__all__ = ["UrdfJoint", "UrdfLink", "UrdfTree"]
+__all__ = ["UrdfJoint", "UrdfLink", "UrdfMimic", "UrdfTree"]
+
+
+class UrdfMimic:
+    """
+    A URDF `<mimic>` tag specification.
+
+    A mimic joint's value is derived from a driver joint as
+    `value = multiplier * driver_value + offset`.
+    """
+
+    def __init__(self, inner: _UrdfMimicInternal) -> None:
+        self._inner = inner
+
+    @property
+    def joint(self) -> str:
+        """Name of the driver joint."""
+        return self._inner.joint
+
+    @property
+    def multiplier(self) -> float:
+        """Multiplier applied to the driver joint's value (defaults to `1.0`)."""
+        return self._inner.multiplier
+
+    @property
+    def offset(self) -> float:
+        """Offset added after multiplying the driver joint's value (defaults to `0.0`)."""
+        return self._inner.offset
+
+    def __repr__(self) -> str:
+        return self._inner.__repr__()
 
 
 class UrdfJoint:
@@ -76,6 +108,12 @@ class UrdfJoint:
         """Velocity limit of the joint."""
         return self._inner.limit_velocity
 
+    @property
+    def mimic(self) -> UrdfMimic | None:
+        """Mimic-tag specification, or `None` if this joint is not a mimic joint."""
+        inner = self._inner.mimic
+        return UrdfMimic(inner) if inner is not None else None
+
     def compute_transform(self, value: float, clamp: bool = True) -> Transform3D:
         """
         Compute a Transform3D for this joint at the given value.
@@ -124,7 +162,7 @@ class UrdfJoint:
         Returns
         -------
         ComponentColumnList
-            Columnar transform data ready for use with :func:`rerun.send_columns`.
+            Columnar transform data ready for use with [`rerun.send_columns`][].
 
         """
         from . import Transform3D
@@ -164,16 +202,22 @@ class UrdfTree:
     """
     A URDF robot model with joints and links.
 
-    Not directly loggable. Use this to access the structure of a URDF file
-    and compute transforms for individual joints, which can then be logged
-    using [`archetypes.Transform3D`][rerun.archetypes.Transform3D].
+    Use [`log_urdf_to_recording`][rerun.urdf.UrdfTree.log_urdf_to_recording] to log the full model (geometry + static transforms), then animate
+    individual joints by logging [`archetypes.Transform3D`][rerun.archetypes.Transform3D] computed via
+    [`UrdfJoint.compute_transform`][rerun.urdf.UrdfJoint.compute_transform].
     """
 
     def __init__(self, inner: _UrdfTreeInternal) -> None:
         self._inner = inner
 
     @staticmethod
-    def from_file_path(path: str | Path, entity_path_prefix: str | None = None) -> UrdfTree:
+    def from_file_path(
+        path: str | Path,
+        entity_path_prefix: str | None = None,
+        *,
+        frame_prefix: str | None = None,
+        static_transform_entity_path: str | None = None,
+    ) -> UrdfTree:
         """
         Load a URDF file from the given path.
 
@@ -183,14 +227,33 @@ class UrdfTree:
             Path to the URDF file.
         entity_path_prefix:
             Optional entity path prefix.
+        frame_prefix:
+            Optional prefix for all frame IDs.
+            Use to load the same URDF multiple times with unique frames.
+        static_transform_entity_path:
+            Optional entity path to use when logging static transforms.
+            If omitted, defaults to `/tf_static`.
+            This path is not affected by `entity_path_prefix`.
 
         """
-        return UrdfTree(_UrdfTreeInternal.from_file_path(path, entity_path_prefix))
+        return UrdfTree(
+            _UrdfTreeInternal.from_file_path(
+                path,
+                entity_path_prefix,
+                frame_prefix=frame_prefix,
+                static_transform_entity_path=static_transform_entity_path,
+            )
+        )
 
     @property
     def name(self) -> str:
         """Name of the robot defined in this URDF."""
         return self._inner.name
+
+    @property
+    def frame_prefix(self) -> str | None:
+        """The frame prefix, if set."""
+        return self._inner.frame_prefix
 
     def root_link(self) -> UrdfLink:
         """Get the root link of the URDF."""
@@ -275,6 +338,40 @@ class UrdfTree:
         else:
             inner = link._inner
         return self._inner.get_collision_geometry_paths(inner)
+
+    def log_urdf_to_recording(self, recording: RecordingStream | None = None) -> None:
+        """
+        Log the full robot model (geometry + static transforms) to a recording stream.
+
+        This can be used as alternative to [`rerun.log_file_from_path`][] for URDF files,
+        especially in cases where you need the extra configuration options of `UrdfTree`
+        (e.g. `frame_prefix` for multi-robot setups).
+
+        Parameters
+        ----------
+        recording:
+            The recording stream to log to. If `None`, the current active recording is used.
+
+        """
+        self._inner.log(recording.to_native() if recording is not None else None)
+
+    def stream(self, *, include_joint_transforms: bool = True) -> LazyChunkStream:
+        """
+        Return a lazy stream over chunks emitted from this URDF tree.
+
+        !!! warning
+            This method is experimental and returns the experimental
+            `rerun.experimental.LazyChunkStream` API.
+
+        Parameters
+        ----------
+        include_joint_transforms:
+            Whether to include the static joint transforms from the URDF.
+
+        """
+        from .experimental import LazyChunkStream
+
+        return LazyChunkStream(self._inner.stream(include_joint_transforms=include_joint_transforms))
 
     def __repr__(self) -> str:
         return self._inner.__repr__()

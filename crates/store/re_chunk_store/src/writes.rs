@@ -12,9 +12,9 @@ use re_log_encoding::{RrdManifest, RrdManifestTemporalMapEntry};
 
 use crate::store::ChunkIdSetPerTime;
 use crate::{
-    ChunkDirectLineage, ChunkDirectLineageReport, ChunkId, ChunkStore, ChunkStoreChunkStats,
-    ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreError, ChunkStoreEvent,
-    ChunkStoreResult, ColumnMetadataState,
+    ChunkDeletionReason, ChunkDirectLineage, ChunkDirectLineageReport, ChunkId, ChunkStore,
+    ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffAddition,
+    ChunkStoreError, ChunkStoreEvent, ChunkStoreResult,
 };
 
 // ---
@@ -24,18 +24,14 @@ impl ChunkStore {
     ///
     /// All queries will return partial results until the missing physical data gets loaded in.
     #[must_use = "The chunk store events should be handled"]
-    pub fn insert_rrd_manifest(
-        &mut self,
-        rrd_manifest: Arc<RrdManifest>,
-    ) -> ChunkStoreResult<ChunkStoreEvent> {
+    pub fn insert_rrd_manifest(&mut self, rrd_manifest: Arc<RrdManifest>) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         let Self {
             id: _,
             config: _,
-            time_type_registry,
-            per_column_metadata,
-            physical_chunks_per_chunk_id: _, // physical data only
+            schema: _,                            // handled below
+            physical_chunks_per_chunk_id: _,      // physical data only
             physical_chunk_ids_per_min_row_id: _, // physical data only
             chunks_lineage,
             dangling_splits: _, // cannot split during virtual insert
@@ -52,46 +48,6 @@ impl ChunkStore {
             event_id: _,
         } = self;
 
-        let sorbet_schema = re_sorbet::SorbetSchema::try_from_raw_arrow_schema(Arc::new(
-            rrd_manifest.sorbet_schema().clone(),
-        ))?;
-
-        time_type_registry.extend(
-            sorbet_schema
-                .columns
-                .index_columns()
-                .map(|descr| (descr.timeline_name(), descr.timeline().typ())),
-        );
-
-        for descr in sorbet_schema.columns.component_columns() {
-            let inner_datatype = descr.inner_datatype();
-            let previous = per_column_metadata
-                .entry(descr.entity_path.clone())
-                .or_default()
-                .insert(
-                    descr.component,
-                    (
-                        descr.component_descriptor(),
-                        ColumnMetadataState {
-                            is_semantically_empty: descr.is_semantically_empty,
-                        },
-                        inner_datatype.clone(),
-                    ),
-                );
-
-            if let Some(previous) = previous
-                && previous.2 != inner_datatype
-            {
-                re_log::warn_once!(
-                    "Component '{}' on entity '{}' changed type from {} to {}",
-                    descr.component,
-                    descr.entity_path,
-                    re_arrow_util::format_data_type(&previous.2),
-                    re_arrow_util::format_data_type(&inner_datatype)
-                );
-            }
-        }
-
         let native_static_map = rrd_manifest.static_map();
         chunks_lineage.extend(
             native_static_map
@@ -100,11 +56,16 @@ impl ChunkStore {
                 .map(|chunk_id| {
                     (
                         *chunk_id,
-                        ChunkDirectLineage::ReferencedFrom(rrd_manifest.clone()),
+                        ChunkDirectLineage::RootFromManifest { is_static: true },
                     )
                 }),
         );
-        *static_chunk_ids_per_entity = native_static_map.clone();
+        for (entity_path, per_component) in native_static_map {
+            static_chunk_ids_per_entity
+                .entry(entity_path.clone())
+                .or_default()
+                .extend(per_component.iter().map(|(&k, &v)| (k, v)));
+        }
 
         let native_temporal_map = rrd_manifest.temporal_map();
         chunks_lineage.extend(
@@ -116,7 +77,7 @@ impl ChunkStore {
                 .map(|chunk_id| {
                     (
                         *chunk_id,
-                        ChunkDirectLineage::ReferencedFrom(rrd_manifest.clone()),
+                        ChunkDirectLineage::RootFromManifest { is_static: false },
                     )
                 }),
         );
@@ -186,11 +147,28 @@ impl ChunkStore {
             diff: ChunkStoreDiff::virtual_addition(rrd_manifest),
         };
 
-        if self.config.enable_changelog {
-            Self::on_events(std::slice::from_ref(&event));
+        let new_columns = self.schema.on_events(std::slice::from_ref(&event));
+
+        let mut events = vec![event];
+
+        if !new_columns.is_empty() {
+            events.push(ChunkStoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff: ChunkStoreDiff::SchemaAddition(crate::ChunkStoreDiffSchemaAddition {
+                    new_columns,
+                }),
+            });
         }
 
-        Ok(event)
+        if self.config.enable_changelog {
+            Self::on_events(&events);
+        }
+
+        events
     }
 
     /// Inserts a [`Chunk`] in the store.
@@ -208,24 +186,7 @@ impl ChunkStore {
         }
 
         let diffs = self.insert_chunk_impl(chunk, ChunkDirectLineageReport::Volatile)?;
-
-        let events: Vec<_> = diffs
-            .into_iter()
-            .map(|diff| ChunkStoreEvent {
-                store_id: self.id.clone(),
-                store_generation: self.generation(),
-                event_id: self
-                    .event_id
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                diff,
-            })
-            .collect();
-
-        if self.config.enable_changelog {
-            Self::on_events(&events);
-        }
-
-        Ok(events)
+        Ok(self.finalize_events(diffs))
     }
 
     fn insert_chunk_impl(
@@ -261,7 +222,9 @@ impl ChunkStore {
                         chunk.id()
                     );
                 } else {
-                    re_log::warn_once!("The same chunk was inserted twice (this has no effect)");
+                    re_log::warn_once!(
+                        "[DEBUG] The same chunk was inserted twice (this has no effect)"
+                    );
                 }
             } else {
                 re_log::debug_once!("The same chunk was inserted twice (this has no effect)");
@@ -273,6 +236,15 @@ impl ChunkStore {
 
         if !chunk.is_sorted() {
             return Err(ChunkStoreError::UnsortedChunk);
+        }
+
+        for (timeline, time_column) in chunk.timelines() {
+            if !time_column.is_sorted() {
+                let entity_path = chunk.entity_path();
+                re_log::debug_warn_once!(
+                    "Found chunk for entity '{entity_path}' where timeline '{timeline}' was unsorted (compared to RowId). This may cause performance issues."
+                );
+            }
         }
 
         re_tracing::profile_function!();
@@ -294,7 +266,7 @@ impl ChunkStore {
 
         if matches!(
             self.direct_lineage(&chunk.id()),
-            Some(&ChunkDirectLineage::ReferencedFrom(_))
+            Some(&ChunkDirectLineage::RootFromManifest { .. })
         ) {
             // If we reach here, then a chunk that was previously virtually inserted using `insert_rrd_manifest`
             // is about to be physically inserted for real.
@@ -310,9 +282,13 @@ impl ChunkStore {
             // The fix is simple: always unconditionally clean up the indexes when a virtual chunk
             // gets physically inserted.
             all_diffs.extend(
-                self.remove_chunks_deep(vec![chunk.clone()], None)
-                    .into_iter()
-                    .map(Into::into),
+                self.remove_chunks_deep(
+                    vec![chunk.clone()],
+                    None,
+                    ChunkDeletionReason::VirtualToPhysicalReplacement,
+                )
+                .into_iter()
+                .map(Into::into),
             );
         }
 
@@ -331,6 +307,7 @@ impl ChunkStore {
                         })
                         .collect(),
                     None,
+                    ChunkDeletionReason::DanglingSplitCleanup,
                 )
                 .into_iter()
                 .map(Into::into),
@@ -549,8 +526,8 @@ impl ChunkStore {
 
                         let chunk_id_removed = self
                             .physical_chunk_ids_per_min_row_id
-                            .remove(&chunk_row_id_min);
-                        debug_assert!(chunk_id_removed.is_some());
+                            .remove(&(chunk_row_id_min, chunk_id));
+                        debug_assert!(chunk_id_removed);
 
                         let chunk_removed = self.physical_chunks_per_chunk_id.remove(&chunk_id);
                         debug_assert!(chunk_removed.is_some());
@@ -558,7 +535,10 @@ impl ChunkStore {
                         if let Some(chunk_removed) = chunk_removed {
                             self.static_chunks_stats -=
                                 ChunkStoreChunkStats::from_chunk(&chunk_removed);
-                            diffs.push(ChunkStoreDiff::deletion(chunk_removed));
+                            diffs.push(ChunkStoreDiff::deletion(
+                                chunk_removed,
+                                ChunkDeletionReason::Overwrite,
+                            ));
                         }
                     }
                 }
@@ -575,21 +555,7 @@ impl ChunkStore {
                 let elected_chunk = self.find_and_elect_compaction_candidate(chunk);
 
                 let chunk_or_compacted = if let Some(elected_chunk) = &elected_chunk {
-                    let chunk_rowid_min = chunk.row_id_range().map(|(min, _)| min);
-                    let elected_rowid_min = elected_chunk.row_id_range().map(|(min, _)| min);
-
-                    let mut compacted = if elected_rowid_min < chunk_rowid_min {
-                        re_tracing::profile_scope!("concat");
-                        elected_chunk.concatenated(chunk)?
-                    } else {
-                        re_tracing::profile_scope!("concat");
-                        chunk.concatenated(elected_chunk)?
-                    };
-
-                    {
-                        re_tracing::profile_scope!("sort");
-                        compacted.sort_if_unsorted();
-                    }
+                    let compacted = Chunk::concat_and_sort(elected_chunk, chunk)?;
 
                     re_log::trace!(
                         "compacted {} ({} rows) and {} ({} rows) together, resulting in {} ({} rows)",
@@ -708,9 +674,13 @@ impl ChunkStore {
                     std::iter::once((chunk_before_processing.id(), chunk_before_processing))
                         .chain(
                             // NOTE: deep removal, we don't want a compacted chunk to linger on!
-                            self.remove_chunks_deep(vec![elected_chunk.clone()], None)
-                                .into_iter()
-                                .map(|diff| (diff.chunk.id(), diff.chunk)),
+                            self.remove_chunks_deep(
+                                vec![elected_chunk.clone()],
+                                None,
+                                ChunkDeletionReason::Compaction,
+                            )
+                            .into_iter()
+                            .map(|diff| (diff.chunk.id(), diff.chunk)),
                         )
                         .collect();
 
@@ -756,66 +726,9 @@ impl ChunkStore {
 
         // NOTE: ⚠️Make sure to recompute the Row ID range! The chunk might have been compacted
         // with another one, which might or might not have modified the range.
-        if let Some(min_row_id) = chunk_after_processing.row_id_range().map(|(min, _)| min)
-            && self
-                .physical_chunk_ids_per_min_row_id
-                .insert(min_row_id, chunk_after_processing.id())
-                .is_some()
-        {
-            re_log::warn_once!(
-                "Detected duplicated RowId in the data, this might lead to undefined behavior"
-            );
-        }
-
-        for (name, columns) in chunk_after_processing.timelines() {
-            let new_typ = columns.timeline().typ();
-            if let Some(old_typ) = self.time_type_registry.insert(*name, new_typ)
-                && old_typ != new_typ
-            {
-                re_log::warn_once!(
-                    "Timeline '{name}' changed type from {old_typ:?} to {new_typ:?}. \
-                        Rerun does not support using different types for the same timeline.",
-                );
-            }
-        }
-
-        for column in chunk_after_processing.components().values() {
-            let re_types_core::SerializedComponentColumn {
-                list_array,
-                descriptor,
-            } = column;
-
-            let (descr, column_metadata_state, datatype) = self
-                .per_column_metadata
-                .entry(chunk_after_processing.entity_path().clone())
-                .or_default()
-                .entry(descriptor.component)
-                .or_insert_with(|| {
-                    (
-                        descriptor.clone(),
-                        ColumnMetadataState {
-                            is_semantically_empty: true,
-                        },
-                        list_array.value_type().clone(),
-                    )
-                });
-            {
-                if *datatype != list_array.value_type() {
-                    // TODO(grtlr): If we encounter two different data types, we should split the chunk.
-                    // More information: https://github.com/rerun-io/rerun/pull/10082#discussion_r2140549340
-                    re_log::warn!(
-                        "Datatype of column {descr} in {} has changed from {datatype} to {}",
-                        chunk_after_processing.entity_path(),
-                        list_array.value_type()
-                    );
-                    *datatype = list_array.value_type().clone();
-                }
-
-                let is_semantically_empty =
-                    re_arrow_util::is_list_array_semantically_empty(list_array);
-
-                column_metadata_state.is_semantically_empty &= is_semantically_empty;
-            }
+        if let Some(min_row_id) = chunk_after_processing.row_id_range().map(|(min, _)| min) {
+            self.physical_chunk_ids_per_min_row_id
+                .insert((min_row_id, chunk_after_processing.id()));
         }
 
         Ok(all_diffs)
@@ -1005,13 +918,10 @@ impl ChunkStore {
 
         self.gc_id += 1; // close enough
 
-        let generation = self.generation();
-
         let Self {
-            id,
+            id: _,
             config: _,
-            time_type_registry: _,
-            per_column_metadata,
+            schema,
             physical_chunks_per_chunk_id: chunks_per_chunk_id,
             chunks_lineage: _, // lineage metadata must never be dropped, regardless
             dangling_splits: _, // this counts as lineage metadata too
@@ -1026,10 +936,10 @@ impl ChunkStore {
             queried_chunk_id_tracker: _,
             insert_id: _,
             gc_id: _,
-            event_id,
+            event_id: _,
         } = self;
 
-        per_column_metadata.remove(entity_path);
+        schema.drop_entity(entity_path);
 
         let dropped_static_chunks = {
             let dropped_static_chunk_ids: BTreeSet<_> = static_chunk_ids_per_entity
@@ -1043,7 +953,7 @@ impl ChunkStore {
                     .get(chunk_id)
                     .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
                 {
-                    chunk_ids_per_min_row_id.remove(&min_row_id);
+                    chunk_ids_per_min_row_id.remove(&(min_row_id, *chunk_id));
                 }
             }
 
@@ -1075,7 +985,7 @@ impl ChunkStore {
                     .get(chunk_id)
                     .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
                 {
-                    chunk_ids_per_min_row_id.remove(&min_row_id);
+                    chunk_ids_per_min_row_id.remove(&(min_row_id, *chunk_id));
                 }
             }
 
@@ -1096,29 +1006,19 @@ impl ChunkStore {
                 *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
             });
 
-        let events: Vec<_> = dropped_static_chunks
+        let diffs: Vec<_> = dropped_static_chunks
             .into_iter()
             .chain(dropped_temporal_chunks)
-            .map(ChunkStoreDiff::deletion)
-            .map(|diff| ChunkStoreEvent {
-                store_id: id.clone(),
-                store_generation: generation.clone(),
-                event_id: event_id.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                diff,
-            })
+            .map(|chunk| ChunkStoreDiff::deletion(chunk, ChunkDeletionReason::ExplicitDrop))
             .collect();
 
-        if self.config.enable_changelog {
-            Self::on_events(&events);
-        }
-
-        events
+        self.finalize_events(diffs)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::collections::BTreeSet;
 
     use re_chunk::{TimeInt, TimePoint, Timeline};
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
@@ -1452,18 +1352,48 @@ mod tests {
         let chunk4 = Arc::new(chunk4);
 
         let events = store.insert_chunk(&chunk1)?;
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].delta_chunk().unwrap().id(), chunk1.id());
         assert!(
-            events.len() == 1
-                && events[0].delta_chunk().unwrap().id() == chunk1.id()
-                && matches!(events[0].diff, ChunkStoreDiff::Addition(_)),
-            "the first write should result in the addition of chunk1 and nothing else"
+            events[0].is_addition(),
+            "the first write should result in the addition of chunk1"
         );
+        // chunk1 introduces 3 new components on this entity: points, colors, labels.
+        let schema_add = match &events[1].diff {
+            ChunkStoreDiff::SchemaAddition(sa) => sa,
+            other => panic!("expected SchemaAddition, got {other:?}"),
+        };
+        assert_eq!(schema_add.new_columns.len(), 1);
+        assert_eq!(schema_add.new_columns[0].entity_path, entity_path);
+        let new_descriptors: BTreeSet<_> = schema_add.new_columns[0]
+            .components
+            .iter()
+            .map(|c| c.descriptor.clone())
+            .collect();
+        assert_eq!(
+            new_descriptors,
+            BTreeSet::from([
+                MyPoints::descriptor_points(),
+                MyPoints::descriptor_colors(),
+                MyPoints::descriptor_labels(),
+            ]),
+            "points, colors, labels"
+        );
+        // All should be is_static since chunk1 is static.
+        for comp in &schema_add.new_columns[0].components {
+            assert!(
+                comp.is_static,
+                "{} should be is_static after a static insert",
+                comp.descriptor
+            );
+        }
 
         let events = store.insert_chunk(&chunk2)?;
+        // chunk2 only has points and colors which already exist — no new schema columns.
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].delta_chunk().unwrap().id(), chunk2.id());
         assert!(
-            events.len() == 1
-                && events[0].delta_chunk().unwrap().id() == chunk2.id()
-                && matches!(events[0].diff, ChunkStoreDiff::Addition(_)),
+            events[0].is_addition(),
             "the second write should result in the addition of chunk2 and nothing else"
         );
 
@@ -1481,13 +1411,13 @@ mod tests {
         }
 
         let events = store.insert_chunk(&chunk3)?;
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].delta_chunk().unwrap().id(), chunk3.id());
+        assert!(events[0].is_addition());
+        assert_eq!(events[1].delta_chunk().unwrap().id(), chunk1.id());
         assert!(
-            events.len() == 2
-                && events[0].delta_chunk().unwrap().id() == chunk3.id()
-                && matches!(events[0].diff, ChunkStoreDiff::Addition(_))
-                && events[1].delta_chunk().unwrap().id() == chunk1.id()
-                && matches!(events[1].diff, ChunkStoreDiff::Deletion(_)),
-            "the third write should result in the addition of chunk3 _and_ the deletion of the now fully overwritten chunk1"
+            events[1].is_deletion(),
+            "the third write should result in the addition of chunk3 and the deletion of chunk1"
         );
 
         let stats_after = store.stats();
@@ -1521,6 +1451,206 @@ mod tests {
             assert_eq!(2, num_rows);
             assert_eq!(3, num_events);
         }
+
+        Ok(())
+    }
+
+    /// Temporal data first, then static: `is_static` should transition and re-emit a `SchemaAddition`.
+    #[test]
+    fn schema_temporal_then_static() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            Default::default(),
+        );
+
+        let entity_path = EntityPath::from("this/that");
+        let points = &[MyPoint::new(1.0, 1.0)];
+
+        // Temporal insert: new component, is_static = false.
+        let events = store.insert_chunk(&Arc::new(
+            Chunk::builder(entity_path.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    [(Timeline::new_sequence("frame"), 1)],
+                    [(MyPoints::descriptor_points(), points as _)],
+                )
+                .build()?,
+        ))?;
+        assert_eq!(events.len(), 2);
+        assert!(events[0].is_addition());
+        let schema_add = match &events[1].diff {
+            ChunkStoreDiff::SchemaAddition(sa) => sa,
+            other => panic!("expected SchemaAddition, got {other:?}"),
+        };
+        assert!(!schema_add.new_columns[0].components[0].is_static);
+
+        // Static insert: same component, triggers is_static transition.
+        let events = store.insert_chunk(&Arc::new(
+            Chunk::builder(entity_path.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    [(MyPoints::descriptor_points(), points as _)],
+                )
+                .build()?,
+        ))?;
+        assert_eq!(events.len(), 2);
+        assert!(events[0].is_addition());
+        let schema_add = match &events[1].diff {
+            ChunkStoreDiff::SchemaAddition(sa) => sa,
+            other => panic!("expected SchemaAddition for is_static transition, got {other:?}"),
+        };
+        assert!(
+            schema_add.new_columns[0].components[0].is_static,
+            "component should now be is_static"
+        );
+
+        // Another temporal insert: no further transition.
+        let events = store.insert_chunk(&Arc::new(
+            Chunk::builder(entity_path.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    [(Timeline::new_sequence("frame"), 2)],
+                    [(MyPoints::descriptor_points(), points as _)],
+                )
+                .build()?,
+        ))?;
+        assert!(
+            !events.iter().any(|e| e.is_schema_addition()),
+            "no SchemaAddition after transition already happened"
+        );
+
+        Ok(())
+    }
+
+    /// `insert_rrd_manifest` should emit a `SchemaAddition` with the manifest's columns.
+    #[test]
+    fn schema_addition_from_manifest() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let store_id =
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app");
+        let mut store = ChunkStore::new(store_id.clone(), Default::default());
+
+        let entity_path = EntityPath::from("this/that");
+        let tl = Timeline::new_sequence("frame");
+        let point = MyPoint::new(1.0, 1.0);
+
+        let chunks: Vec<Arc<Chunk>> = [10, 20]
+            .into_iter()
+            .map(|t| {
+                Arc::new(
+                    Chunk::builder(entity_path.clone())
+                        .with_component_batch(
+                            RowId::new(),
+                            TimePoint::from_iter([(tl, t)]),
+                            (MyPoints::descriptor_points(), &[point] as _),
+                        )
+                        .build()
+                        .unwrap(),
+                )
+            })
+            .collect();
+
+        let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+            store_id,
+            chunks.iter().map(|c| &**c),
+        )?;
+
+        let events = store.insert_rrd_manifest(rrd_manifest);
+        assert_eq!(events.len(), 2);
+        assert!(events[0].is_virtual_addition());
+        let schema_add = match &events[1].diff {
+            ChunkStoreDiff::SchemaAddition(sa) => sa,
+            other => panic!("expected SchemaAddition, got {other:?}"),
+        };
+        assert_eq!(schema_add.new_columns.len(), 1);
+        assert_eq!(schema_add.new_columns[0].entity_path, entity_path);
+        assert!(!schema_add.new_columns[0].components.is_empty());
+
+        // Inserting the same manifest again should NOT emit a second SchemaAddition.
+        let rrd_manifest2 = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            chunks.iter().map(|c| &**c),
+        )?;
+        let events2 = store.insert_rrd_manifest(rrd_manifest2);
+        assert!(
+            !events2.iter().any(|e| e.is_schema_addition()),
+            "re-inserting a manifest with the same columns should not emit SchemaAddition"
+        );
+
+        Ok(())
+    }
+
+    /// Manifest with temporal data followed by manifest with static data:
+    /// `is_static` should transition and re-emit a `SchemaAddition`.
+    #[test]
+    fn schema_static_transition_from_manifest() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let store_id =
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app");
+        let mut store = ChunkStore::new(store_id.clone(), Default::default());
+
+        let entity_path = EntityPath::from("this/that");
+        let tl = Timeline::new_sequence("frame");
+        let point = MyPoint::new(1.0, 1.0);
+
+        // First manifest: temporal-only data.
+        let temporal_chunk = Arc::new(
+            Chunk::builder(entity_path.clone())
+                .with_component_batch(
+                    RowId::new(),
+                    TimePoint::from_iter([(tl, 10)]),
+                    (MyPoints::descriptor_points(), &[point] as _),
+                )
+                .build()?,
+        );
+        let manifest_temporal = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+            store_id.clone(),
+            std::iter::once(&*temporal_chunk),
+        )?;
+
+        let events = store.insert_rrd_manifest(manifest_temporal);
+        assert_eq!(events.len(), 2);
+        assert!(events[0].is_virtual_addition());
+        let schema_add = match &events[1].diff {
+            ChunkStoreDiff::SchemaAddition(sa) => sa,
+            other => panic!("expected SchemaAddition, got {other:?}"),
+        };
+        assert!(
+            !schema_add.new_columns[0].components[0].is_static,
+            "first manifest is temporal-only"
+        );
+
+        // Second manifest: same component but with static data.
+        let static_chunk = Arc::new(
+            Chunk::builder(entity_path.clone())
+                .with_component_batch(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    (MyPoints::descriptor_points(), &[point] as _),
+                )
+                .build()?,
+        );
+        let manifest_static = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+            store_id,
+            std::iter::once(&*static_chunk),
+        )?;
+
+        let events = store.insert_rrd_manifest(manifest_static);
+        assert_eq!(events.len(), 2);
+        assert!(events[0].is_virtual_addition());
+        let schema_add = match &events[1].diff {
+            ChunkStoreDiff::SchemaAddition(sa) => sa,
+            other => panic!("expected SchemaAddition for is_static transition, got {other:?}"),
+        };
+        assert!(
+            schema_add.new_columns[0].components[0].is_static,
+            "component should now be is_static after static manifest"
+        );
 
         Ok(())
     }
@@ -1562,7 +1692,7 @@ mod tests {
             chunks: impl IntoIterator<Item = (RowId, ChunkId)>,
         ) {
             assert_eq!(
-                chunks.into_iter().collect::<BTreeMap<_, _>>(),
+                chunks.into_iter().collect::<BTreeSet<_>>(),
                 store.physical_chunk_ids_per_min_row_id
             );
         }

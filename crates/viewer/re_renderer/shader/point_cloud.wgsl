@@ -104,7 +104,10 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let point_data = read_data(quad_idx);
 
     // Span quad
-    let camera_distance = distance(frame.camera_position, point_data.pos);
+    // The pixel size formula `pixel_world_size_from_camera_distance` is derived from
+    // `screen_in_world = tan(FOV/2) * depth * 2` so it expects a distance along the
+    // camera forward axis.
+    let camera_distance = dot(point_data.pos - frame.camera_position, frame.camera_forward);
     let world_scale_factor = average_scale_from_transform(batch.world_from_obj); // TODO(andreas): somewhat costly, should precompute this
     let world_radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, world_scale_factor) +
                        world_size_from_point_size(draw_data.radius_boost_in_ui_points, camera_distance);

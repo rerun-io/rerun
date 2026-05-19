@@ -85,7 +85,8 @@ fn add_entities_ui(
 ) {
     re_tracing::profile_function!();
 
-    let tree = &ctx.recording().tree();
+    let recording_engine = ctx.recording_engine();
+    let tree = recording_engine.store().entity_tree();
     let query_result = ctx.lookup_query_result(view.id);
     let entity_path_filter = view.contents.entity_path_filter();
     let entities_add_info = create_entity_add_info(ctx, tree, view, query_result);
@@ -187,7 +188,6 @@ fn add_entities_line_ui(
 ) {
     re_tracing::profile_function!();
 
-    let query = ctx.current_query();
     let entity_path = &entity_data.entity_path;
     let name = &entity_data.label;
 
@@ -216,10 +216,9 @@ fn add_entities_line_ui(
             widget_text = widget_text.strong();
         }
 
+        let store_view_ctx = ctx.active_recording_store_view_context();
         let response = item_ui::instance_path_button_to(
-            ctx,
-            &query,
-            ctx.recording(),
+            &store_view_ctx,
             ui,
             Some(view.id),
             &InstancePath::entity_all(entity_path.clone()),

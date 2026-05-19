@@ -6,13 +6,15 @@ use re_types_core::{ComponentIdentifier, RowId};
 use re_ui::UiExt as _;
 use re_uri::RedapUri;
 use re_viewer_context::open_url::ViewerOpenUrl;
-use re_viewer_context::{SystemCommand, SystemCommandSender as _, ViewerContext};
+use re_viewer_context::{
+    RecordingOrTable, StoreViewContext, SystemCommand, SystemCommandSender as _,
+};
 
 /// Display an URL as an `Open` button (instead of spelling the full URL).
 ///
 /// Requires a String mono-component which is valid [`RedapUri`].
 pub fn redap_uri_button(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     _component: ComponentIdentifier,
     _row_id: Option<RowId>,
@@ -25,12 +27,7 @@ pub fn redap_uri_button(
     let url_str = array
         .as_any()
         .downcast_ref::<arrow::array::StringArray>()
-        .ok_or_else(|| {
-            format!(
-                "unsupported arrow datatype: {}",
-                re_arrow_util::format_data_type(array.data_type())
-            )
-        })?
+        .ok_or_else(|| format!("unsupported arrow datatype: {}", array.data_type()))?
         .value(0);
 
     let uri = RedapUri::from_str(url_str)?;
@@ -84,7 +81,7 @@ pub fn redap_uri_button(
                             .clicked()
                     {
                         if let Ok(url) = ViewerOpenUrl::from(uri_clone).sharable_url(None) {
-                            ctx.command_sender()
+                            ctx.command_sender
                                 .send_system(SystemCommand::CopyViewerUrl(url));
                         } else {
                             re_log::error!("Failed to create a sharable url for recording");
@@ -97,14 +94,21 @@ pub fn redap_uri_button(
 
     ui.horizontal(|ui| {
         if let Some(loaded_recording_info) = loaded_recording_info {
-            let response = link_with_copy(ui, Link::new("Switch to"))
-                .on_hover_text("This recording is already loaded. Click to switch to it.");
+            let is_opened = ctx.store_hub().is_opened(&loaded_recording_info.store_id);
+            let label = if is_opened { "Switch to" } else { "Open" };
+            let hover = if is_opened {
+                "This recording is already open. Click to switch to it."
+            } else {
+                "This recording is loaded. Click to open it."
+            };
+            let response = link_with_copy(ui, Link::new(label)).on_hover_text(hover);
             if response.clicked() {
-                // Show it:
-                ctx.command_sender()
-                    .send_system(SystemCommand::set_selection(
-                        re_viewer_context::Item::StoreId(loaded_recording_info.store_id.clone()),
-                    ));
+                ctx.command_sender.send_system(SystemCommand::SetRoute(
+                    RecordingOrTable::Recording {
+                        store_id: loaded_recording_info.store_id.clone(),
+                    }
+                    .route(),
+                ));
             }
         } else if is_loading {
             ui.loading_indicator("Loading redap recording");

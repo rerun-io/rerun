@@ -106,15 +106,16 @@ impl ::re_types_core::Loggable for ViewFit {
             .with_context("rerun.blueprint.components.ViewFit#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::Original)),
-                Some(2) => Ok(Some(Self::Fill)),
-                Some(3) => Ok(Some(Self::FillKeepAspectRatio)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.blueprint.components.ViewFit")?)
@@ -132,6 +133,8 @@ impl std::fmt::Display for ViewFit {
 }
 
 impl ::re_types_core::reflection::Enum for ViewFit {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[Self::Original, Self::Fill, Self::FillKeepAspectRatio]
@@ -148,6 +151,13 @@ impl ::re_types_core::reflection::Enum for ViewFit {
                 "Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio."
             }
         }
+    }
+
+    #[inline]
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }
 

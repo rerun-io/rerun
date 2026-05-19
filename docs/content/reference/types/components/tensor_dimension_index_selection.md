@@ -11,10 +11,10 @@ Specifies a concrete index on a tensor dimension.
 
 ## Arrow datatype
 ```
-Struct {
-    dimension: uint32
-    index: uint64
-}
+Struct(
+    "dimension": non-null UInt32
+    "index": non-null UInt64
+)
 ```
 
 ## API reference links

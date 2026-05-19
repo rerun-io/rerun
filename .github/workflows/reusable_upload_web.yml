@@ -62,16 +62,10 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: "Create HTML aliases without extensions"
-        run: |
-          cd crates/viewer/re_web_viewer_server/web_viewer
-          for f in *.html; do
-            name="${f%.html}"
-            # Don't create aliases for index.html (GCS serves it as directory index)
-            if [ "$name" != "index" ] && [ "$name" != "index_bundled" ]; then
-              cp "$f" "$name"
-            fi
-          done
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+        with:
+          version: ">= 363.0.0"
 
       - name: Get sha
         id: get-sha
@@ -149,6 +143,19 @@ jobs:
           process_gcloudignore: false
           headers: |-
             cache-control: no-cache, max-age=0
+
+      # Upload extensionless HTML aliases (signed-in, signed-out) to the
+      # bucket root with the correct Content-Type. The OAuth redirect uses the
+      # origin (app.rerun.io/signed-in), not a versioned path.
+      - name: "Upload HTML aliases to bucket root"
+        run: |
+          cd crates/viewer/re_web_viewer_server/web_viewer
+          for f in *.html; do
+            name="${f%.html}"
+            if [ "$name" != "index" ] && [ "$name" != "index_bundled" ]; then
+              gcloud storage cp --content-type="text/html" "$f" "gs://rerun-web-viewer/${name}"
+            fi
+          done
 
       - name: Status comment
         if: success() && github.event_name == 'pull_request'

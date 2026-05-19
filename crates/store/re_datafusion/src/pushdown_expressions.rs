@@ -104,27 +104,25 @@ pub(crate) fn apply_filter_expr_to_queries(
                     // have (leftA OR leftB) AND (rightC OR rightD). We need to
                     // consider the combinatorial for the final output.
 
-                    let Some(left_queries) =
-                        apply_filter_expr_to_queries(queries.clone(), &left, schema)?
-                    else {
-                        return apply_filter_expr_to_queries(queries.clone(), &right, schema);
-                    };
-                    let Some(right_queries) =
-                        apply_filter_expr_to_queries(queries.clone(), &right, schema)?
-                    else {
-                        return Ok(Some(left_queries));
-                    };
-
-                    let final_exprs = left_queries
-                        .iter()
-                        .flat_map(|left| {
-                            right_queries
+                    match (
+                        apply_filter_expr_to_queries(queries.clone(), &left, schema)?,
+                        apply_filter_expr_to_queries(queries, &right, schema)?,
+                    ) {
+                        (None, None) => None,
+                        (Some(queries), None) | (None, Some(queries)) => Some(queries),
+                        (Some(left_queries), Some(right_queries)) => {
+                            let final_exprs = left_queries
                                 .iter()
-                                .map(|right| merge_queries_and(left, right))
-                        })
-                        .collect::<Result<Vec<_>, _>>()?;
+                                .flat_map(|left| {
+                                    right_queries
+                                        .iter()
+                                        .map(|right| merge_queries_and(left, right))
+                                })
+                                .collect::<Result<Vec<_>, _>>()?;
 
-                    Some(final_exprs)
+                            Some(final_exprs)
+                        }
+                    }
                 }
                 Operator::Or => {
                     let Some(mut left_queries) =
@@ -145,8 +143,8 @@ pub(crate) fn apply_filter_expr_to_queries(
                     match known_filter_column(left.as_ref(), right.as_ref(), schema) {
                         KnownFilterColumn::Index(index_name, time) => Some(
                             queries
-                                .iter()
-                                .map(|query| replace_time_in_query(query, &index_name, time, op))
+                                .into_iter()
+                                .map(|query| replace_time_in_query(&query, &index_name, time, op))
                                 .collect::<Result<Vec<_>, _>>()?,
                         ),
                         KnownFilterColumn::SegmentId(segment_id) => {

@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use egui::emath::{GuiRounding as _, Rot2};
+use egui::emath::GuiRounding as _;
 use egui::{
     CollapsingResponse, Color32, IntoAtoms, NumExt as _, Rangef, Rect, StrokeKind, Widget as _,
     WidgetInfo, WidgetText, pos2,
@@ -22,16 +22,8 @@ pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
-    fn theme(&self) -> egui::Theme {
-        if self.ui().visuals().dark_mode {
-            egui::Theme::Dark
-        } else {
-            egui::Theme::Light
-        }
-    }
-
     fn tokens(&self) -> &'static DesignTokens {
-        crate::design_tokens_of(self.theme())
+        crate::design_tokens_of(self.ui().theme())
     }
 
     /// Current time in seconds
@@ -53,11 +45,6 @@ pub trait UiExt {
         }
     }
 
-    #[inline]
-    fn is_tooltip(&self) -> bool {
-        self.ui().layer_id().order == egui::Order::Tooltip
-    }
-
     /// Show an animated loading indicator.
     ///
     /// `reason` describes why we are loading. In debug builds, it is shown on hover.
@@ -71,21 +58,36 @@ pub trait UiExt {
 
     /// Shows a success label with a large border.
     ///
+    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// shown on hover instead of inline.
+    ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].
     fn success_label(&mut self, success_text: impl Into<String>) -> egui::Response {
-        Alert::success().show_text(self.ui_mut(), success_text.into(), None)
+        let success_text = success_text.into();
+        let (summary, details) = re_error::split_details(&success_text);
+        Alert::success().show_text(self.ui_mut(), summary, details.map(str::to_owned))
     }
 
-    /// Shows a info label with a large border.
+    /// Shows an info label with a large border.
+    ///
+    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// shown on hover instead of inline.
     fn info_label(&mut self, info_text: impl Into<String>) -> egui::Response {
-        Alert::info().show_text(self.ui_mut(), info_text.into(), None)
+        let info_text = info_text.into();
+        let (summary, details) = re_error::split_details(&info_text);
+        Alert::info().show_text(self.ui_mut(), summary, details.map(str::to_owned))
     }
 
     /// Shows a warning label with a large border.
     ///
+    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// shown on hover instead of inline.
+    ///
     /// If you don't want a border, use [`crate::ContextExt::warning_text`].
     fn warning_label(&mut self, warning_text: impl Into<String>) -> egui::Response {
-        Alert::warning().show_text(self.ui_mut(), warning_text.into(), None)
+        let warning_text = warning_text.into();
+        let (summary, details) = re_error::split_details(&warning_text);
+        Alert::warning().show_text(self.ui_mut(), summary, details.map(str::to_owned))
     }
 
     /// Shows a small error label with the given text on hover and copies the text to the clipboard on click with a large border.
@@ -101,12 +103,17 @@ pub trait UiExt {
 
     /// Shows an error label with the entire error text and copies the text to the clipboard on click.
     ///
+    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// shown on hover instead of inline.
+    ///
     /// Use this only if the error message is short, or you have a lot of room.
     /// Otherwise, use [`Self::error_with_details_on_hover`].
     ///
     /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
     fn error_label(&mut self, error_text: impl Into<String>) -> egui::Response {
-        Alert::error().show_text(self.ui_mut(), error_text.into(), None)
+        let error_text = error_text.into();
+        let (summary, details) = re_error::split_details(&error_text);
+        Alert::error().show_text(self.ui_mut(), summary, details.map(str::to_owned))
     }
 
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
@@ -174,6 +181,32 @@ pub trait UiExt {
         response.widget_info(|| {
             WidgetInfo::selected(egui::WidgetType::Button, true, *selected, alt_text.clone())
         });
+        response
+    }
+
+    /// An icon-only selectable value button, like [`egui::Ui::selectable_value`] but with an icon.
+    ///
+    /// The `alt_text` is used for accessibility and hover tooltip.
+    fn icon_selectable_value<V: PartialEq>(
+        &mut self,
+        icon: &Icon,
+        alt_text: impl Into<String>,
+        current_value: &mut V,
+        selected_value: V,
+    ) -> egui::Response {
+        let ui = self.ui_mut();
+        let selected = *current_value == selected_value;
+        let alt_text = alt_text.into();
+        let response = ui
+            .add(
+                egui::Button::image(icon.as_image().alt_text(alt_text.clone()))
+                    .image_tint_follows_text_color(true)
+                    .selected(selected),
+            )
+            .on_hover_text(&alt_text);
+        if response.clicked() {
+            *current_value = selected_value;
+        }
         response
     }
 
@@ -553,36 +586,22 @@ pub trait UiExt {
         }
     }
 
-    /// Paint a collapsing triangle in the Rerun's style.
+    /// Paint a collapsing chevron icon.
     ///
-    /// Alternative to [`egui::collapsing_header::paint_default_icon`]. Note that the triangle is
-    /// painted with a fixed size.
+    /// Alternative to [`egui::collapsing_header::paint_default_icon`]. The chevron points right
+    /// when closed and rotates 90° clockwise when open, with smooth animation.
     fn paint_collapsing_triangle(&self, openness: f32, center: egui::Pos2, color: Color32) {
-        // This value is hard coded because, from a UI perspective, the size of the triangle is
-        // given and fixed, and shouldn't vary based on the area it's in.
-        static TRIANGLE_SIZE: f32 = 8.0;
-
-        // Normalized in [0, 1]^2 space.
-        //
-        // Note on how these coords were originally computed: https://github.com/rerun-io/rerun/pull/2920
-        // Since then, the coordinates have been manually updated to Look Good(tm).
-        //
-        // Discussion on the future of icons: https://github.com/rerun-io/rerun/issues/2960
-        let mut points = vec![
-            pos2(0.306248, -0.017085), // top left end
-            pos2(0.79387, 0.470537),   // ┐
-            pos2(0.806074, 0.5),       // ├ "rounded" corner
-            pos2(0.79387, 0.529463),   // ┘
-            pos2(0.306248, 1.017085),  // bottom left end
-        ];
-
         use std::f32::consts::TAU;
-        let rotation = Rot2::from_angle(egui::remap(openness, 0.0..=1.0, 0.0..=TAU / 4.0));
-        for p in &mut points {
-            *p = center + rotation * (*p - pos2(0.5, 0.5)) * TRIANGLE_SIZE;
-        }
 
-        self.ui().painter().line(points, (1.0, color));
+        let angle = egui::remap(openness, 0.0..=1.0, 0.0..=TAU / 4.0);
+        let size = egui::vec2(8.0, 8.0);
+        let rect = egui::Rect::from_center_size(center, size);
+
+        crate::icons::CHEVRON
+            .as_image()
+            .tint(color)
+            .rotate(angle, egui::vec2(0.5, 0.5))
+            .paint_at(self.ui(), rect);
     }
 
     /// Workaround for putting a label into a grid at the top left of its row.
@@ -605,46 +624,10 @@ pub trait UiExt {
         egui::Grid::new(id).num_columns(2).spacing(spacing)
     }
 
-    /// Draws a shadow into the given rect with the shadow direction given from dark to light
+    /// Draws a shadow into the given rect with the shadow direction given from dark to light.
     fn draw_shadow_line(&self, rect: Rect, direction: egui::Direction) {
         let color_dark = self.tokens().shadow_gradient_dark_start;
-        let color_bright = Color32::TRANSPARENT;
-
-        let (left_top, right_top, left_bottom, right_bottom) = match direction {
-            egui::Direction::RightToLeft => (color_bright, color_dark, color_bright, color_dark),
-            egui::Direction::LeftToRight => (color_dark, color_bright, color_dark, color_bright),
-            egui::Direction::BottomUp => (color_bright, color_bright, color_dark, color_dark),
-            egui::Direction::TopDown => (color_dark, color_dark, color_bright, color_bright),
-        };
-
-        use egui::epaint::Vertex;
-        let shadow = egui::Mesh {
-            indices: vec![0, 1, 2, 2, 1, 3],
-            vertices: vec![
-                Vertex {
-                    pos: rect.left_top(),
-                    uv: egui::epaint::WHITE_UV,
-                    color: left_top,
-                },
-                Vertex {
-                    pos: rect.right_top(),
-                    uv: egui::epaint::WHITE_UV,
-                    color: right_top,
-                },
-                Vertex {
-                    pos: rect.left_bottom(),
-                    uv: egui::epaint::WHITE_UV,
-                    color: left_bottom,
-                },
-                Vertex {
-                    pos: rect.right_bottom(),
-                    uv: egui::epaint::WHITE_UV,
-                    color: right_bottom,
-                },
-            ],
-            texture_id: Default::default(),
-        };
-        self.ui().painter().add(shadow);
+        paint_gradient_rect(self.ui(), rect, direction, color_dark, Color32::TRANSPARENT);
     }
 
     fn draw_focus_outline(&self, rect: Rect) {
@@ -888,10 +871,10 @@ pub trait UiExt {
 
                 let copy_visuals = ui.style().interact(&copy_response);
 
-                let color = if !copy_response.contains_pointer() {
-                    visuals.weak_bg_fill
-                } else {
+                let color = if copy_response.contains_pointer() {
                     copy_visuals.weak_bg_fill
+                } else {
+                    visuals.weak_bg_fill
                 };
 
                 ui.painter().set(
@@ -952,21 +935,30 @@ pub trait UiExt {
         x: f32,
         y: Rangef,
     ) {
-        let ui = self.ui();
-        let stroke = if let Some(response) = response {
-            ui.visuals().widgets.style(response).fg_stroke
+        let style = if let Some(response) = response {
+            self.ui().visuals().widgets.style(response)
         } else {
-            ui.visuals().widgets.inactive.fg_stroke
+            &self.ui().visuals().widgets.inactive
         };
+        self.paint_time_cursor_with_style(painter, style, x, y);
+    }
 
+    /// Like [`Self::paint_time_cursor`], but with an explicit widget style.
+    fn paint_time_cursor_with_style(
+        &self,
+        painter: &egui::Painter,
+        style: &egui::style::WidgetVisuals,
+        x: f32,
+        y: Rangef,
+    ) {
         let Rangef {
             min: y_min,
             max: y_max,
         } = y;
 
         let stroke = egui::Stroke {
-            width: 1.5 * stroke.width,
-            color: stroke.color,
+            width: 1.5 * style.fg_stroke.width,
+            color: style.fg_stroke.color,
         };
 
         let w = 10.0;
@@ -1120,6 +1112,8 @@ pub trait UiExt {
             let style = ui.style_mut();
             style.visuals.button_frame = false;
 
+            // At the top of [`Ui::data_label_impl`] we make assumptions on the spacing and
+            // icon size of re_hyperlink, if we adjust this we need to check if the workaround still works
             let response = ui
                 .add(crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text))
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
@@ -1414,11 +1408,11 @@ pub trait UiExt {
         let content_changed = ui.data_mut(|data| {
             let stored_show_extras = data
                 .get_temp_mut_or_insert_with(ui.id().with("__stored_show_extra__"), || show_extras);
-            if *stored_show_extras != show_extras {
+            if *stored_show_extras == show_extras {
+                false
+            } else {
                 *stored_show_extras = show_extras;
                 true
-            } else {
-                false
             }
         });
 
@@ -1459,6 +1453,56 @@ pub trait UiExt {
         ui.visuals_mut().widgets.inactive.bg_stroke =
             egui::Stroke::new(1.0, ui.visuals().error_fg_color);
     }
+}
+
+/// Paints a gradient rectangle that transitions from `color_from` to `color_to`
+/// along the given `direction`.
+///
+/// For example, `Direction::TopDown` paints `color_from` at the top edge fading
+/// to `color_to` at the bottom edge.
+fn paint_gradient_rect(
+    ui: &egui::Ui,
+    rect: Rect,
+    direction: egui::Direction,
+    color_from: Color32,
+    color_to: Color32,
+) {
+    use egui::epaint::Vertex;
+
+    let (left_top, right_top, left_bottom, right_bottom) = match direction {
+        egui::Direction::TopDown => (color_from, color_from, color_to, color_to),
+        egui::Direction::BottomUp => (color_to, color_to, color_from, color_from),
+        egui::Direction::LeftToRight => (color_from, color_to, color_from, color_to),
+        egui::Direction::RightToLeft => (color_to, color_from, color_to, color_from),
+    };
+
+    let mesh = egui::Mesh {
+        indices: vec![0, 1, 2, 2, 1, 3],
+        vertices: vec![
+            Vertex {
+                pos: rect.left_top(),
+                uv: egui::epaint::WHITE_UV,
+                color: left_top,
+            },
+            Vertex {
+                pos: rect.right_top(),
+                uv: egui::epaint::WHITE_UV,
+                color: right_top,
+            },
+            Vertex {
+                pos: rect.left_bottom(),
+                uv: egui::epaint::WHITE_UV,
+                color: left_bottom,
+            },
+            Vertex {
+                pos: rect.right_bottom(),
+                uv: egui::epaint::WHITE_UV,
+                color: right_bottom,
+            },
+        ],
+        texture_id: Default::default(),
+    };
+    ui.painter().add(mesh);
 }
 
 impl UiExt for egui::Ui {

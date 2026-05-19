@@ -14,6 +14,7 @@ use re_types_core::Loggable as _;
 use crate::RecordBatchTestExt as _;
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
+    entry_name,
 };
 
 /// This test makes a snapshot of all the chunks returned for a simple dataset.
@@ -44,7 +45,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
     let chunk_info = service
         .query_dataset(
             tonic::Request::new(QueryDatasetRequest::default().into())
-                .with_entry_name(dataset_name)
+                .with_entry_name(entry_name(dataset_name))
                 .unwrap(),
         )
         .await
@@ -148,7 +149,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
                 }
                 .into(),
             )
-            .with_entry_name(dataset_name_1)
+            .with_entry_name(entry_name(dataset_name_1))
             .unwrap(),
         )
         .await
@@ -177,7 +178,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
                 }
                 .into(),
             )
-            .with_entry_name(dataset_name_1)
+            .with_entry_name(entry_name(dataset_name_1))
             .unwrap(),
         )
         .await

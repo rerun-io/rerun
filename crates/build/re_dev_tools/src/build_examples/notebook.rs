@@ -40,7 +40,7 @@ impl Notebook {
         let mut num_failed = 0;
         for result in results {
             match result {
-                Ok(_) => {}
+                Ok(()) => {}
                 Err(err) => {
                     eprintln!("{err}");
                     num_failed += 1;

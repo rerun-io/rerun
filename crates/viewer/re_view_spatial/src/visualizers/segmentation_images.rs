@@ -1,29 +1,19 @@
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::SegmentationImage;
-use re_sdk_types::components::{ImageFormat, Opacity};
+use re_sdk_types::components::{ImageBuffer, ImageFormat, MagnificationFilter, Opacity};
 use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageInfo, ViewContext, ViewContextCollection, ViewQuery,
+    IdentifiedViewSystem, ImageInfo, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
     VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::textured_rect_from_image;
 use crate::{PickableRectSourceData, PickableTexturedRect};
 
-pub struct SegmentationImageVisualizer {
-    pub data: SpatialViewVisualizerData,
-}
-
-impl Default for SegmentationImageVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
-        }
-    }
-}
+#[derive(Default)]
+pub struct SegmentationImageVisualizer;
 
 struct SegmentationImageComponentData {
     image: ImageInfo,
@@ -41,24 +31,33 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<SegmentationImage>()
+        VisualizerQueryInfo::buffer_and_format::<ImageBuffer, ImageFormat>(
+            &SegmentationImage::descriptor_buffer(),
+            &SegmentationImage::descriptor_format(),
+            &SegmentationImage::all_components(),
+        )
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView2D::identifier())
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
 
         use super::entity_iterator::process_archetype;
-        process_archetype::<Self, SegmentationImage, _>(
+        process_archetype::<SegmentationImage, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            self.data.preferred_view_kind,
+            self,
             |ctx, spatial_ctx, results| {
                 let entity_path = ctx.target_entity_path;
 
@@ -75,7 +74,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 let all_opacities =
                     results.iter_optional(SegmentationImage::descriptor_opacity().component);
 
-                let data = re_query::range_zip_1x2(
+                let image_data = re_query::range_zip_1x2(
                     all_buffers.slice::<&[u8]>(),
                     all_formats.component_slow::<ImageFormat>(),
                     all_opacities.slice::<f32>(),
@@ -94,8 +93,8 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                     })
                 });
 
-                for data in data {
-                    let SegmentationImageComponentData { image, opacity } = data;
+                for image_data in image_data {
+                    let SegmentationImageComponentData { image, opacity } = image_data;
 
                     let opacity = opacity.unwrap_or_else(|| {
                         typed_fallback_for(ctx, SegmentationImage::descriptor_opacity().component)
@@ -112,10 +111,11 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         &image,
                         colormap,
                         multiplicative_tint,
+                        MagnificationFilter::default(),
                         SegmentationImage::name(),
                     ) {
                         Ok(textured_rect) => {
-                            self.data.add_pickable_rect(
+                            data.add_pickable_rect(
                                 PickableTexturedRect {
                                     ent_path: entity_path.clone(),
                                     textured_rect,
@@ -140,14 +140,12 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             },
         )?;
 
-        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
-            ctx.viewer_ctx.render_ctx(),
-            &self.data.pickable_rects,
-        )?]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        Ok(output
+            .with_draw_data([PickableTexturedRect::to_draw_data(
+                ctx.viewer_ctx.render_ctx(),
+                &data.pickable_rects,
+            )?])
+            .with_visualizer_data(data))
     }
 }
 

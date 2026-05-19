@@ -69,10 +69,22 @@ visualizing periodic or cyclic data.
 
 It interpolates from white to blue to purple to red to orange and back to white.
 
+#### `RvizMap` = 10
+The classic `RViz` "Map" grid-map colormap intended for occupancy-style SLAM grid maps.
+
+Known values are mapped to a grayscale ramp from white (free) to black (occupied),
+unknown values are in a green-blue color. Special / illegal values have highlight colors.
+
+#### `RvizCostmap` = 11
+The classic `RViz` "Costmap" grid-map colormap for robot navigation cost maps.
+
+Cost values are mapped to blue to red spectrum, and special cost values
+(e.g. lethal obstacles) have highlight colors. Zero values are fully transparent.
+
 
 ## Arrow datatype
 ```
-uint8
+UInt8
 ```
 
 ## API reference links
@@ -85,3 +97,4 @@ uint8
 
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
+* [`GridMap`](../archetypes/grid_map.md?speculative-link)

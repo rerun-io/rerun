@@ -66,6 +66,11 @@ impl ViewerOpenUrlDescription {
                 target_short: Some(uri.entry_id.to_string()),
             },
 
+            ViewerOpenUrl::RedapFolder(uri) => Self {
+                category: "Folder",
+                target_short: Some(uri.path.clone()),
+            },
+
             ViewerOpenUrl::WebEventListener => Self {
                 category: "Web event listener",
                 target_short: None,
@@ -87,7 +92,7 @@ impl ViewerOpenUrlDescription {
                 target_short: None,
             },
 
-            ViewerOpenUrl::ChunkStoreBrowser => Self {
+            ViewerOpenUrl::ChunkStoreBrowser { .. } => Self {
                 category: "Chunk store browser",
                 target_short: None,
             },
@@ -96,9 +101,14 @@ impl ViewerOpenUrlDescription {
 }
 
 pub fn command_palette_parse_url(url: &str) -> Option<CommandPaletteUrl> {
-    let Ok(open_url) = url.parse::<ViewerOpenUrl>() else {
-        return None;
-    };
+    let open_url = ViewerOpenUrl::parse_with_options(
+        url,
+        &re_data_source::FromUriOptions {
+            accept_extensionless_http: true,
+            ..Default::default()
+        },
+    )
+    .ok()?;
 
     Some(CommandPaletteUrl {
         url: url.to_owned(),

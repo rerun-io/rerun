@@ -1,8 +1,8 @@
 use re_sdk_types::components::EntityPath;
-use re_viewer_context::{MaybeMutRef, ViewerContext};
+use re_viewer_context::{MaybeMutRef, StoreViewContext};
 
 pub(crate) fn edit_or_view_entity_path(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     path: &mut MaybeMutRef<'_, EntityPath>,
 ) -> egui::Response {
@@ -14,14 +14,7 @@ pub(crate) fn edit_or_view_entity_path(
 
         response
     } else {
-        // Assume the current query for information shown in hover cards etc.
-        let query = ctx.current_query();
-
-        // Entity paths right now always refer to the current recording.
-        // This might change in the future at which point we need more context here.
-        let db = ctx.recording();
-
         let entity_path = path.as_ref().as_str().into();
-        re_data_ui::item_ui::entity_path_button(ctx, &query, db, ui, None, &entity_path)
+        re_data_ui::item_ui::entity_path_button(ctx, ui, None, &entity_path)
     }
 }

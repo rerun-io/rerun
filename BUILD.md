@@ -199,7 +199,7 @@ This can be useful for developer tools, e.g. for [setting up IntelliSense in VSC
 
 ## Building the docs
 
-High-level documentation for Rerun can be found at [http://rerun.io/docs](http://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
+High-level documentation for Rerun can be found at [https://rerun.io/docs](https://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
 
 - 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp) are built with `doxygen` and hosted on GitHub. Use `pixi run -e cpp cpp-docs` to build them locally. For details on the C++ doc-system, see [Writing Docs](rerun_cpp/docs/writing_docs.md).
 - 🐍 [Python API docs](https://ref.rerun.io/docs/python) are built via `mkdocs` and hosted on GitHub. For details on the Python doc-system, see [Writing Docs](rerun_py/docs/writing_docs.md).

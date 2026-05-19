@@ -23,7 +23,8 @@ def test_df_count(readonly_test_dataset: DatasetEntry) -> None:
 
 def test_df_aggregation(readonly_test_dataset: DatasetEntry) -> None:
     results = (
-        readonly_test_dataset.reader(index="time_1")
+        readonly_test_dataset
+        .reader(index="time_1")
         .unnest_columns("/obj1:Points3D:positions")
         .aggregate(
             [],

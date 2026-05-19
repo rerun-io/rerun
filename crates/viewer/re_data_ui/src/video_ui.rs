@@ -8,13 +8,13 @@ use re_renderer::resource_managers::SourceImageDataFormat;
 use re_renderer::video::VideoFrameTexture;
 use re_sdk_types::components::{MediaType, VideoTimestamp};
 use re_sdk_types::{Archetype as _, archetypes};
-use re_types_core::{ComponentDescriptor, RowId};
+use re_types_core::{ComponentDescriptor, ComponentIdentifier, RowId};
 use re_ui::UiExt as _;
 use re_ui::list_item::{self, PropertyContent};
 use re_video::{FrameInfo, VideoDataDescription};
 use re_viewer_context::{
-    SharablePlayableVideoStream, UiLayout, VideoStreamCache, VideoStreamProcessingError,
-    ViewerContext, video_stream_time_from_query,
+    SharablePlayableVideoStream, StoreViewContext, SystemCommandSender as _, UiLayout,
+    VideoStreamCache, VideoStreamProcessingError, video_stream_time_from_query,
 };
 
 use crate::image_ui::texture_preview_size;
@@ -36,7 +36,7 @@ pub fn video_asset_result_ui(
                         "Video Asset",
                         default_open,
                         |ui| {
-                            video_data_ui(ui, ui_layout, video.data_descr());
+                            video_data_ui(ui, ui_layout, StreamKind::Video, video.data_descr());
                         },
                     );
                 });
@@ -57,6 +57,7 @@ pub fn video_stream_result_ui(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video_result: &Result<SharablePlayableVideoStream, VideoStreamProcessingError>,
+    stream_kind: StreamKind,
 ) {
     re_tracing::profile_function!();
 
@@ -65,19 +66,19 @@ pub fn video_stream_result_ui(
             if ui_layout == UiLayout::SelectionPanel {
                 let default_open = true;
                 // Extra scope needed to ensure right spacing.
-                ui.list_item_scope("video_stream", |ui| {
+                ui.list_item_scope(format!("{stream_kind}_stream"), |ui| {
                     ui.list_item_collapsible_noninteractive_label(
-                        "Video Stream",
+                        format!("{} Stream", stream_kind.capitalized()),
                         default_open,
                         |ui| {
-                            video_data_ui(ui, ui_layout, video.read().video_descr());
+                            video_data_ui(ui, ui_layout, stream_kind, video.read().video_descr());
                         },
                     );
                 });
             }
         }
         Err(err) => {
-            let error_message = format!("Failed to process video stream: {err}");
+            let error_message = format!("Failed to process {stream_kind} stream: {err}");
             if ui_layout.is_single_line() {
                 ui.error_with_details_on_hover(error_message);
             } else {
@@ -87,7 +88,12 @@ pub fn video_stream_result_ui(
     }
 }
 
-fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoDataDescription) {
+fn video_data_ui(
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    stream_kind: StreamKind,
+    video_descr: &VideoDataDescription,
+) {
     re_tracing::profile_function!();
 
     if let Some(encoding_details) = &video_descr.encoding_details {
@@ -97,13 +103,18 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
         );
 
         if let Some(bit_depth) = encoding_details.bit_depth {
+            // Images can display higher bit depths.
+            let is_image_sequence =
+                matches!(video_descr.codec, re_video::VideoCodec::ImageSequence(_));
             ui.list_item_flat_noninteractive(PropertyContent::new("Bit depth").value_fn(
                 |ui, _| {
                     ui.label(bit_depth.to_string());
-                    if 8 < bit_depth {
+                    if 8 < bit_depth && !is_image_sequence {
                         // TODO(#7594): HDR videos
                         ui.warning_label("HDR").on_hover_ui(|ui| {
-                            ui.label("High-dynamic-range videos not yet supported by Rerun");
+                            ui.label(format!(
+                                "High-dynamic-range {stream_kind}s not yet supported by Rerun"
+                            ));
                             ui.hyperlink("https://github.com/rerun-io/rerun/issues/7594");
                         });
                     }
@@ -133,14 +144,21 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
     }
 
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("Frame count").value_uint(video_descr.num_samples()),
+        PropertyContent::new(format!("{} count", stream_kind.capitalized_frame_word()))
+            .value_uint(video_descr.num_samples()),
     );
 
     if let Some(fps) = video_descr.average_fps() {
         ui.list_item_flat_noninteractive(
             PropertyContent::new("Average FPS").value_text(format!("{fps:.2}")),
         )
-        .on_hover_text("Average frames per second (FPS) of the video");
+        .on_hover_text(format!(
+            "Average frames per second (FPS) of the {}",
+            match stream_kind {
+                StreamKind::Video => "video",
+                StreamKind::Image => "image stream",
+            }
+        ));
     }
 
     ui.list_item_flat_noninteractive(
@@ -163,29 +181,51 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
         });
     }
 
-    ui.list_item_collapsible_noninteractive_label("More video statistics", false, |ui| {
+    if stream_kind == StreamKind::Video {
+        ui.list_item_collapsible_noninteractive_label("More video statistics", false, |ui| {
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("Number of keyframes")
                     .value_uint(video_descr.keyframe_indices.len()),
             )
             .on_hover_text("The total number of keyframes in the video.");
 
-            let re_video::SamplesStatistics {dts_always_equal_pts, has_sample_highest_pts_so_far: _} = &video_descr.samples_statistics;
+            let re_video::SamplesStatistics {
+                dts_always_equal_pts,
+                has_sample_highest_pts_so_far: _,
+                gop_sizes,
+            } = &video_descr.samples_statistics;
 
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("All PTS equal DTS").value_bool(*dts_always_equal_pts)
             ).on_hover_text("Whether all decode timestamps are equal to presentation timestamps. If true, the video typically has no B-frames.");
+
+            if cfg!(debug_assertions) && gop_sizes.smallest > 0 {
+                if gop_sizes.smallest == gop_sizes.largest {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("GOP size").value_uint(gop_sizes.smallest)
+                    ).on_hover_text("All known gops are this size.");
+                } else {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Smallest GOP size").value_uint(gop_sizes.smallest)
+                    ).on_hover_text("The smallest observed gop size.");
+
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Largest GOP size").value_uint(gop_sizes.largest)
+                    ).on_hover_text("The largest observed gop size.");
+                }
+            }
         });
 
-    ui.list_item_collapsible_noninteractive_label("Video samples", false, |ui| {
-        egui::Resize::default()
-            .with_stroke(true)
-            .resizable([false, true])
-            .max_height(611.0) // Odd value so the user can see half-hidden rows
-            .show(ui, |ui| {
-                samples_table_ui(ui, video_descr);
-            });
-    });
+        ui.list_item_collapsible_noninteractive_label("Video samples", false, |ui| {
+            egui::Resize::default()
+                .with_stroke(true)
+                .resizable([false, true])
+                .max_height(611.0) // Odd value so the user can see half-hidden rows
+                .show(ui, |ui| {
+                    samples_table_ui(ui, video_descr);
+                });
+        });
+    }
 }
 
 fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
@@ -310,39 +350,52 @@ fn timestamp_ui(
 }
 
 fn decoded_frame_ui<'a>(
-    ctx: &re_viewer_context::ViewerContext<'_>,
+    ctx: &re_viewer_context::AppContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
     video_time: re_video::Time,
+    stream_kind: StreamKind,
     get_video_buffer: &dyn Fn(re_log_types::external::re_tuid::Tuid) -> &'a [u8],
 ) {
-    let player_stream_id =
-        re_video::player::VideoPlayerStreamId(ui.id().with("video_player").value());
+    let player_stream_id = re_video::player::VideoPlayerStreamId(
+        ui.id().with(format!("{stream_kind}_player")).value(),
+    );
 
-    match video.frame_at(
-        ctx.render_ctx(),
+    let frame_output = video.frame_at(
+        ctx.render_ctx,
         player_stream_id,
         video_time,
         get_video_buffer,
-    ) {
-        Ok(VideoFrameTexture {
-            texture,
-            decoder_delay_state,
-            show_loading_indicator,
-            frame_info,
-            source_pixel_format,
-        }) => {
-            if let Some(frame_info) = frame_info
-                && ui_layout == UiLayout::SelectionPanel
-            {
-                re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
-                    let id = ui.id().with("decoded_frame_collapsible");
+    );
+
+    if let Some(VideoFrameTexture {
+        texture,
+        decoder_delay_state,
+        show_loading_indicator,
+        source_pixel_format,
+        frame_info,
+    }) = frame_output.output
+    {
+        if let Some(frame_info) = frame_info
+            && ui_layout == UiLayout::SelectionPanel
+        {
+            re_ui::list_item::list_item_scope(
+                ui,
+                format!("decoded_{}_ui", stream_kind.frame_word()),
+                |ui| {
+                    let id = ui
+                        .id()
+                        .with(format!("decoded_{}_collapsible", stream_kind.frame_word()));
                     let default_open = false;
                     let label = if let Some(frame_nr) = frame_info.frame_nr {
-                        format!("Decoded frame #{}", re_format::format_uint(frame_nr))
+                        format!(
+                            "Decoded {} #{}",
+                            stream_kind.frame_word(),
+                            re_format::format_uint(frame_nr)
+                        )
                     } else {
-                        "Current decoded frame".to_owned()
+                        format!("Current decoded {}", stream_kind.frame_word())
                     };
                     ui.list_item()
                         .interactive(false)
@@ -353,79 +406,88 @@ fn decoded_frame_ui<'a>(
                             list_item::LabelContent::new(label),
                             |ui| {
                                 list_item::list_item_scope(ui, id, |ui| {
-                                    frame_info_ui(ui, &frame_info, video.data_descr());
+                                    frame_info_ui(ui, &frame_info, video.data_descr(), stream_kind);
                                     source_image_data_format_ui(ui, &source_pixel_format);
                                 });
                             },
                         )
-                });
-            }
-
-            let preview_size = if let Some(texture) = &texture {
-                let [w, h] = texture.width_height();
-                texture_preview_size(ui, ui_layout, [w, h])
-            } else if let Some([w, h]) = video.dimensions() {
-                texture_preview_size(ui, ui_layout, [w as _, h as _])
-            } else {
-                egui::Vec2::splat(ui.available_width().at_most(64.0))
-            };
-
-            let response = if let Some(texture) = texture {
-                crate::image_ui::texture_preview_ui(
-                    ctx.render_ctx(),
-                    ui,
-                    ui_layout,
-                    "video_preview",
-                    re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
-                    preview_size,
-                )
-            } else {
-                ui.allocate_response(preview_size, egui::Sense::hover())
-            };
-
-            if decoder_delay_state.should_request_more_frames() {
-                ui.request_repaint(); // Keep polling for an up-to-date texture
-            }
-
-            {
-                let video_id = video.debug_name(); // TODO(emilk): actual unique id for video
-                let loading_indicator_opacity = ui.animate_bool(
-                    ui.id().with((video_id, "loading_indicator")),
-                    show_loading_indicator,
-                );
-
-                if 0.0 < loading_indicator_opacity {
-                    re_ui::loading_indicator::paint_loading_indicator_inside(
-                        ui,
-                        egui::Align2::CENTER_CENTER,
-                        response.rect,
-                        loading_indicator_opacity,
-                        None,
-                        "Decoding video frame",
-                    );
-                }
-            }
+                },
+            );
         }
 
-        Err(err) => {
-            ui.error_label(err.to_string());
+        let preview_size = if let Some(texture) = &texture {
+            let [w, h] = texture.width_height();
+            texture_preview_size(ui, ui_layout, [w, h])
+        } else if let Some([w, h]) = video.dimensions() {
+            texture_preview_size(ui, ui_layout, [w as _, h as _])
+        } else {
+            egui::Vec2::splat(ui.available_width().at_most(64.0))
+        };
 
-            #[cfg(not(target_arch = "wasm32"))]
-            if let re_video::player::VideoPlayerError::Decoding(re_video::DecodeError::Ffmpeg(
-                err,
-            )) = &err
-            {
-                match err.as_ref() {
-                    re_video::FFmpegError::UnsupportedFFmpegVersion { .. }
-                    | re_video::FFmpegError::FailedToDetermineFFmpegVersion(_)
-                    | re_video::FFmpegError::FFmpegNotInstalled => {
-                        if let Some(download_url) = re_video::ffmpeg_download_url() {
-                            ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({download_url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
-                        }
+        let response = if let Some(texture) = texture {
+            crate::image_ui::texture_preview_ui(
+                ctx.render_ctx,
+                ui,
+                ui_layout,
+                &format!("{stream_kind}_preview"),
+                &re_renderer::renderer::ColormappedTexture::from_video_frame(texture.clone()),
+                preview_size,
+                &|| match re_renderer::schedule_read_texture(ctx.render_ctx, &texture.inner.texture)
+                {
+                    Ok(id) => ctx
+                        .command_sender
+                        .send_system(re_viewer_context::SystemCommand::ReadbackAndSaveTexture(id)),
+                    Err(err) => {
+                        re_log::error!("Failed to save {stream_kind} preview: {err}");
                     }
+                },
+            )
+        } else {
+            ui.allocate_response(preview_size, egui::Sense::hover())
+        };
 
-                    _ => {}
+        if decoder_delay_state.should_request_more_frames() {
+            ui.request_repaint(); // Keep polling for an up-to-date texture
+        }
+
+        {
+            let show_loading_indicator = frame_output.error.is_some() || show_loading_indicator;
+            let video_id = video.debug_name(); // TODO(emilk): actual unique id for video
+            let loading_indicator_opacity = ui.animate_bool(
+                ui.id().with((video_id, "loading_indicator")),
+                show_loading_indicator,
+            );
+
+            if 0.0 < loading_indicator_opacity {
+                re_ui::loading_indicator::paint_loading_indicator_inside(
+                    ui,
+                    egui::Align2::CENTER_CENTER,
+                    response.rect,
+                    loading_indicator_opacity,
+                    None,
+                    &format!("Decoding {}", stream_kind.frame_word()),
+                );
+            }
+        }
+    }
+
+    if let Some(err) = frame_output.error {
+        ui.error_label(err.to_string());
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if let re_video::player::VideoPlayerError::Decoding(re_video::DecodeError::Ffmpeg(err)) =
+            &err
+        {
+            match err.as_ref() {
+                re_video::FFmpegError::UnsupportedFFmpegVersion { .. }
+                | re_video::FFmpegError::FailedToDetermineFFmpegVersion(_)
+                | re_video::FFmpegError::FFmpegNotInstalled => {
+                    if let Some(download_url) = re_video::ffmpeg_download_url() {
+                        ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({download_url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
+                    }
                 }
+
+                _ => {}
             }
         }
     }
@@ -435,6 +497,7 @@ fn frame_info_ui(
     ui: &mut egui::Ui,
     frame_info: &FrameInfo,
     video_descr: &re_video::VideoDataDescription,
+    stream_kind: StreamKind,
 ) {
     let FrameInfo {
         is_sync,
@@ -445,7 +508,9 @@ fn frame_info_ui(
         latest_decode_timestamp,
     } = *frame_info;
 
-    if let Some(is_sync) = is_sync {
+    if let Some(is_sync) = is_sync
+        && stream_kind == StreamKind::Video
+    {
         ui.list_item_flat_noninteractive(PropertyContent::new("Sync").value_bool(is_sync))
             .on_hover_text(
                 "The start of a new GOP (Group of Frames)?\n\
@@ -466,7 +531,10 @@ fn frame_info_ui(
             presentation_time_range.start.0, presentation_time_range.end.0,
         )))
     }
-    .on_hover_text("Time range in which this frame is valid.");
+    .on_hover_text(format!(
+        "Time range in which this {} is shown.",
+        stream_kind.frame_word()
+    ));
 
     fn value_fn_for_time(
         time: re_video::Time,
@@ -477,7 +545,9 @@ fn frame_info_ui(
         }
     }
 
-    if let Some(sample_idx) = sample_idx {
+    if let Some(sample_idx) = sample_idx
+        && stream_kind == StreamKind::Video
+    {
         ui.list_item_flat_noninteractive(PropertyContent::new("Sample").value_fn(move |ui, _| {
             ui.monospace(re_format::format_uint(sample_idx));
         }))
@@ -487,13 +557,20 @@ fn frame_info_ui(
     }
 
     if let Some(frame_nr) = frame_nr {
-        ui.list_item_flat_noninteractive(PropertyContent::new("Frame").value_fn(move |ui, _| {
-            ui.monospace(re_format::format_uint(frame_nr));
-        }))
-        .on_hover_text("The frame number, as ordered by presentation time");
+        ui.list_item_flat_noninteractive(
+            PropertyContent::new(stream_kind.capitalized_frame_word()).value_fn(move |ui, _| {
+                ui.monospace(re_format::format_uint(frame_nr));
+            }),
+        )
+        .on_hover_text(format!(
+            "The {} number, as ordered by presentation time",
+            stream_kind.frame_word()
+        ));
     }
 
-    if let Some(dts) = latest_decode_timestamp {
+    if let Some(dts) = latest_decode_timestamp
+        && stream_kind == StreamKind::Video
+    {
         ui.list_item_flat_noninteractive(
             PropertyContent::new("DTS").value_fn(value_fn_for_time(dts, video_descr)),
         )
@@ -504,8 +581,8 @@ fn frame_info_ui(
     ui.list_item_flat_noninteractive(
         PropertyContent::new("PTS").value_fn(value_fn_for_time(presentation_timestamp, video_descr)),
     )
-    .on_hover_text("Raw presentation timestamp prior to applying the timescale.\n\
-                    This specifies the time at which the frame should be shown relative to the start of a video stream.");
+    .on_hover_text(format!("Raw presentation timestamp prior to applying the timescale.\n\
+                    This specifies the time at which the {} should be shown relative to the start of a {stream_kind} stream.", stream_kind.frame_word()));
 
     // Judging the following to be a bit too obscure to be of relevance outside of debugging Rerun itself.
     #[cfg(debug_assertions)]
@@ -514,18 +591,19 @@ fn frame_info_ui(
             .samples_statistics
             .has_sample_highest_pts_so_far
             .as_ref()
-            && let Some(sample_idx) =
+            && let Ok(sample_idx) =
                 video_descr.latest_sample_index_at_presentation_timestamp(presentation_timestamp)
         {
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("Highest PTS so far").value_bool(has_sample_highest_pts_so_far[sample_idx])
-            ).on_hover_text("Whether the presentation timestamp (PTS) at the this frame is the highest encountered so far. If false there are lower PTS values prior in the list.");
+            ).on_hover_text(format!("Whether the presentation timestamp (PTS) at the this {} is the highest encountered so far. If false there are lower PTS values prior in the list.", stream_kind.frame_word()));
         }
     }
 
     // Information about the current group of pictures this frame is part of.
     // Lookup via decode timestamp is faster, but it may not always be available.
     if let Some(keyframe_idx) = video_descr.presentation_time_keyframe_index(presentation_timestamp)
+        && stream_kind == StreamKind::Video
     {
         ui.list_item_flat_noninteractive(
             PropertyContent::new("keyframe index").value_text(keyframe_idx.to_string()),
@@ -592,8 +670,51 @@ fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat
     }
 }
 
+/// Whether this is a video stream, or image stream.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StreamKind {
+    Video,
+    Image,
+}
+
+impl std::fmt::Display for StreamKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Video => f.write_str("video"),
+            Self::Image => f.write_str("image"),
+        }
+    }
+}
+
+impl StreamKind {
+    fn frame_word(&self) -> &'static str {
+        match self {
+            Self::Video => "frame",
+            Self::Image => "image",
+        }
+    }
+
+    fn capitalized_frame_word(&self) -> &'static str {
+        match self {
+            Self::Video => "Frame",
+            Self::Image => "Image",
+        }
+    }
+
+    fn capitalized(&self) -> &'static str {
+        match self {
+            Self::Video => "Video",
+            Self::Image => "Image",
+        }
+    }
+}
+
 pub enum VideoUi {
-    Stream(Result<SharablePlayableVideoStream, VideoStreamProcessingError>),
+    Stream(
+        Result<SharablePlayableVideoStream, VideoStreamProcessingError>,
+        ComponentIdentifier,
+        StreamKind,
+    ),
     Asset(
         Arc<Result<re_renderer::video::Video, VideoLoadError>>,
         Option<VideoTimestamp>,
@@ -603,7 +724,7 @@ pub enum VideoUi {
 
 impl VideoUi {
     pub fn from_blob(
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         entity_path: &re_log_types::EntityPath,
         blob_row_id: RowId,
         blob_component_descriptor: &ComponentDescriptor,
@@ -611,20 +732,17 @@ impl VideoUi {
         media_type: Option<&MediaType>,
         video_timestamp: Option<VideoTimestamp>,
     ) -> Option<Self> {
-        let result =
-            ctx.store_context
-                .caches
-                .entry(|c: &mut re_viewer_context::VideoAssetCache| {
-                    let debug_name = entity_path.to_string();
-                    c.entry(
-                        debug_name,
-                        blob_row_id,
-                        blob_component_descriptor.component,
-                        blob,
-                        media_type,
-                        ctx.app_options().video_decoder_settings(),
-                    )
-                });
+        let result = ctx.memoizer(|c: &mut re_viewer_context::VideoAssetCache| {
+            let debug_name = entity_path.to_string();
+            c.entry(
+                debug_name,
+                blob_row_id,
+                blob_component_descriptor.component,
+                blob,
+                media_type,
+                ctx.app_options.video_decoder_settings(),
+            )
+        });
 
         let certain_this_is_a_video =
             blob_component_descriptor.archetype == Some(archetypes::AssetVideo::name());
@@ -644,48 +762,86 @@ impl VideoUi {
     }
 
     pub fn from_components(
-        ctx: &ViewerContext<'_>,
-        query: &re_chunk_store::LatestAtQuery,
+        ctx: &StoreViewContext<'_>,
         entity_path: &re_log_types::EntityPath,
         descr: &ComponentDescriptor,
     ) -> Option<Self> {
-        if descr != &archetypes::VideoStream::descriptor_sample() {
-            return None;
-        }
+        let sample_component = descr.component;
+        let (video_stream_result, stream_kind) =
+            if descr.component == archetypes::VideoStream::descriptor_sample().component {
+                let res = ctx.memoizer(|c: &mut VideoStreamCache| {
+                    c.video_entry(
+                        ctx.db,
+                        entity_path,
+                        ctx.timeline_name(),
+                        ctx.app_ctx.app_options.video_decoder_settings(),
+                    )
+                });
 
-        let video_stream_result = ctx.store_context.caches.entry(|c: &mut VideoStreamCache| {
-            c.entry(
-                ctx.recording(),
-                entity_path,
-                query.timeline(),
-                ctx.app_options().video_decoder_settings(),
-            )
-        });
+                (res, StreamKind::Video)
+            } else if descr.component == archetypes::EncodedImage::descriptor_blob().component {
+                let res = ctx.memoizer(|c: &mut VideoStreamCache| {
+                    c.entry(
+                        ctx.db,
+                        entity_path,
+                        ctx.timeline_name(),
+                        ctx.app_ctx.app_options.video_decoder_settings(),
+                        descr.component,
+                        &|| {
+                            let codec_component =
+                                archetypes::EncodedImage::descriptor_media_type().component;
+                            let query_result = ctx.db.storage_engine().cache().latest_at(
+                                // Get the last logged codec. Should be unchanging so if correctly
+                                // logged it doesn't matter which one we get.
+                                &re_chunk_store::LatestAtQuery::new(
+                                    ctx.timeline_name(),
+                                    re_log_types::TimeInt::MAX,
+                                ),
+                                entity_path,
+                                [codec_component],
+                            );
 
-        Some(Self::Stream(video_stream_result))
+                            let codec_chunk = query_result
+                                .get_required(codec_component)
+                                .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
+
+                            let last_codec = codec_chunk
+                                .component_mono::<MediaType>(codec_component)
+                                .transpose()
+                                .map_err(|err| {
+                                    VideoStreamProcessingError::FailedReadingCodec(Box::new(err))
+                                })?;
+
+                            Ok(re_video::VideoCodec::ImageSequence(
+                                last_codec.map(|s| s.to_string()),
+                            ))
+                        },
+                    )
+                });
+
+                (res, StreamKind::Image)
+            } else {
+                return None;
+            };
+
+        Some(Self::Stream(
+            video_stream_result,
+            sample_component,
+            stream_kind,
+        ))
     }
 
-    pub fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
-    ) {
+    pub fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         match self {
-            Self::Stream(video_stream_result) => {
-                video_stream_result_ui(ui, ui_layout, video_stream_result);
+            Self::Stream(video_stream_result, sample_component, stream_kind) => {
+                video_stream_result_ui(ui, ui_layout, video_stream_result, *stream_kind);
 
-                let storage_engine = ctx.store_context.recording.storage_engine();
+                let storage_engine = ctx.db.storage_engine();
                 let get_chunk_array = |id| {
-                    let chunk = storage_engine
-                        .store()
-                        .use_physical_chunk_or_report_missing(&id)?;
-
-                    let sample_component = archetypes::VideoStream::descriptor_sample().component;
+                    let chunk = storage_engine.store().use_chunk_or_report_missing(&id)?;
 
                     let (_, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
-                        chunk.raw_component_array(sample_component)?,
+                        chunk.raw_component_array(*sample_component)?,
                     )?;
 
                     Some(buffer)
@@ -693,12 +849,20 @@ impl VideoUi {
 
                 if let Ok(video) = video_stream_result {
                     let video = video.read();
-                    let time = video_stream_time_from_query(query);
-                    decoded_frame_ui(ctx, ui, ui_layout, &video.video_renderer, time, &|id| {
-                        let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
+                    let time = video_stream_time_from_query(&ctx.query());
+                    decoded_frame_ui(
+                        ctx,
+                        ui,
+                        ui_layout,
+                        &video.video_renderer,
+                        time,
+                        *stream_kind,
+                        &|id| {
+                            let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
 
-                        buffer.map(|b| b.as_slice()).unwrap_or(&[])
-                    });
+                            buffer.map(|b| b.as_slice()).unwrap_or(&[])
+                        },
+                    );
                 }
             }
             Self::Asset(video_result, timestamp, blob) => {
@@ -721,12 +885,20 @@ impl VideoUi {
                         }
                     });
                     let video_time = re_viewer_context::video_timestamp_component_to_video_time(
-                        ctx,
+                        Some(ctx.time_ctrl),
                         video_timestamp,
                         video.data_descr().timescale,
                     );
 
-                    decoded_frame_ui(ctx, ui, ui_layout, video, video_time, &|_| blob);
+                    decoded_frame_ui(
+                        ctx,
+                        ui,
+                        ui_layout,
+                        video,
+                        video_time,
+                        StreamKind::Video,
+                        &|_| blob,
+                    );
                 }
             }
         }

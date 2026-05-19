@@ -15,7 +15,7 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "crates/store/re_dataframe/src/query.rs",
     "crates/store/re_protos/proto/schema_snapshot.yaml",
     "crates/store/re_protos/src/v1alpha1/rerun.cloud.v1alpha1.rs",
-    "crates/store/re_tf/src/transform_resolution_cache.rs",  # TODO(andreas): Should move tests out to standalone files.
+    "crates/store/re_query/src/range_zip/generated.rs",
     "crates/store/re_sdk_types/src/datatypes/tensor_buffer.rs",
     "crates/store/re_sdk_types/src/reflection/mod.rs",
     "crates/top/re_sdk/src/recording_stream.rs",
@@ -25,6 +25,9 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "pixi.lock",
     "rerun_cpp/docs/Doxyfile",
     "uv.lock",
+    # Examples excluded from the uv workspace so they maintain standalone lockfiles.
+    "examples/python/dataloader/uv.lock",
+    "examples/python/rerun_export/uv.lock",
 }
 
 # Paths with the following prefixes are allowed to contain PNG files that are not checked into LFS

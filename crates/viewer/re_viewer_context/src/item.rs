@@ -1,5 +1,5 @@
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{ComponentPath, DataPath, EntityPath, TableId};
+use re_log_types::{ComponentPath, DataPath, EntityPath, EntryId, TableId};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 
 use crate::{BlueprintId, ContainerId, Contents, ViewId};
@@ -76,19 +76,51 @@ pub enum Item {
     /// An entity or instance in the context of a view's data results.
     DataResult(DataResultInteractionAddress),
 
-    /// A table or dataset entry stored in a Redap server.
-    // TODO(ab): this should probably be split into separate variant, and made more consistent with
-    // `AppId` and `TableId`.
-    RedapEntry(re_uri::EntryUri),
+    /// An entry within a Redap server's hierarchy: dataset, table, or folder (group).
+    RedapEntry {
+        origin: re_uri::Origin,
+        kind: RedapEntryKind,
+    },
 
     /// A Redap server.
     RedapServer(re_uri::Origin),
+}
+
+/// The kind of node addressed by [`Item::RedapEntry`].
+///
+/// Dataset-vs-table distinction lives at the data layer (authoritative: the server) rather than
+/// here — at this level the entry is identified by [`EntryId`] only.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RedapEntryKind {
+    /// A concrete entry (table or dataset), identified by its [`EntryId`].
+    Entry(EntryId),
+
+    /// A folder (group) in the server's dataset hierarchy, identified by a
+    /// dot-separated path prefix (e.g. `"project.subdir"`).
+    Folder(String),
+}
+
+impl RedapEntryKind {
+    /// Returns the [`EntryId`] if this kind refers to a concrete entry.
+    pub fn entry_id(&self) -> Option<EntryId> {
+        match self {
+            Self::Entry(id) => Some(*id),
+            Self::Folder(_) => None,
+        }
+    }
 }
 
 impl Item {
     /// The example page / welcome screen
     pub fn welcome_page() -> Self {
         Self::RedapServer(EXAMPLES_ORIGIN.clone())
+    }
+
+    pub fn redap_origin(&self) -> Option<&re_uri::Origin> {
+        match self {
+            Self::RedapServer(origin) | Self::RedapEntry { origin, .. } => Some(origin),
+            _ => None,
+        }
     }
 
     pub fn view_id(&self) -> Option<BlueprintId<ViewIdRegistry>> {
@@ -100,7 +132,7 @@ impl Item {
             | Self::InstancePath(_)
             | Self::ComponentPath(_)
             | Self::Container(_)
-            | Self::RedapEntry(_)
+            | Self::RedapEntry { .. }
             | Self::RedapServer(_) => None,
             Self::View(view_id) => Some(*view_id),
             Self::DataResult(data_result) => Some(data_result.view_id),
@@ -116,13 +148,35 @@ impl Item {
             | Self::Container(_)
             | Self::StoreId(_)
             | Self::RedapServer(_)
-            | Self::RedapEntry(_) => None,
+            | Self::RedapEntry { .. } => None,
 
             Self::ComponentPath(component_path) => Some(&component_path.entity_path),
 
             Self::InstancePath(instance_path) => Some(&instance_path.entity_path),
             Self::DataResult(data_result) => Some(&data_result.instance_path.entity_path),
         }
+    }
+
+    /// Is this item compatible with the given [`crate::Route`]?
+    ///
+    /// For example, a recording or redap entry that belongs to a different
+    /// route than the currently active one is incompatible.
+    pub fn is_compatible_with_route(&self, route: &crate::Route) -> bool {
+        if let Self::StoreId(store_id) = self
+            && let Some(route_recording_id) = route.recording_id()
+            && store_id != route_recording_id
+        {
+            return false;
+        }
+
+        if let Some(origin) = self.redap_origin()
+            && let Some(route_origin) = route.item().as_ref().and_then(|item| item.redap_origin())
+            && origin != route_origin
+        {
+            return false;
+        }
+
+        true
     }
 
     /// Converts this item to a data path if possible.
@@ -135,7 +189,7 @@ impl Item {
             | Self::Container(_)
             | Self::StoreId(_)
             | Self::RedapServer(_)
-            | Self::RedapEntry(_) => None,
+            | Self::RedapEntry { .. } => None,
 
             Self::ComponentPath(component_path) => Some(DataPath {
                 entity_path: component_path.entity_path.clone(),
@@ -182,6 +236,15 @@ impl From<InstancePath> for Item {
     #[inline]
     fn from(instance_path: InstancePath) -> Self {
         Self::InstancePath(instance_path)
+    }
+}
+
+impl From<re_uri::EntryUri> for Item {
+    fn from(uri: re_uri::EntryUri) -> Self {
+        Self::RedapEntry {
+            origin: uri.origin,
+            kind: RedapEntryKind::Entry(uri.entry_id),
+        }
     }
 }
 
@@ -241,9 +304,12 @@ impl std::fmt::Debug for Item {
                 )
             }
             Self::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
-            Self::RedapEntry(entry) => {
-                write!(f, "{entry}")
-            }
+            Self::RedapEntry { origin, kind } => match kind {
+                RedapEntryKind::Entry(id) => write!(f, "RedapEntry({origin}, {id})"),
+                RedapEntryKind::Folder(path_prefix) => {
+                    write!(f, "RedapFolder({origin}, {path_prefix})")
+                }
+            },
             Self::RedapServer(server) => write!(f, "{server}"),
         }
     }
@@ -270,7 +336,10 @@ impl Item {
                     "Data result entity"
                 }
             }
-            Self::RedapEntry(_) => "Redap entry",
+            Self::RedapEntry { kind, .. } => match kind {
+                RedapEntryKind::Entry(_) => "Redap entry",
+                RedapEntryKind::Folder(_) => "Redap folder",
+            },
             Self::RedapServer(_) => "Redap server",
         }
     }
@@ -298,7 +367,7 @@ pub fn resolve_mono_instance_path_item(
         | Item::ComponentPath(_)
         | Item::View(_)
         | Item::Container(_)
-        | Item::RedapEntry(_)
+        | Item::RedapEntry { .. }
         | Item::RedapServer(_) => item.clone(),
     }
 }

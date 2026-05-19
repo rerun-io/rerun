@@ -17,7 +17,7 @@ thumbnail_dimensions = [480, 306]
 ## Used Rerun types
 
 [`EyeControls3D`](https://ref.rerun.io/docs/python/0.27.3/common/blueprint_archetypes/#rerun.blueprint.archetypes.EyeControls3D),
-[`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`EncodedImage`](https://www.rerun.io/docs/reference/types/archetypes/encoded_image), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`LineStrips3D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+[`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), [`Points3D`](https://rerun.io/docs/reference/types/archetypes/points3d), [`Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole), [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image), [`Image`](https://rerun.io/docs/reference/types/archetypes/image), [`LineStrips3D`](https://rerun.io/docs/reference/types/archetypes/line_strips3d), [`Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars), [`TextDocument`](https://rerun.io/docs/reference/types/archetypes/text_document)
 
 ## Background
 
@@ -35,7 +35,7 @@ Finally, we demonstrate how to control the camera at runtime, enabling the creat
 
 Below you will find a collection of useful Rerun resources for this example:
 
-* [Blueprints](https://rerun.io/docs/concepts/blueprints)
+* [Blueprints](https://rerun.io/docs/concepts/visualization/blueprints)
 * [Building blueprints programmatically](https://rerun.io/docs/howto/build-a-blueprint-programmatically)
 
 ## Run the code

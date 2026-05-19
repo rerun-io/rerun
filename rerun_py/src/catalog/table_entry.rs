@@ -9,17 +9,18 @@ use pyo3::types::{PyAnyMethods as _, PyCapsule};
 use pyo3::{Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
 use re_datafusion::TableEntryTableProvider;
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry, TableInsertMode};
-use tracing::instrument;
 
 use crate::catalog::entry::set_entry_name;
+use crate::catalog::table_provider_adapter::ffi_logical_codec_from_pycapsule;
 use crate::catalog::{PyCatalogClientInternal, PyEntryDetails, to_py_err};
+use crate::trace_context::read_trace_context_from_python;
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// A table entry in the catalog.
 ///
 /// Note: this object acts as a table provider for DataFusion.
 //TODO(ab): expose metadata about the table (e.g. stuff found in `provider_details`).
-#[pyclass(name = "TableEntryInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(name = "TableEntryInternal", module = "rerun_bindings.rerun_bindings")]
 pub struct PyTableEntryInternal {
     client: Py<PyCatalogClientInternal>,
     entry_details: EntryDetails,
@@ -43,11 +44,13 @@ impl PyTableEntryInternal {
 
     /// Delete this entry from the catalog.
     fn delete(&mut self, py: Python<'_>) -> PyResult<()> {
+        let _span = read_trace_context_from_python(py, "TableEntry.delete").entered();
         let connection = self.client.borrow_mut(py).connection().clone();
         connection.delete_entry(py, self.entry_details.id)
     }
 
     fn set_name(&mut self, py: Python<'_>, name: String) -> PyResult<()> {
+        let _span = read_trace_context_from_python(py, "TableEntry.set_name").entered();
         set_entry_name(py, name, &mut self.entry_details, &self.client)
     }
 
@@ -56,19 +59,22 @@ impl PyTableEntryInternal {
     //
 
     /// Returns a DataFusion table provider capsule.
-    #[instrument(skip_all)]
     fn __datafusion_table_provider__<'py>(
         self_: PyRefMut<'py, Self>,
-        py: Python<'py>,
+        session: &Bound<'py, PyAny>,
     ) -> PyResult<Bound<'py, PyCapsule>> {
+        let _span =
+            read_trace_context_from_python(self_.py(), "TableEntry.__datafusion_table_provider__")
+                .entered();
         let provider = Self::table_provider(self_)?;
 
         let capsule_name = cr"datafusion_table_provider".into();
 
         let runtime = get_tokio_runtime().handle().clone();
-        let provider = FFI_TableProvider::new(provider, false, Some(runtime));
+        let codec = ffi_logical_codec_from_pycapsule(session)?;
+        let provider = FFI_TableProvider::new_with_ffi_codec(provider, false, Some(runtime), codec);
 
-        PyCapsule::new(py, provider, Some(capsule_name))
+        PyCapsule::new(session.py(), provider, Some(capsule_name))
     }
 
     /// Registers the table with the DataFusion context and return a DataFrame.
@@ -83,17 +89,17 @@ impl PyTableEntryInternal {
         // Any tables for which we have a TableEntry are already
         // registered with the CatalogProvider.
 
-        let df = ctx.call_method1("table", (table_name,))?;
+        let df = ctx.call_method1("table", (table_name.as_str(),))?;
 
         Ok(df)
     }
 
     /// Convert this table to a [`pyarrow.RecordBatchReader`][].
-    #[instrument(skip_all)]
     fn to_arrow_reader<'py>(
         self_: PyRef<'py, Self>,
         py: Python<'py>,
     ) -> PyResult<Bound<'py, PyAny>> {
+        let _span = read_trace_context_from_python(py, "TableEntry.to_arrow_reader").entered();
         let df = Self::reader(self_)?;
 
         py.import("pyarrow")?
@@ -112,13 +118,13 @@ impl PyTableEntryInternal {
     }
 
     /// Write record batches to the table.
-    #[instrument(skip_all)]
     fn write_batches(
         self_: Py<Self>,
         py: Python<'_>,
         batches: &Bound<'_, PyAny>,
         insert_mode: PyTableInsertModeInternal,
     ) -> PyResult<()> {
+        let _span = read_trace_context_from_python(py, "TableEntry.write_batches").entered();
         let entry_id = self_.borrow(py).entry_details.id;
         let connection = self_
             .borrow_mut(py)

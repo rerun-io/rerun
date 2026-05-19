@@ -53,6 +53,7 @@ snippet: views/spatial2d
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
 * [`EncodedImage`](../archetypes/encoded_image.md)
+* [`GridMap`](../archetypes/grid_map.md)
 * [`Image`](../archetypes/image.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`Pinhole`](../archetypes/pinhole.md)

@@ -28,7 +28,7 @@ table Pinhole (
   /// Camera projection, from image coordinates to view coordinates.
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  image_from_camera: rerun.components.PinholeProjection ("attr.rerun.component_required", "attr.rerun.component_ui_editable": "false", order: 1000);
+  image_from_camera: rerun.components.PinholeProjection ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 
   /// Pixel resolution (usually integers) of child image space. Width and height.
   ///
@@ -40,7 +40,7 @@ table Pinhole (
   /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  resolution: rerun.components.Resolution ("attr.rerun.component_recommended", "attr.rerun.component_ui_editable": "false", nullable, order: 2000);
+  resolution: rerun.components.Resolution ("attr.rerun.component_recommended", "attr.rerun.component_no_ui_edit", nullable, order: 2000);
 
   // --- Other ---
 
@@ -74,7 +74,7 @@ table Pinhole (
   // TODO(#2641): This should specify a default-value of `RDF`
   // TODO(andreas): this isn't part of the "atomic set" right now because we may also source this from `ViewCoordinates` and things get confusing quickly
   // Should it be reset when other transform properties are changed?
-  camera_xyz: rerun.components.ViewCoordinates ("attr.rerun.component_optional", "attr.rerun.component_ui_editable": "false",  nullable, order: 3000);
+  camera_xyz: rerun.components.ViewCoordinates ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit",  nullable, order: 3000);
 
   // --- Topology ---
 
@@ -90,7 +90,7 @@ table Pinhole (
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  child_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.component_ui_editable": "false", nullable, order: 4000);
+  child_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit", nullable, order: 4000);
 
   /// The parent frame this transform transforms into.
   ///
@@ -100,7 +100,7 @@ table Pinhole (
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  parent_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.component_ui_editable": "false", nullable, order: 4100);
+  parent_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit", nullable, order: 4100);
 
   // --- Visualization in 3D ---
 

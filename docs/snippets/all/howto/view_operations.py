@@ -6,8 +6,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyarrow as pa
-import rerun as rr
 from datafusion import col
+
+import rerun as rr
 
 sample_5_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
 

@@ -283,7 +283,7 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> FrameResult {
 }
 
 fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMatrixCoefficients {
-    // Quotes are from https://wiki.x266.mov/docs/colorimetry/matrix (if not noted otherwise)
+    // Quotes are from https://web.archive.org/web/20260318141742/https://wiki.x266.mov/docs/colorimetry/matrix (if not noted otherwise)
     match picture.matrix_coefficients() {
         dav1d::pixel::MatrixCoefficients::Identity => YuvMatrixCoefficients::Identity,
 
@@ -309,8 +309,8 @@ fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMat
                 // }
                 //
                 // This is also what the mpv player does (and probably others):
-                // https://wiki.x266.mov/docs/colorimetry/matrix#2-unspecified
-                // (and similar for primaries! https://wiki.x266.mov/docs/colorimetry/primaries#2-unspecified)
+                // https://web.archive.org/web/20260318141742/https://wiki.x266.mov/docs/colorimetry/matrix#2-unspecified
+                // (and similar for primaries! https://web.archive.org/web/20260318141807/https://wiki.x266.mov/docs/colorimetry/primaries#2-unspecified)
                 //
                 // …then again, eyeballing VLC it looks like it just always assumes BT.709.
                 // The handwavy test case employed here was the same video in low & high resolution

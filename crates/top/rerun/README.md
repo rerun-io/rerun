@@ -31,9 +31,9 @@ rec.log("image", &rerun::archetypes::Image::new(image))?;
 
 ## Getting started
 - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
-- [High-level docs](http://rerun.io/docs)
+- [High-level docs](https://rerun.io/docs)
 - [Rust API docs](https://docs.rs/rerun/)
-- [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
+- [Troubleshooting](https://www.rerun.io/docs/overview/installing-rerun/troubleshooting)
 
 ## Library
 You can add the `rerun` crate to your project with `cargo add rerun`.

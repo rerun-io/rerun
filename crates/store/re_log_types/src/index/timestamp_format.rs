@@ -18,31 +18,33 @@ pub enum TimestampFormatKind {
     SecondsSinceUnixEpoch,
 }
 
+/// Controls whether the date part of a timestamp is shown.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum DateVisibility {
+    /// Always show the date.
+    ShowDate,
+
+    /// Hide the date when it's today.
+    #[default]
+    HideDateToday,
+
+    /// Always hide the date.
+    HideDate,
+}
+
 /// How to display a [`crate::Timestamp`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimestampFormat {
     /// What kind of format to use.
     format_kind: TimestampFormatKind,
 
-    /// For date-time format kinds, should we omit the date part when it's today?
-    ///
-    /// By default, we do, but having this toggle is convenient for the uses-cases where omitting
-    /// the date part is not desirable.
-    hide_today_date: bool,
+    /// For date-time format kinds, controls whether the date part is shown.
+    date_visibility: DateVisibility,
 
     /// For date-time format kinds, should we omit date, nanos and suffix?
     short: bool,
-}
-
-impl Default for TimestampFormat {
-    fn default() -> Self {
-        Self {
-            format_kind: Default::default(),
-            hide_today_date: true,
-            short: false,
-        }
-    }
 }
 
 impl From<TimestampFormatKind> for TimestampFormat {
@@ -75,8 +77,8 @@ impl TimestampFormat {
         self.format_kind
     }
 
-    pub fn with_hide_today_date(mut self, hide_date_when_today: bool) -> Self {
-        self.hide_today_date = hide_date_when_today;
+    pub fn with_date_visibility(mut self, date_visibility: DateVisibility) -> Self {
+        self.date_visibility = date_visibility;
         self
     }
 
@@ -85,8 +87,8 @@ impl TimestampFormat {
         self
     }
 
-    pub fn hide_today_date(&self) -> bool {
-        self.hide_today_date
+    pub fn date_visibility(&self) -> DateVisibility {
+        self.date_visibility
     }
 
     pub fn short(&self) -> bool {

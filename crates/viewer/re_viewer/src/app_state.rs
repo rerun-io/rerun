@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::str::FromStr as _;
 
 use ahash::HashMap;
 use egui::Ui;
@@ -8,7 +7,7 @@ use egui::text_selection::LabelSelectionState;
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_channel::{LogReceiverSet, LogSource};
+use re_log_channel::{LogReceiverSet, LogSource, RecordingOpenBehavior};
 use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
@@ -16,19 +15,18 @@ use re_sdk_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
-    AppContext, AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, AuthContext,
-    BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry, DragAndDropManager,
-    FallbackProviderRegistry, Item, PerVisualizerTypeInViewClass, Route, SelectionChange,
-    StorageContext, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
-    TimeControl, TimeControlCommand, ViewClassRegistry, ViewStates, ViewerContext,
-    blueprint_timeline,
+    ActiveStoreContext, AppBlueprintCtx, AppContext, AppOptions, ApplicationSelectionState,
+    AsyncRuntimeHandle, AuthContext, BlueprintContext, BlueprintUndoState, CommandSender,
+    ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, FocusTarget, Item, Route,
+    SelectionChange, StorageContext, StoreHub, StoreViewContext, SystemCommand,
+    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
+    ViewStates, ViewerContext, blueprint_timeline,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::app_blueprint::AppBlueprint;
-use crate::app_blueprint_ctx::AppBlueprintCtx;
 use crate::navigation::Navigation;
 use crate::open_url_description::ViewerOpenUrlDescription;
 use crate::ui::settings_screen_ui;
@@ -118,7 +116,7 @@ pub struct AppState {
     /// The focused item is cleared every frame, but views may react with side-effects
     /// that last several frames.
     #[serde(skip)]
-    pub(crate) focused_item: Option<Item>,
+    pub(crate) focused_item: Option<FocusTarget>,
 
     /// Are we logged in?
     #[serde(skip)]
@@ -169,6 +167,12 @@ impl AppState {
         self.navigation.current().recording_id()
     }
 
+    /// The current time cursor for a recording, if any.
+    pub fn time_cursor_for(&self, store_id: &StoreId) -> Option<re_entity_db::PrefetchTimeCursor> {
+        let time_ctrl = self.time_controls.get(store_id)?;
+        time_ctrl.time_cursor()
+    }
+
     pub fn set_examples_manifest_url(&mut self, egui_ctx: &egui::Context, url: String) {
         self.welcome_screen.set_examples_manifest_url(egui_ctx, url);
     }
@@ -184,7 +188,7 @@ impl AppState {
     /// Currently selected section of time, if any.
     pub fn loop_selection(
         &self,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
     ) -> Option<(TimelineName, AbsoluteTimeRangeF)> {
         let rec_id = store_context.as_ref()?.recording.store_id();
         let time_ctrl = self.time_controls.get(rec_id)?;
@@ -199,13 +203,13 @@ impl AppState {
     pub fn show(
         &mut self,
         app_env: &crate::AppEnvironment,
-        startup_options: &mut StartupOptions,
+        startup_options: &StartupOptions,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
         // TODO(RR-3033): the viewer should be robust to not having a `StoreContext`.
         // We should only have one if we are currently looking at a blueprint.
-        store_context: &StoreContext<'_>,
+        store_context: &ActiveStoreContext<'_>,
         storage_context: &StorageContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
@@ -226,29 +230,61 @@ impl AppState {
         match self.navigation.current() {
             Route::Settings { previous } => {
                 let mut show_settings_ui = true;
-                settings_screen_ui(
-                    ui,
-                    &mut self.app_options,
-                    startup_options,
-                    &mut show_settings_ui,
-                );
+                settings_screen_ui(ui, &mut self.app_options, &mut show_settings_ui);
                 if !show_settings_ui {
                     self.navigation.replace((**previous).clone());
                 }
+
+                self.share_modal
+                    .ui(None, ui, startup_options.web_viewer_base_url().as_ref());
             }
 
-            Route::ChunkStoreBrowser { previous, .. } => {
-                let should_datastore_ui_remain_active =
-                    self.datastore_ui
-                        .ui(store_context, ui, self.app_options.timestamp_format);
-                if !should_datastore_ui_remain_active {
-                    self.navigation.replace((**previous).clone());
+            Route::ChunkStoreBrowser {
+                store_id,
+                selected_chunk,
+                previous,
+            } => {
+                let previous = previous.clone();
+                let store_id = store_id.clone();
+                let selected_chunk_before = *selected_chunk;
+
+                let result = self.datastore_ui.ui(
+                    store_context,
+                    storage_context,
+                    ui,
+                    self.app_options.timestamp_format,
+                    selected_chunk_before,
+                );
+                // Only reflect store/chunk changes back into the route when
+                // the route started with an explicit store_id. Otherwise the
+                // empty fallback recording would be written into the route,
+                // polluting the navigation history.
+                let result_store_id = store_id.as_ref().map(|_| result.recording_id.clone());
+                if !result.keep_open {
+                    self.navigation.replace((*previous).clone());
+                } else if result_store_id != store_id
+                    || result.selected_chunk != selected_chunk_before
+                {
+                    self.navigation.replace(Route::ChunkStoreBrowser {
+                        store_id: result_store_id.clone(),
+                        selected_chunk: if result_store_id == store_id {
+                            result.selected_chunk
+                        } else {
+                            None
+                        },
+                        previous,
+                    });
                 }
+
+                self.share_modal
+                    .ui(None, ui, startup_options.web_viewer_base_url().as_ref());
             }
 
             // TODO(RR-3033): This needs to be further cleaned up and split into separately handled routes.
             _ => {
-                let blueprint_query = self.blueprint_query_for_viewer(store_context.blueprint);
+                let blueprint_query =
+                    self.blueprint_query_for_viewer(Some(store_context.blueprint));
+                let route = self.navigation.current();
 
                 let Self {
                     app_options,
@@ -299,9 +335,10 @@ impl AppState {
                             return false;
                         }
 
-                        viewport_ui.blueprint.is_item_valid(storage_context, item)
+                        item.is_compatible_with_route(route)
+                            && viewport_ui.blueprint.is_item_valid(storage_context, item)
                     },
-                    Some(Item::StoreId(store_context.recording.store_id().clone())),
+                    route.item(),
                 );
 
                 if let SelectionChange::SelectionChanged(selection) = selection_change
@@ -320,10 +357,11 @@ impl AppState {
 
                 let recording = store_context.recording;
 
-                let visualizable_entities_per_visualizer = view_class_registry
-                    .visualizable_entities_for_visualizer_systems(recording.store_id());
+                let visualizable_entities_per_visualizer = store_context
+                    .caches
+                    .visualizable_entities_for_visualizer_systems();
                 let indicated_entities_per_visualizer =
-                    view_class_registry.indicated_entities_per_visualizer(recording.store_id());
+                    store_context.caches.indicated_entities_per_visualizer();
 
                 let app_blueprint_ctx = AppBlueprintCtx {
                     command_sender,
@@ -342,7 +380,11 @@ impl AppState {
                     use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 
                     for view in viewport_ui.blueprint.views.values() {
-                        view_states.ensure_state_exists(view.id, view.class(view_class_registry));
+                        view_states.ensure_state_exists(
+                            recording.store_id(),
+                            view.id,
+                            view.class(view_class_registry),
+                        );
                     }
 
                     viewport_ui
@@ -354,29 +396,8 @@ impl AppState {
                         .map(|view| {
                             re_tracing::profile_scope!("view", view.display_name_or_default().to_string().as_str());
 
-                            // Same logic as in `ViewerContext::collect_visualizable_entities_for_view_class`,
-                            // but we don't have access to `ViewerContext` just yet.
-                            let visualizable_entities = if let Some(view_class) =
-                                view_class_registry.class_entry(view.class_identifier())
-                            {
-                                PerVisualizerTypeInViewClass {
-                                    view_class_identifier: view.class_identifier(),
-                                    per_visualizer: visualizable_entities_per_visualizer
-                                        .iter()
-                                        .filter_map(|(vis, ents)| {
-                                            view_class
-                                                .visualizer_system_ids
-                                                .contains(vis)
-                                                .then_some((*vis, ents.clone()))
-                                        })
-                                        .collect(),
-                                }
-                            } else {
-                                PerVisualizerTypeInViewClass::empty(view.class_identifier())
-                            };
-
                             let view_state = view_states
-                                .get(view.id)
+                                .get(recording.store_id(), view.id)
                                 .expect("View state should exist, we just called ensure_state_exists on it.");
 
                             let query_range = view.query_range(
@@ -395,7 +416,7 @@ impl AppState {
                                     view_class_registry,
                                     app_blueprint_ctx.blueprint_query(),
                                     &query_range,
-                                    &visualizable_entities,
+                                    &visualizable_entities_per_visualizer,
                                     &indicated_entities_per_visualizer,
                                     app_options,
                                 ),
@@ -405,12 +426,10 @@ impl AppState {
                 };
 
                 let egui_ctx = ui.ctx().clone();
-                let route = self.navigation.current();
                 let ctx = ViewerContext {
                     app_ctx: AppContext {
                         is_test: app_env.is_test(),
 
-                        memory_limit: startup_options.memory_limit,
                         app_options,
                         reflection,
 
@@ -420,15 +439,24 @@ impl AppState {
 
                         connection_registry,
                         storage_context,
+                        active_store_context: Some(store_context),
+
                         component_ui_registry,
+                        view_class_registry,
+                        component_fallback_registry,
                         route,
                         selection_state,
                         focused_item,
                         drag_and_drop_manager: &drag_and_drop_manager,
+                        active_time_ctrl: Some(time_ctrl),
+                        connected_receivers: rx_log,
                         auth_context: auth_state.as_ref(),
+                        login_enabled: startup_options.login_enabled(),
+                        login_signed_in_url: startup_options
+                            .login
+                            .as_ref()
+                            .map(|l| l.signed_in_url.as_str()),
                     },
-                    component_fallback_registry,
-                    view_class_registry,
                     connected_receivers: rx_log,
                     store_context,
                     visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
@@ -487,9 +515,8 @@ impl AppState {
 
                     blueprint_time_panel.show_panel(
                         &ctx,
+                        &ctx.blueprint_store_view_ctx(),
                         &viewport_ui.blueprint,
-                        blueprint_db,
-                        blueprint_time_control,
                         ui,
                         PanelState::Expanded,
                         // Give the blueprint time panel a distinct color from the normal time panel:
@@ -518,9 +545,8 @@ impl AppState {
                 if route.has_time_panel() {
                     time_panel.show_panel(
                         &ctx,
+                        &ctx.active_recording_store_view_context(),
                         &viewport_ui.blueprint,
-                        ctx.recording(),
-                        ctx.time_ctrl,
                         ui,
                         app_blueprint.time_panel_state(),
                         ui.tokens().bottom_panel_frame(),
@@ -565,7 +591,7 @@ impl AppState {
                         match route {
                             Route::LocalRecording { .. }
                             | Route::LocalTable(..)
-                            | Route::RedapEntry(..)
+                            | Route::RedapEntry { .. }
                             | Route::RedapServer(..)
                             | Route::Loading(..) => {
                                 let show_blueprints = matches!(route, Route::LocalRecording { .. });
@@ -641,7 +667,13 @@ impl AppState {
                         match route {
                             Route::LocalTable(table_id) => {
                                 if let Some(store) = ctx.table_stores().get(table_id) {
-                                    table_ui(&ctx, runtime, ui, table_id, store);
+                                    table_ui(
+                                        &ctx.active_recording_store_view_context(),
+                                        runtime,
+                                        ui,
+                                        table_id,
+                                        store,
+                                    );
                                 } else {
                                     re_log::error_once!(
                                         "Could not find batch store for table id {}",
@@ -663,8 +695,15 @@ impl AppState {
                                 viewport_ui.viewport_ui(ui, &ctx, view_states);
                             }
 
-                            Route::RedapEntry(entry) => {
-                                redap_servers.entry_ui(&ctx, ui, entry.entry_id);
+                            Route::RedapEntry {
+                                kind: re_viewer_context::RedapEntryKind::Entry(entry_id),
+                                ..
+                            } => {
+                                redap_servers.entry_ui(
+                                    &ctx.active_recording_store_view_context(), // TODO(RR-1127): this makes no sense
+                                    ui,
+                                    *entry_id,
+                                );
                             }
 
                             Route::RedapServer(origin) => {
@@ -699,8 +738,24 @@ impl AppState {
                                         &login_state,
                                     );
                                 } else {
-                                    redap_servers.server_central_panel_ui(&ctx, ui, origin);
+                                    redap_servers.server_central_panel_ui(
+                                        &ctx.active_recording_store_view_context(), // TODO(RR-3033): server_central_panel_ui should not know about any recording/blueprint
+                                        ui,
+                                        origin,
+                                    );
                                 }
+                            }
+
+                            Route::RedapEntry {
+                                origin,
+                                kind: re_viewer_context::RedapEntryKind::Folder(path_prefix),
+                            } => {
+                                redap_servers.folder_central_panel_ui(
+                                    &ctx.active_recording_store_view_context(),
+                                    ui,
+                                    origin,
+                                    path_prefix,
+                                );
                             }
 
                             Route::Loading(source) => {
@@ -727,8 +782,11 @@ impl AppState {
 
                 self.redap_servers.modals_ui(&ctx.app_ctx, ui);
                 self.open_url_modal.ui(ui);
-                self.share_modal
-                    .ui(&ctx, ui, startup_options.web_viewer_base_url().as_ref());
+                self.share_modal.ui(
+                    Some(&ctx),
+                    ui,
+                    startup_options.web_viewer_base_url().as_ref(),
+                );
 
                 // Only in integration tests: call the test hook if any.
                 #[cfg(feature = "testing")]
@@ -789,6 +847,7 @@ impl AppState {
         create_time_control_for(&mut self.time_controls, entity_db, blueprint_ctx)
     }
 
+    /// Remove dangling state
     pub fn cleanup(&mut self, store_hub: &StoreHub) {
         re_tracing::profile_function!();
 
@@ -804,7 +863,10 @@ impl AppState {
     ///
     /// If `inspect_blueprint_timeline` is enabled, we use the time selection from the
     /// blueprint `time_ctrl`. Otherwise, we use a latest query from the blueprint timeline.
-    pub fn blueprint_query_for_viewer(&mut self, blueprint: &EntityDb) -> LatestAtQuery {
+    ///
+    /// If no blueprint is available (e.g. no active store context), falls back to
+    /// a latest query on the blueprint timeline.
+    pub fn blueprint_query_for_viewer(&mut self, blueprint: Option<&EntityDb>) -> LatestAtQuery {
         if self.app_options.inspect_blueprint_timeline {
             if self.blueprint_time_control.play_state() == PlayState::Following {
                 // Special-case just to make sure we include stuff added in this frame
@@ -812,12 +874,14 @@ impl AppState {
             } else {
                 self.blueprint_time_control.current_query().clone()
             }
-        } else {
+        } else if let Some(blueprint) = blueprint {
             let undo_state = self
                 .blueprint_undo_state
                 .entry(blueprint.store_id().clone())
                 .or_default();
             undo_state.blueprint_query()
+        } else {
+            LatestAtQuery::latest(re_viewer_context::blueprint_timeline())
         }
     }
 
@@ -845,7 +909,7 @@ impl AppState {
 }
 
 fn table_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     runtime: &AsyncRuntimeHandle,
     ui: &mut Ui,
     table_id: &TableId,
@@ -892,11 +956,7 @@ pub(crate) fn create_time_control_for<'cfgs>(
 
         let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
 
-        time_ctrl.set_play_state(
-            Some(entity_db.timeline_histograms()),
-            play_state,
-            Some(blueprint_ctx),
-        );
+        time_ctrl.set_play_state(Some(entity_db), play_state, Some(blueprint_ctx));
 
         time_ctrl
     }
@@ -915,12 +975,22 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                if let Ok(url) = open_url::ViewerOpenUrl::from_str(&open_url.url) {
+                if let Ok(url) = open_url::ViewerOpenUrl::parse_with_options(
+                    &open_url.url,
+                    &re_data_source::FromUriOptions {
+                        accept_extensionless_http: false,
+                        ..Default::default()
+                    },
+                ) {
                     url.open(
                         egui_ctx,
                         &open_url::OpenUrlOptions {
                             follow: false,
-                            select_redap_source_when_loaded: !open_url.new_tab,
+                            recording_open_behavior: if open_url.new_tab {
+                                RecordingOpenBehavior::Open
+                            } else {
+                                RecordingOpenBehavior::OpenAndSelect
+                            },
                             show_loader: !open_url.new_tab,
                         },
                         command_sender,

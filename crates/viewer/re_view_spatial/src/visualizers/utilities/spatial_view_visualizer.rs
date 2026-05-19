@@ -1,15 +1,15 @@
 use re_log_types::EntityPathHash;
 use re_sdk_types::ViewClassIdentifier;
-use re_viewer_context::ViewClass as _;
+use re_viewer_context::{SystemExecutionOutput, ViewClass as _};
 
 use super::UiLabel;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::LoadingIndicator;
 use crate::{PickableTexturedRect, SpatialView2D};
 
 /// Common data struct for all spatial scene elements.
 ///
 /// Each spatial scene element is expected to fill an instance of this struct with its data.
+#[derive(Default)]
 pub struct SpatialViewVisualizerData {
     /// Loading indicators shown using egui, in world/scene coordinates.
     pub loading_indicators: Vec<LoadingIndicator>,
@@ -18,26 +18,20 @@ pub struct SpatialViewVisualizerData {
     pub ui_labels: Vec<UiLabel>,
 
     /// Bounding boxes of all visualizations that the visualizer showed.
-    pub bounding_boxes: Vec<(EntityPathHash, macaw::BoundingBox)>,
+    bounding_boxes: Vec<(EntityPathHash, macaw::BoundingBox)>,
+
+    /// Regions of interest for all visualizations, excluding spatial outliers.
+    ///
+    /// Used for camera framing and other heuristics. For most visualizers this is
+    /// identical to the bounding box. Point cloud visualizers may provide a tighter
+    /// region that excludes outlier points.
+    regions_of_interest: Vec<(EntityPathHash, macaw::BoundingBox)>,
 
     /// Textured rectangles that the visualizer produced which can be interacted with.
     pub pickable_rects: Vec<PickableTexturedRect>,
-
-    /// The view kind preferred by this visualizer (used for heuristics).
-    pub preferred_view_kind: Option<SpatialViewKind>,
 }
 
 impl SpatialViewVisualizerData {
-    pub fn new(preferred_view_kind: Option<SpatialViewKind>) -> Self {
-        Self {
-            loading_indicators: Default::default(),
-            ui_labels: Default::default(),
-            bounding_boxes: Default::default(),
-            pickable_rects: Default::default(),
-            preferred_view_kind,
-        }
-    }
-
     pub fn add_pickable_rect(
         &mut self,
         pickable_rect: PickableTexturedRect,
@@ -47,14 +41,38 @@ impl SpatialViewVisualizerData {
         self.pickable_rects.push(pickable_rect);
     }
 
+    /// Adds a bounding box and region of interest for an entity.
+    ///
+    /// For most visualizers these are the same. Use [`Self::add_bounding_box_and_region_of_interest`]
+    /// when they differ (e.g. for point clouds with outlier rejection).
     pub fn add_bounding_box(
         &mut self,
         entity: EntityPathHash,
         bbox: macaw::BoundingBox,
         world_from_obj: glam::Affine3A,
     ) {
+        let transformed = bbox.transform_affine3(&world_from_obj);
+        self.bounding_boxes.push((entity, transformed));
+        self.regions_of_interest.push((entity, transformed));
+    }
+
+    /// Adds separate bounding box and region of interest for an entity.
+    ///
+    /// The bounding box is the exact extent; the region of interest excludes outliers
+    /// and is used for camera framing and other heuristics.
+    pub fn add_bounding_box_and_region_of_interest(
+        &mut self,
+        entity: EntityPathHash,
+        bbox: macaw::BoundingBox,
+        region_of_interest: macaw::BoundingBox,
+        world_from_obj: glam::Affine3A,
+    ) {
         self.bounding_boxes
             .push((entity, bbox.transform_affine3(&world_from_obj)));
+        self.regions_of_interest.push((
+            entity,
+            region_of_interest.transform_affine3(&world_from_obj),
+        ));
     }
 
     pub fn add_pickable_rect_to_bounding_box(
@@ -67,14 +85,40 @@ impl SpatialViewVisualizerData {
         // the bounds which in turn influence the size of the image plane.
         // See: https://github.com/rerun-io/rerun/issues/3728
         if class_identifier == SpatialView2D::identifier() {
-            self.bounding_boxes.push((
+            let entry = (
                 pickable_rect.ent_path.hash(),
                 pickable_rect.textured_rect.bounding_box(),
-            ));
+            );
+            self.bounding_boxes.push(entry);
+            self.regions_of_interest.push(entry);
         }
     }
 
-    pub fn as_any(&self) -> &dyn std::any::Any {
-        self
+    pub fn iter_bounding_boxes(
+        &self,
+    ) -> impl ExactSizeIterator<Item = &(EntityPathHash, macaw::BoundingBox)> {
+        self.bounding_boxes.iter()
     }
+
+    pub fn iter_regions_of_interest(
+        &self,
+    ) -> impl ExactSizeIterator<Item = &(EntityPathHash, macaw::BoundingBox)> {
+        self.regions_of_interest.iter()
+    }
+}
+
+/// Iterate over [`SpatialViewVisualizerData`] from all visualizer outputs,
+/// paired with the affinity of the visualizer that produced it.
+pub fn iter_spatial_data(
+    system_output: &SystemExecutionOutput,
+) -> impl Iterator<Item = (Option<ViewClassIdentifier>, &SpatialViewVisualizerData)> {
+    system_output
+        .visualizer_execution_output
+        .per_visualizer
+        .values()
+        .filter_map(|result| {
+            let output = result.as_ref().ok()?;
+            let data = output.get_visualizer_data::<SpatialViewVisualizerData>()?;
+            Some((output.affinity, data))
+        })
 }

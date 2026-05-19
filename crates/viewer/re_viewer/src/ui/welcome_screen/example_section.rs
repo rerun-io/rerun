@@ -130,10 +130,7 @@ fn load_file_size(egui_ctx: &egui::Context, url: String) -> Promise<Option<u64>>
     let (sender, promise) = Promise::new();
     let egui_ctx = egui_ctx.clone(); // So we can wake up the ui thread
 
-    let request = Request {
-        method: "HEAD".into(),
-        ..Request::get(url.clone())
-    };
+    let request = Request::head(url.clone());
 
     fetch(request, move |response| {
         match response {

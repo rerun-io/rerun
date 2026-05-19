@@ -51,11 +51,9 @@ import subprocess
 import sys
 import tempfile
 import urllib.parse
-import urllib.request
 from io import BytesIO
 from pathlib import Path
 
-import PIL
 import PIL.Image
 import PIL.ImageGrab
 import requests

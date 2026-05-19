@@ -23,9 +23,10 @@ impl CallSource {
 
 #[cfg(feature = "auth")]
 mod auth;
+mod download;
 
 mod entrypoint;
-#[cfg(feature = "data_loaders")]
+#[cfg(feature = "importers")]
 mod mcap;
 mod rrd;
 mod stdio;
@@ -35,8 +36,12 @@ mod analytics;
 
 #[cfg(feature = "analytics")]
 pub(crate) use self::analytics::AnalyticsCommands;
-pub use self::entrypoint::{run, run_with_app_wrapper, AppWrapper, StartupOptionsPatch, Args as RerunArgs, native_startup_options_from_args};
-#[cfg(feature = "data_loaders")]
+pub use self::download::DownloadCommand;
+pub use self::entrypoint::{
+    run, run_with_app_wrapper, AppWrapper, StartupOptionsPatch, Args as RerunArgs,
+    native_startup_options_from_args,
+};
+#[cfg(feature = "importers")]
 pub use self::mcap::McapCommands;
 pub use self::rrd::RrdCommands;
 pub use self::stdio::{

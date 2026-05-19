@@ -32,7 +32,7 @@ The visualizations in this example were created with the following Rerun code:
 
 ### Timelines
 
-For each processed frame, all data sent to Rerun is associated with the two [`timelines`](https://www.rerun.io/docs/concepts/timelines) `time` and `frame_idx`.
+For each processed frame, all data sent to Rerun is associated with the two [`timelines`](https://www.rerun.io/docs/concepts/logging-and-ingestion/timelines) `time` and `frame_idx`.
 
 ```python
 rr.set_time("frame", sequence=sample.index)
@@ -45,8 +45,8 @@ Pinhole camera is utilized for achieving a 3D view and camera perspective throug
 
 ```python
 rr.log(
-        "world/camera",
-        rr.Transform3D(translation=translation, rotation=rr.Quaternion(xyzw=rot.as_quat())),
+    "world/camera",
+    rr.Transform3D(translation=translation, rotation=rr.Quaternion(xyzw=rot.as_quat())),
 )
 ```
 

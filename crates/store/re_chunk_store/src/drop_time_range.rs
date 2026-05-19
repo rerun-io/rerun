@@ -1,10 +1,8 @@
-use std::sync::Arc;
-
-use re_chunk::{ChunkId, TimelineName};
+use re_chunk::TimelineName;
 use re_log::debug_assert;
 use re_log_types::AbsoluteTimeRange;
 
-use crate::{ChunkStore, ChunkStoreEvent};
+use crate::{ChunkDeletionReason, ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 
 impl ChunkStore {
     /// Drop all events that are in the given range on the given timeline.
@@ -20,9 +18,10 @@ impl ChunkStore {
         &mut self,
         timeline: &TimelineName,
         drop_range: AbsoluteTimeRange,
+        reason: ChunkDeletionReason,
     ) -> Vec<ChunkStoreEvent> {
         let deep_removal = false;
-        self.drop_time_range(timeline, drop_range, deep_removal)
+        self.drop_time_range(timeline, drop_range, deep_removal, reason)
     }
 
     /// Drop all events that are in the given range on the given timeline.
@@ -39,9 +38,10 @@ impl ChunkStore {
         &mut self,
         timeline: &TimelineName,
         drop_range: AbsoluteTimeRange,
+        reason: ChunkDeletionReason,
     ) -> Vec<ChunkStoreEvent> {
         let deep_removal = true;
-        self.drop_time_range(timeline, drop_range, deep_removal)
+        self.drop_time_range(timeline, drop_range, deep_removal, reason)
     }
 
     fn drop_time_range(
@@ -49,6 +49,7 @@ impl ChunkStore {
         timeline: &TimelineName,
         drop_range: AbsoluteTimeRange,
         deep_removal: bool,
+        reason: ChunkDeletionReason,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
@@ -73,13 +74,13 @@ impl ChunkStore {
                 // The whole chunk should be dropped!
                 chunks_to_drop.push(chunk.clone());
             } else if drop_range.intersects(chunk_range) {
-                let chunk = chunk.sorted_by_timeline_if_unsorted(timeline);
+                let sorted = chunk.sorted_by_timeline_if_unsorted(timeline);
 
-                let num_rows = chunk.num_rows();
+                let num_rows = sorted.num_rows();
 
                 // Get the sorted times:
                 #[expect(clippy::unwrap_used)] // We already know the chunk has the timeline
-                let time_column = chunk.timelines().get(timeline).unwrap();
+                let time_column = sorted.timelines().get(timeline).unwrap();
                 let times = time_column.times_raw();
 
                 let drop_range_min = drop_range.min().as_i64();
@@ -104,17 +105,13 @@ impl ChunkStore {
                 }
 
                 if min_idx < max_idx {
-                    chunks_to_drop.push(Arc::new(chunk.clone()));
+                    // Drop the original chunk (not the sorted copy) so the store can find it by ID.
+                    chunks_to_drop.push(chunk.clone());
                     if 0 < min_idx {
-                        new_chunks
-                            .push(chunk.row_sliced_shallow(0, min_idx).with_id(ChunkId::new()));
+                        new_chunks.push(sorted.row_sliced_shallow(0, min_idx));
                     }
                     if max_idx < num_rows {
-                        new_chunks.push(
-                            chunk
-                                .row_sliced_shallow(max_idx, num_rows - max_idx)
-                                .with_id(ChunkId::new()),
-                        );
+                        new_chunks.push(sorted.row_sliced_shallow(max_idx, num_rows - max_idx));
                     }
                 }
             }
@@ -123,27 +120,19 @@ impl ChunkStore {
         // ------------------
         // Apply the changes:
 
-        let generation = self.generation();
-        let mut events: Vec<ChunkStoreEvent> = vec![];
+        let mut deletion_diffs: Vec<ChunkStoreDiff> = vec![];
 
         for chunk in chunks_to_drop {
             let dels = if deep_removal {
-                self.remove_chunks_deep(vec![chunk], None)
+                self.remove_chunks_deep(vec![chunk], None, reason)
             } else {
-                self.remove_chunks_shallow(vec![chunk], None)
+                self.remove_chunks_shallow(vec![chunk], None, reason)
             };
-
-            for del in dels {
-                events.push(ChunkStoreEvent {
-                    store_id: self.id.clone(),
-                    store_generation: generation.clone(),
-                    event_id: self
-                        .event_id
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                    diff: del.into(),
-                });
-            }
+            deletion_diffs.extend(dels.into_iter().map(ChunkStoreDiff::from));
         }
+
+        let mut events = self.finalize_events(deletion_diffs);
+
         for mut chunk in new_chunks {
             chunk.sort_if_unsorted();
             #[expect(clippy::unwrap_used)] // The chunk came from the store, so it should be fine

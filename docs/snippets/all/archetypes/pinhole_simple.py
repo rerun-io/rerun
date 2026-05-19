@@ -1,6 +1,7 @@
 """Log a pinhole and a random image."""
 
 import numpy as np
+
 import rerun as rr
 
 rr.init("rerun_example_pinhole", spawn=True)

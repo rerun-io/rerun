@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef as ArrowSchemaRef};
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
@@ -84,6 +86,15 @@ impl SorbetSchema {
         .flatten()
         .chain(timestamps.to_metadata())
         .collect()
+    }
+
+    /// All the entities referenced by any column.
+    pub fn all_entities(&self) -> BTreeSet<&EntityPath> {
+        self.columns
+            .iter()
+            .filter_map(|c| c.entity_path())
+            .chain(self.entity_path.iter())
+            .collect()
     }
 }
 

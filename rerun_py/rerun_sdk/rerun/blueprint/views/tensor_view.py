@@ -33,6 +33,7 @@ class TensorView(View):
     ### Use a blueprint to create a TensorView.:
     ```python
     import numpy as np
+
     import rerun as rr
     import rerun.blueprint as rrb
 

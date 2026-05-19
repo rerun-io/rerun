@@ -22,17 +22,17 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
     let py = component_descr.py();
 
     let archetype = component_descr.getattr(pyo3::intern!(py, "archetype"))?;
-    let archetype: Option<Cow<'_, str>> = if !archetype.is_none() {
-        Some(archetype.extract()?)
-    } else {
+    let archetype: Option<Cow<'_, str>> = if archetype.is_none() {
         None
+    } else {
+        Some(archetype.extract()?)
     };
 
     let component_type = component_descr.getattr(pyo3::intern!(py, "component_type"))?;
-    let component_type: Option<Cow<'_, str>> = if !component_type.is_none() {
-        Some(component_type.extract()?)
-    } else {
+    let component_type: Option<Cow<'_, str>> = if component_type.is_none() {
         None
+    } else {
+        Some(component_type.extract()?)
     };
 
     let component = component_descr.getattr(pyo3::intern!(py, "component"))?;

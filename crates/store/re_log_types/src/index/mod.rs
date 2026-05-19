@@ -24,4 +24,4 @@ pub use self::time_type::TimeType;
 pub use self::timeline::Timeline;
 pub use self::timeline_point::TimelinePoint;
 pub use self::timestamp::Timestamp;
-pub use self::timestamp_format::{TimestampFormat, TimestampFormatKind};
+pub use self::timestamp_format::{DateVisibility, TimestampFormat, TimestampFormatKind};

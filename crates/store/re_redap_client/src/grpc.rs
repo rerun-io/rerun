@@ -14,7 +14,7 @@ use re_log_types::{
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_uri::Origin;
-use tokio_stream::{Stream, StreamExt as _};
+use tokio_stream::StreamExt as _;
 
 use crate::{
     ApiError, ApiErrorKind, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
@@ -46,6 +46,7 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
 
         let ca_cert = tokio::fs::read_to_string(&cert_path).await.map_err(|err| {
             ApiError::internal_with_source(
+                None,
                 err,
                 format!("couldn't load local cert at {cert_path:?}"),
             )
@@ -67,7 +68,7 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
     let endpoint = {
         let mut endpoint = Endpoint::new(http_url)
             .and_then(|ep| ep.tls_config(tls_config))
-            .map_err(|err| ApiError::connection_with_source(err, "connecting to server"))?
+            .map_err(|err| ApiError::connection_with_source(None, err, "connecting to server"))?
             .http2_adaptive_window(true) // Optimize for throughput
             .connect_timeout(std::time::Duration::from_secs(10));
 
@@ -79,6 +80,7 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
 
         endpoint.connect().await.map_err(|err| {
             ApiError::connection_with_source(
+                None,
                 err,
                 format!("failed to connect to server at {origin}"),
             )
@@ -87,21 +89,21 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
 
     match endpoint {
         Ok(channel) => Ok(channel),
-        Err(original_error) => {
+        Err(original_err) => {
             if ![
                 url::Host::Domain("localhost".to_owned()),
                 url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             ]
             .contains(&origin.host)
             {
-                return Err(original_error);
+                return Err(original_err);
             }
 
             // If we can't establish a connection, we probe if the server is
             // expecting unencrypted traffic. If that is the case, we return
             // a more meaningful error message.
             let Ok(endpoint) = Endpoint::new(origin.coerce_http_url()) else {
-                return Err(original_error);
+                return Err(original_err);
             };
 
             let endpoint = endpoint.http2_adaptive_window(true); // Optimize for throughput
@@ -111,7 +113,7 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
                     "the server is expecting an unencrypted connection (try `rerun+http://` if you are sure)",
                 ))
             } else {
-                Err(original_error)
+                Err(original_err)
             }
         }
     }
@@ -194,7 +196,7 @@ pub(crate) async fn client(
         .layer(AuthDecorator::new(credentials))
         .layer({
             let name = None;
-            let version = None;
+            let version = std::env::var("RERUN_CLIENT_VERSION_OVERRIDE").ok();
             let is_client = true;
             re_protos::headers::new_rerun_headers_layer(name, version, is_client)
         });
@@ -215,22 +217,21 @@ pub(crate) async fn client(
 // TODO(cmc): we should compute contiguous runs of the same segment here, and return a `(String, Vec<Chunk>)`
 // instead. Because of how the server performs the computation, this will very likely work out well
 // in practice.
+pub type ChunksWithSegment = Vec<(Chunk, Option<String>)>;
+
 #[cfg(not(target_arch = "wasm32"))]
-pub fn fetch_chunks_response_to_chunk_and_segment_id<S>(
-    response: S,
-) -> impl Stream<Item = ApiResult<Vec<(Chunk, Option<String>)>>>
-where
-    S: Stream<Item = tonic::Result<re_protos::cloud::v1alpha1::FetchChunksResponse>>,
-{
-    response
-        .then(|resp| {
+pub fn fetch_chunks_response_to_chunk_and_segment_id(
+    response: crate::FetchChunksResponseStream,
+) -> crate::ApiResponseStream<ChunksWithSegment> {
+    let trace_id = response.trace_id();
+    let stream = response
+        .then(move |resp| {
+            let trace_id = trace_id;
             // We want to make sure to offload that compute-heavy work to the compute worker pool: it's
             // not going to make this one single pipeline any faster, but it will prevent starvation of
             // the Tokio runtime (which would slow down every other futures currently scheduled!).
             tokio::task::spawn_blocking(move || {
-                let r = resp.map_err(|err| {
-                    ApiError::tonic(err, "failed to get item in /FetchChunks response stream")
-                })?;
+                let r = resp?;
                 let _span =
                     tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = r.chunks.len())
                         .entered();
@@ -242,7 +243,8 @@ where
 
                         use re_log_encoding::ToApplication as _;
                         let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
-                            ApiError::serialization_with_source(
+                            ApiError::deserialization_with_source(
+                                trace_id,
                                 err,
                                 "failed to get arrow data for item in /FetchChunks response stream",
                             )
@@ -250,7 +252,8 @@ where
 
                         let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(
                             |err| {
-                                ApiError::serialization_with_source(
+                                ApiError::deserialization_with_source(
+                                    trace_id,
                                     err,
                                     "failed to parse item in /FetchChunks response stream",
                                 )
@@ -262,29 +265,27 @@ where
                     .collect::<Result<Vec<_>, _>>()
             })
         })
-        .map(|res| {
+        .map(move |res| {
             res.map_err(|err| {
                 ApiError::internal_with_source(
+                    trace_id,
                     err,
                     "failed to sync on /FetchChunks response stream",
                 )
             })
-            .and_then(std::convert::identity)
-        })
+            .flatten()
+        });
+    crate::ApiResponseStream::new(stream, trace_id)
 }
 
 // This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
 #[cfg(target_arch = "wasm32")]
-pub fn fetch_chunks_response_to_chunk_and_segment_id<S>(
-    response: S,
-) -> impl Stream<Item = ApiResult<Vec<(Chunk, Option<String>)>>>
-where
-    S: Stream<Item = tonic::Result<re_protos::cloud::v1alpha1::FetchChunksResponse>>,
-{
-    response.map(|resp| {
-        let resp = resp.map_err(|err| {
-            ApiError::tonic(err, "failed to get item in /FetchChunks response stream")
-        })?;
+pub fn fetch_chunks_response_to_chunk_and_segment_id(
+    response: crate::FetchChunksResponseStream,
+) -> crate::ApiResponseStream<ChunksWithSegment> {
+    let trace_id = response.trace_id();
+    let stream = response.map(move |resp| {
+        let resp = resp?;
 
         let _span =
             tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = resp.chunks.len())
@@ -297,7 +298,8 @@ where
 
                 use re_log_encoding::ToApplication as _;
                 let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "failed to get arrow data for item in /FetchChunks response stream",
                     )
@@ -305,7 +307,8 @@ where
 
                 let chunk =
                     re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(|err| {
-                        ApiError::serialization_with_source(
+                        ApiError::deserialization_with_source(
+                            trace_id,
                             err,
                             "failed to parse item in /FetchChunks response stream",
                         )
@@ -314,7 +317,36 @@ where
                 Ok((chunk, segment_id))
             })
             .collect::<Result<Vec<_>, _>>()
-    })
+    });
+    crate::ApiResponseStream::new(stream, trace_id)
+}
+
+/// Callback invoked as chunks are downloaded.
+///
+/// Arguments: `(total_bytes_downloaded, total_bytes_expected)`.
+/// `total_bytes_expected` may be `None` if the total size is not known.
+pub type ProgressCallback = std::sync::Arc<dyn Fn(u64, Option<u64>) + Send + Sync>;
+
+/// Options that control how segment data is streamed from the server.
+#[derive(Clone, Default)]
+pub struct StreamingOptions {
+    /// If `true`, download all chunks eagerly instead of relying on
+    /// on-demand streaming via the RRD manifest.
+    ///
+    /// This is useful for downloading a full recording to disk.
+    pub force_full_download: bool,
+
+    /// Optional callback invoked as chunks are downloaded.
+    pub on_progress: Option<ProgressCallback>,
+}
+
+impl std::fmt::Debug for StreamingOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StreamingOptions")
+            .field("force_full_download", &self.force_full_download)
+            .field("on_progress", &self.on_progress.as_ref().map(|_| "…"))
+            .finish()
+    }
 }
 
 /// Canonical way to ingest segment data from a Rerun Data Platform server, dealing with
@@ -330,6 +362,7 @@ pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
     uri: re_uri::DatasetSegmentUri,
+    options: StreamingOptions,
 ) -> ApiResult {
     re_log::debug!("Loading {uri}…");
 
@@ -355,6 +388,7 @@ pub async fn stream_blueprint_and_segment_from_server(
             store_version: None,
         };
 
+        // Blueprints are always fully downloaded regardless of streaming options.
         if stream_segment_from_server(
             &mut client,
             blueprint_store_info,
@@ -362,6 +396,7 @@ pub async fn stream_blueprint_and_segment_from_server(
             blueprint_dataset,
             blueprint_segment,
             re_uri::Fragment::default(),
+            &StreamingOptions::default(),
         )
         .await?
         .is_break()
@@ -408,6 +443,7 @@ pub async fn stream_blueprint_and_segment_from_server(
         dataset_id.into(),
         segment_id.into(),
         fragment,
+        &options,
     )
     .await?
     .is_break()
@@ -426,6 +462,7 @@ async fn stream_segment_from_server(
     dataset_id: EntryId,
     segment_id: SegmentId,
     fragment: re_uri::Fragment,
+    options: &StreamingOptions,
 ) -> ApiResult<ControlFlow<()>> {
     let store_id = store_info.store_id.clone();
 
@@ -469,29 +506,70 @@ async fn stream_segment_from_server(
     // See the attached issues for more information.
 
     let start_time = web_time::Instant::now();
-    let manifest_result = client
-        .get_rrd_manifest(dataset_id, segment_id.clone())
+    let manifest_stream_result = client
+        .get_rrd_manifest_stream(dataset_id, segment_id.clone())
         .await;
-    match manifest_result {
-        Ok(raw_rrd_manifest) => {
-            re_log::debug_once!(
-                "The server supports larger-than-RAM. RRD manifest ({} deflated) loaded in {:.1}s",
-                re_format::format_bytes(raw_rrd_manifest.total_size_bytes() as _),
+    let trace_id = manifest_stream_result
+        .as_ref()
+        .ok()
+        .and_then(|s| s.trace_id());
+    match manifest_stream_result {
+        Ok(manifest_stream) => {
+            let mut manifest_stream = std::pin::pin!(manifest_stream);
+
+            let mut rrd_manifest_parts: Vec<Arc<re_log_encoding::RrdManifest>> = Vec::new();
+
+            while let Some(part_result) = manifest_stream.next().await {
+                let raw_rrd_manifest_part = part_result?;
+
+                let part_nr = rrd_manifest_parts.len() + 1;
+                re_log::debug!(
+                    "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
+                    re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
+                    start_time.elapsed().as_secs_f32(),
+                );
+
+                let rrd_manifest = re_log_encoding::RrdManifest::try_new(&raw_rrd_manifest_part)
+                    .map_err(|err| {
+                        ApiError::invalid_arguments_with_source(
+                            trace_id,
+                            err,
+                            "Invalid RRD manifest part",
+                        )
+                    })?;
+
+                let rrd_manifest = Arc::new(rrd_manifest);
+
+                if tx
+                    .send(DataSourceMessage::RrdManifest(
+                        store_id.clone(),
+                        rrd_manifest.clone(),
+                    ))
+                    .is_err()
+                {
+                    re_log::debug!("Receiver disconnected");
+                    return Ok(ControlFlow::Break(()));
+                }
+
+                rrd_manifest_parts.push(rrd_manifest);
+            }
+
+            if rrd_manifest_parts.is_empty() {
+                return Err(ApiError::deserialization(
+                    trace_id,
+                    "failed to parse the response for /GetRrdManifest (no data)",
+                ));
+            }
+
+            let part_nr = rrd_manifest_parts.len();
+            re_log::debug!(
+                "Full RRD manifest loaded in {:.1}s in {}",
                 start_time.elapsed().as_secs_f32(),
+                re_format::format_plural_s(part_nr, "part")
             );
 
-            let rrd_manifest =
-                re_log_encoding::RrdManifest::try_new(raw_rrd_manifest).map_err(|err| {
-                    ApiError::invalid_arguments_with_source(err, "Invalid RRD manifest")
-                })?;
-
-            let rrd_manifest = Arc::new(rrd_manifest);
-
             if tx
-                .send(DataSourceMessage::RrdManifest(
-                    store_id.clone(),
-                    rrd_manifest.clone(),
-                ))
+                .send(DataSourceMessage::RrdManifestComplete(store_id.clone()))
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
@@ -499,22 +577,35 @@ async fn stream_segment_from_server(
             }
 
             match store_id.kind() {
-                StoreKind::Recording => {
+                StoreKind::Recording if !options.force_full_download => {
                     re_log::debug!("Letting the viewer load chunks on-demand");
                     return Ok(ControlFlow::Continue(()));
                 }
-                StoreKind::Blueprint => {
-                    // Load all of the chunks in one go; most important first:
-                    let batch = sort_batch(rrd_manifest.data()).map_err(|err| {
-                        ApiError::invalid_arguments_with_source(err, "Failed to sort chunk index")
+                StoreKind::Recording | StoreKind::Blueprint => {
+                    re_log::debug!("Loading all of the chunks in one go; most important first");
+                    let refs: Vec<&re_log_encoding::RrdManifest> =
+                        rrd_manifest_parts.iter().map(|m| m.as_ref()).collect();
+                    let combined = re_log_encoding::RrdManifest::concat(&refs).map_err(|err| {
+                        ApiError::invalid_arguments_with_source(
+                            trace_id,
+                            err,
+                            "Failed to concatenate RRD manifest parts",
+                        )
                     })?;
-                    return load_chunks(client, tx, &store_id, batch).await;
+                    let batch = sort_batch(combined.chunk_fetcher_rb()).map_err(|err| {
+                        ApiError::invalid_arguments_with_source(
+                            trace_id,
+                            err,
+                            "Failed to sort chunk index",
+                        )
+                    })?;
+                    return load_chunks(client, tx, &store_id, batch, options).await;
                 }
             }
         }
         Err(err) => {
             if err.kind == ApiErrorKind::Unimplemented {
-                re_log::debug_once!("The server does not support larger-than-RAM"); // Legacy server
+                re_log::debug_once!("The server does not support on-demand streaming"); // Legacy server
             } else {
                 re_log::warn!("Failed to load RRD manifest: {err}");
             }
@@ -540,6 +631,7 @@ async fn stream_segment_from_server(
                     )
                     .into(),
                 ),
+                generate_direct_urls: false,
             })
             .await?;
 
@@ -555,12 +647,16 @@ async fn stream_segment_from_server(
                 &time_selection_batches,
             )
             .map_err(|err| {
-                ApiError::invalid_arguments_with_source(err, "Failed to concat chunk index batches")
+                ApiError::invalid_arguments_with_source(
+                    None,
+                    err,
+                    "Failed to concat chunk index batches",
+                )
             })?;
 
             // Prioritize the chunks:
             let batch = sort_batch(&batch).map_err(|err| {
-                ApiError::invalid_arguments_with_source(err, "Failed to sort chunk index")
+                ApiError::invalid_arguments_with_source(trace_id, err, "Failed to sort chunk index")
             })?;
 
             if let Some(chunk_ids) = chunk_id_column(&batch) {
@@ -572,7 +668,10 @@ async fn stream_segment_from_server(
                 );
             }
 
-            if load_chunks(client, tx, &store_id, batch).await?.is_break() {
+            if load_chunks(client, tx, &store_id, batch, options)
+                .await?
+                .is_break()
+            {
                 return Ok(ControlFlow::Break(()));
             }
         }
@@ -587,6 +686,7 @@ async fn stream_segment_from_server(
             include_static_data: true,
             include_temporal_data: true,
             query: None, // everything
+            generate_direct_urls: false,
         })
         .await?;
 
@@ -596,12 +696,16 @@ async fn stream_segment_from_server(
     }
 
     let batch = arrow::compute::concat_batches(&batches[0].schema(), &batches).map_err(|err| {
-        ApiError::invalid_arguments_with_source(err, "Failed to concat chunk index batches")
+        ApiError::invalid_arguments_with_source(
+            trace_id,
+            err,
+            "Failed to concat chunk index batches",
+        )
     })?;
 
     // Prioritize the chunks:
     let batch = sort_batch(&batch).map_err(|err| {
-        ApiError::invalid_arguments_with_source(err, "Failed to sort chunk index")
+        ApiError::invalid_arguments_with_source(trace_id, err, "Failed to sort chunk index")
     })?;
 
     if let Some(chunk_ids) = chunk_id_column(&batch)
@@ -620,20 +724,22 @@ async fn stream_segment_from_server(
             })
             .collect();
 
-        let filtered_batch = re_arrow_util::take_record_batch(&batch, &filtered_indices)
-            .map_err(|err| ApiError::invalid_arguments_with_source(err, "take_record_batch"))?;
+        let filtered_batch =
+            re_arrow_util::take_record_batch(&batch, &filtered_indices).map_err(|err| {
+                ApiError::invalid_arguments_with_source(trace_id, err, "take_record_batch")
+            })?;
 
-        load_chunks(client, tx, &store_id, filtered_batch).await
+        load_chunks(client, tx, &store_id, filtered_batch, options).await
     } else {
-        load_chunks(client, tx, &store_id, batch).await
+        load_chunks(client, tx, &store_id, batch, options).await
     }
 }
 
 fn chunk_id_column(batch: &RecordBatch) -> Option<&[ChunkId]> {
-    batch
-        .column_by_name("chunk_id")
-        .and_then(|array| array.as_fixed_size_binary_opt())
-        .and_then(|array| ChunkId::try_slice_from_arrow(array).ok())
+    let array = batch
+        .column_by_name(re_log_encoding::RawRrdManifest::FIELD_CHUNK_ID)
+        .and_then(|array| array.as_fixed_size_binary_opt())?;
+    ChunkId::try_slice_from_arrow(array).ok()
 }
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
@@ -642,18 +748,30 @@ async fn load_chunks(
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
     full_batch: RecordBatch,
+    options: &StreamingOptions,
 ) -> ApiResult<ControlFlow<()>> {
-    re_log::trace!("Requesting {} chunks from server…", full_batch.num_rows());
+    let num_chunks = full_batch.num_rows();
+
+    re_log::debug!(
+        "Downloading {} chunks from server…",
+        re_format::format_uint(num_chunks)
+    );
+    if 25_000 < num_chunks {
+        re_log::debug_warn!(
+            "There are {} chunks in this recording. Consider running `rerun rrd optimize` on it!",
+            re_format::format_uint(num_chunks)
+        );
+    }
 
     use futures::stream::FuturesUnordered;
 
     // Batch requests in groups of N=32 rows.
     const BATCH_SIZE: usize = 32;
-    let num_rows = full_batch.num_rows();
+    let total_size_bytes = total_size_bytes_from_batch(&full_batch);
     let mut futures = FuturesUnordered::new();
 
-    for start in (0..num_rows).step_by(BATCH_SIZE) {
-        let end = usize::min(start + BATCH_SIZE, num_rows);
+    for start in (0..num_chunks).step_by(BATCH_SIZE) {
+        let end = usize::min(start + BATCH_SIZE, num_chunks);
         let small_batch = full_batch.slice(start, end - start);
 
         let mut client = client.clone();
@@ -665,37 +783,62 @@ async fn load_chunks(
         });
     }
 
+    let mut downloaded_bytes: u64 = 0;
+
     while let Some(res) = futures::stream::StreamExt::next(&mut futures).await {
-        let result = res?;
+        let (result, batch_bytes) = res?;
+
+        downloaded_bytes += batch_bytes;
+        if let Some(on_progress) = &options.on_progress {
+            on_progress(downloaded_bytes, total_size_bytes);
+        }
+
         if result.is_break() {
             return Ok(ControlFlow::Break(()));
         }
     }
 
-    re_log::trace!("Finished downloading {} chunks.", num_rows);
+    re_log::trace!(
+        "Finished downloading {} chunks.",
+        re_format::format_uint(num_chunks)
+    );
 
     Ok(ControlFlow::Continue(()))
 }
 
+/// Try to extract total deflated size from the batch's `chunk_byte_size` column.
+fn total_size_bytes_from_batch(batch: &RecordBatch) -> Option<u64> {
+    let col = batch.column_by_name(re_log_encoding::RawRrdManifest::FIELD_CHUNK_BYTE_SIZE)?;
+    let array = col.as_primitive_opt::<arrow::datatypes::UInt64Type>()?;
+    Some(array.iter().map(|v| v.unwrap_or(0)).sum())
+}
+
+/// Returns `(control_flow, bytes_downloaded)`.
 async fn load_small_chunk_batch(
     client: &mut ConnectionClient,
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
     batch: &RecordBatch,
-) -> ApiResult<ControlFlow<()>> {
+) -> ApiResult<(ControlFlow<()>, u64)> {
     // TODO(RR-3323): FetchChunks should expose a proper bidirectional streaming path on native.
     let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
+    let trace_id = chunk_stream.trace_id();
+
+    let mut batch_bytes: u64 = 0;
 
     while let Some(chunks) = chunk_stream.next().await {
         for (chunk, _partition_id) in chunks? {
+            batch_bytes += chunk.heap_size_bytes();
+
             if tx
                 .send(
                     LogMsg::ArrowMsg(
                         store_id.clone(),
                         // TODO(#10229): this looks to be converting back and forth?
                         chunk.to_arrow_msg().map_err(|err| {
-                            ApiError::serialization_with_source(
+                            ApiError::deserialization_with_source(
+                                trace_id,
                                 err,
                                 "failed to parse chunk in /FetchChunks response stream",
                             )
@@ -706,12 +849,12 @@ async fn load_small_chunk_batch(
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
-                return Ok(ControlFlow::Break(()));
+                return Ok((ControlFlow::Break(()), batch_bytes));
             }
         }
     }
 
-    Ok(ControlFlow::Continue(()))
+    Ok((ControlFlow::Continue(()), batch_bytes))
 }
 
 fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {
@@ -719,9 +862,9 @@ fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {
 
     let schema = batch.schema();
 
-    // Get column indices:
-    let chunk_is_static = schema.index_of("chunk_is_static")?;
-    let chunk_id = schema.index_of("chunk_id")?;
+    // Get column indices (these are guaranteed to exist in the pruned batch):
+    let chunk_is_static = schema.index_of(re_log_encoding::RrdManifest::FIELD_CHUNK_IS_STATIC)?;
+    let chunk_id = schema.index_of(re_log_encoding::RrdManifest::FIELD_CHUNK_ID)?;
 
     let sort_keys = vec![
         // Static first:

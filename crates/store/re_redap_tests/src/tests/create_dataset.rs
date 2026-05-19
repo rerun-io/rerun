@@ -10,6 +10,8 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
 
+use super::common::entry_name;
+
 pub async fn create_dataset_tests(service: impl RerunCloudService) {
     //
     // Create a dataset with just a name
@@ -20,7 +22,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
     create_dataset_entry(
         &service,
         CreateDatasetEntryRequest {
-            name: dataset1_name.to_owned(),
+            name: entry_name(dataset1_name),
             id: None,
         },
     )
@@ -64,7 +66,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
     let status = create_dataset_entry(
         &service,
         CreateDatasetEntryRequest {
-            name: dataset1_name.to_owned(),
+            name: entry_name(dataset1_name),
             id: None,
         },
     )
@@ -84,7 +86,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
     let status = create_dataset_entry(
         &service,
         CreateDatasetEntryRequest {
-            name: "this name is for sure not used but the id might".to_owned(),
+            name: entry_name("this name is for sure not used but the id might"),
             id: Some(entry_details.id),
         },
     )
@@ -107,7 +109,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
     create_dataset_entry(
         &service,
         CreateDatasetEntryRequest {
-            name: dataset2_name.to_owned(),
+            name: entry_name(dataset2_name),
             id: Some(dataset2_id),
         },
     )
@@ -142,7 +144,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
     let provider_details = ProviderDetails::LanceTable(LanceTable { table_url });
 
     let create_table_request = CreateTableEntryRequest {
-        name: table_name.to_owned(),
+        name: entry_name(table_name),
         schema: schema.clone(),
         provider_details: Some(provider_details),
     }
@@ -161,7 +163,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
     let status = create_dataset_entry(
         &service,
         CreateDatasetEntryRequest {
-            name: table_name.to_owned(),
+            name: entry_name(table_name),
             id: None,
         },
     )

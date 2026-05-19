@@ -1,14 +1,14 @@
 use super::bind_group_layout_pool::GpuBindGroupLayoutHandle;
 use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
 use crate::RenderContext;
-use crate::debug_label::DebugLabel;
+use crate::label::Label;
 
 slotmap::new_key_type! { pub struct GpuPipelineLayoutHandle; }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct PipelineLayoutDesc {
     /// Debug label of the pipeline layout. This will show up in graphics debuggers for easy identification.
-    pub label: DebugLabel,
+    pub label: Label,
     // TODO(andreas) use SmallVec or similar, limited to 4
     pub entries: Vec<GpuBindGroupLayoutHandle>,
 }
@@ -31,13 +31,13 @@ impl GpuPipelineLayoutPool {
 
             ctx.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: desc.label.get(),
+                    label: Some(desc.label.get()),
                     bind_group_layouts: &desc
                         .entries
                         .iter()
-                        .map(|handle| bind_groups.get(*handle).unwrap())
+                        .map(|handle| bind_groups.get(*handle).ok())
                         .collect::<Vec<_>>(),
-                    push_constant_ranges: &[], // Sadly not widely supported
+                    immediate_size: 0, // Not supported everywhere.
                 })
         })
     }

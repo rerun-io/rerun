@@ -61,7 +61,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         with:
           pixi-version: v0.55.0
@@ -113,7 +113,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.55.0
           environments: cpp

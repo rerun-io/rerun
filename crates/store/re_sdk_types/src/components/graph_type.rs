@@ -103,14 +103,16 @@ impl ::re_types_core::Loggable for GraphType {
             .with_context("rerun.components.GraphType#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::Undirected)),
-                Some(2) => Ok(Some(Self::Directed)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.GraphType")?)
@@ -127,6 +129,8 @@ impl std::fmt::Display for GraphType {
 }
 
 impl ::re_types_core::reflection::Enum for GraphType {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[Self::Undirected, Self::Directed]
@@ -138,6 +142,13 @@ impl ::re_types_core::reflection::Enum for GraphType {
             Self::Undirected => "The graph has undirected edges.",
             Self::Directed => "The graph has directed edges.",
         }
+    }
+
+    #[inline]
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }
 

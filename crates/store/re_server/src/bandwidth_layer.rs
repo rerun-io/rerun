@@ -57,7 +57,9 @@ where
     }
 
     fn call(&mut self, req: http::Request<ReqBody>) -> Self::Future {
-        let mut inner = self.inner.clone();
+        // See: https://docs.rs/tower/latest/tower/trait.Service.html#be-careful-when-cloning-inner-services
+        let clone = self.inner.clone();
+        let mut inner = std::mem::replace(&mut self.inner, clone);
         let bytes_per_second = self.bytes_per_second;
         Box::pin(async move {
             let resp = inner.call(req).await?;

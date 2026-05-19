@@ -34,7 +34,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Union(
-            UnionFields::new(
+            UnionFields::try_new(
                 vec![0, 1, 2],
                 vec![
                     Field::new("_null_markers", DataType::Null, true),
@@ -53,7 +53,8 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                         false,
                     ),
                 ],
-            ),
+            )
+            .expect("UnionFields::try_new should be infallible"),
             UnionMode::Dense,
         )
     }
@@ -181,7 +182,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
             re_log::debug_assert_eq!(field_type_ids.len(), fields.len());
             re_log::debug_assert_eq!(fields.len(), children.len());
             as_array_ref(UnionArray::try_new(
-                UnionFields::new(field_type_ids, fields),
+                UnionFields::try_new(field_type_ids, fields)?,
                 ScalarBuffer::from(type_ids),
                 Some(offsets),
                 children,

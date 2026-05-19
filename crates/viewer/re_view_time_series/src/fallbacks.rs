@@ -6,10 +6,7 @@ use re_sdk_types::{
 };
 use re_viewer_context::ViewStateExt as _;
 
-use crate::view_class::{TimeSeriesViewState, make_range_sane};
-use crate::{
-    MAX_NUM_ITEMS_IN_PLOT_LEGEND_BEFORE_HIDDEN, MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT,
-};
+use crate::view_class::{TimeSeriesViewState, add_margin_to_range, make_range_sane};
 
 /// Register fallback providers for TimeSeriesView-related components and view properties.
 pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>) {
@@ -99,84 +96,23 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
         );
     }
 
-    for component in [
-        SeriesLines::descriptor_visible_series().component,
-        SeriesPoints::descriptor_visible_series().component,
-    ] {
-        system_registry.register_array_fallback_provider::<re_sdk_types::components::Visible, _>(
-            component,
-            |ctx| {
-                let show_all = itertools::Either::Left(std::iter::once(true.into()));
-
-                let Some(time_series_state) = ctx
-                    .view_state()
-                    .as_any()
-                    .downcast_ref::<TimeSeriesViewState>()
-                else {
-                    return itertools::Either::Left(std::iter::once(true.into()));
-                };
-
-                // Get the number of series for this specific instruction
-                let num_series = ctx
-                    .instruction_id
-                    .and_then(|id| {
-                        time_series_state
-                            .num_time_series_last_frame_per_instruction
-                            .get(&id)
-                    })
-                    .map_or(0, |set| set.len());
-
-                let num_shown = num_series.min(MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT);
-                let num_hidden = num_series.saturating_sub(num_shown);
-
-                if num_hidden == 0 {
-                    show_all // Prefer a single boolean if we can, it's nicer in the ui.
-                } else {
-                    itertools::Either::Right(
-                        std::iter::repeat_n(
-                            true.into(),
-                            MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT,
-                        )
-                        .chain(std::iter::repeat_n(false.into(), num_hidden)),
-                    )
-                }
-            },
-        );
-    }
-
     system_registry.register_fallback_provider(ScalarAxis::descriptor_range().component, |ctx| {
         ctx.view_state()
             .as_any()
             .downcast_ref::<TimeSeriesViewState>()
             .map(|s| {
-                make_range_sane(
+                let range = make_range_sane(
                     s.scalar_range
                         .unwrap_or(re_sdk_types::components::Range1D::EMPTY),
-                )
+                );
+                add_margin_to_range(range, 0.05)
             })
             .unwrap_or_default()
     });
 
     system_registry.register_fallback_provider::<re_sdk_types::components::Visible>(
         PlotLegend::descriptor_visible().component,
-        |ctx| {
-            let Some(time_series_state) = ctx
-                .view_state()
-                .as_any()
-                .downcast_ref::<TimeSeriesViewState>()
-            else {
-                return true.into();
-            };
-
-            // Don't show the plot legend if there's too many time series.
-            // TODO(RR-2933): Once we can scroll it though it would be nice to show more!
-            let total_num_series = time_series_state
-                .num_time_series_last_frame_per_instruction
-                .values()
-                .map(|set| set.len())
-                .sum::<usize>();
-            (total_num_series <= MAX_NUM_ITEMS_IN_PLOT_LEGEND_BEFORE_HIDDEN).into()
-        },
+        |_ctx| true.into(),
     );
 
     system_registry.register_fallback_provider(

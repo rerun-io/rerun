@@ -21,7 +21,7 @@ We are continually adding support for more standard message types.
 | Video | `sensor_msgs/CompressedImage` (h264) | `CompressedVideo` | [VideoStream](../../../reference/types/archetypes/video_stream.md) |
 | Camera calibration | `sensor_msgs/CameraInfo` | `CameraCalibration` | [Pinhole](../../../reference/types/archetypes/pinhole.md) |
 | Point cloud | `sensor_msgs/PointCloud2` | `PointCloud` | [Points3D](../../../reference/types/archetypes/points3d.md) |
-| Geo points | `sensor_msgs/NavSatFix` | `LocationFix`, `LocationFixes`* | [GeoPoints](../../../reference/types/archetypes/geo_points.md) |
+| Geo points | `sensor_msgs/NavSatFix` | `LocationFix`, `LocationFixes` | [GeoPoints](../../../reference/types/archetypes/geo_points.md) |
 | Transforms | `tf2_msgs/TFMessage` | `FrameTransform`, `FrameTransforms` | [Transform3D](../../../reference/types/archetypes/transform3d.md) |
 | Poses | `geometry_msgs/PoseStamped` | `PoseInFrame`, `PosesInFrame` | [InstancePoses3D](../../../reference/types/archetypes/instance_poses3d.md) |
 | Coordinate frame | `.frame_id` field in `std_msgs/Header` | `.frame_id` field | [CoordinateFrame](../../../reference/types/archetypes/coordinate_frame.md)
@@ -29,12 +29,11 @@ We are continually adding support for more standard message types.
 | Misc. scalar sensor data | `sensor_msgs/Imu`, `sensor_msgs/JointState`, `sensor_msgs/Temperature`, `sensor_msgs/FluidPressure`, `sensor_msgs/RelativeHumidity`, `sensor_msgs/Illuminance`, `sensor_msgs/Range`, `sensor_msgs/BatteryState`, `sensor_msgs/Joy` | - *(usually covered via custom schemas, see [Schema reflection](#schema-reflection) below on this page)* | [Scalars](../../../reference/types/archetypes/scalars.md) |
 | Text | `std_msgs/String` | - | [TextDocument](../../../reference/types/archetypes/text_document.md) |
 | Log messages | `rcl_interfaces/Log` | `Log` | [TextLog](../../../reference/types/archetypes/text_log.md) |
-
-> *Support for `LocationFix` is coming soon.
+| 2D grid map | `nav_msgs/OccupancyGrid` | - | [GridMap](../../../reference/types/archetypes/grid_map.md) |
 
 ### Timelines
 
-The MCAP data loader adds [timelines](../../../concepts/logging-and-ingestion/timelines.md) based on the message timestamps.
+The MCAP importer adds [timelines](../../../concepts/logging-and-ingestion/timelines.md) based on the message timestamps.
 
 In addition to the `message_log_time` and `message_publish_time` timestamps that are part of every MCAP message, we also add timelines with the application-specific timestamps from ROS and Foxglove schemas.
 
@@ -56,7 +55,7 @@ The timestamps of the individual transforms are put onto the respective timeline
 > You can read more about how Rerun handles transforms and "TF-style" frame names [here](https://rerun.io/docs/concepts/transforms#named-transform-frames).
 
 To see the transforms in the viewer, you can select the entity corresponding to the topic and add a visualizer for `TransformAxes3D` as shown in the video here.
-If you have transforms that correspond to joints in a robot model, you can also read more about how to load `URDF` models into a recording [here](https://rerun.io/docs/howto/urdf#load-urdf-into-an-existing-recording).
+If you have transforms that correspond to joints in a robot model, you can also read more about how to load `URDF` models into a recording [here](https://rerun.io/docs/howto/logging-and-ingestion/urdf#load-urdf-into-an-existing-recording).
 
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/83f26961023d5f554175ebc48d1292e218db1212_add_axes_visualizer.mp4" type="video/mp4" />
@@ -75,9 +74,10 @@ For data that can be visualized in 3D views (e.g. point clouds), this means that
 
 MCAP files allow for arbitrary custom message payloads, so you might have other message types in your files than the set of ROS 2 or Foxglove messages that Rerun automatically converts to archetypes.
 
-Rerun's MCAP data loader automatically decodes unknown Protobuf or ROS 2 messages using schema reflection.
-This means that you won't get Rerun archetypes out of the box, but the message fields become queryable components (e.g. for training data curation via the Rerun SDK, see [here](layers-explained.md#accessing-layer-data)).
+Rerun's MCAP importer automatically decodes unknown Protobuf or ROS 2 messages using schema reflection.
+This means that you won't get Rerun archetypes out of the box, but the message fields become queryable components (e.g. for training data curation via the Rerun SDK, see [here](decoders-explained.md#accessing-decoder-data)).
 Depending on the contents of your data, you can still manually add visualizers for certain fields to your blueprint, e.g. a time-series view for scalars or a dataframe view.
+You can also use [Lenses](../../query-and-transform/lenses.md) to attach Rerun semantics to the reflected data.
 
 ### Example: time-series plot for custom message scalars
 

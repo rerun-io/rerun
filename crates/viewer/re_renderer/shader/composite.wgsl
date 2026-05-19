@@ -29,15 +29,23 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
     var color = textureSample(color_texture, nearest_sampler_clamped, in.texcoord);
 
 
-    // TODO(andreas): We assume that the color from the texture does *not* have pre-multiplied alpha.
-    // This is a brittle workaround for the alpha-to-coverage issue described in `ViewBuilder::MAIN_TARGET_ALPHA_TO_COVERAGE_COLOR_STATE`:
-    // We need this because otherwise the feathered edges of alpha-to-coverage would be overly bright, as after
-    // MSAA-resolve they end up with an unusually low alpha value relative to the color value.
-    if uniforms.blend_with_background == 0 {
-        // To not apply this hack needlessly and account for alpha from alpha to coverage, we have to ignore alpha values if blending is disabled.
+    // `blend_with_background` is a tristate (see `BlendWithBackground` in `view_builder.rs`):
+    //   0 = No: opaque output, ignore alpha entirely.
+    //   1 = AlphaToCoverage: source uses the alpha-to-coverage MSAA workaround.
+    //   2 = Premultiplied: source is already correctly premultiplied alpha.
+    if uniforms.blend_with_background == 0u {
+        // To not apply the alpha-to-coverage hack needlessly and account for alpha from alpha to coverage,
+        // we have to ignore alpha values if blending is disabled.
         color = vec4f(color.rgb, 1.0);
-    } else {
+    } else if uniforms.blend_with_background == 1u {
+        // TODO(andreas): We assume that the color from the texture does *not* have pre-multiplied alpha.
+        // This is a brittle workaround for the alpha-to-coverage issue described in `ViewBuilder::MAIN_TARGET_ALPHA_TO_COVERAGE_COLOR_STATE`:
+        // We need this because otherwise the feathered edges of alpha-to-coverage would be overly bright, as after
+        // MSAA-resolve they end up with an unusually low alpha value relative to the color value.
         color = vec4f(color.rgb * color.a, color.a);
+    } else {
+        // Source is already premultiplied; no workaround needed.
+        color = vec4f(color.rgb, color.a);
     }
 
     // Outlines
@@ -82,16 +90,12 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
     // Note that egui doing blending in non-linear is a workaround for otherwise poor text rendering, see:
     // * https://github.com/emilk/egui/pull/2071
     // * http://hikogui.org/2022/10/24/the-trouble-with-anti-aliasing.html
-    color = premultiplied_to_unmultiplied(color);
-    color = srgba_from_linear(color);
-    color = vec4f(color.rgb * color.a, color.a);
+
+    // Unmultiply, gamma-correct, re-multiply. The `saturate` on the unmultiplied rgb is
+    // load-bearing: it clamps invalid premultiplied colors (rgb > a) back to 1.0 so they
+    // don't blow up through the gamma curve and collapse to black after re-multiplying.
+    let unmultiplied_rgb = saturate(color.rgb / max(color.a, 1e-6));
+    color = vec4f(srgb_from_linear(unmultiplied_rgb) * color.a, color.a);
 
     return color;
-}
-
-fn premultiplied_to_unmultiplied(color: vec4f) -> vec4f {
-    if (color.a == 0.0) {
-        return vec4f(0.0);
-    }
-    return vec4f(color.rgb / color.a, color.a);
 }

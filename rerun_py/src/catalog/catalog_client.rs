@@ -1,5 +1,26 @@
 use std::collections::HashSet;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
+
+static RERUN_SDK_NUM_CPUS: LazyLock<Option<u64>> = LazyLock::new(|| {
+    let physical_cpus = std::thread::available_parallelism()
+        .map(|n| n.get() as u64)
+        .unwrap_or(2);
+
+    std::env::var("RERUN_SDK_NUM_CPUS").ok().map(|val| {
+        // DataFusion's target_partitions requires a positive integer.
+        // If a fractional value is provided, truncate it. Clamp to
+        // [1, physical_cpus] so we never exceed the machine's actual
+        // core count (guards against infinity / huge values).
+        if let Ok(f) = val.trim().parse::<f64>() {
+            (f as u64).clamp(1, physical_cpus)
+        } else {
+            re_log::warn_once!(
+                "Failed to parse RERUN_SDK_NUM_CPUS={val:?}, defaulting to {physical_cpus}"
+            );
+            physical_cpus
+        }
+    })
+});
 
 use arrow::datatypes::Schema;
 use arrow::pyarrow::PyArrowType;
@@ -7,6 +28,7 @@ use pyo3::exceptions::{PyLookupError, PyRuntimeError, PyValueError};
 use pyo3::types::{PyAnyMethods as _, PyDict};
 use pyo3::{Py, PyAny, PyErr, PyResult, Python, pyclass, pymethods};
 use re_datafusion::{DEFAULT_CATALOG_NAME, get_all_catalog_names};
+use re_log_types::EntryName;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
@@ -14,10 +36,11 @@ use crate::catalog::{
     ConnectionHandle, PyDatasetEntryInternal, PyEntryId, PyRerunHtmlTable, PyTableEntryInternal,
     to_py_err,
 };
+use crate::trace_context::read_trace_context_from_python;
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// Client for a remote Rerun catalog server.
-#[pyclass(  // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(
     name = "CatalogClientInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -42,6 +65,10 @@ fn setup_datafusion_context(py: Python<'_>) -> PyResult<Py<PyAny>> {
 
     let config_options = PyDict::new(py);
     config_options.set_item("datafusion.execution.coalesce_batches", "false")?;
+
+    if let Some(cores) = *RERUN_SDK_NUM_CPUS {
+        config_options.set_item("datafusion.execution.target_partitions", cores.to_string())?;
+    }
 
     let session_config = df_module.call_method1("SessionConfig", (config_options,))?;
     let datafusion_ctx = df_module.call_method1("SessionContext", (session_config,))?;
@@ -69,6 +96,8 @@ impl PyCatalogClientInternal {
     #[new]
     #[pyo3(text_signature = "(self, url, token=None)")]
     fn new(py: Python<'_>, url: String, token: Option<String>) -> PyResult<Self> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.__new__").entered();
+
         // NOTE: The entire TLS stack expects this global variable to be set. It doesn't matter
         // what we set it to. But we have to set it, or we will crash at runtime, as soon as
         // anything tries to do anything TLS-related.
@@ -112,12 +141,24 @@ impl PyCatalogClientInternal {
         self.origin.to_string()
     }
 
+    /// Returns version and deployment information as (version, cloud_provider, cloud_region).
+    fn version_info(
+        self_: Py<Self>,
+        py: Python<'_>,
+    ) -> PyResult<(String, Option<String>, Option<String>)> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.version_info").entered();
+        let connection = self_.borrow(py).connection.clone();
+        let info = connection.version_info(py)?;
+        Ok((info.version, info.cloud_provider, info.cloud_region))
+    }
+
     /// Get a list of all dataset entries in the catalog.
     fn datasets(
         self_: Py<Self>,
         py: Python<'_>,
         include_hidden: bool,
     ) -> PyResult<Vec<Py<PyDatasetEntryInternal>>> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.datasets").entered();
         let connection = self_.borrow(py).connection.clone();
 
         let mut entry_details =
@@ -148,6 +189,7 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         include_hidden: bool,
     ) -> PyResult<Vec<Py<PyTableEntryInternal>>> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.tables").entered();
         let connection = self_.borrow(py).connection.clone();
 
         let entry_details =
@@ -155,7 +197,7 @@ impl PyCatalogClientInternal {
 
         entry_details
             .into_iter()
-            .filter(|details| !details.name.starts_with("__") || include_hidden)
+            .filter(|details| include_hidden || !details.name.is_hidden())
             .map(|details| {
                 let table_entry = connection.read_table(py, details.id)?;
                 let table = PyTableEntryInternal::new(self_.clone_ref(py), table_entry);
@@ -173,6 +215,7 @@ impl PyCatalogClientInternal {
         id: Py<PyEntryId>,
         py: Python<'_>,
     ) -> PyResult<Py<PyDatasetEntryInternal>> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.get_dataset").entered();
         let connection = self_.borrow(py).connection.clone();
         let dataset_entry = connection.read_dataset(py, id.borrow(py).id)?;
 
@@ -190,6 +233,7 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         id: Py<PyEntryId>,
     ) -> PyResult<Py<PyTableEntryInternal>> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.get_table").entered();
         let connection = self_.borrow(py).connection.clone();
         let table_entry = connection.read_table(py, id.borrow(py).id)?;
 
@@ -207,6 +251,7 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         name: &str,
     ) -> PyResult<Py<PyDatasetEntryInternal>> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.create_dataset").entered();
         let connection = self_.borrow_mut(py).connection.clone();
         let dataset_entry = connection.create_dataset(py, name.to_owned())?;
 
@@ -222,12 +267,14 @@ impl PyCatalogClientInternal {
         name: String,
         url: String,
     ) -> PyResult<Py<PyTableEntryInternal>> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.register_table").entered();
         let connection = self_.borrow_mut(py).connection.clone();
 
         let url = url
             .parse::<url::Url>()
             .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
 
+        let name = EntryName::new(name).map_err(|err| PyValueError::new_err(err.to_string()))?;
         let table_entry = connection.register_table(py, name, url)?;
 
         self_.borrow(py).update_catalog_providers(py, false)?;
@@ -251,6 +298,7 @@ impl PyCatalogClientInternal {
         schema: PyArrowType<Schema>,
         url: Option<String>,
     ) -> PyResult<Py<PyTableEntryInternal>> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.create_table").entered();
         let connection = self_.borrow_mut(py).connection.clone();
 
         // Verify we have a valid table name
@@ -279,7 +327,8 @@ impl PyCatalogClientInternal {
             .transpose()?;
 
         let schema = Arc::new(schema.0);
-        let table_entry = connection.create_table_entry(py, name, schema, url)?;
+        let name = EntryName::new(name).map_err(|err| PyValueError::new_err(err.to_string()))?;
+        let table_entry = connection.create_table_entry(py, &name, schema, url)?;
 
         self_.borrow(py).update_catalog_providers(py, false)?;
 
@@ -293,6 +342,8 @@ impl PyCatalogClientInternal {
 
     /// Perform global maintenance tasks on the server.
     fn do_global_maintenance(self_: Py<Self>, py: Python<'_>) -> PyResult<()> {
+        let _span =
+            read_trace_context_from_python(py, "CatalogClient.do_global_maintenance").entered();
         let connection = self_.borrow_mut(py).connection.clone();
 
         connection.do_global_maintenance(py)
@@ -322,6 +373,8 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         name: String,
     ) -> PyResult<Py<PyEntryId>> {
+        let _span =
+            read_trace_context_from_python(py, "CatalogClient._entry_id_from_entry_name").entered();
         let connection = self_.borrow(py).connection.clone();
 
         let entry_details = connection.find_entries(py, EntryFilter::new().with_name(&name))?;

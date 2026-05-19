@@ -1,4 +1,3 @@
-use egui::ahash;
 use re_log_types::EntityPath;
 use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::archetypes::Scalars;

@@ -13,9 +13,9 @@ use crate::queueable_draw_data::QueueableDrawData;
 use crate::renderer::{CompositorDrawData, DebugOverlayDrawData, DrawableCollectionViewInfo};
 use crate::transform::RectTransform;
 use crate::wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc};
-use crate::{DebugLabel, DrawPhaseManager, MsaaMode, RectInt, RenderConfig, Rgba};
+use crate::{DrawPhaseManager, Label, MsaaMode, RectInt, RenderConfig, Rgba};
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Clone, Debug)]
 pub enum ViewBuilderError {
     #[error("Screenshot was already scheduled.")]
     ScreenshotAlreadyScheduled,
@@ -37,7 +37,7 @@ pub struct ViewBuilder {
 }
 
 struct ViewTargetSetup {
-    name: DebugLabel,
+    name: Label,
 
     camera_position: glam::Vec3A,
 
@@ -195,10 +195,34 @@ pub enum RenderMode {
     Deterministic,
 }
 
+/// How the `composite` step combines a view's render result with the background.
+///
+/// Discriminants are passed directly to `composite.wgsl` as a `u32` uniform — keep in sync.
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum BlendWithBackground {
+    /// Don't blend; the view's result fully overwrites whatever was there before.
+    #[default]
+    No = 0,
+
+    /// Blend with the background, applying a workaround for alpha-to-coverage MSAA.
+    ///
+    /// Use this for views whose content relies on alpha-to-coverage for anti-aliasing
+    /// (e.g. 3D views with line/point primitives that use ATC).
+    /// See [`ViewBuilder::MAIN_TARGET_ALPHA_TO_COVERAGE_COLOR_STATE`] for context.
+    AlphaToCoverage = 1,
+
+    /// Blend with the background, treating the view's result as already premultiplied alpha.
+    ///
+    /// Use this for views whose content uses regular alpha blending and does not depend on
+    /// alpha-to-coverage (e.g. 2D plots rendered in screen space).
+    Premultiplied = 2,
+}
+
 /// Basic configuration for a target view.
 #[derive(Debug)]
 pub struct TargetConfiguration {
-    pub name: DebugLabel,
+    pub name: Label,
 
     /// Aim for beauty or determinism?
     pub render_mode: RenderMode,
@@ -230,11 +254,8 @@ pub struct TargetConfiguration {
 
     pub outline_config: Option<OutlineConfig>,
 
-    /// If true, the `composite` step will blend the image with the background.
-    ///
-    /// Otherwise, this step will overwrite whatever was there before, drawing the view builder's result
-    /// as an opaque rectangle.
-    pub blend_with_background: bool,
+    /// How the `composite` step combines the view's result with the background.
+    pub blend_with_background: BlendWithBackground,
 
     /// Configuration for the picking layer if any.
     ///
@@ -258,7 +279,7 @@ impl Default for TargetConfiguration {
             viewport_transformation: RectTransform::IDENTITY,
             pixels_per_point: 1.0,
             outline_config: None,
-            blend_with_background: false,
+            blend_with_background: BlendWithBackground::No,
             picking_config: None,
         }
     }
@@ -380,8 +401,8 @@ impl ViewBuilder {
         format: Self::MAIN_TARGET_DEPTH_FORMAT,
         // It's important to set the depth test to GreaterEqual, not to Greater.
         // This way, we ensure that objects that are drawn later with the exact same depth value, can overwrite earlier ones!
-        depth_compare: wgpu::CompareFunction::GreaterEqual,
-        depth_write_enabled: true,
+        depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
+        depth_write_enabled: Some(true),
         stencil: wgpu::StencilState {
             front: wgpu::StencilFaceState::IGNORE,
             back: wgpu::StencilFaceState::IGNORE,
@@ -398,7 +419,7 @@ impl ViewBuilder {
     /// Default depth state for disabled depth write & read.
     pub const MAIN_TARGET_DEFAULT_DEPTH_STATE_NO_WRITE: wgpu::DepthStencilState =
         wgpu::DepthStencilState {
-            depth_write_enabled: false,
+            depth_write_enabled: Some(false),
             ..Self::MAIN_TARGET_DEFAULT_DEPTH_STATE
         };
 
@@ -613,7 +634,7 @@ impl ViewBuilder {
                 | DrawPhase::Transparent
                 | DrawPhase::Compositing;
             if config.outline_config.is_some() {
-                active_draw_phases |= DrawPhase::OutlineMask;
+                active_draw_phases |= DrawPhase::OutlineMask | DrawPhase::OutlineMaskNoDepth;
             }
             if picking_processor.is_some() {
                 active_draw_phases |= DrawPhase::PickingLayer;
@@ -660,7 +681,7 @@ impl ViewBuilder {
                     .outline_mask_processor
                     .as_ref()
                     .map(|p| p.final_voronoi_texture()),
-                &config.outline_config,
+                config.outline_config.as_ref(),
                 config.blend_with_background,
             ),
         );
@@ -717,12 +738,12 @@ impl ViewBuilder {
         let setup = &self.setup;
 
         // Prepare the drawables for drawing!
-        self.draw_phase_manager.sort_drawables();
+        self.draw_phase_manager.sort_drawables(&renderers);
 
         let mut encoder = ctx
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: setup.name.clone().get(),
+                label: Some(setup.name.clone().get()),
             });
 
         {
@@ -731,7 +752,7 @@ impl ViewBuilder {
             let needs_msaa_resolve = ctx.render_config().msaa_mode != MsaaMode::Off;
 
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: DebugLabel::from(format!("{} - main pass", setup.name)).get(),
+                label: Label::from(format!("{} - main pass", setup.name)).wgpu_label(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &setup.main_target_msaa.default_view,
                     depth_slice: None,
@@ -764,6 +785,7 @@ impl ViewBuilder {
                 }),
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             pass.set_bind_group(0, &setup.bind_group_0, &[]);
@@ -820,6 +842,12 @@ impl ViewBuilder {
                     &renderers,
                     &pipelines,
                     DrawPhase::OutlineMask,
+                    &mut pass,
+                );
+                self.draw_phase_manager.draw(
+                    &renderers,
+                    &pipelines,
+                    DrawPhase::OutlineMaskNoDepth,
                     &mut pass,
                 );
             }

@@ -83,13 +83,6 @@ fn create_demo_tree() -> MemUsageTree {
 
     entity_db.add("chunk_store", chunk_store.into_tree());
 
-    // Time histograms for timeline scrubbing
-    let mut time_histograms = MemUsageNode::new();
-    time_histograms.add("log_time", MemUsageTree::Bytes(1_200_000)); // 1.2 MB
-    time_histograms.add("log_tick", MemUsageTree::Bytes(800_000)); // 800 KB
-    time_histograms.add("frame_nr", MemUsageTree::Bytes(600_000)); // 600 KB
-    entity_db.add("time_histograms", time_histograms.into_tree());
-
     entity_db.add("entity_path_tree", MemUsageTree::Bytes(4_500_000)); // 4.5 MB
     entity_db.add("data_source", MemUsageTree::Bytes(800_000)); // 800 KB
 

@@ -4,7 +4,9 @@ mod colormap;
 mod image_to_gpu;
 mod re_renderer_callback;
 
-pub use colormap::{colormap_edit_or_view_ui, colormap_to_re_renderer};
+pub use colormap::{
+    colormap_edit_or_view_ui, colormap_edit_or_view_ui_with_selection, colormap_to_re_renderer,
+};
 pub use image_to_gpu::{
     image_data_range_heuristic, image_to_gpu, required_shader_decode,
     texture_creation_desc_from_color_image,
@@ -105,7 +107,7 @@ pub fn render_image(
     image_rect_on_screen: egui::Rect,
     colormapped_texture: ColormappedTexture,
     texture_options: egui::TextureOptions,
-    debug_name: re_renderer::DebugLabel,
+    debug_name: re_renderer::Label,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 

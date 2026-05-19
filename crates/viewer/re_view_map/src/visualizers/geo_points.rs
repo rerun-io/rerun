@@ -1,8 +1,9 @@
 use re_log_types::EntityPath;
 use re_renderer::PickingLayerInstanceId;
 use re_renderer::renderer::PointCloudDrawDataError;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::GeoPoints;
-use re_sdk_types::components::Radius;
+use re_sdk_types::components::{LatLon, Radius};
 use re_view::{
     AnnotationSceneContext, DataResultQuery as _, VisualizerInstructionQueryResults,
     process_annotation_slices, process_color_slice,
@@ -21,11 +22,15 @@ pub struct GeoPointBatch {
     pub instance_id: Vec<PickingLayerInstanceId>,
 }
 
+/// Output data from [`GeoPointsVisualizer`].
+#[derive(Default)]
+pub struct GeoPointsOutput {
+    pub batches: Vec<(EntityPath, GeoPointBatch)>,
+}
+
 /// Visualizer for [`GeoPoints`].
 #[derive(Default)]
-pub struct GeoPointsVisualizer {
-    batches: Vec<(EntityPath, GeoPointBatch)>,
-}
+pub struct GeoPointsVisualizer;
 
 impl IdentifiedViewSystem for GeoPointsVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -38,11 +43,14 @@ impl VisualizerSystem for GeoPointsVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<GeoPoints>()
+        VisualizerQueryInfo::single_required_component::<LatLon>(
+            &GeoPoints::descriptor_positions(),
+            &GeoPoints::all_components(),
+        )
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
@@ -50,13 +58,14 @@ impl VisualizerSystem for GeoPointsVisualizer {
         let output = VisualizerExecutionOutput::default();
         let annotation_scene_context = context_systems.get::<AnnotationSceneContext>(&output)?;
         let latest_at_query = view_query.latest_at_query();
+        let mut batches = Vec::new();
 
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
             let results =
                 data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query, instruction);
-            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let annotation_context = annotation_scene_context.0.find(&data_result.entity_path);
 
@@ -124,15 +133,14 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 }
             }
 
-            self.batches
-                .push((data_result.entity_path.clone(), batch_data));
+            batches.push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(output)
+        Ok(output.with_visualizer_data(GeoPointsOutput { batches }))
     }
 }
 
-impl GeoPointsVisualizer {
+impl GeoPointsOutput {
     /// Compute the [`super::GeoSpan`] of all the points in the visualizer.
     pub fn span(&self) -> Option<super::GeoSpan> {
         super::GeoSpan::from_lat_long(

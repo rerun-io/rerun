@@ -3,7 +3,6 @@ use re_byte_size::SizeBytes;
 use re_chunk_store::{LatestAtQuery, MissingChunkReporter};
 use re_entity_db::EntityDb;
 use re_log::debug_assert;
-use re_sdk_types::components::TransformFrameId;
 
 use crate::frame_id_registry::FrameIdRegistry;
 use crate::transform_resolution_cache::ParentFromChildTransform;
@@ -428,9 +427,6 @@ impl re_byte_size::MemUsageTreeCapture for TransformForest {
     }
 }
 
-static UNKNOWN_TRANSFORM_ID: std::sync::LazyLock<TransformFrameId> =
-    std::sync::LazyLock::new(|| TransformFrameId::new("<unknown>"));
-
 /// Starting from a `current_frame`, walks towards the parent and accumulates transforms into `transform_stack`.
 /// Stops until not more connection is found or an already processed `frame_id` is hit.
 #[expect(clippy::too_many_arguments)]
@@ -726,12 +722,8 @@ fn pinhole3d_from_image_plane(
     resolved_pinhole_projection: &ResolvedPinholeProjection,
     pinhole_image_plane_distance: f64,
 ) -> glam::DAffine3 {
-    let ResolvedPinholeProjection {
-        parent: _, // TODO(andreas): Make use of this.
-        image_from_camera,
-        resolution: _,
-        view_coordinates,
-    } = resolved_pinhole_projection;
+    let image_from_camera = resolved_pinhole_projection.image_from_camera;
+    let view_coordinates = resolved_pinhole_projection.view_coordinates;
 
     // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
     // Our visualization interprets this as looking at a 2D image plane from a single point (the pinhole).
@@ -802,18 +794,32 @@ fn transforms_at(
         if let Some(pinhole_projection) = pinhole_projection.as_ref()
             && pinhole_projection.parent != transform.parent
         {
-            re_log::warn_once!(
-                "The transform frame {:?} is connected to {:?} via a pinhole but also connected to {:?} via a transform. Any frame is only ever allowed to have a single parent at any given time.",
-                id_registry
-                    .lookup_frame_id(child_frame)
-                    .unwrap_or(&UNKNOWN_TRANSFORM_ID),
-                id_registry
-                    .lookup_frame_id(pinhole_projection.parent)
-                    .unwrap_or(&UNKNOWN_TRANSFORM_ID),
-                id_registry
-                    .lookup_frame_id(transform.parent)
-                    .unwrap_or(&UNKNOWN_TRANSFORM_ID),
-            );
+            let transform_frame = id_registry.lookup_frame_id(child_frame);
+            let pinhole_parent_frame = id_registry.lookup_frame_id(pinhole_projection.parent);
+            let transform_parent_frame = id_registry.lookup_frame_id(transform.parent);
+
+            // If any of the frames ids can't be resolved to a string, we're in bigger trouble and can't show a useful error
+            // as this implies that the registry is in an invalid state.
+            if let Some(transform_frame) = transform_frame
+                && let Some(pinhole_parent_frame) = pinhole_parent_frame
+                && let Some(transform_parent_frame) = transform_parent_frame
+            {
+                re_log::warn_once!(
+                    "The transform frame {transform_frame:?} is connected to {pinhole_parent_frame:?} via a pinhole but also connected to {transform_parent_frame:?} via a transform. Any frame is only ever allowed to have a single parent at any given time.",
+                );
+            } else {
+                for frame in [
+                    transform_frame,
+                    pinhole_parent_frame,
+                    transform_parent_frame,
+                ] {
+                    if frame.is_none() {
+                        re_log::debug_panic!(
+                            "Couldn't resolve frame id for {frame:?} in the registry, even though it was present in the transforms for timeline.",
+                        );
+                    }
+                }
+            }
         }
 
         Some(transform.parent)
@@ -851,6 +857,8 @@ mod tests {
     use re_sdk_types::components::TransformFrameId;
     use re_sdk_types::{RowId, archetypes, components};
 
+    use crate::transform_resolution_cache::ResolvedPinholeProjectionCached;
+
     use super::*;
 
     fn test_pinhole() -> archetypes::Pinhole {
@@ -859,12 +867,15 @@ mod tests {
 
     fn test_resolved_pinhole(parent: TransformFrameIdHash) -> ResolvedPinholeProjection {
         ResolvedPinholeProjection {
-            parent,
-            image_from_camera: components::PinholeProjection::from_focal_length_and_principal_point(
-                [1.0, 2.0],
-                [50.0, 100.0],
-            ),
-            resolution: Some([100.0, 200.0].into()),
+            cached: ResolvedPinholeProjectionCached {
+                parent,
+                image_from_camera:
+                    components::PinholeProjection::from_focal_length_and_principal_point(
+                        [1.0, 2.0],
+                        [50.0, 100.0],
+                    ),
+                resolution: Some([100.0, 200.0].into()),
+            },
             view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
         }
     }
@@ -1415,9 +1426,9 @@ mod tests {
                     .build()?,
             ))?;
             let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
-            assert!(!transform_forest.any_missing_chunks());
+            assert!(transform_forest.any_missing_chunks());
 
-            // Forest sees the new relationship despite not having it reported since the cold cache will pick it up.
+            // Forest can't see the new relationship since it hasn't been reported to the cache.
             assert_eq!(
                 transform_forest
                     .transform_from_to(
@@ -1428,12 +1439,9 @@ mod tests {
                     .collect::<Vec<_>>(),
                 vec![(
                     TransformFrameIdHash::from_str("new_top"),
-                    Ok(TreeTransform {
-                        root: TransformFrameIdHash::from_str("new_top"),
-                        target_from_source: glam::DAffine3::from_translation(glam::dvec3(
-                            -5.0, 0.0, 0.0
-                        )),
-                    })
+                    Err(TransformFromToError::UnknownSourceFrame(
+                        TransformFrameIdHash::from_str("new_top")
+                    ))
                 )]
             );
             assert_eq!(
@@ -1449,7 +1457,7 @@ mod tests {
                     Err(TransformFromToError::NoPathBetweenFrames {
                         target: TransformFrameIdHash::from_str("child2"),
                         src: TransformFrameIdHash::from_str("top"),
-                        target_root: TransformFrameIdHash::from_str("new_top"),
+                        target_root: TransformFrameIdHash::from_str("child2"),
                         source_root: TransformFrameIdHash::from_str("root"),
                     })
                 )]

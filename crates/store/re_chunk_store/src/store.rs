@@ -3,20 +3,32 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
 use ahash::{HashMap, HashSet};
-use arrow::datatypes::DataType as ArrowDataType;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_log::debug_assert;
 
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
-use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
-use re_types_core::{ComponentDescriptor, ComponentType};
+use re_log_types::{EntityPath, StoreId, TimeInt};
 
 use crate::{ChunkDirectLineage, ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
 
 // ---
 
+/// Configuration for the [`ChunkStore`].
+///
+/// The size thresholds (`chunk_max_bytes`, `chunk_max_rows`, `chunk_max_rows_if_unsorted`)
+/// serve as target chunk sizes for both **compaction** (merging small chunks together) and
+/// **splitting** (breaking large chunks apart on ingestion):
+///
+/// * During **compaction**, two chunks are only merged if their combined size stays within
+///   these thresholds.
+/// * During **splitting**, incoming chunks that exceed these thresholds are recursively split
+///   into smaller ones.
+///
+/// In other words, these thresholds define the target chunk size window from both directions.
+///
+// TODO(emilk): we should be able to turn on/off merging and splitting independently.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChunkStoreConfig {
     /// If `true` (the default), the store will emit events when its contents are modified in
@@ -27,6 +39,9 @@ pub struct ChunkStoreConfig {
     pub enable_changelog: bool,
 
     /// What is the threshold, in bytes, after which a [`Chunk`] cannot be compacted any further?
+    ///
+    /// This threshold is used both as a ceiling for compaction (don't merge beyond this)
+    /// and as a trigger for splitting (split incoming chunks that exceed this).
     ///
     /// This is a multi-dimensional trade-off:
     /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
@@ -46,6 +61,9 @@ pub struct ChunkStoreConfig {
     /// This specifically applies to time-sorted chunks.
     /// See also [`ChunkStoreConfig::chunk_max_rows_if_unsorted`].
     ///
+    /// Like `chunk_max_bytes`, this is used both as a ceiling for compaction and as a
+    /// trigger for splitting.
+    ///
     /// This is a multi-dimensional trade-off:
     /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
     /// * Larger chunks lead to slower query execution on some unhappy paths. Bad.
@@ -63,6 +81,9 @@ pub struct ChunkStoreConfig {
     ///
     /// This specifically applies to _non_ time-sorted chunks.
     /// See also [`ChunkStoreConfig::chunk_max_rows`].
+    ///
+    /// Like `chunk_max_bytes`, this is used both as a ceiling for compaction and as a
+    /// trigger for splitting.
     ///
     /// This is a multi-dimensional trade-off:
     /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
@@ -341,15 +362,21 @@ pub struct ColumnMetadataState {
     /// This is purely additive: once false, it will always be false. Even in case of garbage
     /// collection.
     pub is_semantically_empty: bool,
+
+    /// Whether this column has ever been written as static data.
+    ///
+    /// Starts as `false` and flips to `true` once static data is observed. Never goes back.
+    pub is_static: bool,
 }
 
 impl re_byte_size::SizeBytes for ColumnMetadataState {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             is_semantically_empty,
+            is_static,
         } = self;
 
-        is_semantically_empty.heap_size_bytes()
+        is_semantically_empty.heap_size_bytes() + is_static.heap_size_bytes()
     }
 }
 
@@ -495,18 +522,11 @@ pub struct ChunkStore {
     /// The configuration of the chunk store (e.g. compaction settings).
     pub(crate) config: ChunkStoreConfig,
 
-    /// Keeps track of the _latest_ datatype for each time column.
+    /// Incrementally maintained store schema.
     ///
-    /// This index is purely additive: it is never affected by garbage collection in any way.
-    ///
-    /// See also [`Self::time_column_type`].
-    pub(crate) time_type_registry: IntMap<TimelineName, TimeType>,
-
-    // TODO(grtlr): Can we slim this map down by getting rid of `ColumnIdentifier`-level here?
-    pub(crate) per_column_metadata: IntMap<
-        EntityPath,
-        IntMap<ComponentIdentifier, (ComponentDescriptor, ColumnMetadataState, ArrowDataType)>,
-    >,
+    /// Contains all column descriptors and per-entity component sets.
+    /// Purely additive: never affected by garbage collection.
+    pub(crate) schema: crate::StoreSchema,
 
     /// All the *physical* chunks currently loaded in the store, mapped by their respective IDs.
     ///
@@ -520,7 +540,7 @@ pub struct ChunkStore {
     /// just hints that some data is missing and must first be re-inserted by the caller.
     pub(crate) physical_chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
-    /// All *physical* [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in
+    /// All *physical* [`ChunkId`]s currently in the store, ordered by the smallest [`RowId`] in
     /// each of them.
     ///
     /// This is effectively all chunks in global data order. Used for garbage collection.
@@ -528,7 +548,9 @@ pub struct ChunkStore {
     /// During garbage collection, physical chunks are offloaded from memory and become virtual
     /// chunks instead. At the same time, their IDs are removed from this set, which is how we
     /// distinguish virtual from physical chunks.
-    pub(crate) physical_chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
+    ///
+    /// Keyed on `(min RowId, ChunkId)` so that multiple chunks can share a min `RowId`.
+    pub(crate) physical_chunk_ids_per_min_row_id: BTreeSet<(RowId, ChunkId)>,
 
     /// Keeps track of where each individual chunks, both virtual & physical, came from.
     ///
@@ -609,7 +631,7 @@ pub struct ChunkStore {
         ChunkIdSetPerTimePerComponentPerTimelinePerEntity,
 
     /// All *physical & virtual* temporal [`ChunkId`]s for all entities on all timelines, without the
-    /// [`ComponentType`] index.
+    /// [`re_types_core::ComponentType`] index.
     ///
     /// This index is purely additive: it is never affected by garbage collection in any way.
     /// This implies that the chunk IDs present in this set might be either physical/loaded or
@@ -677,8 +699,7 @@ impl Clone for ChunkStore {
         Self {
             id: self.id.clone(),
             config: self.config.clone(),
-            time_type_registry: self.time_type_registry.clone(),
-            per_column_metadata: self.per_column_metadata.clone(),
+            schema: self.schema.clone(),
             physical_chunks_per_chunk_id: self.physical_chunks_per_chunk_id.clone(),
             chunks_lineage: self.chunks_lineage.clone(),
             dangling_splits: self.dangling_splits.clone(),
@@ -705,9 +726,8 @@ impl std::fmt::Display for ChunkStore {
         let Self {
             id,
             config,
-            time_type_registry: _,
-            per_column_metadata: _,
-            physical_chunks_per_chunk_id: chunks_per_chunk_id,
+            schema: _,
+            physical_chunks_per_chunk_id,
             physical_chunk_ids_per_min_row_id: chunk_ids_per_min_row_id,
             chunks_lineage,
             dangling_splits: _,
@@ -737,8 +757,8 @@ impl std::fmt::Display for ChunkStore {
         f.write_str(&indent::indent_all_by(4, "}\n"))?;
 
         f.write_str(&indent::indent_all_by(4, "physical chunks: [\n"))?;
-        for chunk_id in chunk_ids_per_min_row_id.values() {
-            if let Some(chunk) = chunks_per_chunk_id.get(chunk_id) {
+        for (_, chunk_id) in chunk_ids_per_min_row_id {
+            if let Some(chunk) = physical_chunks_per_chunk_id.get(chunk_id) {
                 f.write_str(&indent::indent_all_by(
                     8,
                     format!("{}\n", self.format_lineage(chunk_id)),
@@ -758,7 +778,7 @@ impl std::fmt::Display for ChunkStore {
 
         f.write_str(&indent::indent_all_by(4, "virtual chunks: [\n"))?;
         for chunk_id in chunks_lineage.keys().sorted() {
-            if chunks_per_chunk_id.contains_key(chunk_id) {
+            if physical_chunks_per_chunk_id.contains_key(chunk_id) {
                 continue;
             }
 
@@ -788,8 +808,7 @@ impl ChunkStore {
         Self {
             id,
             config,
-            time_type_registry: Default::default(),
-            per_column_metadata: Default::default(),
+            schema: Default::default(),
             physical_chunk_ids_per_min_row_id: Default::default(),
             chunks_lineage: Default::default(),
             dangling_splits: Default::default(),
@@ -840,6 +859,67 @@ impl ChunkStore {
         &self.config
     }
 
+    /// The hierarchical tree of all entities registered in the store.
+    #[inline]
+    pub fn entity_tree(&self) -> &crate::EntityTree {
+        self.schema.entity_tree()
+    }
+
+    /// Prunes leaf entities from the entity tree that have no indexed data.
+    ///
+    /// Called after store deletions to keep the tree in sync with actual data.
+    fn prune_entity_tree(&mut self) {
+        let static_ids = &self.static_chunk_ids_per_entity;
+        let temporal_ids = &self.temporal_chunk_ids_per_entity;
+        self.schema.prune_entity_tree(&|path| {
+            static_ids.contains_key(path) || temporal_ids.contains_key(path)
+        });
+    }
+
+    /// Converts diffs into store events, prunes the entity tree if there are deletions,
+    /// and notifies subscribers.
+    pub(crate) fn finalize_events(
+        &mut self,
+        diffs: impl IntoIterator<Item = crate::ChunkStoreDiff>,
+    ) -> Vec<crate::ChunkStoreEvent> {
+        let mut events: Vec<_> = diffs
+            .into_iter()
+            .map(|diff| crate::ChunkStoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect();
+
+        let new_columns = self.schema.on_events(&events);
+
+        if !new_columns.is_empty() {
+            events.push(crate::ChunkStoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff: crate::ChunkStoreDiff::SchemaAddition(crate::ChunkStoreDiffSchemaAddition {
+                    new_columns,
+                }),
+            });
+        }
+
+        if events.iter().any(|e| e.is_deletion()) {
+            self.prune_entity_tree();
+        }
+
+        if self.config.enable_changelog {
+            Self::on_events(&events);
+        }
+
+        events
+    }
+
     /// Iterate over all *physical* chunks in the store, in ascending [`ChunkId`] order.
     #[inline]
     pub fn iter_physical_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {
@@ -854,13 +934,11 @@ impl ChunkStore {
 
     /// Get a *physical* chunk based on its ID and track the chunk as either
     /// used or missing, to signal that it should be kept or fetched.
+    ///
+    /// If the given chunk isn't physical `None` is returned and the ID is reported
+    /// missing.
     #[track_caller]
-    pub fn use_physical_chunk_or_report_missing(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
-        debug_assert!(
-            !self.split_on_ingest.contains(id),
-            "Asked for a physical chunk, but this chunk was split on ingestion and was never physical: {id}"
-        );
-
+    pub fn use_chunk_or_report_missing(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
         let chunk = self.physical_chunk(id);
 
         if chunk.is_some() {
@@ -878,15 +956,18 @@ impl ChunkStore {
         self.physical_chunks_per_chunk_id.len()
     }
 
+    /// The incrementally maintained store schema.
+    ///
+    /// Contains all column descriptors, per-entity component sets,
+    /// timeline types, and per-column metadata.
+    #[inline]
+    pub fn schema(&self) -> &crate::StoreSchema {
+        &self.schema
+    }
+
     /// All the currently loaded chunks
     pub fn physical_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {
         self.physical_chunks_per_chunk_id.values()
-    }
-
-    /// Lookup the _latest_ [`TimeType`] used by a specific [`TimelineName`].
-    #[inline]
-    pub fn time_column_type(&self, timeline_name: &TimelineName) -> Option<TimeType> {
-        self.time_type_registry.get(timeline_name).copied()
     }
 
     /// Lookup the [`ColumnMetadata`] for a specific [`EntityPath`] and [`re_types_core::Component`].
@@ -897,11 +978,10 @@ impl ChunkStore {
     ) -> Option<ColumnMetadata> {
         let ColumnMetadataState {
             is_semantically_empty,
+            is_static: _,
         } = self
-            .per_column_metadata
-            .get(entity_path)
-            .and_then(|per_identifier| per_identifier.get(&component))
-            .map(|(_, metadata_state, _)| metadata_state)?;
+            .schema
+            .lookup_column_metadata_state(entity_path, component)?;
 
         let is_static = self
             .static_chunk_ids_per_entity
@@ -918,40 +998,6 @@ impl ChunkStore {
             is_tombstone,
             is_semantically_empty: *is_semantically_empty,
         })
-    }
-
-    /// Get the [`ComponentType`] and [`ArrowDataType`] for a specific [`EntityPath`] and [`ComponentIdentifier`].
-    pub fn lookup_component_type(
-        &self,
-        entity_path: &EntityPath,
-        component: ComponentIdentifier,
-    ) -> Option<(Option<ComponentType>, ArrowDataType)> {
-        let (component_descr, _, datatype) = self
-            .per_column_metadata
-            .get(entity_path)
-            .and_then(|per_identifier| per_identifier.get(&component))?;
-        Some((component_descr.component_type, datatype.clone()))
-    }
-
-    /// Checks whether any column in the store with the given [`ComponentType`] has a datatype
-    /// that differs from `expected_datatype`.
-    ///
-    /// This iterates over all entities, so it should not be called in a hot path.
-    pub fn has_mismatched_datatype_for_component_type(
-        &self,
-        component_type: &ComponentType,
-        expected_datatype: &ArrowDataType,
-    ) -> Option<&ArrowDataType> {
-        for per_component in self.per_column_metadata.values() {
-            for (descr, _, datatype) in per_component.values() {
-                if descr.component_type.as_ref() == Some(component_type)
-                    && datatype != expected_datatype
-                {
-                    return Some(datatype);
-                }
-            }
-        }
-        None
     }
 
     /// Returns and iterator over [`ChunkId`]s that were detected as
@@ -994,16 +1040,6 @@ impl ChunkStore {
             self.chunks_lineage.contains_key(&chunk_id),
             "A chunk was reported missing, with no known lineage: {chunk_id}"
         );
-        if self.split_on_ingest.contains(&chunk_id) {
-            if cfg!(debug_assertions) {
-                re_log::warn_once!(
-                    "Tried to report a chunk missing that was the source of a split (manual)"
-                );
-            }
-            re_log::debug_once!(
-                "Tried to report a chunk missing that was the source of a split: {chunk_id} (manual)"
-            );
-        }
 
         self.queried_chunk_id_tracker
             .write()

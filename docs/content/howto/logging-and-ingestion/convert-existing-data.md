@@ -5,10 +5,10 @@ description: How to convert custom data formats to Rerun using row-oriented or c
 ---
 
 There are a variety of ways to convert data into an `RRD`.
-When filetypes are opened in the viewer they go through our [dataloaders](../../concepts/logging-and-ingestion/data-loaders.md).
+When filetypes are opened in the viewer they go through our [importers](../../concepts/logging-and-ingestion/importers.md).
 
-For example, there's a built-in dataloader for [MCAP files](../../concepts/logging-and-ingestion/mcap.md) and we also have a few [command line options](../../concepts/logging-and-ingestion/mcap/cli-reference.md) for converting MCAP data directly into an `RRD`.
-This works great for message types that are supported by the built-in dataloader - however, the most general solution to support arbitrary message types is the logging API.
+For example, there's a built-in importer for [MCAP files](../../concepts/logging-and-ingestion/mcap.md) and we also have a few [command line options](../../concepts/logging-and-ingestion/mcap/cli-reference.md) for converting MCAP data directly into an `RRD`.
+This works great for message types that are supported by the built-in importer - however, the most general solution to support arbitrary message types is the logging API.
 
 ---
 

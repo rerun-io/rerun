@@ -7,8 +7,7 @@
 use re_log_types::EntityPath;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_sdk_types::{ComponentDescriptor, RowId};
-use re_ui::UiExt as _;
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::{AppContext, StoreViewContext, UiLayout};
 
 mod annotation_context_ui;
 mod app_id_ui;
@@ -81,23 +80,26 @@ pub fn sorted_component_list_by_archetype_for_ui(
     map
 }
 
-/// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
-pub trait DataUi {
+/// Types implementing [`AppUi`] can display themselves in an [`egui::Ui`] using only an [`AppContext`].
+pub trait AppUi {
     /// If you need to lookup something in the chunk store, use the given query to do so.
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
-    );
+    fn app_ui(&self, ctx: &AppContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout);
+}
 
-    /// Called [`Self::data_ui`] using the default query and recording.
-    fn data_ui_recording(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
-        ui.sanity_check();
-        self.data_ui(ctx, ui, ui_layout, &ctx.current_query(), ctx.recording());
-        ui.sanity_check();
+/// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
+///
+/// Use this for things that live inside of a recording.
+pub trait DataUi {
+    fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout);
+}
+
+// Blanket implementation of DataUi for everything that already implements AppUi:
+impl<T> DataUi for T
+where
+    T: AppUi,
+{
+    fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
+        self.app_ui(ctx.app_ctx, ui, ui_layout);
     }
 }
 
@@ -106,17 +108,14 @@ pub trait DataUi {
 /// This is given the context of the entity it is part of so it can do queries.
 pub trait EntityDataUi {
     /// If you need to lookup something in the chunk store, use the given query to do so.
-    #[expect(clippy::too_many_arguments)]
     fn entity_data_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
         component_descriptor: &ComponentDescriptor,
         row_id: Option<RowId>,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
     );
 }
 
@@ -126,19 +125,17 @@ where
 {
     fn entity_data_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
         _component_descriptor: &ComponentDescriptor,
         _row_id: Option<RowId>,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
     ) {
         // This ensures that UI state is maintained per entity. For example, the collapsed state for
         // `AnnotationContext` component is not saved by all instances of the component.
         ui.push_id(entity_path.hash(), |ui| {
-            self.data_ui(ctx, ui, ui_layout, query, db);
+            self.data_ui(ctx, ui, ui_layout);
         });
     }
 }
@@ -146,13 +143,12 @@ where
 // ---------------------------------------------------------------------------
 
 pub fn annotations(
-    db: &re_entity_db::EntityDb,
-    query: &re_chunk_store::LatestAtQuery,
+    ctx: &StoreViewContext<'_>,
     entity_path: &re_entity_db::EntityPath,
 ) -> std::sync::Arc<re_viewer_context::Annotations> {
     re_tracing::profile_function!();
     let mut annotation_map = re_viewer_context::AnnotationMap::default();
-    annotation_map.load(db, query);
+    annotation_map.load(ctx.db, &ctx.query());
     annotation_map.find(entity_path)
 }
 

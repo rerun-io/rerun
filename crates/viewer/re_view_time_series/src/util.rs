@@ -27,23 +27,6 @@ pub fn series_supported_datatypes() -> impl IntoIterator<Item = arrow::datatypes
     ]
 }
 
-/// Find the number of time units per physical pixel.
-pub fn determine_time_per_pixel(
-    ctx: &ViewerContext<'_>,
-    plot_mem: Option<&egui_plot::PlotMemory>,
-) -> f64 {
-    let egui_ctx = ctx.egui_ctx();
-
-    // How many ui points per time unit?
-    let points_per_time = plot_mem
-        .as_ref()
-        .map_or(1.0, |mem| mem.transform().dpos_dvalue_x());
-    let pixels_per_time = egui_ctx.pixels_per_point() as f64 * points_per_time;
-
-    // How many time units per physical pixel?
-    1.0 / pixels_per_time.max(f64::EPSILON)
-}
-
 /// The overlap of an entity's query range with the range we have data on the entity for in the store.
 pub fn data_result_time_range(
     ctx: &ViewerContext<'_>,
@@ -139,20 +122,12 @@ pub fn points_to_series(
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
     visualizer_instruction_id: VisualizerInstructionId,
-) -> Result<(), String> {
+) {
     re_tracing::profile_function!(&instance_path.to_string());
 
     if points.is_empty() {
         // No values being present is not an error, maybe data comes in later!
-        return Ok(());
-    }
-
-    // Filter out static times if any slipped in.
-    // It's enough to check the first one since an entire column has to be either temporal or static.
-    if let Some(first) = points.first()
-        && first.time == re_log_types::TimeInt::STATIC.as_i64()
-    {
-        return Err("Can't plot data that was logged statically in a time series since there's no temporal dimension.".to_owned());
+        return;
     }
 
     let (aggregation_factor, points) = apply_aggregation(aggregator, time_per_pixel, points, query);
@@ -173,19 +148,22 @@ pub fn points_to_series(
             kind = PlotSeriesKind::Scatter(ScatterAttrs::default());
         }
 
-        all_series.push(PlotSeries {
+        let mut series = PlotSeries {
             instance_path,
             visible,
             label: series_label,
             color: points[0].attrs.color,
             radius_ui: points[0].attrs.radius_ui,
             kind,
-            points: vec![(points[0].time, points[0].value)],
+            points: Vec::with_capacity(1),
+            value_range: None,
             aggregator,
             aggregation_factor,
             min_time,
             visualizer_instruction_id,
-        });
+        };
+        series.push_point(points[0].time, points[0].value);
+        all_series.push(series);
     } else {
         add_series_runs(
             instance_path,
@@ -199,8 +177,6 @@ pub fn points_to_series(
             visualizer_instruction_id,
         );
     }
-
-    Ok(())
 }
 
 /// Apply the given aggregation to the provided points.
@@ -293,6 +269,7 @@ fn add_series_runs(
         color: attrs.color,
         radius_ui: attrs.radius_ui,
         points: Vec::with_capacity(num_points),
+        value_range: None,
         kind: attrs.kind,
         aggregator,
         aggregation_factor,
@@ -304,8 +281,7 @@ fn add_series_runs(
         #[expect(clippy::branches_sharing_code)]
         if p.attrs == attrs {
             // Same attributes, just add to the current series.
-
-            series.points.push((p.time, p.value));
+            series.push_point(p.time, p.value);
         } else {
             // Attributes changed since last point, break up the current run into a
             // its own series, and start the next one.
@@ -321,6 +297,7 @@ fn add_series_runs(
                     radius_ui: attrs.radius_ui,
                     kind: attrs.kind,
                     points: Vec::with_capacity(num_points - i),
+                    value_range: None,
                     aggregator,
                     aggregation_factor,
                     min_time,
@@ -345,11 +322,11 @@ fn add_series_runs(
             // too, then we want the 2 segments to appear continuous even though they
             // are actually split from a data standpoint.
             if cur_continuous && prev_continuous {
-                series.points.push(prev_point);
+                series.push_point(prev_point.0, prev_point.1);
             }
 
             // Add the point that triggered the split to the new segment.
-            series.points.push((p.time, p.value));
+            series.push_point(p.time, p.value);
         }
     }
 

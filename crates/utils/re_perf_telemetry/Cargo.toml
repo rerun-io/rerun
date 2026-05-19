@@ -65,6 +65,7 @@ opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
 opentelemetry_sdk = { workspace = true, features = [
   "rt-tokio",
   "experimental_metrics_custom_reader",
+  "spec_unstable_metrics_views",
 ] }
 parking_lot.workspace = true
 serde.workspace = true
@@ -82,6 +83,9 @@ tokio.workspace = true
 # External (optional)
 tracing-tracy = { workspace = true, optional = true }
 pyo3 = { workspace = true, optional = true }
+
+[dev-dependencies]
+opentelemetry_sdk = { workspace = true, features = ["testing"] }
 
 [lints]
 workspace = true

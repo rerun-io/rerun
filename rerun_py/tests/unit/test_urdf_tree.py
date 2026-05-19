@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 import rerun as rr
 import rerun.urdf as rru
+from rerun.experimental import RrdReader, StreamingReader
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 URDF_PATH = REPO_ROOT / "examples" / "rust" / "animated_urdf" / "data" / "so100.urdf"
@@ -39,9 +40,9 @@ def test_urdf_tree_loading() -> None:
     assert visual_paths[0] == "/so_arm100/visual_geometries/wrist/visual_0"
 
     collision_paths = tree.get_collision_geometry_paths(child_link)
-    assert collision_paths[0] == "/so_arm100/collision_geometries/shoulder/collision_0"
+    assert collision_paths[0] == "/so_arm100/collision_geometries/mesh/shoulder/collision_0"
     collision_paths = tree.get_collision_geometry_paths("wrist")
-    assert collision_paths[0] == "/so_arm100/collision_geometries/wrist/collision_0"
+    assert collision_paths[0] == "/so_arm100/collision_geometries/mesh/wrist/collision_0"
 
     root_link = tree.root_link()
     assert root_link.name == "base"
@@ -82,6 +83,101 @@ def test_urdf_tree_transform() -> None:
     assert transform.child_frame == rr.components.TransformFrameIdBatch(
         rr.components.TransformFrameId(joint.child_link)
     )
+
+
+def test_urdf_tree_frame_prefix() -> None:
+    prefix = "left_arm/"
+    tree = rru.UrdfTree.from_file_path(URDF_PATH, frame_prefix=prefix)
+
+    assert tree.frame_prefix == prefix
+
+    joint = tree.get_joint_by_name("1")
+    assert joint is not None
+
+    # parent_link and child_link should still return unprefixed URDF link names.
+    assert joint.parent_link == "base"
+    assert joint.child_link == "shoulder"
+
+    # But compute_transform should produce prefixed frame IDs.
+    transform = joint.compute_transform(0.0)
+    assert transform.parent_frame == rr.components.TransformFrameIdBatch(
+        rr.components.TransformFrameId(f"{prefix}{joint.parent_link}")
+    )
+    assert transform.child_frame == rr.components.TransformFrameIdBatch(
+        rr.components.TransformFrameId(f"{prefix}{joint.child_link}")
+    )
+
+    # compute_transform_columns should also produce prefixed frame IDs.
+    columns = joint.compute_transform_columns([0.0, 0.5], clamp=True)
+    from rerun._baseclasses import ComponentColumnList
+
+    assert isinstance(columns, ComponentColumnList)
+
+
+def test_urdf_tree_no_frame_prefix() -> None:
+    tree = rru.UrdfTree.from_file_path(URDF_PATH)
+    assert tree.frame_prefix is None
+
+
+def test_urdf_tree_log() -> None:
+    rec = rr.RecordingStream("rerun_example_test_urdf_tree_log", make_default=False, make_thread_default=False)
+    rec.memory_recording()
+
+    tree = rru.UrdfTree.from_file_path(URDF_PATH)
+    tree.log_urdf_to_recording(rec)
+
+    # Also test with frame_prefix
+    tree_prefixed = rru.UrdfTree.from_file_path(URDF_PATH, frame_prefix="left/")
+    tree_prefixed.log_urdf_to_recording(rec)
+
+
+def test_urdf_tree_custom_static_transform_entity_path(tmp_path: Path) -> None:
+    rrd_path = tmp_path / "urdf_static_transforms.rrd"
+
+    with rr.RecordingStream(
+        "test_urdf_tree_custom_static_transform_entity_path",
+        make_default=False,
+        make_thread_default=False,
+    ) as rec:
+        rec.save(rrd_path)
+
+        tree = rru.UrdfTree.from_file_path(URDF_PATH, static_transform_entity_path="custom_tf_static")
+        tree.log_urdf_to_recording(rec)
+
+    paths = RrdReader(rrd_path).store().schema().entity_paths()
+
+    assert "/custom_tf_static" in paths
+    assert "/tf_static" not in paths
+
+
+def test_urdf_tree_stream() -> None:
+    tree = rru.UrdfTree.from_file_path(URDF_PATH)
+
+    assert isinstance(tree, StreamingReader)
+
+    chunks = tree.stream().to_chunks()
+    entity_paths = {chunk.entity_path for chunk in chunks}
+
+    assert "/so_arm100" in entity_paths
+    assert "/so_arm100/visual_geometries/shoulder/visual_0" in entity_paths
+    assert "/tf_static" in entity_paths
+
+
+def test_urdf_tree_stream_custom_static_transform_entity_path() -> None:
+    tree = rru.UrdfTree.from_file_path(URDF_PATH, static_transform_entity_path="custom_tf_static")
+
+    entity_paths = {chunk.entity_path for chunk in tree.stream().to_chunks()}
+
+    assert "/custom_tf_static" in entity_paths
+    assert "/tf_static" not in entity_paths
+
+
+def test_urdf_tree_stream_without_joint_transforms() -> None:
+    tree = rru.UrdfTree.from_file_path(URDF_PATH)
+
+    entity_paths = {chunk.entity_path for chunk in tree.stream(include_joint_transforms=False).to_chunks()}
+
+    assert "/tf_static" not in entity_paths
 
 
 def test_urdf_compute_transform_columns() -> None:

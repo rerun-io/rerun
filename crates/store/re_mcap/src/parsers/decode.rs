@@ -4,7 +4,7 @@ use re_chunk::external::nohash_hasher::{IntMap, IsEnabled};
 use re_chunk::{
     Chunk, EntityPath, TimeColumn, TimeColumnBuilder, TimePoint, Timeline, TimelineName,
 };
-use re_log_types::TimeCell;
+use re_log_types::{TimeCell, TimeType};
 
 use crate::util::{TimestampCell, log_and_publish_timepoint_from_msg};
 
@@ -45,8 +45,9 @@ pub trait MessageParser {
     fn get_log_and_publish_timepoints(
         &self,
         msg: &mcap::Message<'_>,
+        time_type: TimeType,
     ) -> anyhow::Result<Vec<re_chunk::TimePoint>> {
-        Ok(vec![log_and_publish_timepoint_from_msg(msg)])
+        Ok(vec![log_and_publish_timepoint_from_msg(msg, time_type)])
     }
 
     /// Consume the parser and convert all accumulated data into Rerun chunks.
@@ -70,16 +71,29 @@ impl IsEnabled for ChannelId {}
 /// Common context used by parsers to build timelines and store entity paths.
 pub struct ParserContext {
     entity_path: EntityPath,
+    channel_topic: String,
+    time_type: TimeType,
     pub timelines: IntMap<TimelineName, TimeColumnBuilder>,
 }
 
 impl ParserContext {
-    /// Construct a new parser context with the given [`EntityPath`].
-    pub fn new(entity_path: EntityPath) -> Self {
+    /// Construct a new parser context with the given [`EntityPath`] and [`TimeType`].
+    pub fn new(
+        entity_path: EntityPath,
+        channel_topic: impl Into<String>,
+        time_type: TimeType,
+    ) -> Self {
         Self {
             entity_path,
+            channel_topic: channel_topic.into(),
+            time_type,
             timelines: IntMap::default(),
         }
+    }
+
+    /// The [`TimeType`] to use for timestamp timelines.
+    pub fn time_type(&self) -> TimeType {
+        self.time_type
     }
 
     /// Add an additional [`TimePoint`] to the timelines in this context.
@@ -122,7 +136,6 @@ impl ParserContext {
     /// Add a timestamp to the timeline using the provided timestamp cell.
     ///
     /// The timeline name and [`TimeCell`] are automatically determined from the timestamp cell.
-    /// For Unix epochs, creates a timestamp cell. For custom epochs, creates a duration cell.
     pub fn add_timestamp_cell(&mut self, timestamp_cell: TimestampCell) -> &mut Self {
         let timeline_name = TimelineName::from(timestamp_cell.timeline_name());
         let cell = timestamp_cell.into_time_cell();
@@ -146,5 +159,10 @@ impl ParserContext {
     /// Get the entity path associated with this context.
     pub fn entity_path(&self) -> &EntityPath {
         &self.entity_path
+    }
+
+    /// Get the MCAP channel topic associated with this context.
+    pub fn channel_topic(&self) -> &str {
+        &self.channel_topic
     }
 }

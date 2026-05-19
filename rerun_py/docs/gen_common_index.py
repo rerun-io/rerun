@@ -283,6 +283,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Capsules3D",
             "archetypes.Cylinders3D",
             "archetypes.Ellipsoids3D",
+            "archetypes.GridMap",
             "archetypes.LineStrips2D",
             "archetypes.LineStrips3D",
             "archetypes.Mesh3D",
@@ -316,6 +317,11 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Text",
         class_list=["LoggingHandler", "archetypes.TextDocument", "archetypes.TextLog"],
+        gen_page=False,
+    ),
+    Section(
+        title="Status",
+        class_list=["archetypes.Status"],
         gen_page=False,
     ),
     Section(
@@ -465,7 +471,7 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Authentication",
         show_tables=True,
         mod_path=["rerun.auth"],
-        func_list=["login", "get_credentials"],
+        func_list=["login", "logout", "get_credentials"],
         class_list=["Credentials"],
         show_submodules=True,
     ),
@@ -499,7 +505,14 @@ SECTION_TABLE: Final[list[Section]] = [
         show_tables=True,
         mod_path=["rerun.experimental"],
         show_submodules=True,
+        func_list=[
+            "send_chunk",
+        ],
         class_list=[
+            "Chunk",
+            "Lens",
+            "LensOutput",
+            "Selector",
             "ViewerClient",
         ],
     ),
@@ -552,7 +565,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "thread_local_stream",
             "recording_stream_generator_ctx",
         ],
-        class_list=["LoggingHandler", "MemoryRecording", "GrpcSink", "FileSink"],
+        class_list=["LoggingHandler", "MemoryRecording", "BinaryStream", "GrpcSink", "FileSink"],
     ),
 ]
 
@@ -623,10 +636,10 @@ with mkdocs_gen_files.open(index_path, "w") as index_file:
     index_file.write(
         """
 ## Getting Started
-* [Quick start](https://www.rerun.io/docs/getting-started/quick-start/python)
+* [Quick start](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
-* [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
+* [Troubleshooting](https://www.rerun.io/docs/overview/installing-rerun/troubleshooting)
 
 There are many different ways of sending data to the Rerun Viewer depending on what you're trying
 to achieve and whether the viewer is running in the same process as your code, in another process,

@@ -191,7 +191,7 @@ fn process_messages<W: std::io::Write>(
                 #[expect(unsafe_code)]
                 let (byte_span_excluding_header, byte_size_uncompressed) = unsafe {
                     // Reminder: this will implicitly discard RRD footers.
-                    encoder.append_transport(&msg)?
+                    encoder.append_transport_without_footer(&msg)?
                 };
 
                 if let re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(arrow_msg) = msg {

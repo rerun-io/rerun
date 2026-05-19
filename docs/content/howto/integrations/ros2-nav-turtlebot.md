@@ -117,7 +117,7 @@ def tf_callback(self, tf_msg: TFMessage) -> None:
 
 ### `robot_description` (URDF)
 
-Rerun features a built-in data loader for URDF, so we can just forward the string received on the `/robot_description` topic to it.
+Rerun features a built-in importer for URDF, so we can just forward the string received on the `/robot_description` topic to it.
 
 More information about how to use URDF with Rerun can be found [here](../../howto/logging-and-ingestion/urdf.md).
 
@@ -156,6 +156,7 @@ def __init__(self) -> None:
     # …
     self.laser_proj = laser_geometry.laser_geometry.LaserProjection()
 
+
 def scan_callback(self, scan: LaserScan) -> None:
     time = Time.from_msg(scan.header.stamp)
     rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
@@ -190,6 +191,7 @@ def __init__(self) -> None:
     # …
     self.cv_bridge = cv_bridge.CvBridge()
 
+
 def cam_info_callback(self, info: CameraInfo) -> None:
     """
     Logs CameraInfo as a Rerun Pinhole.
@@ -211,6 +213,7 @@ def cam_info_callback(self, info: CameraInfo) -> None:
             child_frame=info.header.frame_id + "_image_plane",
         ),
     )
+
 
 def image_callback(self, img: Image) -> None:
     time = Time.from_msg(img.header.stamp)

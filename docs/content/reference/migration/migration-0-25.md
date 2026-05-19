@@ -52,12 +52,8 @@ Previously, logging two `AnyValues` with the same field name but different arche
 ```python
 arbitrary_int = 10
 example = AnyValues()
-example.with_field(
-    ComponentDescriptor("component_name", "archetype_name"), arbitrary_int
-)
-example.with_field(
-    ComponentDescriptor("component_name", "different_archetype"), arbitrary_int+1
-)
+example.with_field(ComponentDescriptor("component_name", "archetype_name"), arbitrary_int)
+example.with_field(ComponentDescriptor("component_name", "different_archetype"), arbitrary_int + 1)
 rr.log("/path", example)
 ```
 
@@ -65,6 +61,7 @@ In the viewer we would see two `component_name` entries under different archetyp
 
 ```python
 from rerun.dataframe import load_recording
+
 rec = load_recording("<path_to_logs_above>.rrd")
 rec.view(index="log_time", contents="/path").select().schema
 # Only shows one `component_name` component
@@ -81,19 +78,16 @@ In the next release we will remove the ability to specify an `archetype` when cr
 ```python
 arbitrary_int = 10
 example = DynamicArchetype("archetype_name")
-example.with_component_from_data(
-    "component_name", arbitrary_int
-)
+example.with_component_from_data("component_name", arbitrary_int)
 another_example = DynamicArchetype("another_archetype")
-another_example.with_field(
-    "component_name", arbitrary_int+1
-)
+another_example.with_field("component_name", arbitrary_int + 1)
 rr.log("/path", example)
 rr.log("/path", another_example)
 ```
 
 ```python
 from rerun.dataframe import load_recording
+
 rec = load_recording("<path_to_logs_above>.rrd")
 rec.view(index="log_time", contents="/path").select().schema
 # Only shows two `component_name` components deduplicated by archetype!

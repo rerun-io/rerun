@@ -431,10 +431,9 @@ impl EntityPathFilter {
 
     /// Resolve variables & parse paths, ignoring any errors.
     ///
-    /// If there is no mention of [`EntityPath::properties`] in the filter, it will be added.
+    /// Automatically excludes `__properties/**` unless the user explicitly
+    /// provides a rule for that exact subtree.
     pub fn resolve_forgiving(&self, subst_env: &EntityPathSubs) -> ResolvedEntityPathFilter {
-        let mut seen_properties = false;
-
         let mut rules: BTreeMap<ResolvedEntityPathRule, RuleEffect> = self
             .rules
             .iter()
@@ -444,19 +443,15 @@ impl EntityPathFilter {
                     *effect,
                 )
             })
-            .inspect(|(ResolvedEntityPathRule { resolved_path, .. }, _)| {
-                if resolved_path.starts_with(&EntityPath::properties()) {
-                    seen_properties = true;
-                }
-            })
             .collect();
 
-        if !seen_properties {
-            rules.insert(
-                ResolvedEntityPathRule::including_subtree(&EntityPath::properties()),
-                RuleEffect::Exclude,
-            );
-        }
+        // Default-exclude `__properties/**`, but don't overwrite if the user
+        // already has an explicit rule for that exact subtree.
+        rules
+            .entry(ResolvedEntityPathRule::including_subtree(
+                &EntityPath::properties(),
+            ))
+            .or_insert(RuleEffect::Exclude);
 
         ResolvedEntityPathFilter { rules }
     }
@@ -466,29 +461,21 @@ impl EntityPathFilter {
         self,
         subst_env: &EntityPathSubs,
     ) -> Result<ResolvedEntityPathFilter, EntityPathFilterError> {
-        let mut seen_properties = false;
-
         let mut rules = self
             .rules
             .into_iter()
             .map(|(rule, effect)| {
                 ResolvedEntityPathRule::parse_strict(&rule, subst_env).map(|r| (r, effect))
             })
-            .inspect(|maybe_rule| {
-                if let Ok((ResolvedEntityPathRule { resolved_path, .. }, _)) = maybe_rule
-                    && resolved_path.starts_with(&EntityPath::properties())
-                {
-                    seen_properties = true;
-                }
-            })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
 
-        if !seen_properties {
-            rules.insert(
-                ResolvedEntityPathRule::including_subtree(&EntityPath::properties()),
-                RuleEffect::Exclude,
-            );
-        }
+        // Default-exclude `__properties/**`, but don't overwrite if the user
+        // already has an explicit rule for that exact subtree.
+        rules
+            .entry(ResolvedEntityPathRule::including_subtree(
+                &EntityPath::properties(),
+            ))
+            .or_insert(RuleEffect::Exclude);
 
         Ok(ResolvedEntityPathFilter { rules })
     }
@@ -1564,6 +1551,46 @@ mod tests {
                 + /test345
                 "#
             )
+        );
+
+        // Including a specific __properties subpath should not expose sibling
+        // __properties paths — the auto-exclusion of __properties/** must still
+        // apply, with the specific path winning via specificity.
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + /**
+        + /__properties/this
+        "#,
+        );
+        let resolved = filter.resolve_forgiving(&EntityPathSubs::empty());
+        assert!(
+            resolved.matches(&EntityPath::from("/__properties/this")),
+            "explicitly included __properties subpath should match"
+        );
+        assert!(
+            !resolved.matches(&EntityPath::from("/__properties/that")),
+            "sibling __properties path should still be excluded by auto-exclusion"
+        );
+        assert!(
+            !resolved.matches(&EntityPath::from("/__properties")),
+            "__properties root should still be excluded by auto-exclusion"
+        );
+
+        // But explicitly including __properties/** should override the auto-exclusion.
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + /**
+        + /__properties/**
+        "#,
+        );
+        let resolved = filter.resolve_forgiving(&EntityPathSubs::empty());
+        assert!(
+            resolved.matches(&EntityPath::from("/__properties/this")),
+            "__properties subpath should match when subtree is explicitly included"
+        );
+        assert!(
+            resolved.matches(&EntityPath::from("/__properties/that")),
+            "__properties subpath should match when subtree is explicitly included"
         );
 
         // If the subpaths of properties are _excluded_ they should be present.

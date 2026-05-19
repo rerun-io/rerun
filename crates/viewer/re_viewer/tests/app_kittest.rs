@@ -4,10 +4,11 @@ use std::time::Duration;
 
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
+use re_sdk_types::ColormapSelection;
 use re_sdk_types::components::Colormap;
 use re_test_context::TestContext;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
-use re_viewer_context::{MaybeMutRef, ViewerContext};
+use re_viewer_context::MaybeMutRef;
 
 /// Navigates from welcome to settings screen and snapshots it.
 #[tokio::test]
@@ -69,17 +70,19 @@ fn colormap_selector_ui() {
         .build_ui(|ui| {
             re_ui::apply_style_and_install_loaders(ui.ctx());
 
-            test_context.run(&ui.ctx().clone(), |ctx: &ViewerContext<'_>| {
+            test_context.run_recording(&ui.ctx().clone(), |ctx| {
                 ui.horizontal(|ui| {
                     ui.label("Colormap:");
 
                     let mut test_colormap = Colormap::Spectral;
                     let mut colormap_ref = MaybeMutRef::MutRef(&mut test_colormap);
 
-                    re_viewer_context::gpu_bridge::colormap_edit_or_view_ui(
+                    // Show the full selection of colormaps including the grid map category in this test.
+                    re_viewer_context::gpu_bridge::colormap_edit_or_view_ui_with_selection(
                         ctx,
                         ui,
                         &mut colormap_ref,
+                        ColormapSelection::IncludeGridMap,
                     );
                 });
             });
@@ -90,11 +93,29 @@ fn colormap_selector_ui() {
     harness.snapshot("colormap_selector_closed");
 
     // give the combo box some room to open
-    harness.set_size(egui::Vec2::new(200.0, 350.0));
+    harness.set_size(egui::Vec2::new(200.0, 400.0));
     harness.get_by_role(Role::ComboBox).click(); // open combo box
     harness.run();
 
     harness.fit_contents();
     harness.run();
     harness.snapshot("colormap_selector_open");
+}
+
+#[test]
+fn ci_runners_use_software_rendering() {
+    if std::env::var("CI").is_ok() {
+        let test_context = TestContext::new();
+        let _viewer = test_context.setup_kittest_for_rendering_3d([200.0, 100.0]);
+        let render_state_guard = test_context.egui_render_state.lock();
+        let render_state = render_state_guard.as_ref().unwrap();
+        assert_eq!(
+            render_state.adapter.get_info().device_type,
+            wgpu::DeviceType::Cpu
+        );
+        assert_eq!(
+            render_state.adapter.get_info().backend,
+            wgpu::Backend::Vulkan
+        );
+    }
 }

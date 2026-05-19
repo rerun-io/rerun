@@ -106,12 +106,7 @@ impl VideoAssetCache {
     }
 }
 
-impl Cache for VideoAssetCache
-where
-    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
-    Video: Send + Sync,
-    VideoLoadError: Send + Sync,
-{
+impl Cache for VideoAssetCache {
     fn name(&self) -> &'static str {
         "VideoAssetCache"
     }

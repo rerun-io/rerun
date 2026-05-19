@@ -11,11 +11,14 @@ fn main() -> anyhow::Result<()> {
     let query = LatestAtQuery::new(TimelineName::new("frame"), 4);
 
     // Find all relevant data for a query:
-    let chunk = chunk.latest_at(&query, MyPoints::descriptor_points().component);
-    eprintln!("{:?} @ {query:?}:\n{chunk}", MyPoints::descriptor_points());
+    let Some(unit) = chunk.latest_at(&query, MyPoints::descriptor_points().component) else {
+        eprintln!("No data found for {query:?}");
+        return Ok(());
+    };
+    eprintln!("{:?} @ {query:?}:\n{unit}", MyPoints::descriptor_points());
 
     // And then slice it as appropriate:
-    let chunk = chunk
+    let chunk = unit
         .timeline_sliced(TimelineName::log_time())
         .component_sliced(MyPoints::descriptor_points().component);
     eprintln!("Sliced down to specific timeline and component:\n{chunk}");

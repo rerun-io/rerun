@@ -86,7 +86,7 @@ fn item_bread_crumbs_ui(
         Item::AppId(_)
         | Item::DataSource(_)
         | Item::StoreId(_)
-        | Item::RedapEntry(_)
+        | Item::RedapEntry { .. }
         | Item::RedapServer(_)
         | Item::TableId(_) => {
             // These have no bread crumbs, at least not currently.
@@ -210,7 +210,7 @@ fn last_part_of_item_heading(
         | Item::View { .. }
         | Item::TableId { .. }
         | Item::StoreId { .. }
-        | Item::RedapEntry(_)
+        | Item::RedapEntry { .. }
         | Item::RedapServer(_) => true,
 
         Item::InstancePath { .. } | Item::DataResult { .. } | Item::ComponentPath { .. } => false,
@@ -229,7 +229,7 @@ fn last_part_of_item_heading(
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
-    cursor_interact_with_selectable(ctx, response, item.clone());
+    cursor_interact_with_selectable(&ctx.app_ctx, response, item.clone());
 }
 
 /// The breadcrumbs of containers and views in the viewport.
@@ -257,7 +257,7 @@ fn viewport_breadcrumbs(
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
-    cursor_interact_with_selectable(ctx, response, item);
+    cursor_interact_with_selectable(&ctx.app_ctx, response, item);
 
     separator_icon_ui(ui);
 }
@@ -325,7 +325,7 @@ fn entity_path_breadcrumbs(
     } else {
         Item::from(full_entity_path)
     };
-    cursor_interact_with_selectable(ctx, response, item);
+    cursor_interact_with_selectable(&ctx.app_ctx, response, item);
 
     separator_icon_ui(ui);
 }

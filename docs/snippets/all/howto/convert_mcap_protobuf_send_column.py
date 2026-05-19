@@ -12,17 +12,16 @@ This example shows how to read MCAP files containing custom Protobuf messages
 from __future__ import annotations
 
 import argparse
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from google.protobuf.json_format import MessageToDict
 from mcap.reader import make_reader
 from mcap_protobuf.decoder import DecoderFactory
-import numpy as np
-import rerun as rr
 
+import rerun as rr
 
 # --- Data types ---
 

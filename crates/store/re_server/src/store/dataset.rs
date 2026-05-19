@@ -7,9 +7,9 @@ use arrow::datatypes::{Field, Fields, Schema};
 use itertools::{Either, Itertools as _};
 use parking_lot::Mutex;
 use re_arrow_util::RecordBatchExt as _;
-use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_encoding::RawRrdManifest;
 use re_log_types::{EntryId, StoreId, StoreKind, TimeType};
+use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails};
 use re_protos::cloud::v1alpha1::{
     EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
@@ -17,12 +17,12 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 
 use crate::store::{
-    Error, InMemoryStore, Layer, Segment, StoreSlotId, Tracked, store_pool::StorePool,
+    Error, Layer, ResolvedStore, Segment, StoreSlotId, Tracked, store_pool::StorePool,
 };
 
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
 pub struct DatasetInner {
-    name: String,
+    name: EntryName,
     details: DatasetDetails,
     segments: HashMap<SegmentId, Segment>,
     #[cfg(feature = "lance")]
@@ -41,7 +41,12 @@ pub struct Dataset {
 }
 
 impl Dataset {
-    pub fn new(id: EntryId, name: String, store_kind: StoreKind, details: DatasetDetails) -> Self {
+    pub fn new(
+        id: EntryId,
+        name: EntryName,
+        store_kind: StoreKind,
+        details: DatasetDetails,
+    ) -> Self {
         Self {
             id,
             store_kind,
@@ -63,11 +68,11 @@ impl Dataset {
     }
 
     #[inline]
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &EntryName {
         &self.inner.name
     }
 
-    pub fn set_name(&mut self, name: String) {
+    pub fn set_name(&mut self, name: EntryName) {
         if name != self.inner.name {
             self.inner.modify().name = name;
         }
@@ -236,9 +241,7 @@ impl Dataset {
                 layer_names_row.push(layer_name.to_owned());
                 storage_urls_row.push(format!("memory:///store/{}", layer.store_slot_id()));
 
-                let layer_properties = layer
-                    .compute_properties()
-                    .map_err(Error::failed_to_extract_properties)?;
+                let layer_properties = layer.compute_properties()?;
 
                 // Accumulate properties.
                 //
@@ -441,11 +444,7 @@ impl Dataset {
             registration_statuses
                 .push(re_protos::cloud::v1alpha1::ext::LayerRegistrationStatus::Done.to_string());
 
-            properties.push(
-                layer
-                    .compute_properties()
-                    .map_err(Error::failed_to_extract_properties)?,
-            );
+            properties.push(layer.compute_properties()?);
         }
 
         let base_record_batch = ScanDatasetManifestResponse::create_dataframe(
@@ -473,89 +472,19 @@ impl Dataset {
 
     pub fn rrd_manifest(&self, segment_id: &SegmentId) -> Result<RawRrdManifest, Error> {
         let partition = self.segment(segment_id)?;
-
-        let mut rrd_manifest_builder = re_log_encoding::RrdManifestBuilder::default();
-
-        let mut chunk_keys = Vec::new();
-
-        for (_layer_name, layer) in partition.iter_layers() {
-            let store = layer.store_handle();
-
-            let mut offset = 0;
-            for chunk in store.read().iter_physical_chunks() {
-                let chunk_batch = chunk
-                    .to_chunk_batch()
-                    .map_err(|err| Error::RrdLoadingError(err.into()))?;
-
-                // Not a totally accurate value, but we're certainly not going to encode every chunk
-                // into IPC bytes just to figure out their uncompressed size either.
-                //
-                // This is fine for 2 reasons:
-                // 1. The reported size is mostly for human and automated heuristics (e.g. "have I
-                //    enough memory left to download this chunk?"), and so doesn't need to be exact.
-                // 2. Reporting the size in terms of heap values is even better for such heuristics.
-                use re_byte_size::SizeBytes as _;
-                let byte_size_uncompressed = chunk.heap_size_bytes();
-
-                // There is no such thing as "compressed data on disk" in the case of the OSS server,
-                // since there's no disk to begin with. That's fine, we just re-use the
-                // uncompressed values: the chunk-key (generated below) is what will be used to
-                // accurately fetch the data in any case.
-                //
-                // TODO(cmc): we could also keep track of the compressed values originally fetched
-                // from disk and/or network all the way into the OSS server's datastructures and
-                // resurface them here but that doesn't seem to have any practical use, so not
-                // worth the added complexity?
-                let uncompressed_byte_span = re_span::Span {
-                    start: offset,
-                    len: byte_size_uncompressed,
-                };
-
-                offset += byte_size_uncompressed;
-
-                rrd_manifest_builder
-                    .append(&chunk_batch, uncompressed_byte_span, byte_size_uncompressed)
-                    .map_err(|err| Error::RrdLoadingError(err.into()))?;
-
-                chunk_keys.push(
-                    crate::store::ChunkKey {
-                        chunk_id: chunk.id(),
-                        store_slot_id: layer.store_slot_id(),
-                    }
-                    .encode()?,
-                );
-            }
-        }
-
         let application_id = "n/a"; // irrelevant, dropped immediately
-        let store_id = StoreId::new(self.store_kind(), application_id, segment_id.to_string());
-        let mut rrd_manifest = rrd_manifest_builder
-            .build(store_id)
-            .map_err(|err| Error::RrdLoadingError(err.into()))?;
+        let segment_store_id =
+            StoreId::new(self.store_kind(), application_id, segment_id.to_string());
 
-        {
-            let (schema, mut columns, num_rows) = rrd_manifest.data.clone().into_parts();
+        // Each layer produces its own manifest (Lazy clones its cached footer, Eager rebuilds
+        // from chunks), then we merge them under the segment-scoped store id.
+        let per_layer: Vec<RawRrdManifest> = partition
+            .iter_layers()
+            .map(|(_, layer)| layer.rrd_manifest())
+            .collect::<Result<_, _>>()?;
 
-            let schema = {
-                let mut schema = Arc::unwrap_or_clone(schema);
-                let mut fields = schema.fields.to_vec();
-                fields.push(Arc::new(RawRrdManifest::field_chunk_key()));
-                schema.fields = fields.into();
-                schema
-            };
-            {
-                let chunk_keys = arrow::array::BinaryArray::from_iter_values(chunk_keys.iter());
-                columns.push(Arc::new(chunk_keys));
-            }
-
-            rrd_manifest.data = RecordBatch::try_new_with_options(
-                Arc::new(schema),
-                columns,
-                &RecordBatchOptions::new().with_row_count(Some(num_rows)),
-            )?;
-        }
-
-        Ok(rrd_manifest)
+        RawRrdManifest::merge(segment_store_id, per_layer)
+            .map_err(|err| Error::RrdLoadingError(err.into()))
     }
 
     // we can't expect there are no async calls without the lance feature
@@ -566,17 +495,31 @@ impl Dataset {
         segment_id: SegmentId,
         layer_name: String,
         store_slot_id: StoreSlotId,
-        store_handle: ChunkStoreHandle,
+        resolved: ResolvedStore,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
         re_log::debug!(?segment_id, ?layer_name, "add_layer");
 
-        // Validate schema compatibility before inserting
+        // Validate schema compatibility before inserting.
         let current_schema = self.schema()?;
         let new_layer_schema = {
-            let fields = store_handle.read().schema().arrow_fields();
+            let fields = resolved.schema().chunk_column_descriptors().arrow_fields();
             Schema::new_with_metadata(fields, HashMap::default())
         };
+        for new_field in new_layer_schema.fields() {
+            if let Ok(current_field) = current_schema.field_with_name(new_field.name())
+                && current_field != new_field.as_ref()
+            {
+                re_arrow_util::reject_unsupported_widenings(new_field.data_type()).map_err(
+                    |err| {
+                        Error::SchemaConflict(format!(
+                            "schema incompatibility on segment '{segment_id}', \
+                             layer '{layer_name}': {err}"
+                        ))
+                    },
+                )?;
+            }
+        }
         Schema::try_merge([current_schema, new_layer_schema]).map_err(|err| {
             Error::SchemaConflict(format!(
                 "schema incompatibility on segment '{segment_id}', layer '{layer_name}': {err}"
@@ -591,13 +534,13 @@ impl Dataset {
             .or_default()
             .insert_layer(
                 layer_name.clone(),
-                Layer::new(store_slot_id, store_handle.clone()),
+                Layer::new(store_slot_id, resolved.clone()),
                 on_duplicate,
             )?;
 
         #[cfg(feature = "lance")]
         self.indexes()
-            .on_layer_added(segment_id, store_handle, &layer_name, overwritten)
+            .on_layer_added(segment_id, &resolved, &layer_name, overwritten)
             .await?;
 
         #[cfg(not(feature = "lance"))]
@@ -667,27 +610,19 @@ impl Dataset {
         store_kind: StoreKind,
     ) -> Result<BTreeSet<SegmentId>, Error> {
         re_log::info!("Loading RRD: {}", path.display());
-        let contents =
-            ChunkStore::handle_from_rrd_filepath(&InMemoryStore::chunk_store_config(), path)
-                .map_err(Error::RrdLoadingError)?;
 
         let layer_name = layer_name.unwrap_or(DataSource::DEFAULT_LAYER);
-
         let mut new_segment_ids = BTreeSet::default();
 
-        for (store_id, chunk_store) in contents {
-            if store_id.kind() != store_kind {
-                continue;
-            }
-
+        for (store_id, resolved) in ResolvedStore::load_rrd_file(path, store_kind)? {
             let segment_id = SegmentId::new(store_id.recording_id().to_string());
-            let slot_id = pool.register(&chunk_store);
+            let slot_id = pool.register(&resolved);
 
             self.add_layer(
                 segment_id.clone(),
                 layer_name.to_owned(),
                 slot_id,
-                chunk_store,
+                resolved,
                 on_duplicate,
             )
             .await?;

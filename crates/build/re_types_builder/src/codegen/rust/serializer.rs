@@ -271,7 +271,7 @@ pub fn quote_arrow_serializer(
                     re_log::debug_assert_eq!(fields.len(), children.len());
 
                     as_array_ref(UnionArray::try_new(
-                        UnionFields::new(field_type_ids, fields),
+                        UnionFields::try_new(field_type_ids, fields)?,
                         ScalarBuffer::from(type_ids),
                         None,
                         children,
@@ -437,7 +437,7 @@ pub fn quote_arrow_serializer(
                     re_log::debug_assert_eq!(fields.len(), children.len());
 
                     as_array_ref(UnionArray::try_new(
-                        UnionFields::new(field_type_ids, fields),
+                        UnionFields::try_new(field_type_ids, fields)?,
                         ScalarBuffer::from(type_ids),
                         Some(offsets),
                         children,

@@ -170,29 +170,36 @@ pub async fn test_view_visualizers_section() {
     // Snapshot 3: Selection panel showing visualizers for Other view
     harness.snapshot_app("view_visualizers_3_other_view_selected");
 
-    // --- Test removing visualizers ---
+    // --- Test hiding visualizers ---
 
     // Select the Plots view again to see its 3 visualizers
     harness.blueprint_tree().click_label("Plots view");
     harness.run();
 
-    // Click the first "Remove visualizer" trash button (removes sin_line's first visualizer)
+    // Hover the first Visualizer for sin_line to reveal the hide button, but don't click it yet.
     harness
         .selection_panel()
-        .click_nth_label("Remove visualizer", 0);
+        .hover_nth_label("plots/sin_line", 0);
     harness.run();
 
-    // Snapshot 4: After removing the first visualizer from sin_line
-    harness.snapshot_app("view_visualizers_4_after_remove_first");
+    // Snapshot 4: Hovering the sin_line visualizer entry
+    harness.snapshot_app("view_visualizers_4_hover_sin_line");
 
-    // Click the first trash button again (now removes whatever is first in the remaining list)
+    // Click the hide button.
+    harness.selection_panel().click_nth_label("Hide series", 0);
+    harness.run();
+
+    // Snapshot 5: After hiding another visualizer
+    harness.snapshot_app("view_visualizers_5_after_hide");
+
+    // Stop hovering. Hide button should still be there.
     harness
         .selection_panel()
-        .click_nth_label("Remove visualizer", 0);
+        .hover_nth_label("plots/sin_line", 1);
     harness.run();
 
-    // Snapshot 5: After removing another visualizer
-    harness.snapshot_app("view_visualizers_5_after_remove_second");
+    // Snapshot 6: After hiding another visualizer
+    harness.snapshot_app("view_visualizers_6_hover_different_after_hide");
 }
 
 /// Test that shows the visualizer list when an entity logs multiple scalars per timestamp.
@@ -283,15 +290,10 @@ pub async fn test_view_visualizers_multi_scalar() {
     harness.snapshot_app("view_visualizers_multi_scalar_view_selected");
 }
 
-/// Test the "+" button on the Visualizers section when a view is selected.
-///
-/// This test:
-/// 1. Logs time series data
-/// 2. Creates a `TimeSeriesView` and selects it
-/// 3. Removes a visualizer so that the "+" popup has an option to offer
-/// 4. Opens the popup, adds the visualizer back, verifies it reappears
-#[tokio::test(flavor = "multi_thread")]
-pub async fn test_view_visualizers_add_button() {
+/// Sets up a harness with two `SeriesLines` entities (`trig/sin` and `trig/cos`) logged into a
+/// single `TimeSeriesView` named "Trig view". The view is expanded and selected, ready for
+/// interaction tests.
+fn setup_trig_view() -> egui_kittest::Harness<'static, re_viewer::App> {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         window_size: Some(egui::Vec2::new(1200.0, 1000.0)),
         max_steps: Some(100),
@@ -356,35 +358,94 @@ pub async fn test_view_visualizers_add_button() {
         blueprint.add_views(std::iter::once(view), None, None);
     });
 
-    // Expand the blueprint tree
+    // Expand the blueprint tree and select the view
     harness
         .blueprint_tree()
         .right_click_label("Viewport (Grid container)");
     harness.click_label("Expand all");
-
-    // Select the view
     harness.blueprint_tree().click_label("Trig view");
+    harness.run();
+
+    harness
+}
+
+/// Test the "+" button on the Visualizers section when a view is selected.
+///
+/// This test:
+/// 1. Logs time series data
+/// 2. Creates a `TimeSeriesView` and selects it
+/// 3. Hides a visualizer which shouldn't affect the "+" popup options
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_view_visualizers_add_button() {
+    let mut harness = setup_trig_view();
 
     // Snapshot 1: View selected — all entities already have visualizers, so
     // the "+" button is disabled (nothing new to add).
     harness.snapshot_app("view_visualizers_add_1_view_selected");
 
-    // Remove the first visualizer so the popup has something to offer.
-    harness
-        .selection_panel()
-        .click_nth_label("Remove visualizer", 0);
+    // Hide the first visualizer so the popup has something to offer.
+    // Hover the first visualizer pill to reveal the hide button.
+    harness.selection_panel().hover_nth_label("trig/cos", 0);
+    harness.run();
+
+    // Click the hide button.
+    harness.selection_panel().click_nth_label("Hide series", 0);
+    harness.run();
 
     // Click the "+" button to open the popup
     harness.selection_panel().click_label("Add new visualizer…");
 
-    // Snapshot 2: Popup showing the removed entity's component as an option
+    // Snapshot 2: Popup not showing the hidden entity's component as an option
     harness.snapshot_app("view_visualizers_add_2_popup_open");
+}
 
-    // Click the option to add the visualizer back.
-    harness.click_nth_label("Scalars:scalars", 0);
+/// Test the context menu on visualizer pills.
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_view_visualizers_context_menu() {
+    let mut harness = setup_trig_view();
 
-    // Snapshot 3: After adding, the visualizer should reappear in the list
-    harness.snapshot_app("view_visualizers_add_3_visualizer_added");
+    // --- Context menu: Hide ---
+
+    // Right-click a visualizer pill to open the context menu
+    harness
+        .selection_panel()
+        .right_click_nth_label("trig/cos", 0);
+
+    // Snapshot 1: Context menu open with "Hide" and "Remove" options
+    harness.snapshot_app("view_visualizers_ctx_menu_1_open");
+
+    // Click "Hide" from the context menu
+    harness.click_label("Hide");
+
+    // Snapshot 2: After hiding via context menu — the pill shows the invisible icon
+    harness.snapshot_app("view_visualizers_ctx_menu_2_after_hide");
+
+    // --- Context menu: Show ---
+
+    // Right-click the hidden pill to see "Show" in the context menu
+    harness
+        .selection_panel()
+        .right_click_nth_label("trig/cos", 0);
+
+    // Snapshot 3: Context menu on hidden pill shows "Show" instead of "Hide"
+    harness.snapshot_app("view_visualizers_ctx_menu_3_show_option");
+
+    // Click "Show" to restore visibility
+    harness.click_label("Show");
+
+    // Snapshot 4: After restoring visibility via context menu
+    harness.snapshot_app("view_visualizers_ctx_menu_4_after_show");
+
+    // --- Context menu: Remove ---
+
+    // Right-click a visualizer pill and remove it
+    harness
+        .selection_panel()
+        .right_click_nth_label("trig/cos", 0);
+    harness.click_label("Remove");
+
+    // Snapshot 5: After removing a visualizer via context menu — only sin remains
+    harness.snapshot_app("view_visualizers_ctx_menu_5_after_remove");
 }
 
 /// Test adding multiple new visualizers to a view via the "+" button, using custom message formats.
@@ -392,8 +453,8 @@ pub async fn test_view_visualizers_add_button() {
 /// This test:
 /// 1. Logs time series data for three entities using `DynamicArchetype` with custom component names
 /// 2. Creates a `TimeSeriesView` and selects it
-/// 3. Removes two visualizers so the popup has options to offer
-/// 4. Opens the popup — custom components should appear grouped under their respective entities
+/// 3. Selects a visualizer pill and removes both waves/cos visualizers via the selection panel
+/// 4. Opens the "+" popup — removed custom components appear grouped under their entity
 /// 5. Adds them back one at a time, verifying the list grows with each addition
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_view_visualizers_add_multiple() {
@@ -500,40 +561,43 @@ pub async fn test_view_visualizers_add_multiple() {
         .right_click_label("Viewport (Grid container)");
     harness.click_label("Expand all");
 
-    // Select the view
+    // Select the view to see all visualizers in the selection panel.
     harness.blueprint_tree().click_label("Waves view");
+    harness.snapshot_app("view_visualizers_add_multi_1_starting_state");
 
-    // Remove the first two visualizers so the popup has options to offer.
-    // With entities sorted alphabetically, these are both from waves/cos.
+    // Select the first visualizer pill (waves/cos, first alphabetically) to bring up
+    // its details in the selection panel, which includes the "Remove visualizer" button.
+    harness.selection_panel().click_nth_label("waves/cos", 0);
+    harness.snapshot_app("view_visualizers_add_multi_2_selected_visualizer");
+
+    // Remove both waves/cos visualizers ("frequency" and "signal") so the popup has
+    // options to offer when we later click "+".
     harness
         .selection_panel()
         .click_nth_label("Remove visualizer", 0);
     harness
         .selection_panel()
         .click_nth_label("Remove visualizer", 0);
+    harness.snapshot_app("view_visualizers_add_multi_3_removed_visualizer");
 
-    // Snapshot 1: View selected, two visualizers removed
-    harness.snapshot_app("view_visualizers_add_multi_1_view_selected");
+    // Re-select the view to see the updated visualizer list (without waves/cos entries).
+    harness.blueprint_tree().click_label("Waves view");
+    harness.snapshot_app("view_visualizers_add_multi_4_view_selected_again");
 
-    // Open the add-visualizer popup
+    // Open the add-visualizer popup.
     harness.selection_panel().click_label("Add new visualizer…");
 
-    // Snapshot 2: Popup showing custom components under their respective entity.
-    // Both removed fields ("frequency" and "signal") appear under waves/cos.
-    harness.snapshot_app("view_visualizers_add_multi_2_popup_open");
+    // Both removed fields ("frequency" and "signal") should appear under waves/cos.
+    harness.snapshot_app("view_visualizers_add_multi_5_popup_open");
 
-    // Add back one custom component (waves/cos → frequency)
+    // Add back one custom component (waves/cos → frequency).
     harness.click_label("wave_data:frequency");
+    harness.snapshot_app("view_visualizers_add_multi_6_first_added");
 
-    // Snapshot 3: First visualizer re-added to the list
-    harness.snapshot_app("view_visualizers_add_multi_3_first_added");
-
-    // Open the popup again and add the second custom component
+    // Open the popup again and add the second custom component.
     harness.selection_panel().click_label("Add new visualizer…");
 
-    // Only one option remains (waves/cos → signal)
+    // Only one option remains (waves/cos → signal).
     harness.click_label("wave_data:signal");
-
-    // Snapshot 4: Second visualizer also re-added to the list
-    harness.snapshot_app("view_visualizers_add_multi_4_second_added");
+    harness.snapshot_app("view_visualizers_add_multi_7_second_added");
 }

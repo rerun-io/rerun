@@ -1,30 +1,25 @@
 use std::iter;
 
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Boxes3D;
 use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels};
+use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{ArrowString, components};
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use super::SpatialViewVisualizerData;
 use super::utilities::{ProcMeshBatch, ProcMeshDrawableBuilder};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::proc_mesh;
-use crate::view_kind::SpatialViewKind;
 
 // ---
-pub struct Boxes3DVisualizer(SpatialViewVisualizerData);
-
-impl Default for Boxes3DVisualizer {
-    fn default() -> Self {
-        Self(SpatialViewVisualizerData::new(Some(
-            SpatialViewKind::ThreeD,
-        )))
-    }
-}
+#[derive(Default)]
+pub struct Boxes3DVisualizer;
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
@@ -50,6 +45,7 @@ impl Boxes3DVisualizer {
                 query_context,
                 ent_context,
                 Boxes3D::descriptor_colors().component,
+                Boxes3D::descriptor_radii().component,
                 Boxes3D::descriptor_show_labels().component,
                 constant_instance_transform,
                 ProcMeshBatch {
@@ -103,31 +99,39 @@ impl VisualizerSystem for Boxes3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Boxes3D>()
+        VisualizerQueryInfo::single_required_component::<HalfSize3D>(
+            &Boxes3D::descriptor_half_sizes(),
+            &Boxes3D::all_components(),
+        )
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let output = VisualizerExecutionOutput::default();
-        let preferred_view_kind = self.0.preferred_view_kind;
+        let mut data = SpatialViewVisualizerData::default();
         let mut builder = ProcMeshDrawableBuilder::new(
-            &mut self.0,
+            &mut data,
             ctx.viewer_ctx.render_ctx(),
             view_query,
+            &output,
             "boxes3d",
         );
 
         use super::entity_iterator::process_archetype;
-        process_archetype::<Self, Boxes3D, _>(
+        process_archetype::<Boxes3D, _, _>(
             ctx,
             view_query,
             context_systems,
             &output,
-            preferred_view_kind,
+            self,
             |ctx, spatial_ctx, results| {
                 let all_half_sizes =
                     results.iter_required(Boxes3D::descriptor_half_sizes().component);
@@ -164,20 +168,13 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let fill_mode: FillMode = all_fill_modes
                     .slice::<u8>()
                     .next()
-                    .and_then(|(_, fill_modes)| {
-                        fill_modes.first().copied().and_then(FillMode::from_u8)
-                    })
+                    .and_then(|(_, s)| FillMode::from_integer_slice(s).next()?)
                     .unwrap_or_default();
 
-                match fill_mode {
-                    FillMode::DenseWireframe | FillMode::MajorWireframe => {
-                        // Each box consists of 4 strips with a total of 16 vertices
-                        builder.line_builder.reserve_strips(num_boxes * 4)?;
-                        builder.line_builder.reserve_vertices(num_boxes * 16)?;
-                    }
-                    FillMode::Solid => {
-                        // No lines.
-                    }
+                if fill_mode.has_wireframe() {
+                    // Each box consists of 4 strips with a total of 16 vertices
+                    builder.line_builder.reserve_strips(num_boxes * 4)?;
+                    builder.line_builder.reserve_vertices(num_boxes * 16)?;
                 }
 
                 let data = re_query::range_zip_1x8(
@@ -229,10 +226,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
             },
         )?;
 
-        Ok(output.with_draw_data(builder.into_draw_data()?))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.0.as_any())
+        let draw_data = builder.into_draw_data()?;
+        Ok(output.with_draw_data(draw_data).with_visualizer_data(data))
     }
 }

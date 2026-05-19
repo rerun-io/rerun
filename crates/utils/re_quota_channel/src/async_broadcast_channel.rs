@@ -239,8 +239,8 @@ impl<T: Clone + SizeBytes> Sender<T> {
             } else {
                 // Wait with timeout so we can check elapsed time
                 tokio::select! {
-                    _ = self.state.state_changed.notified() => {}
-                    _ = tokio::time::sleep(BLOCKED_WARNING_THRESHOLD) => {}
+                    () = self.state.state_changed.notified() => {}
+                    () = tokio::time::sleep(BLOCKED_WARNING_THRESHOLD) => {}
                 }
             }
         }

@@ -82,10 +82,10 @@ pub enum RecordingStreamError {
     #[error(transparent)]
     WebSink(#[from] crate::web_viewer::WebViewerSinkError),
 
-    /// An error occurred while attempting to use a [`re_data_loader::DataLoader`].
-    #[cfg(feature = "data_loaders")]
+    /// An error occurred while attempting to use a [`re_importer::Importer`].
+    #[cfg(feature = "importers")]
     #[error(transparent)]
-    DataLoaderError(#[from] re_data_loader::DataLoaderError),
+    ImporterError(#[from] re_importer::ImporterError),
 
     /// Invalid gRPC server address.
     #[error(transparent)]
@@ -579,18 +579,21 @@ impl RecordingStreamBuilder {
             return Ok(RecordingStream::disabled());
         }
 
-        let url = format!("rerun+http://{}/proxy", opts.connect_addr());
-
         // NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
         // what, thus spawning a viewer is pointless (and probably not intended).
         if forced_sink_path().is_some() {
+            let url = format!("rerun+http://{}/proxy", opts.connect_addr());
             return self.connect_grpc_opts(url);
         }
 
-        // Spawn viewer and connect normally
-        crate::spawn(opts)?;
-
-        self.connect_grpc_opts(url)
+        // Spawn viewer and connect normally.
+        // spawn() returns the actual port used, which may differ from opts.port when --new picks a free port.
+        let actual_port = crate::spawn(opts)?;
+        let addr = std::net::SocketAddr::new(
+            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            actual_port,
+        );
+        self.connect_grpc_opts(format!("rerun+http://{addr}/proxy"))
     }
 
     /// Returns whether or not logging is enabled, a [`StoreInfo`], the associated batcher
@@ -766,18 +769,18 @@ impl Drop for RecordingStream {
     #[inline]
     fn drop(&mut self) {
         // If this holds the last strong handle to the recording, make sure that all pending
-        // `DataLoader` threads that were started from the SDK actually run to completion (they
+        // importer threads that were started from the SDK actually run to completion (they
         // all hold a weak handle to this very recording!).
         //
         // NOTE: It's very important to do so from the `Drop` implementation of `RecordingStream`
-        // itself, because the dataloader threads -- by definition -- will have to send data into
+        // itself, because the importer threads -- by definition -- will have to send data into
         // this very recording, therefore we must make sure that at least one strong handle still lives
         // on until they are all finished.
         if let Either::Left(strong) = &mut self.inner
             && Arc::strong_count(strong) == 1
         {
-            // Keep the recording alive until all dataloaders are finished.
-            self.with(|inner| inner.wait_for_dataloaders());
+            // Keep the recording alive until all importers are finished.
+            self.with(|inner| inner.wait_for_importers());
         }
     }
 }
@@ -798,11 +801,11 @@ struct RecordingStreamInner {
     /// It true, any new sink will update the batcher's configuration (as far as possible).
     sink_dependent_batcher_config: bool,
 
-    /// Keeps track of the top-level threads that were spawned in order to execute the `DataLoader`
+    /// Keeps track of the top-level threads that were spawned in order to execute the importer
     /// machinery in the context of this `RecordingStream`.
     ///
     /// See [`RecordingStream::log_file_from_path`] and [`RecordingStream::log_file_from_contents`].
-    dataloader_handles: Mutex<Vec<std::thread::JoinHandle<()>>>,
+    importer_handles: Mutex<Vec<std::thread::JoinHandle<()>>>,
 
     pid_at_creation: u32,
 }
@@ -812,7 +815,7 @@ impl fmt::Debug for RecordingStreamInner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RecordingStreamInner")
             .field("store_id", &self.store_info.store_id)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -825,7 +828,7 @@ impl Drop for RecordingStreamInner {
             return;
         }
 
-        self.wait_for_dataloaders();
+        self.wait_for_importers();
 
         // NOTE: The command channel is private, if we're here, nothing is currently capable of
         // sending data down the pipeline.
@@ -925,7 +928,7 @@ impl RecordingStreamInner {
             batcher,
             batcher_to_sink_handle: Some(batcher_to_sink_handle),
             sink_dependent_batcher_config,
-            dataloader_handles: Mutex::new(Vec::new()),
+            importer_handles: Mutex::new(Vec::new()),
             pid_at_creation: std::process::id(),
         })
     }
@@ -935,14 +938,14 @@ impl RecordingStreamInner {
         self.pid_at_creation != std::process::id()
     }
 
-    /// Make sure all pending top-level `DataLoader` threads that were started from the SDK run to completion.
+    /// Make sure all pending top-level importer threads that were started from the SDK run to completion.
     //
     // TODO(cmc): At some point we might want to make it configurable, though I cannot really
     // think of a use case where you'd want to drop those threads immediately upon
     // disconnection.
-    fn wait_for_dataloaders(&self) {
-        let dataloader_handles = std::mem::take(&mut *self.dataloader_handles.lock());
-        for handle in dataloader_handles {
+    fn wait_for_importers(&self) {
+        let importer_handles = std::mem::take(&mut *self.importer_handles.lock());
+        for handle in importer_handles {
             handle.join().ok();
         }
     }
@@ -1074,7 +1077,7 @@ impl RecordingStream {
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
     ///
     /// See also: [`Self::log_static`] for logging static data.
     ///
@@ -1205,7 +1208,7 @@ impl RecordingStream {
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
@@ -1245,7 +1248,7 @@ impl RecordingStream {
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
@@ -1329,15 +1332,15 @@ impl RecordingStream {
         Ok(())
     }
 
-    /// Logs the file at the given `path` using all [`re_data_loader::DataLoader`]s available.
+    /// Logs the file at the given `path` using all [`re_importer::Importer`]s available.
     ///
-    /// A single `path` might be handled by more than one loader.
+    /// A single `path` might be handled by more than one importer.
     ///
-    /// This method blocks until either at least one [`re_data_loader::DataLoader`] starts
+    /// This method blocks until either at least one [`re_importer::Importer`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
-    #[cfg(feature = "data_loaders")]
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
+    #[cfg(feature = "importers")]
     pub fn log_file_from_path(
         &self,
         filepath: impl AsRef<std::path::Path>,
@@ -1347,15 +1350,15 @@ impl RecordingStream {
         self.log_file(filepath, None, entity_path_prefix, static_, true)
     }
 
-    /// Logs the given `contents` using all [`re_data_loader::DataLoader`]s available.
+    /// Logs the given `contents` using all [`re_importer::Importer`]s available.
     ///
-    /// A single `path` might be handled by more than one loader.
+    /// A single `path` might be handled by more than one importer.
     ///
-    /// This method blocks until either at least one [`re_data_loader::DataLoader`] starts
+    /// This method blocks until either at least one [`re_importer::Importer`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
-    #[cfg(feature = "data_loaders")]
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
+    #[cfg(feature = "importers")]
     pub fn log_file_from_contents(
         &self,
         filepath: impl AsRef<std::path::Path>,
@@ -1366,10 +1369,10 @@ impl RecordingStream {
         self.log_file(filepath, Some(contents), entity_path_prefix, static_, true)
     }
 
-    /// If `prefer_current_recording` is set (which is always the case for now), the dataloader settings
+    /// If `prefer_current_recording` is set (which is always the case for now), the importer settings
     /// will be configured as if the current SDK recording is the currently opened recording.
-    /// Most dataloaders prefer logging to the currently opened recording if one is set.
-    #[cfg(feature = "data_loaders")]
+    /// Most importers prefer logging to the currently opened recording if one is set.
+    #[cfg(feature = "importers")]
     #[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
     fn log_file(
         &self,
@@ -1394,7 +1397,7 @@ impl RecordingStream {
             follow: false,
         });
 
-        let mut settings = crate::DataLoaderSettings {
+        let mut settings = crate::ImporterSettings {
             application_id: Some(store_info.application_id().clone()),
             recording_id: store_info.recording_id().clone(),
             opened_store_id: None,
@@ -1417,6 +1420,8 @@ impl RecordingStream {
                 })
                 .unwrap_or_default()
             }),
+            timestamp_offset_ns: None,
+            timeline_type: re_log_types::TimeType::TimestampNs,
         };
 
         if prefer_current_recording {
@@ -1424,7 +1429,7 @@ impl RecordingStream {
         }
 
         if let Some(contents) = contents {
-            re_data_loader::load_from_file_contents(
+            re_importer::import_from_file_contents(
                 &settings,
                 re_log_types::FileSource::Sdk,
                 filepath,
@@ -1432,12 +1437,7 @@ impl RecordingStream {
                 &tx,
             )?;
         } else {
-            re_data_loader::load_from_path(
-                &settings,
-                re_log_types::FileSource::Sdk,
-                filepath,
-                &tx,
-            )?;
+            re_importer::import_from_path(&settings, re_log_types::FileSource::Sdk, filepath, &tx)?;
         }
         drop(tx);
 
@@ -1473,7 +1473,7 @@ impl RecordingStream {
                 err,
             })?;
 
-        self.with(|inner| inner.dataloader_handles.lock().push(handle));
+        self.with(|inner| inner.importer_handles.lock().push(handle));
 
         Ok(())
     }
@@ -1899,11 +1899,11 @@ impl RecordingStream {
         }
 
         let f = move |inner: &RecordingStreamInner| -> Result<(), SinkFlushError> {
-            // 0. Wait for all pending data loader threads to complete
+            // 0. Wait for all pending importer threads to complete
             //
             // This ensures that data from `log_file_from_path` and `log_file_from_contents`
             // is fully loaded before we flush the batcher and sink.
-            inner.wait_for_dataloaders();
+            inner.wait_for_importers();
 
             // 1. Synchronously flush the batcher down the chunk channel
             //
@@ -2129,9 +2129,12 @@ impl RecordingStream {
             return Ok(());
         }
 
-        crate::spawn(opts)?;
-
-        self.connect_grpc_opts(format!("rerun+http://{}/proxy", opts.connect_addr()))?;
+        let actual_port = crate::spawn(opts)?;
+        let addr = std::net::SocketAddr::new(
+            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            actual_port,
+        );
+        self.connect_grpc_opts(format!("rerun+http://{addr}/proxy"))?;
 
         Ok(())
     }
@@ -2246,9 +2249,9 @@ impl RecordingStream {
     /// See [`Self::set_sink`] for more information.
     pub fn disconnect(&self) {
         let f = move |inner: &RecordingStreamInner| {
-            // When disconnecting, we need to make sure that pending top-level `DataLoader` threads that
+            // When disconnecting, we need to make sure that pending top-level importer threads that
             // were started from the SDK run to completion.
-            inner.wait_for_dataloaders();
+            inner.wait_for_importers();
             self.set_sink(Box::new(crate::sink::BufferedSink::new()));
         };
 
@@ -2310,7 +2313,7 @@ impl fmt::Debug for RecordingStream {
                 batcher: _,
                 batcher_to_sink_handle: _,
                 sink_dependent_batcher_config,
-                dataloader_handles,
+                importer_handles,
                 pid_at_creation,
             } = inner;
 
@@ -2322,7 +2325,7 @@ impl fmt::Debug for RecordingStream {
                     "sink_dependent_batcher_config",
                     &sink_dependent_batcher_config,
                 )
-                .field("pending_dataloaders", &dataloader_handles.lock().len())
+                .field("pending_importers", &importer_handles.lock().len())
                 .field("pid_at_creation", &pid_at_creation)
                 .finish_non_exhaustive()
         };

@@ -114,19 +114,19 @@ impl Example {
             wait_for_output(cmd, &self.name, progress)?;
         }
 
-        // Now run compaction on the result:
+        // Now run optimization on the result:
         let final_rrd_path = output_dir.join(&self.name).with_extension("rrd");
 
         let mut cmd = Command::new("python3");
         cmd.arg("-m").arg("rerun");
         cmd.arg("rrd");
-        cmd.arg("compact");
+        cmd.arg("optimize");
         // Small chunks for better streaming:
         cmd.arg("--max-bytes").arg((128 * 1024).to_string());
         cmd.arg(&initial_rrd_path);
         cmd.arg("-o").arg(&final_rrd_path);
 
-        wait_for_output(cmd, &format!("{} compaction", self.name), progress)?;
+        wait_for_output(cmd, &format!("{} optimization", self.name), progress)?;
 
         Ok(final_rrd_path)
     }

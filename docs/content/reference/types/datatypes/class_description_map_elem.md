@@ -10,37 +10,37 @@ This is internal to [`components.AnnotationContext`](https://rerun.io/docs/refer
 
 ## Fields
 #### `class_id`
-Type: [`ClassId`](../datatypes/class_id.md)
+Type: non-null [`ClassId`](../datatypes/class_id.md)
 
 The key: the [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id).
 
 #### `class_description`
-Type: [`ClassDescription`](../datatypes/class_description.md)
+Type: non-null [`ClassDescription`](../datatypes/class_description.md)
 
 The value: class name, color, etc.
 
 
 ## Arrow datatype
 ```
-Struct {
-    class_id: uint16
-    class_description: Struct {
-        info: Struct {
-            id: uint16
-            label: nullable utf8
-            color: nullable uint32
-        }
-        keypoint_annotations: List<Struct {
-                id: uint16
-                label: nullable utf8
-                color: nullable uint32
-            }>
-        keypoint_connections: List<Struct {
-                keypoint0: uint16
-                keypoint1: uint16
-            }>
-    }
-}
+Struct(
+    "class_id": non-null UInt16
+    "class_description": non-null Struct(
+        "info": non-null Struct(
+            "id": non-null UInt16
+            "label": Utf8
+            "color": UInt32
+        )
+        "keypoint_annotations": non-null List(non-null Struct(
+                "id": non-null UInt16
+                "label": Utf8
+                "color": UInt32
+            ))
+        "keypoint_connections": non-null List(non-null Struct(
+                "keypoint0": non-null UInt16
+                "keypoint1": non-null UInt16
+            ))
+    )
+)
 ```
 
 ## API reference links

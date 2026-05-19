@@ -7,34 +7,28 @@
 mod aggregation;
 mod fallbacks;
 mod line_visualizer_system;
+mod markers;
 mod naming;
 mod point_visualizer_system;
 mod series_query;
 mod util;
 mod view_class;
+mod visualizer_ui;
 
 use re_sdk_types::{
     blueprint::components::VisualizerInstructionId,
-    components::{AggregationPolicy, MarkerShape},
+    components::{AggregationPolicy, MarkerShape, Range1D},
 };
 use re_viewer_context::external::re_entity_db::InstancePath;
-use re_viewport_blueprint::ViewPropertyQueryError;
 pub use view_class::TimeSeriesView;
 
-pub(crate) const MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT: usize = 20;
-pub(crate) const MAX_NUM_ITEMS_IN_PLOT_LEGEND_BEFORE_HIDDEN: usize = 20;
-
-/// Computes a deterministic, globally unique ID for the plot based on the ID of the view
-/// itself.
+/// Maximum number of time series shown per entity when the scalar component
+/// has a non-identity mapping (e.g. sourced from a different component or using a selector).
 ///
-/// Use it to access the plot's state from anywhere, e.g.:
-/// ```ignore
-/// let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.view_id));
-/// ```
-#[inline]
-pub(crate) fn plot_id(view_id: re_viewer_context::ViewId) -> egui::Id {
-    egui::Id::new(("plot", view_id))
-}
+/// This limit is NOT applied when the scalar component has an identity mapping,
+/// since in that case the user explicitly logged `Scalars` data and knows how many series to expect.
+pub(crate) const MAX_NUM_SERIES_FOR_REMAPPED_SCALARS: usize = 100;
+pub const MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY: usize = 4;
 
 // ---
 
@@ -112,6 +106,15 @@ pub struct PlotSeries {
     pub kind: PlotSeriesKind,
     pub points: Vec<(i64, f64)>,
 
+    /// Range of finite y-values across [`PlotSeries::points`].
+    ///
+    /// `None` if the series has no finite values. Non-finite values (NaN, ±inf)
+    /// are excluded so a single ±inf can't blow up the range and flatten all
+    /// finite data.
+    ///
+    /// This is automatically updated via [`PlotSeries::push_point`].
+    pub value_range: Option<Range1D>,
+
     /// Earliest time an entity was recorded at on the current timeline.
     pub min_time: i64,
 
@@ -132,5 +135,23 @@ impl PlotSeries {
     /// so we use the instance path number as an additional differentiator.
     pub fn id(&self) -> egui::Id {
         egui::Id::new((&self.visualizer_instruction_id, self.instance_path.instance))
+    }
+
+    /// Push a point and update [`PlotSeries::value_range`] if `value` is finite.
+    pub fn push_point(&mut self, time: i64, value: f64) {
+        self.points.push((time, value));
+        if value.is_finite() {
+            match &mut self.value_range {
+                Some(range) => {
+                    if value < range.start() {
+                        *range.start_mut() = value;
+                    }
+                    if value > range.end() {
+                        *range.end_mut() = value;
+                    }
+                }
+                None => self.value_range = Some(Range1D::new(value, value)),
+            }
+        }
     }
 }

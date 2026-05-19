@@ -22,6 +22,7 @@ all-features = true
 [dependencies]
 re_byte_size.workspace = true
 re_chunk.workspace = true
+re_error.workspace = true
 re_format.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_channel.workspace = true
@@ -43,6 +44,7 @@ parking_lot.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport", "router"] }
 tonic-web.workspace = true
 tower-http = { workspace = true, features = ["cors"] }
+wildmatch.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

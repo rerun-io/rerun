@@ -14,6 +14,7 @@ async fn main() -> anyhow::Result<()> {
         ServerOptions {
             playback_behavior: re_grpc_server::PlaybackBehavior::OldestFirst,
             memory_limit: re_grpc_server::MemoryLimit::from_fraction_of_total(0.75),
+            cors_allowed_origins: vec![],
         },
         shutdown::never(),
     )

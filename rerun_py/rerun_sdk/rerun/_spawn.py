@@ -10,6 +10,8 @@ def _spawn_viewer(
     server_memory_limit: str = "1GiB",
     hide_welcome_screen: bool = False,
     detach_process: bool = True,
+    executable_name: str = "rerun",
+    executable_path: str | None = None,
 ) -> None:
     """
     Internal helper to spawn a Rerun Viewer, listening on the given port.
@@ -37,6 +39,16 @@ def _spawn_viewer(
         Hide the normal Rerun welcome screen.
     detach_process:
         Detach Rerun Viewer process from the application process.
+    executable_name:
+        Specifies the name of the Rerun executable.
+        You can omit the `.exe` suffix on Windows.
+
+        Defaults to `rerun`.
+    executable_path:
+        Enforce a specific executable to use instead of searching
+        through PATH for `executable_name`.
+
+        Unspecified by default.
 
     """
 
@@ -56,4 +68,6 @@ def _spawn_viewer(
         server_memory_limit=server_memory_limit,
         hide_welcome_screen=hide_welcome_screen,
         detach_process=detach_process,
+        executable_name=executable_name,
+        executable_path=executable_path,
     )

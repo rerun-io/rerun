@@ -27,24 +27,11 @@ pub fn new_harness<T>(option: TestOptions, size: impl Into<Vec2>) -> HarnessBuil
         .with_options(options)
 }
 
-fn use_lenient_macos_ci_thresholds() -> bool {
-    // TODO(andreas): As of writing SwiftShader gets MSAA wrong and has drastically different texture filtering.
-    // TODO(andreas): A more straight forward check for swiftshader would be better here.
-    // TODO(#12450): Investigate whether we can run lavapipe instead.
-    cfg!(target_os = "macos") && std::env::var("CI").is_ok()
-}
-
 pub fn default_snapshot_options_for_ui() -> SnapshotOptions {
-    if use_lenient_macos_ci_thresholds() {
-        // SwiftShader has drastically different texture filtering it seems.
-        SnapshotOptions::default()
-            .failed_pixel_count_threshold(80)
-            .threshold(1.0)
-    } else {
-        SnapshotOptions::default().failed_pixel_count_threshold(
-            10, // we sometimes have a few wrong pixels in text rendering in egui for unknown reasons
-        )
-    }
+    // TODO(aedm): allow zero on CI and warn users if they generate snapshots on GPU
+    SnapshotOptions::default().failed_pixel_count_threshold(
+        10, // we sometimes have a few wrong pixels in text rendering in egui for unknown reasons
+    )
 }
 
 pub fn default_snapshot_options_for_3d(viewport_size: Vec2) -> SnapshotOptions {
@@ -53,19 +40,11 @@ pub fn default_snapshot_options_for_3d(viewport_size: Vec2) -> SnapshotOptions {
     // How many depend on the size of the image.
     let num_total_pixels = viewport_size.x * viewport_size.y;
 
-    let lenient_macos_ci_thresholds = use_lenient_macos_ci_thresholds();
-    let broken_pixels_fraction = if lenient_macos_ci_thresholds {
-        1.0 / 100.0
-    } else {
-        0.04 / 100.0
-    };
+    let broken_pixels_fraction = 0.04 / 100.0;
     let max_broken_pixels = (num_total_pixels * broken_pixels_fraction).round() as usize;
 
-    let threshold = if lenient_macos_ci_thresholds {
-        2.5
-    } else {
-        1.0 // Need a bit higher than the default to accommodate for various filtering artifacts, typically caused by the grid shader.
-    };
+    // Need a bit higher than the default to accommodate for various filtering artifacts, typically caused by the grid shader.
+    let threshold = 1.0;
 
     SnapshotOptions::default()
         .threshold(threshold)

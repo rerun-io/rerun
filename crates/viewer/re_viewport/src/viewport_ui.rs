@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use egui::remap_clamp;
+use egui::{Key, KeyboardShortcut, Modifiers, remap_clamp};
 use egui_tiles::{Behavior as _, EditAction};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
@@ -13,7 +13,6 @@ use re_ui::{
     ContextExt as _, Help, Icon, IconText, UICommandSender as _, UiExt as _,
     design_tokens_of_visuals, icons,
 };
-use re_view::controls::TOGGLE_MAXIMIZE_VIEW;
 use re_viewer_context::{
     Contents, DataResultInteractionAddress, DragAndDropFeedback, DragAndDropPayload, Item,
     MissingChunkReporter, PublishedViewInfo, SystemCommand, SystemCommandSender as _,
@@ -25,7 +24,9 @@ use re_viewport_blueprint::{
 
 use crate::system_execution::{execute_systems_for_all_views, execute_systems_for_view};
 
-// ----------------------------------------------------------------------------
+/// Toggle the currently selected view to be maximized or not.
+// NOTE: we use CTRL and not COMMAND, because ⌘+M minimizes the whole window on macOS.
+const TOGGLE_MAXIMIZE_VIEW: KeyboardShortcut = KeyboardShortcut::new(Modifiers::CTRL, Key::M);
 
 /// Defines the UI and layout of the Viewport.
 pub struct ViewportUi {
@@ -93,7 +94,7 @@ impl ViewportUi {
         // Memorize new error states.
         #[expect(clippy::iter_over_hash_type)] // It's building up another hash map so that's fine.
         for (view_id, (_, system_output)) in &executed_systems_per_view {
-            view_states.add_visualizer_reports_from_output(*view_id, system_output);
+            view_states.add_visualizer_reports_from_output(ctx.store_id(), *view_id, system_output);
         }
 
         let contents_per_tile_id = blueprint
@@ -261,9 +262,10 @@ impl ViewportUi {
         view_blueprint: &ViewBlueprint,
         entities: &[EntityPath],
     ) -> bool {
+        let recording_engine = ctx.recording_engine();
         let add_info = create_entity_add_info(
             ctx,
-            ctx.recording().tree(),
+            recording_engine.store().entity_tree(),
             view_blueprint,
             ctx.lookup_query_result(view_blueprint.id),
         );
@@ -391,11 +393,13 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 ctx,
                 std::iter::once(view.class_identifier())
             );
-            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(*view_id, class), &context_system_once_per_frame_results)
+            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(ctx.store_id(), *view_id, class), &context_system_once_per_frame_results)
         });
 
         let class = view_blueprint.class(self.ctx.view_class_registry());
-        let view_state = self.view_states.get_mut_or_create(*view_id, class);
+        let view_state = self
+            .view_states
+            .get_mut_or_create(self.ctx.store_id(), *view_id, class);
 
         let missing_chunk_reporter = MissingChunkReporter::new(system_output.any_missing_chunks());
 
@@ -646,7 +650,9 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         let view_class = view_blueprint.class(self.ctx.view_class_registry());
 
         // give the view a chance to display some extra UI in the top bar.
-        let view_state = self.view_states.get_mut_or_create(view_id, view_class);
+        let view_state =
+            self.view_states
+                .get_mut_or_create(self.ctx.store_id(), view_id, view_class);
         view_class
             .extra_title_bar_ui(
                 self.ctx,
@@ -730,8 +736,9 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
 impl TilesDelegate<'_, '_> {
     fn visualizer_errors_button(&self, ui: &mut egui::Ui, view_id: ViewId) {
-        let Some(per_visualizer_type_reports) =
-            self.view_states.per_visualizer_type_reports(view_id)
+        let Some(per_visualizer_type_reports) = self
+            .view_states
+            .per_visualizer_type_reports(self.ctx.store_id(), view_id)
         else {
             return;
         };
@@ -800,7 +807,7 @@ impl TilesDelegate<'_, '_> {
             let response = ui
                 .add(egui::Button::image(report_image))
                 .on_hover_text(format!(
-                    "Show {report_count} {}",
+                    "Show {}",
                     re_format::format_plural_s(report_count, "visualizer report")
                 ));
 

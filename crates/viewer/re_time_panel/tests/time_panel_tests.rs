@@ -2,7 +2,7 @@
 #![expect(clippy::unwrap_used)] // Fine for tests
 
 use re_chunk::Chunk;
-use re_chunk_store::{LatestAtQuery, RowId};
+use re_chunk_store::{ChunkStoreConfig, LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, TimeType, Timeline, build_frame_nr};
@@ -13,30 +13,48 @@ use re_time_panel::TimePanel;
 use re_viewer_context::{CollapseScope, TimeControlCommand, TimeView, blueprint_timeline};
 use re_viewport_blueprint::ViewportBlueprint;
 
-fn add_sparse_data(test_context: &mut TestContext) {
+/// Creates chunks with two groups of frames separated by a gap:
+/// entity/0 at frames [10, 11, 12, 15, 18, 100, 102, 104]
+/// entity/1 at frames [11, 12, 13, 16, 19, 101, 103, 105]
+fn create_sparse_chunks() -> Vec<Chunk> {
     let points1 = MyPoint::from_iter(0..1);
-    for i in 0..2 {
-        test_context.log_entity(format!("/entity/{i}"), |mut builder| {
-            for frame in [10, 11, 12, 15, 18, 100, 102, 104].map(|frame| frame + i) {
-                builder = builder.with_sparse_component_batches(
+    let mut chunks = Vec::new();
+    for i in 0..2i64 {
+        let entity_path: EntityPath = format!("/entity/{i}").into();
+        for frame in [10, 11, 12, 15, 18, 100, 102, 104].map(|f| f + i) {
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_sparse_component_batches(
                     RowId::new(),
                     [build_frame_nr(frame)],
                     [(MyPoints::descriptor_points(), Some(&points1 as _))],
-                );
-            }
-
-            builder
-        });
+                )
+                .build()
+                .unwrap();
+            chunks.push(chunk);
+        }
     }
+    chunks
 }
 
 #[test]
 pub fn time_panel_two_sections() {
     TimePanel::ensure_registered_subscribers();
-    let mut test_context = TestContext::new();
 
-    add_sparse_data(&mut test_context);
+    let mut test_context = TestContext::new_with_store_info_and_config(
+        re_log_types::StoreInfo::testing(),
+        ChunkStoreConfig::COMPACTION_DISABLED,
+    );
 
+    let chunks = create_sparse_chunks();
+
+    let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+        test_context.active_store_id(),
+        chunks.iter(),
+    )
+    .unwrap();
+
+    test_context.add_rrd_manifest(rrd_manifest);
+    test_context.add_chunks(chunks.into_iter());
     test_context.set_active_timeline("frame_nr");
 
     let mut snapshot_results = SnapshotResults::new();
@@ -448,7 +466,7 @@ fn run_time_panel_and_save_snapshot(
                         .recording()
                         .storage_engine()
                         .store()
-                        .use_physical_chunk_or_report_missing(chunk_id);
+                        .use_chunk_or_report_missing(chunk_id);
                 }
 
                 if options.expand_all {
@@ -468,11 +486,11 @@ fn run_time_panel_and_save_snapshot(
 
                 let mut time_commands = Vec::new();
 
+                let store_ctx = viewer_ctx.active_recording_store_view_context();
                 time_panel.show_expanded_with_header(
                     viewer_ctx,
-                    viewer_ctx.time_ctrl,
+                    &store_ctx,
                     &blueprint,
-                    viewer_ctx.recording(),
                     ui,
                     &mut time_commands,
                 );

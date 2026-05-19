@@ -170,12 +170,12 @@ impl ViewContextSystem for TransformTreeContext {
         re_tracing::profile_function!();
 
         let caches = ctx.store_context.caches;
-        let transform_forest = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+        let transform_forest = caches.memoizer(|c: &mut TransformDatabaseStoreCache| {
             c.update_transform_forest(ctx.recording(), &ctx.current_query())
         });
 
         let frame_id_registry = caches
-            .entry(|c: &mut TransformDatabaseStoreCache| c.frame_id_registry(ctx.recording()));
+            .memoizer(|c: &mut TransformDatabaseStoreCache| c.frame_id_registry(ctx.recording()));
 
         let frame_ids = frame_id_registry
             .iter_frame_ids()
@@ -211,9 +211,11 @@ impl ViewContextSystem for TransformTreeContext {
         }
         self.cache_frame_id_hash_mapping = static_execution_result.frame_id_hash_mapping.clone();
 
-        let results = {
-            re_tracing::profile_scope!("latest-ats");
+        let frame_id_results = {
+            re_tracing::profile_scope!("frame id queries");
             let latest_at_query = ctx.current_query();
+            let transform_frame_id_component =
+                archetypes::CoordinateFrame::descriptor_frame().component;
 
             ctx.query_result
                 .tree
@@ -223,10 +225,6 @@ impl ViewContextSystem for TransformTreeContext {
                     data_result.visible && !data_result.visualizer_instructions.is_empty()
                 })
                 .map(|data_result| {
-                    let transform_frame_id_component =
-                        archetypes::CoordinateFrame::descriptor_frame().component;
-
-                    re_tracing::profile_scope!("latest_at_with_blueprint_resolved_data");
                     latest_at_with_blueprint_resolved_data(
                         ctx,
                         None,
@@ -242,7 +240,7 @@ impl ViewContextSystem for TransformTreeContext {
         // Build a lookup table from entity paths to their transform frame id hashes.
         // Currently, we don't keep it around during the frame, but we may do so in the future.
         self.entity_transform_id_mapping =
-            EntityTransformIdMapping::new(ctx, &results, query.space_origin);
+            EntityTransformIdMapping::new(ctx, &frame_id_results, query.space_origin);
 
         // Target frame - check for blueprint override first, otherwise use space origin's coordinate frame.
         self.target_frame = {
@@ -287,7 +285,7 @@ impl ViewContextSystem for TransformTreeContext {
         {
             re_tracing::profile_scope!("add-overrides");
             // Add overrides to the additional frame id hash map so we can get back the id for errors.
-            for results in results {
+            for results in frame_id_results {
                 let Some(frame) =
                     results.get_mono(archetypes::CoordinateFrame::descriptor_frame().component)
                 else {
@@ -305,7 +303,7 @@ impl ViewContextSystem for TransformTreeContext {
         }
 
         let caches = ctx.viewer_ctx.store_context.caches;
-        let transforms_for_timeline = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+        let transforms_for_timeline = caches.memoizer(|c: &mut TransformDatabaseStoreCache| {
             c.transforms_for_timeline(ctx.recording(), query.timeline)
         });
 
@@ -537,15 +535,28 @@ impl TransformTreeContext {
             .or_else(|| self.additional_frame_id_hash_mapping.get(&frame_id_hash))
     }
 
+    #[inline]
+    pub fn is_empty_frame_name(&self, frame_id_hash: TransformFrameIdHash) -> bool {
+        self.lookup_frame_id(frame_id_hash)
+            .is_some_and(|frame_id| frame_id.as_str().is_empty())
+    }
+
     /// Formats a frame ID hash as a human-readable string.
     ///
-    /// Returns the frame name if known, `<unknown frame>` otherwise.
-    /// (Showing the hash is practically never useful for users!)
-    #[inline]
-    pub fn format_frame(&self, frame_id_hash: TransformFrameIdHash) -> String {
-        self.lookup_frame_id(frame_id_hash)
-            .map(ToString::to_string)
-            .unwrap_or_else(|| "<unknown>".to_owned())
+    /// Returns the frame name if known, otherwise logs a warning in debug builds and returns `None`.
+    pub fn format_frame_or_debug_warn(
+        &self,
+        frame_id_hash: TransformFrameIdHash,
+        debug_location: &EntityPath,
+    ) -> Option<String> {
+        if let Some(frame_id) = self.lookup_frame_id(frame_id_hash) {
+            Some(frame_id.to_string())
+        } else {
+            re_log::debug_warn!(
+                "Failed to resolve frame id hash {frame_id_hash:?} which was referenced at {debug_location:?}"
+            );
+            None
+        }
     }
 }
 
@@ -726,7 +737,7 @@ mod tests {
 
         let view_class = SpatialView3D;
         let mut view_states = test_context.view_states.lock();
-        let view_state = view_states.get_mut_or_create(view_id, &view_class);
+        let view_state = view_states.get_mut_or_create(ctx.store_id(), view_id, &view_class);
 
         let view_ctx =
             view_class.view_context(ctx, view_id, view_state, &view_blueprint.space_origin);
@@ -927,7 +938,7 @@ mod tests {
                     tree_context.target_frame(),
                     TransformFrameIdHash::new(&expected_target),
                     "View expected target frame {expected_target:?}, got {:?}",
-                    tree_context.format_frame(tree_context.target_frame())
+                    tree_context.lookup_frame_id(tree_context.target_frame())
                 );
             }
         });

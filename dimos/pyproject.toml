@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "dimos-viewer"
-version = "0.30.0a6+dev"
+version = "0.32.0a1"
 description = "Interactive Rerun viewer for DimOS with click-to-navigate support"
 readme = "README.md"
 requires-python = ">=3.10"

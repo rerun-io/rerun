@@ -2,8 +2,17 @@
 //!
 //! This crate contains data structures that are shared with most modules of the viewer.
 
+// Increased recursion is needed for VideoAssetCache.
+// We could also add Send bounds like this to help limit recursion:
+// impl Cache for VideoAssetCache
+// where
+//     Video: Send + Sync,
+//     VideoLoadError: Send + Sync,
+// but that slows compilation down by a ton
+#![recursion_limit = "256"]
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
+mod active_store_context;
 mod annotations;
 mod app_context;
 mod app_options;
@@ -18,6 +27,7 @@ mod component_ui_registry;
 mod contents;
 mod drag_and_drop;
 mod file_dialog;
+mod focus_target;
 mod heuristics;
 mod image_info;
 mod item;
@@ -30,8 +40,8 @@ mod recording_or_table;
 mod route;
 mod selection_state;
 mod storage_context;
-mod store_context;
 pub mod store_hub;
+mod store_view_context;
 mod tables;
 mod tensor;
 mod time_control;
@@ -47,6 +57,7 @@ mod visitor_flow_control;
 
 pub use re_ui::UiLayout;
 
+pub use self::active_store_context::ActiveStoreContext;
 pub use self::annotations::{
     AnnotationContextStoreSubscriber, AnnotationMap, Annotations, ResolvedAnnotationInfo,
     ResolvedAnnotationInfos,
@@ -55,13 +66,13 @@ pub use self::app_context::{AppContext, AuthContext};
 pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};
 pub use self::async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend};
 pub use self::blueprint_helpers::{
-    BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes,
+    AppBlueprintCtx, BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes,
 };
 pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
 };
 pub use self::cache::{
-    Cache, Caches, ImageDecodeCache, ImageStatsCache, SharablePlayableVideoStream,
+    Cache, ImageDecodeCache, ImageStatsCache, Memoizers, SharablePlayableVideoStream, StoreCache,
     TensorStatsCache, TransformDatabaseStoreCache, VideoAssetCache, VideoStreamCache,
     VideoStreamProcessingError,
 };
@@ -79,12 +90,14 @@ pub use self::component_ui_registry::{
 pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
 pub use self::drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload};
 pub use self::file_dialog::sanitize_file_name;
+pub use self::focus_target::FocusTarget;
 pub use self::heuristics::suggest_view_for_each_entity;
 pub use self::image_info::{
     ColormapWithRange, ImageInfo, StoredBlobCacheKey, resolution_of_image_at,
 };
 pub use self::item::{
-    DataResultInteractionAddress, Item, resolve_mono_instance_path, resolve_mono_instance_path_item,
+    DataResultInteractionAddress, Item, RedapEntryKind, resolve_mono_instance_path,
+    resolve_mono_instance_path_item,
 };
 pub use self::item_collection::{ItemCollection, ItemContext};
 pub use self::maybe_mut_ref::MaybeMutRef;
@@ -99,8 +112,8 @@ pub use self::selection_state::{
     SelectionHighlight,
 };
 pub use self::storage_context::StorageContext;
-pub use self::store_context::StoreContext;
-pub use self::store_hub::StoreHub;
+pub use self::store_hub::{EntityDbUsages, StoreHub};
+pub use self::store_view_context::StoreViewContext;
 pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};
 pub use self::time_control::{
@@ -108,8 +121,9 @@ pub use self::time_control::{
     TimeControlResponse, TimeControlUpdateParams, TimeView, time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
-    DatatypeMatch, IndicatedEntities, PerVisualizerInstruction, PerVisualizerType,
-    PerVisualizerTypeInViewClass, VisualizableEntities, VisualizableReason,
+    BufferAndFormatMatch, DatatypeMatch, IndicatedEntities, PerVisualizerInstruction,
+    PerVisualizerType, PerVisualizerTypeInViewClass, SingleRequiredComponentMatch,
+    VisualizableEntities, VisualizableReason,
 };
 pub use self::undo::BlueprintUndoState;
 pub use self::utils::{
@@ -117,18 +131,18 @@ pub use self::utils::{
     video_timestamp_component_to_video_time,
 };
 pub use self::view::{
-    AnyPhysicalDatatypeRequirement, DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight,
+    BufferAndFormatConstraint, DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight,
     PerSystemEntities, RecommendedMappings, RecommendedView, RecommendedVisualizers,
-    RequiredComponents, SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority,
-    ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError, ViewContext,
-    ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
+    SingleRequiredComponentConstraint, SystemExecutionOutput, ViewClass, ViewClassExt,
+    ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError,
+    ViewContext, ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
     ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
     ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
-    ViewSystemRegistrator, ViewSystemState, VisualizerCollection, VisualizerComponentMappings,
-    VisualizerComponentSource, VisualizerExecutionOutput, VisualizerInstruction,
-    VisualizerInstructionReport, VisualizerInstructionsPerType, VisualizerQueryInfo,
-    VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem, VisualizerTypeReport,
-    VisualizerViewReport,
+    ViewSystemRegistrator, ViewSystemState, VisualizabilityConstraints, VisualizerCollection,
+    VisualizerComponentMappings, VisualizerComponentSource, VisualizerExecutionOutput,
+    VisualizerInstruction, VisualizerInstructionReport, VisualizerInstructionsPerType,
+    VisualizerQueryInfo, VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
+    VisualizerTypeReport, VisualizerViewReport, VisualizersSectionOutput, VisualizersSectionUi,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons
