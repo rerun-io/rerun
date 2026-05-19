@@ -26,6 +26,13 @@ Avoid:
 
 En dashes are reserved for numeric/range expressions (`2020–2025`, `pp. 10–15`, `~3–4 GB`).
 
+#### Line breaks in markdown
+Write one sentence per line in markdown files (`.md`, docs, READMEs, agent guides).
+Markdown joins consecutive non-empty lines into a single paragraph, so this does not affect rendering — but it produces much cleaner diffs.
+Each edited sentence shows up as a single changed line, instead of reflowing an entire paragraph.
+
+Use a blank line between paragraphs as usual.
+
 ### Buttons
 
 When a button action requires more input after pressing, suffix it with `…`.

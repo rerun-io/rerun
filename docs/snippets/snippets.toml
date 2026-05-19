@@ -147,6 +147,7 @@ backwards_check = [
   "howto/convert_mcap_protobuf_send_column",
   "concepts/chunk_processing", # Python-only experimental API; output rrd may shift across versions
   "concepts/chunk_processing_intro", # Python-only experimental API; output rrd may shift across versions
+  "concepts/rrd_format", # Python-only experimental API; output rrd may shift across versions
   "howto/optimize_chunks", # Compacts a video-bearing MCAP; chunk layout may shift across optimizer versions
   # Catalog server examples don't generate rrds
   "concepts/query-and-transform/dataframe_query_example",
@@ -191,6 +192,10 @@ backwards_check = [
   "rust",
 ]
 "concepts/chunk_processing_intro" = [ # `rerun.experimental` is Python-only
+  "cpp",
+  "rust",
+]
+"concepts/rrd_format" = [ # `rerun.experimental` is Python-only
   "cpp",
   "rust",
 ]
@@ -611,6 +616,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "concepts/chunk_processing_intro" = [ # Python-only; nothing to compare across languages
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/rrd_format" = [ # Python-only; nothing to compare across languages
   "cpp",
   "py",
   "rust",
