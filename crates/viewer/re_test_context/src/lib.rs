@@ -21,10 +21,10 @@ use re_types_core::reflection::Reflection;
 use re_ui::Help;
 use re_viewer_context::{
     AppContext, AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver,
-    CommandSender, ComponentUiRegistry, DataQueryResult, FallbackProviderRegistry, Item,
-    ItemCollection, NeedsRepaint, Route, StoreHub, StoreViewContext, SystemCommand,
-    SystemCommandSender as _, TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry,
-    ViewId, ViewStates, ViewerContext, blueprint_timeline, command_channel,
+    CommandSender, ComponentUiRegistry, DataQueryResult, FallbackProviderRegistry, ItemCollection,
+    NeedsRepaint, Route, StoreHub, StoreViewContext, SystemCommand, SystemCommandSender as _,
+    TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
+    ViewerContext, blueprint_timeline, command_channel,
 };
 
 pub mod external {
@@ -789,13 +789,9 @@ impl TestContext {
     ///
     /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
-        let re_uri::Fragment {
-            selection,
-            when,
-            time_selection,
-        } = fragment;
+        let time_commands = TimeControlCommand::from_url_fragment(&fragment);
 
-        if let Some(selection) = selection {
+        if let Some(selection) = fragment.selection {
             let re_log_types::DataPath {
                 entity_path,
                 instance,
@@ -803,28 +799,18 @@ impl TestContext {
             } = selection;
 
             let item = if let Some(component) = component {
-                Item::from(re_log_types::ComponentPath::new(entity_path, component))
+                re_viewer_context::Item::from(re_log_types::ComponentPath::new(
+                    entity_path,
+                    component,
+                ))
             } else if let Some(instance) = instance {
-                Item::from(InstancePath::instance(entity_path, instance))
+                re_viewer_context::Item::from(InstancePath::instance(entity_path, instance))
             } else {
-                Item::from(entity_path)
+                re_viewer_context::Item::from(entity_path)
             };
 
             self.command_sender
-                .send_system(SystemCommand::set_selection(item.clone()));
-        }
-
-        let mut time_commands = Vec::new();
-        if let Some(time_selection) = time_selection {
-            time_commands.push(TimeControlCommand::SetActiveTimeline(
-                *time_selection.timeline.name(),
-            ));
-            time_commands.push(TimeControlCommand::SetTimeSelection(time_selection.range));
-        }
-
-        if let Some((timeline, timecell)) = when {
-            time_commands.push(TimeControlCommand::SetActiveTimeline(timeline));
-            time_commands.push(TimeControlCommand::SetTime(timecell.value.into()));
+                .send_system(SystemCommand::set_selection(item));
         }
 
         if !time_commands.is_empty() {
@@ -848,6 +834,16 @@ impl TestContext {
                 }
                 SystemCommand::CopyViewerUrl(_) => {
                     // Ignore this trying to copy to the clipboard.
+                }
+                SystemCommand::LoadDataSource(data_source) => {
+                    if let Some(re_uri::RedapUri::DatasetData(uri)) = data_source
+                        .as_uri()
+                        .and_then(|uri| uri.parse::<re_uri::RedapUri>().ok())
+                    {
+                        self.go_to_dataset_data(uri.store_id(), uri.fragment);
+                    } else {
+                        handled = false;
+                    }
                 }
                 SystemCommand::AppendToStore(store_id, chunks) => {
                     let mut store_hub = self
@@ -917,7 +913,6 @@ impl TestContext {
                 SystemCommand::ActivateApp(_)
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::CloseRecordingOrTable(_)
-                | SystemCommand::LoadDataSource(_)
                 | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
                 | SystemCommand::SetRoute(_)

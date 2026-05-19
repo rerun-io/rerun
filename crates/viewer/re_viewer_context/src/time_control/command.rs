@@ -80,6 +80,30 @@ pub enum TimeControlCommand {
     ResetTimeView,
 }
 
+impl TimeControlCommand {
+    /// Convert the temporal parts of a URL fragment into time-control commands.
+    ///
+    /// A temporal `when=…` anchor represents a fixed time cursor, so applying it
+    /// must always pause playback before seeking.
+    pub fn from_url_fragment(fragment: &re_uri::Fragment) -> Vec<Self> {
+        let mut time_commands = Vec::new();
+
+        if let Some(time_selection) = &fragment.time_selection {
+            time_commands.push(Self::SetActiveTimeline(*time_selection.timeline.name()));
+            time_commands.push(Self::SetTimeSelection(time_selection.range));
+            time_commands.push(Self::SetLoopMode(LoopMode::Selection));
+        }
+
+        if let Some((timeline, timecell)) = &fragment.when {
+            time_commands.push(Self::SetActiveTimeline(*timeline));
+            time_commands.push(Self::SetPlayState(PlayState::Paused));
+            time_commands.push(Self::SetTime(timecell.value.into()));
+        }
+
+        time_commands
+    }
+}
+
 impl TimeControl {
     pub fn handle_time_commands(
         &mut self,
