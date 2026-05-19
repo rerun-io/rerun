@@ -386,6 +386,55 @@ fn player_unsorted() {
     );
 }
 
+/// Walking back from the first sample of a stream whose front has been popped
+/// should return `None` rather than panic.
+#[test]
+fn previous_presented_sample_after_front_eviction() {
+    let mut samples: re_video::StableIndexDeque<SampleMetadataState> =
+        (0..10).map(|t| keyframe(t as f64 * 0.1)).collect();
+
+    for sample in samples.iter_mut() {
+        if let Some(sample) = sample.sample_mut() {
+            sample.decode_timestamp = sample.presentation_timestamp;
+        }
+    }
+
+    let last_dropped = samples.min_index() + 2;
+    samples.remove_all_with_index_smaller_equal(last_dropped);
+
+    let keyframe_indices: Vec<_> = samples
+        .iter_indexed()
+        .filter_map(|(idx, s)| s.sample().is_some_and(|s| s.is_sync).then_some(idx))
+        .collect();
+
+    let video_descr = VideoDataDescription {
+        delivery_method: re_video::VideoDeliveryMethod::Stream {
+            last_time_updated_samples: std::time::Instant::now(),
+        },
+        keyframe_indices,
+        samples_statistics: re_video::SamplesStatistics::new(&samples),
+        samples,
+
+        codec: re_video::VideoCodec::H265,
+        encoding_details: None,
+        mp4_tracks: Default::default(),
+        timescale: None,
+    };
+
+    let first_sample = video_descr
+        .samples
+        .get(video_descr.samples.min_index())
+        .and_then(|s| s.sample())
+        .expect("first surviving sample should be present")
+        .clone();
+
+    assert!(
+        video_descr
+            .previous_presented_sample(&first_sample)
+            .is_none()
+    );
+}
+
 #[track_caller]
 pub(super) fn assert_loading(err: Result<(), VideoPlayerError>) {
     let err = err.unwrap_err();
