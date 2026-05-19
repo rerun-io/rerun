@@ -376,13 +376,13 @@ pub fn spawn(opts: &SpawnOptions) -> Result<u16, SpawnError> {
         let bind_addr =
             std::net::SocketAddr::new(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST), port);
         let mut bound = false;
-        for i in 0..5 {
+        for i in 0..20 {
             re_log::debug!("connection attempt {}", i + 1);
             if TcpStream::connect_timeout(&bind_addr, Duration::from_secs(1)).is_ok() {
                 bound = true;
                 break;
             }
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(200));
         }
 
         re_log::debug_assert!(
