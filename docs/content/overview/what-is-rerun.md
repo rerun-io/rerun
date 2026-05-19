@@ -3,9 +3,10 @@ title: What is Rerun?
 order: 0
 ---
 
-Rerun is the Unified Data Layer for Physical AI that helps you understand and improve complex processes involving rich multimodal data like 2D, 3D, text, time series, and tensors.
+Rerun is the Unified Data Layer for Physical AI that helps you build smarter robots.
 
-It combines simple and flexible data logging with a powerful visualizer and query engine, designed specifically for domains like robotics, spatial computing, embodied AI, computer vision, simulation, and any system involving sensors and signals that evolve over time.
+Rerun is comprised of **Rerun SDK**: an open source library and tools for logging, storing, querying, visualizing, and training on multi-rate, multimodal data; and
+**Rerun Hub**: a data catalog and backend for large scale storage, access, and streaming of robotics data from object storage.
 
 ## The problem
 
@@ -18,18 +19,6 @@ Building intelligent physical systems requires rapid iteration on both data and 
 
 The best robotics teams minimize their time from new data to training. Rerun gives you the unified infrastructure to make that happen.
 
-## What Rerun provides
-
-Rerun provides an integrated solution for working with multimodal temporal data:
-
-**Time-aware data model:** At its core is an [Entity Component System (ECS)](../concepts/logging-and-ingestion/entity-component.md) designed for robotics and XR applications. This model understands both [spatial relationships](../concepts/logging-and-ingestion/transforms.md) and [temporal evolution](../concepts/logging-and-ingestion/timelines.md), making it natural to work with sensor data, transforms, and time-series information.
-
-**Built-in visualization:** A fast, embeddable visualizer lets you see your data as 3D scenes, images, plots, and text—all synchronized and explorable through time. Build [layouts and customize visualizations](../getting-started/configure-the-viewer.md) interactively or [programmatically](../concepts/visualization/blueprints.md).
-
-**Query and export:** Extract clean [dataframes](../howto/query-and-transform/get-data-out.md) for analysis in Pandas, Polars, or DuckDB. Use recordings to create datasets for training and evaluating your models.
-
-**Flexible ingestion:** Load data from your code via the [SDK](../getting-started/data-in.md), from storage formats like [MCAP](../howto/logging-and-ingestion/mcap.md), or from proprietary log formats. [Extend Rerun](../howto/extend.md) when you need custom types or visualizations.
-
 ## Who is Rerun for?
 
 Rerun is built for teams developing intelligent physical systems:
@@ -39,34 +28,156 @@ Rerun is built for teams developing intelligent physical systems:
 - **ML engineers** preparing datasets and understanding model behavior
 - **Autonomy teams** developing and testing decision-making systems
 
-If you're working with robots, drones, autonomous vehicles, spatial AI, or any system with sensors that evolve over time, Rerun helps you move faster.
-
-## What Rerun is not
-
-To set clear expectations:
-
-- **Not a training platform**: Use Rerun with PyTorch, TensorFlow, JAX, etc. We prepare your data; you train your models.
-- **Not a deployment tool**: Rerun helps you develop and understand your systems, not deploy them to production.
-- **Not a robot operating system**: Rerun works with ROS, ROS2, or any other robotics stack.
-- **Not a general visualization tool**: We're specialized for physical, multimodal, time-series data.
+If you're working with robots, drones, autonomous vehicles, spatial AI, or any system with data that evolves over time, Rerun helps you move faster.
 
 ## How do you use it?
 
-<picture>
-  <img src="https://static.rerun.io/rerun-overview-new/1752fc259eef34f3aa8151b21b5937bc0bc2ad38/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/rerun-overview-new/1752fc259eef34f3aa8151b21b5937bc0bc2ad38/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/rerun-overview-new/1752fc259eef34f3aa8151b21b5937bc0bc2ad38/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/rerun-overview-new/1752fc259eef34f3aa8151b21b5937bc0bc2ad38/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/rerun-overview-new/1752fc259eef34f3aa8151b21b5937bc0bc2ad38/1200w.png">
-</picture>
+### Log and ingest
+Use the [logging API](../getting-started/data-in.md) to log multimodal data from your code, or [the chunk processing API](../concepts/logging-and-ingestion/chunk-processing-api.md) to convert your existing data to the [.rrd](../concepts/logging-and-ingestion/rrd-format.md) file format to later visualize or query.
+```d2
+direction: right
 
-1. Use the [Rerun SDK](../getting-started/data-in.md) to [log multimodal data](../getting-started/data-in.md) from your code or load it from storage
-2. View live or recorded data in the standalone viewer or [embedded in your app](../howto/integrations/embed-web.md)
-3. Build layouts and [customize visualizations](../getting-started/configure-the-viewer.md) interactively in the UI or through the SDK
-4. [Query recordings](../getting-started/data-out.md) to get clean dataframes into tools like Pandas, Polars, or DuckDB
-5. [Extend Rerun](../howto/extend.md) when you need to
+generator: "data generator" {
+}
 
-We also offer **Rerun Hub**, a scalable catalog for robotic data, for teams that need collaborative dataset management, version control, and cloud storage. [Learn more](https://rerun.io/pricing).
+existing: "Existing data\n\n• MCAP\n• LeRobot\n• etc." {
+  shape: page
+}
+
+conversion: "converter" {
+}
+
+rrd: ".RRD" {
+  shape: page
+  width: 220
+  height: 420
+}
+
+generator -> rrd
+existing -> conversion
+conversion -> rrd
+```
+
+### Visualize
+Rerun provides an open source pre-built [viewer](../reference/viewer/overview.md) that is [adjustable](../getting-started/configure-the-viewer.md) and [extensible](../howto/extend.md).
+You can log directly to the viewer, [open](../getting-started/data-in/open-any-file.md) a range of file formats to get data into the viewer, or even connect the viewer to a Rerun [catalog](../concepts/query-and-transform/catalog-object-model.md).
+
+```d2
+direction: right
+
+generator: "data generator" {
+  width: 220
+  height: 110
+}
+
+rrd: ".RRD" {
+  shape: page
+  width: 220
+  height: 110
+  style.font-size: 28
+}
+
+formats: "Supported formats\n\n• MCAP\n• LeRobot\n• etc." {
+  shape: page
+  width: 300
+  height: 260
+  style.font-size: 20
+}
+
+importers: "Automated\nimporters" {
+  width: 220
+  height: 110
+  style.font-size: 24
+}
+
+catalog: "Rerun Catalog" {
+  shape: cylinder
+  width: 220
+  height: 130
+  style.font-size: 24
+}
+
+viewer: "Rerun Viewer" {
+  width: 600
+  height: 500
+  label.near: top-center
+  style.font-size: 32
+
+  big_view: "" {
+    shape: rectangle
+    width: 480
+    height: 380
+    style.font-size: 80
+    style.fill: "#dddddd"
+  }
+}
+
+generator -> viewer
+rrd -> viewer
+formats -> importers
+importers -> viewer
+catalog -> viewer
+```
+
+### Query and transform
+The Rerun file format supports both high performance visualization and querying over the same data source.
+
+You can use the open source [catalog](../concepts/query-and-transform/catalog-object-model.md) server for running local [laptop scale examples](../getting-started/data-out).
+We also offer **Rerun Hub**, a scalable catalog for robotic data, for teams that need collaborative dataset management, version control, and cloud storage ([reach out](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ?typeform-source=docs) to learn more).
+These are API compatible so the only difference from our examples to **Rerun Hub** is that you connect to an existing server instead of launching your own.
+
+#### Prepare catalog
+Before querying or viewing recordings on the catalog we have to register them.
+We group recordings as [datasets](../concepts/query-and-transform/catalog-object-model.md#datasets).
+Since Rerun indexes existing data in place, registration needs paths to RRDs to index: in object store for **Rerun Hub** or on disk for local catalog server.
+
+```d2
+direction: right
+
+create: "1. create_dataset"
+handle: "2. dataset handle"
+register: "3. handle.register"
+
+catalog: "Rerun Catalog" {
+  shape: cylinder
+  height: 400
+}
+
+create -> catalog: "dataset name"
+handle <- catalog: "returns"
+register -> catalog: "path to .rrd(s)"
+```
+
+#### Use catalog
+At this point a viewer can connect to the prepared catalog or we show the basic steps to perform a query.
+We specify what dataset we want to query, get access to a lazy loaded [dataframe](../concepts/query-and-transform/dataframe-queries.md), specify our query, and retrieve the results.
+Queries can be specified with SQL or dataframe APIs allowing the flexibility to investigate anything about your data.
+
+```d2
+direction: right
+
+handle: "1. dataset handle"
+df1: "2. DataFrame"
+df2: "3. DataFrame"
+result: "4. query result" {
+  shape: page
+}
+
+catalog: "Rerun Catalog" {
+  shape: cylinder
+  height: 500
+
+  my_dataset: "my_dataset" {
+    segment_a
+    segment_b
+  }
+}
+
+handle -> catalog: |md `dataset.reader(index=…)`|
+df1 <- catalog: "returns"
+df2 -> catalog: |md `df.select(…).where(…)`|
+result <- catalog: "returns"
+```
 
 ## Get started
 
