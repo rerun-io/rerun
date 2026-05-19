@@ -1,5 +1,6 @@
 //! Lenses for converting ROS 2 messages to Rerun components & archetypes.
 
+mod log;
 mod occupancy_grid;
 mod pose_stamped;
 mod ros_map_helpers;
@@ -8,6 +9,7 @@ mod string;
 use re_lenses::{LensBuilderError, Lenses, OutputMode};
 use re_log_types::TimeType;
 
+pub use log::log;
 pub use occupancy_grid::occupancy_grid;
 pub use pose_stamped::pose_stamped;
 pub use string::string;
@@ -21,8 +23,9 @@ pub fn add_ros2msg_lenses(
     time_type: TimeType,
 ) -> Result<(), LensBuilderError> {
     *lenses = std::mem::replace(lenses, Lenses::new(OutputMode::ForwardUnmatched))
+        .add_lens(log(time_type)?)
         .add_lens(occupancy_grid(time_type)?)
-        .add_lens(string(time_type)?)
-        .add_lens(pose_stamped(time_type)?);
+        .add_lens(pose_stamped(time_type)?)
+        .add_lens(string(time_type)?);
     Ok(())
 }
