@@ -44,7 +44,7 @@ use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
 use re_log_types::{ApplicationId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ScanSegmentTableResponse;
+use re_protos::{cloud::v1alpha1::ScanSegmentTableResponse, common::v1alpha1::ext::SegmentId};
 use re_redap_client::{ApiError, ApiResult};
 
 use crate::IntoDfError as _;
@@ -606,7 +606,7 @@ const FLUSH_BATCH_BYTES: usize = DEFAULT_BATCH_BYTES as usize;
 #[tracing::instrument(level = "trace", skip_all, fields(segment_id = %segment_id))]
 async fn send_next_row_batch(
     query_handle: &mut QueryHandle<StorageEngine>,
-    segment_id: &str,
+    segment_id: &SegmentId,
     target_schema: &Arc<Schema>,
     output_channel: &Sender<RecordBatch>,
     rows_sent: &mut usize,
@@ -645,7 +645,7 @@ async fn send_next_row_batch(
 
     let mut columns: Vec<ArrayRef> = Vec::with_capacity(num_fields + 1);
     let sid_array =
-        Arc::new(StringArray::from(vec![segment_id.to_owned(); total_rows])) as ArrayRef;
+        Arc::new(StringArray::from(vec![segment_id.to_string(); total_rows])) as ArrayRef;
     columns.push(sid_array);
     columns.extend(next.columns);
 
@@ -711,7 +711,7 @@ async fn send_next_row_batch(
 /// refund a `?` early-return or cancellation would leak the reservation
 /// to sibling partitions for the remainder of the query.
 struct CurrentStores {
-    segment_id: String,
+    segment_id: SegmentId,
     store: ChunkStoreHandle,
     query_handle: QueryHandle<StorageEngine>,
     pipeline_budget: Arc<PipelineBudget>,
@@ -720,14 +720,14 @@ struct CurrentStores {
 impl CurrentStores {
     #[tracing::instrument(level = "debug", skip_all, fields(segment_id = %segment_id))]
     fn new(
-        segment_id: String,
+        segment_id: SegmentId,
         query_expression: &QueryExpression,
         index_values: &IndexValuesMap,
         pipeline_budget: Arc<PipelineBudget>,
     ) -> Self {
         let store_id = StoreId::random(
             StoreKind::Recording,
-            ApplicationId::from(segment_id.as_str()),
+            ApplicationId::from(segment_id.as_ref()),
         );
         let config = ChunkStoreConfig::ALL_DISABLED; // Don't spend CPU time splitting and joining chunks. Trust the input.
         let store = ChunkStore::new_handle(store_id.clone(), config);
@@ -922,7 +922,7 @@ async fn chunk_store_cpu_worker_thread(
 /// Extract segment ID from a `chunk_info` `RecordBatch`. Each `chunk_info` batch contains
 /// chunks *for a single segment*, hence we can just take the first row's `segment_id`. This is
 /// guaranteed by the implementation in `group_chunk_infos_by_segment_id`.
-fn extract_segment_id(chunk_info: &RecordBatch) -> ApiResult<String> {
+fn extract_segment_id(chunk_info: &RecordBatch) -> ApiResult<SegmentId> {
     let segment_ids = chunk_info
         .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
         .ok_or_else(|| ApiError::internal("missing segment_id column in chunk_info batch"))?
@@ -930,7 +930,7 @@ fn extract_segment_id(chunk_info: &RecordBatch) -> ApiResult<String> {
         .downcast_ref::<StringArray>()
         .ok_or_else(|| ApiError::internal("segment_id column is not a string array"))?;
 
-    Ok(segment_ids.value(0).to_owned())
+    Ok(SegmentId::from(segment_ids.value(0)))
 }
 
 /// Extract chunk sizes from a `chunk_info` `RecordBatch`.
@@ -946,7 +946,7 @@ fn extract_chunk_sizes(chunk_info: &RecordBatch) -> ApiResult<&UInt64Array> {
     Ok(chunk_sizes)
 }
 
-type BatchingResult = (Vec<RecordBatch>, Vec<String>);
+type BatchingResult = (Vec<RecordBatch>, Vec<SegmentId>);
 
 /// Groups `chunk_infos` into batches targeting the specified size, with special handling
 /// for segments larger than the target size (which get split). Batches smaller than `target_size`
@@ -1035,7 +1035,7 @@ fn create_request_batches(
 /// Split segment larger than target size into multiple smaller requests. Each request will contain
 /// a subset of the chunks from the original segment, targeting approximately the desired size.
 fn split_large_segments(
-    segment_id: &str,
+    segment_id: &SegmentId,
     chunk_info: &RecordBatch,
     target_size: u64,
     chunk_sizes: &UInt64Array,
@@ -1095,13 +1095,13 @@ fn split_large_segments(
 /// important fact that server provides no ordering guarantees.
 fn sort_chunks_by_segment_order(
     chunks: Vec<ChunksWithSegment>,
-    segment_order: &[String],
+    segment_order: &[SegmentId],
 ) -> Vec<SortedChunksWithSegment> {
     use std::collections::HashMap;
 
     // Collect all individual chunks grouped by segment ID (we don't care about ordering of individual
     // chunks within a segment here)
-    let mut segment_groups: HashMap<String, Vec<Chunk>> = HashMap::default();
+    let mut segment_groups: HashMap<SegmentId, Vec<Chunk>> = HashMap::default();
 
     // Extract all chunks and group by segment
     for chunks_with_segment in chunks {
@@ -1124,7 +1124,7 @@ fn sort_chunks_by_segment_order(
 /// Returns `false` if the output channel is closed (consumer dropped).
 async fn send_sorted_chunks(
     chunks: Vec<ChunksWithSegment>,
-    global_segment_order: &[String],
+    global_segment_order: &[SegmentId],
     output_channel: &Sender<ApiResult<SortedChunksWithSegment>>,
 ) -> bool {
     let sorted = {
@@ -1149,7 +1149,7 @@ async fn send_sorted_chunks(
 async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
     batches: &[RecordBatch],
     client: &T,
-    global_segment_order: &[String],
+    global_segment_order: &[SegmentId],
     output_channel: &Sender<ApiResult<SortedChunksWithSegment>>,
     pipeline_budget: &PipelineBudget,
 ) -> ApiResult<()> {
@@ -1750,7 +1750,7 @@ mod tests {
 
     /// Extract segment ID from a chunk result (test helper)
     fn extract_segment_id_from_chunk((segment_id, _chunks): &SortedChunksWithSegment) -> &str {
-        segment_id
+        segment_id.as_ref()
     }
 
     /// Helper to create a test `RecordBatch` with chunk info for testing
@@ -1797,6 +1797,10 @@ mod tests {
         .unwrap()
     }
 
+    fn segment_order_as_strs(segment_order: &[SegmentId]) -> Vec<&str> {
+        segment_order.iter().map(SegmentId::as_ref).collect()
+    }
+
     #[test]
     fn test_create_request_batches_single_small_segment() {
         let chunk_info = create_test_chunk_info("seg1", &[100, 200, 300]); // 600 bytes total
@@ -1807,7 +1811,7 @@ mod tests {
 
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].num_rows(), 3);
-        assert_eq!(segment_order, vec!["seg1"]);
+        assert_eq!(segment_order_as_strs(&segment_order), vec!["seg1"]);
     }
 
     #[test]
@@ -1820,7 +1824,7 @@ mod tests {
 
         // should be split into 3 as each batch should be under 1KB
         assert_eq!(batches.len(), 3);
-        assert_eq!(segment_order, vec!["seg1"]);
+        assert_eq!(segment_order_as_strs(&segment_order), vec!["seg1"]);
     }
 
     #[test]
@@ -1838,7 +1842,10 @@ mod tests {
         assert_eq!(batches.len(), 2);
         assert_eq!(batches[0].num_rows(), 4);
         assert_eq!(batches[1].num_rows(), 2);
-        assert_eq!(segment_order, vec!["seg1", "seg2", "seg3", "seg4"]);
+        assert_eq!(
+            segment_order_as_strs(&segment_order),
+            vec!["seg1", "seg2", "seg3", "seg4"]
+        );
     }
 
     #[test]
@@ -1854,7 +1861,10 @@ mod tests {
 
         // Should have: [seg1], [seg2_part1], [seg2_part2], [seg2_part3], [seg3]
         assert_eq!(batches.len(), 5);
-        assert_eq!(segment_order, vec!["seg1", "seg2", "seg3"]);
+        assert_eq!(
+            segment_order_as_strs(&segment_order),
+            vec!["seg1", "seg2", "seg3"]
+        );
     }
 
     #[test]
@@ -1870,7 +1880,10 @@ mod tests {
 
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].num_rows(), 3);
-        assert_eq!(segment_order, vec!["segA", "segB", "segC"]);
+        assert_eq!(
+            segment_order_as_strs(&segment_order),
+            vec!["segA", "segB", "segC"]
+        );
 
         // Verify that segments within the batch maintain input order
         let segment_id_column = batches[0]
@@ -1896,12 +1909,12 @@ mod tests {
 
         // Simple case: one segment per response
         let empty_chunk = Chunk::builder(EntityPath::root()).build().unwrap();
-        let segment_order = vec!["segA".to_owned(), "segB".to_owned(), "segC".to_owned()];
+        let segment_order: Vec<SegmentId> = vec!["segA".into(), "segB".into(), "segC".into()];
 
         let chunks: Vec<ChunksWithSegment> = vec![
-            vec![(empty_chunk.clone(), Some("segC".to_owned()))],
-            vec![(empty_chunk.clone(), Some("segA".to_owned()))],
-            vec![(empty_chunk.clone(), Some("segB".to_owned()))],
+            vec![(empty_chunk.clone(), Some("segC".into()))],
+            vec![(empty_chunk.clone(), Some("segA".into()))],
+            vec![(empty_chunk.clone(), Some("segB".into()))],
         ];
 
         let sorted_chunks = sort_chunks_by_segment_order(chunks, &segment_order);
@@ -1921,18 +1934,18 @@ mod tests {
         use re_log_types::EntityPath;
 
         let empty_chunk = Chunk::builder(EntityPath::root()).build().unwrap();
-        let segment_order = vec!["segA".to_owned(), "segB".to_owned(), "segC".to_owned()];
+        let segment_order: Vec<SegmentId> = vec!["segA".into(), "segB".into(), "segC".into()];
 
         let chunks: Vec<ChunksWithSegment> = vec![
             // Single response containing segments in wrong order: segC, segA, segB
             vec![
-                (empty_chunk.clone(), Some("segC".to_owned())),
-                (empty_chunk.clone(), Some("segC".to_owned())), // Multiple chunks for segC
-                (empty_chunk.clone(), Some("segA".to_owned())),
-                (empty_chunk.clone(), Some("segB".to_owned())),
-                (empty_chunk.clone(), Some("segB".to_owned())), // Multiple chunks for segB
-                (empty_chunk.clone(), Some("segA".to_owned())), // More chunks for segA
-                (empty_chunk.clone(), Some("segB".to_owned())), // More chunks for segB
+                (empty_chunk.clone(), Some("segC".into())),
+                (empty_chunk.clone(), Some("segC".into())), // Multiple chunks for segC
+                (empty_chunk.clone(), Some("segA".into())),
+                (empty_chunk.clone(), Some("segB".into())),
+                (empty_chunk.clone(), Some("segB".into())), // Multiple chunks for segB
+                (empty_chunk.clone(), Some("segA".into())), // More chunks for segA
+                (empty_chunk.clone(), Some("segB".into())), // More chunks for segB
             ],
         ];
 
@@ -1965,18 +1978,18 @@ mod tests {
 
         // We have some single-segment responses, some multi-segment responses
         let empty_chunk = Chunk::builder(EntityPath::root()).build().unwrap();
-        let segment_order = vec!["segA".to_owned(), "segB".to_owned(), "segC".to_owned()];
+        let segment_order: Vec<SegmentId> = vec!["segA".into(), "segB".into(), "segC".into()];
 
         let chunks: Vec<ChunksWithSegment> = vec![
             // Single segment response
-            vec![(empty_chunk.clone(), Some("segC".to_owned()))],
+            vec![(empty_chunk.clone(), Some("segC".into()))],
             // Multi-segment response
             vec![
-                (empty_chunk.clone(), Some("segB".to_owned())),
-                (empty_chunk.clone(), Some("segA".to_owned())),
+                (empty_chunk.clone(), Some("segB".into())),
+                (empty_chunk.clone(), Some("segA".into())),
             ],
             // Another single segment response
-            vec![(empty_chunk.clone(), Some("segB".to_owned()))],
+            vec![(empty_chunk.clone(), Some("segB".into()))],
         ];
 
         let sorted_chunks = sort_chunks_by_segment_order(chunks, &segment_order);
@@ -2008,7 +2021,7 @@ mod tests {
 
         {
             let _stores = CurrentStores::new(
-                "drop-refund-test".to_owned(),
+                SegmentId::from("drop-refund-test"),
                 &QueryExpression::default(),
                 &None,
                 budget.clone(),

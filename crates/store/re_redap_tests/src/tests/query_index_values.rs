@@ -1,8 +1,6 @@
-use crate::RecordBatchTestExt as _;
-use crate::tests::common::{
-    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches, prop,
-};
-use crate::utils::client::TestClient;
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
+
 use arrow::array::RecordBatch;
 use datafusion::datasource::TableProvider as _;
 use datafusion::physical_plan::ExecutionPlanProperties as _;
@@ -13,8 +11,13 @@ use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, TimeInt, TimeType};
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
+use re_protos::common::v1alpha1::ext::SegmentId;
+
+use crate::RecordBatchTestExt as _;
+use crate::tests::common::{
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches, prop,
+};
+use crate::utils::client::TestClient;
 
 pub async fn query_dataset_index_values_by_time_type<T: RerunCloudService>(
     service: Arc<T>,
@@ -776,11 +779,11 @@ async fn query_dataset_snapshot<T: RerunCloudService>(
     time_type: TimeType,
     check_schema: bool,
 ) {
-    let index_values: BTreeMap<String, BTreeSet<IndexValue>> = index_values
+    let index_values: BTreeMap<SegmentId, BTreeSet<IndexValue>> = index_values
         .into_iter()
         .map(|(idx, values)| {
             (
-                idx.to_owned(),
+                SegmentId::from(idx),
                 values.into_iter().map(TimeInt::new_temporal).collect(),
             )
         })

@@ -4,7 +4,6 @@ use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
 use re_log_types::{EntityPath, TimeType};
-use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
@@ -14,6 +13,7 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_protos::{EntryName, common::v1alpha1::ext::SegmentId};
 
 /// Test helper: parse a string into an `EntryName`, panicking on invalid names.
 pub fn entry_name(name: &str) -> EntryName {
@@ -384,7 +384,12 @@ impl LayerType {
         Self::SimpleBlueprint
     }
 
-    fn into_recording(self, tuid_prefix: TuidPrefix, segment_id: &str) -> anyhow::Result<TempPath> {
+    fn into_recording(
+        self,
+        tuid_prefix: TuidPrefix,
+        segment_id: &SegmentId,
+    ) -> anyhow::Result<TempPath> {
+        let segment_id = segment_id.as_ref();
         match self {
             Self::Simple {
                 entities,
@@ -617,7 +622,7 @@ impl DataSourcesDefinition {
                             .layer_type
                             .into_recording(
                                 tuid_prefix.saturating_add(tuid_prefix_increment as _),
-                                layer.segment_id,
+                                &SegmentId::from(layer.segment_id),
                             )
                             .unwrap(),
                     )

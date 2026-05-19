@@ -244,10 +244,10 @@ pub(crate) async fn client(
 /// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.
 //
 // TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
-// TODO(cmc): we should compute contiguous runs of the same segment here, and return a `(String, Vec<Chunk>)`
+// TODO(cmc): we should compute contiguous runs of the same segment here, and return a `(SegmentId, Vec<Chunk>)`
 // instead. Because of how the server performs the computation, this will very likely work out well
 // in practice.
-pub type ChunksWithSegment = Vec<(Chunk, Option<String>)>;
+pub type ChunksWithSegment = Vec<(Chunk, Option<SegmentId>)>;
 
 #[tracing::instrument(level = "debug", skip_all)]
 #[cfg(not(target_arch = "wasm32"))]
@@ -280,7 +280,10 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                     .into_iter()
                     .map(|arrow_msg| {
                         re_tracing::profile_scope!("fetch_chunks_response_to_chunk_and_segment_id");
-                        let segment_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
+                        let segment_id = arrow_msg
+                            .store_id
+                            .clone()
+                            .map(|id| SegmentId::from(id.recording_id));
 
                         use re_log_encoding::ToApplication as _;
                         let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
@@ -335,7 +338,10 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
         resp.chunks
             .into_iter()
             .map(|arrow_msg| {
-                let segment_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
+                let segment_id = arrow_msg
+                    .store_id
+                    .clone()
+                    .map(|id| SegmentId::from(id.recording_id));
 
                 use re_log_encoding::ToApplication as _;
                 let arrow_msg = arrow_msg.to_application(()).map_err(|err| {

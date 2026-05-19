@@ -12,6 +12,7 @@ use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPathFilter, ResolvedEntityPathFilter};
 #[cfg(feature = "perf_telemetry")]
 use re_perf_telemetry::extract_trace_context_from_contextvar;
+use re_protos::common::v1alpha1::ext::SegmentId;
 use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
 
 use crate::catalog::{
@@ -243,7 +244,7 @@ impl PyDatasetViewInternal {
             .map(|values_map| {
                 values_map
                     .into_iter()
-                    .map(|(k, v)| v.to_index_values().map(|v| (k, v)))
+                    .map(|(k, v)| v.to_index_values().map(|v| (SegmentId::from(k), v)))
                     .collect::<Result<BTreeMap<_, _>, _>>()
             })
             .transpose()?;
@@ -337,7 +338,7 @@ fn build_dataframe_query_table_provider(
     include_semantically_empty_columns: bool,
     include_tombstone_columns: bool,
     fill_latest_at: bool,
-    using_index_values: Option<BTreeMap<String, BTreeSet<TimeInt>>>,
+    using_index_values: Option<BTreeMap<SegmentId, BTreeSet<TimeInt>>>,
 ) -> PyResult<Arc<dyn TableProvider + Send>> {
     let dataset_ref = dataset.borrow(py);
     let dataset_id = dataset_ref.entry_id();

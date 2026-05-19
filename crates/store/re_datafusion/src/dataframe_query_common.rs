@@ -22,13 +22,16 @@ use futures::StreamExt as _;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, IndexValue, QueryExpression, SparseFillStrategy};
 use re_log_types::{EntityPath, EntryId};
-use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
     ScanSegmentTableResponse,
 };
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_protos::{
+    cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange},
+    common::v1alpha1::ext::SegmentId,
+};
 use re_redap_client::{ApiError, ApiResult, ConnectionClient, ConnectionRegistryHandle};
 
 use crate::{IntoDfError as _, SegmentStreamExec};
@@ -77,7 +80,7 @@ pub(crate) const DEFAULT_BATCH_ROWS: usize = 2048;
 /// Mapping of `rerun_segment_id` to set of `IndexValues` to be used for querying
 /// a specific set of index values per segment. If the option is None, then
 /// `using_index_values` will not be applied to the dataset queries.
-pub(crate) type IndexValuesMap = Option<Arc<BTreeMap<String, BTreeSet<IndexValue>>>>;
+pub(crate) type IndexValuesMap = Option<Arc<BTreeMap<SegmentId, BTreeSet<IndexValue>>>>;
 
 #[derive(Debug)]
 pub struct DataframeQueryTableProvider<T: DataframeClientAPI> {

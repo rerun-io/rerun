@@ -14,10 +14,13 @@ use tonic::IntoRequest as _;
 use tracing::Instrument as _;
 
 use re_dataframe::external::re_chunk::Chunk;
-use re_protos::cloud::v1alpha1::ext::{
-    ChunkKey, ETag, RrdChunkLocation, SOURCE_CHANGED_MESSAGE, url_strip_query,
-};
 use re_protos::cloud::v1alpha1::{FetchChunksRequest, QueryDatasetResponse};
+use re_protos::{
+    cloud::v1alpha1::ext::{
+        ChunkKey, ETag, RrdChunkLocation, SOURCE_CHANGED_MESSAGE, url_strip_query,
+    },
+    common::v1alpha1::ext::SegmentId,
+};
 use re_redap_client::ApiResult;
 
 use crate::analytics::{DirectFetchFailureReason, PendingQueryAnalytics, TaskFetchStats};
@@ -98,9 +101,9 @@ pub(crate) mod metrics {
 }
 
 /// Chunks tagged with their segment ID.
-pub type ChunksWithSegment = Vec<(Chunk, Option<String>)>;
+pub type ChunksWithSegment = Vec<(Chunk, Option<SegmentId>)>;
 
-pub type SortedChunksWithSegment = (String, Vec<Chunk>);
+pub type SortedChunksWithSegment = (SegmentId, Vec<Chunk>);
 
 /// Maximum size of a single merged HTTP Range request (16 MB, matching server).
 const MAX_MERGED_RANGE_SIZE: usize = 16 * 1024 * 1024;
@@ -536,7 +539,7 @@ fn calculate_adaptive_concurrency(ranges: &[(u64, u64)]) -> usize {
 
 /// Decode a single chunk from raw RRD bytes (protobuf-encoded `ArrowMsg`).
 #[tracing::instrument(level = "debug", skip_all)]
-fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<String>), DirectFetchError> {
+fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<SegmentId>), DirectFetchError> {
     re_tracing::profile_function!();
     use re_log_encoding::Decodable;
     let raw_msg =
@@ -549,7 +552,10 @@ fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<String>), Dire
         return Err(DirectFetchError::new("invalid msg type".to_owned(), false));
     };
 
-    let segment_id_opt = arrow_msg.store_id.clone().map(|id| id.recording_id);
+    let segment_id_opt = arrow_msg
+        .store_id
+        .clone()
+        .map(|id| SegmentId::from(id.recording_id));
 
     use re_log_encoding::ToApplication as _;
     let app_msg = arrow_msg.to_application(()).map_err(|err| {
@@ -785,7 +791,7 @@ async fn fetch_batch_via_direct_urls(
 
     // Fold every inner buffer into the outer task's accumulator before we bail
     // on the first error — we want stats from successful fetches preserved.
-    let mut all_chunks: Vec<(usize, (Chunk, Option<String>))> = Vec::new();
+    let mut all_chunks: Vec<(usize, (Chunk, Option<SegmentId>))> = Vec::new();
     let mut first_err: Option<DirectFetchError> = None;
     async {
         let mut stream = futures::stream::iter(fetches).buffer_unordered(concurrency);
@@ -809,7 +815,7 @@ async fn fetch_batch_via_direct_urls(
 
     // Step 5: Reassemble in original row order.
     all_chunks.sort_by_key(|(idx, _)| *idx);
-    let ordered: Vec<(Chunk, Option<String>)> = all_chunks
+    let ordered: Vec<(Chunk, Option<SegmentId>)> = all_chunks
         .into_iter()
         .map(|(_, chunk_with_segment)| chunk_with_segment)
         .collect();
@@ -817,7 +823,7 @@ async fn fetch_batch_via_direct_urls(
     Ok(vec![ordered])
 }
 
-type DecodedChunk = (usize, (Chunk, Option<String>));
+type DecodedChunk = (usize, (Chunk, Option<SegmentId>));
 
 async fn fetch_merged_range(
     http_client: &reqwest::Client,

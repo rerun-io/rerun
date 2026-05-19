@@ -142,7 +142,7 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
                         "server returned chunk without a segment id in fetch_chunks response",
                     )
                 })?;
-                if received_segment_id != segment_id {
+                if received_segment_id.as_ref() != segment_id {
                     return Err(ApiError::deserialization(
                         None,
                         format!(

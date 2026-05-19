@@ -496,10 +496,10 @@ impl PyDatasetEntryInternal {
                 for chunk in chunks.map_err(to_py_err)? {
                     let (chunk, chunk_segment_id) = chunk;
 
-                    if Some(&segment_id) != chunk_segment_id.as_ref() {
+                    if chunk_segment_id.as_ref().map(AsRef::as_ref) != Some(segment_id.as_str()) {
                         re_log::warn!(
                             expected = segment_id,
-                            got = chunk_segment_id,
+                            got = ?chunk_segment_id,
                             "unexpected segment ID in chunk stream, this is a bug"
                         );
                     }

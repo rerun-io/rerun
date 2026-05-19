@@ -487,9 +487,9 @@ mod tests {
         QueryDatasetRequest::default()
     }
 
-    fn make_query_with_segment(segment_id: &str) -> QueryDatasetRequest {
+    fn make_query_with_segment(segment_id: &SegmentId) -> QueryDatasetRequest {
         QueryDatasetRequest {
-            segment_ids: vec![segment_id.into()],
+            segment_ids: vec![segment_id.clone()],
             ..Default::default()
         }
     }
@@ -927,7 +927,7 @@ mod tests {
     #[test]
     fn test_conflicting_segment_ids_error() {
         let schema = make_schema_with_index("frame_nr");
-        let query = make_query_with_segment("segment_a");
+        let query = make_query_with_segment(&SegmentId::from("segment_a"));
 
         // Try to AND with a different segment
         let expr = col("rerun_segment_id").eq(lit("segment_b"));
