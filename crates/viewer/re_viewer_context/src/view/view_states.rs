@@ -35,6 +35,9 @@ pub struct PreviewState {
 
     /// IDs of recordings currently registered as preview clips.
     recording_ids: ahash::HashSet<StoreId>,
+
+    /// URIs that have already been requested.
+    pub requested_uris: ahash::HashSet<re_uri::DatasetSegmentUri>,
 }
 
 impl re_byte_size::SizeBytes for PreviewState {
@@ -42,8 +45,11 @@ impl re_byte_size::SizeBytes for PreviewState {
         let Self {
             time_ctrl,
             recording_ids,
+            requested_uris,
         } = self;
-        time_ctrl.heap_size_bytes() + recording_ids.heap_size_bytes()
+        time_ctrl.heap_size_bytes()
+            + recording_ids.heap_size_bytes()
+            + requested_uris.heap_size_bytes()
     }
 }
 
@@ -52,6 +58,7 @@ impl Default for PreviewState {
         Self {
             time_ctrl: TimeControl::preview_time_control(),
             recording_ids: Default::default(),
+            requested_uris: Default::default(),
         }
     }
 }
@@ -60,8 +67,20 @@ impl PreviewState {
     /// Register a recording as an active preview clip.
     ///
     /// Called each frame by the view renderer when a preview is shown.
-    pub fn register_recording(&mut self, store_id: &StoreId) {
+    pub fn register_recording(
+        &mut self,
+        store_id: &StoreId,
+        store_bundle: &re_entity_db::StoreBundle,
+    ) {
         self.recording_ids.insert(store_id.clone());
+
+        if let Some(db) = store_bundle.get(store_id)
+            && let Some(re_entity_db::LogSource::RedapGrpcStream { uri, .. }) = &db.data_source
+        {
+            // If we've successfully loaded a uri, we could possibly want to request
+            // it again later if it gets GC'ed.
+            self.requested_uris.remove(uri);
+        }
     }
 
     /// Remove registrations for recordings that are no longer loaded.
@@ -143,8 +162,9 @@ pub struct ViewStates {
     // But at point of writing this causes too much needless churn.
     visualizer_reports: HashMap<ViewStateKey, VisualizerViewReport>,
 
+    // TODO(isse): Should we have one preview state per table/dataset?
     /// Playback state shared across all preview recordings shown in grid/table cards.
-    pub preview: PreviewState,
+    pub preview_state: Option<PreviewState>,
 }
 
 impl re_byte_size::SizeBytes for ViewStates {
@@ -152,9 +172,11 @@ impl re_byte_size::SizeBytes for ViewStates {
         let Self {
             states,
             visualizer_reports,
-            preview,
+            preview_state,
         } = self;
-        states.heap_size_bytes() + visualizer_reports.heap_size_bytes() + preview.heap_size_bytes()
+        states.heap_size_bytes()
+            + visualizer_reports.heap_size_bytes()
+            + preview_state.heap_size_bytes()
     }
 }
 
@@ -163,7 +185,7 @@ impl re_byte_size::MemUsageTreeCapture for ViewStates {
         let Self {
             states,
             visualizer_reports,
-            preview,
+            preview_state,
         } = self;
 
         let mut state_sizes = states
@@ -185,7 +207,7 @@ impl re_byte_size::MemUsageTreeCapture for ViewStates {
         let mut node = re_byte_size::MemUsageNode::default();
         node.add("states", states_node.into_tree());
         node.add("visualizer_reports", visualizer_reports.heap_size_bytes());
-        node.add("preview", preview.heap_size_bytes());
+        node.add("preview", preview_state.heap_size_bytes());
         node.with_total_size_bytes(self.total_size_bytes())
     }
 }

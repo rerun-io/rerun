@@ -99,7 +99,7 @@ pub struct AppState {
     /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
     /// such as [`ViewportUi`] and [`re_selection_panel::SelectionPanel`].
     #[serde(skip)]
-    view_states: ViewStates,
+    pub(crate) view_states: ViewStates,
 
     /// Selection & hovering state.
     ///
@@ -860,9 +860,11 @@ impl AppState {
         store_hub: &StoreHub,
         stable_dt: f32,
     ) -> re_viewer_context::NeedsRepaint {
-        self.view_states
-            .preview
-            .tick(|id| store_hub.entity_db(id), stable_dt)
+        if let Some(preview_state) = &mut self.view_states.preview_state {
+            preview_state.tick(|id| store_hub.entity_db(id), stable_dt)
+        } else {
+            re_viewer_context::NeedsRepaint::No
+        }
     }
 
     /// Remove dangling state
@@ -875,9 +877,9 @@ impl AppState {
         self.blueprint_undo_state
             .retain(|store_id, _| store_hub.store_bundle().contains(store_id));
 
-        self.view_states
-            .preview
-            .cleanup_recordings(|id| store_hub.store_bundle().contains(id));
+        if let Some(preview_state) = &mut self.view_states.preview_state {
+            preview_state.cleanup_recordings(|id| store_hub.store_bundle().contains(id));
+        }
     }
 
     /// Returns the blueprint query that should be used for generating the current

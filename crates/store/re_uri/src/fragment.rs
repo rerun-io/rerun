@@ -1,3 +1,4 @@
+use re_byte_size::SizeBytes;
 use re_log_types::{DataPath, TimeCell, TimelineName};
 
 use crate::TimeSelection;
@@ -25,6 +26,18 @@ pub struct Fragment {
     pub when: Option<(TimelineName, TimeCell)>,
 
     pub time_selection: Option<TimeSelection>,
+}
+
+impl SizeBytes for Fragment {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            selection,
+            when,
+            time_selection,
+        } = self;
+
+        selection.heap_size_bytes() + when.heap_size_bytes() + time_selection.heap_size_bytes()
+    }
 }
 
 impl std::fmt::Display for Fragment {

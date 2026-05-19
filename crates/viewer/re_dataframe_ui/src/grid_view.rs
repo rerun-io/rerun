@@ -1,6 +1,5 @@
 use std::str::FromStr as _;
 
-use ahash::HashSet;
 use egui::{Frame, RichText, Ui};
 
 use re_ui::egui_ext::card_layout::CardLayout;
@@ -48,7 +47,6 @@ pub fn grid_ui(
     num_table_rows: u64,
     flagging_enabled: bool,
 ) -> Vec<FlagChangeEvent> {
-    let mut already_requested_uris = HashSet::default();
     let mut flag_changes = Vec::new();
 
     // Blueprint fields are expected to be resolved upstream via `TableBlueprint::apply_heuristics`,
@@ -104,7 +102,6 @@ pub fn grid_ui(
                     ui,
                     view_renderer,
                     view_states,
-                    &mut already_requested_uris,
                     index as u64,
                     columns,
                     display_record_batches,
@@ -134,7 +131,6 @@ fn card_content_ui(
     ui: &mut Ui,
     view_renderer: Option<&RecordingPreviewRenderer<'_>>,
     view_states: &mut ViewStates,
-    already_requested_uris: &mut HashSet<re_uri::DatasetSegmentUri>,
     row_idx: u64,
     columns: &Columns<'_>,
     display_record_batches: &[DisplayRecordBatch],
@@ -212,6 +208,7 @@ fn card_content_ui(
         if let Some(renderer) = view_renderer
             && let Some(preview_column) = table_blueprint.segment_preview_column.as_deref()
         {
+            let preview_state = view_states.preview_state.get_or_insert_default();
             let (rect, _response) = ui.allocate_exact_size(
                 egui::vec2(ui.available_width(), PREVIEW_HEIGHT),
                 egui::Sense::hover(),
@@ -223,7 +220,7 @@ fn card_content_ui(
                 columns,
                 display_record_batches,
                 row_idx,
-                already_requested_uris,
+                &mut preview_state.requested_uris,
             );
 
             let mut child_ui = ui.new_child(

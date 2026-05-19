@@ -1,3 +1,4 @@
+use re_byte_size::SizeBytes;
 use re_log_types::StoreId;
 
 use crate::{Error, Fragment, Origin, RedapUri};
@@ -20,6 +21,19 @@ pub struct DatasetSegmentUri {
 
     // Fragment parameters: these affect what the viewer focuses on:
     pub fragment: Fragment,
+}
+
+impl SizeBytes for DatasetSegmentUri {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            origin,
+            dataset_id: _,
+            segment_id,
+            fragment,
+        } = self;
+
+        origin.heap_size_bytes() + segment_id.heap_size_bytes() + fragment.heap_size_bytes()
+    }
 }
 
 impl std::fmt::Display for DatasetSegmentUri {

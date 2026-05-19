@@ -1,3 +1,4 @@
+use re_byte_size::SizeBytes;
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeCell, Timeline};
 
 use crate::Error;
@@ -7,6 +8,24 @@ use crate::Error;
 pub struct TimeSelection {
     pub timeline: Timeline,
     pub range: AbsoluteTimeRange,
+}
+
+impl SizeBytes for TimeSelection {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            timeline: _,
+            range: _,
+        } = self;
+
+        0
+    }
+
+    fn is_pod() -> bool
+    where
+        Self: Sized,
+    {
+        true
+    }
 }
 
 impl std::cmp::PartialOrd for TimeSelection {

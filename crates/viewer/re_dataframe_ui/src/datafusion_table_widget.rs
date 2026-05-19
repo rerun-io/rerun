@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use ahash::HashSet;
 use arrow::array::{Array as _, BooleanArray};
 use arrow::datatypes::Field;
 use datafusion::prelude::SessionContext;
@@ -715,7 +714,6 @@ impl<'a> DataFusionTableWidget<'a> {
                     num_preview_views,
                     view_renderer,
                     view_states,
-                    requested_uris: HashSet::default(),
                 };
 
                 ReTable::new(
@@ -996,7 +994,7 @@ pub fn resolve_recording_for_row<'a>(
         return Some(recording);
     }
 
-    // Not loaded yet — request loading if we haven't already this frame.
+    // Not loaded yet — request loading if we haven't already.
     if already_requested_uris.insert(uri.clone()) {
         ctx.command_sender
             .send_system(SystemCommand::LoadDataSource(
@@ -1130,9 +1128,6 @@ struct DataFusionTableDelegate<'a> {
 
     /// Shared view states for segment preview views, persisted across frames.
     view_states: &'a mut re_viewer_context::ViewStates,
-
-    /// URIs that have already been requested this frame.
-    requested_uris: HashSet<re_uri::DatasetSegmentUri>,
 }
 
 impl DataFusionTableDelegate<'_> {
@@ -1296,13 +1291,14 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             && let Some(renderer) = &self.view_renderer
             && let Some(segment_preview_column) = &self.blueprint.segment_preview_column
         {
+            let preview_state = self.view_states.preview_state.get_or_insert_default();
             let recording = resolve_recording_for_row(
                 self.ctx,
                 segment_preview_column,
                 self.columns,
                 self.display_record_batches,
                 cell.row_nr,
-                &mut self.requested_uris,
+                &mut preview_state.requested_uris,
             );
 
             renderer.show_preview(

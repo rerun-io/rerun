@@ -1088,6 +1088,8 @@ impl App {
                     return;
                 }
 
+                self.state.view_states.preview_state = None;
+
                 // Suppress loading screen if we're loading a recording that's already loaded, even if only partially.
                 if let Route::Loading(source) = &new_route
                     && let Some(re_uri::RedapUri::DatasetData(dataset_uri)) = source.redap_uri()

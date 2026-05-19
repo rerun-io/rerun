@@ -137,6 +137,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
         re_tracing::profile_function!();
 
         let view_class_registry = app_ctx.view_class_registry;
+        let preview_state = view_states.preview_state.get_or_insert_default();
 
         // Use the provided recording or fall back to an empty placeholder.
         // We do this so we see at least a view background until the recording is actually loaded.
@@ -154,7 +155,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
 
             // Register this recording so the shared preview `TimeControl` knows about it
             // and can advance its loop bounds based on the longest registered clip.
-            view_states.preview.register_recording(rec.store_id());
+            preview_state.register_recording(rec.store_id(), hub.bundle);
 
             // Request redraw whenever a new preview is registered to start advancing time for it.
             ui.request_repaint();
@@ -190,7 +191,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
         // shared clock is advanced each frame by `update_preview_time_controls`,
         // and the derived clone maps the shared offset onto this recording's own
         // data range so each clip tracks together.
-        let time_ctrl = view_states.preview.derive_recording_time_ctrl(recording);
+        let time_ctrl = preview_state.derive_recording_time_ctrl(recording);
         let active_timeline = time_ctrl.timeline();
         let store_id = recording.store_id();
 
