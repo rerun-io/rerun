@@ -979,6 +979,7 @@ impl TimePanel {
                     .list_item()
                     .render_offscreen(false)
                     .selected(store_ctx.selection().contains_item(&item.to_item()))
+                    .draggable(true)
                     .force_hovered(
                         store_ctx
                             .selection_state()
@@ -1003,7 +1004,7 @@ impl TimePanel {
                     streams_tree_data,
                     item.to_item(),
                     &response,
-                    false,
+                    true,
                 );
 
                 let response_rect = response.rect;

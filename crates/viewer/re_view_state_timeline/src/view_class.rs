@@ -5,9 +5,10 @@ use re_log_types::{
 use re_time_ruler::TimeRangesUi;
 use re_ui::{Help, UiExt as _, icons};
 use re_viewer_context::{
-    DataResultInteractionAddress, IdentifiedViewSystem as _, Item, TimeControlCommand, TimeView,
-    ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    DataResultInteractionAddress, DragAndDropFeedback, DragAndDropPayload,
+    IdentifiedViewSystem as _, Item, TimeControlCommand, TimeView, ViewClass,
+    ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 
 use crate::data::{StateLane, StateLanePhase, StateLanesData};
@@ -200,8 +201,15 @@ impl ViewClass for StateTimelineView {
             .collect();
 
         if all_lanes.is_empty() {
-            ui.centered_and_justified(|ui| {
-                ui.label("No state change data. Add a visualizer that produces StateLanesData.");
+            let (rect, _) =
+                ui.allocate_exact_size(ui.available_size(), egui::Sense::click_and_drag());
+            handle_component_drop_zone(ui, ctx, query.view_id, rect);
+            ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
+                ui.centered_and_justified(|ui| {
+                    ui.label(
+                        "No state data. Drag a string component from the streams tree into this view or add a new visualizer.",
+                    );
+                });
             });
             return Ok(());
         }
@@ -235,6 +243,8 @@ impl ViewClass for StateTimelineView {
         if !ui.is_rect_visible(rect) {
             return Ok(());
         }
+
+        handle_component_drop_zone(ui, ctx, query.view_id, rect);
 
         // Layout: ruler at the top, lanes below.
         let time_axis_rect = egui::Rect::from_min_max(
@@ -781,6 +791,49 @@ fn readable_text_color(bg: egui::Color32) -> egui::Color32 {
         egui::Color32::BLACK
     } else {
         egui::Color32::WHITE
+    }
+}
+
+/// Accept drops of components from the timeline onto the state timeline view and, for each
+/// dropped component, add a new `StateVisualizer` that remaps `StateChange.state` from it.
+fn handle_component_drop_zone(
+    ui: &egui::Ui,
+    ctx: &ViewerContext<'_>,
+    view_id: ViewId,
+    rect: egui::Rect,
+) {
+    let Some(payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ui.ctx()) else {
+        return;
+    };
+    let DragAndDropPayload::Components { component_paths } = payload.as_ref() else {
+        return;
+    };
+
+    let Some(pointer_pos) = ui.ctx().pointer_interact_pos() else {
+        return;
+    };
+    if !rect.contains(pointer_pos) {
+        return;
+    }
+
+    ctx.drag_and_drop_manager()
+        .set_feedback(DragAndDropFeedback::Accept);
+
+    // Draw the drop-target frame.
+    let tokens = ui.tokens();
+    let stroke = tokens.drop_target_container_stroke;
+    ui.painter()
+        .rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Inside);
+    ui.painter().rect_filled(
+        rect.shrink(stroke.width),
+        0.0,
+        stroke.color.gamma_multiply(0.1),
+    );
+
+    if ui.input(|i| i.pointer.any_released()) {
+        let component_paths = component_paths.clone();
+        egui::DragAndDrop::clear_payload(ui.ctx());
+        crate::drop_handler::handle_component_drop(ctx, view_id, &component_paths);
     }
 }
 

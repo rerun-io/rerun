@@ -39,7 +39,7 @@ use std::fmt::{Display, Formatter};
 
 use itertools::Itertools as _;
 use re_entity_db::InstancePath;
-use re_log_types::EntityPath;
+use re_log_types::{ComponentPath, EntityPath};
 use re_ui::UiExt as _;
 
 use crate::{Contents, DataResultInteractionAddress, Item, ItemCollection};
@@ -52,6 +52,9 @@ pub enum DragAndDropPayload {
     /// The dragged content is made of entities.
     Entities { entities: Vec<EntityPath> },
 
+    /// The dragged content is made of components.
+    Components { component_paths: Vec<ComponentPath> },
+
     /// The dragged content is made of a collection of [`Item`]s we do know how to handle.
     Invalid,
 }
@@ -62,6 +65,8 @@ impl DragAndDropPayload {
             Self::Contents { contents }
         } else if let Some(entities) = try_item_collection_to_entities(selected_items) {
             Self::Entities { entities }
+        } else if let Some(component_paths) = try_item_collection_to_components(selected_items) {
+            Self::Components { component_paths }
         } else {
             Self::Invalid
         }
@@ -87,6 +92,16 @@ fn try_item_collection_to_entities(items: &ItemCollection) -> Option<Vec<EntityP
         .collect()
 }
 
+fn try_item_collection_to_components(items: &ItemCollection) -> Option<Vec<ComponentPath>> {
+    items
+        .iter()
+        .map(|(item, _)| match item {
+            Item::ComponentPath(component_path) => Some(component_path.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
 impl std::fmt::Display for DragAndDropPayload {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut item_counter = ItemCounter::default();
@@ -101,6 +116,12 @@ impl std::fmt::Display for DragAndDropPayload {
             Self::Entities { entities } => {
                 for entity in entities {
                     item_counter.add(&Item::InstancePath(InstancePath::from(entity.clone())));
+                }
+            }
+
+            Self::Components { component_paths } => {
+                for component_path in component_paths {
+                    item_counter.add(&Item::ComponentPath(component_path.clone()));
                 }
             }
 
@@ -187,7 +208,9 @@ impl DragAndDropManager {
         {
             let icon = match payload.as_ref() {
                 DragAndDropPayload::Contents { .. } => &re_ui::icons::DND_MOVE,
-                DragAndDropPayload::Entities { .. } => &re_ui::icons::DND_ADD_TO_EXISTING,
+                DragAndDropPayload::Entities { .. } | DragAndDropPayload::Components { .. } => {
+                    &re_ui::icons::DND_ADD_TO_EXISTING
+                }
                 // don't draw anything for invalid selection
                 DragAndDropPayload::Invalid => return,
             };

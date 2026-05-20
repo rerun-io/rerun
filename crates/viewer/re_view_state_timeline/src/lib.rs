@@ -3,6 +3,7 @@
 //! A View that shows state transitions as horizontal lanes over time.
 
 mod data;
+mod drop_handler;
 mod view_class;
 mod visualizer;
 mod visualizer_ui;
