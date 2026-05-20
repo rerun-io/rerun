@@ -256,16 +256,8 @@ impl TimePanel {
             state.is_expanded(),
             collapsed,
             expanded,
-            |ui: &mut egui::Ui, expansion: f32| {
-                if expansion < 1.0 {
-                    // Collapsed or animating
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
-                        ui.visuals_mut().button_frame = true;
-                        self.collapsed_ui(store_ctx, viewer_ctx, ui, &mut time_commands);
-                    });
-                } else {
-                    // Expanded:
+            |ui: &mut egui::Ui, show_expanded: bool| {
+                if show_expanded {
                     self.show_expanded_with_header(
                         viewer_ctx,
                         store_ctx,
@@ -273,6 +265,12 @@ impl TimePanel {
                         ui,
                         &mut time_commands,
                     );
+                } else {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
+                        ui.visuals_mut().button_frame = true;
+                        self.collapsed_ui(store_ctx, viewer_ctx, ui, &mut time_commands);
+                    });
                 }
             },
         );

@@ -349,8 +349,10 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
         .into(),
 
         // None of these matter for tests as we're not going to draw to a surfaces.
-        present_mode: wgpu::PresentMode::Immediate,
-        desired_maximum_frame_latency: None,
+        surface: egui_wgpu::SurfaceConfig {
+            present_mode: wgpu::PresentMode::Immediate,
+            desired_maximum_frame_latency: None,
+        },
         on_surface_status: Arc::new(|_| {
             unreachable!("tests aren't expected to draw to surfaces");
         }),
@@ -727,7 +729,7 @@ impl TestContext {
     /// Notes:
     /// - Uses [`egui::__run_test_ctx`].
     /// - There is a possibility that the closure will be called more than once, see
-    ///   [`egui::Context::run`]. Use [`Self::run_once_in_egui_central_panel`] if you want to ensure
+    ///   [`egui::Context::run_ui`]. Use [`Self::run_once_in_egui_central_panel`] if you want to ensure
     ///   that the closure is called exactly once.
     //TODO(ab): should this be removed entirely in favor of `run_once_in_egui_central_panel`?
     pub fn run_in_egui_central_panel(

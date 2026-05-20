@@ -902,13 +902,13 @@ unnecessary_debug_formatting = "allow"
 # datafusion-physical-plan = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
 # datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
 
-# ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
+ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
+eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
+emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
 
 # kittest = { git = "https://github.com/rerun-io/kittest.git", rev = 'ce7a2f3b12c36021889b50bdff671cec8016b0fb' }
 

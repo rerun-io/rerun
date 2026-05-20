@@ -364,7 +364,7 @@ pub trait UiExt {
         response
     }
 
-    /// Popup similar to [`egui::popup_below_widget`] but suitable for use with
+    /// Popup similar to [`egui::Popup::from_response`] but suitable for use with
     /// [`crate::list_item::ListItem`].
     ///
     /// Note that `add_contents` is called within a [`crate::list_item::list_item_scope`].
