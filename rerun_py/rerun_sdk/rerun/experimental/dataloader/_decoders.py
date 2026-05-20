@@ -286,12 +286,17 @@ class VideoFrameDecoder(ColumnDecoder):
         if not self._has_keyframe(samples):
             return None
 
-        # libdav1d rejects a non-keyframe as the first packet.
-        if self.codec == "av1":
-            drop = 0
-            while drop < len(samples) and not _is_av1_keyframe_packet(samples[drop]):
-                drop += 1
-            samples = samples[drop:]
+        # For codecs we recognize, drop leading non-keyframe samples so the decoder sees a
+        # bootstrap packet first (libdav1d rejects a non-keyframe outright;
+        # H.264/HEVC need SPS/PPS, plus VPS for HEVC, before any non-IDR/IRAP slice).
+        # For codecs without a detector, `_is_keyframe` returns None and the loop is a no-op.
+        drop = 0
+        while drop < len(samples):
+            is_keyframe = self._is_keyframe(samples[drop])
+            if is_keyframe is None or is_keyframe:
+                break
+            drop += 1
+        samples = samples[drop:]
 
         target_tensor = None
         for frame in self._decode_packets(samples):
@@ -306,18 +311,25 @@ class VideoFrameDecoder(ColumnDecoder):
 
         return target_tensor
 
-    def _has_keyframe(self, samples: list[bytes]) -> bool:
-        """Whether *samples* contains a bootstrap keyframe for this codec."""
-        if not samples:
-            return False
+    def _is_keyframe(self, sample: bytes) -> bool | None:
+        """Whether *sample* can boot the decoder, or `None` if we have no detector for this codec."""
         if self.codec == "av1":
-            return any(_is_av1_keyframe_packet(s) for s in samples)
+            return _is_av1_keyframe_packet(sample)
         if self.codec == "h264":
-            return any(_h264_annex_b_has_idr(s) for s in samples)
+            return _h264_annex_b_has_idr(sample)
         if self.codec in ("h265", "hevc"):
-            return any(_hevc_annex_b_has_irap(s) for s in samples)
-        # Unknown codec: trust the decoder; surface failures rather than swallow them.
-        return True
+            return _hevc_annex_b_has_irap(sample)
+        return None
+
+    def _has_keyframe(self, samples: list[bytes]) -> bool:
+        """True if *samples* has a known-codec keyframe, or this codec has no detector (then we trust the decoder)."""
+        for sample in samples:
+            is_keyframe = self._is_keyframe(sample)
+            if is_keyframe is None:
+                return True
+            if is_keyframe:
+                return True
+        return False
 
     def _decode_packets(self, samples: list[bytes]) -> Iterator[av.VideoFrame]:
         """Decode raw packet bytes via a per-call CodecContext (no container)."""

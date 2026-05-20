@@ -270,3 +270,38 @@ def test_video_frame_decoder_returns_none_without_keyframe() -> None:
 
     decoder = VideoFrameDecoder(codec="h264", keyframe_interval=2)
     assert decoder.decode(raw, 0, "seg") is None
+
+
+def test_video_frame_decoder_is_keyframe_h264() -> None:
+    p_slice = _h264_annex_b([(1, b"\xab\xcd")])
+    idr = _h264_annex_b([(5, b"\x88")])
+    decoder = VideoFrameDecoder(codec="h264")
+    assert decoder._is_keyframe(p_slice) is False
+    assert decoder._is_keyframe(idr) is True
+
+
+def test_video_frame_decoder_is_keyframe_hevc() -> None:
+    non_irap = _hevc_annex_b([(1, b"\xaa")])
+    irap = _hevc_annex_b([(19, b"\xaa")])
+    decoder = VideoFrameDecoder(codec="hevc")
+    assert decoder._is_keyframe(non_irap) is False
+    assert decoder._is_keyframe(irap) is True
+
+
+def test_video_frame_decoder_is_keyframe_unknown_codec_returns_none() -> None:
+    assert VideoFrameDecoder(codec="vp9")._is_keyframe(b"\x00") is None
+
+
+def test_video_frame_decoder_has_keyframe_h264() -> None:
+    p_slice = _h264_annex_b([(1, b"\xab\xcd")])
+    idr = _h264_annex_b([(7, b"\x42\xc0\x1f"), (8, b"\xce\x38"), (5, b"\x88")])
+    decoder = VideoFrameDecoder(codec="h264")
+    assert decoder._has_keyframe([]) is False
+    assert decoder._has_keyframe([p_slice]) is False
+    assert decoder._has_keyframe([p_slice, idr]) is True
+
+
+def test_video_frame_decoder_has_keyframe_unknown_codec_trusts_decoder() -> None:
+    # Unknown codec: `_is_keyframe` returns None and `_has_keyframe` returns True so
+    # failures surface from the decoder rather than being swallowed as cold-start.
+    assert VideoFrameDecoder(codec="vp9")._has_keyframe([b"\x00"]) is True
