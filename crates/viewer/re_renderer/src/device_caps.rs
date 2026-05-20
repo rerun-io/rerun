@@ -584,9 +584,13 @@ pub fn validate_graphics_backend_applicability(backend: wgpu::Backend) -> Result
 pub fn is_safari_browser() -> bool {
     #[cfg(target_arch = "wasm32")]
     fn is_safari_browser_inner() -> Option<bool> {
+        use web_sys::wasm_bindgen::JsCast as _;
         use web_sys::wasm_bindgen::JsValue;
         let window = web_sys::window()?;
-        Some(window.has_own_property(&JsValue::from("safari")))
+        Some(web_sys::js_sys::Object::has_own(
+            window.unchecked_ref::<web_sys::js_sys::Object>(),
+            &JsValue::from("safari"),
+        ))
     }
 
     #[cfg(not(target_arch = "wasm32"))]
