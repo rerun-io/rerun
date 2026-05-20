@@ -1,5 +1,26 @@
 # Rerun changelog
 
+
+## [0.32.2](https://github.com/rerun-io/rerun/compare/0.32.1...0.32.2) - 2026-05-20
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Create spatial topology from schema instead of from chunk data (fixing to sometimes never pull data) [6c015b9](https://github.com/rerun-io/rerun/commit/6c015b99335b91b974be6ab2fb524b4381e38a02)
+- Respect play state from blueprint with Catalog Server [58aa9c5](https://github.com/rerun-io/rerun/commit/58aa9c55f88b3ef1b2848d1e64422ef5e17303b6)
+- Fix orbital zoom clamp panic on tiny scenes [d039a5f](https://github.com/rerun-io/rerun/commit/d039a5f2c92ddecf723624b29291792c136c6593)
+- Fix video issues after GC at start of recording [e230962](https://github.com/rerun-io/rerun/commit/e230962e3dbaa9a8400eca8616f9174b8964c654)
+
+#### 🌁 Viewer improvements
+- Opening a url with a timestamp anchor now always pauses the recording [9977cd1](https://github.com/rerun-io/rerun/commit/9977cd103163f4d53e65d1882cc1c30cab8426e3)
+
+#### 🚀 Performance improvements
+- re_server: refresh schema cache after add_layer [fefa95e](https://github.com/rerun-io/rerun/commit/fefa95e07d5a4cff58c40cef8242fb9e011ce996)
+- Speed up queries over single columns [0a6e2d8](https://github.com/rerun-io/rerun/commit/0a6e2d8bb8637e59019e48bbf6e78b50018f3994)
+
+#### 🧢 MCAP
+- Keep MCAP channels without schema as raw data [7d3e0d5](https://github.com/rerun-io/rerun/commit/7d3e0d57651ca5c8ac4dded299d9f7bdbe03cc22)
+
 ## [0.32.1](https://github.com/rerun-io/rerun/compare/0.32.0...0.32.1) - 2026-05-15
 
 ### 🔎 Details
