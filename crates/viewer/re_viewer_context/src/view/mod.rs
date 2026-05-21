@@ -15,6 +15,7 @@ mod view_context;
 mod view_context_system;
 mod view_query;
 mod view_states;
+mod visibility_actions;
 mod visualizability_constraints;
 pub(crate) mod visualizer_entity_subscriber;
 mod visualizer_system;
@@ -44,6 +45,7 @@ pub use view_query::{
     VisualizerComponentSource, VisualizerInstruction, VisualizerInstructionsPerType,
 };
 pub use view_states::{PreviewState, ViewStates};
+pub use visibility_actions::set_entity_visibility_in_all_views;
 pub use visualizability_constraints::{
     BufferAndFormatConstraint, SingleRequiredComponentConstraint, VisualizabilityConstraints,
 };
