@@ -1,4 +1,4 @@
-![Rerun.io](https://user-images.githubusercontent.com/1148717/218142418-1d320929-6b7a-486e-8277-fbeef2432529.png)
+![Rerun.io](https://github.com/user-attachments/assets/6ff3b296-3631-4971-a2f3-45b60588966d)
 
 # Interactive release checklist
 Welcome to the release checklist.
