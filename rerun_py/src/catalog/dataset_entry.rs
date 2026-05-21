@@ -3,7 +3,7 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use pyo3::exceptions::{PyOverflowError, PyRuntimeError, PyValueError};
 use pyo3::types::PyAnyMethods as _;
 use pyo3::{Bound, Py, PyAny, PyErr, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, LazyStore};
@@ -233,13 +233,14 @@ impl PyDatasetEntryInternal {
     /// timeline: str | None
     ///     The name of the timeline to display.
     ///
-    /// start: int | datetime | None
+    /// start: int | datetime | timedelta | None
     ///     The start selected time for the segment.
-    ///     Integer for ticks, or datetime/nanoseconds for timestamps.
+    ///     Integer for ticks, datetime/nanoseconds for timestamps, or timedelta for durations.
     ///
-    /// end: int | datetime | None
+    /// end: int | datetime | timedelta | None
     ///     The end selected time for the segment.
-    ///     Integer for ticks, or datetime/nanoseconds for timestamps.
+    ///     Integer for ticks, datetime/nanoseconds for timestamps, or timedelta for durations.
+    ///     If omitted, no time range selection is emitted (only the `#when` cursor).
     ///
     /// Examples
     /// --------
@@ -275,12 +276,15 @@ impl PyDatasetEntryInternal {
             ));
         }
 
-        // Convert Python objects to i64
-        let start_i64 = start
+        // Convert Python objects to typed time cells (int → sequence, datetime → timestamp)
+        let start_cell = start
             .as_ref()
-            .map(|s| py_object_to_i64(py, s))
+            .map(|s| py_object_to_time_cell(py, s))
             .transpose()?;
-        let end_i64 = end.as_ref().map(|e| py_object_to_i64(py, e)).transpose()?;
+        let end_cell = end
+            .as_ref()
+            .map(|e| py_object_to_time_cell(py, e))
+            .transpose()?;
 
         Ok(re_uri::DatasetSegmentUri {
             origin: connection.origin().clone(),
@@ -293,24 +297,20 @@ impl PyDatasetEntryInternal {
                 when: timeline.map(|timeline| {
                     (
                         re_chunk::TimelineName::new(timeline),
-                        re_sdk::TimeCell::new(
-                            re_log_types::TimeType::TimestampNs,
-                            start_i64
-                                .map(|start| start.try_into().expect("start time must be valid"))
-                                .unwrap_or(re_log_types::NonMinI64::MIN),
-                        ),
+                        start_cell.unwrap_or_else(|| {
+                            re_sdk::TimeCell::new(
+                                re_log_types::TimeType::TimestampNs,
+                                re_log_types::NonMinI64::MIN,
+                            )
+                        }),
                     )
                 }),
-                time_selection: timeline.map(|timeline| re_uri::TimeSelection {
-                    timeline: re_chunk::Timeline::new_timestamp(timeline),
-                    range: re_log_types::AbsoluteTimeRange::new(
-                        start_i64
-                            .map(|start| start.try_into().expect("start time must be valid"))
-                            .unwrap_or(re_log_types::NonMinI64::MIN),
-                        end_i64
-                            .map(|end| end.try_into().expect("end time must be valid"))
-                            .unwrap_or(re_log_types::NonMinI64::MAX),
-                    ),
+                time_selection: end_cell.zip(timeline).map(|(end, timeline)| {
+                    let start = start_cell.unwrap_or(end);
+                    re_uri::TimeSelection {
+                        timeline: re_chunk::Timeline::new(timeline, start.typ()),
+                        range: re_log_types::AbsoluteTimeRange::new(start.value, end.value),
+                    }
                 }),
             },
         }
@@ -1056,4 +1056,28 @@ fn py_object_to_i64(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<i64> {
     let int_builtin = py.import("builtins")?.getattr("int")?;
     let converted = int_builtin.call1((obj,))?;
     converted.extract::<i64>()
+}
+
+/// Convert a Python object to a [`re_sdk::TimeCell`], inferring the time type from the Python type.
+///
+/// Plain `int` → [`TimeType::Sequence`]; `datetime.timedelta` → [`TimeType::DurationNs`];
+/// anything else (datetime, `numpy.datetime64`, …) → [`TimeType::TimestampNs`] via
+/// [`py_object_to_i64`].
+fn py_object_to_time_cell(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<re_sdk::TimeCell> {
+    use re_log_types::TimeType;
+
+    if let Ok(value) = obj.extract::<i64>() {
+        return Ok(re_sdk::TimeCell::new(TimeType::Sequence, value));
+    }
+
+    if let Ok(duration) = obj.extract::<chrono::Duration>() {
+        let nanos = duration.num_nanoseconds().ok_or_else(|| {
+            PyOverflowError::new_err("datetime.timedelta is out of nanosecond range")
+        })?;
+
+        return Ok(re_sdk::TimeCell::new(TimeType::DurationNs, nanos));
+    }
+
+    let nanos = py_object_to_i64(py, obj)?;
+    Ok(re_sdk::TimeCell::new(TimeType::TimestampNs, nanos))
 }

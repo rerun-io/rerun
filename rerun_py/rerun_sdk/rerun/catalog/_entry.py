@@ -26,7 +26,7 @@ _BatchesType: TypeAlias = (
 )
 
 if TYPE_CHECKING:
-    from datetime import datetime
+    from datetime import datetime, timedelta
 
     import datafusion
 
@@ -328,8 +328,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         self,
         segment_id: str,
         timeline: str | None = None,
-        start: datetime | int | None = None,
-        end: datetime | int | None = None,
+        start: datetime | timedelta | int | None = None,
+        end: datetime | timedelta | int | None = None,
     ) -> str:
         """
         Return the URL for the given segment.
@@ -342,13 +342,14 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         timeline: str | None
             The name of the timeline to display.
 
-        start: int | datetime | None
+        start: int | datetime | timedelta | None
             The start selected time for the segment.
-            Integer for ticks, or datetime/nanoseconds for timestamps.
+            Integer for ticks, datetime/nanoseconds for timestamps, or timedelta for durations.
 
-        end: int | datetime | None
+        end: int | datetime | timedelta | None
             The end selected time for the segment.
-            Integer for ticks, or datetime/nanoseconds for timestamps.
+            Integer for ticks, datetime/nanoseconds for timestamps, or timedelta for durations.
+            If omitted, no time range selection is emitted (only the `#when` cursor).
 
         Examples
         --------

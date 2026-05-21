@@ -1040,8 +1040,8 @@ class DatasetEntryInternal:
         self,
         segment_id: str,
         timeline: str | None = None,
-        start: datetime | int | None = None,
-        end: datetime | int | None = None,
+        start: datetime | timedelta | int | None = None,
+        end: datetime | timedelta | int | None = None,
     ) -> str: ...
 
     # ---

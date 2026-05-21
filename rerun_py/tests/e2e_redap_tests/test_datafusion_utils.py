@@ -7,15 +7,10 @@ from datafusion import SessionContext, col, lit
 from inline_snapshot import snapshot as inline_snapshot
 from rerun.utilities.datafusion.functions.url_generation import segment_url
 
+from ._helpers import redact_segment_url
+
 if TYPE_CHECKING:
     from rerun.catalog import DatasetEntry
-
-
-def redact_segment_url(url: str, dataset: DatasetEntry) -> str:
-    """Replace the dynamic origin and dataset_id in a segment URL with placeholders."""
-    origin = dataset.catalog.url
-    dataset_id = str(dataset.id)
-    return url.replace(origin, "<ORIGIN>").replace(dataset_id, "<DATASET_ID>")
 
 
 def collect_urls(result: list[pa.RecordBatch], dataset: DatasetEntry) -> list[str]:
