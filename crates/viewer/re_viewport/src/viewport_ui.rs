@@ -434,26 +434,13 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             });
         });
 
-        {
-            let show_loading_indicator = missing_chunk_reporter.any_missing()
-                && self.ctx.recording().can_fetch_chunks_from_redap();
-
-            let loading_indicator_opacity = ui
-                .ctx()
-                .animate_bool(ui.id().with("loading_indicator"), show_loading_indicator);
-
-            if 0.0 < loading_indicator_opacity {
-                let view_rect = response.response.rect;
-                re_ui::loading_indicator::paint_loading_indicator_inside(
-                    ui,
-                    egui::Align2::RIGHT_TOP,
-                    view_rect,
-                    loading_indicator_opacity,
-                    None,
-                    "Fetching chunks from redap",
-                );
-            }
-        }
+        crate::paint_view_loading_indicator(
+            ui,
+            *view_id,
+            response.response.rect,
+            missing_chunk_reporter.any_missing(),
+            self.ctx.recording(),
+        );
 
         response.response.widget_info(|| {
             let mut info = egui::WidgetInfo::new(egui::WidgetType::Panel);

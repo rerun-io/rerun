@@ -311,6 +311,8 @@ impl<'a> RecordingPreviewRenderer<'a> {
 
                 let view_state = view_states.get_mut_or_create(store_id, view_id, view_class);
 
+                let view_rect = col_ui.available_rect_before_wrap();
+
                 // Suppress all inputs while rendering previews: they are meant to be passive.
                 let input_before = col_ui.input_mut(|input| {
                     let input_before = input.clone();
@@ -339,6 +341,14 @@ impl<'a> RecordingPreviewRenderer<'a> {
                 col_ui.input_mut(|input| {
                     *input = input_before;
                 });
+
+                re_viewport::paint_view_loading_indicator(
+                    col_ui,
+                    (row_nr, view_id),
+                    view_rect,
+                    missing_chunk_reporter.any_missing(),
+                    recording,
+                );
             }
         });
     }

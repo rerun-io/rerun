@@ -374,6 +374,15 @@ impl EntityDb {
     }
 
     /// Are we currently in the process of downloading the RRD Manifest?
+    pub fn is_downloading_manifest(&self) -> bool {
+        matches!(
+            self.redap_connection_state(),
+            RedapConnectionState::DownloadingFirstManifestPart
+                | RedapConnectionState::PartialManifest
+        )
+    }
+
+    /// Are we currently waiting for the first part of the RRD Manifest?
     pub fn is_downloading_first_part_of_manifest(&self) -> bool {
         self.redap_connection_state() == RedapConnectionState::DownloadingFirstManifestPart
     }
