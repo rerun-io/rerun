@@ -79,7 +79,6 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 mod async_decoder_wrapper;
-#[cfg(not(target_arch = "wasm32"))]
 mod image_decoder;
 
 #[cfg(with_dav1d)]
@@ -122,7 +121,6 @@ pub enum DecodeError {
     )]
     NoDav1dOnLinuxArm64,
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[error("Image decode error: {0}")]
     ImageDecoder(String),
 
@@ -159,7 +157,6 @@ impl DecodeError {
             #[cfg(with_dav1d)]
             Self::Dav1d(_) => true,
 
-            #[cfg(not(target_arch = "wasm32"))]
             Self::ImageDecoder(_) => false,
 
             // Issue with WebCodecs decoding.
@@ -183,7 +180,6 @@ impl DecodeError {
                 dav1d::Error::Again => VideoPlaybackIssueSeverity::Loading,
                 _ => VideoPlaybackIssueSeverity::Error,
             },
-            #[cfg(not(target_arch = "wasm32"))]
             Self::ImageDecoder(_) => VideoPlaybackIssueSeverity::Error,
             #[cfg(target_arch = "wasm32")]
             Self::WebDecoder(err) => err.severity(),
@@ -401,17 +397,15 @@ impl re_byte_size::SizeBytes for Chunk {
     }
 }
 
-/// Data for a decoded frame on native targets.
-#[cfg(not(target_arch = "wasm32"))]
-pub struct FrameContent {
+/// CPU-side data for a decoded frame.
+pub struct DecodedFrameContent {
     pub data: Vec<u8>,
     pub width: u32,
     pub height: u32,
     pub format: PixelFormat,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl re_byte_size::SizeBytes for FrameContent {
+impl re_byte_size::SizeBytes for DecodedFrameContent {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             data,
@@ -423,8 +417,7 @@ impl re_byte_size::SizeBytes for FrameContent {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl FrameContent {
+impl DecodedFrameContent {
     pub fn width(&self) -> u32 {
         self.width
     }
@@ -434,18 +427,47 @@ impl FrameContent {
     }
 }
 
+/// Data for a decoded frame on native targets.
+#[cfg(not(target_arch = "wasm32"))]
+pub type FrameContent = DecodedFrameContent;
+
 /// Data for a decoded frame on the web.
 #[cfg(target_arch = "wasm32")]
-pub type FrameContent = webcodecs::WebVideoFrame;
+pub enum FrameContent {
+    /// Browser-owned frame produced by WebCodecs/browser image decoding.
+    ///
+    /// Prefer that whenever possible.
+    WebVideoFrame(webcodecs::WebVideoFrame),
+
+    /// CPU-side decoded data, used when browser decoding would lose information,
+    /// for instance when decoding 16bit images (for which as of writing there's no way to get out the raw data)
+    Decoded(DecodedFrameContent),
+}
+
+#[cfg(target_arch = "wasm32")]
+impl re_byte_size::SizeBytes for FrameContent {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::WebVideoFrame(frame) => frame.heap_size_bytes(),
+            Self::Decoded(frame) => frame.heap_size_bytes(),
+        }
+    }
+}
 
 #[cfg(target_arch = "wasm32")]
 impl FrameContent {
     pub fn width(&self) -> u32 {
-        self.display_width()
+        match self {
+            Self::WebVideoFrame(frame) => frame.display_width(),
+            Self::Decoded(frame) => frame.width(),
+        }
     }
 
     pub fn height(&self) -> u32 {
-        self.display_height()
+        match self {
+            Self::WebVideoFrame(frame) => frame.display_height(),
+            Self::Decoded(frame) => frame.height(),
+        }
     }
 }
 

@@ -12,7 +12,9 @@ use web_sys::{
     VideoDecoderInit,
 };
 
-use super::{AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, Result};
+use super::{
+    AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameContent, FrameInfo, Result,
+};
 use crate::{
     DecodeError, FrameResult, Sender, Time, Timescale, TryRecvError, VideoCodec,
     VideoDataDescription, VideoEncodingDetails, player::VideoPlaybackIssueSeverity,
@@ -446,7 +448,7 @@ fn init_video_decoder(
 
                     output_sender
                         .send(Ok(Frame {
-                            content: frame,
+                            content: FrameContent::WebVideoFrame(frame),
                             info,
                         }))
                         .ok();

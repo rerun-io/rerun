@@ -10042,6 +10042,7 @@ dependencies = [
  "cros-codecs",
  "econtext",
  "ffmpeg-sidecar",
+ "getrandom 0.3.4",
  "h264-reader",
  "image",
  "indicatif",

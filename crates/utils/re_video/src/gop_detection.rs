@@ -3,7 +3,7 @@ use crate::h264::detect_h264_annexb_gop;
 use crate::h265::detect_h265_annexb_gop;
 use crate::vp8::detect_vp8_gop;
 use crate::vp9::detect_vp9_gop;
-use crate::{VideoCodec, VideoEncodingDetails};
+use crate::{ChromaSubsamplingModes, VideoCodec, VideoEncodingDetails};
 
 /// Failure reason for [`detect_gop_start`].
 #[derive(thiserror::Error, Debug)]
@@ -88,7 +88,7 @@ pub fn detect_gop_start(
                 codec_string,
                 coded_dimensions: meta.coded_dimensions,
                 bit_depth: meta.bit_depth,
-                chroma_subsampling: None,
+                chroma_subsampling: Some(meta.chroma_subsampling),
                 stsd: None,
             }))
         }
@@ -123,7 +123,10 @@ fn guess_image_meta(sample_data: &[u8]) -> Result<(String, ImageMeta), ImageSize
 
 struct ImageMeta {
     coded_dimensions: [u16; 2],
+
+    /// Per-channel bit depth, not total bits per pixel.
     bit_depth: Option<u8>,
+    chroma_subsampling: ChromaSubsamplingModes,
 }
 
 enum ImageSizeError {
@@ -181,10 +184,15 @@ fn png_meta(sample_data: &[u8]) -> Result<ImageMeta, ImageSizeError> {
     let w = convert_size(sample_data.get(16..20))?;
     let h = convert_size(sample_data.get(20..24))?;
     let bit_depth = sample_data.get(24).copied();
+    let chroma_subsampling = match sample_data.get(25) {
+        Some(0) => ChromaSubsamplingModes::Monochrome, // Grayscale.
+        _ => ChromaSubsamplingModes::Yuv444,
+    };
 
     Ok(ImageMeta {
         coded_dimensions: [w, h],
         bit_depth,
+        chroma_subsampling,
     })
 }
 
@@ -226,9 +234,14 @@ fn jpeg_meta(data: &[u8]) -> Result<ImageMeta, ImageSizeError> {
             let s = data.get(i + 1..i + 5).ok_or_else(invalid_data)?;
             let h = u16::from_be_bytes([s[0], s[1]]);
             let w = u16::from_be_bytes([s[2], s[3]]);
+            let chroma_subsampling = match data.get(i + 5).copied().ok_or_else(invalid_data)? {
+                1 => ChromaSubsamplingModes::Monochrome,
+                _ => ChromaSubsamplingModes::Yuv444,
+            };
             return Ok(ImageMeta {
                 coded_dimensions: [w, h],
                 bit_depth: Some(bit_depth),
+                chroma_subsampling,
             });
         }
 

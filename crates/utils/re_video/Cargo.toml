@@ -39,6 +39,8 @@ nasm = [
   "dav1d?/default",
 ]
 
+[package.metadata.cargo-shear]
+ignored = ["getrandom"]
 
 [dependencies]
 re_byte_size.workspace = true
@@ -66,6 +68,10 @@ web-time.workspace = true
 
 ffmpeg-sidecar = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
+# On web we only need PNG for non-8-bit PNGs, since there is no browser decoder path that preserves them.
+# Other web images should go through browser decoding instead.
+image = { workspace = true, default-features = false, features = ["png"] }
+bytemuck.workspace = true
 
 # We enable re_rav1d on native, UNLESS we're on Linux Arm64
 # See https://github.com/rerun-io/rerun/issues/7755
@@ -81,12 +87,11 @@ dav1d = { workspace = true, optional = true, default-features = false, features 
 ] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-image = { workspace = true, default-features = false, features = ["png", "jpeg"] }
-bytemuck.workspace = true
-
+image = { workspace = true, default-features = false, features = ["jpeg"] }
 
 # web
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { workspace = true, features = ["wasm_js"] }
 js-sys.workspace = true
 wasm-bindgen.workspace = true
 wasm-bindgen-futures.workspace = true
