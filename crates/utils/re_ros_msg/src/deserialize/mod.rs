@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashMap};
 use serde::de::{self, DeserializeSeed};
 
 use crate::deserialize::primitive_array::PrimitiveArraySeed;
-use crate::message_spec::{BuiltInType, ComplexType, MessageSpecification, Type};
+use crate::message_spec::{BuiltInType, ComplexType, MessageSpecification, Type, message_package};
 
 pub mod primitive;
 pub mod primitive_array;
@@ -76,46 +76,50 @@ impl std::fmt::Debug for Value {
 
 /// How we resolve a [`ComplexType`] at runtime.
 pub trait TypeResolver {
-    fn resolve(&self, ty: &ComplexType) -> Option<&MessageSpecification>;
+    fn resolve(
+        &self,
+        scope: &MessageSpecification,
+        ty: &ComplexType,
+    ) -> Option<&MessageSpecification>;
 }
 
-/// Efficient type resolver with separate maps for absolute and relative lookups.
+/// Efficient type resolver for fully-qualified ROS message names.
 pub struct MapResolver<'a> {
     /// Maps "pkg/Type" -> [`MessageSpecification`]
     absolute: HashMap<String, &'a MessageSpecification>,
-
-    /// Maps "Type" -> [`MessageSpecification`]
-    relative: HashMap<String, &'a MessageSpecification>,
 }
 
 impl<'a> MapResolver<'a> {
     pub fn new(specs: impl IntoIterator<Item = (String, &'a MessageSpecification)>) -> Self {
         let mut absolute = HashMap::new();
-        let mut relative = HashMap::new();
 
         for (full_name, spec) in specs {
-            if let Some((_, name)) = full_name.rsplit_once('/') {
-                // This is an absolute type like "pkg/Type"
-                absolute.insert(full_name.clone(), spec);
-                relative.insert(name.to_owned(), spec);
-            } else {
-                // This is already a relative type like "Type"
-                relative.insert(full_name, spec);
-            }
+            absolute.insert(full_name, spec);
         }
 
-        Self { absolute, relative }
+        Self { absolute }
     }
 }
 
 impl TypeResolver for MapResolver<'_> {
-    fn resolve(&self, ty: &ComplexType) -> Option<&MessageSpecification> {
+    fn resolve(
+        &self,
+        scope: &MessageSpecification,
+        ty: &ComplexType,
+    ) -> Option<&MessageSpecification> {
         match ty {
             ComplexType::Absolute { package, name } => {
                 let full_name = format!("{package}/{name}");
                 self.absolute.get(&full_name).copied()
             }
-            ComplexType::Relative { name } => self.relative.get(name).copied(),
+            ComplexType::Relative { name } => {
+                let full_name = if let Some(package) = message_package(&scope.name) {
+                    format!("{package}/{name}")
+                } else {
+                    name.clone()
+                };
+                self.absolute.get(&full_name).copied()
+            }
         }
     }
 }
@@ -171,7 +175,7 @@ impl<'de, R: TypeResolver> serde::de::Visitor<'de> for MessageVisitor<'_, R> {
         let mut out = std::collections::BTreeMap::new();
         for field in &self.spec.fields {
             let v = seq
-                .next_element_seed(SchemaSeed::new(&field.ty, self.type_resolver))?
+                .next_element_seed(SchemaSeed::new(self.spec, &field.ty, self.type_resolver))?
                 .ok_or_else(|| serde::de::Error::custom("missing struct field"))?;
             out.insert(field.name.clone(), v);
         }
@@ -181,13 +185,18 @@ impl<'de, R: TypeResolver> serde::de::Visitor<'de> for MessageVisitor<'_, R> {
 
 /// One value, driven by a [`Type`] + resolver.
 pub(super) struct SchemaSeed<'a, R: TypeResolver> {
+    scope: &'a MessageSpecification,
     ty: &'a Type,
     resolver: &'a R,
 }
 
 impl<'a, R: TypeResolver> SchemaSeed<'a, R> {
-    pub fn new(ty: &'a Type, resolver: &'a R) -> Self {
-        Self { ty, resolver }
+    pub fn new(scope: &'a MessageSpecification, ty: &'a Type, resolver: &'a R) -> Self {
+        Self {
+            scope,
+            ty,
+            resolver,
+        }
     }
 }
 
@@ -214,7 +223,7 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'_, R> {
                         .deserialize(de)
                         .map(Value::PrimitiveArray)
                     } else {
-                        SequenceSeed::new(ty, Some(*len), self.resolver)
+                        SequenceSeed::new(self.scope, ty, Some(*len), self.resolver)
                             .deserialize(de)
                             .map(Value::Array)
                     }
@@ -230,16 +239,19 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'_, R> {
                         .map(Value::PrimitiveSeq)
                     } else {
                         // CDR: length-prefixed sequence; serde side is a seq.
-                        SequenceSeed::new(ty, None, self.resolver)
+                        SequenceSeed::new(self.scope, ty, None, self.resolver)
                             .deserialize(de)
                             .map(Value::Sequence)
                     }
                 }
             },
             Type::Complex(complex_ty) => {
-                let msg = self.resolver.resolve(complex_ty).ok_or_else(|| {
-                    de::Error::custom(format!("unknown ComplexType: {complex_ty:?}"))
-                })?;
+                let msg = self
+                    .resolver
+                    .resolve(self.scope, complex_ty)
+                    .ok_or_else(|| {
+                        de::Error::custom(format!("unknown ComplexType: {complex_ty:?}"))
+                    })?;
 
                 // Some ROS2 schemas model enums as separate messages containing only constants.
                 // On the wire, fields of those types are encoded as a single primitive value.
@@ -305,14 +317,21 @@ where
 
 // Sequence/array of elements.
 pub(super) struct SequenceSeed<'a, R: TypeResolver> {
+    scope: &'a MessageSpecification,
     elem: &'a Type,
     fixed_len: Option<usize>,
     resolver: &'a R,
 }
 
 impl<'a, R: TypeResolver> SequenceSeed<'a, R> {
-    pub fn new(elem: &'a Type, fixed_len: Option<usize>, resolver: &'a R) -> Self {
+    pub fn new(
+        scope: &'a MessageSpecification,
+        elem: &'a Type,
+        fixed_len: Option<usize>,
+        resolver: &'a R,
+    ) -> Self {
         Self {
+            scope,
             elem,
             fixed_len,
             resolver,
@@ -332,12 +351,14 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SequenceSeed<'_, R> {
                 len,
                 SequenceVisitor {
                     elem: self.elem,
+                    scope: self.scope,
                     fixed_len: Some(len),
                     type_resolver: self.resolver,
                 },
             ),
             None => de.deserialize_seq(SequenceVisitor {
                 elem: self.elem,
+                scope: self.scope,
                 fixed_len: None,
                 type_resolver: self.resolver,
             }),
@@ -346,6 +367,7 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SequenceSeed<'_, R> {
 }
 
 struct SequenceVisitor<'a, R: TypeResolver> {
+    scope: &'a MessageSpecification,
     elem: &'a Type,
     fixed_len: Option<usize>,
     type_resolver: &'a R,
@@ -368,14 +390,14 @@ impl<'de, R: TypeResolver> serde::de::Visitor<'de> for SequenceVisitor<'_, R> {
         if let Some(len) = len {
             for _ in 0..len {
                 let v = seq
-                    .next_element_seed(SchemaSeed::new(self.elem, self.type_resolver))?
+                    .next_element_seed(SchemaSeed::new(self.scope, self.elem, self.type_resolver))?
                     .ok_or_else(|| serde::de::Error::custom("short sequence"))?;
                 out.push(v);
             }
         } else {
             // Fallback for truly unbounded streams
             while let Some(v) =
-                seq.next_element_seed(SchemaSeed::new(self.elem, self.type_resolver))?
+                seq.next_element_seed(SchemaSeed::new(self.scope, self.elem, self.type_resolver))?
             {
                 out.push(v);
             }
