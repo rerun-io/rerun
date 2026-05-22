@@ -144,6 +144,8 @@ pub use self::view::{
     VisualizerInstruction, VisualizerInstructionReport, VisualizerInstructionsPerType,
     VisualizerQueryInfo, VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
     VisualizerTypeReport, VisualizerViewReport, VisualizersSectionOutput, VisualizersSectionUi,
+    any_other_view_has_entity_visibility, entity_visibility_in_view,
+    set_entity_visibility_in_all_views, set_entity_visibility_in_view,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons
