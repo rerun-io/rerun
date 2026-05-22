@@ -6,6 +6,7 @@ pub mod collapse_expand_all;
 pub mod move_contents_to_new_container;
 pub mod remove;
 pub mod show_hide;
+pub mod show_hide_in_all_views;
 pub mod track_entity;
 
 mod copy_entity_path;

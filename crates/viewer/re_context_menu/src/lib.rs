@@ -26,6 +26,7 @@ use actions::collapse_expand_all::CollapseExpandAllAction;
 use actions::move_contents_to_new_container::MoveContentsToNewContainerAction;
 use actions::remove::RemoveAction;
 use actions::show_hide::{HideAction, ShowAction};
+use actions::show_hide_in_all_views::ShowHideInAllViewsAction;
 use actions::{CopyEntityPathToClipboard, TrackEntity};
 use re_ui::menu::menu_style;
 use sub_menu::SubMenu;
@@ -164,6 +165,8 @@ fn action_list(
             vec![
                 Box::new(ShowAction),
                 Box::new(HideAction),
+                Box::new(ShowHideInAllViewsAction::Show),
+                Box::new(ShowHideInAllViewsAction::Hide),
                 Box::new(RemoveAction),
                 Box::new(CopyEntityPathToClipboard),
                 Box::new(TrackEntity),
