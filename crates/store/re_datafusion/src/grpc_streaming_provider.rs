@@ -619,7 +619,6 @@ mod table_query_pipeline_tests {
             None,
             None,
             None,
-            None,
         );
 
         // Same span name and required-attr counts, regardless of the

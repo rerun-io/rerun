@@ -37,7 +37,6 @@ use re_dataframe::QueryExpression;
 use re_protos::cloud::v1alpha1::SystemTableKind;
 use re_protos::cloud::v1alpha1::ext::ProviderDetails;
 use re_uri::Origin;
-use tokio::sync::OnceCell;
 use web_time::{Duration, Instant, SystemTime};
 
 use crate::metrics_capture::{QueryMetrics, QuerySnapshot, build_query_snapshot};
@@ -74,10 +73,6 @@ struct Inner {
     ///
     /// Cloned per send so concurrent OTLP exports don't serialize on a single client.
     grpc: tonic::client::Grpc<re_redap_client::RedapClientInner>,
-
-    /// Lazily populated once per connection via [`ConnectionAnalytics::set_server_version`].
-    /// `None` if the version RPC failed or has not completed yet.
-    server_version: OnceCell<Option<String>>,
 }
 
 impl ConnectionAnalytics {
@@ -91,25 +86,8 @@ impl ConnectionAnalytics {
             inner: Arc::new(Inner {
                 origin,
                 grpc: tonic::client::Grpc::new(client.service()),
-                server_version: OnceCell::new(),
             }),
         }
-    }
-
-    /// Record the server/stack version string (e.g. semver) for this connection.
-    ///
-    /// Only the first call has effect. The value is then attached to every
-    /// subsequent query span on this connection as `server_version`.
-    pub fn set_server_version(&self, version: Option<String>) {
-        // `OnceCell::set` returns Err if the cell was already set; silently ignore —
-        // we only want the first value.
-        #[expect(clippy::let_underscore_must_use)]
-        let _ = self.inner.server_version.set(version);
-    }
-
-    /// Returns the cached server version, if available.
-    fn server_version(&self) -> Option<String> {
-        self.inner.server_version.get().and_then(Clone::clone)
     }
 
     /// Begin tracking analytics for a table scan.
@@ -816,11 +794,7 @@ impl Drop for PendingInner {
             direct_terminal_reason,
         );
 
-        let span = build_query_span(
-            &snapshot,
-            self.scan_start_wall..scan_end_wall,
-            connection.server_version().as_deref(),
-        );
+        let span = build_query_span(&snapshot, self.scan_start_wall..scan_end_wall);
 
         connection.send_span(span, trace_id);
     }
@@ -831,11 +805,7 @@ impl Drop for PendingInner {
 /// Pure function — no I/O, no time reads. Takes the same `QuerySnapshot` shape
 /// that the in-process `metrics_capture` subscribers see, so `PostHog` and
 /// Python readers are guaranteed to observe identical values.
-fn build_query_span(
-    snap: &QuerySnapshot,
-    wall_clock_range: Range<SystemTime>,
-    server_version: Option<&str>,
-) -> Span {
+fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -> Span {
     let start_time_unix_nano = nanos_since_epoch(&wall_clock_range.start);
     let end_time_unix_nano = nanos_since_epoch(&wall_clock_range.end);
 
@@ -960,10 +930,6 @@ fn build_query_span(
 
     if let Some(kind) = error_kind {
         attributes.push(kv_string("error_kind", kind));
-    }
-
-    if let Some(version) = server_version {
-        attributes.push(kv_string("server_version", version));
     }
 
     let links = trace_id
@@ -1255,7 +1221,6 @@ impl PendingTableInner {
             self.time_to_first_batch.get().copied(),
             self.trace_id.get().copied(),
             self.error_kind.get().copied(),
-            self.connection.server_version().as_deref(),
         )
     }
 }
@@ -1283,7 +1248,6 @@ pub(crate) fn build_table_query_span(
     time_to_first_batch: Option<Duration>,
     trace_id: Option<opentelemetry::TraceId>,
     error_kind: Option<&'static str>,
-    server_version: Option<&str>,
 ) -> Span {
     let TableQueryInfo {
         ref table_id,
@@ -1343,10 +1307,6 @@ pub(crate) fn build_table_query_span(
 
     if let Some(kind) = error_kind {
         attributes.push(kv_string("error_kind", kind));
-    }
-
-    if let Some(version) = server_version {
-        attributes.push(kv_string("server_version", version));
     }
 
     let links = trace_id
@@ -1554,7 +1514,6 @@ mod tests {
         let span = build_query_span(
             &snap,
             SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-            None,
         );
 
         // Span shape
@@ -1605,7 +1564,6 @@ mod tests {
         let span = build_query_span(
             &snap,
             SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-            None,
         );
 
         assert_eq!(find_int(&span, "fetch_grpc_requests"), Some(2));
@@ -1637,7 +1595,6 @@ mod tests {
         let span = build_query_span(
             &snap,
             SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-            Some("redap-1.2.3"),
         );
 
         // Optional keys must all be present.
@@ -1647,7 +1604,6 @@ mod tests {
             "time_to_first_chunk_us",
             "fetch_direct_terminal_reason",
             "error_kind",
-            "server_version",
         ];
         let keys = attribute_keys(&span);
         for k in optional {
@@ -1665,7 +1621,6 @@ mod tests {
             Some("http_5xx")
         );
         assert_eq!(find_string(&span, "error_kind"), Some("direct_fetch"));
-        assert_eq!(find_string(&span, "server_version"), Some("redap-1.2.3"));
 
         // Trace id flows into span.links.
         assert_eq!(span.links.len(), 1);
@@ -1709,7 +1664,7 @@ mod tests {
         let start = SystemTime::UNIX_EPOCH + Duration::from_millis(2_000);
         let end = SystemTime::UNIX_EPOCH + Duration::from_millis(2_500);
 
-        let span = build_query_span(&snap, start..end, None);
+        let span = build_query_span(&snap, start..end);
 
         assert_eq!(span.start_time_unix_nano, 2_000_000_000);
         assert_eq!(span.end_time_unix_nano, 2_500_000_000);
@@ -1825,7 +1780,6 @@ mod table_query_tests {
             None,
             None,
             None,
-            None,
         );
 
         // Span shape
@@ -1873,7 +1827,6 @@ mod table_query_tests {
             None,
             None,
             None,
-            None,
         );
 
         assert_eq!(find_int(&span, "fetch_grpc_requests"), Some(7));
@@ -1898,7 +1851,6 @@ mod table_query_tests {
             Some(Duration::from_micros(75)),
             Some(trace_id),
             Some(QueryErrorKind::Decode.as_str()),
-            Some("redap-9.9.9"),
         );
 
         // All optional keys are present.
@@ -1907,7 +1859,6 @@ mod table_query_tests {
             "time_to_first_response_us",
             "time_to_first_batch_us",
             "error_kind",
-            "server_version",
         ];
         let keys = attribute_keys(&span);
         for k in optional {
@@ -1921,7 +1872,6 @@ mod table_query_tests {
         assert_eq!(find_int(&span, "time_to_first_response_us"), Some(50));
         assert_eq!(find_int(&span, "time_to_first_batch_us"), Some(75));
         assert_eq!(find_string(&span, "error_kind"), Some("decode"));
-        assert_eq!(find_string(&span, "server_version"), Some("redap-9.9.9"));
 
         // Trace id flows into span.links.
         assert_eq!(span.links.len(), 1);
@@ -1939,7 +1889,6 @@ mod table_query_tests {
             empty_stats(),
             start..end,
             Duration::from_micros(0),
-            None,
             None,
             None,
             None,
@@ -1972,7 +1921,6 @@ mod table_query_tests {
                 None,
                 None,
                 None,
-                None,
             );
             assert_eq!(find_string(&span, "table_kind"), Some(expected));
         }
@@ -1994,7 +1942,6 @@ mod table_query_tests {
                 None,
                 None,
                 None,
-                None,
             );
             assert_eq!(find_string(&span, "caller"), Some(expected));
         }
@@ -2010,7 +1957,6 @@ mod table_query_tests {
             empty_stats(),
             SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH,
             Duration::ZERO,
-            None,
             None,
             None,
             None,

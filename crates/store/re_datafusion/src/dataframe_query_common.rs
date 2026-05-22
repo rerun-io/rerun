@@ -194,34 +194,6 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         .await?;
 
         let analytics = crate::ConnectionAnalytics::new(origin, &provider.client);
-
-        // Kick off a background fetch of the server version so subsequent analytics
-        // spans can be filtered by cloud build. Lazy-cached on `analytics`; the
-        // first query will ship without it, the rest will have it.
-        {
-            let analytics_bg = analytics.clone();
-            let mut client_bg = provider.client.clone();
-            let fetch_fut = async move {
-                match client_bg.version_info().await {
-                    Ok(response) => {
-                        analytics_bg.set_server_version(Some(response.version));
-                    }
-                    Err(err) => {
-                        re_log::debug_once!("Failed to fetch server version for analytics: {err}");
-                        analytics_bg.set_server_version(None);
-                    }
-                }
-            };
-
-            #[cfg(target_arch = "wasm32")]
-            wasm_bindgen_futures::spawn_local(fetch_fut);
-
-            #[cfg(not(target_arch = "wasm32"))]
-            if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                handle.spawn(fetch_fut);
-            }
-        }
-
         provider.analytics = Some(analytics);
 
         Ok(provider)

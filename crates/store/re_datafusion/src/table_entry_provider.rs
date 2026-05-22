@@ -99,33 +99,7 @@ impl TableEntryTableProvider {
     ///
     /// Without this call no `cloud_scan_table` span will be emitted.
     pub fn with_analytics(mut self, origin: Origin) -> Self {
-        let analytics = ConnectionAnalytics::new(origin, &self.client);
-
-        // Lazy-fetch the server version so subsequent spans can be filtered by
-        // cloud build. Same pattern as `DataframeQueryTableProvider::new`.
-        let analytics_bg = analytics.clone();
-        let mut client_bg = self.client.clone();
-        let fetch_fut = async move {
-            match client_bg.version_info().await {
-                Ok(response) => {
-                    analytics_bg.set_server_version(Some(response.version));
-                }
-                Err(err) => {
-                    re_log::debug_once!("Failed to fetch server version for analytics: {err}");
-                    analytics_bg.set_server_version(None);
-                }
-            }
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        wasm_bindgen_futures::spawn_local(fetch_fut);
-
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            handle.spawn(fetch_fut);
-        }
-
-        self.analytics = Some(analytics);
+        self.analytics = Some(ConnectionAnalytics::new(origin, &self.client));
         self
     }
 
