@@ -105,6 +105,30 @@ fn log_state_data() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
 
+    // Log a boolean signal as an alternative state source — the user can remap it onto the
+    // state slot via the source selector. Exercises the polymorphic state cast (Bool
+    // passthrough) and the simplified true/false editor in the selection panel.
+    let bool_states: Vec<(i64, bool)> = vec![
+        (0, true),
+        (8, false),
+        (15, false),
+        (22, false),
+        (30, true),
+        (38, false),
+        (45, true),
+    ];
+    for (tick, state) in &bool_states {
+        rec.set_time_sequence("tick", *tick);
+        rec.set_timestamp_secs_since_epoch("timestamp", base_ts + *tick as f64 * step_secs);
+        rec.log(
+            "state/heartbeat",
+            &rerun::DynamicArchetype::new("heartbeat_signal").with_component_from_data(
+                "alive",
+                Arc::new(arrow::array::BooleanArray::from(vec![*state])),
+            ),
+        )?;
+    }
+
     // Log scalar data on the same timelines so a time series view can be added.
     for tick in 0..50 {
         let t = tick as f64;
@@ -112,6 +136,24 @@ fn log_state_data() -> Result<(), Box<dyn std::error::Error>> {
         rec.set_timestamp_secs_since_epoch("timestamp", base_ts + t * step_secs);
         rec.log("scalar/sine", &rerun::Scalars::new([f64::sin(t * 0.3)]))?;
     }
+
+    // Bad data: changes component type from string to boolean.
+    rec.set_time_sequence("tick", 1);
+    rec.log(
+        "foo",
+        &rerun::DynamicArchetype::new("bar").with_component_from_data(
+            "state",
+            Arc::new(arrow::array::StringArray::from(vec!["ponies"])),
+        ),
+    )?;
+    rec.set_time_sequence("tick", 2);
+    rec.log(
+        "foo",
+        &rerun::DynamicArchetype::new("bar").with_component_from_data(
+            "state",
+            Arc::new(arrow::array::BooleanArray::from(vec![true])),
+        ),
+    )?;
 
     let _ = rec.flush_blocking();
 

@@ -853,6 +853,7 @@ mod tests {
         StateLane {
             label: "test".into(),
             entity_path: EntityPath::from("/test"),
+            value_kind: crate::data::StateValueKind::String,
             phases: phases
                 .iter()
                 .map(|&(t, visible)| StateLanePhase {

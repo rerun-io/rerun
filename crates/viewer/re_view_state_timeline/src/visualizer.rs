@@ -1,14 +1,83 @@
+use nohash_hasher::IntMap;
 use re_chunk_store::AbsoluteTimeRange;
+use re_chunk_store::external::arrow::datatypes::DataType;
+use re_log_types::TimeInt;
 use re_sdk_types::Archetype as _;
+use re_sdk_types::ArrowString;
 use re_sdk_types::archetypes::{StateChange, StateConfiguration};
 use re_sdk_types::components::Text;
+use re_view::ComponentCastRule;
 use re_viewer_context::{
-    AppOptions, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerSystem,
+    AppOptions, IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem,
 };
 
-use crate::data::{StateLane, StateLanePhase, StateLanesData};
+use crate::data::{StateLane, StateLanePhase, StateLanesData, StateValueKind};
+
+/// Maps each accepted source physical type to a type that the visualizer can handle.
+static COMPONENT_CAST_MAP: std::sync::LazyLock<std::collections::BTreeMap<DataType, DataType>> =
+    std::sync::LazyLock::new(|| {
+        [
+            (DataType::Utf8, DataType::Utf8),
+            (DataType::LargeUtf8, DataType::LargeUtf8),
+            (DataType::Boolean, DataType::Boolean),
+            (DataType::Int8, DataType::Float64),
+            (DataType::Int16, DataType::Float64),
+            (DataType::Int32, DataType::Float64),
+            (DataType::Int64, DataType::Float64),
+            (DataType::UInt8, DataType::Float64),
+            (DataType::UInt16, DataType::Float64),
+            (DataType::UInt32, DataType::Float64),
+            (DataType::UInt64, DataType::Float64),
+            (DataType::Float16, DataType::Float64),
+            (DataType::Float32, DataType::Float64),
+            (DataType::Float64, DataType::Float64),
+        ]
+        .into_iter()
+        .collect()
+    });
+
+/// Map a post-cast element datatype to its canonical lane kind.
+pub fn state_value_kind_from_datatype(dt: &DataType) -> Option<StateValueKind> {
+    match dt {
+        DataType::Utf8 | DataType::LargeUtf8 => Some(StateValueKind::String),
+        DataType::Float64 => Some(StateValueKind::Scalar),
+        DataType::Boolean => Some(StateValueKind::Bool),
+        _ => None,
+    }
+}
+
+/// Determine the canonical state value kind for the lane addressed by `instruction`.
+pub fn current_state_value_kind(
+    ctx: &ViewContext<'_>,
+    data_result: &re_viewer_context::DataResult,
+    instruction: &re_viewer_context::VisualizerInstruction,
+) -> Option<StateValueKind> {
+    let state_component = StateChange::descriptor_state().component;
+    let rules: IntMap<_, ComponentCastRule> =
+        std::iter::once((state_component, state_cast_rule as ComponentCastRule)).collect();
+    let result = re_view::latest_at_with_blueprint_resolved_data_polymorphic(
+        ctx,
+        None,
+        &ctx.current_query(),
+        data_result,
+        [state_component],
+        Some(instruction),
+        &rules,
+    );
+    let arr = result.get_raw_cell(state_component)?;
+    state_value_kind_from_datatype(arr.data_type())
+}
+
+/// Polymorphic cast rule for the state slot: a thin lookup into [`COMPONENT_CAST_MAP`].
+///
+/// Returning `None` for an unsupported source type causes the query layer to leave the chunk
+/// unchanged (no cast applied). The visualizer then detects this and emits a per-instruction
+/// error from `execute()`.
+pub fn state_cast_rule(source: &DataType) -> Option<DataType> {
+    COMPONENT_CAST_MAP.get(source).cloned()
+}
 
 /// Color palette for state change phases.
 #[expect(clippy::disallowed_methods)] // These are data-driven visualization colors, not UI theme colors.
@@ -149,15 +218,26 @@ impl VisualizerSystem for StateVisualizer {
     }
 
     fn visualizer_query_info(&self, _app_options: &AppOptions) -> VisualizerQueryInfo {
-        let all_components: Vec<_> = StateChange::all_components()
+        // Accept any of the physical types the polymorphic state cast rule can canonicalize.
+        // The source selector consults this set to decide which entity components are offered
+        // as candidates for the state slot.
+        let constraints =
+            SingleRequiredComponentConstraint::new::<Text>(&StateChange::descriptor_state())
+                .with_additional_physical_types(COMPONENT_CAST_MAP.keys().cloned())
+                .with_allow_static_data(false)
+                .into();
+
+        let queried = StateChange::all_components()
             .iter()
             .chain(StateConfiguration::all_components().iter())
             .cloned()
             .collect();
-        VisualizerQueryInfo::single_required_component::<Text>(
-            &StateChange::descriptor_state(),
-            &all_components,
-        )
+
+        VisualizerQueryInfo {
+            relevant_archetype: StateChange::descriptor_state().archetype,
+            constraints,
+            queried,
+        }
     }
 
     fn execute(
@@ -174,66 +254,77 @@ impl VisualizerSystem for StateVisualizer {
 
         let mut lanes: Vec<StateLane> = Vec::new();
 
+        // The state slot is polymorphic on the source datatype: numerics collapse to f64,
+        // strings/bools pass through. The post-cast chunks served by the query layer are
+        // therefore one of {Utf8, Float64, Boolean}.
+        let state_component = StateChange::descriptor_state().component;
+        let cast_rules: IntMap<re_sdk_types::ComponentIdentifier, ComponentCastRule> =
+            std::iter::once((state_component, state_cast_rule as ComponentCastRule)).collect();
+
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
             let all_component_ids: Vec<_> = StateChange::all_component_identifiers()
                 .chain(StateConfiguration::all_component_identifiers())
                 .collect();
-            let range_results = re_view::range_with_blueprint_resolved_data(
+            let range_results = re_view::range_with_blueprint_resolved_data_polymorphic(
                 ctx,
                 None,
                 &query,
                 data_result,
                 all_component_ids,
                 instruction,
+                &cast_rules,
             );
 
             let results = re_view::BlueprintResolvedResults::from((query.clone(), range_results));
             let results =
                 re_view::VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
-            let all_texts = results.iter_required(StateChange::descriptor_state().component);
-            if all_texts.is_empty() {
+            let all_values = results.iter_required(state_component);
+            if all_values.is_empty() {
                 continue;
             }
 
             // Parse the optional StateConfiguration.
             let state_config = resolve_state_config(&results);
 
-            // Collect (time, text) pairs.
-            // A null state is a fallthrough, not a phase change: the preceding phase
-            // must continue across it. `slice::<String>` represents null entries as
-            // zero-length slices, so we skip empty texts here.
-            // TODO(aedm): use string refs while collecting
-            let mut phases: Vec<(i64, String)> = Vec::new();
-            for ((data_time, _row_id), texts) in all_texts.slice::<String>() {
-                let time_value = data_time.as_i64();
-                for text in texts {
-                    if text.is_empty() {
-                        continue;
-                    }
-                    // If the start of this phase equals the start of the last phase, then just overwrite it.
-                    if let Some(last) = phases.last_mut()
-                        && last.0 == time_value
-                    {
-                        last.1 = text.to_string();
-                        continue;
-                    }
-                    phases.push((time_value, text.to_string()));
-                }
-            }
-
-            if phases.is_empty() {
+            // Dispatch on the post-cast element type. A null state is a fallthrough, not a
+            // phase change: the preceding phase must continue across it. Empty slices represent
+            // null entries and are skipped by the per-row filters inside the dispatch.
+            let element_types = state_chunk_element_types(&all_values);
+            if element_types.len() > 1 {
+                let kinds_list = element_types
+                    .iter()
+                    .map(|dt| format!("{dt:?}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                results.report_for_component(
+                    state_component,
+                    VisualizerReportSeverity::Error,
+                    format!(
+                        "State component type changed over time ({kinds_list}). \
+                         The lane cannot be rendered until the column has a single type."
+                    ),
+                );
                 continue;
             }
+            let Some(element_type) = element_types.into_iter().next() else {
+                continue;
+            };
+            let Some((value_kind, lane_phases)) =
+                lane_phases_for(&all_values, &element_type, &state_config)
+            else {
+                continue;
+            };
 
-            phases.sort_by_key(|(t, _)| *t);
+            if lane_phases.is_empty() {
+                continue;
+            }
 
             // Build the lane label, appending the source component if remapped.
             let lane_label = {
                 let base = data_result.entity_path.to_string();
-                let state_component = StateChange::descriptor_state().component;
                 match instruction.component_mappings.get(&state_component) {
                     Some(re_viewer_context::VisualizerComponentSource::SourceComponent {
                         source_component,
@@ -245,36 +336,172 @@ impl VisualizerSystem for StateVisualizer {
                 }
             };
 
-            // Build the lane. If a value appears in the config, use its label/color/visibility;
-            // otherwise derive a stable color from the value itself.
-            let lane = StateLane {
+            lanes.push(StateLane {
                 label: lane_label,
                 entity_path: data_result.entity_path.clone(),
-                phases: phases
-                    .into_iter()
-                    .map(|(t, value)| {
-                        if let Some((_, style)) = state_config.iter().find(|(v, _)| v == &value) {
-                            StateLanePhase {
-                                start_time: t,
-                                label: style.label.clone(),
-                                color: style.color,
-                                visible: style.visible,
-                            }
-                        } else {
-                            let color = color_for_value(&value);
-                            StateLanePhase {
-                                start_time: t,
-                                label: value,
-                                color,
-                                visible: true,
-                            }
-                        }
-                    })
-                    .collect(),
-            };
-            lanes.push(lane);
+                value_kind,
+                phases: lane_phases,
+            });
         }
 
         Ok(output.with_visualizer_data(StateLanesData { lanes }))
     }
+}
+
+/// Format a typed state value into its lane label string.
+///
+/// One impl per type the polymorphic state cast can produce. Equality (used for the merge
+/// step) is tested on the typed value itself, so this is only invoked once per *surviving*
+/// merged phase.
+trait StateLabel {
+    fn to_lane_label(&self) -> String;
+}
+
+impl StateLabel for ArrowString {
+    #[inline]
+    fn to_lane_label(&self) -> String {
+        self.as_str().to_owned()
+    }
+}
+
+impl StateLabel for f64 {
+    #[inline]
+    fn to_lane_label(&self) -> String {
+        if self.is_finite() && self.fract() == 0.0 && self.abs() < 1e16 {
+            // Integer-valued floats: render without a trailing `.0` so config entries typed as
+            // `"1"`, `"42"` continue to match values that arrive as `Float64`.
+            format!("{}", *self as i64)
+        } else {
+            format!("{self}")
+        }
+    }
+}
+
+impl StateLabel for bool {
+    #[inline]
+    fn to_lane_label(&self) -> String {
+        if *self { "true" } else { "false" }.to_owned()
+    }
+}
+
+/// Flatten typed rows into a list of phases.
+fn lane_phases_from_rows<T, ChunkIter, RowValues>(
+    rows: ChunkIter,
+    state_config: &[(String, StateStyle)],
+) -> Vec<StateLanePhase>
+where
+    T: PartialEq + StateLabel,
+    ChunkIter: IntoIterator<Item = (TimeInt, RowValues)>,
+    RowValues: IntoIterator<Item = T>,
+{
+    let mut phases: Vec<(i64, T)> = Vec::new();
+    for (data_time, row_values) in rows {
+        let t = data_time.as_i64();
+        for value in row_values {
+            if let Some(last) = phases.last_mut()
+                && last.0 == t
+            {
+                last.1 = value;
+            } else {
+                phases.push((t, value));
+            }
+        }
+    }
+    phases.sort_by_key(|(t, _)| *t);
+    // `dedup_by(|a, b| ...)` keeps the first of each consecutive run, removing later
+    // duplicates — which is exactly the "first phase wins" merge we want.
+    phases.dedup_by(|a, b| a.1 == b.1);
+    phases
+        .into_iter()
+        .map(|(t, v)| build_lane_phase(t, &v.to_lane_label(), state_config))
+        .collect()
+}
+
+/// Look up a formatted phase value in the user-authored `StateConfiguration` and build the
+/// corresponding [`StateLanePhase`]. Falls back to a hash-derived color and the raw label when
+/// no config entry matches.
+fn build_lane_phase(
+    start_time: i64,
+    formatted: &str,
+    state_config: &[(String, StateStyle)],
+) -> StateLanePhase {
+    if let Some((_, style)) = state_config.iter().find(|(v, _)| v == formatted) {
+        StateLanePhase {
+            start_time,
+            label: style.label.clone(),
+            color: style.color,
+            visible: style.visible,
+        }
+    } else {
+        StateLanePhase {
+            start_time,
+            label: formatted.to_owned(),
+            color: color_for_value(formatted),
+            visible: true,
+        }
+    }
+}
+
+/// Build `StateLanePhase`s for one lane from the polymorphic state slot, alongside the
+/// canonical [`StateValueKind`] that drives downstream UI choices.
+///
+/// Dispatches on the post-cast element type and forwards each typed iterator to
+/// [`lane_phases_from_rows`]. Returns `None` for an element type the cast rule rejects (and
+/// thus shouldn't ever produce in practice).
+fn lane_phases_for(
+    all_values: &re_view::HybridResultsChunkIter<'_>,
+    element_type: &DataType,
+    state_config: &[(String, StateStyle)],
+) -> Option<(StateValueKind, Vec<StateLanePhase>)> {
+    let kind_and_phases = match element_type {
+        DataType::Utf8 | DataType::LargeUtf8 => (
+            StateValueKind::String,
+            lane_phases_from_rows::<ArrowString, _, _>(
+                all_values.slice::<String>().map(|((data_time, _), texts)| {
+                    (data_time, texts.into_iter().filter(|s| !s.is_empty()))
+                }),
+                state_config,
+            ),
+        ),
+        DataType::Float64 => (
+            StateValueKind::Scalar,
+            lane_phases_from_rows::<f64, _, _>(
+                all_values
+                    .slice::<f64>()
+                    .map(|((data_time, _), values)| (data_time, values.iter().copied())),
+                state_config,
+            ),
+        ),
+        DataType::Boolean => (
+            StateValueKind::Bool,
+            lane_phases_from_rows::<bool, _, _>(
+                all_values.slice::<bool>().map(|((data_time, _), values)| {
+                    // `BooleanBuffer` only iterates via a borrow on `values`, so materialize a
+                    // `Vec<bool>` whose lifetime is detached from this row's stack frame.
+                    (data_time, (&values).into_iter().collect::<Vec<bool>>())
+                }),
+                state_config,
+            ),
+        ),
+        _ => return None,
+    };
+    Some(kind_and_phases)
+}
+
+/// Collect the set of post-cast element types observed across every chunk for the state slot.
+///
+/// The cast normally produces a single type — one of {`Utf8`, `LargeUtf8`, `Float64`,
+/// `Boolean`} — but if the underlying column's physical type changed over time, the chunks
+/// come back with mixed element types. Returning the deduped set lets the caller treat
+/// "empty", "uniform" and "mixed" by inspecting `len()`.
+fn state_chunk_element_types(
+    all_values: &re_view::HybridResultsChunkIter<'_>,
+) -> std::collections::BTreeSet<DataType> {
+    let chunks = all_values.chunks();
+    chunks
+        .chunks
+        .iter()
+        .filter_map(|chunk| chunk.components().get_array(chunks.component))
+        .map(|arr| arr.value_type())
+        .collect()
 }

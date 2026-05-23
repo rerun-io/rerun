@@ -33,7 +33,9 @@ re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
 egui.workspace = true
+nohash-hasher.workspace = true
 
 [dev-dependencies]
 re_test_context.workspace = true
 re_test_viewport.workspace = true
+re_viewport.workspace = true

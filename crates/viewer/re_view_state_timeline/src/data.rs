@@ -4,6 +4,18 @@ pub struct StateLanesData {
     pub lanes: Vec<StateLane>,
 }
 
+/// Canonical post-cast value type of a state lane.
+///
+/// The polymorphic state cast collapses every accepted source type into one of these — strings
+/// stay as strings, booleans stay as booleans, all numeric types collapse to `Scalar` (Float64).
+/// The configuration editor branches on this to offer a type-appropriate UI.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StateValueKind {
+    String,
+    Scalar,
+    Bool,
+}
+
 /// A single horizontal lane of state change phases.
 #[derive(Clone, Debug)]
 pub struct StateLane {
@@ -12,6 +24,9 @@ pub struct StateLane {
 
     /// The entity path this lane belongs to.
     pub entity_path: re_log_types::EntityPath,
+
+    /// The canonical post-cast type of the values in this lane.
+    pub value_kind: StateValueKind,
 
     /// Ordered list of phases. Each phase starts at `start_time` and implicitly ends
     /// where the next phase begins (or at the right edge of the visible range).

@@ -10258,6 +10258,7 @@ name = "re_view_state_timeline"
 version = "0.33.0-alpha.1+dev"
 dependencies = [
  "egui",
+ "nohash-hasher",
  "re_byte_size",
  "re_chunk_store",
  "re_component_ui",
@@ -10271,6 +10272,7 @@ dependencies = [
  "re_ui",
  "re_view",
  "re_viewer_context",
+ "re_viewport",
  "re_viewport_blueprint",
 ]
 

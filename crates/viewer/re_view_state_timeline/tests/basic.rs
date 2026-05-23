@@ -19,7 +19,6 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
 
 #[test]
 fn test_state_timeline_basic() {
-    let mut snapshot_results = SnapshotResults::new();
     let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
 
     let timeline = Timeline::log_tick();
@@ -64,17 +63,18 @@ fn test_state_timeline_basic() {
     test_context.handle_system_commands(&egui::Context::default());
 
     let view_id = setup_blueprint(&mut test_context);
-    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        "state_timeline_basic",
-        egui::vec2(500.0, 250.0),
-        None,
-    ));
+    test_context
+        .run_view_ui_and_save_snapshot(
+            view_id,
+            "state_timeline_basic",
+            egui::vec2(500.0, 250.0),
+            None,
+        )
+        .unwrap();
 }
 
 #[test]
 fn test_state_timeline_time_cursor() {
-    let mut snapshot_results = SnapshotResults::new();
     let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
 
     let timeline = Timeline::log_tick();
@@ -109,18 +109,19 @@ fn test_state_timeline_time_cursor() {
     test_context.handle_system_commands(&egui::Context::default());
 
     let view_id = setup_blueprint(&mut test_context);
-    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        "state_timeline_time_cursor",
-        egui::vec2(400.0, 120.0),
-        None,
-    ));
+    test_context
+        .run_view_ui_and_save_snapshot(
+            view_id,
+            "state_timeline_time_cursor",
+            egui::vec2(400.0, 120.0),
+            None,
+        )
+        .unwrap();
 }
 
 /// A null state is a fallthrough: it must not terminate the preceding phase.
 #[test]
 fn test_state_timeline_null_is_fallthrough() {
-    let mut snapshot_results = SnapshotResults::new();
     let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
 
     let timeline = Timeline::log_tick();
@@ -176,12 +177,14 @@ fn test_state_timeline_null_is_fallthrough() {
     test_context.handle_system_commands(&egui::Context::default());
 
     let view_id = setup_blueprint(&mut test_context);
-    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        "state_timeline_null_is_fallthrough",
-        egui::vec2(400.0, 120.0),
-        None,
-    ));
+    test_context
+        .run_view_ui_and_save_snapshot(
+            view_id,
+            "state_timeline_null_is_fallthrough",
+            egui::vec2(400.0, 120.0),
+            None,
+        )
+        .unwrap();
 }
 
 /// Log data on both a sequence and a timestamp timeline, switch between them,
@@ -265,7 +268,6 @@ fn test_state_timeline_timeline_switch() {
 /// recolors one, and hides another. The snapshot verifies the overrides apply end-to-end.
 #[test]
 fn test_state_configuration() {
-    let mut snapshot_results = SnapshotResults::new();
     let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
 
     let timeline = Timeline::log_tick();
@@ -300,12 +302,14 @@ fn test_state_configuration() {
     test_context.set_active_timeline(*timeline.name());
 
     let view_id = setup_blueprint(&mut test_context);
-    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        "state_configuration",
-        egui::vec2(500.0, 120.0),
-        None,
-    ));
+    test_context
+        .run_view_ui_and_save_snapshot(
+            view_id,
+            "state_configuration",
+            egui::vec2(500.0, 120.0),
+            None,
+        )
+        .unwrap();
 }
 
 /// When phases are too narrow to render individually, consecutive narrow phases
@@ -313,7 +317,6 @@ fn test_state_configuration() {
 /// remain rendered with their own colors.
 #[test]
 fn test_state_timeline_merge_small_phases() {
-    let mut snapshot_results = SnapshotResults::new();
     let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
 
     let timeline = Timeline::log_tick();
@@ -348,12 +351,14 @@ fn test_state_timeline_merge_small_phases() {
     test_context.set_active_timeline(*timeline.name());
 
     let view_id = setup_blueprint(&mut test_context);
-    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        "state_timeline_merge_small_phases",
-        egui::vec2(400.0, 150.0),
-        None,
-    ));
+    test_context
+        .run_view_ui_and_save_snapshot(
+            view_id,
+            "state_timeline_merge_small_phases",
+            egui::vec2(400.0, 150.0),
+            None,
+        )
+        .unwrap();
 }
 
 /// Cmd+scroll over the state timeline view should zoom in around the pointer.

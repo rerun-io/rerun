@@ -36,7 +36,9 @@ pub use outlines::{
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES, outline_config,
 };
 pub use query::{
-    DataResultQuery, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
+    ComponentCastRule, DataResultQuery, latest_at_with_blueprint_resolved_data,
+    latest_at_with_blueprint_resolved_data_polymorphic, range_with_blueprint_resolved_data,
+    range_with_blueprint_resolved_data_polymorphic,
 };
 use re_log_types::external::arrow;
 pub use view_property_ui::{

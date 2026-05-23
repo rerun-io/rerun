@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use itertools::Either;
 use nohash_hasher::IntSet;
 
 use re_chunk::{ComponentIdentifier, TimelineName};
@@ -502,14 +501,11 @@ impl<'s> ViewQuery<'s> {
         &self,
         visualizer: ViewSystemIdentifier,
     ) -> impl Iterator<Item = (&'s DataResult, &'s VisualizerInstruction)> {
-        if let Some(instructions) = self
-            .active_visualizer_instructions_per_type
+        self.active_visualizer_instructions_per_type
             .get(&visualizer)
-        {
-            Either::Left(instructions.iter().copied())
-        } else {
-            Either::Right(std::iter::empty())
-        }
+            .into_iter()
+            .flatten()
+            .copied()
     }
 
     #[inline]
