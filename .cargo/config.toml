@@ -43,8 +43,28 @@ AR = "llvm-ar" # Various Wasm targets fail on mac without llvm-ar
 #
 # `getrandom_backend="wasm_js"` is required to enable the `getrandom` crate to use the `wasm_js` backend.
 # https://docs.rs/getrandom/latest/getrandom/#webassembly-support
+#
+# `-Ctarget-feature=+simd128,…` enables LLVM auto-vectorization and a handful
+# of other Wasm proposals for wasm32. The SIMD baseline is
+# Chrome 91+, Firefox 89+, Safari 16.4+ — the JS loader feature-detects SIMD
+# and shows a friendly error on older browsers. Every other feature listed
+# here shipped strictly earlier in all three browsers, so the SIMD check is
+# sufficient to gate them all:
+#
+#   simd128             Chrome 91 / FF 89 / Safari 16.4   (auto-vectorization)
+#   bulk-memory         Chrome 75 / FF 79 / Safari 15     (single-instr memcpy/memset)
+#   nontrapping-fptoint Chrome 75 / FF 64 / Safari 15     (saturating float→int)
+#   multivalue          Chrome 85 / FF 78 / Safari 15     (multi-value returns)
+#
+# Note `bulk-memory` is already on by default in rustc 1.82+; listing it is
+# redundant but explicit. `mutable-globals`, `sign-ext`, and `reference-types`
+# are also enabled by default and not listed.
 [target.wasm32-unknown-unknown]
-rustflags = ['--cfg=web_sys_unstable_apis', '--cfg=getrandom_backend="wasm_js"']
+rustflags = [
+  '--cfg=web_sys_unstable_apis',
+  '--cfg=getrandom_backend="wasm_js"',
+  '-Ctarget-feature=+simd128,+bulk-memory,+nontrapping-fptoint,+multivalue',
+]
 
 # Use rust-lld on Windows due problems with large debug symbols.
 # See https://github.com/rust-lang/rust/issues/141626
