@@ -12,7 +12,7 @@ use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
 use re_sdk_types::blueprint::components::{PanelState, PlayState};
-use re_ui::{ContextExt as _, UiExt as _};
+use re_ui::{ContextExt as _, UiExt as _, WindowFrameConfig};
 use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, AppContext, AppOptions, ApplicationSelectionState,
@@ -220,6 +220,7 @@ impl AppState {
         event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
         connection_registry: &ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
+        custom_window_frame: bool,
     ) {
         re_tracing::profile_function!();
 
@@ -476,6 +477,12 @@ impl AppState {
                 // Update the viewport. May spawn new views and handle queued requests (like screenshots).
                 viewport_ui.on_frame_start(&ctx);
 
+                let window_frame = if custom_window_frame {
+                    WindowFrameConfig::custom(ui.ctx())
+                } else {
+                    WindowFrameConfig::Native
+                };
+
                 //
                 // Blueprint time panel
                 //
@@ -520,7 +527,7 @@ impl AppState {
                         PanelState::Expanded,
                         // Give the blueprint time panel a distinct color from the normal time panel:
                         ui.tokens()
-                            .bottom_panel_frame()
+                            .bottom_panel_frame(window_frame)
                             .fill(ui.tokens().blueprint_time_panel_bg_fill),
                     );
                 }
@@ -548,7 +555,7 @@ impl AppState {
                         &viewport_ui.blueprint,
                         ui,
                         app_blueprint.time_panel_state(),
-                        ui.tokens().bottom_panel_frame(),
+                        ui.tokens().bottom_panel_frame(window_frame),
                     );
                 }
 

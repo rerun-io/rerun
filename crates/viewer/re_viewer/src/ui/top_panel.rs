@@ -24,13 +24,21 @@ pub fn top_panel(
     re_tracing::profile_function!();
 
     let style_like_web = app.is_screenshotting() || app.app_env().is_test();
+    let native_window_bar = !re_ui::fullsize_content(ui.os()) && !app.custom_window_decorations();
     let top_bar_style = ui.top_bar_style(frame, style_like_web);
-    let top_panel_frame = ui.tokens().top_panel_frame();
+    let window_frame = app.window_frame_config(ui.ctx());
+    let mut top_panel_frame = ui.tokens().top_panel_frame(window_frame);
+
+    if app.custom_window_decorations() {
+        // Keep the custom window buttons flush with the right edge. `custom_window_frame` is false
+        // on Windows, but we still draw custom caption buttons there.
+        top_panel_frame.inner_margin.right = 0;
+    }
 
     let mut content = |ui: &mut egui::Ui, show_content: bool| {
         // React to dragging and double-clicking the top bar:
         #[cfg(not(target_arch = "wasm32"))]
-        if !re_ui::native_window_bar(ui.os()) {
+        if !native_window_bar {
             // Interact with background first, so that buttons in the top bar gets input priority
             // (last added widget has priority for input).
             let title_bar_response = ui.interact(
@@ -73,7 +81,7 @@ pub fn top_panel(
 
     // On MacOS, we show the close/minimize/maximize buttons in the top panel.
     // We _always_ want to show the top panel in that case, and only hide its content.
-    if re_ui::native_window_bar(ui.os()) {
+    if native_window_bar {
         panel.show_animated_inside(ui, is_expanded, |ui| content(ui, is_expanded));
     } else {
         panel.show_inside(ui, |ui| content(ui, is_expanded));
@@ -149,8 +157,7 @@ fn top_bar_ui(
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        if re_ui::CUSTOM_WINDOW_DECORATIONS && !cfg!(target_arch = "wasm32") {
-            ui.add_space(8.0);
+        if app.custom_window_decorations() && !cfg!(target_arch = "wasm32") {
             #[cfg(not(target_arch = "wasm32"))]
             ui.native_window_buttons_ui();
             ui.separator();

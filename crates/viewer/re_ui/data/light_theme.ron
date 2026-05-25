@@ -24,6 +24,9 @@
       "color": "{Gray.750}",
       "width": 1
     },
+    "windows_close_button_hover_color": {
+      "color": "#C42B1C"
+    },
     "top_bar_color": {
       "color": "{Gray.800}"
     },

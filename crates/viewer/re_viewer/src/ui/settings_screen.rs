@@ -81,6 +81,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         warn_e2e_latency: _, // not yet exposed
         show_metrics,
         show_notification_toasts,
+        compact_title_bar,
         include_rerun_examples_button_in_recordings_panel,
         show_picking_debug_overlay: _, // not yet exposed
         inspect_blueprint_timeline: _, // not yet exposed
@@ -126,12 +127,6 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         "Show 'Rerun examples' button",
     );
 
-    ui.re_checkbox(show_metrics, "Show performance metrics")
-        .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
-
-    ui.re_checkbox(show_notification_toasts, "Show notification toasts")
-        .on_hover_text("Show toasts for log messages and other notifications");
-
     ui.re_checkbox(
         visualizer_limits_enabled,
         "Limit number of primitives in a view",
@@ -143,10 +138,26 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
              with very large data sets.",
     );
 
-    separator_with_some_space(ui);
     ui.collapsing_header("Timestamp format", false, |ui| {
         time_format_section_ui(ui, timestamp_format);
     });
+
+    separator_with_some_space(ui);
+    ui.strong("Title bar");
+
+    if re_ui::supports_custom_decorations(ui.os()) {
+        ui.re_checkbox(compact_title_bar, "Use compact title bar")
+            .on_hover_text(
+                "Hide the native title bar and draw Rerun's top bar as the window frame.\n\n\
+             Opt out of this if you experience any issues with the window's behavior.",
+            );
+    }
+
+    ui.re_checkbox(show_metrics, "Show performance metrics")
+        .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
+
+    ui.re_checkbox(show_notification_toasts, "Show notification toasts")
+        .on_hover_text("Show toasts for log messages and other notifications");
 
     separator_with_some_space(ui);
     ui.strong("Map view");

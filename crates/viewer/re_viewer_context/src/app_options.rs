@@ -23,6 +23,9 @@ pub struct AppOptions {
     /// If false, you can still view them in the notifications panel.
     pub show_notification_toasts: bool,
 
+    /// Use Rerun's compact title bar instead of native OS decorations.
+    pub compact_title_bar: bool,
+
     /// Include the "Welcome screen" application in the recordings panel?
     #[serde(alias = "include_welcome_screen_button_in_recordings_panel")]
     pub include_rerun_examples_button_in_recordings_panel: bool,
@@ -86,6 +89,8 @@ impl Default for AppOptions {
 
             show_notification_toasts: true,
 
+            compact_title_bar: cfg!(not(target_os = "macos")),
+
             include_rerun_examples_button_in_recordings_panel: true,
 
             show_picking_debug_overlay: false,
@@ -122,6 +127,8 @@ impl AppOptions {
         Self {
             memory_limit: MemoryLimit::UNLIMITED,
             show_metrics: false, // flaky in snapshot tests
+            #[cfg(any(target_os = "windows", target_os = "linux"))]
+            compact_title_bar: false,
             ..Default::default()
         }
     }

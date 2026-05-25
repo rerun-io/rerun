@@ -1136,45 +1136,109 @@ pub trait UiExt {
     ///
     /// Assumes it is in a right-to-left layout.
     ///
-    /// Use when [`crate::CUSTOM_WINDOW_DECORATIONS`] is set.
+    /// Use with the custom drawn compact title bar.
     #[cfg(not(target_arch = "wasm32"))]
     fn native_window_buttons_ui(&mut self) {
-        use egui::{Button, RichText, ViewportCommand};
-
-        let button_height = 12.0;
+        use egui::{ViewportCommand, vec2};
 
         let ui = self.ui_mut();
+        let old_item_spacing_x = ui.spacing().item_spacing.x;
+        ui.spacing_mut().item_spacing.x = 0.0;
 
-        let close_response = ui
-            .add(Button::new(RichText::new("❌").size(button_height)))
-            .on_hover_text("Close the window");
-        if close_response.clicked() {
+        #[derive(Clone, Copy)]
+        enum WindowButtonKind {
+            Close,
+            Restore,
+            Maximize,
+            Minimize,
+        }
+
+        fn window_button(
+            ui: &mut egui::Ui,
+            kind: WindowButtonKind,
+            tooltip: &'static str,
+            close_button: bool,
+        ) -> egui::Response {
+            let is_windows = ui.os() == egui::os::OperatingSystem::Windows;
+            let width = if close_button { 48.0 } else { 42.0 };
+            let (rect, response) =
+                ui.allocate_exact_size(vec2(width, ui.available_height()), egui::Sense::click());
+
+            // Keep the hover background from covering the divider below the top bar.
+            let rect = {
+                let mut paint_rect = rect;
+                paint_rect.max.y -= ui.tokens().bottom_bar_stroke.width;
+                paint_rect
+            };
+
+            let mut icon_color = if response.hovered() && close_button {
+                egui::Color32::WHITE
+            } else {
+                ui.visuals().strong_text_color()
+            };
+
+            // Disable icons if the window is not in focus.
+            if !ui.input(|i| i.viewport().focused.unwrap_or(i.focused)) {
+                icon_color = ui.visuals().disable(icon_color);
+            }
+
+            if response.hovered() {
+                let fill = if close_button && is_windows {
+                    ui.tokens().windows_close_button_hover_color
+                } else {
+                    ui.visuals().widgets.hovered.weak_bg_fill
+                };
+
+                // On non-Windows platforms, we do the rounding ourselves, so we have to adhere to it.
+                // (On Windows enabling this rounding would be ever so slightly off)
+                let corner_radius = if close_button && !is_windows {
+                    let is_window_maximized =
+                        ui.ctx().input(|i| i.viewport().maximized == Some(true));
+                    egui::CornerRadius {
+                        ne: ui.tokens().native_window_corner_radius(is_window_maximized),
+                        ..Default::default()
+                    }
+                } else {
+                    egui::CornerRadius::ZERO
+                };
+
+                ui.painter().rect_filled(rect, corner_radius, fill);
+            }
+
+            let chrome_icon = match kind {
+                WindowButtonKind::Close => &icons::CHROME_CLOSE,
+                WindowButtonKind::Restore => &icons::CHROME_RESTORE,
+                WindowButtonKind::Maximize => &icons::CHROME_MAXIMIZE,
+                WindowButtonKind::Minimize => &icons::CHROME_MINIMIZE,
+            };
+            let icon_rect = egui::Rect::from_center_size(rect.center(), vec2(10.0, 10.0));
+            chrome_icon
+                .as_image()
+                .tint(icon_color)
+                .paint_at(ui, icon_rect);
+
+            response.on_hover_text_at_pointer(tooltip)
+        }
+
+        if window_button(ui, WindowButtonKind::Close, "Close the window", true).clicked() {
             ui.send_viewport_cmd(ViewportCommand::Close);
         }
 
         let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
         if maximized {
-            let maximized_response = ui
-                .add(Button::new(RichText::new("🗗").size(button_height)))
-                .on_hover_text("Restore window");
-            if maximized_response.clicked() {
+            if window_button(ui, WindowButtonKind::Restore, "Restore window", false).clicked() {
                 ui.send_viewport_cmd(ViewportCommand::Maximized(false));
             }
-        } else {
-            let maximized_response = ui
-                .add(Button::new(RichText::new("🗗").size(button_height)))
-                .on_hover_text("Maximize window");
-            if maximized_response.clicked() {
-                ui.send_viewport_cmd(ViewportCommand::Maximized(true));
-            }
+        } else if window_button(ui, WindowButtonKind::Maximize, "Maximize window", false).clicked()
+        {
+            ui.send_viewport_cmd(ViewportCommand::Maximized(true));
         }
 
-        let minimized_response = ui
-            .add(Button::new(RichText::new("🗕").size(button_height)))
-            .on_hover_text("Minimize the window");
-        if minimized_response.clicked() {
+        if window_button(ui, WindowButtonKind::Minimize, "Minimize the window", false).clicked() {
             ui.send_viewport_cmd(ViewportCommand::Minimized(true));
         }
+
+        ui.spacing_mut().item_spacing.x = old_item_spacing_x;
     }
 
     /// Shows a `?` help button that will show a help UI when clicked.

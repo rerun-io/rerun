@@ -44,7 +44,7 @@ pub use self::combo_item::*;
 pub use self::command::{UICommand, UICommandSender};
 pub use self::command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl};
 pub use self::context_ext::ContextExt;
-pub use self::design_tokens::{DesignTokens, TableStyle};
+pub use self::design_tokens::{DesignTokens, TableStyle, WindowFrameConfig};
 pub use self::egui_ext::widget_ext::*;
 pub use self::help::*;
 pub use self::hot_reload_design_tokens::design_tokens_of;
@@ -69,15 +69,13 @@ pub fn fullsize_content(os: egui::os::OperatingSystem) -> bool {
     os == egui::os::OperatingSystem::Mac
 }
 
-/// If true, we hide the native window decoration
-/// (the top bar with app title, close button etc),
-/// and instead paint our own close/maximize/minimize buttons.
-pub const CUSTOM_WINDOW_DECORATIONS: bool = false; // !FULLSIZE_CONTENT; // TODO(emilk): https://github.com/rerun-io/rerun/issues/1063
-
-/// If true, we show the native window decorations/chrome with the
-/// close/maximize/minimize buttons and app title.
-pub fn native_window_bar(os: egui::os::OperatingSystem) -> bool {
-    !fullsize_content(os) && !CUSTOM_WINDOW_DECORATIONS
+/// Whether we support drawing a custom title bar (and overall decorations) on this OS.
+pub fn supports_custom_decorations(os: egui::os::OperatingSystem) -> bool {
+    matches!(
+        os,
+        // On Mac we use the fullsize_content approach, which also is still a custom title bar, but preserves the native title bar buttons.
+        egui::os::OperatingSystem::Windows | egui::os::OperatingSystem::Nix
+    )
 }
 
 // ----------------------------------------------------------------------------

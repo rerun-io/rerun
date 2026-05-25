@@ -3,12 +3,25 @@
 use std::time::Duration;
 
 use egui::accesskit::Role;
+use egui::os::OperatingSystem;
+use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
 use re_sdk_types::ColormapSelection;
 use re_sdk_types::components::Colormap;
 use re_test_context::TestContext;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewer_context::MaybeMutRef;
+
+fn os_snapshot_suffix(os: OperatingSystem) -> &'static str {
+    match os {
+        OperatingSystem::Nix => "linux",
+        OperatingSystem::Mac => "mac",
+        OperatingSystem::Windows => "windows",
+        OperatingSystem::Unknown => "unknown",
+        OperatingSystem::Android => "android",
+        OperatingSystem::IOS => "ios",
+    }
+}
 
 /// Navigates from welcome to settings screen and snapshots it.
 #[tokio::test]
@@ -20,28 +33,38 @@ async fn settings_screen() {
         std::env::set_var("TZ", "Europe/Stockholm");
     }
 
-    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
-        window_size: Some(egui::vec2(1024.0, 1080.0)), // Settings screen can be a bit tall
-        ..Default::default()
-    });
-    harness.get_by_label("Menu").click();
-    harness.run_ok();
-    harness.get_by_label_contains("Settings…").click();
-    // Wait for the FFmpeg-check loading indicator to disappear.
-    viewer_test_utils::step_until(
-        "Settings screen shows up with FFMpeg binary not found error",
-        &mut harness,
-        |harness| {
-            harness
-                .query_by_label_contains(
-                    "The specified FFmpeg binary path does not exist or is not a file.",
-                )
-                .is_some()
-        },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
-    );
-    harness.snapshot("settings_screen");
+    let mut snapshot_results = SnapshotResults::new();
+
+    for os in [
+        OperatingSystem::Nix,
+        OperatingSystem::Mac,
+        OperatingSystem::Windows,
+    ] {
+        let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+            window_size: Some(egui::vec2(1024.0, 1080.0)), // Settings screen can be a bit tall
+            os: Some(os),
+            ..Default::default()
+        });
+        harness.get_by_label("Menu").click();
+        harness.run_ok();
+        harness.get_by_label_contains("Settings…").click();
+        // Wait for the FFmpeg-check loading indicator to disappear.
+        viewer_test_utils::step_until(
+            "Settings screen shows up with FFMpeg binary not found error",
+            &mut harness,
+            |harness| {
+                harness
+                    .query_by_label_contains(
+                        "The specified FFmpeg binary path does not exist or is not a file.",
+                    )
+                    .is_some()
+            },
+            Duration::from_millis(100),
+            Duration::from_secs(5),
+        );
+        snapshot_results
+            .add(harness.try_snapshot(format!("settings_screen_{}", os_snapshot_suffix(os))));
+    }
 }
 
 /// Opens the Rerun menu without an active recording and snapshots the app.

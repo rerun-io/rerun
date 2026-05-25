@@ -21,6 +21,9 @@ pub struct HarnessOptions {
     pub startup_url: Option<String>,
     pub enable_component_mapping: bool,
 
+    /// Allows tests to emulate platform-specific UI behavior.
+    pub os: Option<egui::os::OperatingSystem>,
+
     /// Allows the test to set `AppOptions` at start.
     pub app_options_editor: Option<AppOptionsEditor>,
 }
@@ -37,9 +40,11 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
     if let Some(step_dt) = options.step_dt {
         harness_builder = harness_builder.with_step_dt(step_dt);
     }
+    if let Some(os) = options.os {
+        harness_builder = harness_builder.with_os(os);
+    }
 
     harness_builder.build_eframe(|cc| {
-        cc.egui_ctx.set_os(egui::os::OperatingSystem::Nix);
         customize_eframe_and_setup_renderer(cc).expect("Failed to customize eframe");
         let mut app = App::new(
             MainThreadToken::i_promise_i_am_only_using_this_for_a_test(),

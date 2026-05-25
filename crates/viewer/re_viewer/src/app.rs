@@ -23,7 +23,9 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_sdk_types::blueprint::components::PlayState;
 use re_sdk_types::external::uuid;
-use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
+use re_ui::{
+    ContextExt as _, UICommand, UICommandSender as _, UiExt as _, WindowFrameConfig, notifications,
+};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
@@ -516,6 +518,34 @@ impl App {
 
     pub fn app_env(&self) -> &crate::AppEnvironment {
         &self.app_env
+    }
+
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    pub(crate) fn custom_window_decorations(&self) -> bool {
+        self.app_options().compact_title_bar
+            && !self.is_screenshotting()
+            && !self.app_env().is_test()
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+    pub(crate) fn custom_window_decorations(&self) -> bool {
+        let _ = self;
+        false
+    }
+
+    /// Whether we are responsible for painting a window frame.
+    ///
+    /// Not enabled on Windows ever since there the OS puts some margin & frame around the window content either way.
+    pub(crate) fn custom_window_frame(&self) -> bool {
+        self.custom_window_decorations() && !cfg!(target_os = "windows")
+    }
+
+    pub(crate) fn window_frame_config(&self, ctx: &egui::Context) -> WindowFrameConfig {
+        if self.custom_window_frame() {
+            WindowFrameConfig::custom(ctx)
+        } else {
+            WindowFrameConfig::Native
+        }
     }
 
     /// The active recording [`StoreId`], if any, derived from the current [`Route`].
@@ -2424,9 +2454,10 @@ impl App {
         store_stats: Option<&StoreHubStats>,
         storage_context: &re_viewer_context::StorageContext<'_>,
     ) {
+        let window_frame = self.window_frame_config(ui.ctx());
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
-            ..ui.tokens().bottom_panel_frame()
+            ..ui.tokens().bottom_panel_frame(window_frame)
         };
 
         egui::Panel::bottom("memory_panel")
@@ -2451,7 +2482,10 @@ impl App {
         egui::Panel::left("style_panel")
             .default_size(300.0)
             .resizable(true)
-            .frame(ui.tokens().top_panel_frame())
+            .frame(
+                ui.tokens()
+                    .top_panel_frame(self.window_frame_config(ui.ctx())),
+            )
             .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     if ui
@@ -2491,8 +2525,29 @@ impl App {
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
     ) {
+        let custom_window_decorations = self.custom_window_decorations();
+        #[cfg(any(target_os = "windows", target_os = "linux"))]
+        {
+            let id = egui::Id::new("custom_window_decorations_applied");
+            let was_applied = ui.ctx().data_mut(|data| {
+                let was_applied = data.get_temp::<bool>(id);
+                data.insert_temp(id, custom_window_decorations);
+                was_applied
+            });
+            if let Some(was_applied) = was_applied
+                && was_applied != custom_window_decorations
+            {
+                ui.send_viewport_cmd(egui::ViewportCommand::Decorations(
+                    !custom_window_decorations,
+                ));
+                ui.send_viewport_cmd(egui::ViewportCommand::Transparent(
+                    custom_window_decorations,
+                ));
+            }
+        }
+
         let mut main_panel_frame = egui::Frame::default();
-        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+        if self.custom_window_frame() {
             // Add some margin so that we can later paint an outline around it all.
             main_panel_frame.inner_margin = 1.0.into();
         }
@@ -2502,7 +2557,13 @@ impl App {
             .show_inside(ui, |ui| {
                 paint_background_fill(ui);
 
-                crate::ui::mobile_warning_ui(ui);
+                crate::ui::mobile_warning_ui(ui, custom_window_decorations);
+
+                if self.custom_window_frame() {
+                    // The outer frame owns the rounded window background. Inner panels should not
+                    // repaint opaque square corners over it.
+                    ui.visuals_mut().panel_fill = egui::Color32::TRANSPARENT;
+                }
 
                 crate::ui::top_panel(
                     frame,
@@ -2581,12 +2642,17 @@ impl App {
                         self.event_dispatcher.as_ref(),
                         &self.connection_registry,
                         &self.async_runtime,
+                        self.custom_window_frame(),
                     );
                     render_ctx.before_submit();
 
                     self.show_text_logs_as_notifications();
                 }
             });
+
+        if custom_window_decorations {
+            custom_windows_decorations_resize_ui(ui);
+        }
 
         if self.app_options().show_notification_toasts {
             self.notifications.show_toasts(ui);
@@ -3722,7 +3788,7 @@ fn blueprint_loader() -> BlueprintPersistence {
 
 impl eframe::App for App {
     fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
-        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+        if self.custom_window_decorations() {
             [0.; 4] // transparent
         } else if visuals.dark_mode {
             [0., 0., 0., 1.]
@@ -4055,9 +4121,8 @@ impl eframe::App for App {
                 store_stats.as_ref(),
             );
 
-            if re_ui::CUSTOM_WINDOW_DECORATIONS {
-                // Paint the main window frame on top of everything else
-                paint_native_window_frame(ui);
+            if self.custom_window_frame() {
+                paint_custom_window_frame(ui);
             }
 
             if let Some(cmd) = self
@@ -4150,6 +4215,117 @@ impl eframe::App for App {
     }
 }
 
+/// Add invisible resize handles for the compact title bar.
+///
+/// Disabling native decorations removes the OS-provided resize borders together
+/// with the native title bar. This restores that interaction by placing thin
+/// egui hit zones along the edges/corners and forwarding drag starts to winit
+/// via [`egui::ViewportCommand::BeginResize`]. The actual resizing is still
+/// performed by the windowing system.
+#[cfg(not(target_arch = "wasm32"))]
+fn custom_windows_decorations_resize_ui(ui: &egui::Ui) {
+    let fullscreen = ui.ctx().input(|i| i.viewport().fullscreen).unwrap_or(false);
+    let maximized = ui.ctx().input(|i| i.viewport().maximized).unwrap_or(false);
+
+    if fullscreen || maximized {
+        return;
+    }
+
+    let rect = ui.max_rect();
+    let resize_margin = 6.0;
+    let corner_size = 16.0;
+
+    // Corners get larger square hit zones so diagonal resizing is easy to grab.
+    // Edges get thin strips between the corners.
+    let resize_regions = [
+        (
+            egui::Rect::from_min_max(
+                rect.left_top(),
+                rect.left_top() + egui::vec2(corner_size, corner_size),
+            ),
+            egui::ResizeDirection::NorthWest,
+            egui::CursorIcon::ResizeNorthWest,
+            "compact_title_bar_resize_nw",
+        ),
+        (
+            egui::Rect::from_min_max(
+                rect.right_top() - egui::vec2(corner_size, 0.0),
+                rect.right_top() + egui::vec2(0.0, corner_size),
+            ),
+            egui::ResizeDirection::NorthEast,
+            egui::CursorIcon::ResizeNorthEast,
+            "compact_title_bar_resize_ne",
+        ),
+        (
+            egui::Rect::from_min_max(
+                rect.left_bottom() - egui::vec2(0.0, corner_size),
+                rect.left_bottom() + egui::vec2(corner_size, 0.0),
+            ),
+            egui::ResizeDirection::SouthWest,
+            egui::CursorIcon::ResizeSouthWest,
+            "compact_title_bar_resize_sw",
+        ),
+        (
+            egui::Rect::from_min_max(
+                rect.right_bottom() - egui::vec2(corner_size, corner_size),
+                rect.right_bottom(),
+            ),
+            egui::ResizeDirection::SouthEast,
+            egui::CursorIcon::ResizeSouthEast,
+            "compact_title_bar_resize_se",
+        ),
+        (
+            egui::Rect::from_min_max(
+                rect.left_top() + egui::vec2(corner_size, 0.0),
+                rect.right_top() + egui::vec2(-corner_size, resize_margin),
+            ),
+            egui::ResizeDirection::North,
+            egui::CursorIcon::ResizeNorth,
+            "compact_title_bar_resize_n",
+        ),
+        (
+            egui::Rect::from_min_max(
+                rect.left_bottom() + egui::vec2(corner_size, -resize_margin),
+                rect.right_bottom() + egui::vec2(-corner_size, 0.0),
+            ),
+            egui::ResizeDirection::South,
+            egui::CursorIcon::ResizeSouth,
+            "compact_title_bar_resize_s",
+        ),
+        (
+            egui::Rect::from_min_max(
+                rect.left_top() + egui::vec2(0.0, corner_size),
+                rect.left_bottom() + egui::vec2(resize_margin, -corner_size),
+            ),
+            egui::ResizeDirection::West,
+            egui::CursorIcon::ResizeWest,
+            "compact_title_bar_resize_w",
+        ),
+        (
+            egui::Rect::from_min_max(
+                rect.right_top() + egui::vec2(-resize_margin, corner_size),
+                rect.right_bottom() + egui::vec2(0.0, -corner_size),
+            ),
+            egui::ResizeDirection::East,
+            egui::CursorIcon::ResizeEast,
+            "compact_title_bar_resize_e",
+        ),
+    ];
+
+    for (rect, direction, cursor_icon, id) in resize_regions {
+        let response = ui.interact(rect, ui.id().with(id), egui::Sense::click_and_drag());
+        if response.hovered() || response.dragged() {
+            ui.ctx().set_cursor_icon(cursor_icon);
+        }
+        if response.drag_started_by(egui::PointerButton::Primary) {
+            ui.send_viewport_cmd(egui::ViewportCommand::BeginResize(direction));
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn custom_windows_decorations_resize_ui(_ui: &egui::Ui) {}
+
 fn paint_background_fill(ui: &egui::Ui) {
     // This is required because the streams view (time panel)
     // has rounded top corners, which leaves a gap.
@@ -4157,15 +4333,16 @@ fn paint_background_fill(ui: &egui::Ui) {
     // Of course this does some over-draw, but we have to live with that.
 
     let tokens = ui.tokens();
+    let is_maximized = ui.ctx().input(|i| i.viewport().maximized == Some(true));
 
     ui.painter().rect_filled(
-        ui.max_rect().shrink(0.5),
-        tokens.native_window_corner_radius(),
-        ui.visuals().panel_fill,
+        ui.max_rect().expand(0.5),
+        tokens.native_window_corner_radius(is_maximized),
+        tokens.panel_bg_color,
     );
 }
 
-fn paint_native_window_frame(egui_ctx: &egui::Context) {
+fn paint_custom_window_frame(egui_ctx: &egui::Context) {
     let tokens = egui_ctx.tokens();
 
     let painter = egui::Painter::new(
@@ -4174,9 +4351,12 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
         egui::Rect::EVERYTHING,
     );
 
+    let is_maximized = egui_ctx.input(|i| i.viewport().maximized == Some(true));
+    let corner_radius = tokens.native_window_corner_radius(is_maximized);
+
     painter.rect_stroke(
         egui_ctx.content_rect(),
-        tokens.native_window_corner_radius(),
+        corner_radius,
         egui_ctx.tokens().native_frame_stroke,
         egui::StrokeKind::Inside,
     );

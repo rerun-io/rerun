@@ -158,6 +158,13 @@ pub const MORE: Icon = icon_from_path!("../data/icons/more.svg");
 pub const CLOSE: Icon = icon_from_path!("../data/icons/close.svg");
 pub const CLOSE_SMALL: Icon = icon_from_path!("../data/icons/close_small.svg");
 
+// Caption controls, matching the glyphs documented by Microsoft:
+// https://learn.microsoft.com/en-us/windows/apps/design/basics/titlebar-design#caption-controls-minimize-maximize-restore-close
+pub const CHROME_MINIMIZE: Icon = icon_from_path!("../data/icons/chrome_minimize.svg");
+pub const CHROME_MAXIMIZE: Icon = icon_from_path!("../data/icons/chrome_maximize.svg");
+pub const CHROME_RESTORE: Icon = icon_from_path!("../data/icons/chrome_restore.svg");
+pub const CHROME_CLOSE: Icon = icon_from_path!("../data/icons/chrome_close.svg");
+
 /// Used for HTTP URLs that lead out of the app.
 ///
 /// Remember to also use `.on_hover_cursor(egui::CursorIcon::PointingHand)`,
