@@ -35,3 +35,8 @@ egui_tiles.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 static_assertions.workspace = true
+
+[dev-dependencies]
+re_chunk.workspace = true
+re_test_context.workspace = true
+re_test_viewport.workspace = true

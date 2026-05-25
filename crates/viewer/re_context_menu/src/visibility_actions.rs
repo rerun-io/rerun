@@ -1,6 +1,9 @@
-use re_entity_db::EntityPath;
+//! Helpers for reading and writing per-entity visibility overrides across views.
+//!
+//! Used by the show/hide context-menu actions in this crate.
 
-use crate::{DataQueryResult, DataResult, ViewId, ViewerContext};
+use re_entity_db::EntityPath;
+use re_viewer_context::{DataQueryResult, DataResult, ViewId, ViewerContext};
 
 /// Resolved visibility of `entity_path` in `view_id`, or `None` if the view does not contain it.
 pub fn entity_visibility_in_view(
@@ -49,18 +52,16 @@ pub fn set_entity_visibility_in_all_views(
     }
 }
 
-/// Returns true iff at least one view other than `excluded_view_id` has a real
+/// Returns true iff at least one view has a real (non-prefix-only)
 /// [`DataResult`] for `entity_path` whose resolved visibility equals
 /// `target_visibility`.
-pub fn any_other_view_has_entity_visibility(
+pub fn any_view_has_entity_visibility(
     ctx: &ViewerContext<'_>,
-    excluded_view_id: ViewId,
     entity_path: &EntityPath,
     target_visibility: bool,
 ) -> bool {
-    iter_data_results_for_entity(ctx, entity_path).any(|(view_id, _, data_result)| {
-        view_id != excluded_view_id && data_result.is_visible() == target_visibility
-    })
+    iter_data_results_for_entity(ctx, entity_path)
+        .any(|(_, _, data_result)| data_result.is_visible() == target_visibility)
 }
 
 /// Iterates `(view_id, query_result, data_result)` for every view whose

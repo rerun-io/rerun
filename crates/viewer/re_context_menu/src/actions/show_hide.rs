@@ -1,8 +1,7 @@
 use re_entity_db::InstancePath;
-use re_viewer_context::{
-    ContainerId, Contents, Item, ViewId, entity_visibility_in_view, set_entity_visibility_in_view,
-};
+use re_viewer_context::{ContainerId, Contents, Item, ViewId};
 
+use crate::visibility_actions::{entity_visibility_in_view, set_entity_visibility_in_view};
 use crate::{ContextMenuAction, ContextMenuContext};
 
 pub(crate) struct ShowAction;

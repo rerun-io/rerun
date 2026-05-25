@@ -17,6 +17,12 @@ use re_viewport_blueprint::{ContainerBlueprint, ViewportBlueprint};
 mod actions;
 pub mod collapse_expand;
 mod sub_menu;
+mod visibility_actions;
+
+pub use visibility_actions::{
+    any_view_has_entity_visibility, entity_visibility_in_view, set_entity_visibility_in_all_views,
+    set_entity_visibility_in_view,
+};
 
 use actions::add_container::AddContainerAction;
 use actions::add_entities_to_new_view::AddEntitiesToNewViewAction;
