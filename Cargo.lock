@@ -9980,6 +9980,7 @@ version = "0.33.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "cfg-if",
  "crossbeam",
  "eframe",
  "egui",
@@ -10011,7 +10012,10 @@ dependencies = [
  "strum",
  "strum_macros",
  "sublime_fuzzy",
+ "thiserror 2.0.18",
  "url",
+ "wayland-client",
+ "wayland-protocols",
  "web-time",
 ]
 

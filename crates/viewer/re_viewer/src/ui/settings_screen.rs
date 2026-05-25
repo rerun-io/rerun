@@ -81,7 +81,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         warn_e2e_latency: _, // not yet exposed
         show_metrics,
         show_notification_toasts,
-        compact_title_bar,
+        custom_window_decorations,
         include_rerun_examples_button_in_recordings_panel,
         show_picking_debug_overlay: _, // not yet exposed
         inspect_blueprint_timeline: _, // not yet exposed
@@ -146,7 +146,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.strong("Title bar");
 
     if re_ui::supports_custom_decorations(ui.os()) {
-        ui.re_checkbox(compact_title_bar, "Use compact title bar")
+        ui.re_checkbox(custom_window_decorations, "Use custom window decorations")
             .on_hover_text(
                 "Hide the native title bar and draw Rerun's top bar as the window frame.\n\n\
              Opt out of this if you experience any issues with the window's behavior.",

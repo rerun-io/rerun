@@ -522,7 +522,7 @@ impl App {
 
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     pub(crate) fn custom_window_decorations(&self) -> bool {
-        self.app_options().compact_title_bar
+        self.app_options().custom_window_decorations
             && !self.is_screenshotting()
             && !self.app_env().is_test()
     }

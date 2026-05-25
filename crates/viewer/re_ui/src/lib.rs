@@ -30,6 +30,9 @@ mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
 
+#[cfg(target_os = "linux")]
+mod wayland;
+
 mod button;
 mod combo_item;
 pub mod re_form;
@@ -76,6 +79,38 @@ pub fn supports_custom_decorations(os: egui::os::OperatingSystem) -> bool {
         // On Mac we use the fullsize_content approach, which also is still a custom title bar, but preserves the native title bar buttons.
         egui::os::OperatingSystem::Windows | egui::os::OperatingSystem::Nix
     )
+}
+
+/// Whether custom (client-drawn) window decorations should be the default on this system.
+///
+/// On Linux + Wayland we negotiate with the compositor via
+/// `xdg-decoration-unstable-v1`: we get `false` only if the compositor commits
+/// to drawing server-side decorations. Everywhere else (and on probe failure)
+/// we return `true`. The result is cached for the lifetime of the process.
+pub fn custom_window_decorations_default() -> bool {
+    cfg_if::cfg_if! {
+        if #[cfg(target_os = "linux")] {
+            // Skip the probe entirely on non-Wayland sessions.
+            if std::env::var_os("WAYLAND_DISPLAY").is_none()
+                && std::env::var_os("WAYLAND_SOCKET").is_none()
+            {
+                return true;
+            }
+
+            use std::sync::OnceLock;
+            static CACHE: OnceLock<bool> = OnceLock::new();
+            *CACHE.get_or_init(wayland::should_draw_own_decorations)
+        } else if #[cfg(target_os = "windows")] {
+            // On Windows we always draw decorations ourselves, but egui will still enable drop shadows etc.
+            true
+        } else if #[cfg(target_os = "macos")] {
+            // On MacOS we use native decorations but draw inside the title bar, so not fully custom.
+            false
+        } else {
+            // On unknown platforms we should stick with what they provide.
+            false
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
