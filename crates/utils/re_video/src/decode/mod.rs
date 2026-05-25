@@ -77,8 +77,12 @@
 //! supporting HDR content at which point more properties will be important!
 //!
 
-#[cfg(not(target_arch = "wasm32"))]
-mod async_decoder_wrapper;
+mod sync_decoder;
+
+#[cfg_attr(target_arch = "wasm32", path = "sync_decoder_wrapper_wasm.rs")]
+#[cfg_attr(not(target_arch = "wasm32"), path = "sync_decoder_wrapper_native.rs")]
+mod sync_decoder_wrapper;
+
 mod image_decoder;
 
 #[cfg(with_dav1d)]
@@ -98,6 +102,11 @@ pub use ffmpeg_cli::{
 mod web_image_decoder;
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
+
+#[cfg(target_arch = "wasm32")]
+pub use webcodecs::WebVideoFrame;
+
+mod rvl_decoder;
 
 use crate::{SampleIndex, Time, VideoDataDescription, player::VideoPlaybackIssueSeverity};
 
@@ -123,6 +132,9 @@ pub enum DecodeError {
 
     #[error("Image decode error: {0}")]
     ImageDecoder(String),
+
+    #[error(transparent)]
+    RvlDecoder(re_rvl::RvlDecodeError),
 
     #[cfg(target_arch = "wasm32")]
     #[error(transparent)]
@@ -151,7 +163,8 @@ impl DecodeError {
             Self::WaitingForCodecDetails
             | Self::UnsupportedCodec(_)
             | Self::Dav1dWithoutNasm
-            | Self::NoDav1dOnLinuxArm64 => false,
+            | Self::NoDav1dOnLinuxArm64
+            | Self::RvlDecoder(_) => false,
 
             // Issue with AV1 decoding.
             #[cfg(with_dav1d)]
@@ -189,7 +202,8 @@ impl DecodeError {
             Self::UnsupportedCodec(_)
             | Self::Dav1dWithoutNasm
             | Self::NoDav1dOnLinuxArm64
-            | Self::BadBitsPerComponent(_) => VideoPlaybackIssueSeverity::Error,
+            | Self::BadBitsPerComponent(_)
+            | Self::RvlDecoder(_) => VideoPlaybackIssueSeverity::Error,
         }
     }
 }
@@ -261,9 +275,15 @@ pub fn new_decoder(
 
     #[cfg(target_arch = "wasm32")]
     {
-        return match video.codec {
-            crate::VideoCodec::ImageSequence(_) => {
-                if let Some(decoder) =
+        return match &video.codec {
+            crate::VideoCodec::ImageSequence(codec) => {
+                if codec.as_deref() == Some("application/rvl") {
+                    Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
+                        "rvl decoder".to_owned(),
+                        Box::new(rvl_decoder::RvlDecoder),
+                        output_sender,
+                    )))
+                } else if let Some(decoder) =
                     web_image_decoder::WebImageDecoder::try_new(video, output_sender.clone())
                 {
                     Ok(Box::new(decoder))
@@ -291,7 +311,7 @@ pub fn new_decoder(
             #[cfg(with_dav1d)]
             {
                 re_log::trace!("Decoding AV1…");
-                return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
+                return Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
                     debug_name.to_owned(),
                     Box::new(av1::SyncDav1dDecoder::new(debug_name.to_owned())?),
                     output_sender,
@@ -312,8 +332,14 @@ pub fn new_decoder(
         )?)),
 
         crate::VideoCodec::ImageSequence(codec) => {
-            if let Some(decoder) = image_decoder::SyncImageDecoder::try_new(video) {
-                Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
+            if codec.as_deref() == Some("application/rvl") {
+                Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
+                    "rvl decoder".to_owned(),
+                    Box::new(rvl_decoder::RvlDecoder),
+                    output_sender,
+                )))
+            } else if let Some(decoder) = image_decoder::SyncImageDecoder::try_new(video) {
+                Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
                     format!("image decoder ({})", decoder.mime_type()),
                     Box::new(decoder),
                     output_sender,
@@ -432,6 +458,10 @@ impl DecodedFrameContent {
 pub type FrameContent = DecodedFrameContent;
 
 /// Data for a decoded frame on the web.
+///
+/// Frames either come from the browser's `WebCodecs` API (color/luma video) or
+/// from a CPU-side decoder (e.g. RVL depth). The two are kept in one type so
+/// downstream code can treat them uniformly.
 #[cfg(target_arch = "wasm32")]
 pub enum FrameContent {
     /// Browser-owned frame produced by WebCodecs/browser image decoding.
@@ -557,6 +587,7 @@ impl re_byte_size::SizeBytes for Frame {
 pub enum PixelFormat {
     L8,
     L16,
+    R32Float,
     Rgb8Unorm,
     Rgba8Unorm,
 
@@ -576,7 +607,7 @@ impl PixelFormat {
             Self::L8 => 8,
             Self::L16 => 16,
             Self::Rgb8Unorm { .. } => 24,
-            Self::Rgba8Unorm { .. } => 32,
+            Self::R32Float | Self::Rgba8Unorm { .. } => 32,
             Self::Yuv { layout, .. } => match layout {
                 YuvPixelLayout::Y_U_V444 => 24,
                 YuvPixelLayout::Y_U_V422 => 16,

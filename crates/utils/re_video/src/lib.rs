@@ -14,6 +14,8 @@ mod vp8;
 mod vp9;
 
 pub use av1::{AV1_TEST_INTER_FRAME, AV1_TEST_KEYFRAME};
+#[cfg(target_arch = "wasm32")]
+pub use decode::WebVideoFrame;
 pub use decode::{
     AsyncDecoder, Chunk, DecodeError, DecodeHardwareAcceleration, DecodeSettings,
     DecodedFrameContent, Frame, FrameContent, FrameInfo, FrameResult, PixelFormat,

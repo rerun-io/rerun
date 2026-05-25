@@ -1,11 +1,10 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use super::{AsyncDecoder, Chunk, Result};
+use crate::decode::{AsyncDecoder, Chunk, FrameResult, Result};
+use crate::{Receiver, Sender, VideoDataDescription};
 
-use crate::{VideoDataDescription, decode::FrameResult};
-
-use crate::{Receiver, Sender};
+pub use super::sync_decoder::SyncDecoder;
 
 enum Command {
     Chunk(Chunk),
@@ -45,25 +44,9 @@ impl Default for Comms {
     }
 }
 
-/// Blocking decoder of video chunks.
-pub trait SyncDecoder {
-    /// Submit some work and read the results.
-    ///
-    /// Stop early if `should_stop` is `true` or turns `true`.
-    fn submit_chunk(
-        &mut self,
-        should_stop: &std::sync::atomic::AtomicBool,
-        chunk: Chunk,
-        output_sender: &Sender<FrameResult>,
-    );
-
-    /// Clear and reset everything
-    fn reset(&mut self, video_data_description: &crate::VideoDataDescription);
-}
-
-/// Runs a [`SyncDecoder`] in a background thread, for non-blocking video decoding.
-pub struct AsyncDecoderWrapper {
-    /// Where the decoding happens
+/// Runs a [`SyncDecoder`] on a dedicated OS thread fed by a command channel.
+pub struct SyncDecoderWrapper {
+    /// Where the decoding happens.
     _thread: std::thread::JoinHandle<()>,
 
     /// Commands sent to the decoder thread.
@@ -73,7 +56,7 @@ pub struct AsyncDecoderWrapper {
     comms: Comms,
 }
 
-impl AsyncDecoderWrapper {
+impl SyncDecoderWrapper {
     pub fn new(
         debug_name: String,
         mut sync_decoder: Box<dyn SyncDecoder + Send>,
@@ -105,7 +88,7 @@ impl AsyncDecoderWrapper {
     }
 }
 
-impl AsyncDecoder for AsyncDecoderWrapper {
+impl AsyncDecoder for SyncDecoderWrapper {
     // NOTE: The interface is all `&mut self` to avoid certain types of races.
     fn submit_chunk(&mut self, chunk: Chunk) -> Result<()> {
         re_tracing::profile_function!();
@@ -116,7 +99,7 @@ impl AsyncDecoder for AsyncDecoderWrapper {
 
     /// Resets the decoder.
     ///
-    /// This does not block, all chunks sent to `decode` before this point will be discarded.
+    /// This does not block; chunks sent before this point will be discarded.
     // NOTE: The interface is all `&mut self` to avoid certain types of races.
     fn reset(&mut self, video_data_description: &VideoDataDescription) -> Result<()> {
         re_tracing::profile_function!();
@@ -135,7 +118,7 @@ impl AsyncDecoder for AsyncDecoderWrapper {
     }
 }
 
-impl Drop for AsyncDecoderWrapper {
+impl Drop for SyncDecoderWrapper {
     fn drop(&mut self) {
         re_tracing::profile_function!();
 

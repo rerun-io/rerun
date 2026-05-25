@@ -10055,6 +10055,7 @@ dependencies = [
  "re_mutex",
  "re_quota_channel",
  "re_rav1d",
+ "re_rvl",
  "re_span",
  "re_tracing",
  "re_tuid",

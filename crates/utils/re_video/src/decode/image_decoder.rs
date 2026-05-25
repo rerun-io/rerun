@@ -1,7 +1,7 @@
 use crate::{DecodedFrameContent, PixelFormat};
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::decode::async_decoder_wrapper::SyncDecoder;
+use crate::decode::sync_decoder_wrapper::SyncDecoder;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub struct SyncImageDecoder {

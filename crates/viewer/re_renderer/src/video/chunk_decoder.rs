@@ -80,6 +80,7 @@ fn gpu_texture_format_for_decoded_frame_content(
         // `R16Unorm` would require the `TEXTURE_FORMAT_16BIT_NORM` feature, which isn't
         // implemented in wgpu's OpenGL backend.
         re_video::PixelFormat::L16 => wgpu::TextureFormat::R16Uint,
+        re_video::PixelFormat::R32Float => wgpu::TextureFormat::R32Float,
         re_video::PixelFormat::Rgb8Unorm
         | re_video::PixelFormat::Rgba8Unorm
         | re_video::PixelFormat::Yuv { .. } => wgpu::TextureFormat::Rgba8Unorm,
@@ -190,7 +191,7 @@ fn copy_decoded_video_frame_to_texture(
     target_texture: &GpuTexture,
 ) -> Result<SourceImageDataFormat, VideoPlayerError> {
     use crate::resource_managers::{
-        ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+        ImageDataDesc, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
         transfer_image_data_to_texture,
     };
 
@@ -212,7 +213,8 @@ fn copy_decoded_video_frame_to_texture(
         re_video::PixelFormat::Rgba8Unorm
         | re_video::PixelFormat::Yuv { .. }
         | re_video::PixelFormat::L8
-        | re_video::PixelFormat::L16 => {}
+        | re_video::PixelFormat::L16
+        | re_video::PixelFormat::R32Float => {}
     }
 
     re_tracing::profile_function!();
@@ -254,6 +256,10 @@ fn copy_decoded_video_frame_to_texture(
 
         re_video::PixelFormat::L16 => {
             SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::R16Uint)
+        }
+
+        re_video::PixelFormat::R32Float => {
+            SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::R32Float)
         }
     };
 

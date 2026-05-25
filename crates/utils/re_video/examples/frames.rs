@@ -131,8 +131,10 @@ fn main() {
                 re_video::PixelFormat::Yuv { .. } => {
                     re_log::error_once!("YUV frame writing is not supported");
                 }
-                re_video::PixelFormat::L8 | re_video::PixelFormat::L16 => {
-                    re_log::error_once!("L8 & L16 frame writing is not supported");
+                re_video::PixelFormat::L8
+                | re_video::PixelFormat::L16
+                | re_video::PixelFormat::R32Float => {
+                    re_log::error_once!("L8 & L16 & R32Float frame writing is not supported");
                 }
             }
         }
