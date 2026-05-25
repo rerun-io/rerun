@@ -125,7 +125,7 @@ fn dragging_cursor_does_not_resume_playback_after_blueprint_pause() {
 
     // Simulate dragging the time cursor; the specific target time doesn't matter.
     let drag_target = TimeReal::from(5_i64);
-    test_context.send_time_commands(store_id, [TimeControlCommand::SetTime(drag_target)]);
+    test_context.send_time_commands(store_id, [TimeControlCommand::SetTimeClamped(drag_target)]);
     test_context.handle_system_commands(&egui::Context::default());
 
     assert_eq!(

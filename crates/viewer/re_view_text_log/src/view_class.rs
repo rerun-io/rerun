@@ -27,6 +27,15 @@ pub struct TextViewState {
     /// text entry window however they please when the time cursor isn't moving.
     latest_time: i64,
 
+    /// Time of the latest entry at or before the cursor on the previous render.
+    ///
+    /// We auto-scroll whenever this changes so the view tracks the latest-at
+    /// row as new (possibly out-of-order) data streams in. This handles both
+    /// the initial catch-up to a programmatic `SetTime` (e.g. a `#when` URL
+    /// anchor pointing past the data loaded so far) and any later arrival
+    /// that lands closer to the cursor.
+    last_anchor_time: Option<i64>,
+
     seen_levels: BTreeSet<String>,
 
     last_columns_min_sizes: Vec<u32>,
@@ -36,6 +45,7 @@ impl re_byte_size::SizeBytes for TextViewState {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             latest_time: _,
+            last_anchor_time: _,
             seen_levels,
             last_columns_min_sizes,
         } = self;
@@ -260,14 +270,20 @@ Filter message types and toggle column visibility in a selection panel.",
             ..egui::Frame::default()
         }
         .show(ui, |ui| {
-            // Did the time cursor move since last time?
-            // - If it did, autoscroll to the text log to reveal the current time.
-            // - Otherwise, let the user scroll around freely!
+            // Auto-scroll when the time cursor moves, or whenever the
+            // latest-at row shifts because new (possibly out-of-order) data
+            // landed closer to the cursor.
+            let anchor_time = entries
+                .partition_point(|te| te.time.as_i64() <= time)
+                .checked_sub(1)
+                .map(|i| entries[i].time.as_i64());
+            let anchor_moved = anchor_time != state.last_anchor_time;
             let time_cursor_moved = state.latest_time != time;
-            let scroll_to_row = time_cursor_moved.then(|| {
+            let scroll_to_row = (time_cursor_moved || anchor_moved).then(|| {
                 re_tracing::profile_scope!("search scroll time");
                 entries.partition_point(|te| te.time.as_i64() < time)
             });
+            state.last_anchor_time = anchor_time;
 
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                 egui::ScrollArea::horizontal().show(ui, |ui| {

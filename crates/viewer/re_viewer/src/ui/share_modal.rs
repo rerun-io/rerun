@@ -432,7 +432,9 @@ mod tests {
             [
                 TimeControlCommand::SetActiveTimeline(*timeline.name()),
                 TimeControlCommand::SetTime(re_chunk::TimeInt::ZERO.into()),
-                TimeControlCommand::SetTimeSelection(AbsoluteTimeRangeF::new(0.0, 1000.0).to_int()),
+                TimeControlCommand::SetTimeSelectionClamped(
+                    AbsoluteTimeRangeF::new(0.0, 1000.0).to_int(),
+                ),
             ],
         );
 

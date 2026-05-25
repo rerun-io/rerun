@@ -59,16 +59,35 @@ pub enum TimeControlCommand {
     /// Set playback fps.
     SetFps(f32),
 
-    /// Set the current time selection without enabling looping.
+    /// Set the current time selection exactly as given, without enabling looping.
+    ///
+    /// The range is honored as-is — no intersection with currently-loaded data.
+    /// Use for blueprint/URL/programmatic selections that must apply independent
+    /// of chunk arrival order.
     SetTimeSelection(AbsoluteTimeRange),
+
+    /// Like [`Self::SetTimeSelection`], but intersected with the currently-loaded
+    /// data range; an empty intersection turns the selection off.
+    ///
+    /// Use for interactive UI scrub/drag where clamping to visible data is the
+    /// expected behavior.
+    SetTimeSelectionClamped(AbsoluteTimeRange),
 
     /// Remove the current time selection.
     ///
     /// If the current loop mode is selection, turns off looping.
     RemoveTimeSelection,
 
-    /// Sets the current time cursor.
+    /// Set the current time cursor exactly as given, without any clamping.
+    ///
+    /// Use for blueprint/URL/JS/undo-driven seeks that must apply independent
+    /// of chunk arrival order.
     SetTime(TimeReal),
+
+    /// Like [`Self::SetTime`], but clamped to the currently-loaded data range.
+    ///
+    /// Use for interactive UI scrub/drag against the visible timeline.
+    SetTimeClamped(TimeReal),
 
     /// Set the range of time we are currently zoomed in on.
     SetTimeView(TimeView),
@@ -202,6 +221,10 @@ impl TimeControl {
                         }
                     }
                 } else if let Some(full_range) = db.time_range_for(timeline_name) {
+                    // Hazard: inserts a fresh `TimeState` with `time = range.min`.
+                    // Any caller that wants to seed a non-default cursor for this
+                    // timeline (e.g. blueprint cursor restore) must run *after*
+                    // `SetActiveTimeline`, or this branch will overwrite it.
                     self.states
                         .insert(*timeline_name, TimeState::new(full_range.min));
                 }
@@ -337,6 +360,26 @@ impl TimeControl {
                 }
             }
             TimeControlCommand::SetTimeSelection(time_range) => {
+                if let Some(blueprint_ctx) = blueprint_ctx {
+                    blueprint_ctx.set_time_selection(*time_range);
+                }
+
+                let state = self
+                    .states
+                    .entry(*self.timeline_name())
+                    .or_insert_with(|| TimeState::new(time_range.min));
+
+                let repaint = state.time_selection.map(|r| r.to_int()) != Some(*time_range);
+
+                state.time_selection = Some((*time_range).into());
+
+                if repaint {
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::SetTimeSelectionClamped(time_range) => {
                 let timeline_range = db
                     .time_range_for(self.timeline_name())
                     .unwrap_or(AbsoluteTimeRange::EVERYTHING);
@@ -387,7 +430,7 @@ impl TimeControl {
                     NeedsRepaint::No
                 }
             }
-            TimeControlCommand::SetTime(time) => {
+            TimeControlCommand::SetTimeClamped(time) => {
                 let timeline_range = db
                     .time_range_for(self.timeline_name())
                     .unwrap_or(AbsoluteTimeRange::EVERYTHING);
@@ -412,6 +455,30 @@ impl TimeControl {
 
                 self.exit_follow_mode(db, blueprint_ctx);
                 self.start_buffering();
+
+                if repaint {
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::SetTime(time) => {
+                let time_int = time.floor();
+
+                let repaint = self.time_int() != Some(time_int);
+
+                // Exit follow mode first — `set_play_state(Playing)` may reset
+                // `state.time` to `range.min` when the cursor sits past the
+                // current data range, which is exactly the case we're trying
+                // to preserve. Set the time *after* that runs.
+                self.exit_follow_mode(db, blueprint_ctx);
+                self.start_buffering();
+
+                let state = self
+                    .states
+                    .entry(*self.timeline_name())
+                    .or_insert_with(|| TimeState::new(*time));
+                state.time = *time;
 
                 if repaint {
                     NeedsRepaint::Yes

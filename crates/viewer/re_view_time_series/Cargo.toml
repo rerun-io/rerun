@@ -48,6 +48,7 @@ smallvec.workspace = true
 vec1.workspace = true
 
 [dev-dependencies]
+re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_test_context.workspace = true
 re_test_viewport.workspace = true

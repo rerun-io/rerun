@@ -1182,7 +1182,7 @@ impl TimePanel {
                 ctx.command_sender
                     .send_system(SystemCommand::SetSelection(item.to_item().into()));
 
-                time_commands.push(TimeControlCommand::SetTime(hovered_time.into()));
+                time_commands.push(TimeControlCommand::SetTimeClamped(hovered_time.into()));
             } else {
                 ctx.selection_state().set_hovered(item.to_item());
             }
@@ -1587,7 +1587,7 @@ impl TimePanel {
                 if let Some(time_int) =
                     time_type.parse_time(&time_str, app_options.timestamp_format)
                 {
-                    time_commands.push(TimeControlCommand::SetTime(time_int.into()));
+                    time_commands.push(TimeControlCommand::SetTimeClamped(time_int.into()));
                 } else {
                     re_log::warn!("Failed to parse {time_str:?}");
                 }
@@ -2084,7 +2084,7 @@ impl TimePanel {
             && response.interact_pointer_pos().is_some()
             && let Some(time) = hovered_time
         {
-            time_commands.push(TimeControlCommand::SetTime(
+            time_commands.push(TimeControlCommand::SetTimeClamped(
                 time.clamp(timeline_range.min, timeline_range.max),
             ));
         }
@@ -2132,7 +2132,7 @@ impl TimePanel {
             // Use latest available time to avoid frame delay:
             let mut current_time = time_ctrl.time();
             for cmd in time_commands {
-                if let TimeControlCommand::SetTime(time) = cmd {
+                if let TimeControlCommand::SetTimeClamped(time) = cmd {
                     current_time = Some(*time);
                 }
             }

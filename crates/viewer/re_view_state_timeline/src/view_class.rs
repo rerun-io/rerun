@@ -294,7 +294,10 @@ impl ViewClass for StateTimelineView {
             && let Some(pos) = response.interact_pointer_pos()
             && let Some(time) = time_ranges_ui.time_from_x_f32(pos.x)
         {
-            ctx.send_time_commands([TimeControlCommand::Pause, TimeControlCommand::SetTime(time)]);
+            ctx.send_time_commands([
+                TimeControlCommand::Pause,
+                TimeControlCommand::SetTimeClamped(time),
+            ]);
         }
 
         // Pan: right- or middle-click drag, plus two-finger touchpad horizontal scroll.

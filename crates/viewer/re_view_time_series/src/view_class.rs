@@ -762,7 +762,7 @@ impl ViewClass for TimeSeriesView {
                 {
                     let time = re_log_types::TimeReal::from(pointer.x as i64 + time_offset);
                     ctx.send_time_commands([
-                        TimeControlCommand::SetTime(time),
+                        TimeControlCommand::SetTimeClamped(time),
                         TimeControlCommand::Pause,
                     ]);
                 }
@@ -1355,7 +1355,7 @@ fn paint_time_cursor(
         time_x = pointer_pos.x;
 
         ctx.send_time_commands([
-            TimeControlCommand::SetTime(new_time.into()),
+            TimeControlCommand::SetTimeClamped(new_time.into()),
             TimeControlCommand::Pause,
         ]);
     }
