@@ -14,6 +14,7 @@ use nohash_hasher::IntMap;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{StoreId, StoreKind};
+use re_ui::UiExt as _;
 
 use crate::RERUN_TABLE_BLUEPRINT;
 use re_viewer_context::{
@@ -48,6 +49,13 @@ pub fn decode_table_blueprint(metadata: &HashMap<String, String>) -> Option<Enti
     bundle
         .drain_entity_dbs()
         .find(|db| db.store_kind() == StoreKind::Blueprint)
+}
+
+// Only used to pass between logic.
+#[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
+pub(crate) enum PreviewRecording<'a> {
+    Resolved(&'a EntityDb),
+    Unresolved(re_uri::DatasetSegmentUri),
 }
 
 /// Renders views from a blueprint [`EntityDb`], independent of the main viewport.
@@ -127,7 +135,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
         app_ctx: &re_viewer_context::AppContext<'_>,
         ui: &mut egui::Ui,
         row_nr: u64,
-        recording: Option<&EntityDb>,
+        recording: Option<PreviewRecording<'_>>,
         view_states: &mut ViewStates,
     ) {
         if self.view_ids.is_empty() {
@@ -143,35 +151,57 @@ impl<'a> RecordingPreviewRenderer<'a> {
         // We do this so we see at least a view background until the recording is actually loaded.
         let owned_recording;
         let owned_caches;
-        let (recording, caches) = if let Some(rec) = recording {
-            // Use the store cache from the hub — it's created automatically when recordings are loaded.
-            let hub = app_ctx.storage_context;
-            let store_cache = hub.hub.store_caches(rec.store_id());
-            let Some(caches) = store_cache else {
-                // Recording just arrived or hasn't been seen by the hub yet. Try again later.
+        let (recording, caches) = match recording {
+            Some(PreviewRecording::Resolved(rec)) => {
+                // Use the store cache from the hub — it's created automatically when recordings are loaded.
+                let hub = app_ctx.storage_context;
+                let store_cache = hub.hub.store_caches(rec.store_id());
+                let Some(caches) = store_cache else {
+                    // Recording just arrived or hasn't been seen by the hub yet. Try again later.
+                    ui.request_repaint();
+                    return;
+                };
+
+                // Register this recording so the shared preview `TimeControl` knows about it
+                // and can advance its loop bounds based on the longest registered clip.
+                preview_state.register_recording(rec.store_id(), hub.bundle);
+
+                // Request redraw whenever a new preview is registered to start advancing time for it.
                 ui.request_repaint();
-                return;
-            };
 
-            // Register this recording so the shared preview `TimeControl` knows about it
-            // and can advance its loop bounds based on the longest registered clip.
-            preview_state.register_recording(rec.store_id(), hub.bundle);
+                (rec, caches)
+            }
+            Some(PreviewRecording::Unresolved(uri)) => {
+                if let Some(err) = app_ctx.connection_registry.error_for_uri(uri) {
+                    ui.centered_and_justified(|ui| {
+                        ui.error_label(err);
+                    });
+                    return;
+                } else {
+                    // We don't have a recording yet
+                    let recording_store_id = StoreId::new(
+                        StoreKind::Recording,
+                        "___preview_renderer___",
+                        "empty_placeholder",
+                    );
+                    owned_recording = EntityDb::new(recording_store_id);
+                    owned_caches = StoreCache::new(view_class_registry, &owned_recording);
 
-            // Request redraw whenever a new preview is registered to start advancing time for it.
-            ui.request_repaint();
+                    (&owned_recording, &owned_caches)
+                }
+            }
+            None => {
+                // We don't have a recording yet
+                let recording_store_id = StoreId::new(
+                    StoreKind::Recording,
+                    "___preview_renderer___",
+                    "empty_placeholder",
+                );
+                owned_recording = EntityDb::new(recording_store_id);
+                owned_caches = StoreCache::new(view_class_registry, &owned_recording);
 
-            (rec, caches)
-        } else {
-            // We don't have a recording yet
-            let recording_store_id = StoreId::new(
-                StoreKind::Recording,
-                "___preview_renderer___",
-                "empty_placeholder",
-            );
-            owned_recording = EntityDb::new(recording_store_id);
-            owned_caches = StoreCache::new(view_class_registry, &owned_recording);
-
-            (&owned_recording, &owned_caches)
+                (&owned_recording, &owned_caches)
+            }
         };
 
         let store_context = ActiveStoreContext {

@@ -768,7 +768,7 @@ impl AppState {
                             }
 
                             Route::Loading(source) => {
-                                let source = if let Ok(url) =
+                                let source_name = if let Ok(url) =
                                     ViewerOpenUrl::from_data_source(source)
                                 {
                                     Cow::Owned(ViewerOpenUrlDescription::from_url(&url).to_string())
@@ -776,7 +776,27 @@ impl AppState {
                                     // In practice this shouldn't happen.
                                     Cow::Borrowed("<unknown>")
                                 };
-                                ui.loading_screen("Loading data source:", &*source);
+
+                                if let Some(re_uri::RedapUri::DatasetData(uri)) = source.redap_uri()
+                                    && let Some(err) =
+                                        ctx.app_ctx.connection_registry.error_for_uri(uri)
+                                {
+                                    ui.center("loading error", |ui| {
+                                        ui.set_max_width(ui.available_width() * 0.75);
+                                        ui.vertical_centered(|ui| {
+                                            ui.error_label(format!(
+                                                "Failed to load {source_name}: {err}"
+                                            ));
+
+                                            if ui.button("Go Back").clicked() {
+                                                command_sender
+                                                    .send_system(SystemCommand::ResetRoute);
+                                            }
+                                        })
+                                    });
+                                } else {
+                                    ui.loading_screen("Loading data source:", &*source_name);
+                                }
                             }
 
                             Route::ChunkStoreBrowser { .. } | Route::Settings { .. } => {} // Handled above

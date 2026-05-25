@@ -2676,6 +2676,10 @@ impl App {
         while let Some((channel_source, msg)) = self.rx_log.try_recv() {
             re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
 
+            if let Some(re_uri::RedapUri::DatasetData(uri)) = channel_source.redap_uri() {
+                self.connection_registry.clear_uri_error(uri);
+            }
+
             let msg = match msg.payload {
                 re_log_channel::SmartMessagePayload::Msg(msg) => msg,
 
@@ -2691,6 +2695,10 @@ impl App {
                             "Data source has left unexpectedly: {err}, source: {}",
                             msg.source
                         );
+                        if let Some(re_uri::RedapUri::DatasetData(uri)) = channel_source.redap_uri()
+                        {
+                            self.connection_registry.set_uri_error(uri, err.to_string());
+                        }
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
                     }
@@ -4050,6 +4058,10 @@ impl eframe::App for App {
                     self.state.navigation.replace(Route::LocalRecording {
                         recording_id: store_id,
                     });
+                } else if let Some(re_uri::RedapUri::DatasetData(uri)) = source.redap_uri()
+                    && self.connection_registry.error_for_uri(uri).is_some()
+                {
+                    // Do nothing, the loading screen will show the error and a button to go back to start screen.
                 } else {
                     re_log::debug!("No recording found from loading source, resetting navigation");
                     self.state.navigation.reset();

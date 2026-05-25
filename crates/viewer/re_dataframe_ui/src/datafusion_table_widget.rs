@@ -26,6 +26,7 @@ use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
 use crate::grid_view::FlagChangeEvent;
 use crate::header_tooltip::column_header_tooltip_ui;
+use crate::preview_renderer::PreviewRecording;
 use crate::re_table::ReTable;
 use crate::re_table_utils::{ColumnConfig, TableConfig};
 use crate::table_blueprint::{
@@ -977,13 +978,14 @@ pub fn resolve_recording_for_row<'a>(
     display_record_batches: &[DisplayRecordBatch],
     row_idx: u64,
     already_requested_uris: &mut ahash::HashSet<re_uri::DatasetSegmentUri>,
-) -> Option<&'a re_entity_db::EntityDb> {
+) -> Option<PreviewRecording<'a>> {
     let uri_str = string_value_at(
         columns,
         display_record_batches,
         row_idx,
         segment_preview_column,
     )?;
+
     let uri = uri_str.parse::<re_uri::DatasetSegmentUri>().ok()?;
 
     if let Some(recording) = ctx.storage_context.hub.find_recording_by_uri(&uri) {
@@ -991,21 +993,23 @@ pub fn resolve_recording_for_row<'a>(
         // Without this, the recording sits in the hub with no active query pressure
         // and the chunk prioritizer never schedules it for download.
         ctx.storage_context.hub.mark_preview(recording.store_id());
-        return Some(recording);
+        return Some(PreviewRecording::Resolved(recording));
     }
+
+    let uri = uri.without_fragment();
 
     // Not loaded yet — request loading if we haven't already.
     if already_requested_uris.insert(uri.clone()) {
         ctx.command_sender
             .send_system(SystemCommand::LoadDataSource(
                 re_data_source::LogDataSource::RedapDatasetSegment {
-                    uri: uri.without_fragment(),
+                    uri: uri.clone(),
                     open_behavior: re_data_source::RecordingOpenBehavior::Background,
                 },
             ));
     }
 
-    None
+    Some(PreviewRecording::Unresolved(uri))
 }
 
 fn table_index_column_index(schema: &arrow::datatypes::Schema) -> Option<usize> {
