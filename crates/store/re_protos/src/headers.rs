@@ -32,41 +32,33 @@ pub const HTTP_HEADER_AUTHORIZATION: &str = "authorization";
 /// # use re_protos::headers::RerunHeadersInjectorExt as _;
 /// # use re_log_types::EntryName;
 /// let entry_name = EntryName::new("my_entry").unwrap();
-/// let mut req = tonic::Request::new(()).with_entry_name(entry_name).unwrap();
+/// let mut req = tonic::Request::new(()).with_entry_name(entry_name);
 /// ```
 pub trait RerunHeadersInjectorExt: Sized {
-    fn with_entry_id(self, entry_id: re_log_types::EntryId) -> tonic::Result<Self>;
+    fn with_entry_id(self, entry_id: re_log_types::EntryId) -> Self;
 
-    fn with_entry_name(self, entry_name: EntryName) -> tonic::Result<Self>;
+    fn with_entry_name(self, entry_name: EntryName) -> Self;
 
     fn with_metadata(self, md: &tonic::metadata::MetadataMap) -> Self;
 }
 
 impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
-    fn with_entry_id(mut self, entry_id: re_log_types::EntryId) -> tonic::Result<Self> {
-        const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_ID;
-
-        let entry_id = entry_id.to_string();
-        let entry_id = entry_id.parse().map_err(|err| {
-            tonic::Status::invalid_argument(format!(
-                "'{entry_id}' is not a valid value for '{HEADER}': {err:#}"
-            ))
-        })?;
-
-        self.metadata_mut().insert(HEADER, entry_id);
-
-        Ok(self)
+    fn with_entry_id(mut self, entry_id: re_log_types::EntryId) -> Self {
+        let value: tonic::metadata::AsciiMetadataValue = entry_id
+            .to_string()
+            .parse()
+            .expect("EntryId Display always yields valid ASCII metadata");
+        self.metadata_mut()
+            .insert(RERUN_HTTP_HEADER_ENTRY_ID, value);
+        self
     }
 
-    fn with_entry_name(mut self, entry_name: EntryName) -> tonic::Result<Self> {
-        const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_NAME;
-
-        let entry_name =
+    fn with_entry_name(mut self, entry_name: EntryName) -> Self {
+        let value =
             tonic::metadata::BinaryMetadataValue::from_bytes(entry_name.as_str().as_bytes());
-
-        self.metadata_mut().insert_bin(HEADER, entry_name);
-
-        Ok(self)
+        self.metadata_mut()
+            .insert_bin(RERUN_HTTP_HEADER_ENTRY_NAME, value);
+        self
     }
 
     fn with_metadata(mut self, md: &tonic::metadata::MetadataMap) -> Self {

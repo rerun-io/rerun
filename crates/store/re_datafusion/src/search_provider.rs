@@ -80,13 +80,7 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
         let mut stream = make_future_send(async move {
             let response = client
                 .inner()
-                .search_dataset(
-                    tonic::Request::new(request)
-                        .with_entry_id(dataset_id)
-                        .map_err(|err| {
-                            ApiError::tonic(err, "failed building /SearchDataset schema request")
-                        })?,
-                )
+                .search_dataset(tonic::Request::new(request).with_entry_id(dataset_id))
                 .await
                 .map_err(|err| ApiError::tonic(err, "/SearchDataset schema request failed"))?;
             Ok(re_redap_client::ApiResponseStream::from_tonic_response(
@@ -120,9 +114,7 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
     async fn send_streaming_request(
         &mut self,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
-        let request = tonic::Request::new(self.request.clone())
-            .with_entry_id(self.dataset_id)
-            .map_err(|err| ApiError::tonic(err, "failed building /SearchDataset request"))?;
+        let request = tonic::Request::new(self.request.clone()).with_entry_id(self.dataset_id);
 
         let mut client = self.client.clone();
 

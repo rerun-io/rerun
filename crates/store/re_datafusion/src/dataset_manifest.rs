@@ -72,8 +72,7 @@ impl GrpcStreamToTable for DatasetManifestProvider {
         let request = tonic::Request::new(ScanDatasetManifestRequest {
             columns: vec![], // all of them
         })
-        .with_entry_id(self.dataset_id)
-        .map_err(|err| ApiError::tonic(err, "failed building /ScanDatasetManifest request"))?;
+        .with_entry_id(self.dataset_id);
 
         let mut client = self.client.clone();
 

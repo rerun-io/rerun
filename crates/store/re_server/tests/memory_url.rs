@@ -76,8 +76,7 @@ async fn register_memory_url_cross_dataset() {
         data_sources: vec![memory_data_source.clone()],
         on_duplicate: Default::default(),
     })
-    .with_entry_name(entry_name("dataset_b"))
-    .unwrap();
+    .with_entry_name(entry_name("dataset_b"));
 
     let task_results = register_and_wait(&service, request).await;
     assert!(
@@ -122,8 +121,7 @@ async fn register_memory_url_cross_dataset() {
         data_sources: vec![memory_data_source],
         on_duplicate: Default::default(),
     })
-    .with_entry_name(entry_name("dataset_c"))
-    .unwrap();
+    .with_entry_name(entry_name("dataset_c"));
 
     let result = service.register_with_dataset(request).await;
     assert!(
@@ -160,8 +158,7 @@ async fn register_memory_url_not_found() {
         data_sources: vec![memory_data_source],
         on_duplicate: Default::default(),
     })
-    .with_entry_name(entry_name("dataset_nf"))
-    .unwrap();
+    .with_entry_name(entry_name("dataset_nf"));
 
     let result = service.register_with_dataset(request).await;
     assert!(
@@ -184,8 +181,7 @@ async fn scan_manifest(
     let responses: Vec<_> = service
         .scan_dataset_manifest(
             tonic::Request::new(ScanDatasetManifestRequest { columns: vec![] })
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()

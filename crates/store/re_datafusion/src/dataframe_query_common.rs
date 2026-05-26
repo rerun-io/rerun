@@ -216,11 +216,7 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
         let (schema, trace_id) = if let Some(schema) = arrow_schema {
             (schema, None)
         } else {
-            let request = tonic::Request::new(GetDatasetSchemaRequest {})
-                .with_entry_id(dataset_id)
-                .map_err(|err| {
-                    ApiError::internal_with_source(None, err, "attaching dataset entry_id header")
-                })?;
+            let request = tonic::Request::new(GetDatasetSchemaRequest {}).with_entry_id(dataset_id);
             let response = client
                 .get_dataset_schema(request)
                 .await
@@ -445,16 +441,8 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             for dataset_query in dataset_queries {
                 let query_start = Instant::now();
 
-                let request = tonic::Request::new(dataset_query.into())
-                    .with_entry_id(self.dataset_id)
-                    .map_err(|err| {
-                        ApiError::internal_with_source(
-                            None,
-                            err,
-                            "attaching dataset entry_id header",
-                        )
-                        .into_df_error()
-                    })?;
+                let request =
+                    tonic::Request::new(dataset_query.into()).with_entry_id(self.dataset_id);
                 let response = self
                     .client
                     .clone()

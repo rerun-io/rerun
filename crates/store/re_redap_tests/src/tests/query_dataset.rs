@@ -331,8 +331,7 @@ pub async fn query_dataset_has_uncompressed_sizes(service: impl RerunCloudServic
     let chunk_info: Vec<RecordBatch> = service
         .query_dataset(
             tonic::Request::new(QueryDatasetRequest::default().into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -408,9 +407,7 @@ pub async fn query_dataset_consistent_schema_across_timelines(service: impl Reru
 
     let responses: Vec<RecordBatch> = service
         .query_dataset(
-            tonic::Request::new(request.into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+            tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -463,8 +460,7 @@ async fn query_dataset_snapshot(
     let chunk_info = service
         .query_dataset(
             tonic::Request::new(query_dataset_request.into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()

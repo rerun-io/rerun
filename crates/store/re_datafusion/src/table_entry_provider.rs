@@ -21,6 +21,7 @@ use re_protos::cloud::v1alpha1::{
     EntryFilter, EntryKind, FindEntriesRequest, GetTableSchemaRequest, ScanTableRequest,
     ScanTableResponse,
 };
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{ApiError, ApiResult, ConnectionClient};
 use tokio::runtime::Handle;
 use tracing::instrument;
@@ -186,9 +187,11 @@ impl GrpcStreamToTable for TableEntryTableProvider {
 
     #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
-        let request = GetTableSchemaRequest {
-            table_id: Some(self.table_id().await?.into()),
-        };
+        let table_id = self.table_id().await?;
+        let request = tonic::Request::new(GetTableSchemaRequest {
+            table_id: Some(table_id.into()),
+        })
+        .with_entry_id(table_id);
 
         let mut client = self.client.clone();
 
@@ -227,9 +230,11 @@ impl GrpcStreamToTable for TableEntryTableProvider {
     async fn send_streaming_request(
         &mut self,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
-        let request = ScanTableRequest {
-            table_id: Some(self.table_id().await?.into()),
-        };
+        let table_id = self.table_id().await?;
+        let request = tonic::Request::new(ScanTableRequest {
+            table_id: Some(table_id.into()),
+        })
+        .with_entry_id(table_id);
 
         let mut client = self.client.clone();
 

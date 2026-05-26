@@ -592,11 +592,7 @@ impl PyDatasetEntryInternal {
                 .client()
                 .await?
                 .inner()
-                .create_index(
-                    tonic::Request::new(request)
-                        .with_entry_id(dataset_id)
-                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-                )
+                .create_index(tonic::Request::new(request).with_entry_id(dataset_id))
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -686,11 +682,7 @@ impl PyDatasetEntryInternal {
                 .client()
                 .await?
                 .inner()
-                .create_index(
-                    tonic::Request::new(request)
-                        .with_entry_id(dataset_id)
-                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-                )
+                .create_index(tonic::Request::new(request).with_entry_id(dataset_id))
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();
@@ -717,11 +709,7 @@ impl PyDatasetEntryInternal {
                 .client()
                 .await?
                 .inner()
-                .list_indexes(
-                    tonic::Request::new(request)
-                        .with_entry_id(dataset_id)
-                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-                )
+                .list_indexes(tonic::Request::new(request).with_entry_id(dataset_id))
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();
@@ -770,11 +758,7 @@ impl PyDatasetEntryInternal {
                 .client()
                 .await?
                 .inner()
-                .delete_indexes(
-                    tonic::Request::new(request)
-                        .with_entry_id(dataset_id)
-                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-                )
+                .delete_indexes(tonic::Request::new(request).with_entry_id(dataset_id))
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();

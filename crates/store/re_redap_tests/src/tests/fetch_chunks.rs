@@ -45,8 +45,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
     let chunk_info = service
         .query_dataset(
             tonic::Request::new(QueryDatasetRequest::default().into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -149,8 +148,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
                 }
                 .into(),
             )
-            .with_entry_name(entry_name(dataset_name_1))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name_1)),
         )
         .await
         .unwrap()
@@ -178,8 +176,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
                 }
                 .into(),
             )
-            .with_entry_name(entry_name(dataset_name_1))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name_1)),
         )
         .await
         .unwrap()

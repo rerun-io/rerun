@@ -607,11 +607,7 @@ impl ConnectionHandle {
                 .client()
                 .await?
                 .inner()
-                .query_dataset(
-                    tonic::Request::new(request.into())
-                        .with_entry_id(dataset_id)
-                        .map_err(to_py_err)?,
-                )
+                .query_dataset(tonic::Request::new(request.into()).with_entry_id(dataset_id))
                 .await
                 .map_err(to_py_err)?
                 .into_inner();

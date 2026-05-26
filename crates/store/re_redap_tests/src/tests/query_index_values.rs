@@ -124,8 +124,7 @@ async fn per_segment_chunk_id_set<T: RerunCloudService>(
     let stream = service
         .query_dataset(
             tonic::Request::new(request.into())
-                .with_entry_name(crate::tests::common::entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(crate::tests::common::entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -554,8 +553,7 @@ pub async fn query_dataset_per_segment_values_validation_rejected(service: impl 
     let result = service
         .query_dataset(
             tonic::Request::new(request)
-                .with_entry_name(crate::tests::common::entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(crate::tests::common::entry_name(dataset_name)),
         )
         .await;
 
@@ -659,8 +657,7 @@ pub async fn query_dataset_per_segment_values_with_chunk_ids_intersects(
     let response = service
         .query_dataset(
             tonic::Request::new(request_wire)
-                .with_entry_name(crate::tests::common::entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(crate::tests::common::entry_name(dataset_name)),
         )
         .await;
 

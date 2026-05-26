@@ -68,8 +68,7 @@ pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService
     let dataset_details: DatasetDetails = service
         .read_dataset_entry(
             tonic::Request::new(ReadDatasetEntryRequest {})
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -87,8 +86,7 @@ pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService
     let blueprint_dataset_name = service
         .read_dataset_entry(
             tonic::Request::new(ReadDatasetEntryRequest {})
-                .with_entry_id(dataset_details.blueprint_dataset.unwrap())
-                .unwrap(),
+                .with_entry_id(dataset_details.blueprint_dataset.unwrap()),
         )
         .await
         .unwrap()
@@ -417,9 +415,7 @@ pub async fn register_bad_file_uri_should_error(service: impl RerunCloudService)
 
         let result = service
             .register_with_dataset(
-                tonic::Request::new(request.into())
-                    .with_entry_name(entry_name(dataset_name))
-                    .unwrap(),
+                tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
             )
             .await;
 
@@ -443,8 +439,7 @@ pub async fn register_segment_bumps_timestamp(service: impl RerunCloudService) {
         service
             .read_dataset_entry(
                 tonic::Request::new(ReadDatasetEntryRequest {})
-                    .with_entry_name(entry_name(dataset_name))
-                    .unwrap(),
+                    .with_entry_name(entry_name(dataset_name)),
             )
             .await
             .unwrap()
@@ -545,9 +540,7 @@ pub async fn register_with_dataset_if_duplicate_behavior_error(service: impl Rer
 
     let result = service
         .register_with_dataset(
-            tonic::Request::new(request.into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+            tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
         )
         .await;
 
@@ -739,9 +732,7 @@ pub async fn register_intra_request_duplicates(service: impl RerunCloudService) 
 
         let result = service
             .register_with_dataset(
-                tonic::Request::new(request.into())
-                    .with_entry_name(entry_name(&dataset_name))
-                    .unwrap(),
+                tonic::Request::new(request.into()).with_entry_name(entry_name(&dataset_name)),
             )
             .await;
 
@@ -795,9 +786,7 @@ pub async fn register_empty_request(service: impl RerunCloudService) {
 
     let result = service
         .register_with_dataset(
-            tonic::Request::new(request.into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+            tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
         )
         .await;
 
@@ -846,9 +835,7 @@ pub async fn register_fully_skipped(service: impl RerunCloudService) {
 
     let result = service
         .register_with_dataset(
-            tonic::Request::new(request.into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+            tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
         )
         .await;
 
@@ -869,8 +856,7 @@ async fn scan_dataset_manifest(
             tonic::Request::new(ScanDatasetManifestRequest {
                 columns: vec![], // all of them
             })
-            .with_entry_name(entry_name(dataset_name))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1070,8 +1056,7 @@ pub async fn register_conflicting_schema_filters_segment_table(service: impl Rer
         data_sources: second_def.to_data_sources(),
         on_duplicate: IfDuplicateBehavior::Error as i32,
     })
-    .with_entry_name(entry_name(dataset_name))
-    .unwrap();
+    .with_entry_name(entry_name(dataset_name));
 
     // This registration should fail due to schema conflict
     let task_results = register_and_wait(&service, request).await;
@@ -1152,8 +1137,7 @@ pub async fn register_conflicting_schema_same_segment_filters_layer(
         data_sources: second_def.to_data_sources(),
         on_duplicate: IfDuplicateBehavior::Error as i32,
     })
-    .with_entry_name(entry_name(dataset_name))
-    .unwrap();
+    .with_entry_name(entry_name(dataset_name));
 
     // This registration should fail due to schema conflict
     let task_results = register_and_wait(&service, request).await;
@@ -1255,8 +1239,7 @@ async fn scan_segment_table(service: &impl RerunCloudService, dataset_name: &str
             tonic::Request::new(ScanSegmentTableRequest {
                 columns: vec![], // all of them
             })
-            .with_entry_name(entry_name(dataset_name))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1311,8 +1294,7 @@ async fn register_and_wait_for_task_result(
         data_sources: data_sources_def.to_data_sources(),
         on_duplicate: IfDuplicateBehavior::Error as i32,
     })
-    .with_entry_name(entry_name(dataset_name))
-    .unwrap();
+    .with_entry_name(entry_name(dataset_name));
 
     let resp = service
         .register_with_dataset(request)
@@ -1443,8 +1425,7 @@ async fn scan_segment_table_and_snapshot(
             tonic::Request::new(ScanSegmentTableRequest {
                 columns: vec![], // all of them
             })
-            .with_entry_name(entry_name(dataset_name))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1471,8 +1452,7 @@ async fn scan_segment_table_and_snapshot(
     let alleged_schema: Schema = service
         .get_segment_table_schema(
             tonic::Request::new(GetSegmentTableSchemaRequest {})
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1533,8 +1513,7 @@ async fn scan_dataset_manifest_and_snapshot(
             tonic::Request::new(ScanDatasetManifestRequest {
                 columns: vec![], // all of them
             })
-            .with_entry_name(entry_name(dataset_name))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1561,8 +1540,7 @@ async fn scan_dataset_manifest_and_snapshot(
     let alleged_schema: Schema = service
         .get_dataset_manifest_schema(
             tonic::Request::new(GetDatasetManifestSchemaRequest {})
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()

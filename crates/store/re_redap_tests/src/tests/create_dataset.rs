@@ -249,11 +249,7 @@ async fn dataset_details_from_id(
     entry_id: EntryId,
 ) -> tonic::Result<DatasetDetails> {
     service
-        .read_dataset_entry(
-            tonic::Request::new(ReadDatasetEntryRequest {})
-                .with_entry_id(entry_id)
-                .unwrap(),
-        )
+        .read_dataset_entry(tonic::Request::new(ReadDatasetEntryRequest {}).with_entry_id(entry_id))
         .await
         .map(|resp| {
             resp.into_inner()

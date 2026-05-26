@@ -849,6 +849,9 @@ message FetchChunksResponse {
 // --- Table Apis ---
 
 message GetTableSchemaRequest {
+  // Deprecated: use x-rerun-entry-id header instead.
+  // This field should be dropped once all servers are updated
+  // to 0.14.x or later.
   rerun.common.v1alpha1.EntryId table_id = 1;
 }
 
@@ -857,6 +860,9 @@ message GetTableSchemaResponse {
 }
 
 message ScanTableRequest {
+  // Deprecated: use x-rerun-entry-id header instead.
+  // This field should be dropped once all servers are updated
+  // to 0.14.x or later.
   rerun.common.v1alpha1.EntryId table_id = 1;
   // TODO(jleibs): support ScanParameters iff we can plumb them into Datafusion TableProvider
   // Otherwise, just wait for Arrow Flight
@@ -991,17 +997,26 @@ message FindEntriesResponse {
 }
 
 // DeleteDatasetEntry
-
+//
+// This endpoint requires the standard dataset headers.
 message DeleteEntryRequest {
+  // Deprecated: use x-rerun-entry-id header instead.
+  // This field should be dropped once all servers are updated
+  // to 0.14.x or later.
   rerun.common.v1alpha1.EntryId id = 1;
 }
 
 message DeleteEntryResponse {}
 
 // UpdateEntry
-
+//
+// This endpoint requires the standard dataset headers.
 message UpdateEntryRequest {
   // The entry to modify.
+  //
+  // Deprecated: use x-rerun-entry-id header instead.
+  // This field should be dropped once all servers are updated
+  // to 0.14.x or later.
   rerun.common.v1alpha1.EntryId id = 1;
 
   // The new values for updatable fields.
@@ -1070,9 +1085,14 @@ message ReadDatasetEntryResponse {
 }
 
 // UpdateDatasetEntry
-
+//
+// This endpoint requires the standard dataset headers.
 message UpdateDatasetEntryRequest {
   // The dataset to modify.
+  //
+  // Deprecated: use x-rerun-entry-id header instead.
+  // This field should be dropped once all servers are updated
+  // to 0.14.x or later.
   rerun.common.v1alpha1.EntryId id = 1;
 
   // The new values.
@@ -1108,8 +1128,12 @@ message RegisterTableResponse {
 }
 
 // ReadTableEntry
-
+//
+// This endpoint requires the standard dataset headers.
 message ReadTableEntryRequest {
+  // Deprecated: use x-rerun-entry-id header instead.
+  // This field should be dropped once all servers are updated
+  // to 0.14.x or later.
   rerun.common.v1alpha1.EntryId id = 1;
 }
 

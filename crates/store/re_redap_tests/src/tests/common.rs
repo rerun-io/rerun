@@ -101,8 +101,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
             on_duplicate: re_protos::common::v1alpha1::IfDuplicateBehavior::from(on_duplicate)
                 as i32,
         })
-        .with_entry_name(entry_name(dataset_name))
-        .expect("Failed to create a request");
+        .with_entry_name(entry_name(dataset_name));
 
         register_with_dataset_blocking(self, request).await;
     }
@@ -128,9 +127,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
             force: false,
         };
 
-        let request = tonic::Request::new(request.into())
-            .with_entry_name(entry_name(dataset_name))
-            .expect("Failed to create a request");
+        let request = tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name));
 
         use futures::TryStreamExt as _;
         let responses: Vec<_> = self

@@ -90,11 +90,7 @@ pub async fn write_table(service: impl RerunCloudService) {
         .collect_vec();
 
     service
-        .write_table(
-            make_streaming_request(append_batches)
-                .with_entry_id(entry.id)
-                .expect("Unable to set entry_id on write table"),
-        )
+        .write_table(make_streaming_request(append_batches).with_entry_id(entry.id))
         .await
         .expect("Failed to write table in append mode");
 
@@ -117,11 +113,7 @@ pub async fn write_table(service: impl RerunCloudService) {
         .collect_vec();
 
     service
-        .write_table(
-            make_streaming_request(overwrite_batches)
-                .with_entry_id(entry.id)
-                .expect("Unable to set entry_id on write table"),
-        )
+        .write_table(make_streaming_request(overwrite_batches).with_entry_id(entry.id))
         .await
         .expect("Failed to write table in overwrite");
 
@@ -148,11 +140,7 @@ pub async fn write_table(service: impl RerunCloudService) {
     }];
 
     service
-        .write_table(
-            make_streaming_request(replace_batches)
-                .with_entry_id(entry.id)
-                .expect("Unable to set entry_id on write table"),
-        )
+        .write_table(make_streaming_request(replace_batches).with_entry_id(entry.id))
         .await
         .expect("Failed to write table in replace mode");
 

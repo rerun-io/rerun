@@ -1099,6 +1099,9 @@ impl ::prost::Name for FetchChunksResponse {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetTableSchemaRequest {
+    /// Deprecated: use x-rerun-entry-id header instead.
+    /// This field should be dropped once all servers are updated
+    /// to 0.14.x or later.
     #[prost(message, optional, tag = "1")]
     pub table_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
@@ -1129,6 +1132,10 @@ impl ::prost::Name for GetTableSchemaResponse {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ScanTableRequest {
+    /// Deprecated: use x-rerun-entry-id header instead.
+    /// This field should be dropped once all servers are updated
+    /// to 0.14.x or later.
+    ///
     /// TODO(jleibs): support ScanParameters iff we can plumb them into Datafusion TableProvider
     /// Otherwise, just wait for Arrow Flight
     /// rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
@@ -1410,8 +1417,14 @@ impl ::prost::Name for FindEntriesResponse {
         "/rerun.cloud.v1alpha1.FindEntriesResponse".into()
     }
 }
+/// DeleteDatasetEntry
+///
+/// This endpoint requires the standard dataset headers.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteEntryRequest {
+    /// Deprecated: use x-rerun-entry-id header instead.
+    /// This field should be dropped once all servers are updated
+    /// to 0.14.x or later.
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
@@ -1437,9 +1450,16 @@ impl ::prost::Name for DeleteEntryResponse {
         "/rerun.cloud.v1alpha1.DeleteEntryResponse".into()
     }
 }
+/// UpdateEntry
+///
+/// This endpoint requires the standard dataset headers.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UpdateEntryRequest {
     /// The entry to modify.
+    ///
+    /// Deprecated: use x-rerun-entry-id header instead.
+    /// This field should be dropped once all servers are updated
+    /// to 0.14.x or later.
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The new values for updatable fields.
@@ -1582,9 +1602,16 @@ impl ::prost::Name for ReadDatasetEntryResponse {
         "/rerun.cloud.v1alpha1.ReadDatasetEntryResponse".into()
     }
 }
+/// UpdateDatasetEntry
+///
+/// This endpoint requires the standard dataset headers.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UpdateDatasetEntryRequest {
     /// The dataset to modify.
+    ///
+    /// Deprecated: use x-rerun-entry-id header instead.
+    /// This field should be dropped once all servers are updated
+    /// to 0.14.x or later.
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The new values.
@@ -1658,8 +1685,14 @@ impl ::prost::Name for RegisterTableResponse {
         "/rerun.cloud.v1alpha1.RegisterTableResponse".into()
     }
 }
+/// ReadTableEntry
+///
+/// This endpoint requires the standard dataset headers.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReadTableEntryRequest {
+    /// Deprecated: use x-rerun-entry-id header instead.
+    /// This field should be dropped once all servers are updated
+    /// to 0.14.x or later.
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
