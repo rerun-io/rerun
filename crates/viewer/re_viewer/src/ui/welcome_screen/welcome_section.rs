@@ -1,11 +1,11 @@
 use re_ui::DesignTokens;
 
 pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
-pub(super) const WELCOME_SCREEN_TITLE: &str = "Welcome to Rerun";
+pub(super) const WELCOME_SCREEN_TITLE: &str = "The data layer for physical AI";
 pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
-    "Log data with the Rerun SDK in C++, Python, or Rust",
-    "Visualize and explore live or recorded data",
-    "Configure the viewer interactively or through code",
+    "Log multi-rate, multimodal data with the Rerun SDK in C++, Python, or Rust",
+    "Visualize and explore live or recorded data across the pipeline",
+    "Query with dataframes or SQL, and stream directly to training",
 ];
 
 /// Show the welcome section.
