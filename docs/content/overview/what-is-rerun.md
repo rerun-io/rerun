@@ -1,11 +1,11 @@
 ---
-title: What is Rerun?
+title: The Data Layer for Physical AI
 order: 0
 ---
 
-Rerun is the Unified Data Layer for Physical AI that helps you build smarter robots.
+Rerun covers the whole journey from raw recordings to training, on a single unified data layer for multi-rate, multimodal robotics data.
 
-Rerun is comprised of **Rerun SDK**: an open source library and tools for logging, storing, querying, visualizing, and training on multi-rate, multimodal data; and
+It's comprised of **Rerun SDK**: an open source library and tools for logging, storing, querying, visualizing, and training on multi-rate, multimodal data; and
 **Rerun Hub**: a data catalog and backend for large scale storage, access, and streaming of robotics data from object storage.
 
 ## The problem
