@@ -10,6 +10,8 @@ mod settings_screen;
 
 // ----
 
+pub use rerun_menu::about_rerun_ui;
+
 pub(crate) use open_url_modal::OpenUrlModal;
 pub(crate) use settings_screen::settings_screen_ui;
 pub(crate) use share_modal::ShareModal;

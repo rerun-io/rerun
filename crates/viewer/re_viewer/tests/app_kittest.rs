@@ -67,6 +67,48 @@ async fn settings_screen() {
     }
 }
 
+/// Snapshots the "About Rerun" menu content with a fixed, realistic `BuildInfo`.
+#[test]
+fn about_rerun() {
+    let test_context = TestContext::new();
+
+    let build_info = re_build_info::BuildInfo {
+        crate_name: "rerun-cli".into(),
+        features: "default analytics map_view nasm".into(),
+        version: re_build_info::CrateVersion {
+            major: 0,
+            minor: 33,
+            patch: 0,
+            meta: None,
+        },
+        rustc_version: "1.84.0 (9fc6b4312 2025-01-07)".into(),
+        llvm_version: "19.1.5".into(),
+        git_hash: "abc1234deadbeefcafebabe00000000000000".into(),
+        git_branch: "main".into(),
+        is_in_rerun_workspace: true,
+        target_triple: "aarch64-apple-darwin".into(),
+        datetime: "2026-05-25T12:34:56Z".into(),
+        is_debug_build: false,
+    };
+
+    let harness = test_context
+        .setup_kittest_for_rendering_ui([460.0, 360.0])
+        .with_theme(egui::Theme::Light);
+
+    // let render_state = test_context.egui_render_state.lock().clone();
+    let render_state = None; // Otherwise we get different results on different platforms
+
+    let mut harness = harness.build_ui(|ui| {
+        re_ui::apply_style_and_install_loaders(ui.ctx());
+        egui::menu::menu_style(ui.style_mut()); // The about-dialog is in a menu
+        re_viewer::about_rerun_ui(ui, &build_info, render_state.as_ref());
+    });
+
+    harness.run();
+    harness.fit_contents();
+    harness.snapshot("about_rerun");
+}
+
 /// Opens the Rerun menu without an active recording and snapshots the app.
 /// Tests that certain recording-related entries are disabled (e.g. save or close recording).
 #[tokio::test]

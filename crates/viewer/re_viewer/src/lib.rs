@@ -72,6 +72,7 @@ pub use re_viewer_context::{
     command_channel,
 };
 pub use startup_options::{LoginOptions, StartupOptions};
+pub use ui::about_rerun_ui;
 pub(crate) use ui::memory_panel;
 
 pub mod external {

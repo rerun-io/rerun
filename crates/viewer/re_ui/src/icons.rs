@@ -116,7 +116,11 @@ macro_rules! icon_from_path {
     };
 }
 
+/// The monochrome `rerun` wordmark
 pub const RERUN_WORDMARK: Icon = icon_from_path!("../data/icons/rerun_wordmark.svg");
+
+/// The square and colorful `RE`
+pub const RERUN_LOGO: Icon = icon_from_path!("../data/icons/rerun_logo.png");
 
 pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
 
