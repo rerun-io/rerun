@@ -9523,6 +9523,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "bytemuck",
+ "clap",
  "console_error_panic_hook",
  "glam",
  "image",

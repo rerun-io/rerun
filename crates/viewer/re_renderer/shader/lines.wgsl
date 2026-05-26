@@ -355,9 +355,11 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
         coverage = step(0.5, coverage);
     }
 
-    if coverage < 0.001 {
-        discard;
-    }
+    // As per benchmarking performed on point_cloud.wgsl, this is likely a pessimization on tile based GPUs.
+    // (this has not been independently confirmed for the line rendering, but it's almost certainly the same here)
+    // if coverage < 0.001 {
+    //     discard;
+    // }
 
     // TODO(andreas): lighting setup
     var shading = 1.0;
