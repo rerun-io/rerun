@@ -293,6 +293,12 @@ pub struct DesignTokens {
     pub bg_fill_inverse_hover: Color32,
     pub text_inverse: Color32,
     pub icon_inverse: Color32,
+
+    /// Background of the small timeline scrubber shown under preview thumbnails.
+    pub preview_timeline_track_color: Color32,
+
+    /// Elapsed-time fill of the small timeline scrubber shown under preview thumbnails.
+    pub preview_timeline_progress_color: Color32,
 }
 
 impl DesignTokens {
@@ -500,6 +506,9 @@ impl DesignTokens {
             bg_fill_inverse_hover: get_color("bg_fill_inverse-hover"),
             text_inverse: get_color("text_inverse"),
             icon_inverse: get_color("icon_inverse"),
+
+            preview_timeline_track_color: get_color("preview_timeline_track_color"),
+            preview_timeline_progress_color: get_color("preview_timeline_progress_color"),
         })
     }
 

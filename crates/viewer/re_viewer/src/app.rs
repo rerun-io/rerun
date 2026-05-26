@@ -977,6 +977,27 @@ impl App {
             } => {
                 match store_id.kind() {
                     StoreKind::Recording => {
+                        let usage = store_hub.usage(&store_id);
+
+                        if usage.was_preview()
+                            && let Some(preview_state) = &mut self.state.view_states.preview_state
+                            && let Some(time_control) =
+                                preview_state.recording_time_control_mut(&store_id)
+                            && let Some(db) = store_hub.entity_db(&store_id)
+                        {
+                            let response = time_control.handle_time_commands(
+                                None::<&AppBlueprintCtx<'_>>,
+                                db,
+                                &time_commands,
+                            );
+
+                            if response.needs_repaint == NeedsRepaint::Yes {
+                                self.egui_ctx.request_repaint();
+                            }
+
+                            return;
+                        }
+
                         store_hub.load_blueprint_and_caches(&store_id, &self.view_class_registry); // Ensure caches and blueprints
                         let route = Route::LocalRecording {
                             recording_id: store_id.clone(),

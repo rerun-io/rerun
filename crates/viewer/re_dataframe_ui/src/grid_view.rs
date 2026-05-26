@@ -229,7 +229,14 @@ fn card_content_ui(
                     .layout(egui::Layout::left_to_right(egui::Align::Center)),
             );
 
-            renderer.show_preview(ctx.app_ctx, &mut child_ui, row_idx, recording, view_states);
+            renderer.show_preview(
+                ctx.app_ctx,
+                &mut child_ui,
+                row_idx,
+                card_hovered,
+                recording,
+                view_states,
+            );
         }
 
         ui.horizontal_wrapped(|ui| {

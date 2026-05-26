@@ -1305,10 +1305,14 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 &mut preview_state.requested_uris,
             );
 
+            let row_hovered = TableSelectionState::load(ui.ctx(), self.session_id).hovered_row
+                == Some(cell.row_nr);
+
             renderer.show_preview(
                 self.ctx.app_ctx,
                 ui,
                 cell.row_nr,
+                row_hovered,
                 recording,
                 self.view_states,
             );

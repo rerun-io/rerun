@@ -117,9 +117,8 @@ pub use self::store_view_context::StoreViewContext;
 pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};
 pub use self::time_control::{
-    MoveDirection, MoveSpeed, PreviewRecordingsDb, TIME_PANEL_PATH, TimeControl,
-    TimeControlCommand, TimeControlDb, TimeControlResponse, TimeControlUpdateParams, TimeView,
-    time_panel_blueprint_entity_path,
+    MoveDirection, MoveSpeed, TIME_PANEL_PATH, TimeControl, TimeControlCommand,
+    TimeControlResponse, TimeControlUpdateParams, TimeView, time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
     BufferAndFormatMatch, DatatypeMatch, IndicatedEntities, PerVisualizerInstruction,
@@ -164,6 +163,16 @@ pub use re_chunk_store::MissingChunkReporter;
 pub enum NeedsRepaint {
     Yes,
     No,
+}
+
+impl NeedsRepaint {
+    pub fn or(self, other: Self) -> Self {
+        if self == Self::Yes || other == Self::Yes {
+            Self::Yes
+        } else {
+            Self::No
+        }
+    }
 }
 
 // ---

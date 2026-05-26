@@ -1,10 +1,10 @@
 mod blueprint_ext;
 mod command;
-mod db;
 
 use std::collections::BTreeMap;
 
 use re_chunk::TimelineName;
+use re_entity_db::EntityDb;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeCell, TimeInt, TimeReal, TimeType,
     Timeline,
@@ -18,7 +18,6 @@ use blueprint_ext::TimeBlueprintExt as _;
 
 pub use blueprint_ext::{TIME_PANEL_PATH, time_panel_blueprint_entity_path};
 pub use command::{MoveDirection, MoveSpeed, TimeControlCommand};
-pub use db::{PreviewRecordingsDb, TimeControlDb};
 
 /// What [`TimeControl`] should do when data is buffering.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -330,7 +329,7 @@ impl TimeControl {
     /// only kick in if the user's blueprint hasn't already pinned the value.
     pub fn from_blueprint_with_fallback_play_state(
         blueprint_ctx: &impl BlueprintContext,
-        db: Option<&dyn TimeControlDb>,
+        db: Option<&EntityDb>,
         fallback_play_state: PlayState,
     ) -> Self {
         let mut this = Self::default();
@@ -347,7 +346,7 @@ impl TimeControl {
     pub fn update_from_blueprint(
         &mut self,
         blueprint_ctx: &impl BlueprintContext,
-        db: Option<&dyn TimeControlDb>,
+        db: Option<&EntityDb>,
     ) {
         if let Some(timeline) = blueprint_ctx.timeline() {
             if matches!(self.timeline, ActiveTimeline::Auto(_))
@@ -440,7 +439,7 @@ impl TimeControl {
     /// we've reached the end.
     pub fn update(
         &mut self,
-        db: &dyn TimeControlDb,
+        db: &EntityDb,
         params: &TimeControlUpdateParams,
         blueprint_ctx: Option<&impl BlueprintContext>,
     ) -> TimeControlResponse {
@@ -569,7 +568,7 @@ impl TimeControl {
         &mut self,
         response: TimeControlResponse,
         should_diff_state: bool,
-        db: &dyn TimeControlDb,
+        db: &EntityDb,
         old_timeline: Option<Timeline>,
         old_playing: bool,
         old_state: Option<TimeState>,
@@ -637,7 +636,7 @@ impl TimeControl {
     /// blueprint.
     pub fn set_play_state(
         &mut self,
-        db: Option<&dyn TimeControlDb>,
+        db: Option<&EntityDb>,
         play_state: PlayState,
         blueprint_ctx: Option<&impl BlueprintContext>,
     ) {
@@ -746,7 +745,7 @@ impl TimeControl {
     }
 
     /// Make sure the selected timeline is a valid one
-    fn select_valid_timeline(&mut self, db: &dyn TimeControlDb) {
+    fn select_valid_timeline(&mut self, db: &EntityDb) {
         let timelines = db.timelines();
 
         let reset_timeline = match &self.timeline {

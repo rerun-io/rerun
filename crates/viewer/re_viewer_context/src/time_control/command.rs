@@ -1,4 +1,5 @@
 use re_chunk::TimelineName;
+use re_entity_db::EntityDb;
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal, TimeType};
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 
@@ -6,7 +7,7 @@ use crate::NeedsRepaint;
 use crate::blueprint_helpers::BlueprintContext;
 
 use super::blueprint_ext::TimeBlueprintExt as _;
-use super::{TimeControl, TimeControlDb, TimeControlResponse, TimeState, TimeView};
+use super::{TimeControl, TimeControlResponse, TimeState, TimeView};
 
 /// Direction for time movement commands.
 #[derive(Debug, Clone, Copy)]
@@ -127,7 +128,7 @@ impl TimeControl {
     pub fn handle_time_commands(
         &mut self,
         blueprint_ctx: Option<&impl BlueprintContext>,
-        db: &dyn TimeControlDb,
+        db: &EntityDb,
         commands: &[TimeControlCommand],
     ) -> TimeControlResponse {
         let mut response = TimeControlResponse {
@@ -165,7 +166,7 @@ impl TimeControl {
     fn handle_time_command(
         &mut self,
         blueprint_ctx: Option<&impl BlueprintContext>,
-        db: &dyn TimeControlDb,
+        db: &EntityDb,
         command: &TimeControlCommand,
     ) -> NeedsRepaint {
         match command {
@@ -507,27 +508,19 @@ impl TimeControl {
         }
     }
 
-    fn step_time_back(
-        &mut self,
-        db: &dyn TimeControlDb,
-        blueprint_ctx: Option<&impl BlueprintContext>,
-    ) {
+    fn step_time_back(&mut self, db: &EntityDb, blueprint_ctx: Option<&impl BlueprintContext>) {
         re_tracing::profile_function!();
         self.pause(blueprint_ctx);
         self.step_time_back_no_pause(db);
     }
 
-    fn step_time_fwd(
-        &mut self,
-        db: &dyn TimeControlDb,
-        blueprint_ctx: Option<&impl BlueprintContext>,
-    ) {
+    fn step_time_fwd(&mut self, db: &EntityDb, blueprint_ctx: Option<&impl BlueprintContext>) {
         re_tracing::profile_function!();
         self.pause(blueprint_ctx);
         self.step_time_fwd_no_pause(db);
     }
 
-    fn step_time_back_no_pause(&mut self, db: &dyn TimeControlDb) {
+    fn step_time_back_no_pause(&mut self, db: &EntityDb) {
         if let Some(time) = self.time() {
             let timeline = self.timeline_name();
             let prev = db.prev_time_on_timeline(timeline, time.ceil());
@@ -564,7 +557,7 @@ impl TimeControl {
         }
     }
 
-    fn step_time_fwd_no_pause(&mut self, db: &dyn TimeControlDb) {
+    fn step_time_fwd_no_pause(&mut self, db: &EntityDb) {
         if let Some(time) = self.time() {
             let timeline = self.timeline_name();
             let next = db.next_time_on_timeline(timeline, time.floor());
@@ -604,7 +597,7 @@ impl TimeControl {
     /// Move time by arrow keys. Preserves play/pause state, but exits follow mode.
     fn move_time(
         &mut self,
-        db: &dyn TimeControlDb,
+        db: &EntityDb,
         blueprint_ctx: Option<&impl BlueprintContext>,
         direction: MoveDirection,
         speed: MoveSpeed,
@@ -641,7 +634,7 @@ impl TimeControl {
         }
     }
 
-    fn move_by_seconds_temporal(&mut self, db: &dyn TimeControlDb, seconds: f64) {
+    fn move_by_seconds_temporal(&mut self, db: &EntityDb, seconds: f64) {
         if let Some(time) = self.time() {
             let mut new_time = time + TimeReal::from_secs(seconds);
 
@@ -671,21 +664,13 @@ impl TimeControl {
     }
 
     /// If following, switch to playing. Otherwise keep the current play state.
-    fn exit_follow_mode(
-        &mut self,
-        db: &dyn TimeControlDb,
-        blueprint_ctx: Option<&impl BlueprintContext>,
-    ) {
+    fn exit_follow_mode(&mut self, db: &EntityDb, blueprint_ctx: Option<&impl BlueprintContext>) {
         if self.following {
             self.set_play_state(Some(db), PlayState::Playing, blueprint_ctx);
         }
     }
 
-    fn toggle_play_pause(
-        &mut self,
-        db: &dyn TimeControlDb,
-        blueprint_ctx: Option<&impl BlueprintContext>,
-    ) {
+    fn toggle_play_pause(&mut self, db: &EntityDb, blueprint_ctx: Option<&impl BlueprintContext>) {
         if self.playing {
             self.pause(blueprint_ctx);
         } else {

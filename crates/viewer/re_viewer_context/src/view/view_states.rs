@@ -6,14 +6,12 @@
 use ahash::HashMap;
 
 use re_byte_size::SizeBytes as _;
-use re_log_types::{StoreId, TimeReal};
+use re_log_types::StoreId;
 
-use crate::blueprint_helpers::AppBlueprintCtx;
-use crate::time_control::{PreviewRecordingsDb, TimeControlUpdateParams};
 use crate::view::system_execution_output::VisualizerViewReport;
 use crate::{
-    NeedsRepaint, SystemExecutionOutput, TimeControl, ViewClass, ViewId, ViewState,
-    VisualizerTypeReport,
+    AppBlueprintCtx, NeedsRepaint, SystemExecutionOutput, TimeControl, TimeControlUpdateParams,
+    ViewClass, ViewId, ViewState, VisualizerTypeReport,
 };
 
 /// Combined key of recording store id and view id.
@@ -22,19 +20,33 @@ use crate::{
 /// view state between them since it may contain recording-specific data.
 type ViewStateKey = (StoreId, ViewId);
 
+struct ActivePreview {
+    time_control: TimeControl,
+}
+
+impl re_byte_size::SizeBytes for ActivePreview {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { time_control } = self;
+
+        time_control.heap_size_bytes()
+    }
+}
+
+impl Default for ActivePreview {
+    fn default() -> Self {
+        Self {
+            time_control: TimeControl::preview_time_control(),
+        }
+    }
+}
+
 /// Shared playback state for all preview recordings shown in grid or table cards.
 ///
-/// All preview clips are synchronized on a single [`TimeControl`]. Its time cursor
-/// is a 0-based offset from the start of any recording. Per-recording positions are
-/// derived on the fly by adding `range.min` to this offset.
+/// All active previews have their own [`TimeControl`].
+#[derive(Default)]
 pub struct PreviewState {
-    /// Drives play, pause, loop, timeline, and cursor for all preview recordings.
-    ///
-    /// The time cursor is a 0-based offset, in raw timeline units, into all clips.
-    time_ctrl: TimeControl,
-
-    /// IDs of recordings currently registered as preview clips.
-    recording_ids: ahash::HashSet<StoreId>,
+    /// The previews that are currently active.
+    active_previews: ahash::HashMap<StoreId, ActivePreview>,
 
     /// URIs that have already been requested.
     pub requested_uris: ahash::HashSet<re_uri::DatasetSegmentUri>,
@@ -43,23 +55,11 @@ pub struct PreviewState {
 impl re_byte_size::SizeBytes for PreviewState {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
-            time_ctrl,
-            recording_ids,
+            active_previews,
             requested_uris,
         } = self;
-        time_ctrl.heap_size_bytes()
-            + recording_ids.heap_size_bytes()
-            + requested_uris.heap_size_bytes()
-    }
-}
 
-impl Default for PreviewState {
-    fn default() -> Self {
-        Self {
-            time_ctrl: TimeControl::preview_time_control(),
-            recording_ids: Default::default(),
-            requested_uris: Default::default(),
-        }
+        active_previews.heap_size_bytes() + requested_uris.heap_size_bytes()
     }
 }
 
@@ -72,7 +72,7 @@ impl PreviewState {
         store_id: &StoreId,
         store_bundle: &re_entity_db::StoreBundle,
     ) {
-        self.recording_ids.insert(store_id.clone());
+        self.active_previews.entry(store_id.clone()).or_default();
 
         if let Some(db) = store_bundle.get(store_id)
             && let Some(re_entity_db::LogSource::RedapGrpcStream { uri, .. }) = &db.data_source
@@ -85,67 +85,47 @@ impl PreviewState {
 
     /// Remove registrations for recordings that are no longer loaded.
     pub fn cleanup_recordings(&mut self, is_loaded: impl Fn(&StoreId) -> bool) {
-        self.recording_ids.retain(|id| is_loaded(id));
+        self.active_previews.retain(|id, _| is_loaded(id));
     }
 
-    /// Advance the shared playback clock for all registered preview recordings.
-    ///
-    /// `resolve` looks up an [`re_entity_db::EntityDb`] for a registered [`StoreId`],
-    /// returning [`None`] if the recording is no longer available.
     pub fn tick<'db>(
         &mut self,
         resolve: impl Fn(&StoreId) -> Option<&'db re_entity_db::EntityDb>,
         stable_dt: f32,
     ) -> NeedsRepaint {
-        if self.recording_ids.is_empty() {
-            return NeedsRepaint::No;
-        }
+        let mut needs_repaint = NeedsRepaint::No;
 
-        let recordings: Vec<&re_entity_db::EntityDb> =
-            self.recording_ids.iter().filter_map(resolve).collect();
+        #[expect(clippy::iter_over_hash_type)] // Fine here, we're updating each one individually.
+        for (id, active_preview) in &mut self.active_previews {
+            let Some(db) = resolve(id) else {
+                continue;
+            };
 
-        if recordings.is_empty() {
-            return NeedsRepaint::No;
-        }
-
-        let is_buffering = recordings.iter().any(|r| r.is_buffering());
-        let preview_db = PreviewRecordingsDb {
-            recordings: &recordings,
-        };
-
-        self.time_ctrl
-            .update(
-                &preview_db,
+            let res = active_preview.time_control.update(
+                db,
                 &TimeControlUpdateParams {
                     stable_dt,
                     more_data_is_streaming_in: false,
-                    is_buffering,
+                    is_buffering: db.is_buffering(),
                     should_diff_state: false,
                 },
                 None::<&AppBlueprintCtx<'_>>,
-            )
-            .needs_repaint
+            );
+
+            needs_repaint = needs_repaint.or(res.needs_repaint);
+        }
+
+        needs_repaint
     }
 
-    /// Derive an ephemeral [`TimeControl`] for one preview recording.
-    ///
-    /// Clones `time_ctrl` and maps the shared playback offset onto this
-    /// recording's own data range as `time = range.min + offset`, clamped to
-    /// `range.max`. If the recording has no data on the canonical timeline, the
-    /// clone is returned as-is.
-    pub fn derive_recording_time_ctrl(&self, recording: &re_entity_db::EntityDb) -> TimeControl {
-        let mut tc = self.time_ctrl.clone();
-        let canonical_tl = *self.time_ctrl.timeline_name();
-        let Some(range) = recording.time_range_for(&canonical_tl) else {
-            return tc;
-        };
-        let offset = self
-            .time_ctrl
-            .time()
-            .unwrap_or_else(|| TimeReal::from(0.0_f64));
-        let time = (TimeReal::from(range.min) + offset).min(TimeReal::from(range.max));
-        tc.set_time_cursor_ad_hoc(canonical_tl, time);
-        tc
+    pub fn recording_time_control(&self, store_id: &StoreId) -> Option<&TimeControl> {
+        self.active_previews.get(store_id).map(|p| &p.time_control)
+    }
+
+    pub fn recording_time_control_mut(&mut self, store_id: &StoreId) -> Option<&mut TimeControl> {
+        self.active_previews
+            .get_mut(store_id)
+            .map(|p| &mut p.time_control)
     }
 }
 
