@@ -62,11 +62,7 @@ You can also define and log your own custom archetypes and components completely
 
 In this example we extend the Rerun Points3D archetype with a custom confidence component and user-defined archetype.
 
-> [!WARNING]
-> Due to the component descriptor changes in `v0.24` it is currently not possible for custom data to be picked up by visualizers.
-> We are currently investigating approaches to bring that functionality back.
-
-However, your custom data will still show up in the dataframe view, as shown below.
+This is what it looks like in the in the dataframe view:
 
 snippet: tutorials/custom_data
 
@@ -77,3 +73,14 @@ snippet: tutorials/custom_data
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/1200w.png">
 </picture>
+
+
+## Creating/augmenting visualizations from custom data
+
+All components can be mapped to arbitrary slots of visualizers.
+For a general information on component mapping see [component mappings](../visualization/component-mappings.md),
+for the common case of plotting see [plot any scalar](../visualization/plot-any-scalar.md)
+
+> [!INFO]
+> Complex mappings e.g. from scalars to colors are not yet possible, but will be supported in future versions
+> by exposing more functionality from [Lenses](../../concepts/query-and-transform/lenses.md) directly in the Viewer.
