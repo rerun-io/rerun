@@ -307,8 +307,10 @@ pub struct ChunkIdSetPerTime {
     /// * For an `(entity, timeline)` index, that would be the first timestamp at which this [`Chunk`]
     ///   contains data for any component on this particular timeline (see [`re_chunk::TimeColumn::time_range`]).
     ///
-    /// This index includes virtual/offloaded chunks, and therefore is purely additive: garbage collection
-    /// will never remove values from this set.
+    /// This index keeps virtual/offloaded chunks around: shallow GC (which is what runs on root
+    /// chunks) never touches this map.
+    ///
+    /// Deep removal pulls the chunk id out of the inner set and drops the entry once it becomes empty.
     pub(crate) per_start_time: BTreeMap<TimeInt, ChunkIdSet>,
 
     /// *Both physical & virtual* [`ChunkId`]s organized by their _most specific_ end time.
@@ -321,8 +323,7 @@ pub struct ChunkIdSetPerTime {
     /// * For an `(entity, timeline)` index, that would be the last timestamp at which this [`Chunk`]
     ///   contains data for any component on this particular timeline (see [`re_chunk::TimeColumn::time_range`]).
     ///
-    /// This index includes virtual/offloaded chunks, and therefore is purely additive: garbage collection
-    /// will never remove values from this set.
+    /// See [`Self::per_start_time`] for how GC interacts with this map.
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 

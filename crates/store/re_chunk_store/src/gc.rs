@@ -1,3 +1,4 @@
+use std::collections::btree_map::Entry as BTreeMapEntry;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -565,18 +566,24 @@ impl ChunkStore {
                             // performance benefit, since we expect the chunks to have similar interval
                             // lengths on the happy path.
 
-                            if let Some(set) = temporal_chunk_ids_per_time
+                            if let BTreeMapEntry::Occupied(mut entry) = temporal_chunk_ids_per_time
                                 .per_start_time
-                                .get_mut(&time_range.min())
+                                .entry(time_range.min())
                             {
-                                set.remove(&chunk_id);
+                                entry.get_mut().remove(&chunk_id);
+                                if entry.get().is_empty() {
+                                    entry.remove();
+                                }
                                 was_removed = true;
                             }
-                            if let Some(set) = temporal_chunk_ids_per_time
+                            if let BTreeMapEntry::Occupied(mut entry) = temporal_chunk_ids_per_time
                                 .per_end_time
-                                .get_mut(&time_range.max())
+                                .entry(time_range.max())
                             {
-                                set.remove(&chunk_id);
+                                entry.get_mut().remove(&chunk_id);
+                                if entry.get().is_empty() {
+                                    entry.remove();
+                                }
                                 was_removed = true;
                             }
                         }
@@ -605,18 +612,24 @@ impl ChunkStore {
                         // performance benefit, since we expect the chunks to have similar interval
                         // lengths on the happy path.
 
-                        if let Some(set) = temporal_chunk_ids_per_time
+                        if let BTreeMapEntry::Occupied(mut entry) = temporal_chunk_ids_per_time
                             .per_start_time
-                            .get_mut(&time_range.min())
+                            .entry(time_range.min())
                         {
-                            set.remove(&chunk_id);
+                            entry.get_mut().remove(&chunk_id);
+                            if entry.get().is_empty() {
+                                entry.remove();
+                            }
                             was_removed = true;
                         }
-                        if let Some(set) = temporal_chunk_ids_per_time
+                        if let BTreeMapEntry::Occupied(mut entry) = temporal_chunk_ids_per_time
                             .per_end_time
-                            .get_mut(&time_range.max())
+                            .entry(time_range.max())
                         {
-                            set.remove(&chunk_id);
+                            entry.get_mut().remove(&chunk_id);
+                            if entry.get().is_empty() {
+                                entry.remove();
+                            }
                             was_removed = true;
                         }
                     }
