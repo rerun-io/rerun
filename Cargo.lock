@@ -9798,6 +9798,7 @@ dependencies = [
  "ahash",
  "egui",
  "re_chunk",
+ "re_context_menu",
  "re_entity_db",
  "re_log_types",
  "re_sdk_types",
