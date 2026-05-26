@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pyarrow as pa
 import pytest
+from rerun.experimental.dataloader import Field
 from rerun.experimental.dataloader._decoders import (
     VideoFrameDecoder,
     _avcc_to_annex_b,
@@ -15,6 +16,7 @@ from rerun.experimental.dataloader._decoders import (
     _is_av1_keyframe_packet,
     _unwrap_to_numpy,
 )
+from rerun.experimental.dataloader._utils import _field_index_range, _prior_keyframe
 
 
 @pytest.mark.parametrize(
@@ -305,3 +307,78 @@ def test_video_frame_decoder_has_keyframe_unknown_codec_trusts_decoder() -> None
     # Unknown codec: `_is_keyframe` returns None and `_has_keyframe` returns True so
     # failures surface from the decoder rather than being swallowed as cold-start.
     assert VideoFrameDecoder(codec="vp9")._has_keyframe([b"\x00"]) is True
+
+
+def test_video_frame_decoder_derives_keyframe_path() -> None:
+    decoder = VideoFrameDecoder(codec="h264")
+    assert decoder.prior_keyframe_path("/camera:VideoStream:sample") == "/camera:VideoStream:is_keyframe"
+    assert (
+        decoder.prior_keyframe_path("/robot/cam_left:VideoStream:sample") == "/robot/cam_left:VideoStream:is_keyframe"
+    )
+
+
+def test_video_frame_decoder_keyframe_path_no_separator() -> None:
+    # Defensive: a path with no `:` is non-canonical; return None rather than guessing.
+    assert VideoFrameDecoder(codec="h264").prior_keyframe_path("/just_an_entity") is None
+
+
+def test_field_index_range_window_beats_anchor_and_heuristic() -> None:
+    field = Field(path="/camera:VideoStream:sample", decode=VideoFrameDecoder(codec="h264"), window=(-3, 5))
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=10)
+    # Anchor and heuristic must lose to the explicit window.
+    assert _field_index_range(100, field, decoder, prior_keyframe=42) == (97, 105)
+
+
+def test_field_index_range_anchor_beats_heuristic_integer() -> None:
+    field = Field(path="/camera:VideoStream:sample", decode=VideoFrameDecoder(codec="h264"))
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=10)
+    assert _field_index_range(100, field, decoder, prior_keyframe=87) == (87, 100)
+
+
+def test_field_index_range_anchor_beats_heuristic_timestamp() -> None:
+    field = Field(path="/camera:VideoStream:sample", decode=VideoFrameDecoder(codec="h264"))
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=30, fps_estimate=30.0)
+    target = np.datetime64(1_000_000_000, "ns")
+    result = _field_index_range(target, field, decoder, prior_keyframe=500_000_000)
+    assert result is not None
+    lo, hi = result
+    assert lo == np.datetime64(500_000_000, "ns")
+    assert hi == target
+
+
+def test_field_index_range_falls_back_to_heuristic_when_anchor_missing() -> None:
+    # Simulates "no prior keyframe yet in this segment" — the prefetcher drops the
+    # entry and the field falls back to the decoder's heuristic context_range.
+    field = Field(path="/camera:VideoStream:sample", decode=VideoFrameDecoder(codec="h264"))
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=10)
+    assert _field_index_range(100, field, decoder, prior_keyframe=None) == (90, 100)
+
+
+def test_field_index_range_default_kwarg_is_none() -> None:
+    # Existing call sites that don't pass `prior_keyframe` keep the same behavior.
+    field = Field(path="/camera:VideoStream:sample", decode=VideoFrameDecoder(codec="h264"))
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=5)
+    assert _field_index_range(20, field, decoder) == (15, 20)
+
+
+def test_prior_keyframe_none_or_empty_returns_none() -> None:
+    assert _prior_keyframe(None, 100) is None
+    assert _prior_keyframe(np.array([], dtype=np.int64), 100) is None
+
+
+def test_prior_keyframe_target_before_first_returns_none() -> None:
+    assert _prior_keyframe(np.array([50, 100, 150], dtype=np.int64), 49) is None
+
+
+def test_prior_keyframe_target_equals_keyframe_returns_keyframe() -> None:
+    assert _prior_keyframe(np.array([50, 100, 150], dtype=np.int64), 100) == 100
+
+
+def test_prior_keyframe_target_between_returns_largest_leq() -> None:
+    kfs = np.array([50, 100, 150], dtype=np.int64)
+    assert _prior_keyframe(kfs, 99) == 50
+    assert _prior_keyframe(kfs, 149) == 100
+
+
+def test_prior_keyframe_target_after_last_returns_last() -> None:
+    assert _prior_keyframe(np.array([50, 100, 150], dtype=np.int64), 9999) == 150

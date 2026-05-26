@@ -63,6 +63,16 @@ class ColumnDecoder(ABC):
         del index_value
         return None
 
+    def prior_keyframe_path(self, field_path: str) -> str | None:
+        """
+        Sibling column whose non-null rows mark a re-entrant keyframe, or `None`.
+
+        Override on decoders that need the prefetch window anchored at the prior
+        keyframe (compressed video). Default returns `None`.
+        """
+        del field_path
+        return None
+
     def __repr__(self) -> str:
         return f"{type(self).__name__}()"
 
@@ -195,25 +205,30 @@ class VideoFrameDecoder(ColumnDecoder):
     """
     Compressed video random access via context-aware fetching.
 
-    `context_range(N)` asks the prefetcher to pull the previous
+    Anchors the decode window at the prior keyframe by consulting the sibling
+    `is_keyframe` component on the `VideoStream` archetype, derived from
+    `Field.path` (e.g. `/cam:VideoStream:sample` pairs with
+    `/cam:VideoStream:is_keyframe`). The marker is populated by the user or by
+    `LazyChunkStream.collect(optimize=…)`, and lives in dedicated chunks
+    separate from the video sample, so the lookup is cheap.
+
+    When the column is missing from the schema, or has no row at or before
+    the target, the decoder falls back to a fixed-size window: the previous
     `keyframe_interval` samples (counted directly for integer indices,
-    converted to `keyframe_interval / fps_estimate` seconds for
-    timestamp indices). `decode()` runs the codec over that window in
-    order and returns the final frame.
+    converted to `keyframe_interval / fps_estimate` seconds for timestamp
+    indices). `keyframe_interval` must be at least the actual GOP length, and
+    for timestamp indices `fps_estimate` must be close to the true frame rate.
 
-    `keyframe_interval` must be greater than or equal to the actual GOP
-    length, otherwise the window won't contain a keyframe and decode
-    will fail. For timestamp indices `fps_estimate` must also be close
-    to the true frame rate.
+    Samples may be raw H.264 AVC1/AVCC (length-prefixed NAL units) or Annex B;
+    the format is detected automatically per sample.
 
-    Samples may be raw H.264 AVC1/AVCC (length-prefixed NAL units) or
-    Annex B; the format is detected automatically per sample.
-
-    Returns `None` when the prefetched range contains no keyframe —
-    typically because the target precedes the entity's first frame in
-    a multi-modal segment, or because `keyframe_interval` under-estimates
-    the true GOP length. Consumers must filter these samples out in
-    their collate function before stacking.
+    Returns `None` when the resolved window contains no decodable keyframe:
+    the target precedes the entity's first frame in a multi-modal segment,
+    the fallback `keyframe_interval` under-estimates the true GOP length, or
+    the anchored row was user-logged `is_keyframe=true` on a sample that
+    isn't actually a codec keyframe (run optimize with `fix_keyframe=True` to
+    re-derive markers from the encoded samples). Consumers must filter these
+    out in their collate function before stacking.
     """
 
     def __init__(
@@ -230,6 +245,12 @@ class VideoFrameDecoder(ColumnDecoder):
 
     def __repr__(self) -> str:
         return f"VideoFrameDecoder(codec={self.codec!r})"
+
+    def prior_keyframe_path(self, field_path: str) -> str | None:
+        prefix, sep, _ = field_path.rpartition(":")
+        if not sep:
+            return None
+        return f"{prefix}:is_keyframe"
 
     def context_range(
         self,
