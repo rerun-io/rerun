@@ -28,7 +28,7 @@ impl re_byte_size::SizeBytes for Rgb8Histogram {
 }
 
 impl Rgb8Histogram {
-    /// Compute the per-channel histogram of an interleaved 8-bit `RGB` buffer.
+    /// Compute the per-channel histogram of an 8-bit `RGB` buffer.
     pub fn from_rgb8(rgb: &[u8]) -> Self {
         re_tracing::profile_function!();
 
@@ -56,7 +56,7 @@ pub struct ImageHistogramCache(HashMap<StoredBlobCacheKey, Arc<Rgb8Histogram>>);
 impl ImageHistogramCache {
     /// Get the histogram for the given 8-bit `RGB` image, computing and caching it on first access.
     ///
-    /// The caller is responsible for only passing in images whose buffer is interleaved 8-bit RGB.
+    /// The caller is responsible for only passing in 8-bit RGB images.
     pub fn entry(&mut self, image: &ImageInfo) -> Arc<Rgb8Histogram> {
         self.0
             .entry(image.buffer_content_hash)
