@@ -151,37 +151,28 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
 
             let runtime = crate::utils::get_tokio_runtime(); // telemetry must be init in a Tokio context
             runtime.block_on(async {
-                let enabled = args.enabled;
-                let telemetry = re_perf_telemetry::Telemetry::init(
+                // Wire a Python `ContextVar` reader as the session-id source for
+                // `re_perf_telemetry::current_rerun_session_id`. The crate itself
+                // doesn't know Python exists; we hand it a closure it can call.
+                let telemetry = re_perf_telemetry::Telemetry::init_with_session_id_reader(
                     args,
                     // NOTE: It's a static in this case, so it's never dropped anyhow.
                     re_perf_telemetry::TelemetryDropBehavior::Shutdown,
+                    || {
+                        pyo3::Python::attach(
+                            crate::tracing_session::current_rerun_session_id_from_contextvar,
+                        )
+                    },
                 )
                 // Perf telemetry is a developer tool, it's not compiled into final user builds.
                 .expect("could not start perf telemetry");
-                // Only flip the flag when telemetry actually wired up the OTel stack.
-                // `Telemetry::init` returns an inert `Self` when `TELEMETRY_ENABLED` is
-                // false, in which case `tracing_session()` cannot work either.
-                if enabled {
-                    TELEMETRY_ACTIVE.store(true, std::sync::atomic::Ordering::Release);
-                }
+                // `Telemetry::init` sets `re_perf_telemetry::is_telemetry_active()` on
+                // its own success path; the Python `_is_telemetry_active()` binding
+                // reads from there. Single source of truth.
                 parking_lot::Mutex::new(telemetry)
             })
         })
         .lock()
-}
-
-/// Tracks whether `init_perf_telemetry` has finished setting up the OTel pipeline.
-///
-/// Read by [`telemetry_active`] from the `tracing_session()` Python bridge to fail
-/// fast with a helpful error when telemetry is not active.
-#[cfg(feature = "perf_telemetry")]
-static TELEMETRY_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-/// Returns `true` if `init_perf_telemetry` ran successfully.
-#[cfg(feature = "perf_telemetry")]
-pub(crate) fn telemetry_active() -> bool {
-    TELEMETRY_ACTIVE.load(std::sync::atomic::Ordering::Acquire)
 }
 
 /// The python module is called "rerun_bindings".

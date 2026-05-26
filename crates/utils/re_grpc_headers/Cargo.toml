@@ -1,0 +1,23 @@
+[package]
+name = "re_grpc_headers"
+authors.workspace = true
+description = "Rerun gRPC header conventions: well-known header names, the `RerunVersionInterceptor`, and the tower `Layer` machinery that propagates them across requests and responses."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+
+[dependencies]
+http.workspace = true
+pin-project-lite.workspace = true
+tonic.workspace = true
+tower.workspace = true

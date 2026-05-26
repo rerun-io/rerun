@@ -85,6 +85,12 @@ impl ConnectionAnalytics {
         Self {
             inner: Arc::new(Inner {
                 origin,
+                // NOTE: client-side gzip is intentionally *not* enabled here. A new
+                // viewer SDK could otherwise send `grpc-encoding: gzip` to a Hub
+                // whose `OtelIngestService` predates `accept_compressed(Gzip)`,
+                // causing analytics events to be silently dropped with an
+                // `UNIMPLEMENTED` rejection. Re-enable once the deployed Hub
+                // version range is known to support gzip.
                 grpc: tonic::client::Grpc::new(client.service()),
             }),
         }
@@ -165,6 +171,18 @@ impl ConnectionAnalytics {
         // concurrent sends behind a single client's `&mut self` borrow.
         let mut grpc = self.inner.grpc.clone();
 
+        // `service.name` is the OTel resource attribute that identifies the
+        // sending service in the trace store (Grafana/Tempo etc.). We
+        // hard-code it to `"rerun-viewer"` here because this piggy-back is
+        // viewer-specific by construction — it ships `cloud_query_dataset`
+        // / `cloud_scan_table` spans from the viewer's query path,
+        // regardless of whatever `OTEL_SERVICE_NAME` the caller's process
+        // might have set for its own general tracing.
+        //
+        // The SDK-trace path in `re_perf_telemetry` (driven by
+        // `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=rerun://`) instead follows
+        // the OTel convention and uses whatever `OTEL_SERVICE_NAME` was
+        // set at init time (e.g. `rerun-py`, application-specific).
         let mut resource_attributes = vec![kv_string("service.name", "rerun-viewer")];
         if let Some(analytics) = re_analytics::Analytics::global_get() {
             resource_attributes.push(kv_string("analytics_id", &analytics.config().analytics_id));

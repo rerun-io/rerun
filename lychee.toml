@@ -75,6 +75,7 @@ exclude_path = [
   "crates/store/re_uri/src/redap_uri.rs", # Same as above.
   "crates/store/re_grpc_server/src/lib.rs", # Contains CORS tests with fake origin URLs
   "crates/utils/re_analytics/src/event.rs", # Contains test with malformed urls
+  "crates/utils/re_perf_telemetry/src/telemetry.rs", # Contains `parse_rerun_endpoint` docs/tests with fake `rerun://host…` URLs
   "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
   "docs/snippets/INDEX.md", # The snippet index is guaranteed should be correct by design.
   "scripts/lint.py", # Contains url-matching regexes that aren't actual urls

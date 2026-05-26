@@ -235,6 +235,7 @@ Update instructions:
 | re_crash_handler     | Detect panics and signals, logging them and optionally sending them to analytics.    |
 | re_error             | Helpers for handling errors.                                                         |
 | re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                     |
+| re_grpc_headers      | Rerun gRPC header conventions (`x-rerun-*` consts, version interceptor, tower layers). |
 | re_lenses            | A collection of lenses for mapping component data to Rerun semantic types.           |
 | re_lenses_core       | Core lens types and composable Arrow array transformations                           |
 | re_log               | Helpers for setting up and doing text logging in the Rerun crates.                   |
@@ -248,6 +249,7 @@ Update instructions:
 | re_rvl               | Codecs for depth compression including RVL and PNG.                                  |
 | re_span              | An integer range that always has a non-negative length                               |
 | re_string_interner   | Yet another string interning library                                                 |
+| re_test_mocks        | In-process server doubles (`MockOtlpCollector`, `MockPostHog`) for OTel/PostHog test capture. |
 | re_tracing           | Helpers for tracing/spans/flamegraphs and such.                                      |
 | re_tuid              | 128-bit Time-based Unique Identifier                                                 |
 | re_uri               | Parsing and constructing of Rerun URIs                                               |

@@ -41,7 +41,7 @@ nasm = ["re_video/nasm"]
 perf_telemetry = [
   "dep:re_perf_telemetry",
   "re_redap_client/perf_telemetry",
-  "re_perf_telemetry/pyo3",
+  "re_perf_telemetry/session_id_reader",
 ]
 
 ## Add support for the in-memory OSS server.
@@ -123,7 +123,7 @@ thiserror.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-re_perf_telemetry = { workspace = true, features = ["pyo3"], optional = true }
+re_perf_telemetry = { workspace = true, features = ["session_id_reader"], optional = true }
 
 
 [build-dependencies]

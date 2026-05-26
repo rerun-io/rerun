@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::Arc;
 
+#[cfg(feature = "perf_telemetry")]
+use crate::trace_context::extract_trace_context_from_contextvar;
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
@@ -10,8 +12,6 @@ use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::{QueryExpression, SparseFillStrategy, TimeInt, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPathFilter, ResolvedEntityPathFilter};
-#[cfg(feature = "perf_telemetry")]
-use re_perf_telemetry::extract_trace_context_from_contextvar;
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
 

@@ -8816,6 +8816,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_grpc_headers"
+version = "0.33.0-alpha.1+dev"
+dependencies = [
+ "http",
+ "pin-project-lite",
+ "tonic",
+ "tower",
+]
+
+[[package]]
 name = "re_grpc_server"
 version = "0.33.0-alpha.1+dev"
 dependencies = [
@@ -9192,7 +9202,10 @@ dependencies = [
  "opentelemetry_sdk",
  "parking_lot",
  "prometheus-client",
- "pyo3",
+ "rand 0.9.3",
+ "re_auth",
+ "re_grpc_headers",
+ "re_test_mocks",
  "serde",
  "serde_json",
  "tokio",
@@ -9224,7 +9237,6 @@ dependencies = [
  "jiff",
  "lz4_flex 0.13.0",
  "opentelemetry",
- "pin-project-lite",
  "prost",
  "prost-types",
  "pyo3",
@@ -9232,6 +9244,7 @@ dependencies = [
  "re_build_info",
  "re_byte_size",
  "re_chunk",
+ "re_grpc_headers",
  "re_log_types",
  "re_sorbet",
  "re_tracing",
@@ -9789,6 +9802,20 @@ dependencies = [
  "re_uri",
  "re_viewer_context",
  "wgpu",
+]
+
+[[package]]
+name = "re_test_mocks"
+version = "0.33.0-alpha.1+dev"
+dependencies = [
+ "axum",
+ "opentelemetry-proto",
+ "parking_lot",
+ "reqwest",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
+ "tonic",
 ]
 
 [[package]]

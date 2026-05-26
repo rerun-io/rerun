@@ -111,6 +111,7 @@ re_case = { path = "crates/utils/re_case", version = "=0.33.0-alpha.1", default-
 re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.33.0-alpha.1", default-features = false }
 re_error = { path = "crates/utils/re_error", version = "=0.33.0-alpha.1", default-features = false }
 re_format = { path = "crates/utils/re_format", version = "=0.33.0-alpha.1", default-features = false }
+re_grpc_headers = { path = "crates/utils/re_grpc_headers", version = "=0.33.0-alpha.1", default-features = false }
 re_log = { path = "crates/utils/re_log", version = "=0.33.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.33.0-alpha.1", default-features = false }
 re_mutex = { path = "crates/utils/re_mutex", version = "=0.33.0-alpha.1", default-features = false }
@@ -120,6 +121,7 @@ re_ros_msg = { path = "crates/utils/re_ros_msg", version = "=0.33.0-alpha.1", de
 re_rvl = { path = "crates/utils/re_rvl", version = "=0.33.0-alpha.1", default-features = false }
 re_span = { path = "crates/utils/re_span", version = "=0.33.0-alpha.1", default-features = false }
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.33.0-alpha.1", default-features = false }
+re_test_mocks = { path = "crates/utils/re_test_mocks", version = "=0.33.0-alpha.1", default-features = false }
 re_tracing = { path = "crates/utils/re_tracing", version = "=0.33.0-alpha.1", default-features = false }
 re_tuid = { path = "crates/utils/re_tuid", version = "=0.33.0-alpha.1", default-features = false }
 re_video = { path = "crates/utils/re_video", version = "=0.33.0-alpha.1", default-features = false }
