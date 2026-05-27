@@ -5,6 +5,7 @@
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod aggregation;
+mod caches;
 mod fallbacks;
 mod line_visualizer_system;
 mod markers;
