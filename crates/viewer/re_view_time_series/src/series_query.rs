@@ -79,7 +79,7 @@ pub fn determine_num_series_cached(
     if let Some(view_state) = view_state {
         let mut cache = view_state.num_series_cache.lock();
         // Bound cache growth (keys include query_result_hash, so can grow over time otherwise).
-        if cache.len() > 64 {
+        if cache.len() > 255 {
             cache.clear();
         }
         cache.insert(cache_key, num_series);
