@@ -46,40 +46,10 @@ The Catalog SDK (`rerun.catalog`) is a Python library for querying and manipulat
 
 ## How they connect
 
-```d2
-direction: down
-horizontal-gap: 0
-vertical-gap: 0
-
-Logging SDK
-
-".rrd files"
-
-Viewer: {
-  label.near: bottom-center
-
-  gRPC endpoint
-  Chunk Store
-  Renderer
-}
-
-Viewer.gRPC endpoint -> Viewer.Chunk Store
-Viewer.Chunk Store -> Viewer.Renderer
-
-Catalog server: {
-  label.near: bottom-center
-  Datasets
-}
-
-Catalog SDK
-
-Logging SDK -> Viewer.gRPC endpoint: stream
-Logging SDK -> ".rrd files": save
-".rrd files" -> Viewer.Chunk Store: load
-".rrd files" -> Catalog server: register
-Catalog server -> Viewer.Chunk Store: redap
-Catalog server -> Catalog SDK: redap
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/d28ca214a6a6e8386b76e6d9a841901a00051a83_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/5ed885f3c2319cad1fe6f6ba55b68ac88ce989d8_d2-light.svg" alt="">
+</div>
 
 
 ## What ships where?
@@ -136,10 +106,10 @@ See: the `web-viewer` package [reference](../reference/npm.md)
 
 The simplest workflow: stream data directly from your code to the Viewer for live visualization.
 
-```d2
-direction: right
-Logging SDK -> Viewer: stream
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/c5379695876baa96bbe0449d5f85d48e33756cf7_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/f90c1b537583a0fb7c3a860aa07aa355711d04de_d2-light.svg" alt="">
+</div>
 
 Minimal example:
 
@@ -153,11 +123,10 @@ Best for: development, debugging, real-time monitoring.
 
 Log data to `.rrd` files, then open them in the Viewer whenever needed. Files can be loaded from disk or URLs.
 
-```d2
-direction: right
-Logging SDK -> ".rrd": save
-".rrd" -> Viewer: load
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/f7a409bc10f2836d5e3e7b87720170a6e5bd4e46_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/7529efba5c4ebb304fb0c7732ded6d22a3921084_d2-light.svg" alt="">
+</div>
 
 Minimal example:
 
@@ -177,12 +146,10 @@ Best for: sharing recordings, offline analysis, archiving.
 
 Register `.rrd` files with a catalog server for persistent, indexed storage. Query and visualize on demand.
 
-```d2
-direction: right
-".rrd" -> Catalog server: register
-Catalog server -> Viewer: redap
-Catalog server -> Catalog SDK: redap
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/18348c4200f019117478a602f6413d2603e29cbb_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/0bc4ab0773cc2c68c5a0c4ee92620b819a12dea1_d2-light.svg" alt="">
+</div>
 
 Minimal example of creating a dataset and registering files:
 
@@ -203,12 +170,10 @@ Best for: large datasets, team collaboration, production pipelines.
 
 Use the Catalog SDK to query data from a catalog server, process it, and write results back. Visualization is available at any time.
 
-```d2
-direction: right
-Catalog server -> Catalog SDK: redap
-Catalog server <- Catalog SDK: redap
-Catalog server -> Viewer: redap
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/7c8a7ac0667fd6395b7715fe1e5732153774ba1f_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/2d2cb8f1eb42a30600ac2060c653f5a50f4c0f33_d2-light.svg" alt="">
+</div>
 
 Minimal example of querying a dataset:
 
