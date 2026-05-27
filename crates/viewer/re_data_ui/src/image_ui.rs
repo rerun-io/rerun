@@ -10,9 +10,10 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::gpu_bridge::{self, image_data_range_heuristic, image_to_gpu};
 use re_viewer_context::{
-    AppContext, ColormapWithRange, DownloadAction, ImageInfo, ImageStatsCache, StoreViewContext,
-    UiLayout,
+    AppContext, ColormapWithRange, DownloadAction, ImageHistogramCache, ImageInfo, ImageStatsCache,
+    Rgb8Histogram, StoreViewContext, UiLayout,
 };
+use std::sync::Arc;
 
 use crate::find_and_deserialize_archetype_mono_component;
 
@@ -279,30 +280,27 @@ fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
     }
 }
 
-fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
+fn rgb8_histogram_ui(
+    ctx: &StoreViewContext<'_>,
+    ui: &mut egui::Ui,
+    image: &ImageInfo,
+) -> egui::Response {
     use egui::Color32;
     use itertools::Itertools as _;
 
     re_tracing::profile_function!();
 
-    let mut histograms = [[0_u64; 256]; 3];
-    {
-        // TODO(emilk): this is slow, so cache the results!
-        re_tracing::profile_scope!("build");
-        for pixel in rgb.chunks_exact(3) {
-            for c in 0..3 {
-                histograms[c][pixel[c] as usize] += 1;
-            }
-        }
-    }
+    // Two stores looking at the same image blob will share a single cached histogram.
+    let histogram: Arc<Rgb8Histogram> = ctx.memoizer(|c: &mut ImageHistogramCache| c.entry(image));
 
     use egui_plot::{Bar, BarChart, Legend, Plot};
 
     let names = ["R", "G", "B"];
     let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
 
-    let charts = histograms
-        .into_iter()
+    let charts = histogram
+        .bins
+        .iter()
         .enumerate()
         .map(|(component, histogram)| {
             let fill = colors[component].linear_multiply(0.5);
@@ -310,9 +308,9 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
             BarChart::new(
                 "bar_chart",
                 histogram
-                    .into_iter()
+                    .iter()
                     .enumerate()
-                    .map(|(i, count)| {
+                    .map(|(i, &count)| {
                         Bar::new(i as _, count as _)
                             .width(1.0) // no gaps between bars
                             .fill(fill)
@@ -527,7 +525,7 @@ impl ImageUi {
             ui.section_collapsing_header("Histogram")
                 .default_open(false)
                 .show(ui, |ui| {
-                    rgb8_histogram_ui(ui, &image.buffer);
+                    rgb8_histogram_ui(ctx, ui, image);
                 });
         }
     }

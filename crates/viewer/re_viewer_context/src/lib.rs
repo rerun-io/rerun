@@ -72,8 +72,8 @@ pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
 };
 pub use self::cache::{
-    Cache, CacheEntryAccess, ImageDecodeCache, ImageStatsCache, Memoizers,
-    SharablePlayableVideoStream, StoreCache, TensorStatsAccessor, TensorStatsCache,
+    Cache, CacheEntryAccess, ImageDecodeCache, ImageHistogramCache, ImageStatsCache, Memoizers,
+    Rgb8Histogram, SharablePlayableVideoStream, StoreCache, TensorStatsAccessor, TensorStatsCache,
     TransformDatabaseStoreCache, VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
