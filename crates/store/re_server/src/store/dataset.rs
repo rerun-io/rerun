@@ -119,26 +119,27 @@ impl Dataset {
     /// Returns the segments from the given list of id.
     ///
     /// As per our proto conventions, all segments are returned if none is listed.
+    ///
+    /// Unknown segment IDs are silently skipped rather than treated as errors:
+    /// callers (notably `QueryDataset`) may receive segment IDs from a DataFusion
+    /// filter pushdown such as `WHERE rerun_segment_id = 'foo'`, where the value
+    /// is data, not a referent. Erroring on a mismatch would turn ordinary SQL
+    /// filters into hand-grenades. The same `segment_ids` field is also used by
+    /// explicit API paths (e.g. `filter_segments`, `using_index_values`), which
+    /// accept the same silent-ignore semantics in exchange for not paying a
+    /// round-trip to validate IDs client-side.
     pub fn segments_from_ids<'a>(
         &'a self,
         segment_ids: &'a [SegmentId],
-    ) -> Result<impl Iterator<Item = (&'a SegmentId, &'a Segment)>, Error> {
+    ) -> impl Iterator<Item = (&'a SegmentId, &'a Segment)> {
         if segment_ids.is_empty() {
-            Ok(Either::Left(self.inner.segments.iter()))
+            Either::Left(self.inner.segments.iter())
         } else {
-            // Validate that all segment IDs exist
-            for id in segment_ids {
-                if !self.inner.segments.contains_key(id) {
-                    return Err(Error::SegmentIdNotFound {
-                        segment_id: id.clone(),
-                        entry_id: self.id,
-                    });
-                }
-            }
-
-            Ok(Either::Right(segment_ids.iter().filter_map(|id| {
-                self.inner.segments.get(id).map(|segment| (id, segment))
-            })))
+            Either::Right(
+                segment_ids
+                    .iter()
+                    .filter_map(|id| self.inner.segments.get(id).map(|segment| (id, segment))),
+            )
         }
     }
 

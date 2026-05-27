@@ -184,7 +184,7 @@ impl RerunCloudHandler {
         let dataset = store.dataset(dataset_id)?;
 
         Ok(dataset
-            .segments_from_ids(segment_ids)?
+            .segments_from_ids(segment_ids)
             .flat_map(|(segment_id, segment)| {
                 segment.iter_layers().map(|(layer_name, layer)| {
                     (

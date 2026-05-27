@@ -71,6 +71,7 @@ define_redap_tests! {
     indexes::index_incremental,
     indexes::index_lifecycle,
     query_dataset::query_dataset_should_fail,
+    query_dataset::query_dataset_unknown_segment_id_returns_empty,
     query_dataset::query_dataset_consistent_schema_across_timelines,
     query_dataset::query_dataset_has_uncompressed_sizes,
     query_dataset::query_dataset_with_various_queries,
