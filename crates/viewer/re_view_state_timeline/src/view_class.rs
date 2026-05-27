@@ -382,7 +382,15 @@ impl ViewClass for StateTimelineView {
         {
             time_view = new_view;
         }
-        state.time_view = Some(time_view);
+
+        // Double click anywhere in the view to reset zoom.
+        // Doesn't reset global time cursor.
+        if response.double_clicked() {
+            state.time_view = None;
+            ui.request_repaint();
+        } else {
+            state.time_view = Some(time_view);
+        }
 
         // Handle selection: determine what's under the pointer (lane entity or view).
         let hover_pos = ui.input(|i| i.pointer.hover_pos());
