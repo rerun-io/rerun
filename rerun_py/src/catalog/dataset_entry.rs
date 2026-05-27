@@ -290,8 +290,6 @@ impl PyDatasetEntryInternal {
             origin: connection.origin().clone(),
             dataset_id: self_.entry_details.id.id,
             segment_id,
-
-            //TODO(ab): add support for this
             fragment: re_uri::Fragment {
                 selection: None,
                 when: timeline.map(|timeline| {

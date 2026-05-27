@@ -191,7 +191,7 @@ impl SegmentChunkManifest {
     /// Divergence is silent data loss if not surfaced: the chunk still
     /// inserts into the in-memory store, but because the manifest never
     /// gated the horizon on it, the row range filter
-    /// `(last_emitted, horizon]` excludes the chunk's rows entirely and
+    /// `(processed_through, horizon]` excludes the chunk's rows entirely and
     /// they never emit. See `ARCHITECTURE.md` §"Manifest/chunk
     /// divergence". Callers should `re_log::debug_panic!` +
     /// `re_log::error_once!` on a `false` return; the chunk is still
@@ -257,13 +257,9 @@ impl SegmentChunkManifest {
             // unconditionally.
             None => Some(TimeInt::MAX),
             // Otherwise the latest *safe* time is one tick before the
-            // earliest still-pending chunk's `time_min`. Saturating sub
-            // because `TimeInt` is i64-backed and `MIN - 1` would
-            // underflow.
-            Some(t) => {
-                let raw = t.as_i64().saturating_sub(1);
-                Some(TimeInt::saturated_temporal_i64(raw))
-            }
+            // earliest still-pending chunk's `time_min`. `TimeInt::dec`
+            // does the saturating subtract; `MIN - 1` clamps to `MIN`.
+            Some(t) => Some(t.dec()),
         }
     }
 
