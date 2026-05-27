@@ -20,7 +20,7 @@ use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{invalid_schema, missing_field};
-use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
+use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle, TraceId};
 
 use crate::catalog::table_entry::PyTableInsertModeInternal;
 use crate::catalog::to_py_err;
@@ -288,7 +288,7 @@ impl ConnectionHandle {
         recording_uris: Vec<String>,
         recording_layers: Vec<String>,
         on_duplicate: IfDuplicateBehavior,
-    ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+    ) -> PyResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
         let last_layer = recording_layers
             .last()
             .cloned()
@@ -363,7 +363,7 @@ impl ConnectionHandle {
         recordings_prefix: String,
         recordings_layer: String,
         on_duplicate: IfDuplicateBehavior,
-    ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+    ) -> PyResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
         let data_source = DataSource::new_rrd_layer_prefix(recordings_layer, recordings_prefix)
             .map_err(to_py_err)?;
         let data_sources = vec![data_source];
@@ -530,8 +530,13 @@ impl ConnectionHandle {
             }
 
             if !errors.is_empty() {
+                // Put the trace-id early, before the (potentially long) list of errors.
+                let trace_id_line = match trace_id {
+                    Some(trace_id) => format!("\nTask-completion query trace-id: {trace_id}"),
+                    None => String::new(),
+                };
                 let msg = format!(
-                    "all tasks completed, but the following errors occurred:\n{}",
+                    "All tasks completed, but the following errors occurred.{trace_id_line}\n\n{}",
                     errors.join("\n")
                 );
                 Err(PyValueError::new_err(msg))

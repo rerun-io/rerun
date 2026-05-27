@@ -346,7 +346,7 @@ impl PyDatasetEntryInternal {
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
         let _span = read_trace_context_from_python(py, "DatasetEntry.register").entered();
 
-        let results = connection.register_with_dataset(
+        let (request_trace_id, results) = connection.register_with_dataset(
             py,
             self_.entry_details.id,
             recording_uris,
@@ -357,6 +357,7 @@ impl PyDatasetEntryInternal {
         Ok(PyRegistrationHandleInternal::new(
             self_.client.clone_ref(py),
             results,
+            request_trace_id,
         ))
     }
 
@@ -443,7 +444,7 @@ impl PyDatasetEntryInternal {
         let connection = self_.client.borrow(py).connection().clone();
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
 
-        let results = connection.register_with_dataset_prefix(
+        let (request_trace_id, results) = connection.register_with_dataset_prefix(
             py,
             self_.entry_details.id,
             recordings_prefix,
@@ -454,6 +455,7 @@ impl PyDatasetEntryInternal {
         Ok(PyRegistrationHandleInternal::new(
             self_.client.clone_ref(py),
             results,
+            request_trace_id,
         ))
     }
 

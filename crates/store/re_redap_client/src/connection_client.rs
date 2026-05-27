@@ -36,7 +36,7 @@ use tonic::IntoStreamingRequest as _;
 use tonic::codegen::{Body, StdError};
 use url::Url;
 
-use crate::{ApiError, ApiResponseStream, ApiResult, extract_trace_id};
+use crate::{ApiError, ApiResponseStream, ApiResult, TraceId, extract_trace_id};
 
 /// Extension trait for [`tonic::Response`] that extracts both the inner value
 /// and the server's trace-id in one step.
@@ -926,7 +926,7 @@ where
         dataset_id: EntryId,
         data_sources: Vec<DataSource>,
         on_duplicate: IfDuplicateBehavior,
-    ) -> ApiResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+    ) -> ApiResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
         let req = tonic::Request::new(RegisterWithDatasetRequest {
             data_sources,
             on_duplicate,
@@ -1017,7 +1017,7 @@ where
         let storage_url_column = get_string_array(RegisterWithDatasetResponse::FIELD_STORAGE_URL)?;
         let task_id_column = get_string_array(RegisterWithDatasetResponse::FIELD_TASK_ID)?;
 
-        itertools::izip!(
+        let descriptors = itertools::izip!(
             segment_id_column,
             segment_type_column,
             storage_url_column,
@@ -1067,7 +1067,9 @@ where
                 },
             })
         })
-        .collect()
+        .try_collect()?;
+
+        Ok((trace_id, descriptors))
     }
 
     /// Unregisters segments and layers from the dataset.

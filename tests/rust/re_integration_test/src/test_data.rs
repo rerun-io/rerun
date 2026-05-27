@@ -78,6 +78,7 @@ pub async fn load_test_data_with_name(
             IfDuplicateBehavior::Error,
         )
         .await?
+        .1
         .into_iter()
         .next()
         .expect("We created this with one segment");
