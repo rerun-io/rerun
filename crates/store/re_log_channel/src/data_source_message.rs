@@ -95,7 +95,28 @@ pub enum DataSourceUiCommand {
         ///
         /// If none is provided, the entire viewer is screenshotted.
         view_id: Option<String>,
+
+        /// Optional completion signal, sent once the screenshot has been written (or failed).
+        ///
+        /// This is not a oneshot so it can be cloned.
+        on_done: Option<futures::channel::mpsc::UnboundedSender<Result<(), SaveScreenshotError>>>,
     },
+}
+
+/// Why a [`DataSourceUiCommand::SaveScreenshot`] did not produce a file.
+#[derive(thiserror::Error, Debug)]
+pub enum SaveScreenshotError {
+    /// The requested view id could not be parsed as a UUID.
+    #[error("Failed to parse view id {view_id:?}, expected a UUID")]
+    InvalidViewId { view_id: String },
+
+    /// The captured pixel data could not be turned into an image.
+    #[error("Failed to create image from screenshot data")]
+    InvalidImageData,
+
+    /// Writing the screenshot to disk failed.
+    #[error("Failed to save screenshot to {path}: {reason}")]
+    SaveToPathFailed { path: String, reason: String },
 }
 
 impl re_byte_size::SizeBytes for DataSourceUiCommand {
@@ -104,9 +125,11 @@ impl re_byte_size::SizeBytes for DataSourceUiCommand {
             Self::SetUrlFragment { store_id, fragment } => {
                 store_id.heap_size_bytes() + fragment.heap_size_bytes()
             }
-            Self::SaveScreenshot { file_path, view_id } => {
-                file_path.capacity() as u64 + view_id.heap_size_bytes()
-            }
+            Self::SaveScreenshot {
+                file_path,
+                view_id,
+                on_done: _,
+            } => file_path.capacity() as u64 + view_id.heap_size_bytes(),
         }
     }
 }

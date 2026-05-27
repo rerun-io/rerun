@@ -11,7 +11,7 @@ mod receiver;
 mod receiver_set;
 mod sender;
 
-pub use self::data_source_message::{DataSourceMessage, DataSourceUiCommand};
+pub use self::data_source_message::{DataSourceMessage, DataSourceUiCommand, SaveScreenshotError};
 pub use self::receiver::LogReceiver;
 pub use self::receiver_set::LogReceiverSet;
 pub use self::sender::LogSender;

@@ -8831,6 +8831,7 @@ version = "0.33.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "async-stream",
+ "futures",
  "itertools 0.14.0",
  "parking_lot",
  "re_byte_size",
@@ -8990,6 +8991,7 @@ version = "0.33.0-alpha.1+dev"
 dependencies = [
  "camino",
  "crossbeam",
+ "futures",
  "parking_lot",
  "re_byte_size",
  "re_log_encoding",
@@ -10424,6 +10426,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "bytemuck",
+ "camino",
  "cfg-if",
  "crossbeam",
  "eframe",
@@ -10433,6 +10436,7 @@ dependencies = [
  "egui_plot",
  "ehttp",
  "emath",
+ "futures",
  "glam",
  "image",
  "insta",

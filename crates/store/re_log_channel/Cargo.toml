@@ -28,6 +28,7 @@ re_uri.workspace = true
 
 camino.workspace = true
 crossbeam.workspace = true
+futures.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 thiserror.workspace = true

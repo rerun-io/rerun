@@ -126,6 +126,7 @@ ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 bytemuck.workspace = true
+camino.workspace = true
 cfg-if.workspace = true
 crossbeam.workspace = true
 eframe = { workspace = true, default-features = false, features = [
@@ -138,6 +139,7 @@ egui-wgpu.workspace = true
 egui.workspace = true
 ehttp.workspace = true
 emath.workspace = true
+futures.workspace = true
 glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true

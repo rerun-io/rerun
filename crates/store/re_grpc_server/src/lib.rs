@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 
 use re_byte_size::SizeBytes;
-use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
+use re_log_channel::{DataSourceMessage, DataSourceUiCommand, SaveScreenshotError};
 use re_log_encoding::{ToApplication as _, ToTransport as _};
 use re_log_types::TableMsg;
 use re_protos::common::v1alpha1::{
@@ -1144,13 +1144,28 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
         request: tonic::Request<SaveScreenshotRequest>,
     ) -> tonic::Result<tonic::Response<SaveScreenshotResponse>> {
         let SaveScreenshotRequest { view_id, file_path } = request.into_inner();
+        let (done_tx, mut done_rx) =
+            futures::channel::mpsc::unbounded::<Result<(), SaveScreenshotError>>();
         self.push_message(DataSourceUiCommand::SaveScreenshot {
             file_path: file_path.into(),
             view_id,
+            on_done: Some(done_tx),
         })
         .await;
 
-        Ok(tonic::Response::new(SaveScreenshotResponse {}))
+        match done_rx.next().await {
+            Some(Ok(())) => Ok(tonic::Response::new(SaveScreenshotResponse {})),
+            Some(Err(err @ SaveScreenshotError::InvalidViewId { .. })) => {
+                Err(tonic::Status::invalid_argument(err.to_string()))
+            }
+            Some(Err(
+                err @ (SaveScreenshotError::InvalidImageData
+                | SaveScreenshotError::SaveToPathFailed { .. }),
+            )) => Err(tonic::Status::internal(err.to_string())),
+            None => Err(tonic::Status::internal(
+                "Screenshot completion signal was dropped before the screenshot was taken",
+            )),
+        }
     }
 }
 

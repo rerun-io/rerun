@@ -16,7 +16,7 @@ use re_entity_db::entity_db::EntityDb;
 use re_log::debug_assert;
 use re_log_channel::{
     DataSourceMessage, DataSourceUiCommand, LogReceiver, LogReceiverSet, LogSource,
-    RecordingOpenBehavior,
+    RecordingOpenBehavior, SaveScreenshotError,
 };
 use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
 use re_redap_client::ConnectionRegistryHandle;
@@ -79,6 +79,12 @@ pub struct App {
     pub(crate) egui_ctx: egui::Context,
     screenshotter: crate::screenshotter::Screenshotter,
     texture_readback: crate::texture_readback::TextureReadbacks,
+
+    /// Notifiers waiting for a file-path screenshot to finish writing.
+    pending_screenshot_notifiers: std::collections::HashMap<
+        camino::Utf8PathBuf,
+        futures::channel::mpsc::UnboundedSender<Result<(), SaveScreenshotError>>,
+    >,
 
     #[cfg(target_arch = "wasm32")]
     pub(crate) popstate_listener: Option<crate::web_history::PopstateListener>,
@@ -423,6 +429,7 @@ impl App {
             egui_ctx: creation_context.egui_ctx.clone(),
             screenshotter,
             texture_readback: Default::default(),
+            pending_screenshot_notifiers: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
             popstate_listener: None,
@@ -3058,7 +3065,7 @@ impl App {
     }
 
     fn receive_data_source_ui_command(
-        &self,
+        &mut self,
         ui_command: DataSourceUiCommand,
         channel_source: &LogSource,
     ) {
@@ -3079,7 +3086,11 @@ impl App {
                 }
             }
 
-            DataSourceUiCommand::SaveScreenshot { file_path, view_id } => {
+            DataSourceUiCommand::SaveScreenshot {
+                file_path,
+                view_id,
+                on_done,
+            } => {
                 let view_id = if let Some(view_id) = view_id {
                     if let Ok(view_id) = uuid::Uuid::parse_str(&view_id) {
                         Some(view_id.into())
@@ -3087,11 +3098,21 @@ impl App {
                         re_log::error!(
                             "Failed to parse view id from {view_id:?}. Expected a UUID."
                         );
+                        if let Some(on_done) = on_done {
+                            on_done
+                                .unbounded_send(Err(SaveScreenshotError::InvalidViewId { view_id }))
+                                .ok();
+                        }
                         return;
                     }
                 } else {
                     None
                 };
+
+                if let Some(on_done) = on_done {
+                    self.pending_screenshot_notifiers
+                        .insert(file_path.clone(), on_done);
+                }
 
                 self.command_sender
                     .send_system(SystemCommand::SaveScreenshot {
@@ -3505,12 +3526,18 @@ impl App {
                     #[cfg(not(target_arch = "wasm32"))]
                     {
                         let rgba = rgba.clone();
+                        let notifier = self.pending_screenshot_notifiers.remove(&file_path);
                         let Some(rgba_image) = image::RgbaImage::from_vec(
                             rgba.width() as _,
                             rgba.height() as _,
                             bytemuck::pod_collect_to_vec(&rgba.pixels),
                         ) else {
                             re_log::error!("Failed to create image from screenshot data");
+                            if let Some(notifier) = notifier {
+                                notifier
+                                    .unbounded_send(Err(SaveScreenshotError::InvalidImageData))
+                                    .ok();
+                            }
                             return;
                         };
 
@@ -3518,15 +3545,24 @@ impl App {
                         // (There's nothing interesting in the alpha channel anyways.)
                         let rgb_image = image::DynamicImage::ImageRgba8(rgba_image).to_rgb8();
 
-                        match rgb_image.save(&file_path) {
+                        let result = match rgb_image.save(&file_path) {
                             Ok(()) => {
                                 re_log::info!("Saved screenshot to {file_path:?}");
+                                Ok(())
                             }
                             Err(err) => {
                                 re_log::error!(?file_path, "Failed to save screenshot: {err}");
                                 // Image library has the bad habit of creating the file even when it fails e.g. due to unsupported format. Remove it again.
                                 std::fs::remove_file(&file_path).ok();
+                                Err(SaveScreenshotError::SaveToPathFailed {
+                                    path: file_path.to_string(),
+                                    reason: err.to_string(),
+                                })
                             }
+                        };
+
+                        if let Some(notifier) = notifier {
+                            notifier.unbounded_send(result).ok();
                         }
                     }
                     #[cfg(target_arch = "wasm32")]
