@@ -39,4 +39,3 @@ snippet: views/text_log
 ## Visualized archetypes
 
 * [`TextLog`](../archetypes/text_log.md)
-

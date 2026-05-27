@@ -27,6 +27,7 @@ from .dvec2d import DVec2D, DVec2DArrayLike, DVec2DBatch, DVec2DLike
 from .entity_path import EntityPath, EntityPathArrayLike, EntityPathBatch, EntityPathLike
 from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like
 from .float64 import Float64, Float64ArrayLike, Float64Batch, Float64Like
+from .i_vec3d import IVec3D, IVec3DArrayLike, IVec3DBatch, IVec3DLike
 from .image_format import ImageFormat, ImageFormatArrayLike, ImageFormatBatch, ImageFormatLike
 from .keypoint_id import KeypointId, KeypointIdArrayLike, KeypointIdBatch, KeypointIdLike
 from .keypoint_pair import KeypointPair, KeypointPairArrayLike, KeypointPairBatch, KeypointPairLike
@@ -143,6 +144,10 @@ __all__ = [
     "Float64ArrayLike",
     "Float64Batch",
     "Float64Like",
+    "IVec3D",
+    "IVec3DArrayLike",
+    "IVec3DBatch",
+    "IVec3DLike",
     "ImageFormat",
     "ImageFormatArrayLike",
     "ImageFormatBatch",

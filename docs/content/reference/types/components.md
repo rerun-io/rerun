@@ -93,4 +93,5 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 * [`Visible`](components/visible.md): Whether the container, view, entity or instance is currently visible.
-
+* [`VoxelIndex`](components/voxel_index.md): Integer index of a voxel in a sparse 3D voxel grid.
+* [`VoxelValue`](components/voxel_value.md): Optional scalar occupancy or value associated with a voxel.

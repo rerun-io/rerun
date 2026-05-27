@@ -117,6 +117,8 @@ from .video_sample import VideoSample, VideoSampleBatch
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch
 from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch
 from .visible import Visible, VisibleBatch
+from .voxel_index import VoxelIndex, VoxelIndexBatch
+from .voxel_value import VoxelValue, VoxelValueBatch
 
 __all__ = [
     "AggregationPolicy",
@@ -311,4 +313,8 @@ __all__ = [
     "ViewCoordinatesBatch",
     "Visible",
     "VisibleBatch",
+    "VoxelIndex",
+    "VoxelIndexBatch",
+    "VoxelValue",
+    "VoxelValueBatch",
 ]

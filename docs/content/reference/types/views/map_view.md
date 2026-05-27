@@ -35,4 +35,3 @@ snippet: views/map
 
 * [`GeoLineStrings`](../archetypes/geo_line_strings.md)
 * [`GeoPoints`](../archetypes/geo_points.md)
-

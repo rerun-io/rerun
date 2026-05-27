@@ -47,4 +47,3 @@ snippet: archetypes/encoded_depth_image
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/1200w.png">
   <img src="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/full.png">
 </picture>
-

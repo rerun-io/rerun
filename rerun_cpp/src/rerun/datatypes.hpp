@@ -17,6 +17,7 @@
 #include "datatypes/entity_path.hpp"
 #include "datatypes/float32.hpp"
 #include "datatypes/float64.hpp"
+#include "datatypes/i_vec3d.hpp"
 #include "datatypes/image_format.hpp"
 #include "datatypes/keypoint_id.hpp"
 #include "datatypes/keypoint_pair.hpp"

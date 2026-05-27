@@ -45,4 +45,3 @@ snippet: views/tensor
 ## Visualized archetypes
 
 * [`Tensor`](../archetypes/tensor.md)
-

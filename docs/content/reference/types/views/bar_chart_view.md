@@ -41,4 +41,3 @@ snippet: views/bar_chart
 
 * [`BarChart`](../archetypes/bar_chart.md)
 * [`Tensor`](../archetypes/tensor.md) (for 1D tensors)
-

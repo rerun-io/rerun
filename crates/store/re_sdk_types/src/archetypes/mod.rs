@@ -74,6 +74,7 @@ mod video_frame_reference;
 mod video_stream;
 mod view_coordinates;
 mod view_coordinates_ext;
+mod voxel_grid_map;
 
 pub use self::annotation_context::AnnotationContext;
 pub use self::arrows2d::Arrows2D;
@@ -123,3 +124,4 @@ pub use self::transform3d::Transform3D;
 pub use self::video_frame_reference::VideoFrameReference;
 pub use self::video_stream::VideoStream;
 pub use self::view_coordinates::ViewCoordinates;
+pub use self::voxel_grid_map::VoxelGridMap;

@@ -36,4 +36,3 @@ See also [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archet
 ### Simple MCAP schema
 
 snippet: archetypes/mcap_schema_simple
-

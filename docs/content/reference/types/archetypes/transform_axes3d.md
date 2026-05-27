@@ -35,4 +35,3 @@ snippet: archetypes/transform3d_axes
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_axes/574c482088e9d317b19127fc8bef957dbfd3abe8/1200w.png">
   <img src="https://static.rerun.io/transform3d_axes/574c482088e9d317b19127fc8bef957dbfd3abe8/full.png">
 </picture>
-

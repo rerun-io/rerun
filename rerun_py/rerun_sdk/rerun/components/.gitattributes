@@ -82,3 +82,5 @@ video_sample.py linguist-generated=true
 video_timestamp.py linguist-generated=true
 view_coordinates.py linguist-generated=true
 visible.py linguist-generated=true
+voxel_index.py linguist-generated=true
+voxel_value.py linguist-generated=true

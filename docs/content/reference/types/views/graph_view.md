@@ -65,4 +65,3 @@ snippet: views/graph
 
 * [`GraphEdges`](../archetypes/graph_edges.md)
 * [`GraphNodes`](../archetypes/graph_nodes.md)
-

@@ -99,3 +99,5 @@ video_stream.cpp linguist-generated=true
 video_stream.hpp linguist-generated=true
 view_coordinates.cpp linguist-generated=true
 view_coordinates.hpp linguist-generated=true
+voxel_grid_map.cpp linguist-generated=true
+voxel_grid_map.hpp linguist-generated=true

@@ -41,4 +41,3 @@ The underlying data needs to be logged to the same entity path using [`archetype
 ### State changes with a custom style
 
 snippet: archetypes/state_configuration
-

@@ -46,4 +46,3 @@ snippet: archetypes/transform3d_hierarchy_frames
 <picture data-inline-viewer="snippets/archetypes/transform3d_hierarchy_frames">
   <img src="https://static.rerun.io/transform_hierarchy_frames/9ffb0079828f46c22e22ca55737b8a903889b412/full.png">
 </picture>
-

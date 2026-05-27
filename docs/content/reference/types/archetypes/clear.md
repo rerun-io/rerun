@@ -48,4 +48,3 @@ snippet: archetypes/clear_simple
 ### Recursive
 
 snippet: archetypes/clear_recursive
-

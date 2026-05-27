@@ -213,6 +213,11 @@ impl Ord for BatchKey {
 }
 
 impl MeshDrawData {
+    #[inline]
+    pub const fn gpu_instance_size_bytes() -> usize {
+        std::mem::size_of::<gpu_data::InstanceData>()
+    }
+
     /// Transforms and uploads mesh instance data to be consumed by gpu.
     ///
     /// Tries bundling all mesh instances into a single draw data instance whenever possible.

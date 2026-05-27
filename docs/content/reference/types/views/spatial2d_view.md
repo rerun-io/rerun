@@ -73,4 +73,3 @@ snippet: views/spatial2d
 * [`Mesh3D`](../archetypes/mesh3d.md) (if logged above active projection)
 * [`Points3D`](../archetypes/points3d.md) (if logged above active projection)
 * [`Transform3D`](../archetypes/transform3d.md) (if logged above active projection)
-

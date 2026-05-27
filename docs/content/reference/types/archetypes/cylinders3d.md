@@ -52,4 +52,3 @@ snippet: archetypes/cylinders3d_batch
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1200w.png">
   <img src="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/full.png">
 </picture>
-
