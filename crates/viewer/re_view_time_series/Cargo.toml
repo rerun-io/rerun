@@ -43,7 +43,6 @@ glam.workspace = true
 macaw.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
-parking_lot.workspace = true
 rayon.workspace = true
 smallvec.workspace = true
 vec1.workspace = true

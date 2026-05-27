@@ -10,22 +10,22 @@ use re_log_types::external::arrow::datatypes::UInt32Type;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, archetypes, components};
 use re_view::clamped_or_nothing;
-use re_viewer_context::{ViewQuery, VisualizerReportSeverity};
+use re_viewer_context::{ViewContext, ViewQuery, VisualizerReportSeverity};
 
-use crate::view_class::{NumSeriesCacheKey, TimeSeriesViewState};
+use crate::caches::{NumSeriesCache, NumSeriesCacheKey};
 use crate::{MAX_NUM_SERIES_FOR_REMAPPED_SCALARS, PlotPoint, PlotSeriesKind};
 
 type PlotPointsPerSeries = smallvec::SmallVec<[Vec<PlotPoint>; 1]>;
 
-/// Determines how many series there are in the scalar chunks.
+/// Determines how many series there are in the scalar chunks, using the recording's [`NumSeriesCache`].
 ///
 /// If the scalar component has a non-identity mapping (i.e. it's sourced from a different
 /// component or uses a selector), the number of series is capped at
 /// [`MAX_NUM_SERIES_FOR_REMAPPED_SCALARS`].
 /// Identity mappings (direct `Scalars` data) are not capped since the user explicitly
 /// logged that data.
-pub fn determine_num_series_cached(
-    view_state: Option<&TimeSeriesViewState>,
+pub fn determine_num_series(
+    ctx: &ViewContext<'_>,
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     results: &re_view::VisualizerInstructionQueryResults<'_>,
 ) -> usize {
@@ -44,13 +44,20 @@ pub fn determine_num_series_cached(
         limits_enabled,
     };
 
-    if let Some(view_state) = view_state
-        && let Some(&num_series) = view_state.num_series_cache.lock().get(&cache_key)
-    {
-        return num_series;
-    }
+    ctx.viewer_ctx
+        .store_context
+        .memoizer(|cache: &mut NumSeriesCache| {
+            cache.get_or_compute(cache_key, || {
+                count_series_in_scalar_chunks(all_scalar_chunks, cache_key, results)
+            })
+        })
+}
 
-    // Cache miss: compute from chunks.
+fn count_series_in_scalar_chunks(
+    all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
+    cache_key: NumSeriesCacheKey,
+    results: &re_view::VisualizerInstructionQueryResults<'_>,
+) -> usize {
     let count = all_scalar_chunks
         .iter()
         .find_map(|chunk| {
@@ -60,32 +67,23 @@ pub fn determine_num_series_cached(
         })
         .unwrap_or(1);
 
-    let num_series =
-        if !is_identity_mapping && limits_enabled && count > MAX_NUM_SERIES_FOR_REMAPPED_SCALARS {
-            results.report_unspecified_source(
-                VisualizerReportSeverity::Error,
-                format!(
-                    "Too many series ({}), capping to {}. \
-             This limit can be lifted in Settings.",
-                    re_format::format_uint(count),
-                    re_format::format_uint(MAX_NUM_SERIES_FOR_REMAPPED_SCALARS),
-                ),
-            );
-            MAX_NUM_SERIES_FOR_REMAPPED_SCALARS
-        } else {
-            count
-        };
-
-    if let Some(view_state) = view_state {
-        let mut cache = view_state.num_series_cache.lock();
-        // Bound cache growth (keys include query_result_hash, so can grow over time otherwise).
-        if cache.len() > 255 {
-            cache.clear();
-        }
-        cache.insert(cache_key, num_series);
+    if !cache_key.is_identity_mapping
+        && cache_key.limits_enabled
+        && count > MAX_NUM_SERIES_FOR_REMAPPED_SCALARS
+    {
+        results.report_unspecified_source(
+            VisualizerReportSeverity::Error,
+            format!(
+                "Too many series ({}), capping to {}. \
+                 This limit can be lifted in Settings.",
+                re_format::format_uint(count),
+                re_format::format_uint(MAX_NUM_SERIES_FOR_REMAPPED_SCALARS),
+            ),
+        );
+        MAX_NUM_SERIES_FOR_REMAPPED_SCALARS
+    } else {
+        count
     }
-
-    num_series
 }
 
 /// Queries the visibility flags for all series in a query.

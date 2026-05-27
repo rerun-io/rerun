@@ -15,7 +15,7 @@ use re_viewer_context::{
 
 use crate::series_query::{
     allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars, collect_series_name,
-    collect_series_visibility, determine_num_series_cached,
+    collect_series_visibility, determine_num_series,
 };
 use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, util};
 
@@ -444,11 +444,7 @@ impl SeriesLinesSystem {
             },
         };
 
-        let view_state = ctx
-            .view_state
-            .as_any()
-            .downcast_ref::<crate::view_class::TimeSeriesViewState>();
-        let num_series = determine_num_series_cached(view_state, all_scalar_chunks, &results);
+        let num_series = determine_num_series(ctx, all_scalar_chunks, &results);
         let mut points_per_series =
             allocate_plot_points(&query, &default_point, all_scalar_chunks, num_series);
 
