@@ -1,19 +1,21 @@
 use nohash_hasher::IntMap;
-use re_chunk_store::AbsoluteTimeRange;
 use re_chunk_store::external::arrow::datatypes::DataType;
+use re_chunk_store::{AbsoluteTimeRange, RowId};
 use re_log_types::TimeInt;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::ArrowString;
 use re_sdk_types::archetypes::{StateChange, StateConfiguration};
 use re_sdk_types::components::Text;
-use re_view::ComponentCastRule;
+use re_view::{ComponentCastRule, collect_recursive_clears};
 use re_viewer_context::{
     AppOptions, IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem,
 };
 
-use crate::data::{StateLane, StateLanePhase, StateLanesData, StateValueKind};
+use crate::data::{
+    StateLane, StateLanePhase, StateLanePhaseContent, StateLanesData, StateValueKind,
+};
 
 /// Maps each accepted source physical type to a type that the visualizer can handle.
 static COMPONENT_CAST_MAP: std::sync::LazyLock<std::collections::BTreeMap<DataType, DataType>> =
@@ -290,8 +292,7 @@ impl VisualizerSystem for StateVisualizer {
             let state_config = resolve_state_config(&results);
 
             // Dispatch on the post-cast element type. A null state is a fallthrough, not a
-            // phase change: the preceding phase must continue across it. Empty slices represent
-            // null entries and are skipped by the per-row filters inside the dispatch.
+            // phase change: the preceding phase must continue across it.
             let element_types = state_chunk_element_types(&all_values);
             if element_types.len() > 1 {
                 let kinds_list = element_types
@@ -312,8 +313,13 @@ impl VisualizerSystem for StateVisualizer {
             let Some(element_type) = element_types.into_iter().next() else {
                 continue;
             };
+
+            // `Clear` archetypes logged on this entity (or on an ancestor with
+            // `is_recursive = true`) end the current state regardless of value type.
+            let clear_events = collect_recursive_clears(ctx, &query, &data_result.entity_path);
+
             let Some((value_kind, lane_phases)) =
-                lane_phases_for(&all_values, &element_type, &state_config)
+                lane_phases_for(&all_values, &element_type, clear_events, &state_config)
             else {
                 continue;
             };
@@ -350,9 +356,7 @@ impl VisualizerSystem for StateVisualizer {
 
 /// Format a typed state value into its lane label string.
 ///
-/// One impl per type the polymorphic state cast can produce. Equality (used for the merge
-/// step) is tested on the typed value itself, so this is only invoked once per *surviving*
-/// merged phase.
+/// One impl per type the polymorphic state cast can produce.
 trait StateLabel {
     fn to_lane_label(&self) -> String;
 }
@@ -384,108 +388,149 @@ impl StateLabel for bool {
     }
 }
 
-/// Flatten typed rows into a list of phases.
-fn lane_phases_from_rows<T, ChunkIter, RowValues>(
+/// Format a typed iterator of rows into `(time, RowId, Some(label))` events.
+fn collect_typed_events<T, ChunkIter, RowValues>(
     rows: ChunkIter,
-    state_config: &[(String, StateStyle)],
-) -> Vec<StateLanePhase>
+) -> Vec<(i64, RowId, Option<String>)>
 where
-    T: PartialEq + StateLabel,
-    ChunkIter: IntoIterator<Item = (TimeInt, RowValues)>,
+    T: StateLabel,
+    ChunkIter: IntoIterator<Item = (TimeInt, RowId, RowValues)>,
     RowValues: IntoIterator<Item = T>,
 {
-    let mut phases: Vec<(i64, T)> = Vec::new();
-    for (data_time, row_values) in rows {
-        let t = data_time.as_i64();
-        for value in row_values {
-            if let Some(last) = phases.last_mut()
-                && last.0 == t
-            {
-                last.1 = value;
-            } else {
-                phases.push((t, value));
-            }
-        }
-    }
-    phases.sort_by_key(|(t, _)| *t);
-    // `dedup_by(|a, b| ...)` keeps the first of each consecutive run, removing later
-    // duplicates — which is exactly the "first phase wins" merge we want.
-    phases.dedup_by(|a, b| a.1 == b.1);
-    phases
-        .into_iter()
-        .map(|(t, v)| build_lane_phase(t, &v.to_lane_label(), state_config))
+    rows.into_iter()
+        .flat_map(|(data_time, row_id, row_values)| {
+            let t = data_time.as_i64();
+            row_values
+                .into_iter()
+                .map(move |v| (t, row_id, Some(v.to_lane_label())))
+        })
         .collect()
 }
 
-/// Look up a formatted phase value in the user-authored `StateConfiguration` and build the
-/// corresponding [`StateLanePhase`]. Falls back to a hash-derived color and the raw label when
-/// no config entry matches.
-fn build_lane_phase(
-    start_time: i64,
-    formatted: &str,
+/// Merge typed value events with `Clear`-derived gap events into a deduplicated phase list.
+///
+/// Dedup rules:
+/// - Same time: later row id wins (last logged event in this time bucket).
+/// - Consecutive identical `Some(label)`s collapse to one.
+/// - Consecutive `None`s (gaps) collapse to one.
+/// - Leading `None`s (no preceding state) are dropped.
+fn build_lane_phases(
+    value_events: Vec<(i64, RowId, Option<String>)>,
+    clear_events: Vec<(TimeInt, RowId)>,
     state_config: &[(String, StateStyle)],
-) -> StateLanePhase {
-    if let Some((_, style)) = state_config.iter().find(|(v, _)| v == formatted) {
-        StateLanePhase {
-            start_time,
+) -> Vec<StateLanePhase> {
+    let mut events = value_events;
+    events.extend(clear_events.into_iter().map(|(t, r)| (t.as_i64(), r, None)));
+    if events.is_empty() {
+        return Vec::new();
+    }
+    events.sort_by_key(|(t, r, _)| (*t, *r));
+
+    let mut phases: Vec<(i64, Option<String>)> = Vec::new();
+    for (t, _r, event) in events {
+        if let Some(last) = phases.last_mut()
+            && last.0 == t
+        {
+            last.1 = event;
+            continue;
+        }
+        if event.is_none() && phases.last().is_none_or(|(_, last)| last.is_none()) {
+            // Leading gap (no preceding state) or gap-after-gap: skip.
+            continue;
+        }
+        if let (Some((_, Some(prev))), Some(next)) = (phases.last(), &event)
+            && prev == next
+        {
+            continue;
+        }
+        phases.push((t, event));
+    }
+    if matches!(phases.first(), Some((_, None))) {
+        phases.remove(0);
+    }
+
+    phases
+        .into_iter()
+        .map(|(t, event)| StateLanePhase {
+            start_time: t,
+            content: event.and_then(|label| build_phase_content(&label, state_config)),
+        })
+        .collect()
+}
+
+/// Resolve a formatted phase value against the user-authored `StateConfiguration`.
+///
+/// Returns `None` (gap) when the matching config entry is hidden; otherwise builds the
+/// drawn-phase style. Without a config match, falls back to a hash-derived color and the
+/// raw label.
+fn build_phase_content(
+    label: &str,
+    state_config: &[(String, StateStyle)],
+) -> Option<StateLanePhaseContent> {
+    if let Some((_, style)) = state_config.iter().find(|(v, _)| v == label) {
+        style.visible.then(|| StateLanePhaseContent {
             label: style.label.clone(),
             color: style.color,
-            visible: style.visible,
-        }
+        })
     } else {
-        StateLanePhase {
-            start_time,
-            label: formatted.to_owned(),
-            color: color_for_value(formatted),
-            visible: true,
-        }
+        Some(StateLanePhaseContent {
+            color: color_for_value(label),
+            label: label.to_owned(),
+        })
     }
 }
 
 /// Build `StateLanePhase`s for one lane from the polymorphic state slot, alongside the
 /// canonical [`StateValueKind`] that drives downstream UI choices.
-///
-/// Dispatches on the post-cast element type and forwards each typed iterator to
-/// [`lane_phases_from_rows`]. Returns `None` for an element type the cast rule rejects (and
-/// thus shouldn't ever produce in practice).
 fn lane_phases_for(
     all_values: &re_view::HybridResultsChunkIter<'_>,
     element_type: &DataType,
+    clear_events: Vec<(TimeInt, RowId)>,
     state_config: &[(String, StateStyle)],
 ) -> Option<(StateValueKind, Vec<StateLanePhase>)> {
-    let kind_and_phases = match element_type {
-        DataType::Utf8 | DataType::LargeUtf8 => (
-            StateValueKind::String,
-            lane_phases_from_rows::<ArrowString, _, _>(
-                all_values.slice::<String>().map(|((data_time, _), texts)| {
-                    (data_time, texts.into_iter().filter(|s| !s.is_empty()))
-                }),
-                state_config,
-            ),
-        ),
-        DataType::Float64 => (
-            StateValueKind::Scalar,
-            lane_phases_from_rows::<f64, _, _>(
-                all_values
-                    .slice::<f64>()
-                    .map(|((data_time, _), values)| (data_time, values.iter().copied())),
-                state_config,
-            ),
-        ),
-        DataType::Boolean => (
-            StateValueKind::Bool,
-            lane_phases_from_rows::<bool, _, _>(
-                all_values.slice::<bool>().map(|((data_time, _), values)| {
+    let (kind, events) = match element_type {
+        DataType::Utf8 | DataType::LargeUtf8 => {
+            // `slice::<Option<String>>` preserves null vs empty-string: a null entry is `None`
+            // (partial update, no event) while `Some("")` is an explicit reset (gap).
+            let events: Vec<(i64, RowId, Option<String>)> = all_values
+                .slice::<Option<String>>()
+                .flat_map(|((data_time, row_id), texts)| {
+                    let t = data_time.as_i64();
+                    texts.into_iter().filter_map(move |opt| {
+                        opt.map(|s| {
+                            let event = (!s.is_empty()).then(|| s.to_lane_label());
+                            (t, row_id, event)
+                        })
+                    })
+                })
+                .collect();
+            (StateValueKind::String, events)
+        }
+        DataType::Float64 => {
+            let events =
+                collect_typed_events::<f64, _, _>(all_values.slice::<f64>().map(
+                    |((data_time, row_id), values)| (data_time, row_id, values.iter().copied()),
+                ));
+            (StateValueKind::Scalar, events)
+        }
+        DataType::Boolean => {
+            let events = collect_typed_events::<bool, _, _>(all_values.slice::<bool>().map(
+                |((data_time, row_id), values)| {
                     // `BooleanBuffer` only iterates via a borrow on `values`, so materialize a
                     // `Vec<bool>` whose lifetime is detached from this row's stack frame.
-                    (data_time, (&values).into_iter().collect::<Vec<bool>>())
-                }),
-                state_config,
-            ),
-        ),
+                    (
+                        data_time,
+                        row_id,
+                        (&values).into_iter().collect::<Vec<bool>>(),
+                    )
+                },
+            ));
+            (StateValueKind::Bool, events)
+        }
         _ => return None,
     };
-    Some(kind_and_phases)
+
+    Some((kind, build_lane_phases(events, clear_events, state_config)))
 }
 
 /// Collect the set of post-cast element types observed across every chunk for the state slot.

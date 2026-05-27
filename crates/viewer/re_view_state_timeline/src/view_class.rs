@@ -532,8 +532,8 @@ fn compute_render_items<'a>(
     let mut pending = Pending::default();
 
     for (i, phase) in lane.phases.iter().enumerate() {
-        // Invisible phases create a gap; they must not be merged across.
-        if !phase.visible {
+        // Gaps break the merge chain.
+        if phase.content.is_none() {
             pending.flush(&mut items);
             continue;
         }
@@ -649,7 +649,7 @@ fn hit_test_phase(
             continue;
         }
         for (i, phase) in lane.phases.iter().enumerate() {
-            if !phase.visible {
+            if phase.content.is_none() {
                 continue;
             }
             let Some(x_start) =
@@ -777,11 +777,15 @@ fn paint_single(
     open_ended: bool,
     background_color: egui::Color32,
 ) {
+    let Some(style) = &phase.content else {
+        return;
+    };
+
     #[expect(clippy::disallowed_methods)] // Data-driven visualization color, not a UI theme color.
     let fill = if hovered {
-        phase.color
+        style.color
     } else {
-        let [r, g, b, _] = phase.color.to_array();
+        let [r, g, b, _] = style.color.to_array();
         egui::Color32::from_rgba_unmultiplied(r, g, b, 200)
     };
 
@@ -802,9 +806,9 @@ fn paint_single(
         painter.with_clip_rect(rect).text(
             egui::pos2(rect.left() + 4.0, rect.top() + 3.0),
             egui::Align2::LEFT_TOP,
-            &phase.label,
+            &style.label,
             egui::FontId::proportional(12.0),
-            readable_text_color(phase.color),
+            readable_text_color(style.color),
         );
     }
 }
@@ -897,7 +901,7 @@ fn show_item_tooltip(
             RenderItem::Single {
                 phase, end_time, ..
             } => {
-                ui.label(&phase.label);
+                ui.label(phase.content.as_ref().map_or("", |s| s.label.as_str()));
                 ui.add_space(4.0);
                 let start = TimeCell::new(time_type, phase.start_time).format(timestamp_format);
                 ui.label(
@@ -1010,8 +1014,9 @@ mod tests {
     use super::*;
     use re_log_types::EntityPath;
 
-    /// Construct a `StateLane` from `(start_time, visible)` pairs. Color/label are
-    /// unused by `compute_render_items`, so we leave them dummy.
+    /// Construct a `StateLane` from `(start_time, drawn)` pairs. `drawn = true` is
+    /// a visible state; `drawn = false` is a gap. Color/label are unused by
+    /// `compute_render_items`, so we leave them dummy.
     fn lane(phases: &[(i64, bool)]) -> StateLane {
         StateLane {
             label: "test".into(),
@@ -1019,11 +1024,12 @@ mod tests {
             value_kind: crate::data::StateValueKind::String,
             phases: phases
                 .iter()
-                .map(|&(t, visible)| StateLanePhase {
+                .map(|&(t, drawn)| StateLanePhase {
                     start_time: t,
-                    label: String::new(),
-                    color: egui::Color32::TRANSPARENT,
-                    visible,
+                    content: drawn.then(|| crate::data::StateLanePhaseContent {
+                        label: String::new(),
+                        color: egui::Color32::TRANSPARENT,
+                    }),
                 })
                 .collect(),
         }
@@ -1130,6 +1136,37 @@ mod tests {
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 4), "{items:?}");
         assert!(is_single(&items[2], 6), "{items:?}");
+    }
+
+    #[test]
+    fn gap_phase_is_not_drawn_and_bounds_previous_state() {
+        // wide state (0..50), gap at 50, wide state (60..100).
+        // The gap should not produce a render item, but the first state must end at
+        // t=50 (not t=60). The gap also breaks any merge chain.
+        let lane = lane(&[(0, true), (50, false), (60, true)]);
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        assert_eq!(items.len(), 2, "{items:?}");
+        match &items[0] {
+            RenderItem::Single { end_time, .. } => assert_eq!(*end_time, Some(50)),
+            item @ RenderItem::Merged { .. } => {
+                panic!("expected first item to be Single, got {item:?}")
+            }
+        }
+        assert!(is_single(&items[0], 0), "{items:?}");
+        assert!(is_single(&items[1], 60), "{items:?}");
+    }
+
+    #[test]
+    fn trailing_gap_truncates_last_state() {
+        // wide state (0..70), gap at 70 — the lane ends with no active state.
+        // The state's end_time must be the gap's start, and the gap itself produces no item.
+        let lane = lane(&[(0, true), (70, false)]);
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        assert_eq!(items.len(), 1, "{items:?}");
+        match &items[0] {
+            RenderItem::Single { end_time, .. } => assert_eq!(*end_time, Some(70)),
+            item @ RenderItem::Merged { .. } => panic!("expected Single, got {item:?}"),
+        }
     }
 
     #[test]

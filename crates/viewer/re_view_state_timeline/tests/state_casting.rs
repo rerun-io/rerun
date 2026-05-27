@@ -100,7 +100,14 @@ fn phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<String> {
         .iter()
         .find(|l| l.entity_path == EntityPath::from(entity))
         .unwrap_or_else(|| panic!("no lane for entity {entity}"));
-    lane.phases.iter().map(|p| p.label.clone()).collect()
+    lane.phases
+        .iter()
+        .map(|p| {
+            p.content
+                .as_ref()
+                .map_or_else(String::new, |s| s.label.clone())
+        })
+        .collect()
 }
 
 fn value_kind(lanes_data: &StateLanesData, entity: &str) -> StateValueKind {
@@ -311,8 +318,13 @@ fn test_dynamic_archetype_multiple_same_type() {
         .find(|l| l.label.contains("multi_str:power"))
         .expect("expected a lane sourced from multi_str:power");
 
-    let mode_labels: Vec<_> = mode_lane.phases.iter().map(|p| p.label.clone()).collect();
-    let power_labels: Vec<_> = power_lane.phases.iter().map(|p| p.label.clone()).collect();
+    let phase_label = |p: &re_view_state_timeline::StateLanePhase| {
+        p.content
+            .as_ref()
+            .map_or_else(String::new, |s| s.label.clone())
+    };
+    let mode_labels: Vec<_> = mode_lane.phases.iter().map(phase_label).collect();
+    let power_labels: Vec<_> = power_lane.phases.iter().map(phase_label).collect();
     assert_eq!(mode_labels, vec!["Idle", "Active", "Idle"]);
     // "On" at ticks 1 and 2 merge into a single phase.
     assert_eq!(power_labels, vec!["Off", "On"]);

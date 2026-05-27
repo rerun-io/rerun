@@ -3509,7 +3509,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     name: "state",
                     display_name: "State",
                     component_type: "rerun.components.Text".into(),
-                    docstring_md: "The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.",
+                    docstring_md: "The new state value.\n\nA `null` state is ignored, it can be used to partially update a multi-instance state array.\nAn empty string is treated as state reset, and a gap is shown in the state timeline view.",
                     flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                 }],
             },

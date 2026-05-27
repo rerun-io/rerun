@@ -39,12 +39,16 @@ pub struct StateLanePhase {
     /// Start time in timeline units.
     pub start_time: i64,
 
+    /// `Some` for a drawn state; `None` for a gap region or invisible state.
+    pub content: Option<StateLanePhaseContent>,
+}
+
+/// Visual style for a drawn state phase.
+#[derive(Clone, Debug)]
+pub struct StateLanePhaseContent {
     /// Human-readable state label (e.g. "Idle", "Moving").
     pub label: String,
 
     /// Display color for this phase.
     pub color: egui::Color32,
-
-    /// Whether this phase should be drawn.
-    pub visible: bool,
 }

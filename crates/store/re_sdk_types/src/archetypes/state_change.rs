@@ -62,7 +62,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct StateChange {
-    /// The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.
+    /// The new state value.
+    ///
+    /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
+    /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
     pub state: Option<SerializedComponentBatch>,
 }
 
@@ -222,7 +225,10 @@ impl StateChange {
         self.columns(std::iter::repeat_n(1, len))
     }
 
-    /// The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.
+    /// The new state value.
+    ///
+    /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
+    /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
     #[inline]
     pub fn with_state(mut self, state: impl Into<crate::components::Text>) -> Self {
         self.state = try_serialize_field(Self::descriptor_state(), [state]);
