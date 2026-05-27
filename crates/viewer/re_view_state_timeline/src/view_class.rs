@@ -3,7 +3,7 @@ use re_log_types::{
     TimestampFormat,
 };
 use re_time_ruler::TimeRangesUi;
-use re_ui::{Help, UiExt as _, icons};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_viewer_context::{
     DataResultInteractionAddress, DragAndDropFeedback, DragAndDropPayload,
     IdentifiedViewSystem as _, Item, TimeControlCommand, TimeView, ViewClass,
@@ -125,9 +125,29 @@ impl ViewClass for StateTimelineView {
         Box::<StateTimelineViewState>::default()
     }
 
-    fn help(&self, _os: egui::os::OperatingSystem) -> Help {
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
+        let egui::InputOptions {
+            zoom_modifier,
+            horizontal_scroll_modifier,
+            ..
+        } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change these modifiers.
+
         Help::new("State timeline view")
             .markdown("Shows state transitions as horizontal colored lanes over time.")
+            .control("Move time cursor", icons::LEFT_MOUSE_CLICK)
+            .control(
+                "Pan",
+                (MouseButtonText(egui::PointerButton::Secondary), "+", "drag"),
+            )
+            .control(
+                "Horizontal pan",
+                IconText::from_modifiers_and(os, horizontal_scroll_modifier, icons::SCROLL),
+            )
+            .control(
+                "Zoom",
+                IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
+            )
+            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(
