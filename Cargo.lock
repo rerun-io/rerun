@@ -10393,6 +10393,7 @@ dependencies = [
  "itertools 0.14.0",
  "macaw",
  "nohash-hasher",
+ "parking_lot",
  "rayon",
  "re_byte_size",
  "re_chunk",

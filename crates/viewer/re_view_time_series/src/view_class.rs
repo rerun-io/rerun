@@ -3,9 +3,11 @@ use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{Plot, PlotPoint};
 use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
+use parking_lot::Mutex;
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
+use re_log_types::hash::Hash64;
 use re_log_types::{AbsoluteTimeRange, EntityPath};
 use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
@@ -28,6 +30,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
+use std::sync::Arc;
 use vec1::Vec1;
 
 use crate::line_visualizer_system::{SeriesLinesOutput, SeriesLinesSystem};
@@ -37,6 +40,25 @@ use crate::util::data_result_time_range;
 use crate::{MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY, PlotSeriesKind};
 
 // ---
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct NumSeriesCacheKey {
+    /// Hash identifying these query results.
+    ///
+    /// This is expected to change when the set of scalar values we query changes, which naturally
+    /// invalidates the cached series count.
+    pub query_result_hash: Hash64,
+
+    /// Whether the scalar component is mapped directly (identity mapping) for this instruction.
+    ///
+    /// Remapped scalars may be capped (depending on `limits_enabled`); identity-mapped scalars are not.
+    pub is_identity_mapping: bool,
+
+    /// Whether visualizer limits are enabled in the app options.
+    ///
+    /// This affects whether we cap the number of series for remapped scalars.
+    pub limits_enabled: bool,
+}
 
 #[derive(Clone)]
 pub struct TimeSeriesViewState {
@@ -81,6 +103,11 @@ pub struct TimeSeriesViewState {
     /// This avoids relying on `egui_plot::PlotMemory` keyed by view id, which breaks
     /// when the same blueprint view is shown multiple times.
     pub time_per_pixel: f64,
+
+    /// Memoization cache for [`crate::series_query::determine_num_series`].
+    ///
+    /// This runs during parallel visualizer execution, so the cache is protected by a shared lock.
+    pub(crate) num_series_cache: Arc<Mutex<HashMap<NumSeriesCacheKey, usize>>>,
 }
 
 impl Default for TimeSeriesViewState {
@@ -93,6 +120,7 @@ impl Default for TimeSeriesViewState {
             num_time_series_last_frame_per_instruction: Default::default(),
             plot_transform: None,
             time_per_pixel: 1.0,
+            num_series_cache: Default::default(),
         }
     }
 }
@@ -107,6 +135,8 @@ impl re_byte_size::SizeBytes for TimeSeriesViewState {
             num_time_series_last_frame_per_instruction,
             plot_transform: _,
             time_per_pixel: _,
+            // This cache is small and bounded
+            num_series_cache: _,
         } = self;
 
         default_series_name_formats.heap_size_bytes()
