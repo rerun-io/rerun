@@ -271,12 +271,67 @@ impl ViewClass for StateTimelineView {
         let current_time = TimeReal::from(query.latest_at.as_i64() as f64);
         let cursor_x = time_ranges_ui.x_from_time_f32(current_time);
 
+        // Background.
+        let painter = ui.painter_at(rect);
+        painter.rect_filled(rect, 0.0, ui.style().visuals.extreme_bg_color);
+
+        // Draw the time ruler at the top.
+        let time_type = ctx
+            .time_ctrl
+            .timeline()
+            .map_or(TimeType::Sequence, |tl| tl.typ());
+        let timestamp_format = ctx.app_options().timestamp_format;
+        re_time_ruler::paint_time_ranges_and_ticks(
+            &time_ranges_ui,
+            ui,
+            &painter.with_clip_rect(time_axis_rect),
+            time_axis_rect.y_range(),
+            time_type,
+            timestamp_format,
+        );
+
+        // Separator between ruler and lanes.
+        painter.line_segment(
+            [time_axis_rect.left_bottom(), time_axis_rect.right_bottom()],
+            egui::Stroke::new(1.0, ui.style().visuals.weak_text_color()),
+        );
+
+        // Lanes: each one is its own widget, stacked vertically inside a ScrollArea.
+        let label_color = ui.style().visuals.text_color();
+        let mut visible_lane_band_rects: Vec<(egui::Rect, &StateLane)> =
+            Vec::with_capacity(all_lanes.len());
+        ui.scope_builder(egui::UiBuilder::new().max_rect(lanes_rect), |ui| {
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .scroll_source(egui::scroll_area::ScrollSource {
+                    scroll_bar: true,
+                    drag: false,
+                    mouse_wheel: true,
+                })
+                .show(ui, |ui: &mut egui::Ui| {
+                    ui.add_space(TOP_MARGIN);
+                    ui.spacing_mut().item_spacing.y = 0.0;
+                    for lane in &all_lanes {
+                        let band_rect = show_lane(
+                            ui,
+                            lane,
+                            &time_ranges_ui,
+                            time_type,
+                            timestamp_format,
+                            label_color,
+                        );
+                        visible_lane_band_rects.push((band_rect, *lane));
+                    }
+                });
+        });
+
         // On primary press, remember whether it landed on a phase. A phase press
         // selects the entity; a press on empty space drags the time cursor.
+        // Done after the lane pass so the band rects reflect the post-scroll positions.
         if ui.input(|i| i.pointer.primary_pressed()) {
             state.press_on_phase = response
                 .interact_pointer_pos()
-                .is_some_and(|pos| hit_test_phase(pos, lanes_rect, &all_lanes, &time_ranges_ui));
+                .is_some_and(|pos| hit_test_phase(pos, &visible_lane_band_rects, &time_ranges_ui));
         }
 
         // While the primary button is active on the view and the press started on
@@ -329,51 +384,12 @@ impl ViewClass for StateTimelineView {
         }
         state.time_view = Some(time_view);
 
-        // Background.
-        let painter = ui.painter_at(rect);
-        painter.rect_filled(rect, 0.0, ui.style().visuals.extreme_bg_color);
-
-        // Draw the time ruler at the top.
-        let time_type = ctx
-            .time_ctrl
-            .timeline()
-            .map_or(TimeType::Sequence, |tl| tl.typ());
-        let timestamp_format = ctx.app_options().timestamp_format;
-        re_time_ruler::paint_time_ranges_and_ticks(
-            &time_ranges_ui,
-            ui,
-            &painter.with_clip_rect(time_axis_rect),
-            time_axis_rect.y_range(),
-            time_type,
-            timestamp_format,
-        );
-        // Separator between ruler and lanes.
-        painter.line_segment(
-            [time_axis_rect.left_bottom(), time_axis_rect.right_bottom()],
-            egui::Stroke::new(1.0, ui.style().visuals.weak_text_color()),
-        );
-
-        // Draw lanes.
-        let label_color = ui.style().visuals.text_color();
-        for (lane_idx, lane) in all_lanes.iter().enumerate() {
-            paint_lane(
-                ui,
-                &painter,
-                lanes_rect,
-                lane_idx,
-                lane,
-                &time_ranges_ui,
-                time_type,
-                timestamp_format,
-                label_color,
-            );
-        }
-
         // Handle selection: determine what's under the pointer (lane entity or view).
         let hover_pos = ui.input(|i| i.pointer.hover_pos());
-        let hovered_lane = hover_pos.and_then(|pos| hovered_lane(pos, lanes_rect, &all_lanes));
+        let hovered_lane = hover_pos.and_then(|pos| hovered_lane(pos, &visible_lane_band_rects));
 
         // Time cursor — uses the same triangle-headed style as the time panel.
+        // Painted last so it appears above the lanes.
         if let Some(cursor_x) = cursor_x
             && rect.x_range().contains(cursor_x)
         {
@@ -545,32 +561,24 @@ fn data_time_range(lanes: &[&StateLane]) -> (f64, f64) {
     }
 }
 
-/// Returns the entity path of the lane under `pos`, if any.
+/// Returns the entity path of the lane whose band contains `pos`, if any.
 fn hovered_lane<'a>(
     pos: egui::Pos2,
-    lanes_rect: egui::Rect,
-    lanes: &'a [&'a StateLane],
+    lane_band_rects: &'a [(egui::Rect, &'a StateLane)],
 ) -> Option<&'a EntityPath> {
-    lanes.iter().enumerate().find_map(|(lane_idx, lane)| {
-        let y_top =
-            lanes_rect.top() + TOP_MARGIN + lane_idx as f32 * LANE_TOTAL_HEIGHT + LANE_LABEL_HEIGHT;
-        let y_bottom = y_top + LANE_BAND_HEIGHT;
-        (pos.y >= y_top && pos.y <= y_bottom).then_some(&lane.entity_path)
-    })
+    lane_band_rects
+        .iter()
+        .find_map(|(band_rect, lane)| band_rect.contains(pos).then_some(&lane.entity_path))
 }
 
 /// Returns `true` if `pos` lies inside any visible phase rectangle.
 fn hit_test_phase(
     pos: egui::Pos2,
-    lanes_rect: egui::Rect,
-    lanes: &[&StateLane],
+    lane_band_rects: &[(egui::Rect, &StateLane)],
     time_ranges_ui: &TimeRangesUi,
 ) -> bool {
-    for (lane_idx, lane) in lanes.iter().enumerate() {
-        let y_top = lanes_rect.top() + TOP_MARGIN + lane_idx as f32 * LANE_TOTAL_HEIGHT;
-        let band_y_top = y_top + LANE_LABEL_HEIGHT;
-        let band_y_bottom = band_y_top + LANE_BAND_HEIGHT;
-        if pos.y < band_y_top || pos.y > band_y_bottom {
+    for (band_rect, lane) in lane_band_rects {
+        if !band_rect.contains(pos) {
             continue;
         }
         for (i, phase) in lane.phases.iter().enumerate() {
@@ -582,15 +590,15 @@ fn hit_test_phase(
             else {
                 continue;
             };
-            let x_start = x_start.max(lanes_rect.left());
+            let x_start = x_start.max(band_rect.left());
             let x_end = if let Some(next) = lane.phases.get(i + 1) {
                 time_ranges_ui
                     .x_from_time_f32(TimeReal::from(next.start_time as f64))
-                    .unwrap_or_else(|| lanes_rect.right())
+                    .unwrap_or_else(|| band_rect.right())
             } else {
-                lanes_rect.right()
+                band_rect.right()
             }
-            .min(lanes_rect.right());
+            .min(band_rect.right());
             if x_end <= x_start {
                 continue;
             }
@@ -602,37 +610,43 @@ fn hit_test_phase(
     false
 }
 
-/// Paint a single lane (label + colored band of phases) and show tooltips on hover.
-fn paint_lane(
-    ui: &egui::Ui,
-    painter: &egui::Painter,
-    lanes_rect: egui::Rect,
-    lane_idx: usize,
+/// Render a single lane as a self-contained widget. Returns the lane's *band* rect
+/// (the colored phase strip, excluding the label and inter-lane gap).
+fn show_lane(
+    ui: &mut egui::Ui,
     lane: &StateLane,
     time_ranges_ui: &TimeRangesUi,
     time_type: TimeType,
     timestamp_format: TimestampFormat,
     label_color: egui::Color32,
-) {
-    let y_top = lanes_rect.top() + TOP_MARGIN + lane_idx as f32 * LANE_TOTAL_HEIGHT;
-    let label_rect = egui::Rect::from_min_size(
-        egui::pos2(lanes_rect.left() + 4.0, y_top),
-        egui::vec2(lanes_rect.width() - 8.0, LANE_LABEL_HEIGHT),
+) -> egui::Rect {
+    let (response, painter) = ui.allocate_painter(
+        egui::vec2(ui.available_width(), LANE_TOTAL_HEIGHT),
+        egui::Sense::hover(),
     );
-    let band_y_top = y_top + LANE_LABEL_HEIGHT;
-    let band_y_bottom = band_y_top + LANE_BAND_HEIGHT;
+    let rect = response.rect;
+    let band_rect = egui::Rect::from_min_max(
+        egui::pos2(rect.left(), rect.top() + LANE_LABEL_HEIGHT),
+        egui::pos2(
+            rect.right(),
+            rect.top() + LANE_LABEL_HEIGHT + LANE_BAND_HEIGHT,
+        ),
+    );
 
     // Lane label.
     painter.text(
-        label_rect.left_top(),
+        egui::pos2(rect.left() + 4.0, rect.top()),
         egui::Align2::LEFT_TOP,
         &lane.label,
         egui::FontId::proportional(11.0),
         label_color,
     );
 
-    let hover_pos = ui.input(|i| i.pointer.hover_pos());
-    let render_items = compute_render_items(lane, lanes_rect, time_ranges_ui);
+    let hover_pos = response.hover_pos();
+    // `compute_render_items` uses the rect's x bounds for clipping phases to the
+    // visible time range; y is unused. Passing the lane's own rect gives the same
+    // bounds as the old whole-area lanes_rect since every lane spans the full width.
+    let render_items = compute_render_items(lane, rect, time_ranges_ui);
 
     let merged_fill_inactive = ui.visuals().widgets.inactive.bg_fill;
     let merged_fill_hovered = ui.visuals().widgets.hovered.bg_fill;
@@ -641,20 +655,20 @@ fn paint_lane(
     for item in &render_items {
         let (x_start, x_end) = item.x_range();
         let item_rect = egui::Rect::from_min_max(
-            egui::pos2(x_start, band_y_top),
-            egui::pos2(x_end, band_y_bottom),
+            egui::pos2(x_start, band_rect.top()),
+            egui::pos2(x_end, band_rect.bottom()),
         );
         let hovered = hover_pos.is_some_and(|pos| item_rect.contains(pos));
 
         match item {
-            RenderItem::Single { phase, .. } => paint_single(painter, item_rect, phase, hovered),
+            RenderItem::Single { phase, .. } => paint_single(&painter, item_rect, phase, hovered),
             RenderItem::Merged { count, .. } => {
                 let fill = if hovered {
                     merged_fill_hovered
                 } else {
                     merged_fill_inactive
                 };
-                paint_merged(painter, item_rect, *count, fill, merged_text_color);
+                paint_merged(&painter, item_rect, *count, fill, merged_text_color);
             }
         }
 
@@ -664,6 +678,8 @@ fn paint_lane(
             show_item_tooltip(ui, item, time_type, timestamp_format);
         }
     }
+
+    band_rect
 }
 
 /// Paint one normal phase: filled band (dimmed when not hovered) + clipped label.
