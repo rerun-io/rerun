@@ -26,6 +26,16 @@ const TOP_MARGIN: f32 = 4.0;
 /// narrow neighbors. Wide phases always render with their own color.
 const MERGE_PHASE_THRESHOLD_PIXEL: f32 = 4.0;
 
+/// The chronologically last phase has no real end time. We extend it past the data end
+/// by this fraction of the visible data span so its label stays readable even when the
+/// final state was logged at (or near) the very end of the timeline.
+const LAST_PHASE_OVERHANG_FRACTION: f64 = 0.05;
+
+/// Jagged ("open-ended") right edge: how far each tooth sticks out, and how many teeth
+/// span the band height.
+const JAGGED_TOOTH_DEPTH: f32 = 5.0;
+const JAGGED_TOOTH_COUNT: usize = 5;
+
 /// One drawable item along a lane: either a single phase or a merged region.
 #[derive(Debug)]
 enum RenderItem<'a> {
@@ -35,7 +45,7 @@ enum RenderItem<'a> {
         x_start: f32,
         x_end: f32,
 
-        /// End time of the phase (start of the next phase), if any.
+        /// End time of the phase (start of the next phase). `None` for the last phase.
         end_time: Option<i64>,
     },
 
@@ -235,17 +245,21 @@ impl ViewClass for StateTimelineView {
         }
 
         // Compute data time range.
-        let (data_min, data_max) = data_time_range(&all_lanes);
+        let timeline_end: Option<i64> = ctx
+            .recording()
+            .time_range_for(&query.timeline)
+            .map(|r| r.max.as_i64());
+        let (data_min, data_max) = data_time_range(&all_lanes, timeline_end);
+
+        // The last phase has no real end; extend it past the data end by `overhang`.
+        let data_span = (data_max - data_min).max(1.0);
+        let overhang = data_span * LAST_PHASE_OVERHANG_FRACTION;
+        let open_end_time: Option<f64> = timeline_end.map(|end| end as f64 + overhang);
 
         // Auto-fit on first frame.
-        // TODO(aedm): The calculation of the end time is incorrect since state transitions don't have an end time.
-        //      We should use an estimation so that the latest state is still somewhat visible. Maybe also consider
-        //      the density of states? An idea is to keep as much space for the last state as the average state
-        //      duration on the screen.
         if state.time_view.is_none() {
-            let padding = (data_max - data_min).max(1.0) * 0.05;
-            let min = data_min - padding;
-            let max = data_max + padding;
+            let min = data_min - data_span * 0.05;
+            let max = data_max + overhang + data_span * 0.05;
             state.time_view = Some(TimeView {
                 min: TimeReal::from(min),
                 time_spanned: max - min,
@@ -339,6 +353,7 @@ impl ViewClass for StateTimelineView {
                             time_type,
                             timestamp_format,
                             label_color,
+                            open_end_time,
                         );
                         visible_lane_band_rects.push((band_rect, *lane));
                     }
@@ -349,9 +364,14 @@ impl ViewClass for StateTimelineView {
         // selects the entity; a press on empty space drags the time cursor.
         // Done after the lane pass so the band rects reflect the post-scroll positions.
         if ui.input(|i| i.pointer.primary_pressed()) {
-            state.press_on_phase = response
-                .interact_pointer_pos()
-                .is_some_and(|pos| hit_test_phase(pos, &visible_lane_band_rects, &time_ranges_ui));
+            state.press_on_phase = response.interact_pointer_pos().is_some_and(|pos| {
+                hit_test_phase(
+                    pos,
+                    &visible_lane_band_rects,
+                    &time_ranges_ui,
+                    open_end_time,
+                )
+            });
         }
 
         // While the primary button is active on the view and the press started on
@@ -453,6 +473,7 @@ fn compute_render_items<'a>(
     lane: &'a StateLane,
     lanes_rect: egui::Rect,
     time_ranges_ui: &TimeRangesUi,
+    open_end_time: Option<f64>,
 ) -> Vec<RenderItem<'a>> {
     struct PendingNarrow<'a> {
         phase: &'a StateLanePhase,
@@ -517,14 +538,19 @@ fn compute_render_items<'a>(
             continue;
         }
 
-        let next_start_time = lane.phases.get(i + 1).map(|p| p.start_time);
+        let is_last = i + 1 == lane.phases.len();
+        let next_time: Option<f64> = lane
+            .phases
+            .get(i + 1)
+            .map(|p| p.start_time as f64)
+            .or(open_end_time);
         let Some(x_start) = time_ranges_ui.x_from_time_f32(TimeReal::from(phase.start_time as f64))
         else {
             continue;
         };
-        let x_end_unclipped = match next_start_time {
+        let x_end_unclipped = match next_time {
             Some(t) => time_ranges_ui
-                .x_from_time_f32(TimeReal::from(t as f64))
+                .x_from_time_f32(TimeReal::from(t))
                 .unwrap_or_else(|| lanes_rect.right()),
             None => lanes_rect.right(),
         };
@@ -547,20 +573,29 @@ fn compute_render_items<'a>(
             continue;
         }
 
-        if width >= MERGE_PHASE_THRESHOLD_PIXEL {
+        if is_last {
+            // The last phase is always its own item (never merged) and open-ended.
             pending.flush(&mut items);
             items.push(RenderItem::Single {
                 phase,
                 x_start: visible_x_start,
                 x_end: visible_x_end,
-                end_time: next_start_time,
+                end_time: None,
+            });
+        } else if width >= MERGE_PHASE_THRESHOLD_PIXEL {
+            pending.flush(&mut items);
+            items.push(RenderItem::Single {
+                phase,
+                x_start: visible_x_start,
+                x_end: visible_x_end,
+                end_time: next_time.map(|t| t as i64),
             });
         } else {
             pending.push(PendingNarrow {
                 phase,
                 x_start: visible_x_start,
                 x_end: visible_x_end,
-                end_time: next_start_time,
+                end_time: next_time.map(|t| t as i64),
             });
         }
     }
@@ -570,7 +605,7 @@ fn compute_render_items<'a>(
 }
 
 /// Compute the (min, max) time range across all lanes.
-fn data_time_range(lanes: &[&StateLane]) -> (f64, f64) {
+fn data_time_range(lanes: &[&StateLane], timeline_end: Option<i64>) -> (f64, f64) {
     let mut min = f64::MAX;
     let mut max = f64::MIN;
     for lane in lanes {
@@ -579,6 +614,9 @@ fn data_time_range(lanes: &[&StateLane]) -> (f64, f64) {
             min = min.min(t);
             max = max.max(t);
         }
+    }
+    if let Some(end) = timeline_end {
+        max = max.max(end as f64);
     }
     if min > max {
         (0.0, 1.0)
@@ -604,6 +642,7 @@ fn hit_test_phase(
     pos: egui::Pos2,
     lane_band_rects: &[(egui::Rect, &StateLane)],
     time_ranges_ui: &TimeRangesUi,
+    open_end_time: Option<f64>,
 ) -> bool {
     for (band_rect, lane) in lane_band_rects {
         if !band_rect.contains(pos) {
@@ -619,12 +658,16 @@ fn hit_test_phase(
                 continue;
             };
             let x_start = x_start.max(band_rect.left());
-            let x_end = if let Some(next) = lane.phases.get(i + 1) {
-                time_ranges_ui
-                    .x_from_time_f32(TimeReal::from(next.start_time as f64))
-                    .unwrap_or_else(|| band_rect.right())
-            } else {
-                band_rect.right()
+            let next_time: Option<f64> = lane
+                .phases
+                .get(i + 1)
+                .map(|p| p.start_time as f64)
+                .or(open_end_time);
+            let x_end = match next_time {
+                Some(t) => time_ranges_ui
+                    .x_from_time_f32(TimeReal::from(t))
+                    .unwrap_or_else(|| band_rect.right()),
+                None => band_rect.right(),
             }
             .min(band_rect.right());
             if x_end <= x_start {
@@ -647,6 +690,7 @@ fn show_lane(
     time_type: TimeType,
     timestamp_format: TimestampFormat,
     label_color: egui::Color32,
+    open_end_time: Option<f64>,
 ) -> egui::Rect {
     let (response, painter) = ui.allocate_painter(
         egui::vec2(ui.available_width(), LANE_TOTAL_HEIGHT),
@@ -674,11 +718,12 @@ fn show_lane(
     // `compute_render_items` uses the rect's x bounds for clipping phases to the
     // visible time range; y is unused. Passing the lane's own rect gives the same
     // bounds as the old whole-area lanes_rect since every lane spans the full width.
-    let render_items = compute_render_items(lane, rect, time_ranges_ui);
+    let render_items = compute_render_items(lane, rect, time_ranges_ui, open_end_time);
 
     let merged_fill_inactive = ui.visuals().widgets.inactive.bg_fill;
     let merged_fill_hovered = ui.visuals().widgets.hovered.bg_fill;
     let merged_text_color = ui.visuals().text_color();
+    let background_color = ui.visuals().extreme_bg_color;
 
     for item in &render_items {
         let (x_start, x_end) = item.x_range();
@@ -689,7 +734,19 @@ fn show_lane(
         let hovered = hover_pos.is_some_and(|pos| item_rect.contains(pos));
 
         match item {
-            RenderItem::Single { phase, .. } => paint_single(&painter, item_rect, phase, hovered),
+            RenderItem::Single {
+                phase, end_time, ..
+            } => {
+                let open_ended = end_time.is_none();
+                paint_single(
+                    &painter,
+                    item_rect,
+                    phase,
+                    hovered,
+                    open_ended,
+                    background_color,
+                );
+            }
             RenderItem::Merged { count, .. } => {
                 let fill = if hovered {
                     merged_fill_hovered
@@ -711,7 +768,15 @@ fn show_lane(
 }
 
 /// Paint one normal phase: filled band (dimmed when not hovered) + clipped label.
-fn paint_single(painter: &egui::Painter, rect: egui::Rect, phase: &StateLanePhase, hovered: bool) {
+#[expect(clippy::fn_params_excessive_bools)] // `hovered` and `open_ended` are independent flags.
+fn paint_single(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    phase: &StateLanePhase,
+    hovered: bool,
+    open_ended: bool,
+    background_color: egui::Color32,
+) {
     #[expect(clippy::disallowed_methods)] // Data-driven visualization color, not a UI theme color.
     let fill = if hovered {
         phase.color
@@ -719,14 +784,20 @@ fn paint_single(painter: &egui::Painter, rect: egui::Rect, phase: &StateLanePhas
         let [r, g, b, _] = phase.color.to_array();
         egui::Color32::from_rgba_unmultiplied(r, g, b, 200)
     };
-    painter.add(egui::epaint::RectShape::new(
-        rect,
-        0.0,
-        fill,
-        egui::Stroke::NONE,
-        egui::StrokeKind::Outside,
-    ));
 
+    if open_ended {
+        paint_jagged_band(painter, rect, fill, background_color);
+    } else {
+        painter.add(egui::epaint::RectShape::new(
+            rect,
+            0.0,
+            fill,
+            egui::Stroke::NONE,
+            egui::StrokeKind::Outside,
+        ));
+    }
+
+    // Label is clipped to the original band (left of the carved notches).
     if rect.width() - 6.0 > 10.0 {
         painter.with_clip_rect(rect).text(
             egui::pos2(rect.left() + 4.0, rect.top() + 3.0),
@@ -735,6 +806,44 @@ fn paint_single(painter: &egui::Painter, rect: egui::Rect, phase: &StateLanePhas
             egui::FontId::proportional(12.0),
             readable_text_color(phase.color),
         );
+    }
+}
+
+/// Paint a band whose right edge is an inverse saw-tooth ("torn out") edge.
+fn paint_jagged_band(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    fill: egui::Color32,
+    background_color: egui::Color32,
+) {
+    let outer_right = rect.right() + JAGGED_TOOTH_DEPTH;
+
+    // Solid band, extended by one tooth depth.
+    let body = egui::Rect::from_min_max(rect.min, egui::pos2(outer_right, rect.bottom()));
+    painter.add(egui::epaint::RectShape::new(
+        body,
+        0.0,
+        fill,
+        egui::Stroke::NONE,
+        egui::StrokeKind::Outside,
+    ));
+
+    // Carve background-colored notches: base on the extended edge, apex pointing back in.
+    let jagged_right = outer_right + 0.5;
+    let tooth_h = rect.height() / JAGGED_TOOTH_COUNT as f32;
+    for k in 0..=JAGGED_TOOTH_COUNT {
+        let y0 = rect.top() + (k as f32 - 0.5) * tooth_h;
+        let y1 = y0 + tooth_h;
+        let apex = egui::pos2(rect.right(), (y0 + y1) * 0.5);
+        painter.add(egui::epaint::PathShape::convex_polygon(
+            vec![
+                egui::pos2(jagged_right, y0),
+                apex,
+                egui::pos2(jagged_right, y1),
+            ],
+            background_color,
+            egui::Stroke::NONE,
+        ));
     }
 }
 
@@ -800,6 +909,13 @@ fn show_item_tooltip(
                     let end = TimeCell::new(time_type, *end).format(timestamp_format);
                     ui.label(
                         egui::RichText::new(format!("End: {end}"))
+                            .font(small)
+                            .color(weak),
+                    );
+                } else {
+                    // No end time → open-ended last phase.
+                    ui.label(
+                        egui::RichText::new("End: ongoing (no later data)")
                             .font(small)
                             .color(weak),
                     );
@@ -940,6 +1056,14 @@ mod tests {
         matches!(item, RenderItem::Single { phase, .. } if phase.start_time == expected_start)
     }
 
+    fn is_open_single(item: &RenderItem<'_>, expected_start: i64) -> bool {
+        matches!(
+            item,
+            RenderItem::Single { phase, end_time: None, .. }
+                if phase.start_time == expected_start
+        )
+    }
+
     fn is_merged(item: &RenderItem<'_>, expected_start: i64, expected_count: usize) -> bool {
         matches!(
             item,
@@ -951,7 +1075,7 @@ mod tests {
     #[test]
     fn empty_lane_produces_no_items() {
         let lane = lane(&[]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0));
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
         assert!(items.is_empty(), "{items:?}");
     }
 
@@ -959,7 +1083,7 @@ mod tests {
     fn single_wide_phase_renders_as_single() {
         // One phase covering x=0..100 — well above the merge threshold.
         let lane = lane(&[(0, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0));
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
         assert_eq!(items.len(), 1, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
     }
@@ -969,7 +1093,7 @@ mod tests {
         // Phase 0: x=0..2 (narrow). Phase 1: x=2..100 (wide).
         // The narrow phase has no narrow neighbor to merge with, so it stays Single.
         let lane = lane(&[(0, true), (2, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0));
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 2), "{items:?}");
@@ -979,7 +1103,7 @@ mod tests {
     fn two_consecutive_narrow_phases_merge() {
         // Two narrow (x=0..2, 2..4) + one wide (x=4..100).
         let lane = lane(&[(0, true), (2, true), (4, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0));
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_merged(&items[0], 0, 2), "{items:?}");
         assert!(is_single(&items[1], 4), "{items:?}");
@@ -989,7 +1113,7 @@ mod tests {
     fn wide_phase_breaks_merge_chain() {
         // Wide (0..10), narrow (10..12), wide (12..100) — the lone narrow stays Single.
         let lane = lane(&[(0, true), (10, true), (12, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0));
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
         assert_eq!(items.len(), 3, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 10), "{items:?}");
@@ -1001,7 +1125,7 @@ mod tests {
         // narrow visible (0..2), narrow invisible (2..4), narrow visible (4..6), wide (6..100).
         // The two visible narrow phases must NOT merge across the invisible gap.
         let lane = lane(&[(0, true), (2, false), (4, true), (6, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0));
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
         assert_eq!(items.len(), 3, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 4), "{items:?}");
@@ -1015,7 +1139,7 @@ mod tests {
         // The two on-screen narrow phases must merge — the off-screen phases
         // shouldn't terminate the run.
         let lane = lane(&[(0, true), (5, true), (10, true), (32, true), (34, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(30.0, 130.0));
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(30.0, 130.0), None);
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_merged(&items[0], 10, 2), "{items:?}");
         assert!(is_single(&items[1], 34), "{items:?}");
@@ -1025,32 +1149,77 @@ mod tests {
     fn off_screen_right_phase_stops_iteration() {
         // Viewport t=[0, 100], two visible wide phases, then one off-screen right.
         let lane = lane(&[(0, true), (10, true), (200, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0));
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 10), "{items:?}");
     }
 
     #[test]
-    fn trailing_narrow_run_flushes_as_merged_after_loop() {
-        // 50 narrow phases spaced 2 apart, covering the entire visible range.
-        // Verifies that the post-loop flush emits the Merged region (no wide phase
-        // forces an earlier flush).
+    fn trailing_narrow_run_merges_all_but_the_open_ended_last_phase() {
+        // 50 narrow phases spaced 2 apart. The chronologically last phase is always pulled
+        // out as its own open-ended item, so the first 49 merge and #50 stays separate.
         let phases: Vec<(i64, bool)> = (0..50).map(|i| (i * 2, true)).collect();
         let lane = lane(&phases);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0));
-        assert_eq!(items.len(), 1, "{items:?}");
-        assert!(is_merged(&items[0], 0, 50), "{items:?}");
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), Some(100.0));
+        assert_eq!(items.len(), 2, "{items:?}");
+        assert!(is_merged(&items[0], 0, 49), "{items:?}");
+        assert!(is_open_single(&items[1], 98), "{items:?}");
     }
 
     #[test]
     fn trailing_narrow_run_flushes_when_remaining_phases_are_off_screen_right() {
         // Two narrow phases (50..52, 52..54), then a wide (54..100), then a phase
-        // at t=200 that's off-screen-right. The merge group must still be emitted.
+        // at t=200 that's off-screen-right. The merge group must still be emitted, and the
+        // off-screen last phase yields no open-ended item.
         let lane = lane(&[(50, true), (52, true), (54, true), (200, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0));
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_merged(&items[0], 50, 2), "{items:?}");
         assert!(is_single(&items[1], 54), "{items:?}");
+    }
+
+    #[test]
+    fn last_phase_is_open_ended_and_extends_to_open_end_time() {
+        // Viewport t=[0, 100], one phase at t=0, open_end_time=50 (data end + overhang).
+        // The phase is open-ended (jagged edge) and ends at x=50 rather than the rect edge.
+        let lane = lane(&[(0, true)]);
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), Some(50.0));
+        assert_eq!(items.len(), 1, "{items:?}");
+        let RenderItem::Single {
+            x_end, end_time, ..
+        } = &items[0]
+        else {
+            panic!("expected Single, got {items:?}");
+        };
+        assert_eq!(
+            *end_time, None,
+            "open-ended last phase has no end time: {items:?}"
+        );
+        assert!((x_end - 50.0).abs() < 0.5, "x_end={x_end} items={items:?}");
+    }
+
+    #[test]
+    fn open_end_overhang_keeps_last_phase_visible_when_logged_at_data_end() {
+        // Phase logged at the data end (t=100). With the viewport extending to t=120, the
+        // overhang (open_end_time=110) gives the last phase a non-zero width so its label
+        // stays readable, drawn open-ended. Maps 1 time unit -> 100/120 px.
+        let lane = lane(&[(0, true), (100, true)]);
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 120.0), Some(110.0));
+        assert_eq!(items.len(), 2, "{items:?}");
+        let RenderItem::Single {
+            x_start,
+            x_end,
+            end_time,
+            ..
+        } = &items[1]
+        else {
+            panic!("expected Single, got {items:?}");
+        };
+        assert_eq!(*end_time, None, "last phase is open-ended: {items:?}");
+        assert!(
+            x_end - x_start > 4.0,
+            "expected visible width, got {items:?}"
+        );
     }
 }
