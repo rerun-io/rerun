@@ -60,6 +60,13 @@ impl<T: Send> Sender<T> {
     pub fn blocking_send(&self, value: T) -> Result<(), mpsc::error::SendError<T>> {
         tokio::runtime::Handle::current().block_on(self.send(value))
     }
+
+    /// Try to send a value without blocking.
+    ///
+    /// Returns `Err` if the channel is full or the receiver has been dropped.
+    pub fn try_send(&self, value: T) -> Result<(), mpsc::error::TrySendError<T>> {
+        self.inner.try_send(value)
+    }
 }
 
 /// A receiver for an mpsc channel.

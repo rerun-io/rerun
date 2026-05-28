@@ -35,6 +35,7 @@ mod default_views;
 mod docker_detection;
 pub mod env_vars;
 pub mod event;
+mod external_memory;
 mod history;
 mod latency_tracker;
 mod navigation;
@@ -66,6 +67,7 @@ pub mod blueprint;
 pub use app::App;
 pub(crate) use app_state::AppState;
 pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
+pub use external_memory::ExternalMemoryUser;
 pub use re_capabilities::MainThreadToken;
 pub use re_viewer_context::{
     AsyncRuntimeHandle, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,

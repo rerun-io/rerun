@@ -1068,13 +1068,32 @@ fn start_native_viewer(
             // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
             #[cfg(feature = "server")]
             if !connect {
-                let log_receiver = re_grpc_server::spawn_with_recv(
+                let (log_receiver, grpc_server_handle) = re_grpc_server::spawn_with_recv(
                     server_addr,
                     server_options,
                     re_grpc_server::shutdown::never(),
                 );
 
                 log_receivers.push(log_receiver);
+
+                struct ProxyHandleWrapper {
+                    handle: re_grpc_server::MessageProxyHandle,
+                }
+
+                impl re_viewer::ExternalMemoryUser for ProxyHandleWrapper {
+                    fn capture(&mut self) -> Option<re_byte_size::NamedMemUsageTree> {
+                        self.handle
+                            .capture_memory()
+                            .map(|tree| re_byte_size::NamedMemUsageTree {
+                                name: "GRPC Server".to_owned(),
+                                value: tree,
+                            })
+                    }
+                }
+
+                app.add_external_memory_user(Box::new(ProxyHandleWrapper {
+                    handle: grpc_server_handle,
+                }));
             }
 
             app.set_profiler(profiler);
@@ -1200,7 +1219,8 @@ fn serve_web(
 
         // Spawn a server which the Web Viewer can connect to.
         // All `rxs` are consumed by the server.
-        re_grpc_server::spawn_from_rx_set(
+        // We don't render a memory panel here so we don't need to keep the handle.
+        let _ = re_grpc_server::spawn_from_rx_set(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
@@ -1252,7 +1272,8 @@ fn serve_grpc(
 
     let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
     // Spawn a server which the Web Viewer can connect to.
-    re_grpc_server::spawn_from_rx_set(
+    // No memory panel in this mode, so we drop the handle.
+    let _ = re_grpc_server::spawn_from_rx_set(
         server_addr,
         server_options,
         shutdown,
@@ -1284,7 +1305,7 @@ fn save_or_test_receive(
 
     #[cfg(feature = "server")]
     {
-        let log_rx = re_grpc_server::spawn_with_recv(
+        let (log_rx, _handle) = re_grpc_server::spawn_with_recv(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),

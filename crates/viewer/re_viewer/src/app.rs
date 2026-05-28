@@ -121,6 +121,7 @@ pub struct App {
 
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
+    pub(crate) external_memory_users: crate::external_memory::ExternalMemoryUsers,
 
     /// Cached app overhead: total memory use minus sum of all recording chunk sizes.
     /// Updated during GC when we have a fresh memory snapshot.
@@ -462,6 +463,7 @@ impl App {
 
             memory_panel: Default::default(),
             memory_panel_open: false,
+            external_memory_users: crate::external_memory::ExternalMemoryUsers::default_users(),
             cached_app_overhead_bytes: None,
 
             egui_debug_panel_open: false,
@@ -618,6 +620,11 @@ impl App {
         }
 
         self.rx_log.add(rx);
+    }
+
+    /// Add a tracker for memory external to the viewer but in the same process.
+    pub fn add_external_memory_user(&mut self, user: Box<dyn crate::ExternalMemoryUser>) {
+        self.external_memory_users.add(user);
     }
 
     /// Update the active [`re_viewer_context::TimeControl`]. And if the blueprint inspection
@@ -2488,6 +2495,12 @@ impl App {
             ..ui.tokens().bottom_panel_frame(window_frame)
         };
 
+        let external_trees = if self.memory_panel_open {
+            self.external_memory_users.captured_trees()
+        } else {
+            &[]
+        };
+
         egui::Panel::bottom("memory_panel")
             .default_size(300.0)
             .resizable(true)
@@ -2497,6 +2510,7 @@ impl App {
                     ui,
                     &self.state.app_options().memory_limit,
                     mem_usage_tree,
+                    external_trees,
                     gpu_resource_stats,
                     store_stats,
                     storage_context,
@@ -3214,7 +3228,29 @@ impl App {
         use re_memory::MemoryUse;
 
         let limit = self.app_options().memory_limit;
-        let mem_use_before = MemoryUse::capture();
+        let mut mem_use_before = MemoryUse::capture();
+
+        let default_limit = re_memory::MemoryLimit::default_for_current_platform();
+
+        // If we are at the default limit, which is derived from system memory,
+        // we actually do want to count external to OOM.
+        let external_mem = if limit.as_bytes() >= default_limit.as_bytes()
+            || default_limit.is_exceeded_by(&mem_use_before).is_some()
+        {
+            0
+        } else {
+            let external_mem = self.external_memory_users.total_external_memory();
+
+            if let Some(counted) = &mut mem_use_before.counted {
+                *counted -= external_mem;
+            }
+
+            if let Some(resident) = &mut mem_use_before.resident {
+                *resident -= external_mem;
+            }
+
+            external_mem
+        };
 
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
             re_log::info_once!("Reached memory limit of {limit}. Freeing up data…");
@@ -3227,6 +3263,9 @@ impl App {
             }
             if let Some(counted) = mem_use_before.counted {
                 re_log::trace!("Counted: {}", format_bytes(counted as _));
+            }
+            if external_mem > 0 {
+                re_log::trace!("External: {}", format_bytes(external_mem as _));
             }
 
             re_tracing::profile_scope!("pruning");
@@ -3992,6 +4031,8 @@ impl eframe::App for App {
         let mem_usage_tree = self
             .memory_panel_open
             .then(|| re_byte_size::NamedMemUsageTree::new("App", self.capture_mem_usage_tree()));
+
+        self.external_memory_users.update();
 
         #[cfg(target_arch = "wasm32")]
         if self.startup_options.enable_history {
