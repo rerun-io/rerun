@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-33
+
 ### ✨ Overview & highlights
 
 After our large [0.32.0](https://github.com/rerun-io/rerun/releases/tag/0.32.0) release, this one is more focused but still has some great new things in store for you!
@@ -17,6 +19,7 @@ import rerun.blueprint as rrb
 from rerun.experimental import ViewerClient
 
 # Spawn a headless viewer; the client owns its lifetime.
+# ⚠️ you need a graphics driver to run this (software rasterizers like lavapipe are fine too!).
 with ViewerClient(spawn=True, headless=True) as viewer:
     rec = rr.RecordingStream("rerun_example_screenshot")
     rec.connect_grpc(url=viewer.url)
@@ -105,21 +108,16 @@ Bit too bulky!
 
 If you experience any issues with this you can turn it off in the settings menu.
 
-#### Bugfixes, fixed memory leaks in GC
-
-
-Among other things we finally addressed memory leaks for long running & memory constrained Viewers,
-so if you still experience memory leaking issues please reach out!
-
-Previously some Wayland users experienced hangs with the native Viewer which should be finally addressed now.
-
-As always, more bug reports are always welcome!
-
-
 ### ⚠️ Breaking changes
 
-No breaking changes in this release! \o/
+The Python optional-dependency extra for catalog/query API tools has been renamed to `catalog`.
 
+| Before                       | After                 |
+|------------------------------|-----------------------|
+| `pip install rerun-sdk[dataplatform]` | `pip install rerun-sdk[catalog]` |
+| `pip install rerun-sdk[datafusion]`   | `pip install rerun-sdk[catalog]` |
+
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-33
 
 ### 🔎 Details
 
