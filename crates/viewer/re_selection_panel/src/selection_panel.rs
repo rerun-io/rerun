@@ -16,8 +16,8 @@ use re_ui::{
 use re_viewer_context::{
     BlueprintContext as _, ContainerId, Contents, DataQueryResult, DataResult,
     DataResultInteractionAddress, HoverHighlight, Item, RecommendedVisualizers, StoreViewContext,
-    SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
-    ViewStates, ViewSystemIdentifier, ViewerContext, VisualizerInstruction, VisualizerViewReport,
+    SystemCommand, SystemCommandSender as _, UiLayout, ViewContext, ViewId, ViewStates,
+    ViewSystemIdentifier, ViewerContext, VisualizerInstruction, VisualizerViewReport,
     contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
@@ -73,11 +73,6 @@ impl SelectionPanel {
                 },
                 ..Default::default()
             });
-
-        if ctx.time_ctrl.highlighted_range.is_some() {
-            // Always reset the VH highlight, and let the UI re-set it if needed.
-            ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
-        }
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {

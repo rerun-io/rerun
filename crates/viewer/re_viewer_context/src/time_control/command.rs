@@ -7,7 +7,7 @@ use crate::NeedsRepaint;
 use crate::blueprint_helpers::BlueprintContext;
 
 use super::blueprint_ext::TimeBlueprintExt as _;
-use super::{TimeControl, TimeControlResponse, TimeState, TimeView};
+use super::{TimeControl, TimeControlResponse, TimeRangeHighlight, TimeState, TimeView};
 
 /// Direction for time movement commands.
 #[derive(Debug, Clone, Copy)]
@@ -28,8 +28,14 @@ pub enum MoveSpeed {
 /// Can be sent using [`crate::SystemCommand::TimeControlCommands`].
 #[derive(Debug)]
 pub enum TimeControlCommand {
-    HighlightRange(AbsoluteTimeRange),
-    ClearHighlightedRange,
+    /// Highlight a time range for this frame.
+    ///
+    /// Stored in `TimeControl::highlighted_range_next_frame` by the command
+    /// handler; becomes readable via [`TimeControl::highlighted_range`] on the
+    /// next `TimeControl::update`. Last-write-wins within a frame. Producers
+    /// must re-publish each frame they want the highlight to remain visible
+    /// (typically from a hover handler).
+    HighlightRange(TimeRangeHighlight),
 
     /// Reset the active timeline to instead be automatically assigned.
     ResetActiveTimeline,
@@ -170,22 +176,13 @@ impl TimeControl {
         command: &TimeControlCommand,
     ) -> NeedsRepaint {
         match command {
-            // TODO(isse): Changing the highlighted range should technically cause a repaint. But this causes issues
-            // because right now the selection panel wants to clear the range if it's some each frame, and maybe set
-            // it again at later point.
-            //
-            // This is (right now) always caused by hovering on something, so the mouse movement will cause repaints
-            // in all current cases.
-            //
-            // A better fix for this would be to collect all time commands before handling them, and for highlight
-            // ranges only keep the last one. And requesting a repaint here again.
-            TimeControlCommand::HighlightRange(range) => {
-                self.highlighted_range = Some(*range);
-                NeedsRepaint::No
-            }
-            TimeControlCommand::ClearHighlightedRange => {
-                self.highlighted_range = None;
-                NeedsRepaint::No
+            TimeControlCommand::HighlightRange(highlight) => {
+                self.highlighted_range_next_frame = Some(highlight.clone());
+                if self.highlighted_range_next_frame != self.highlighted_range {
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
             }
             TimeControlCommand::ResetActiveTimeline => {
                 if let Some(blueprint_ctx) = blueprint_ctx {

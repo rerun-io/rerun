@@ -47,6 +47,41 @@ impl BufferBehavior {
     }
 }
 
+/// What sort of thing a [`TimeRangeHighlight`] represents.
+///
+/// Lets each consumer (time panel, time series view, state timeline view, …) decide
+/// independently whether to draw a given highlight.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TimeRangeHighlightKind {
+    /// User is hovering a time range configuration UI — e.g. a visible-time-range
+    /// editor, a dataframe filter, the time-axis view range.
+    TimeRangeConfiguration,
+
+    /// User is hovering a state phase in the state timeline view.
+    StateTimeline,
+}
+
+/// A single time range highlighted this frame.
+///
+/// Producers publish via [`TimeControlCommand::HighlightRange`] from a hover handler
+/// each frame the highlight should remain visible. Consumers read via
+/// [`TimeControl::highlighted_range`] and filter on `timeline` / `kind`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TimeRangeHighlight {
+    pub range: AbsoluteTimeRange,
+    pub timeline: TimelineName,
+    pub kind: TimeRangeHighlightKind,
+
+    /// Preferred fill color (including alpha) chosen by the producer.
+    pub color: Option<egui::Color32>,
+}
+
+impl re_byte_size::SizeBytes for TimeRangeHighlight {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq)]
 pub struct TimeView {
@@ -198,10 +233,15 @@ pub struct TimeControl {
 
     loop_mode: LoopMode,
 
-    /// Range with special highlight.
+    /// Highlight published last frame; this is what consumers read each frame.
     ///
     /// This is used during UI interactions. E.g. to show visual history range that's highlighted.
-    pub highlighted_range: Option<AbsoluteTimeRange>,
+    highlighted_range: Option<TimeRangeHighlight>,
+
+    /// Highlight published this frame, set by the command handler.
+    ///
+    /// Becomes `highlighted_range` on the next [`TimeControl::update`].
+    highlighted_range_next_frame: Option<TimeRangeHighlight>,
 }
 
 impl Default for TimeControl {
@@ -215,6 +255,7 @@ impl Default for TimeControl {
             speed: 1.0,
             loop_mode: LoopMode::Off,
             highlighted_range: None,
+            highlighted_range_next_frame: None,
         }
     }
 }
@@ -230,6 +271,7 @@ impl re_byte_size::SizeBytes for TimeControl {
             speed: _,
             loop_mode: _,
             highlighted_range: _,
+            highlighted_range_next_frame: _,
         } = self;
         states.heap_size_bytes()
     }
@@ -449,6 +491,11 @@ impl TimeControl {
             is_buffering,
             should_diff_state,
         } = *params;
+
+        // Swap highlight buffer: `highlighted_range_next_frame` (set by the
+        // command handler since the previous `update`) becomes readable via
+        // `highlighted_range` this frame.
+        self.highlighted_range = self.highlighted_range_next_frame.take();
 
         let (old_playing, old_timeline, old_state) = (
             self.playing,
@@ -780,6 +827,11 @@ impl TimeControl {
 
     pub fn timeline_name(&self) -> &TimelineName {
         self.timeline.name()
+    }
+
+    /// Time range that certain views must highlight.
+    pub fn highlighted_range(&self) -> Option<&TimeRangeHighlight> {
+        self.highlighted_range.as_ref()
     }
 
     /// The time type of the currently selected timeline

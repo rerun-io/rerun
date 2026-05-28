@@ -330,6 +330,32 @@ impl ViewClass for StateTimelineView {
             egui::Stroke::new(1.0, ui.style().visuals.weak_text_color()),
         );
 
+        // Paint a vertical band of the highlighted state phase, behind the lanes.
+        if let Some(highlight) = ctx.time_ctrl.highlighted_range()
+            && highlight.timeline == query.timeline
+            && highlight.kind == re_viewer_context::TimeRangeHighlightKind::StateTimeline
+            && let Some(color) = highlight.color
+        {
+            let x_start = time_ranges_ui
+                .x_from_time_f32(TimeReal::from(highlight.range.min.as_i64() as f64))
+                .unwrap_or_else(|| rect.left())
+                .max(rect.left());
+            let x_end = time_ranges_ui
+                .x_from_time_f32(TimeReal::from(highlight.range.max.as_i64() as f64))
+                .unwrap_or_else(|| rect.right())
+                .min(rect.right());
+            if x_end > x_start {
+                painter.rect_filled(
+                    egui::Rect::from_min_max(
+                        egui::pos2(x_start, rect.top()),
+                        egui::pos2(x_end, rect.bottom()),
+                    ),
+                    0.0,
+                    color,
+                );
+            }
+        }
+
         // Lanes: each one is its own widget, stacked vertically inside a ScrollArea.
         let label_color = ui.style().visuals.text_color();
         let mut visible_lane_band_rects: Vec<(egui::Rect, &StateLane)> =
@@ -435,6 +461,28 @@ impl ViewClass for StateTimelineView {
         // Handle selection: determine what's under the pointer (lane entity or view).
         let hover_pos = ui.input(|i| i.pointer.hover_pos());
         let hovered_lane = hover_pos.and_then(|pos| hovered_lane(pos, &visible_lane_band_rects));
+
+        // Publish the hovered phase so other views can highlight the same range.
+        if let Some(pos) = hover_pos
+            && let Some((phase_start, phase_end, phase_color)) =
+                find_hovered_phase(pos, lanes_rect, &all_lanes, &time_ranges_ui)
+        {
+            let [r, g, b, _] = phase_color.to_array();
+            #[expect(clippy::disallowed_methods)]
+            let band_color = egui::Color32::from_rgba_unmultiplied(r, g, b, 30);
+            let range = AbsoluteTimeRange::new(
+                phase_start,
+                phase_end.map_or(TimeInt::MAX, TimeInt::saturated_temporal_i64),
+            );
+            ctx.send_time_commands([TimeControlCommand::HighlightRange(
+                re_viewer_context::TimeRangeHighlight {
+                    range,
+                    timeline: query.timeline,
+                    kind: re_viewer_context::TimeRangeHighlightKind::StateTimeline,
+                    color: Some(band_color),
+                },
+            )]);
+        }
 
         // Time cursor — uses the same triangle-headed style as the time panel.
         // Painted last so it appears above the lanes.
@@ -635,6 +683,53 @@ fn hovered_lane<'a>(
     lane_band_rects
         .iter()
         .find_map(|(band_rect, lane)| band_rect.contains(pos).then_some(&lane.entity_path))
+}
+
+/// Returns the (start, end, color) of the visible phase under `pos`, if any.
+/// The end is `None` for the last phase in a lane (no known end).
+fn find_hovered_phase(
+    pos: egui::Pos2,
+    lanes_rect: egui::Rect,
+    lanes: &[&StateLane],
+    time_ranges_ui: &TimeRangesUi,
+) -> Option<(i64, Option<i64>, egui::Color32)> {
+    re_tracing::profile_function!();
+
+    for (lane_idx, lane) in lanes.iter().enumerate() {
+        let y_top = lanes_rect.top() + TOP_MARGIN + lane_idx as f32 * LANE_TOTAL_HEIGHT;
+        let band_y_top = y_top + LANE_LABEL_HEIGHT;
+        let band_y_bottom = band_y_top + LANE_BAND_HEIGHT;
+        if pos.y < band_y_top || pos.y > band_y_bottom {
+            continue;
+        }
+        for (i, phase) in lane.phases.iter().enumerate() {
+            let Some(content) = phase.content.as_ref() else {
+                continue;
+            };
+            let Some(x_start) =
+                time_ranges_ui.x_from_time_f32(TimeReal::from(phase.start_time as f64))
+            else {
+                continue;
+            };
+            let next_phase = lane.phases.get(i + 1);
+            let x_start = x_start.max(lanes_rect.left());
+            let x_end = next_phase
+                .and_then(|n| time_ranges_ui.x_from_time_f32(TimeReal::from(n.start_time as f64)))
+                .unwrap_or_else(|| lanes_rect.right())
+                .min(lanes_rect.right());
+            if x_end <= x_start {
+                continue;
+            }
+            if pos.x >= x_start && pos.x <= x_end {
+                return Some((
+                    phase.start_time,
+                    next_phase.map(|n| n.start_time),
+                    content.color,
+                ));
+            }
+        }
+    }
+    None
 }
 
 /// Returns `true` if `pos` lies inside any visible phase rectangle.

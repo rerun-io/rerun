@@ -806,6 +806,23 @@ impl ViewClass for TimeSeriesView {
                 state.time_per_pixel = 1.0 / pixels_per_time.max(f64::EPSILON);
             }
 
+            // Cross-view time-range highlight (e.g. hovered state phase). Only paint
+            // StateTimeline-kind highlights on the current timeline that carry a color.
+            if let Some(highlight) = ctx.time_ctrl.highlighted_range()
+                && highlight.timeline == *timeline.name()
+                && highlight.kind == re_viewer_context::TimeRangeHighlightKind::StateTimeline
+                && let Some(color) = highlight.color
+            {
+                paint_time_range_highlight(
+                    ui,
+                    &response,
+                    &transform,
+                    time_offset,
+                    highlight.range,
+                    color,
+                );
+            }
+
             // Render re_renderer draw data (already in screen space) via ViewBuilder.
             render_re_renderer_draw_data(ctx, ui, &response, re_renderer_draw_data);
 
@@ -1309,6 +1326,40 @@ fn find_nearest_data_point_and_show_tooltip(
     plot_item_id_to_data_result_address
         .get(&series.id())
         .map(|address| re_viewer_context::Item::DataResult(address.clone()))
+}
+
+fn paint_time_range_highlight(
+    ui: &egui::Ui,
+    response: &egui::Response,
+    transform: &egui_plot::PlotTransform,
+    time_offset: i64,
+    range: re_log_types::AbsoluteTimeRange,
+    color: egui::Color32,
+) {
+    let plot_rect = response.rect;
+    let bounds = transform.bounds();
+    let start_plot_x = (range.min.as_i64().saturating_sub(time_offset)) as f64;
+    let end_plot_x = (range.max.as_i64().saturating_sub(time_offset)) as f64;
+
+    // Clip to the visible plot bounds before converting to screen.
+    let start_plot_x = start_plot_x.max(bounds.min()[0]);
+    let end_plot_x = end_plot_x.min(bounds.max()[0]);
+    if end_plot_x <= start_plot_x {
+        return;
+    }
+
+    let x_start = transform
+        .position_from_point(&PlotPoint::new(start_plot_x, 0.0))
+        .x;
+    let x_end = transform
+        .position_from_point(&PlotPoint::new(end_plot_x, 0.0))
+        .x;
+
+    ui.painter().with_clip_rect(plot_rect).rect_filled(
+        egui::Rect::from_x_y_ranges(x_start..=x_end, plot_rect.y_range()),
+        0.0,
+        color,
+    );
 }
 
 fn paint_time_cursor(

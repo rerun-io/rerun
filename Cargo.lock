@@ -8930,6 +8930,7 @@ dependencies = [
  "re_test_context",
  "re_uri",
  "re_view_bar_chart",
+ "re_view_state_timeline",
  "re_view_tensor",
  "re_view_text_document",
  "re_view_text_log",
