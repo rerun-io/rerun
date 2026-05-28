@@ -99,6 +99,7 @@ wasm-bindgen-futures.workspace = true
 web-sys = { workspace = true, features = [
   "Blob",
   "BlobPropertyBag",
+  "CodecState",
   "DomException",
   "EncodedVideoChunk",
   "EncodedVideoChunkInit",
