@@ -1243,6 +1243,7 @@ force_capitalized = [
     "UIs",
     "UX",
     "Wasm",
+    "Windows",
     # "Arrow",   # Would be nice to capitalize in the right context, but it's a too common word.
     # "Windows", # Consider "multiple plot windows"
 ]
