@@ -230,6 +230,11 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
 
             ..egui_wgpu::WgpuSetupCreateNew::without_display_handle()
         }),
+
+        // Explicitly stick with wgpu's latency default which is more optimized for high throughput than
+        // what egui may have in mind.
+        desired_maximum_frame_latency: None,
+
         ..Default::default()
     }
 }

@@ -167,6 +167,9 @@ poll-promise = { workspace = true, features = ["tokio"] }
 re_perf_telemetry = { workspace = true, optional = true }
 tokio.workspace = true
 
+[target.'cfg(target_os = "windows")'.dependencies]
+winit.workspace = true
+
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys.workspace = true

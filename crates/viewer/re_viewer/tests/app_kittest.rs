@@ -100,7 +100,7 @@ fn about_rerun() {
 
     let mut harness = harness.build_ui(|ui| {
         re_ui::apply_style_and_install_loaders(ui.ctx());
-        egui::menu::menu_style(ui.style_mut()); // The about-dialog is in a menu
+        egui::containers::menu::menu_style(ui.style_mut()); // The about-dialog is in a menu
         re_viewer::about_rerun_ui(ui, &build_info, render_state.as_ref());
     });
 

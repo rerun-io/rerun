@@ -256,8 +256,8 @@ impl TimePanel {
             state.is_expanded(),
             collapsed,
             expanded,
-            |ui: &mut egui::Ui, show_expanded: bool| {
-                if show_expanded {
+            |ui: &mut egui::Ui, how_expanded: f32| {
+                if how_expanded > 0.0 {
                     self.show_expanded_with_header(
                         viewer_ctx,
                         store_ctx,

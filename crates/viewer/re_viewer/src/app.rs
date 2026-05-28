@@ -2562,6 +2562,7 @@ impl App {
                 data.insert_temp(id, custom_window_decorations);
                 was_applied
             });
+
             if let Some(was_applied) = was_applied
                 && was_applied != custom_window_decorations
             {
@@ -2571,6 +2572,15 @@ impl App {
                 ui.send_viewport_cmd(egui::ViewportCommand::Transparent(
                     custom_window_decorations,
                 ));
+            }
+
+            // Apply windows undecorated shadow both on change and the first frame.
+            #[cfg(target_os = "windows")]
+            if was_applied != Some(custom_window_decorations)
+                && let Some(window) = frame.winit_window()
+            {
+                use winit::platform::windows::WindowExtWindows as _;
+                window.set_undecorated_shadow(custom_window_decorations);
             }
         }
 
