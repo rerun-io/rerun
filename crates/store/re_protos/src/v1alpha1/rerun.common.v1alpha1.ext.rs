@@ -2,6 +2,7 @@ use std::hash::Hasher as _;
 
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::error::ArrowError;
+use itertools::Itertools as _;
 
 use re_log_types::external::re_types_core::ComponentDescriptor;
 use re_log_types::{RecordingId, StoreKind, TableId};
@@ -534,7 +535,7 @@ impl TryFrom<crate::common::v1alpha1::ScanParameters> for ScanParameters {
                 .order_by
                 .into_iter()
                 .map(|ob| ob.try_into())
-                .collect::<Result<Vec<_>, _>>()?,
+                .try_collect()?,
             explain_plan: value.explain_plan,
             explain_filter: value.explain_filter,
         })

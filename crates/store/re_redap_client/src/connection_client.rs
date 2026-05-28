@@ -340,7 +340,7 @@ where
             .entries
             .into_iter()
             .map(TryInto::try_into)
-            .collect::<Result<Vec<EntryDetails>, _>>()
+            .try_collect()
             .map_err(|err| {
                 ApiError::deserialization_with_source(
                     trace_id,
@@ -809,11 +809,8 @@ where
     ) -> ApiResult<Vec<RecordBatch>> {
         let stream = self.query_dataset_raw(params).await?;
         let trace_id = stream.trace_id();
-        stream
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()?
+        let responses: Vec<_> = stream.collect::<Vec<_>>().await.into_iter().try_collect()?;
+        responses
             .into_iter()
             .map(|resp| {
                 resp.data.ok_or_else(|| {
@@ -872,11 +869,8 @@ where
     ) -> ApiResult<FetchChunksResponseStream> {
         let stream = self.query_dataset_raw(params).await?;
         let query_trace_id = stream.trace_id();
-        let chunk_info_batches = stream
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()?
+        let responses: Vec<_> = stream.collect::<Vec<_>>().await.into_iter().try_collect()?;
+        let chunk_info_batches: Vec<_> = responses
             .into_iter()
             .map(|resp| {
                 resp.data.ok_or_else(|| {
@@ -888,7 +882,7 @@ where
                     )
                 })
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
 
         if chunk_info_batches.is_empty() {
             return Ok(ApiResponseStream::new(

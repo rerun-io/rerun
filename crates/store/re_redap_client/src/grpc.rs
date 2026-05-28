@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use arrow::array::{AsArray as _, RecordBatch};
 use arrow::error::ArrowError;
+use itertools::Itertools as _;
 use re_auth::client::AuthDecorator;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, ChunkId};
@@ -306,7 +307,7 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
 
                         Ok((chunk, segment_id))
                     })
-                    .collect::<Result<Vec<_>, _>>()
+                    .try_collect()
             })
         })
         .map(move |res| {
@@ -363,7 +364,7 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
 
                 Ok((chunk, segment_id))
             })
-            .collect::<Result<Vec<_>, _>>()
+            .try_collect()
     });
     crate::ApiResponseStream::new(stream, trace_id)
 }

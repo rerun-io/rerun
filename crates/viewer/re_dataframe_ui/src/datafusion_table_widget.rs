@@ -533,7 +533,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let columns = Columns::from(&query_result.sorbet_schema, &self.column_blueprint_fn);
 
-        let display_record_batches = query_result
+        let display_record_batches: Result<Vec<_>, _> = query_result
             .sorbet_batches
             .iter()
             .map(|record_batch| {
@@ -543,7 +543,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     record_batch.columns().iter().map(Arc::clone)
                 ))
             })
-            .collect::<Result<Vec<_>, _>>();
+            .try_collect();
 
         let display_record_batches = match display_record_batches {
             Ok(display_record_batches) => display_record_batches,

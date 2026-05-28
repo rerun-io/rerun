@@ -5878,6 +5878,7 @@ dependencies = [
  "clap",
  "emath",
  "glam",
+ "itertools 0.14.0",
  "rand 0.9.3",
  "re_tracing",
  "rerun",
@@ -8215,6 +8216,7 @@ dependencies = [
  "egui",
  "egui_kittest",
  "insta",
+ "itertools 0.14.0",
  "jiff",
  "re_arrow_util",
  "re_format",
@@ -8680,6 +8682,7 @@ dependencies = [
  "futures-util",
  "getrandom 0.3.4",
  "http",
+ "itertools 0.14.0",
  "jiff",
  "opentelemetry",
  "opentelemetry-proto",
@@ -8961,6 +8964,7 @@ dependencies = [
  "ahash",
  "arrow",
  "insta",
+ "itertools 0.14.0",
  "nohash-hasher",
  "re_arrow_util",
  "re_byte_size",
@@ -9095,6 +9099,7 @@ dependencies = [
  "cdr-encoding",
  "crossbeam",
  "insta",
+ "itertools 0.14.0",
  "mcap",
  "prost-reflect",
  "rayon",
@@ -9178,6 +9183,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "bytes",
+ "itertools 0.14.0",
  "parquet",
  "re_chunk",
  "re_log",
@@ -9237,6 +9243,7 @@ version = "0.33.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "http",
+ "itertools 0.14.0",
  "jiff",
  "lz4_flex 0.13.0",
  "opentelemetry",
@@ -9548,6 +9555,7 @@ name = "re_ros_msg"
 version = "0.33.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "itertools 0.14.0",
  "serde",
  "thiserror 2.0.18",
 ]
@@ -10946,6 +10954,7 @@ dependencies = [
  "ahash",
  "arrow",
  "infer",
+ "itertools 0.14.0",
  "parking_lot",
  "re_arrow_util",
  "re_build_info",
@@ -11853,6 +11862,7 @@ checksum = "8207e78455ffdf55661170876f88daf85356e4edd54e0a3dbc79586ca1e50cbe"
 name = "stdio"
 version = "0.33.0-alpha.1+dev"
 dependencies = [
+ "itertools 0.14.0",
  "rerun",
 ]
 

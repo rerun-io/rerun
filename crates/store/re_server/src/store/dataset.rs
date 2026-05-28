@@ -483,7 +483,7 @@ impl Dataset {
         let per_layer: Vec<RawRrdManifest> = partition
             .iter_layers()
             .map(|(_, layer)| layer.rrd_manifest())
-            .collect::<Result<_, _>>()?;
+            .try_collect()?;
 
         RawRrdManifest::merge(segment_store_id, per_layer)
             .map_err(|err| Error::RrdLoadingError(err.into()))

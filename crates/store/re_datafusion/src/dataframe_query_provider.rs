@@ -35,6 +35,7 @@ use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, Pla
 use futures::FutureExt as _;
 use futures_util::Stream;
 use io_loop::chunk_stream_io_loop;
+use itertools::Itertools as _;
 use re_dataframe::{Index, QueryExpression, TimelineName};
 use re_protos::cloud::v1alpha1::ScanSegmentTableResponse;
 use re_redap_client::{ApiError, ApiResult};
@@ -462,7 +463,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
                 .map(|field| {
                     ColumnDescriptor::try_from_arrow_field(None, field).map(ColumnSelector::from)
                 })
-                .collect::<Result<Vec<_>, _>>()
+                .try_collect()
                 .map_err(|err| exec_datafusion_err!("{err}"))?;
 
             query_expression.selection = Some(selection);
@@ -632,7 +633,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
 
         let random_state = ahash::RandomState::with_seeds(0, 0, 0, 0);
-        let chunk_infos = {
+        let chunk_infos: Vec<_> = {
             re_tracing::profile_scope!("concat_chunk_infos_per_segment");
             self.chunk_info
                 .iter()
@@ -656,7 +657,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 // we end up with 1 batch per (rerun) segment. Order is important and must be preserved.
                 // See SegmentStreamExec::try_new for details on ordering.
                 .map(|(_, batches)| re_arrow_util::concat_polymorphic_batches(batches))
-                .collect::<Result<Vec<_>, _>>()
+                .try_collect()
                 .map_err(|err| {
                     ApiError::deserialization_with_source(
                         None,

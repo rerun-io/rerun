@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use arrow::array::{AsArray as _, Int32Builder, ListArray, ListBuilder};
 use arrow::datatypes::{DataType, Field};
+use itertools::Itertools as _;
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, TimeColumn, TimelineName};
 use re_sdk::lenses::{Lens, Lenses, OutputMode, Selector, op};
 use re_sdk_types::ComponentDescriptor;
@@ -146,10 +147,7 @@ fn test_destructure_cast() {
         destructure,
     );
 
-    let res: Vec<re_chunk::Chunk> = lenses
-        .apply(&original_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let res: Vec<re_chunk::Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
 
     assert_eq!(res.len(), 1);
 
@@ -176,10 +174,7 @@ fn test_destructure() {
         destructure,
     );
 
-    let res: Vec<re_chunk::Chunk> = lenses
-        .apply(&original_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let res: Vec<re_chunk::Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
     assert_eq!(res.len(), 1);
 
     let chunk = &res[0];
@@ -247,10 +242,7 @@ fn test_time_column_extraction() {
         time_lens,
     );
 
-    let res: Vec<Chunk> = lenses
-        .apply(&original_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let res: Vec<Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
     assert_eq!(res.len(), 1);
 
     let chunk = &res[0];
@@ -378,10 +370,7 @@ fn test_scatter_columns() {
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
-    let res: Vec<Chunk> = lenses
-        .apply(&original_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let res: Vec<Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
     assert_eq!(res.len(), 1);
 
     let chunk = &res[0];
@@ -462,10 +451,7 @@ fn test_scatter_columns_static() {
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
-    let res: Vec<Chunk> = lenses
-        .apply(&original_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let res: Vec<Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
     assert_eq!(res.len(), 1);
 
     let chunk = &res[0];

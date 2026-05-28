@@ -7,6 +7,7 @@ use arrow::array::{
 };
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field};
+use itertools::Itertools as _;
 use re_lenses_core::combinators::Error;
 use re_sdk_types::Loggable as _;
 use re_sdk_types::datatypes::ImageFormat;
@@ -32,7 +33,7 @@ pub(crate) fn encoding_to_image_format()
         let encoding_array = get_field_as::<StringArray>(source, "encoding")?;
 
         let formats: Vec<Option<ImageFormat>> = (0..source.len())
-            .map(|i| {
+            .map(|i| -> Result<_, Error> {
                 if encoding_array.is_null(i) {
                     return Ok(None);
                 }
@@ -42,7 +43,7 @@ pub(crate) fn encoding_to_image_format()
                     height_array.value(i),
                 ])))
             })
-            .collect::<Result<_, Error>>()?;
+            .try_collect()?;
 
         let array_ref = ImageFormat::to_arrow_opt(formats.iter().map(|f| f.as_ref()))
             .map_err(|err| Error::Other(err.to_string()))?;

@@ -10,6 +10,7 @@ use arrow::array::{
 };
 use arrow::datatypes::Int32Type;
 use futures::StreamExt as _;
+use itertools::Itertools as _;
 use tonic::IntoRequest as _;
 use tracing::Instrument as _;
 
@@ -929,5 +930,5 @@ async fn fetch_merged_range(
                 })
                 .map(|chunk_with_segment| (info.original_row_index, chunk_with_segment))
         })
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
 }

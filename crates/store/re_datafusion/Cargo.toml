@@ -54,6 +54,7 @@ datafusion.workspace = true
 futures.workspace = true
 futures-util.workspace = true
 http.workspace = true
+itertools.workspace = true
 opentelemetry.workspace = true
 opentelemetry-proto = { workspace = true, features = ["gen-tonic-messages", "trace"] }
 parking_lot.workspace = true

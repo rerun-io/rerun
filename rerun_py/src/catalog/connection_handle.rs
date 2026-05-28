@@ -4,8 +4,9 @@ use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use arrow::ffi_stream::ArrowArrayStreamReader;
 use arrow::pyarrow::PyArrowType;
+use itertools::Itertools as _;
 use pyo3::exceptions::PyValueError;
-use pyo3::{PyErr, PyResult, Python};
+use pyo3::{PyResult, Python};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::QueryExpression;
 use re_datafusion::query_from_query_expression;
@@ -302,7 +303,7 @@ impl ConnectionHandle {
                     .chain(std::iter::repeat_with(|| last_layer.clone())),
             )
             .map(|(url, layer)| DataSource::new_rrd_layer(layer, url))
-            .collect::<Result<Vec<_>, _>>()
+            .try_collect()
             .map_err(to_py_err)?;
 
         wait_for_future(py, async {
@@ -487,14 +488,14 @@ impl ConnectionHandle {
                     return Err(to_py_err(err));
                 }
 
-                let col_indices = [
+                let col_indices: Vec<_> = [
                     QueryTasksResponse::FIELD_TASK_ID,
                     QueryTasksResponse::FIELD_EXEC_STATUS,
                     QueryTasksResponse::FIELD_MSGS,
                 ]
                 .iter()
                 .map(|name| schema.index_of(name))
-                .collect::<Result<Vec<_>, _>>()
+                .try_collect()
                 .map_err(|err| {
                     to_py_err(ApiError::deserialization_with_source(
                         trace_id,
@@ -618,16 +619,14 @@ impl ConnectionHandle {
                 .into_inner();
 
             // TODO(jleibs): Make this streaming
-            let record_batches: Result<Vec<RecordBatch>, PyErr> = response_stream
+            let record_batches: Vec<RecordBatch> = response_stream
                 .collect::<Result<Vec<_>, _>>()
                 .await
                 .map_err(to_py_err)?
                 .into_iter()
                 .filter_map(|response| response.data)
                 .map(|dataframe_part| dataframe_part.try_into().map_err(to_py_err))
-                .collect();
-
-            let record_batches = record_batches?;
+                .try_collect()?;
 
             // TODO(jleibs): Still need a better pattern for getting these schemas
             let first = record_batches

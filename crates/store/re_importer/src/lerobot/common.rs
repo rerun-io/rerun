@@ -7,6 +7,7 @@ use arrow::{
     datatypes::{DataType, Field},
 };
 use crossbeam::channel::Sender;
+use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimePoint, TimelineName,
@@ -396,7 +397,7 @@ fn extract_fixed_size_list_array_elements_as_f64(
             cast(&data.value(idx), &DataType::Float64)
                 .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))
         })
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
 }
 
 fn extract_list_array_elements_as_f64(
@@ -407,5 +408,5 @@ fn extract_list_array_elements_as_f64(
             cast(&data.value(idx), &DataType::Float64)
                 .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))
         })
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
 }

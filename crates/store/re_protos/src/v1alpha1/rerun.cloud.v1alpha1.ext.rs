@@ -7,6 +7,7 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, Field, FieldRef, Int32Type, Int64Type, Schema, TimeUnit};
 use arrow::error::ArrowError;
+use itertools::Itertools as _;
 use prost::Name as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
@@ -160,7 +161,7 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterWithDatasetRequest> for RegisterWit
             data_sources: data_sources
                 .into_iter()
                 .map(TryInto::try_into)
-                .collect::<Result<Vec<_>, _>>()?,
+                .try_collect()?,
             on_duplicate: on_duplicate.try_into()?,
         })
     }
@@ -203,7 +204,7 @@ impl TryFrom<crate::cloud::v1alpha1::UnregisterFromDatasetRequest>
             segments_to_drop: segments_to_drop
                 .into_iter()
                 .map(TryInto::try_into)
-                .collect::<Result<Vec<_>, _>>()?,
+                .try_collect()?,
             layers_to_drop,
             force,
         })
@@ -301,7 +302,7 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
             .segment_ids
             .into_iter()
             .map(TryInto::try_into)
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
 
         let result = Self {
             segment_ids,
@@ -313,7 +314,7 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
                     let id: re_tuid::Tuid = tuid.try_into()?;
                     Ok::<_, tonic::Status>(re_chunk::ChunkId::from_u128(id.as_u128()))
                 })
-                .collect::<Result<Vec<_>, _>>()?,
+                .try_collect()?,
 
             entity_paths: value
                 .entity_paths
@@ -323,7 +324,7 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
                         tonic::Status::invalid_argument(format!("invalid entity path: {err}"))
                     })
                 })
-                .collect::<Result<Vec<_>, _>>()?,
+                .try_collect()?,
 
             select_all_entity_paths: value.select_all_entity_paths,
 

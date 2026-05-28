@@ -6,6 +6,7 @@ use crate::trace_context::extract_trace_context_from_contextvar;
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
+use itertools::Itertools as _;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
@@ -245,7 +246,7 @@ impl PyDatasetViewInternal {
                 values_map
                     .into_iter()
                     .map(|(k, v)| v.to_index_values().map(|v| (SegmentId::from(k), v)))
-                    .collect::<Result<BTreeMap<_, _>, _>>()
+                    .try_collect()
             })
             .transpose()?;
 

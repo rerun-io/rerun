@@ -1,3 +1,4 @@
+use itertools::Itertools as _;
 use re_chunk::{Chunk, ComponentIdentifier};
 
 use crate::{DynExpr, Lens, LensError, LensRuntimeError, Lenses, OutputMode, Selector};
@@ -36,7 +37,7 @@ impl ChunkExt for Chunk {
             collection = collection.add_lens(lens.clone());
         }
 
-        collection.apply(self).collect::<Result<Vec<_>, _>>()
+        collection.apply(self).try_collect()
     }
 
     fn apply_selector(

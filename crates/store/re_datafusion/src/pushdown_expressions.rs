@@ -1,6 +1,7 @@
 use arrow::datatypes::SchemaRef;
 use datafusion::common::{DataFusionError, ScalarValue, exec_err};
 use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPushDown};
+use itertools::Itertools as _;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
 use re_protos::common::v1alpha1::ext::SegmentId;
@@ -118,7 +119,7 @@ pub(crate) fn apply_filter_expr_to_queries(
                                         .iter()
                                         .map(|right| merge_queries_and(left, right))
                                 })
-                                .collect::<Result<Vec<_>, _>>()?;
+                                .try_collect()?;
 
                             Some(final_exprs)
                         }
@@ -145,7 +146,7 @@ pub(crate) fn apply_filter_expr_to_queries(
                             queries
                                 .into_iter()
                                 .map(|query| replace_time_in_query(&query, &index_name, time, op))
-                                .collect::<Result<Vec<_>, _>>()?,
+                                .try_collect()?,
                         ),
                         KnownFilterColumn::SegmentId(segment_id) => {
                             if op == Operator::Eq {

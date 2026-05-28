@@ -461,13 +461,13 @@ impl EntityPathFilter {
         self,
         subst_env: &EntityPathSubs,
     ) -> Result<ResolvedEntityPathFilter, EntityPathFilterError> {
-        let mut rules = self
+        let mut rules: BTreeMap<_, _> = self
             .rules
             .into_iter()
             .map(|(rule, effect)| {
                 ResolvedEntityPathRule::parse_strict(&rule, subst_env).map(|r| (r, effect))
             })
-            .collect::<Result<BTreeMap<_, _>, _>>()?;
+            .try_collect()?;
 
         // Default-exclude `__properties/**`, but don't overwrite if the user
         // already has an explicit rule for that exact subtree.

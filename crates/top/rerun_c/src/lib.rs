@@ -19,6 +19,7 @@ use arrow::array::{ArrayRef as ArrowArrayRef, ListArray as ArrowListArray};
 use arrow::ffi::{FFI_ArrowArray, FFI_ArrowSchema};
 use arrow_utils::arrow_array_from_c_ffi;
 use component_type_registry::COMPONENT_TYPES;
+use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk::external::nohash_hasher::IntMap;
 use re_sdk::external::re_log_types::TimelineName;
@@ -824,7 +825,7 @@ fn rr_recording_stream_serve_grpc_impl(
     let cors_allowed_origins: Vec<String> = cors_allow_origins
         .iter()
         .map(|s| Ok(s.as_nonempty_str("cors_allow_origin")?.to_owned()))
-        .collect::<Result<Vec<_>, CError>>()?;
+        .try_collect()?;
     let server_options = re_sdk::ServerOptions {
         playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(newest_first),
 
@@ -1217,7 +1218,7 @@ fn rr_recording_stream_send_columns_impl(
                 ),
             ))
         })
-        .collect::<Result<_, CError>>()?;
+        .try_collect()?;
 
     let components: IntMap<ComponentDescriptor, ArrowListArray> = {
         let component_type_registry = COMPONENT_TYPES.read();
@@ -1246,7 +1247,7 @@ fn rr_recording_stream_send_columns_impl(
 
                 Ok((component_type.descriptor.clone(), component_values.clone()))
             })
-            .collect::<Result<_, CError>>()?
+            .try_collect()?
     };
 
     let chunk = Chunk::from_auto_row_ids(

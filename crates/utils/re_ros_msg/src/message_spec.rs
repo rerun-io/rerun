@@ -1,3 +1,4 @@
+use itertools::Itertools as _;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -519,7 +520,7 @@ impl Literal {
                         .map(|e| e.trim())
                         .filter(|e| !e.is_empty())
                         .map(|elem_str| Self::parse(elem_str, elem_ty))
-                        .collect::<Result<Vec<_>, ParseError>>()?;
+                        .try_collect()?;
 
                     Ok(Self::Array(elems))
                 }

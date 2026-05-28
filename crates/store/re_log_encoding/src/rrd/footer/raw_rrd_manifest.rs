@@ -410,13 +410,12 @@ impl RawRrdManifest {
 
             let rrd_footer =
                 re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(rrd_footer_bytes)?;
-            manifests.extend(
-                rrd_footer
-                    .manifests
-                    .iter()
-                    .map(|manifest| manifest.to_application(()))
-                    .collect::<Result<Vec<_>, _>>()?,
-            );
+            let new_manifests: Vec<_> = rrd_footer
+                .manifests
+                .iter()
+                .map(|manifest| manifest.to_application(()))
+                .try_collect()?;
+            manifests.extend(new_manifests);
         }
 
         Ok(manifests)
@@ -498,7 +497,7 @@ impl RawRrdManifest {
         let chunk_entity_paths = self.col_chunk_entity_path()?;
         let chunk_is_static = self.col_chunk_is_static()?;
 
-        let has_static_component_data =
+        let has_static_component_data: Vec<_> =
             itertools::izip!(self.data.schema_ref().fields().iter(), self.data.columns(),)
                 .filter(|(f, _c)| f.name().ends_with(":has_static_data"))
                 .map(|(f, c)| {
@@ -512,7 +511,7 @@ impl RawRrdManifest {
                         })
                         .map(|c| (f, c))
                 })
-                .collect::<Result<Vec<_>, _>>()?;
+                .try_collect()?;
 
         for (i, (chunk_id, is_static, entity_path)) in
             itertools::izip!(chunk_ids, chunk_is_static, chunk_entity_paths).enumerate()

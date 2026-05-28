@@ -165,7 +165,7 @@ impl RowsDisplayData {
         selected_columns: &[ColumnDescriptor],
         query_timeline: &TimelineName,
     ) -> Result<Self, DisplayRecordBatchError> {
-        let display_record_batches = row_data
+        let display_record_batches: Vec<_> = row_data
             .into_iter()
             .map(|data| {
                 DisplayRecordBatch::try_new(
@@ -176,7 +176,7 @@ impl RowsDisplayData {
                         .map(|(desc, data)| (desc, ColumnBlueprint::default_ref(), data)),
                 )
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
 
         let mut batch_ref_from_row = BTreeMap::new();
         let mut offset = row_indices.start;

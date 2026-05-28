@@ -4,6 +4,7 @@ use std::sync::Arc;
 use arrow::array::{BinaryArray, RecordBatch, RecordBatchOptions};
 use arrow::datatypes::Schema;
 use arrow::error::ArrowError;
+use itertools::Itertools as _;
 use re_byte_size::SizeBytes as _;
 use re_log_encoding::RawRrdManifest;
 use re_log_types::{AbsoluteTimeRange, Timeline};
@@ -123,7 +124,7 @@ impl Layer {
     ) -> Result<RawRrdManifest, super::Error> {
         let mut manifest = (**lazy.raw_manifest()).clone();
 
-        let chunk_keys = manifest
+        let chunk_keys: Vec<_> = manifest
             .col_chunk_id()
             .map_err(|err| super::Error::RrdLoadingError(err.into()))?
             .map(|chunk_id| {
@@ -133,7 +134,7 @@ impl Layer {
                 }
                 .encode()
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
 
         append_chunk_key_column(&mut manifest, &chunk_keys)?;
         Ok(manifest)

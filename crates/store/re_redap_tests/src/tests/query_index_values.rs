@@ -6,6 +6,7 @@ use datafusion::datasource::TableProvider as _;
 use datafusion::physical_plan::ExecutionPlanProperties as _;
 use datafusion::prelude::SessionContext;
 use futures::{StreamExt as _, TryStreamExt as _};
+use itertools::Itertools as _;
 use re_chunk_store::IndexValue;
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, TimeInt, TimeType};
@@ -819,9 +820,9 @@ async fn query_dataset_snapshot<T: RerunCloudService>(
     let schema = plan.schema();
 
     let num_partitions = plan.output_partitioning().partition_count();
-    let results = (0..num_partitions)
+    let results: Vec<_> = (0..num_partitions)
         .map(|partition| plan.execute(partition, ctx.task_ctx()))
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
         .unwrap();
 
     let stream = futures::stream::iter(results);

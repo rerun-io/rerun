@@ -24,6 +24,7 @@ use arrow::datatypes::{
 use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::{RichText, Ui};
+use itertools::Itertools as _;
 use re_log_types::TimestampFormat;
 use re_ui::list_item::{CustomContent, LabelContent};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -693,11 +694,11 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
             .columns()
             .iter()
             .zip(fields)
-            .map(|(a, f)| {
+            .map(|(a, f)| -> Result<_, ArrowError> {
                 let format = make_ui(a.as_ref(), &nested_options)?;
                 Ok((&**f, format))
             })
-            .collect::<Result<_, ArrowError>>()?;
+            .try_collect()?;
         Ok(FieldDisplayState {
             items,
             max_items: options.max_struct_items,

@@ -35,6 +35,7 @@ re_tuid.workspace = true
 # External
 arrow.workspace = true
 http.workspace = true
+itertools.workspace = true
 jiff.workspace = true
 lz4_flex.workspace = true
 opentelemetry.workspace = true

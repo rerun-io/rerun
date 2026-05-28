@@ -19,6 +19,7 @@ use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use futures::StreamExt as _;
+use itertools::Itertools as _;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, IndexValue, QueryExpression, SparseFillStrategy};
 use re_log_types::{EntityPath, EntryId};
@@ -606,14 +607,14 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                         )
                     }
                 })
-                .collect::<Result<Vec<_>, DataFusionError>>()?)
+                .try_collect()?)
         } else {
             Ok(filters
                 .iter()
                 .map(|filter_expr| {
                     filter_expr_is_supported(filter_expr, &self.query_dataset_request, &self.schema)
                 })
-                .collect::<Result<Vec<_>, DataFusionError>>()?)
+                .try_collect()?)
         }
     }
 }

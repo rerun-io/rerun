@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use itertools::Itertools as _;
 use rerun::AsComponents as _;
 use rerun::blueprint::VisualizableArchetype as _;
 use rerun::external::arrow::array::{
@@ -42,21 +43,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Generate columns for custom component (cos)
     let cos = (0..64).map(|step| (step as f64 / 10.0).cos());
     let cos_array = Arc::new(cos.collect::<Float64Array>());
-    let custom_columns = rerun::DynamicArchetype::new("custom")
+    let custom_columns: Vec<_> = rerun::DynamicArchetype::new("custom")
         .with_component_from_data("my_custom_scalar", cos_array)
         .as_serialized_batches()
         .into_iter()
         .map(|batch| batch.column_of_unit_batches())
-        .collect::<Result<Vec<_>, _>>()?;
+        .try_collect()?;
 
     // Generate columns for nested custom component (sigmoid)
     let sigmoid_array = Arc::new(make_sigmoid_struct_array(64));
-    let nested_columns = rerun::DynamicArchetype::new("custom")
+    let nested_columns: Vec<_> = rerun::DynamicArchetype::new("custom")
         .with_component_from_data("my_nested_scalar", sigmoid_array)
         .as_serialized_batches()
         .into_iter()
         .map(|batch| batch.column_of_unit_batches())
-        .collect::<Result<Vec<_>, _>>()?;
+        .try_collect()?;
     // endregion: custom_data
 
     // Send plot data using send_columns.
