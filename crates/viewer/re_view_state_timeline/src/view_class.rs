@@ -81,11 +81,6 @@ struct StateTimelineViewState {
     /// The timeline we last rendered. When the active timeline changes,
     /// we reset `time_view` so the view auto-fits to the new data.
     active_timeline: Option<TimelineName>,
-
-    /// `true` if the current primary-button press landed on a phase rectangle.
-    /// A phase press selects the phase's entity and does NOT move the time cursor;
-    /// a press on empty space drags the time cursor.
-    press_on_phase: bool,
 }
 
 impl re_byte_size::SizeBytes for StateTimelineViewState {
@@ -93,7 +88,6 @@ impl re_byte_size::SizeBytes for StateTimelineViewState {
         let Self {
             time_view: _,
             active_timeline,
-            press_on_phase: _,
         } = self;
 
         active_timeline.heap_size_bytes()
@@ -144,13 +138,13 @@ impl ViewClass for StateTimelineView {
 
         Help::new("State timeline view")
             .markdown("Shows state transitions as horizontal colored lanes over time.")
-            .control("Move time cursor", icons::LEFT_MOUSE_CLICK)
+            .control("Move time cursor", icons::RIGHT_MOUSE_CLICK)
             .control(
                 "Pan",
-                (MouseButtonText(egui::PointerButton::Secondary), "+", "drag"),
+                (MouseButtonText(egui::PointerButton::Primary), "+", "drag"),
             )
             .control(
-                "Horizontal pan",
+                "Pan",
                 IconText::from_modifiers_and(os, horizontal_scroll_modifier, icons::SCROLL),
             )
             .control(
@@ -305,6 +299,19 @@ impl ViewClass for StateTimelineView {
         let current_time = TimeReal::from(query.latest_at.as_i64() as f64);
         let cursor_x = time_ranges_ui.x_from_time_f32(current_time);
 
+        // Time cursor interaction.
+        let cursor_response = cursor_x.filter(|x| rect.x_range().contains(*x)).map(|x| {
+            const HALF_WIDTH: f32 = 4.0;
+            let interact_rect =
+                egui::Rect::from_x_y_ranges((x - HALF_WIDTH)..=(x + HALF_WIDTH), rect.y_range());
+            ui.interact(
+                interact_rect,
+                ui.id().with("state_timeline_cursor"),
+                egui::Sense::click_and_drag(),
+            )
+            .on_hover_cursor(egui::CursorIcon::ResizeColumn)
+        });
+
         // Background.
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 0.0, ui.style().visuals.extreme_bg_color);
@@ -386,32 +393,24 @@ impl ViewClass for StateTimelineView {
                 });
         });
 
-        // On primary press, remember whether it landed on a phase. A phase press
-        // selects the entity; a press on empty space drags the time cursor.
-        // Done after the lane pass so the band rects reflect the post-scroll positions.
-        if ui.input(|i| i.pointer.primary_pressed()) {
-            state.press_on_phase = response.interact_pointer_pos().is_some_and(|pos| {
-                hit_test_phase(
-                    pos,
-                    &visible_lane_band_rects,
-                    &time_ranges_ui,
-                    open_end_time,
-                )
-            });
-        }
-
-        // While the primary button is active on the view and the press started on
-        // empty space, move the time cursor to the pointer. Using primary_pressed /
-        // primary_down / primary_released mirrors `re_time_panel` so that the cursor
-        // jumps on press and then follows during a drag.
-        let primary_active = response.hovered()
+        // Dragging the time cursor.
+        if let Some(cursor_response) = &cursor_response
             && ui.input(|i| {
                 i.pointer.primary_pressed()
                     || i.pointer.primary_down()
                     || i.pointer.primary_released()
-            });
-        let dragging_cursor = primary_active && !state.press_on_phase;
-        if dragging_cursor
+            })
+            && let Some(pos) = cursor_response.interact_pointer_pos()
+            && let Some(time) = time_ranges_ui.time_from_x_f32(pos.x)
+        {
+            ctx.send_time_commands([
+                TimeControlCommand::Pause,
+                TimeControlCommand::SetTimeClamped(time),
+            ]);
+        }
+
+        // Secondary (right) click anywhere in the view jumps the time cursor.
+        if response.clicked_by(egui::PointerButton::Secondary)
             && let Some(pos) = response.interact_pointer_pos()
             && let Some(time) = time_ranges_ui.time_from_x_f32(pos.x)
         {
@@ -421,16 +420,16 @@ impl ViewClass for StateTimelineView {
             ]);
         }
 
-        // Pan: right- or middle-click drag, plus two-finger touchpad horizontal scroll.
+        // Pan: primary- or middle-click drag, plus two-finger touchpad horizontal scroll.
         // Cmd+scroll is routed to `zoom_delta` by egui, so it won't double-fire here.
         let mut pan_dx = 0.0;
-        if response.dragged_by(egui::PointerButton::Secondary)
+        if response.dragged_by(egui::PointerButton::Primary)
             || response.dragged_by(egui::PointerButton::Middle)
         {
             pan_dx += response.drag_delta().x;
             ui.ctx().set_cursor_icon(egui::CursorIcon::AllScroll);
         }
-        if response.hovered() {
+        if response.contains_pointer() {
             pan_dx += ui.input(|i| i.smooth_scroll_delta.x);
         }
         if pan_dx != 0.0
@@ -442,7 +441,7 @@ impl ViewClass for StateTimelineView {
         // Ctrl/Cmd + scroll to zoom.
         let zoom_delta = ui.input(|i| i.zoom_delta());
         if zoom_delta != 1.0
-            && response.hovered()
+            && response.contains_pointer()
             && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
             && let Some(new_view) = time_ranges_ui.zoom_at(pointer_pos.x, zoom_delta)
         {
@@ -489,12 +488,7 @@ impl ViewClass for StateTimelineView {
         if let Some(cursor_x) = cursor_x
             && rect.x_range().contains(cursor_x)
         {
-            let cursor_response = if dragging_cursor || hovered_lane.is_none() {
-                Some(&response)
-            } else {
-                None
-            };
-            ui.paint_time_cursor(&painter, cursor_response, cursor_x, rect.y_range());
+            ui.paint_time_cursor(&painter, cursor_response.as_ref(), cursor_x, rect.y_range());
         }
 
         let interacted_item = if let Some(entity_path) = hovered_lane {
@@ -730,50 +724,6 @@ fn find_hovered_phase(
         }
     }
     None
-}
-
-/// Returns `true` if `pos` lies inside any visible phase rectangle.
-fn hit_test_phase(
-    pos: egui::Pos2,
-    lane_band_rects: &[(egui::Rect, &StateLane)],
-    time_ranges_ui: &TimeRangesUi,
-    open_end_time: Option<f64>,
-) -> bool {
-    for (band_rect, lane) in lane_band_rects {
-        if !band_rect.contains(pos) {
-            continue;
-        }
-        for (i, phase) in lane.phases.iter().enumerate() {
-            if phase.content.is_none() {
-                continue;
-            }
-            let Some(x_start) =
-                time_ranges_ui.x_from_time_f32(TimeReal::from(phase.start_time as f64))
-            else {
-                continue;
-            };
-            let x_start = x_start.max(band_rect.left());
-            let next_time: Option<f64> = lane
-                .phases
-                .get(i + 1)
-                .map(|p| p.start_time as f64)
-                .or(open_end_time);
-            let x_end = match next_time {
-                Some(t) => time_ranges_ui
-                    .x_from_time_f32(TimeReal::from(t))
-                    .unwrap_or_else(|| band_rect.right()),
-                None => band_rect.right(),
-            }
-            .min(band_rect.right());
-            if x_end <= x_start {
-                continue;
-            }
-            if pos.x >= x_start && pos.x <= x_end {
-                return true;
-            }
-        }
-    }
-    false
 }
 
 /// Render a single lane as a self-contained widget. Returns the lane's *band* rect

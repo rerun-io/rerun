@@ -156,6 +156,5 @@ fn log_state_data() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     let _ = rec.flush_blocking();
-
     Ok(())
 }
