@@ -6,8 +6,13 @@ pixi.lock linguist-generated=true
 **/*.urdf filter=lfs diff=lfs merge=lfs -text
 **/*.stl filter=lfs diff=lfs merge=lfs -text
 **/*.STL filter=lfs diff=lfs merge=lfs -text
+**/*.dae filter=lfs diff=lfs merge=lfs -text
+**/*.DAE filter=lfs diff=lfs merge=lfs -text
 **/*.mcap filter=lfs diff=lfs merge=lfs -text
 **/snapshots/**/*.png filter=lfs diff=lfs merge=lfs -text
+**/droid-loader/**/*.png filter=lfs diff=lfs merge=lfs -text
+**/droid/resources/*.png filter=lfs diff=lfs merge=lfs -text
+**/viewer/apple-touch-icon.png filter=lfs diff=lfs merge=lfs -text
 **/*.h264 filter=lfs diff=lfs merge=lfs -text
 **/*.mp4 filter=lfs diff=lfs merge=lfs -text
 examples/assets/example.rrd filter=lfs diff=lfs merge=lfs -text
