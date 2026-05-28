@@ -95,6 +95,45 @@ def test_lazy_store_filter(lazy_rrd_path: Path) -> None:
         assert str(chunk.entity_path) == "/entity_0"
 
 
+def test_lazy_store_filter_only_loads_matching(lazy_rrd_path: Path) -> None:
+    """
+    Filter pushdown must actually skip non-matching chunks at the I/O layer.
+
+    Without pushdown, the engine would `load_chunks()` for every chunk in the manifest and
+    then drop non-matching ones in a post-source `FilterStream` — same observable output
+    (correct chunks returned), but every chunk paid I/O. The `_chunks_loaded` counter on
+    `LazyStore` distinguishes the two: pushdown means `_chunks_loaded == len(filtered)`.
+    """
+    store = RrdReader(lazy_rrd_path).store()
+    total = len(store)
+
+    # Nothing loaded yet — manifest is in memory but no chunk data has been read.
+    assert store._chunks_loaded == 0
+
+    filtered = store.stream().filter(content="/entity_0").to_chunks()
+
+    assert len(filtered) > 0, "fixture should yield at least one /entity_0 chunk"
+    assert len(filtered) < total, "fixture should have non-/entity_0 chunks too"
+    assert store._chunks_loaded == len(filtered), (
+        f"pushdown should have loaded only the {len(filtered)} matching chunks, "
+        f"but {store._chunks_loaded} of {total} were loaded"
+    )
+
+
+def test_lazy_store_filter_is_static(test_rrd_path: Path) -> None:
+    """
+    `is_static=True` on a lazy store's stream returns only static chunks.
+
+    Uses `test_rrd_path` (from `conftest.py`) because it includes a static `/config` entity;
+    `lazy_rrd_path` is temporal-only.
+    """
+    chunks = RrdReader(test_rrd_path).store().stream().filter(is_static=True).to_chunks()
+
+    assert chunks, "expected at least one static chunk (e.g. /config)"
+    for chunk in chunks:
+        assert chunk.is_static, f"unexpected non-static chunk at {chunk.entity_path}"
+
+
 def test_lazy_store_collect_optimize(lazy_rrd_path: Path) -> None:
     """Collecting a lazy store with optimization settings produces a materialized store."""
     store = RrdReader(lazy_rrd_path).store()

@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::{HashMap, HashMapExt as _};
 use nohash_hasher::{IntMap, IntSet};
@@ -33,6 +34,10 @@ pub struct LazyStore {
 
     /// Precomputed per-chunk timeline ranges.
     timeline_ranges: HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>>,
+
+    /// Monotonic count of chunks physically materialized through [`Self::load_chunks`].
+    /// Used for test purposes.
+    chunks_loaded: AtomicU64,
 }
 
 impl LazyStore {
@@ -67,6 +72,7 @@ impl LazyStore {
             provider,
             chunk_id_to_index,
             timeline_ranges,
+            chunks_loaded: AtomicU64::new(0),
         }
     }
 
@@ -97,7 +103,17 @@ impl LazyStore {
     /// this store. The caller owns the returned `Vec<Arc<Chunk>>`; dropping it frees the memory.
     /// Returns an error if any chunk ID is not in the manifest.
     pub fn load_chunks(&self, chunk_ids: &[ChunkId]) -> ChunkStoreResult<Vec<Arc<Chunk>>> {
-        Ok(self.provider.load_chunks(chunk_ids)?)
+        let chunks = self.provider.load_chunks(chunk_ids)?;
+        self.chunks_loaded
+            .fetch_add(chunks.len() as u64, Ordering::Relaxed);
+        Ok(chunks)
+    }
+
+    /// Monotonic count of chunks physically materialized through [`Self::load_chunks`] since
+    /// this store was constructed. Intended for test-side validation that pushdown / lazy
+    /// loading is engaged; not a performance metric.
+    pub fn chunks_loaded(&self) -> u64 {
+        self.chunks_loaded.load(Ordering::Relaxed)
     }
 
     /// Load every chunk in the manifest and return them in a single [`Vec`].
