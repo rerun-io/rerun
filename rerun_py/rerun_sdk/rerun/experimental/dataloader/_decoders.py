@@ -300,6 +300,13 @@ class VideoFrameDecoder(ColumnDecoder):
                 continue
             if self.codec == "h264" and not _is_annex_b(sample_bytes):
                 sample_bytes = _avcc_to_annex_b(sample_bytes)
+            # `fill_latest_at` repeats the previous frame's bytes for grid slots
+            # with no source frame, so the window can hold consecutive duplicate
+            # samples. Re-feeding a duplicate packet corrupts the decoder's
+            # reference state, so skip them.
+            # TODO(RR-4751): we should measure whether we can optimize this by doing precise queries when `VideoStream::is_keyframe` is present.
+            if samples and sample_bytes == samples[-1]:
+                continue
             samples.append(sample_bytes)
 
         # No bootstrap context: target precedes the first keyframe in the
