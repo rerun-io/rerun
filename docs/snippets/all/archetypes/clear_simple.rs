@@ -14,8 +14,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Log a handful of arrows.
-    for (i, ((vector, origin), color)) in
-        vectors.into_iter().zip(origins).zip(colors).enumerate()
+    for (i, (vector, origin, color)) in
+        itertools::izip!(vectors, origins, colors).enumerate()
     {
         rec.log(
             format!("arrows/{i}"),

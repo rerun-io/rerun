@@ -19,7 +19,7 @@ fn roundtrip() {
         Clear::flat(),      //
     ];
 
-    for (expected, arch) in all_expected.into_iter().zip(all_arch) {
+    for (expected, arch) in std::iter::zip(all_expected, all_arch) {
         similar_asserts::assert_eq!(expected, arch);
 
         eprintln!("arch = {arch:#?}");

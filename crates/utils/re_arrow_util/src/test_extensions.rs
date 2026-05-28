@@ -409,7 +409,7 @@ impl SchemaTestExt for arrow::datatypes::Schema {
             }
         });
 
-        metadata.into_iter().chain(fields).join("\n")
+        std::iter::chain(metadata, fields).join("\n")
     }
 }
 

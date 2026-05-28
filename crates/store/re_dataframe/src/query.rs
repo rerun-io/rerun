@@ -952,11 +952,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         .filter_map(|chunk| chunk_filter_recursive_only(&chunk))
                     });
 
-                let chunks = flat_chunks
-                    .into_iter()
-                    .chain(recursive_chunks)
-                    // The component data is irrelevant.
-                    // We do not expose the actual tombstones to end-users, only their _effect_.
+                // The component data is irrelevant.
+                // We do not expose the actual tombstones to end-users, only their _effect_.
+                let chunks = std::iter::chain(flat_chunks, recursive_chunks)
                     .map(|chunk| chunk.components_removed())
                     .collect_vec();
 
@@ -1108,12 +1106,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             return;
         }
 
-        for (state_chunks, iter_chunks) in state
-            .view_chunks
-            .iter()
-            .zip(iter_state.view_chunks.iter_mut())
+        for (state_chunks, iter_chunks) in
+            std::iter::zip(&state.view_chunks, &mut iter_state.view_chunks)
         {
-            for (bundle, cc) in state_chunks.iter().zip(iter_chunks.iter_mut()) {
+            for (bundle, cc) in std::iter::zip(state_chunks, iter_chunks) {
                 // NOTE: The chunk has been densified already: its global time range is the same as
                 // the time range for the specific component of interest.
                 let Some(time_column) = bundle.chunk.timelines().get(&state.filtered_index) else {
@@ -1337,7 +1333,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .view_chunks
                     .first()
                     .and_then(|vec| vec.first()) // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
-                    .zip(iter_state.view_chunks.first().and_then(|vec| vec.first()))
+                    .zip(iter_state.view_chunks.first().and_then(|vec| vec.first())) // NOLINT: Option::zip
                     .map(|(cc, cs)| as_array_ref(cc.chunk.row_ids_array().slice(cs.cursor as _, 1)))
                     .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
 
@@ -1385,15 +1381,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         view_streaming_state.clear();
         view_streaming_state.resize_with(state.view_chunks.len(), || None);
         let cur_index_value_i64 = cur_index_value.as_i64();
-        for (view_column_idx, (view_chunks, iter_chunks)) in state
-            .view_chunks
-            .iter()
-            .zip(iter_state.view_chunks.iter_mut())
-            .enumerate()
+        for (view_column_idx, (view_chunks, iter_chunks)) in
+            std::iter::zip(&state.view_chunks, &mut iter_state.view_chunks).enumerate()
         {
             let mut entry: Option<StreamingJoinStateEntry<'state>> = None;
 
-            'overlaps: for (cc, cs) in view_chunks.iter().zip(iter_chunks.iter_mut()) {
+            'overlaps: for (cc, cs) in std::iter::zip(view_chunks, iter_chunks) {
                 // H1: skip chunks that already finished a prior row.
                 if cs.exhausted {
                     continue 'overlaps;
@@ -1816,12 +1809,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             continue;
                         };
 
-                        if let Some((cc, cs)) = state
-                            .view_chunks
-                            .first()
-                            .and_then(|v| v.first())
-                            .zip(iter_state.view_chunks.first().and_then(|v| v.first()))
-                        {
+                        if let Some((cc, cs)) = Option::zip(
+                            state.view_chunks.first().and_then(|v| v.first()),
+                            iter_state.view_chunks.first().and_then(|v| v.first()),
+                        ) {
                             // TODO(#9922): verify that using the row:ids from the first chunk
                             // always makes sense.
                             let id = std::ptr::from_ref::<Chunk>(&cc.chunk);
@@ -2140,7 +2131,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             let cs_chunks = &mut iter_state.view_chunks[view_idx];
             let mut found: Option<ColumnRunClass> = None;
 
-            for (chunk_idx, (cc, cs)) in std::iter::zip(chunks, cs_chunks.iter_mut()).enumerate() {
+            for (chunk_idx, (cc, cs)) in std::iter::zip(chunks, cs_chunks).enumerate() {
                 if cs.exhausted {
                     continue;
                 }
@@ -2654,11 +2645,11 @@ mod tests {
         let query = QueryExpression {
             filtered_index,
             filtered_index_values: Some(
-                [0, 30, 60, 90]
-                    .into_iter()
-                    .map(TimeInt::new_temporal)
-                    .chain(std::iter::once(TimeInt::STATIC))
-                    .collect(),
+                std::iter::chain(
+                    [0, 30, 60, 90].into_iter().map(TimeInt::new_temporal),
+                    std::iter::once(TimeInt::STATIC),
+                )
+                .collect(),
             ),
             ..Default::default()
         };
@@ -2695,11 +2686,13 @@ mod tests {
             let query = QueryExpression {
                 filtered_index,
                 using_index_values: Some(
-                    [0, 15, 30, 30, 45, 60, 75, 90]
-                        .into_iter()
-                        .map(TimeInt::new_temporal)
-                        .chain(std::iter::once(TimeInt::STATIC))
-                        .collect(),
+                    std::iter::chain(
+                        [0, 15, 30, 30, 45, 60, 75, 90]
+                            .into_iter()
+                            .map(TimeInt::new_temporal),
+                        std::iter::once(TimeInt::STATIC),
+                    )
+                    .collect(),
                 ),
                 ..Default::default()
             };
@@ -2723,11 +2716,13 @@ mod tests {
             let query = QueryExpression {
                 filtered_index,
                 using_index_values: Some(
-                    [0, 15, 30, 30, 45, 60, 75, 90]
-                        .into_iter()
-                        .map(TimeInt::new_temporal)
-                        .chain(std::iter::once(TimeInt::STATIC))
-                        .collect(),
+                    std::iter::chain(
+                        [0, 15, 30, 30, 45, 60, 75, 90]
+                            .into_iter()
+                            .map(TimeInt::new_temporal),
+                        std::iter::once(TimeInt::STATIC),
+                    )
+                    .collect(),
                 ),
                 sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
                 ..Default::default()
@@ -3334,11 +3329,13 @@ mod tests {
             let query = QueryExpression {
                 filtered_index,
                 using_index_values: Some(
-                    [0, 15, 30, 30, 45, 60, 75, 90]
-                        .into_iter()
-                        .map(TimeInt::new_temporal)
-                        .chain(std::iter::once(TimeInt::STATIC))
-                        .collect(),
+                    std::iter::chain(
+                        [0, 15, 30, 30, 45, 60, 75, 90]
+                            .into_iter()
+                            .map(TimeInt::new_temporal),
+                        std::iter::once(TimeInt::STATIC),
+                    )
+                    .collect(),
                 ),
                 ..Default::default()
             };
@@ -4426,13 +4423,13 @@ mod tests {
                     other.len(),
                     "{label}: per-row count diverged vs {other_label}",
                 );
-                for (i, (a_row, b_row)) in rows_fwd.iter().zip(other).enumerate() {
+                for (i, (a_row, b_row)) in std::iter::zip(&rows_fwd, other).enumerate() {
                     assert_eq!(
                         a_row.len(),
                         b_row.len(),
                         "{label}: per-row column count diverged at row {i} vs {other_label}",
                     );
-                    for (col_idx, (a, b)) in a_row.iter().zip(b_row).enumerate() {
+                    for (col_idx, (a, b)) in std::iter::zip(a_row, b_row).enumerate() {
                         assert_eq!(
                             a.to_data(),
                             b.to_data(),

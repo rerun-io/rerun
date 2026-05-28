@@ -33,7 +33,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_radii(radii)
         .columns_of_unit_batches()?;
 
-    rec.send_columns("points", [times], position.chain(color_and_radius))?;
+    rec.send_columns(
+        "points",
+        [times],
+        std::iter::chain(position, color_and_radius),
+    )?;
 
     Ok(())
 }

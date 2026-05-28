@@ -47,11 +47,12 @@ impl VisualizerSystem for SeriesLinesSystem {
             .with_allow_static_data(false)
             .into(),
 
-            queried: archetypes::Scalars::all_components()
-                .iter()
-                .chain(archetypes::SeriesLines::all_components().iter())
-                .cloned()
-                .collect(),
+            queried: std::iter::chain(
+                archetypes::Scalars::all_components().iter(),
+                archetypes::SeriesLines::all_components().iter(),
+            )
+            .cloned()
+            .collect(),
         }
     }
 
@@ -361,8 +362,10 @@ impl SeriesLinesSystem {
             None,
             &query,
             data_result,
-            archetypes::Scalars::all_component_identifiers()
-                .chain(archetypes::SeriesLines::all_component_identifiers()),
+            std::iter::chain(
+                archetypes::Scalars::all_component_identifiers(),
+                archetypes::SeriesLines::all_component_identifiers(),
+            ),
             instruction,
         );
 

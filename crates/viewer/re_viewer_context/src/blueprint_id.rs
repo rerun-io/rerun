@@ -93,11 +93,11 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
 
     #[inline]
     pub fn as_entity_path(&self) -> EntityPath {
-        T::registry_path()
-            .iter()
-            .cloned()
-            .chain(std::iter::once(EntityPathPart::new(self.id.to_string())))
-            .collect()
+        std::iter::chain(
+            T::registry_path().iter().cloned(),
+            std::iter::once(EntityPathPart::new(self.id.to_string())),
+        )
+        .collect()
     }
 
     #[inline]

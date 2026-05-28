@@ -207,10 +207,10 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                     });
                     for (blob, media_type) in itertools::izip!(
                         blobs,
-                        media_types
-                            .into_iter()
-                            .map(Some)
-                            .chain(std::iter::repeat(None))
+                        std::iter::chain(
+                            media_types.into_iter().map(Some),
+                            std::iter::repeat(None)
+                        )
                     ) {
                         let Some(blob) = blob.first() else {
                             continue;

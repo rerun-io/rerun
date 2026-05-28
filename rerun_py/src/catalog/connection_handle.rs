@@ -295,16 +295,16 @@ impl ConnectionHandle {
             .cloned()
             .unwrap_or_else(|| DataSource::DEFAULT_LAYER.to_owned());
 
-        let data_sources = recording_uris
-            .iter()
-            .zip(
-                recording_layers
-                    .into_iter()
-                    .chain(std::iter::repeat_with(|| last_layer.clone())),
-            )
-            .map(|(url, layer)| DataSource::new_rrd_layer(layer, url))
-            .try_collect()
-            .map_err(to_py_err)?;
+        let data_sources = std::iter::zip(
+            &recording_uris,
+            std::iter::chain(
+                recording_layers,
+                std::iter::repeat_with(|| last_layer.clone()),
+            ),
+        )
+        .map(|(url, layer)| DataSource::new_rrd_layer(layer, url))
+        .try_collect()
+        .map_err(to_py_err)?;
 
         wait_for_future(py, async {
             self.client()

@@ -593,9 +593,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
         let non_null_columns = filter_columns.iter().flatten().collect::<Vec<_>>();
         if let Some(col) = non_null_columns.first() {
             let col = *col;
-            Ok(filter_columns
-                .iter()
-                .zip(filters)
+            Ok(std::iter::zip(&filter_columns, filters)
                 .map(|(column_selector, filter_expr)| {
                     if Some(col) == column_selector.as_ref() {
                         Ok(TableProviderFilterPushDown::Exact)

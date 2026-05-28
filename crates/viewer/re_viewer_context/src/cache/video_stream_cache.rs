@@ -784,8 +784,7 @@ fn handle_split_chunk_addition(
         .filter(|(_, s)| s.source_primary_id() == Some(original_chunk.id().as_tuid()));
 
     flatten_chunk_samples(
-        std::iter::once(split_chunk)
-            .chain(siblings.iter().map(|c| &**c))
+        std::iter::chain(std::iter::once(split_chunk), siblings.iter().map(|c| &**c))
             .filter_map(|chunk| ChunkSamples::from_physical(chunk, timeline, sample_component))
             .collect(),
         known_chunk_ranges,
@@ -1056,17 +1055,18 @@ fn read_samples_from_known_chunk(
         .iter_index_range_clamped_mut(&load_range.idx_range())
         .filter(|(_, c)| c.source_primary_id() == Some(chunk.id().as_tuid()));
 
-    for (component_offset, (time, row_id)) in chunk
-        .iter_component_offsets(sample_component)
-        .zip(chunk.iter_component_indices(timeline, sample_component))
-        .filter(|(component_offset, _)| component_offset.len > 0)
-        // Iterate over the relevant range.
-        .skip(
-            known_range
-                .sample_count
-                .saturating_sub(load_range.sample_count),
-        )
-        .take(load_range.sample_count)
+    for (component_offset, (time, row_id)) in std::iter::zip(
+        chunk.iter_component_offsets(sample_component),
+        chunk.iter_component_indices(timeline, sample_component),
+    )
+    .filter(|(component_offset, _)| component_offset.len > 0)
+    // Iterate over the relevant range.
+    .skip(
+        known_range
+            .sample_count
+            .saturating_sub(load_range.sample_count),
+    )
+    .take(load_range.sample_count)
     {
         if component_offset.len != 1 {
             re_log::warn_once!(
@@ -1318,68 +1318,69 @@ fn read_samples_from_new_chunk(
     let chunk_id = chunk.id();
     // Extract sample metadata.
     samples.extend(
-        chunk
-            .iter_component_offsets(sample_component)
-            .zip(chunk.iter_component_indices(timeline, sample_component))
-            .enumerate()
-            .filter_map(move |(idx, (component_offset, (time, row_id)))| {
-                if component_offset.len == 0 {
-                    // Ignore empty samples.
-                    return None;
-                }
-                if component_offset.len != 1 {
-                    re_log::warn_once!(
-                        "Expected only a single VideoSample per row (it is a mono-component)"
-                    );
-                    return None;
-                }
+        std::iter::zip(
+            chunk.iter_component_offsets(sample_component),
+            chunk.iter_component_indices(timeline, sample_component),
+        )
+        .enumerate()
+        .filter_map(move |(idx, (component_offset, (time, row_id)))| {
+            if component_offset.len == 0 {
+                // Ignore empty samples.
+                return None;
+            }
+            if component_offset.len != 1 {
+                re_log::warn_once!(
+                    "Expected only a single VideoSample per row (it is a mono-component)"
+                );
+                return None;
+            }
 
-                // Do **not** use the `component_offset.start` for determining the sample index
-                // as it is only for the offset in the underlying arrow arrays which means that
-                // it may in theory step arbitrarily through the data.
-                let sample_idx = sample_base_idx + idx;
+            // Do **not** use the `component_offset.start` for determining the sample index
+            // as it is only for the offset in the underlying arrow arrays which means that
+            // it may in theory step arbitrarily through the data.
+            let sample_idx = sample_base_idx + idx;
 
-                // Peek at the sample bytes for keyframe detection. The player
-                // resolves the bytes from `(chunk_id, row_id)` at decode time,
-                // so we don't need to store any byte offset here.
-                let buffer_span = Span {
-                    start: offsets[component_offset.start] as usize,
-                    len: lengths[component_offset.start],
-                };
-                let sample_bytes = &values[buffer_span.range()];
+            // Peek at the sample bytes for keyframe detection. The player
+            // resolves the bytes from `(chunk_id, row_id)` at decode time,
+            // so we don't need to store any byte offset here.
+            let buffer_span = Span {
+                start: offsets[component_offset.start] as usize,
+                len: lengths[component_offset.start],
+            };
+            let sample_bytes = &values[buffer_span.range()];
 
-                // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
-                // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
-                let decode_timestamp = re_video::Time(time.as_i64());
+            // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
+            // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
+            let decode_timestamp = re_video::Time(time.as_i64());
 
-                // Samples within a chunk are expected to be always in order since we called `chunk.sorted_by_timeline_if_unsorted` earlier.
-                //
-                // Equality means that we have two samples falling onto the same time.
-                // This is strange, but we allow it since decoders are fine with it (they care little about exact times)
-                // and this may well happen in practice, in fact it can be spuriously observed in the video streaming example.
-                debug_assert!(decode_timestamp >= previous_max_presentation_timestamp);
-                previous_max_presentation_timestamp = decode_timestamp;
+            // Samples within a chunk are expected to be always in order since we called `chunk.sorted_by_timeline_if_unsorted` earlier.
+            //
+            // Equality means that we have two samples falling onto the same time.
+            // This is strange, but we allow it since decoders are fine with it (they care little about exact times)
+            // and this may well happen in practice, in fact it can be spuriously observed in the video streaming example.
+            debug_assert!(decode_timestamp >= previous_max_presentation_timestamp);
+            previous_max_presentation_timestamp = decode_timestamp;
 
-                let is_sync = is_sample_sync(codec, encoding_details, sample_bytes);
+            let is_sync = is_sample_sync(codec, encoding_details, sample_bytes);
 
-                if is_sync {
-                    keyframe_indices.push(sample_idx);
-                }
+            if is_sync {
+                keyframe_indices.push(sample_idx);
+            }
 
-                Some(SampleMetadataState::Present(re_video::SampleMetadata {
-                    is_sync,
+            Some(SampleMetadataState::Present(re_video::SampleMetadata {
+                is_sync,
 
-                    // TODO(#10090): No b-frames for now. Therefore sample_idx == frame_nr.
-                    frame_nr: sample_idx as u32,
-                    decode_timestamp,
-                    presentation_timestamp: decode_timestamp,
+                // TODO(#10090): No b-frames for now. Therefore sample_idx == frame_nr.
+                frame_nr: sample_idx as u32,
+                decode_timestamp,
+                presentation_timestamp: decode_timestamp,
 
-                    // Filled out later for everything but the last frame.
-                    duration: None,
+                // Filled out later for everything but the last frame.
+                duration: None,
 
-                    source: re_video::VideoSource::id(chunk_id.as_tuid(), row_id.as_tuid()),
-                }))
-            }),
+                source: re_video::VideoSource::id(chunk_id.as_tuid(), row_id.as_tuid()),
+            }))
+        }),
     );
 
     // Any new samples actually added? Early out if not.
@@ -1706,9 +1707,8 @@ fn load_known_chunk_ranges(
     }
 
     // Sorted iterator over all chunks we're going to keep track of ranges for.
-    let chunk_timepoints: Vec<ChunkSamples> = chunks_from_manifest
-        .iter()
-        .filter_map(|(id, entry)| {
+    let chunk_timepoints: Vec<ChunkSamples> = std::iter::chain(
+        chunks_from_manifest.iter().filter_map(|(id, entry)| {
             let loaded = loaded_chunks_counts.get(id).copied().unwrap_or(0);
             let remaining = entry.num_rows.saturating_sub(loaded);
             if remaining == 0 {
@@ -1721,13 +1721,12 @@ fn load_known_chunk_ranges(
                     ..*entry
                 },
             )
-        })
-        .chain(
-            loaded_chunks
-                .iter()
-                .filter_map(|c| ChunkSamples::from_physical(c, timeline, sample_component)),
-        )
-        .collect();
+        }),
+        loaded_chunks
+            .iter()
+            .filter_map(|c| ChunkSamples::from_physical(c, timeline, sample_component)),
+    )
+    .collect();
 
     flatten_chunk_samples(chunk_timepoints, known_chunk_ranges, |sample| {
         let idx = data_descr.samples.next_index();
@@ -1927,9 +1926,11 @@ fn handle_out_of_order_chunk(
     let mut new_samples = Vec::new();
 
     flatten_chunk_samples(
-        std::iter::once(conflicting_chunk_samples)
-            .chain(chunk_samples.into_values())
-            .collect(),
+        std::iter::chain(
+            std::iter::once(conflicting_chunk_samples),
+            chunk_samples.into_values(),
+        )
+        .collect(),
         known_ranges,
         |sample| {
             let idx = *sample_range.start() + new_samples.len();

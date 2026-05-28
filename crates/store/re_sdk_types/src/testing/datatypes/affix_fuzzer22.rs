@@ -149,11 +149,11 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let fixed_sized_native = {
                     if !arrays_by_name.contains_key("fixed_sized_native") {
                         return Err(DeserializationError::missing_struct_field(
@@ -181,9 +181,10 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let offsets = (0..)
-                                .step_by(4usize)
-                                .zip((4usize..).step_by(4usize).take(arrow_data.len()));
+                            let offsets = ::std::iter::zip(
+                                (0..).step_by(4usize),
+                                (4usize..).step_by(4usize).take(arrow_data.len()),
+                            );
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner

@@ -414,14 +414,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let second = iter.next();
                             match (first, second) {
                                 (Some(single), None) => single.clone(),
-                                (Some(first_buf), Some(second_buf)) => {
-                                    std::iter::once(first_buf.as_ref() as &[_])
-                                        .chain(std::iter::once(second_buf.as_ref() as &[_]))
-                                        .chain(iter.map(|b| b.as_ref() as &[_]))
-                                        .collect::<Vec<_>>()
-                                        .concat()
-                                        .into()
-                                }
+                                (Some(first_buf), Some(second_buf)) => ::itertools::chain!(
+                                    ::std::iter::once(first_buf.as_ref() as &[_]),
+                                    ::std::iter::once(second_buf.as_ref() as &[_]),
+                                    iter.map(|b| b.as_ref() as &[_]),
+                                )
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into(),
                                 _ => Vec::new().into(),
                             }
                         };

@@ -77,7 +77,7 @@ impl Lines3DVisualizer {
 
             let mut num_rendered_strips = 0usize;
             for (i, (strip, radius, &color)) in
-                itertools::izip!(ent_data.strips.iter(), radii, &colors).enumerate()
+                itertools::izip!(&ent_data.strips, radii, &colors).enumerate()
             {
                 let lines = line_batch
                     .add_strip(strip.iter().copied().map(Into::into))

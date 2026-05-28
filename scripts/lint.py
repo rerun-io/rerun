@@ -413,6 +413,15 @@ def lint_line(
         return """Functions should never take `&dyn std::any::Any` as argument since `&Box<std::any::Any>`
  itself implements `Any`, making it easy to accidentally pass the wrong object. Expect purpose defined traits instead."""
 
+    if file_extension == "rs":
+        if re.search(r"\.zip\(", line):
+            return (
+                "Prefer `std::iter::zip(a, b)` (iterators), `itertools::izip!(a, b, …)` (3+ iterators), "
+                "or `Option::zip(a, b)` (options) over `a.zip(b)`"
+            )
+        if re.search(r"\.chain\(", line):
+            return "Prefer `std::iter::chain(a, b)` or `itertools::chain!(a, b, …)` over `a.chain(b)`"
+
     return None
 
 
@@ -552,6 +561,11 @@ def test_lint_line() -> None:
         'return sha[:8] if sha else "—"',
         # Mathematical/UI display with en dash, no spaces.
         'ui.button("–∞")',
+        # Preferred zip/chain alternatives.
+        "let it = std::iter::zip(a, b);",
+        "let it = std::iter::chain(a, b);",
+        "for (x, y, z) in izip!(a, b, c) {",
+        "for x in itertools::chain!(a, b, c) {",
     ]
 
     should_error = [
@@ -661,6 +675,9 @@ def test_lint_line() -> None:
         "Foo – the description",
         "[Python](./install-rerun/python.md) – the Python SDK",
         "done – next step",
+        # Method `.zip(` / `.chain(` — prefer `std::iter::*` or `itertools::izip!/chain!`.
+        "let it = a.iter().zip(b.iter());",
+        "let it = a.iter().chain(b.iter());",
     ]
 
     for test in should_pass:

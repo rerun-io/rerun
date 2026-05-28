@@ -275,10 +275,7 @@ impl Video {
             // If the insertion falls within the player's active GOP range
             // the decoder has a hole of missing samples and needs reset.
             let needs_reset = {
-                let indices = player
-                    .last_enqueued()
-                    .into_iter()
-                    .chain(player.last_requested());
+                let indices = std::iter::chain(player.last_enqueued(), player.last_requested());
 
                 indices
                     .map(|idx| {
@@ -288,8 +285,7 @@ impl Video {
                             .gop_sample_range_for_keyframe(keyframe_idx)
                     })
                     .reduce(|a, b| {
-                        a.zip(b)
-                            .map(|(a, b)| a.start.min(b.start)..a.end.max(b.end))
+                        Option::zip(a, b).map(|(a, b)| a.start.min(b.start)..a.end.max(b.end))
                     })
                     .flatten()
                     .is_some_and(|gop| {

@@ -213,14 +213,12 @@ impl RecordBatchExt for RecordBatch {
         let (schema_ref, columns, row_count) = self.into_parts();
         let Schema { fields, metadata } = Arc::unwrap_or_clone(schema_ref);
 
-        let (fields, columns): (Vec<_>, Vec<_>) = fields
-            .iter()
-            .map(Arc::clone)
-            .zip(columns)
-            .sorted_by(|(left_field, _), (right_field, _)| {
-                cmp_fn(left_field.as_ref(), right_field.as_ref())
-            })
-            .unzip();
+        let (fields, columns): (Vec<_>, Vec<_>) =
+            std::iter::zip(fields.iter().map(Arc::clone), columns)
+                .sorted_by(|(left_field, _), (right_field, _)| {
+                    cmp_fn(left_field.as_ref(), right_field.as_ref())
+                })
+                .unzip();
 
         Self::try_new_with_options(
             Arc::new(Schema::new_with_metadata(fields, metadata)),
@@ -236,12 +234,10 @@ impl RecordBatchExt for RecordBatch {
         let (schema_ref, columns, row_count) = self.into_parts();
         let Schema { fields, metadata } = Arc::unwrap_or_clone(schema_ref);
 
-        let (new_fields, new_columns): (Vec<_>, Vec<_>) = fields
-            .iter()
-            .map(Arc::clone)
-            .zip(columns)
-            .filter(|(field, _)| predicate(field))
-            .unzip();
+        let (new_fields, new_columns): (Vec<_>, Vec<_>) =
+            std::iter::zip(fields.iter().map(Arc::clone), columns)
+                .filter(|(field, _)| predicate(field))
+                .unzip();
 
         Self::try_new_with_options(
             Arc::new(Schema::new_with_metadata(new_fields, metadata)),

@@ -438,5 +438,5 @@ pub fn execute<'a>(
 
     // --- Chain all results ---
 
-    prefix.into_iter().chain(derived_chunks)
+    std::iter::chain(prefix, derived_chunks)
 }

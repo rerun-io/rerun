@@ -1,6 +1,6 @@
 //! CLI tool to generate `ClampedZip` implementations of different arities.
 
-use itertools::{Itertools as _, izip};
+use itertools::{Itertools as _, chain, izip};
 
 struct Params {
     num_required: usize,
@@ -133,39 +133,37 @@ fn generate_helper_func(params: &Params) -> String {
         .collect_vec()
         .join(",\n");
 
-    let ret_clause = params
-        .to_required_types()
-        .into_iter()
-        .map(|r| format!("{r}::IntoIter"))
-        .chain(
-            params
-                .to_optional_types()
-                .into_iter()
-                .map(|o| format!("{o}::IntoIter")),
-        )
-        .chain(params.to_optional_fn_types())
-        .collect_vec()
-        .join(", ");
+    let ret_clause = chain!(
+        params
+            .to_required_types()
+            .into_iter()
+            .map(|r| format!("{r}::IntoIter")),
+        params
+            .to_optional_types()
+            .into_iter()
+            .map(|o| format!("{o}::IntoIter")),
+        params.to_optional_fn_types(),
+    )
+    .collect_vec()
+    .join(", ");
 
-    let ret = params
-        .to_required_names()
-        .into_iter()
-        .map(|r| format!("{r}: {r}.into_iter()"))
-        .chain(
-            params
-                .to_optional_names()
-                .into_iter()
-                .map(|o| format!("{o}: {o}.into_iter()")),
-        )
-        .chain(params.to_optional_fn_names())
-        .chain(
-            params
-                .to_optional_names()
-                .into_iter()
-                .map(|o| format!("{o}_latest_value: None")),
-        )
-        .collect_vec()
-        .join(",\n");
+    let ret = chain!(
+        params
+            .to_required_names()
+            .into_iter()
+            .map(|r| format!("{r}: {r}.into_iter()")),
+        params
+            .to_optional_names()
+            .into_iter()
+            .map(|o| format!("{o}: {o}.into_iter()")),
+        params.to_optional_fn_names(),
+        params
+            .to_optional_names()
+            .into_iter()
+            .map(|o| format!("{o}_latest_value: None")),
+    )
+    .collect_vec()
+    .join(",\n");
 
     format!(
         r#"
@@ -244,28 +242,30 @@ fn generate_impl(params: &Params) -> String {
     let optional_clauses = params.to_optional_clauses(false /* into */).join(", ");
     let optional_fn_clauses = params.to_optional_fn_clauses().join(", ");
 
-    let items = params
-        .to_required_types()
-        .into_iter()
-        .map(|r| format!("{r}::Item"))
-        .chain(
-            params
-                .to_optional_types()
-                .into_iter()
-                .map(|o| format!("{o}::Item")),
-        )
-        .collect_vec()
-        .join(", ");
+    let items = chain!(
+        params
+            .to_required_types()
+            .into_iter()
+            .map(|r| format!("{r}::Item")),
+        params
+            .to_optional_types()
+            .into_iter()
+            .map(|o| format!("{o}::Item")),
+    )
+    .collect_vec()
+    .join(", ");
 
-    let next = params
-        .to_required_names()
-        .into_iter()
-        .map(|r| format!("let {r}_next = self.{r}.next()?;"))
-        .chain(params.to_optional_names().into_iter().map(|o| {
+    let next = chain!(
+        params
+            .to_required_names()
+            .into_iter()
+            .map(|r| format!("let {r}_next = self.{r}.next()?;")),
+        params.to_optional_names().into_iter().map(|o| {
             format!("let {o}_next = self.{o}.next().or_else(|| self.{o}_latest_value.take());")
-        }))
-        .collect_vec()
-        .join("\n");
+        }),
+    )
+    .collect_vec()
+    .join("\n");
 
     let update_latest = params
         .to_optional_names()
@@ -274,18 +274,18 @@ fn generate_impl(params: &Params) -> String {
         .collect_vec()
         .join("\n");
 
-    let ret = params
-        .to_required_names()
-        .into_iter()
-        .map(|r| format!("{r}_next"))
-        .chain(
-            params
-                .to_optional_names()
-                .into_iter()
-                .map(|o| format!("{o}_next.unwrap_or_else(|| (self.{o}_default_fn)())")),
-        )
-        .collect_vec()
-        .join(",\n");
+    let ret = chain!(
+        params
+            .to_required_names()
+            .into_iter()
+            .map(|r| format!("{r}_next")),
+        params
+            .to_optional_names()
+            .into_iter()
+            .map(|o| format!("{o}_next.unwrap_or_else(|| (self.{o}_default_fn)())")),
+    )
+    .collect_vec()
+    .join(",\n");
 
     format!(
         r#"

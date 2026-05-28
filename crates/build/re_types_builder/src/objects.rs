@@ -75,7 +75,7 @@ impl Objects {
         }
 
         let mut this = Self {
-            objects: resolved_enums.into_iter().chain(resolved_objs).collect(),
+            objects: std::iter::chain(resolved_enums, resolved_objs).collect(),
         };
 
         // Validate fields types: Archetype consist of components, Views (aka SuperArchetypes) consist of archetypes, everything else consists of datatypes.

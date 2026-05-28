@@ -489,10 +489,11 @@ pub fn selected_tensor_slice<'a, T: Copy>(
         tensor.view()
     };
 
-    let axis = [dheight as usize, dwidth as usize]
-        .into_iter()
-        .chain(indices.iter().map(|s| s.dimension as usize))
-        .collect::<Vec<_>>();
+    let axis = std::iter::chain(
+        [dheight as usize, dwidth as usize],
+        indices.iter().map(|s| s.dimension as usize),
+    )
+    .collect::<Vec<_>>();
     let mut slice = view.permuted_axes(axis);
 
     for index_selection in indices {

@@ -663,19 +663,18 @@ impl ChunkStore {
             };
             if let Some(elected_chunk) = &elected_chunk {
                 // NOTE: The chunk that we've just added has been compacted already!
-                let srcs: BTreeMap<_, _> =
-                    std::iter::once((chunk_before_processing.id(), chunk_before_processing))
-                        .chain(
-                            // NOTE: deep removal, we don't want a compacted chunk to linger on!
-                            self.remove_chunks_deep(
-                                vec![elected_chunk.clone()],
-                                None,
-                                ChunkDeletionReason::Compaction,
-                            )
-                            .into_iter()
-                            .map(|diff| (diff.chunk.id(), diff.chunk)),
-                        )
-                        .collect();
+                let srcs: BTreeMap<_, _> = std::iter::chain(
+                    std::iter::once((chunk_before_processing.id(), chunk_before_processing)),
+                    // NOTE: deep removal, we don't want a compacted chunk to linger on!
+                    self.remove_chunks_deep(
+                        vec![elected_chunk.clone()],
+                        None,
+                        ChunkDeletionReason::Compaction,
+                    )
+                    .into_iter()
+                    .map(|diff| (diff.chunk.id(), diff.chunk)),
+                )
+                .collect();
 
                 for source_id in srcs.keys().copied() {
                     let found = self
@@ -999,9 +998,7 @@ impl ChunkStore {
                 *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
             });
 
-        let diffs: Vec<_> = dropped_static_chunks
-            .into_iter()
-            .chain(dropped_temporal_chunks)
+        let diffs: Vec<_> = std::iter::chain(dropped_static_chunks, dropped_temporal_chunks)
             .map(|chunk| ChunkStoreDiff::deletion(chunk, ChunkDeletionReason::ExplicitDrop))
             .collect();
 

@@ -73,28 +73,30 @@ impl SorbetSchema {
             timestamps,
         } = self;
 
-        [
-            Some((
-                Self::METADATA_KEY_VERSION.to_owned(),
-                Self::METADATA_VERSION.to_string(),
-            )),
-            chunk_id.as_ref().map(Self::chunk_id_metadata),
-            entity_path.as_ref().map(Self::entity_path_metadata),
-            segment_id.as_ref().map(Self::segment_id_metadata),
-        ]
-        .into_iter()
-        .flatten()
-        .chain(timestamps.to_metadata())
+        std::iter::chain(
+            [
+                Some((
+                    Self::METADATA_KEY_VERSION.to_owned(),
+                    Self::METADATA_VERSION.to_string(),
+                )),
+                chunk_id.as_ref().map(Self::chunk_id_metadata),
+                entity_path.as_ref().map(Self::entity_path_metadata),
+                segment_id.as_ref().map(Self::segment_id_metadata),
+            ]
+            .into_iter()
+            .flatten(),
+            timestamps.to_metadata(),
+        )
         .collect()
     }
 
     /// All the entities referenced by any column.
     pub fn all_entities(&self) -> BTreeSet<&EntityPath> {
-        self.columns
-            .iter()
-            .filter_map(|c| c.entity_path())
-            .chain(self.entity_path.iter())
-            .collect()
+        std::iter::chain(
+            self.columns.iter().filter_map(|c| c.entity_path()),
+            self.entity_path.iter(),
+        )
+        .collect()
     }
 }
 

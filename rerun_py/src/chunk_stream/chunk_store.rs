@@ -89,17 +89,14 @@ impl PyChunkStoreInternal {
                 .collect();
             timelines.sort();
 
-            let mut cols: Vec<String> = chunk
-                .timelines()
-                .keys()
-                .map(|t| t.as_str().to_owned())
-                .chain(
-                    chunk
-                        .components()
-                        .component_descriptors()
-                        .map(|d| d.display_name().to_owned()),
-                )
-                .collect();
+            let mut cols: Vec<String> = std::iter::chain(
+                chunk.timelines().keys().map(|t| t.as_str().to_owned()),
+                chunk
+                    .components()
+                    .component_descriptors()
+                    .map(|d| d.display_name().to_owned()),
+            )
+            .collect();
             cols.sort();
 
             SummaryRow {

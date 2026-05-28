@@ -119,7 +119,7 @@ fn log(
         });
 
         let mut chunk = rerun::log::Chunk::builder(entity_path.clone());
-        for (time, component) in log_times.iter().zip(components) {
+        for (time, component) in std::iter::zip(&log_times, components) {
             chunk = chunk.with_archetype(
                 rerun::log::RowId::new(),
                 [(

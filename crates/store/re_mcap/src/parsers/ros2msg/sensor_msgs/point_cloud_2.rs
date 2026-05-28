@@ -404,7 +404,7 @@ impl MessageParser for PointCloud2MessageParser {
         if point_cloud.point_step != 0 {
             for point in point_cloud.data.chunks(point_cloud.point_step as usize) {
                 for (field, (_name, builder)) in
-                    point_cloud.fields.iter().zip(extracted_fields.iter_mut())
+                    std::iter::zip(&point_cloud.fields, extracted_fields.iter_mut())
                 {
                     let field_builder = builder.values();
                     // ROS field offsets are relative to the start of each point record.
@@ -550,68 +550,69 @@ impl MessageParser for PointCloud2MessageParser {
             ChunkId::new(),
             entity_path.clone(),
             timelines,
-            [
-                (
-                    ComponentDescriptor::partial("height")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    height.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("width")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    width.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("fields")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    fields.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("is_bigendian")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    is_bigendian.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("point_step")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    point_step.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("row_step")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    row_step.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("data")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME)
-                        .with_component_type(components::Blob::name()),
-                    data.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("is_dense")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    is_dense.finish().into(),
-                ),
-            ]
-            .into_iter()
-            .chain(points.into_iter().filter_map(|(name, mut builder)| {
-                // We only extract additional fields when we have a `Points3d`
-                // archetype to attach them to. In that case we're not interested
-                // in the other components.
-                // TODO(grtlr): It would be nice to never initialize the unnecessary builders
-                // in the first place. But, we'll soon move the semantic extraction of `Points3d`
-                // into a different layer anyways, making that optimization obsolete.
-                points_3ds.as_ref()?;
-                if ["x", "y", "z"].contains(&name.as_str()) {
-                    None
-                } else {
-                    Some((
-                        ComponentDescriptor::partial(name.clone())
-                            .with_builtin_archetype(archetypes::Points3D::name()),
-                        builder.finish(),
-                    ))
-                }
-            }))
+            std::iter::chain(
+                [
+                    (
+                        ComponentDescriptor::partial("height")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        height.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("width")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        width.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("fields")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        fields.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("is_bigendian")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        is_bigendian.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("point_step")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        point_step.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("row_step")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        row_step.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("data")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME)
+                            .with_component_type(components::Blob::name()),
+                        data.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("is_dense")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        is_dense.finish().into(),
+                    ),
+                ],
+                points.into_iter().filter_map(|(name, mut builder)| {
+                    // We only extract additional fields when we have a `Points3d`
+                    // archetype to attach them to. In that case we're not interested
+                    // in the other components.
+                    // TODO(grtlr): It would be nice to never initialize the unnecessary builders
+                    // in the first place. But, we'll soon move the semantic extraction of `Points3d`
+                    // into a different layer anyways, making that optimization obsolete.
+                    points_3ds.as_ref()?;
+                    if ["x", "y", "z"].contains(&name.as_str()) {
+                        None
+                    } else {
+                        Some((
+                            ComponentDescriptor::partial(name.clone())
+                                .with_builtin_archetype(archetypes::Points3D::name()),
+                            builder.finish(),
+                        ))
+                    }
+                }),
+            )
             .collect(),
         )?;
 

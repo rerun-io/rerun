@@ -229,11 +229,12 @@ impl VisualizerSystem for StateVisualizer {
                 .with_allow_static_data(false)
                 .into();
 
-        let queried = StateChange::all_components()
-            .iter()
-            .chain(StateConfiguration::all_components().iter())
-            .cloned()
-            .collect();
+        let queried = std::iter::chain(
+            StateChange::all_components().iter(),
+            StateConfiguration::all_components().iter(),
+        )
+        .cloned()
+        .collect();
 
         VisualizerQueryInfo {
             relevant_archetype: StateChange::descriptor_state().archetype,
@@ -266,9 +267,11 @@ impl VisualizerSystem for StateVisualizer {
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
-            let all_component_ids: Vec<_> = StateChange::all_component_identifiers()
-                .chain(StateConfiguration::all_component_identifiers())
-                .collect();
+            let all_component_ids: Vec<_> = std::iter::chain(
+                StateChange::all_component_identifiers(),
+                StateConfiguration::all_component_identifiers(),
+            )
+            .collect();
             let range_results = re_view::range_with_blueprint_resolved_data_polymorphic(
                 ctx,
                 None,

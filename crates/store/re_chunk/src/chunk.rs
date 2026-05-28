@@ -750,7 +750,7 @@ impl Chunk {
                 .list_arrays()
                 .fold(HashMap::default(), |acc, list_array| {
                     if let Some(validity) = list_array.nulls() {
-                        time_column.times().zip(validity.iter()).fold(
+                        std::iter::zip(time_column.times(), validity.iter()).fold(
                             acc,
                             |mut acc, (time, is_valid)| {
                                 *acc.entry(time).or_default() += is_valid as u64;

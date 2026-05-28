@@ -103,20 +103,19 @@ pub fn extract_properties_from_chunks(
     let per_entity_chunks: Vec<(EntityPath, Vec<Arc<Chunk>>)> = per_entity_results
         .iter()
         .map(|(entity, qr)| {
-            let materialized: Vec<Arc<Chunk>> = qr
-                .chunks
-                .iter()
-                .map(|c| c.id())
-                .chain(qr.missing_virtual.iter().copied())
-                .filter_map(|id| {
-                    if let Some(c) = chunks_by_id.get(&id) {
-                        Some(Arc::clone(c))
-                    } else {
-                        missing.push(id);
-                        None
-                    }
-                })
-                .collect();
+            let materialized: Vec<Arc<Chunk>> = std::iter::chain(
+                qr.chunks.iter().map(|c| c.id()),
+                qr.missing_virtual.iter().copied(),
+            )
+            .filter_map(|id| {
+                if let Some(c) = chunks_by_id.get(&id) {
+                    Some(Arc::clone(c))
+                } else {
+                    missing.push(id);
+                    None
+                }
+            })
+            .collect();
             (entity.clone(), materialized)
         })
         .collect();
@@ -195,9 +194,7 @@ fn build_properties_record_batch(
         }
     }
 
-    let (fields, data): (Vec<_>, Vec<_>) = fields
-        .into_iter()
-        .zip(data)
+    let (fields, data): (Vec<_>, Vec<_>) = std::iter::zip(fields, data)
         .sorted_by(|(field1, _), (field2, _)| field1.name().cmp(field2.name()))
         .unzip();
 

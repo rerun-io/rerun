@@ -1606,7 +1606,8 @@ impl App {
             .store_bundle()
             .recordings()
             .filter_map(|db| db.data_source.as_ref());
-        let mut all_sources = store_sources.chain(active_sources.iter().map(|s| s.as_ref()));
+        let mut all_sources =
+            std::iter::chain(store_sources, active_sources.iter().map(|s| s.as_ref()));
 
         match data_source {
             LogDataSource::HttpUrl { url, follow } => {

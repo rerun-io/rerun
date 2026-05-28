@@ -381,9 +381,10 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let offsets = (0..)
-                                .step_by(3usize)
-                                .zip((3usize..).step_by(3usize).take(arrow_data.len()));
+                            let offsets = ::std::iter::zip(
+                                (0..).step_by(3usize),
+                                (3usize..).step_by(3usize).take(arrow_data.len()),
+                            );
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner

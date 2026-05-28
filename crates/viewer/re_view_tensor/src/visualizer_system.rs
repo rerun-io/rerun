@@ -81,9 +81,10 @@ impl VisualizerSystem for TensorSystem {
             }
 
             let all_tensors_indexed = all_tensor_chunks.chunks().iter().flat_map(move |chunk| {
-                chunk
-                    .iter_component_indices(query.timeline)
-                    .zip(chunk.iter_component::<TensorData>())
+                std::iter::zip(
+                    chunk.iter_component_indices(query.timeline),
+                    chunk.iter_component::<TensorData>(),
+                )
             });
             let all_ranges = results.iter_optional(Tensor::descriptor_value_range().component);
 

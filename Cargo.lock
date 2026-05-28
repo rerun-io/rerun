@@ -10130,6 +10130,7 @@ dependencies = [
  "arrow",
  "egui",
  "egui_plot",
+ "itertools 0.14.0",
  "re_chunk_store",
  "re_format",
  "re_log_types",

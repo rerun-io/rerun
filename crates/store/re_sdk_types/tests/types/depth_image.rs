@@ -33,7 +33,7 @@ fn depth_image_roundtrip() {
             .unwrap(),
     ];
 
-    for (expected, serialized) in all_expected.into_iter().zip(all_arch_serialized) {
+    for (expected, serialized) in std::iter::zip(all_expected, all_arch_serialized) {
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");

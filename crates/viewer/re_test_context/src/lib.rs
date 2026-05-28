@@ -156,7 +156,8 @@ pub trait VisualizerBlueprintContext: BlueprintContext {
 
             self.save_blueprint_archetypes(
                 visualizer_path,
-                std::iter::once(&instruction as &dyn AsComponents).chain(
+                std::iter::chain(
+                    std::iter::once(&instruction as &dyn AsComponents),
                     visualizer
                         .overrides
                         .iter()

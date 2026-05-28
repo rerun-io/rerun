@@ -549,20 +549,17 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                             return;
                         };
 
-                        let mut new_levels = state
-                            .seen_levels
-                            .iter()
-                            .map(|s| {
+                        let mut new_levels = std::iter::chain(
+                            state.seen_levels.iter().map(|s| {
                                 let level_active = levels.iter().any(|l| l.as_str() == s);
                                 (s.clone(), level_active)
-                            })
-                            .chain(
-                                levels
-                                    .iter()
-                                    .filter(|lvl| !state.seen_levels.contains(lvl.as_str()))
-                                    .map(|lvl| (lvl.as_str().to_owned(), true)),
-                            )
-                            .collect::<Vec<_>>();
+                            }),
+                            levels
+                                .iter()
+                                .filter(|lvl| !state.seen_levels.contains(lvl.as_str()))
+                                .map(|lvl| (lvl.as_str().to_owned(), true)),
+                        )
+                        .collect::<Vec<_>>();
 
                         let mut any_change = false;
                         for (lvl, active) in &mut new_levels {

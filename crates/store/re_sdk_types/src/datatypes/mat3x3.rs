@@ -126,9 +126,10 @@ impl ::re_types_core::Loggable for Mat3x3 {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let offsets = (0..)
-                    .step_by(9usize)
-                    .zip((9usize..).step_by(9usize).take(arrow_data.len()));
+                let offsets = ::std::iter::zip(
+                    (0..).step_by(9usize),
+                    (9usize..).step_by(9usize).take(arrow_data.len()),
+                );
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner

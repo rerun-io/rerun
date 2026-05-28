@@ -86,7 +86,7 @@ pub fn load_and_stream_common<Dataset>(
                     return;
                 };
 
-                for chunk in std::iter::once(initial).chain(chunks) {
+                for chunk in std::iter::chain(std::iter::once(initial), chunks) {
                     let data = ImportedData::Chunk(loader_name.to_owned(), store_id.clone(), chunk);
 
                     if send_crossbeam(tx, data).is_err() {

@@ -389,7 +389,7 @@ mod tests {
         let lazy_num_rows = lazy_manifest.col_chunk_num_rows_raw().unwrap();
         let eager_num_rows = eager_manifest.col_chunk_num_rows_raw().unwrap();
 
-        for (li, ei) in lazy_order.iter().zip(eager_order.iter()) {
+        for (li, ei) in std::iter::zip(&lazy_order, &eager_order) {
             assert_eq!(
                 lazy_entity_paths.value(*li),
                 eager_entity_paths.value(*ei),

@@ -303,7 +303,7 @@ impl PyDatasetEntryInternal {
                         }),
                     )
                 }),
-                time_selection: end_cell.zip(timeline).map(|(end, timeline)| {
+                time_selection: Option::zip(end_cell, timeline).map(|(end, timeline)| {
                     let start = start_cell.unwrap_or(end);
                     re_uri::TimeSelection {
                         timeline: re_chunk::Timeline::new(timeline, start.typ()),

@@ -386,7 +386,7 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
     py.detach(|| -> Result<(), SinkFlushError> {
         // Now flush all recordings to handle weird cases where the data in the queue
         // is actually holding onto the ref to the recording.
-        for recording in all_recordings().iter().chain(orphaned_recordings().iter()) {
+        for recording in std::iter::chain(&*all_recordings(), &*orphaned_recordings()) {
             recording.flush_blocking()?;
         }
 

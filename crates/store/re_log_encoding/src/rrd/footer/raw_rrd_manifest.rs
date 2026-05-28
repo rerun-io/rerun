@@ -498,7 +498,7 @@ impl RawRrdManifest {
         let chunk_is_static = self.col_chunk_is_static()?;
 
         let has_static_component_data: Vec<_> =
-            itertools::izip!(self.data.schema_ref().fields().iter(), self.data.columns(),)
+            itertools::izip!(self.data.schema_ref().fields(), self.data.columns(),)
                 .filter(|(f, _c)| f.name().ends_with(":has_static_data"))
                 .map(|(f, c)| {
                     c.downcast_array_ref::<arrow::array::BooleanArray>()
