@@ -406,7 +406,7 @@ pub async fn register_bad_file_uri_should_error(service: impl RerunCloudService)
         let request = RegisterWithDatasetRequest {
             data_sources: vec![ext::DataSource {
                 storage_url: url::Url::parse(bad_uri).unwrap(),
-                layer: "base".to_owned(),
+                layer: re_types_core::LayerName::base(),
                 is_prefix: false,
                 kind: ext::DataSourceKind::Rrd,
             }],

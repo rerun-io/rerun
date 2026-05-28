@@ -42,6 +42,7 @@ use re_protos::{
     },
 };
 use re_tuid::Tuid;
+use re_types_core::LayerName;
 
 use crate::OnError;
 use crate::entrypoint::NamedPath;
@@ -179,7 +180,7 @@ impl RerunCloudHandler {
         &self,
         dataset_id: EntryId,
         segment_ids: &[SegmentId],
-    ) -> tonic::Result<Vec<(SegmentId, String, StoreSlotId, ResolvedStore)>> {
+    ) -> tonic::Result<Vec<(SegmentId, LayerName, StoreSlotId, ResolvedStore)>> {
         let store = self.store.read().await;
         let dataset = store.dataset(dataset_id)?;
 
@@ -189,7 +190,7 @@ impl RerunCloudHandler {
                 segment.iter_layers().map(|(layer_name, layer)| {
                     (
                         segment_id.clone(),
-                        layer_name.to_owned(),
+                        layer_name.clone(),
                         layer.store_slot_id(),
                         layer.resolved_store().clone(),
                     )
@@ -708,18 +709,18 @@ impl RerunCloudService for RerunCloudHandler {
         enum ValidatedSource {
             File {
                 rrd_path: PathBuf,
-                layer_name: String,
+                layer_name: LayerName,
                 storage_url: url::Url,
             },
             Memory {
                 store_slot_id: StoreSlotId,
                 resolved: ResolvedStore,
                 segment_id: SegmentId,
-                layer_name: String,
+                layer_name: LayerName,
             },
         }
 
-        let mut seen: BTreeMap<(String, String), Vec<url::Url>> = BTreeMap::new();
+        let mut seen: BTreeMap<(String, LayerName), Vec<url::Url>> = BTreeMap::new();
         let mut validated_sources: Vec<ValidatedSource> = Vec::new();
 
         let store_kind = store.dataset(dataset_id)?.store_kind();
@@ -747,7 +748,7 @@ impl RerunCloudService for RerunCloudHandler {
             }
 
             let layer = if layer.is_empty() {
-                DataSource::DEFAULT_LAYER.to_owned()
+                LayerName::base()
             } else {
                 layer
             };
@@ -847,7 +848,7 @@ impl RerunCloudService for RerunCloudHandler {
             store_slot_id: StoreSlotId,
             resolved: ResolvedStore,
             segment_id: SegmentId,
-            layer_name: String,
+            layer_name: LayerName,
             storage_url: String,
         }
 
@@ -893,7 +894,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         // Phase 3: Register all stores in the pool, then add layers to dataset.
         let mut segment_ids: Vec<String> = vec![];
-        let mut segment_layers: Vec<String> = vec![];
+        let mut segment_layers: Vec<LayerName> = vec![];
         let mut segment_types: Vec<String> = vec![];
         let mut storage_urls: Vec<String> = vec![];
         let mut task_ids: Vec<String> = vec![];
@@ -1083,7 +1084,7 @@ impl RerunCloudService for RerunCloudHandler {
             dataset
                 .add_layer(
                     entity_path,
-                    DataSource::DEFAULT_LAYER.to_owned(),
+                    LayerName::base(),
                     store_slot_id,
                     resolved,
                     IfDuplicateBehavior::Error,

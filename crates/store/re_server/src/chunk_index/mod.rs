@@ -17,7 +17,7 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_tuid::Tuid;
-use re_types_core::ComponentIdentifier;
+use re_types_core::{ComponentIdentifier, LayerName};
 use tracing::instrument;
 
 use crate::rerun_cloud::SearchDatasetResponseStream;
@@ -205,7 +205,7 @@ impl DatasetChunkIndexes {
         &self,
         segment_id: SegmentId,
         resolved: &crate::store::ResolvedStore,
-        layer_name: &str,
+        layer_name: &LayerName,
         _overwritten: bool,
     ) -> Result<(), StoreError> {
         // Fast path: no indexes exist, nothing to do (no chunk loading needed).
@@ -233,7 +233,7 @@ impl DatasetChunkIndexes {
                             worklist.push((
                                 index.clone(),
                                 segment_id.clone(),
-                                layer_name.to_owned(),
+                                layer_name.clone(),
                                 chunk.clone(),
                             ));
                         }
@@ -253,7 +253,7 @@ impl DatasetChunkIndexes {
 
     pub async fn on_layers_removed(
         &self,
-        removed_layers: &[(SegmentId, String)],
+        removed_layers: &[(SegmentId, LayerName)],
     ) -> Result<(), StoreError> {
         let indexes = self.indexes.write().await;
 
@@ -381,7 +381,7 @@ mod tests {
         );
 
         let segment_id = SegmentId::new("test-segment".to_owned());
-        let layer_name = "test-layer".to_owned();
+        let layer_name = LayerName::from("test-layer");
 
         let row_ids: FixedSizeBinaryArray = {
             let row_ids = Tuid::to_arrow(vec![Tuid::new(), Tuid::new(), Tuid::new()])?;

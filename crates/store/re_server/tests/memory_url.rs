@@ -20,6 +20,7 @@ use re_redap_tests::{
     register_and_wait,
 };
 use re_server::{RerunCloudHandler, RerunCloudHandlerBuilder};
+use re_types_core::LayerName;
 
 fn build() -> RerunCloudHandler {
     RerunCloudHandlerBuilder::new().build()
@@ -67,7 +68,7 @@ async fn register_memory_url_cross_dataset() {
     let memory_data_source: re_protos::cloud::v1alpha1::DataSource = ext::DataSource {
         storage_url: url::Url::parse(&memory_url).unwrap(),
         is_prefix: false,
-        layer: ext::DataSource::DEFAULT_LAYER.to_owned(),
+        layer: LayerName::base(),
         kind: ext::DataSourceKind::Rrd,
     }
     .into();
@@ -149,7 +150,7 @@ async fn register_memory_url_not_found() {
     let memory_data_source: re_protos::cloud::v1alpha1::DataSource = ext::DataSource {
         storage_url: url::Url::parse(&fake_memory_url).unwrap(),
         is_prefix: false,
-        layer: ext::DataSource::DEFAULT_LAYER.to_owned(),
+        layer: LayerName::base(),
         kind: ext::DataSourceKind::Rrd,
     }
     .into();

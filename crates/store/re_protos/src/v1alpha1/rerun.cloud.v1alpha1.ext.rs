@@ -14,6 +14,7 @@ use re_chunk::TimelineName;
 use re_log_types::{AbsoluteTimeRange, external::re_types_core::ComponentBatch as _};
 use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
+use re_types_core::LayerName;
 
 use crate::cloud::v1alpha1::{
     DoBandwidthTestResponse, EntryKind, FetchChunksRequest, GetDatasetSchemaResponse,
@@ -582,7 +583,7 @@ impl QueryDatasetResponse {
     pub fn create_dataframe(
         chunk_ids: Vec<re_chunk::ChunkId>,
         chunk_segment_ids: Vec<String>,
-        chunk_layer_names: Vec<String>,
+        chunk_layer_names: Vec<LayerName>,
         chunk_keys: Vec<&[u8]>,
         chunk_entity_paths: Vec<String>,
         chunk_is_static: Vec<bool>,
@@ -609,7 +610,7 @@ impl QueryDatasetResponse {
     pub fn create_dataframe_with_timelines(
         chunk_ids: Vec<re_chunk::ChunkId>,
         chunk_segment_ids: Vec<String>,
-        chunk_layer_names: Vec<String>,
+        chunk_layer_names: Vec<LayerName>,
         chunk_keys: Vec<&[u8]>,
         chunk_entity_paths: Vec<String>,
         chunk_is_static: Vec<bool>,
@@ -624,6 +625,11 @@ impl QueryDatasetResponse {
         let mut chunk_direct_url_expiry_builder =
             PrimitiveDictionaryBuilder::<Int32Type, Int64Type>::new();
         chunk_direct_url_expiry_builder.extend(chunk_direct_urls_expiry);
+
+        let chunk_layer_names: Vec<String> = chunk_layer_names
+            .into_iter()
+            .map(LayerName::into_string)
+            .collect();
 
         let mut fields: Vec<FieldRef> = Self::fields();
         let mut columns: Vec<ArrayRef> = vec![
@@ -1982,13 +1988,17 @@ impl RegisterWithDatasetResponse {
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
         segment_ids: Vec<String>,
-        segment_layers: Vec<String>,
+        segment_layers: Vec<LayerName>,
         segment_types: Vec<String>,
         storage_urls: Vec<String>,
         task_ids: Vec<String>,
     ) -> arrow::error::Result<RecordBatch> {
         let row_count = segment_ids.len();
         let schema = Arc::new(Self::schema());
+        let segment_layers: Vec<String> = segment_layers
+            .into_iter()
+            .map(LayerName::into_string)
+            .collect();
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(segment_ids)),
             Arc::new(StringArray::from(segment_layers)),
@@ -2118,7 +2128,7 @@ impl ScanSegmentTableResponse {
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
         segment_ids: Vec<String>,
-        layer_names: Vec<Vec<String>>,
+        layer_names: Vec<Vec<LayerName>>,
         storage_urls: Vec<Vec<String>>,
         last_updated_at: Vec<i64>,
         num_chunks: Vec<u64>,
@@ -2130,9 +2140,11 @@ impl ScanSegmentTableResponse {
         let mut layer_names_builder =
             ListBuilder::new(StringBuilder::new()).with_field(Self::field_layer_names_inner());
 
-        for mut inner_vec in layer_names {
-            for layer_name in inner_vec.drain(..) {
-                layer_names_builder.values().append_value(layer_name)
+        for inner_vec in layer_names {
+            for layer_name in inner_vec {
+                layer_names_builder
+                    .values()
+                    .append_value(layer_name.as_str());
             }
             layer_names_builder.append(true);
         }
@@ -2266,7 +2278,7 @@ impl ScanDatasetManifestResponse {
 
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
-        layer_names: Vec<String>,
+        layer_names: Vec<LayerName>,
         segment_ids: Vec<String>,
         storage_urls: Vec<String>,
         layer_types: Vec<String>,
@@ -2285,6 +2297,10 @@ impl ScanDatasetManifestResponse {
             schema_sha256_builder.append_value(sha256.as_slice())?;
         }
 
+        let layer_names: Vec<String> = layer_names
+            .into_iter()
+            .map(LayerName::into_string)
+            .collect();
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(layer_names)),
             Arc::new(StringArray::from(segment_ids)),
@@ -2419,18 +2435,18 @@ fn datasourcekind_roundtrip() {
 pub struct DataSource {
     pub storage_url: url::Url,
     pub is_prefix: bool,
-    pub layer: String,
+    pub layer: LayerName,
     pub kind: DataSourceKind,
 }
 
 impl DataSource {
-    pub const DEFAULT_LAYER: &str = "base";
+    pub const DEFAULT_LAYER: &str = LayerName::DEFAULT_STR;
 
     pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
-            layer: Self::DEFAULT_LAYER.to_owned(),
+            layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
         })
     }
@@ -2439,7 +2455,7 @@ impl DataSource {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
-            layer: Self::DEFAULT_LAYER.to_owned(),
+            layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
         })
     }
@@ -2451,7 +2467,7 @@ impl DataSource {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
-            layer: layer.as_ref().into(),
+            layer: LayerName::new(layer.as_ref()),
             kind: DataSourceKind::Rrd,
         })
     }
@@ -2463,7 +2479,7 @@ impl DataSource {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
-            layer: layer.as_ref().into(),
+            layer: LayerName::new(layer.as_ref()),
             kind: DataSourceKind::Rrd,
         })
     }
@@ -2474,7 +2490,7 @@ impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
         crate::cloud::v1alpha1::DataSource {
             storage_url: Some(value.storage_url.to_string()),
             prefix: value.is_prefix,
-            layer: Some(value.layer),
+            layer: Some(value.layer.into()),
             typ: value.kind as i32,
         }
     }
@@ -2491,7 +2507,8 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
 
         let layer = data_source
             .layer
-            .unwrap_or_else(|| Self::DEFAULT_LAYER.to_owned());
+            .map(LayerName::from)
+            .unwrap_or_else(LayerName::base);
 
         let kind = DataSourceKind::try_from(data_source.typ)?;
 
@@ -3027,7 +3044,7 @@ mod tests {
     fn test_query_dataset_response_create_dataframe() {
         let chunk_ids = vec![re_chunk::ChunkId::new(), re_chunk::ChunkId::new()];
         let chunk_segment_ids = vec!["segment_id_1".to_owned(), "segment_id_2".to_owned()];
-        let chunk_layer_names = vec!["layer1".to_owned(), "layer2".to_owned()];
+        let chunk_layer_names = vec![LayerName::from("layer1"), LayerName::from("layer2")];
         let chunk_keys = vec![b"key1".to_byte_slice(), b"key2".to_byte_slice()];
         let chunk_entity_paths = vec!["/".to_owned(), "/".to_owned()];
         let chunk_is_static = vec![true, false];
@@ -3056,7 +3073,10 @@ mod tests {
     #[test]
     fn test_scan_segment_table_response_create_dataframe() {
         let segment_ids = vec!["1".to_owned(), "2".to_owned()];
-        let layer_names = vec![vec!["a".to_owned(), "b".to_owned()], vec!["c".to_owned()]];
+        let layer_names = vec![
+            vec![LayerName::from("a"), LayerName::from("b")],
+            vec![LayerName::from("c")],
+        ];
         let storage_urls = vec![vec!["d".to_owned(), "e".to_owned()], vec!["f".to_owned()]];
         let last_updated_at = vec![1, 2];
         let num_chunks = vec![1, 2];
@@ -3240,7 +3260,7 @@ mod tests {
     /// Ensure `crate_dataframe` implementation is consistent with `schema()`
     #[test]
     fn test_scan_dataset_manifest_response_create_dataframe() {
-        let layer_name = vec!["a".to_owned()];
+        let layer_name = vec![LayerName::from("a")];
         let segment_id = vec!["1".to_owned()];
         let storage_url = vec!["d".to_owned()];
         let layer_type = vec!["c".to_owned()];
