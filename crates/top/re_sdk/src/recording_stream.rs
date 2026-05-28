@@ -588,7 +588,7 @@ impl RecordingStreamBuilder {
 
         // Spawn viewer and connect normally.
         // spawn() returns the actual port used, which may differ from opts.port when --new picks a free port.
-        let actual_port = crate::spawn(opts)?;
+        let actual_port = crate::spawn(opts)?.port;
         let addr = std::net::SocketAddr::new(
             std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
             actual_port,
@@ -2213,7 +2213,7 @@ impl RecordingStream {
             return Ok(());
         }
 
-        let actual_port = crate::spawn(opts)?;
+        let actual_port = crate::spawn(opts)?.port;
         let addr = std::net::SocketAddr::new(
             std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
             actual_port,

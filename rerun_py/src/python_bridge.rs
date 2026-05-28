@@ -1029,6 +1029,7 @@ fn send_mem_sink_as_default_blueprint(
     executable_path = None,
     extra_args = vec![],
     extra_env = vec![],
+    headless = false,
 ))]
 fn spawn(
     port: u16,
@@ -1040,7 +1041,8 @@ fn spawn(
     executable_path: Option<String>,
     extra_args: Vec<String>,
     extra_env: Vec<(String, String)>,
-) -> PyResult<()> {
+    headless: bool,
+) -> PyResult<Option<u32>> {
     let spawn_opts = re_sdk::SpawnOptions {
         port,
         wait_for_bind: true,
@@ -1053,10 +1055,11 @@ fn spawn(
         extra_args,
         extra_env,
         new: false,
+        headless,
     };
 
     re_sdk::spawn(&spawn_opts)
-        .map(|_| ())
+        .map(|info| info.child_pid)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 

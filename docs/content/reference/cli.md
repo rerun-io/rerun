@@ -185,6 +185,13 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
+* `--headless <HEADLESS>`
+> Run the viewer in headless mode (no OS window).
+>
+> The viewer is driven by an offscreen `egui_kittest` harness, while the gRPC server keeps running so SDK clients can still log data and request screenshots via `save_screenshot`.
+>
+> [Default: `false`]
+
 * `--window-size <WINDOW_SIZE>`
 > Set the screen resolution (in logical points), e.g. "1920x1080". Useful together with `--screenshot-to`.
 
