@@ -6,9 +6,7 @@ requires-python = ">=3.10,<3.13"
 dependencies = ["rerun-sdk[dataloader,dataplatform,tracing]", "huggingface-hub<1.0", "lerobot==0.4"]
 
 [dependency-groups]
-# rerun-dev-fixup installs the .pth shim that makes `import rerun` resolve to the
-# editable `rerun_py/rerun_sdk/` tree — same trick the workspace .venv uses.
-dev = ["mypy==1.19.1", "rerun-dev-fixup"]
+dev = ["mypy==1.19.1"]
 
 [tool.rerun-example]
 # Picked up by scripts/ci/isolated_examples.py and the `py-lint-isolated-examples` pixi task.
@@ -21,9 +19,18 @@ package = false
 # Scoped to this project — does not affect the root workspace.
 override-dependencies = ["rerun-sdk[dataloader,dataplatform,tracing]"]
 
+# Default `uv sync` uses the in-repo editable rerun-sdk (monorepo dev mode).
+# After syncing, also run `uv pip install ../../../rerun_py/rerun_dev_fixup` to
+# install the .pth shim that makes `import rerun` resolve to the editable source tree.
+#
+# Standalone users (e.g. sparse-checkout of just this example) run instead:
+#   uv sync --no-sources --no-dev
+# That ignores the path source below and resolves `rerun-sdk` from PyPI.
+# rerun-dev-fixup is intentionally absent from this file: uv 0.7.x resolves all
+# dependency groups and extras unconditionally, so any path-only package here would
+# block standalone `--no-sources` resolution.
 [tool.uv.sources]
 rerun-sdk = { path = "../../../rerun_py", editable = true }
-rerun-dev-fixup = { path = "../../../rerun_py/rerun_dev_fixup", editable = false }
 
 # Merged onto the shared base at `../_isolated/mypy.ini` by
 # scripts/ci/isolated_examples.py — list the untyped third-party libs this

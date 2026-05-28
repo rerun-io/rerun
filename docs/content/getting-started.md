@@ -3,11 +3,11 @@ title: Getting Started
 order: 1
 ---
 
-Rerun helps robotics and Physical AI teams iterate faster: log from any sensor, visualize in the Viewer, and query with dataframes — across one recording or many.
+Rerun helps robotics and Physical AI teams iterate faster: log from any sensor, visualize in the Viewer, query with dataframes, and train with a dataloader tailored to robotic learning — across one recording or many.
 
 ## Installation
 
-`pip install rerun-sdk` bundles the **SDK** (log/query from code) and the **Viewer** (visualizer app).
+`pip install rerun-sdk[dataplatform, dataloader]` bundles the **SDK** (log/query from code) and the **Viewer** (visualizer app). The optional dependencies support queries and training below.
 For Rust, C++, see [Install Rerun](./getting-started/install-rerun.md) and [Set up a project](./getting-started/project-setup.md).
 
 ## Open the Viewer
@@ -64,6 +64,12 @@ rerun rerun+http://127.0.0.1:51234
 Query the catalog into a [DataFusion](https://datafusion.apache.org/) DataFrame. See [Query and Transform](./getting-started/data-out.md).
 
 snippet: tutorials/getting_started[query]
+
+### Train
+
+Connect a Dataloader to the server to generate training batches. See [Train](./getting-started/train.md).
+
+snippet: tutorials/getting_started[train]
 
 ## If you're stuck
 

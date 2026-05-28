@@ -155,6 +155,7 @@ backwards_check = [
   "howto/dataframe_operations",
   "howto/dataframe_performance",
   "howto/dataloader",
+  "tutorials/getting_started",
   "howto/dataset_resampling",
   "howto/layers",
   "howto/lerobot_export",
@@ -465,7 +466,6 @@ backwards_check = [
   "py",
 ]
 "tutorials/getting_started" = [
-  "py", # Requires a separately-running catalog server
   "cpp", # Not implemented
   "rust", # Not implemented
 ]

@@ -116,3 +116,7 @@ howto/logging/shared-recordings: howto/logging-and-ingestion/shared-recordings
 # Howto - extend subfolder
 howto/extend/custom-data: howto/logging-and-ingestion/custom-data
 howto/extend/extend-ui: howto/visualization/extend-ui
+
+# Howto - train section moves
+howto/integrations/dataloader: howto/train/dataloader
+howto/query-and-transform/lerobot_export: howto/train/lerobot_export

@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.10, <3.13"
 resolution-markers = [
     "python_full_version >= '3.12' and sys_platform == 'darwin'",
@@ -341,7 +341,6 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "mypy" },
-    { name = "rerun-dev-fixup" },
 ]
 
 [package.metadata]
@@ -352,10 +351,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = "==1.19.1" },
-    { name = "rerun-dev-fixup", directory = "../../../rerun_py/rerun_dev_fixup" },
-]
+dev = [{ name = "mypy", specifier = "==1.19.1" }]
 
 [[package]]
 name = "datasets"
@@ -2070,17 +2066,6 @@ wheels = [
 ]
 
 [[package]]
-name = "rerun-dev-fixup"
-version = "0.1.0"
-source = { directory = "../../../rerun_py/rerun_dev_fixup" }
-dependencies = [
-    { name = "sitecustomize-entrypoints" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "sitecustomize-entrypoints" }]
-
-[[package]]
 name = "rerun-sdk"
 source = { editable = "../../../rerun_py" }
 dependencies = [
@@ -2195,15 +2180,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/76/95/faf61eb8363f26aa7e1d762267a8d602a1b26d4f3a1e758e92cb3cb8b054/setuptools-80.10.2.tar.gz", hash = "sha256:8b0e9d10c784bf7d262c4e5ec5d4ec94127ce206e8738f29a437945fbc219b70", size = 1200343, upload-time = "2026-01-25T22:38:17.252Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/94/b8/f1f62a5e3c0ad2ff1d189590bfa4c46b4f3b6e49cef6f26c6ee4e575394d/setuptools-80.10.2-py3-none-any.whl", hash = "sha256:95b30ddfb717250edb492926c92b5221f7ef3fbcc2b07579bcd4a27da21d0173", size = 1064234, upload-time = "2026-01-25T22:38:15.216Z" },
-]
-
-[[package]]
-name = "sitecustomize-entrypoints"
-version = "1.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/25/88/c135ebdef2af797042a55fba89c79ca05b601f4dc36157a67a224d8090ca/sitecustomize-entrypoints-1.1.0.tar.gz", hash = "sha256:8bf9c9f3572e1709331f435a9bffd465320be77d65adda0f82b504594dc507b4", size = 24445, upload-time = "2023-04-10T16:59:55.551Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/11/412160ea4a304ee65babef67254833408d0ac7145334406bb1a8bff6f3cb/sitecustomize_entrypoints-1.1.0-py3-none-any.whl", hash = "sha256:ca80648c58d9ebcad31de46a4726213ae322fe829b285a0105da0eae3f74cb53", size = 25279, upload-time = "2023-04-10T16:59:56.824Z" },
 ]
 
 [[package]]

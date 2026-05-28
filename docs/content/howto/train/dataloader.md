@@ -121,4 +121,4 @@ For large-scale training (hundreds of recordings, multi-node), consider [Rerun H
 - [LeRobot ACT training example](https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader)
 - [`rerun.experimental.dataloader`](https://github.com/rerun-io/rerun/tree/main/rerun_py/rerun_sdk/rerun/experimental/dataloader) module source
 - [The data layer tax in robot learning](https://rerun.io/blog/data-layer-tax) (figures used in this guide)
-- [Export recordings to LeRobot datasets](../query-and-transform/lerobot_export.md) (inverse: Rerun → LeRobot dataset)
+- [Export recordings to LeRobot datasets](lerobot_export.md) (inverse: Rerun → LeRobot dataset)

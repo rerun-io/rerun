@@ -7,6 +7,6 @@ with rr.RecordingStream(
 ) as rec:
     rec.save("run-1.rrd")
     for t in range(10):
-        rec.set_time("t", duration=t)
+        rec.set_time("step", sequence=t)
         rec.log("/arm/shoulder", rr.Scalars(math.sin(t * 0.5)))
         rec.log("/arm/elbow", rr.Scalars(math.cos(t * 0.5)))

@@ -75,6 +75,28 @@ Queries can be specified with SQL or dataframe APIs allowing the flexibility to 
   <img class="d2-light" src="https://static.rerun.io/6922fdbb9c24357ea3a585be62d6ccb572a70350_d2-light.svg" alt="">
 </div>
 
+### Train
+Use the catalog as a data source for [training](../getting-started/train.md): a dataloader runs a query against the catalog and yields training batches.
+
+```d2
+direction: right
+
+query: "query"
+
+dataloader: "dataloader"
+
+catalog: "Rerun Catalog" {
+  shape: cylinder
+  height: 130
+}
+
+batches: "batches"
+
+query -> dataloader
+dataloader -> catalog
+batches <- catalog
+```
+
 ## Get started
 
 Ready to speed up your iteration cycle?
