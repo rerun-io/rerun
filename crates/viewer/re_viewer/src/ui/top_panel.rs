@@ -117,7 +117,7 @@ fn top_bar_ui(
                 ui.spacing_mut().item_spacing.x = 12.0;
 
                 // Varying widths:
-                memory_use_label_ui(ui, gpu_resource_stats);
+                memory_use_label_ui(ui, gpu_resource_stats, &app.external_memory_users);
                 frame_time_label_ui(ui, app);
                 fps_ui(ui, app);
 
@@ -568,7 +568,11 @@ fn fps_ui(ui: &mut egui::Ui, app: &App) {
     }
 }
 
-fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
+fn memory_use_label_ui(
+    ui: &mut egui::Ui,
+    gpu_resource_stats: &WgpuResourcePoolStatistics,
+    external_usage: &crate::external_memory::ExternalMemoryUsers,
+) {
     const CODE: &str = "use re_memory::AccountingAllocator;\n\
                         #[global_allocator]\n\
                         static GLOBAL: AccountingAllocator<std::alloc::System> =\n    \
@@ -600,22 +604,52 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
         // we use monospace so the width doesn't fluctuate as the numbers change.
-
         let bytes_used_text = re_format::format_bytes(count.size as _);
+
         ui.label(
             egui::RichText::new(&bytes_used_text)
                 .monospace()
                 .color(ui.visuals().weak_text_color()),
         )
-        .on_hover_text(format!(
-            "Rerun Viewer is using {} of RAM in {} separate allocations,\n\
-            plus {} of GPU memory in {} textures and {} buffers.",
-            bytes_used_text,
-            format_uint(count.count),
-            re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
-            format_uint(gpu_resource_stats.num_textures),
-            format_uint(gpu_resource_stats.num_buffers),
-        ));
+        .on_hover_ui(|ui| {
+            egui::Grid::new("memory usage hover")
+                .num_columns(2)
+                .show(ui, |ui| {
+                    let global_mem = count.size;
+                    let external_mem = external_usage.total_external_memory();
+                    let viewer_mem = global_mem as u64 - external_mem;
+
+                    ui.label("Viewer");
+                    ui.monospace(re_format::format_bytes(viewer_mem as _));
+                    ui.end_row();
+
+                    if external_mem > 0 {
+                        ui.label("External");
+                        ui.monospace(re_format::format_bytes(external_mem as _));
+                        ui.end_row();
+                    }
+
+                    ui.label("Allocations");
+                    ui.monospace(format_uint(count.count));
+                    ui.end_row();
+
+                    ui.label("GPU");
+                    ui.monospace(re_format::format_bytes(
+                        gpu_resource_stats.total_bytes() as _
+                    ));
+                    ui.end_row();
+
+                    ui.label("GPU textures");
+                    ui.monospace(format_uint(gpu_resource_stats.num_textures));
+                    ui.end_row();
+
+                    ui.label("GPU buffers");
+                    ui.monospace(format_uint(gpu_resource_stats.num_buffers));
+                    ui.end_row();
+                });
+
+            ui.weak("See memory panel for more info");
+        });
     } else if let Some(rss) = mem.resident {
         let bytes_used_text = re_format::format_bytes(rss as _);
         click_to_copy(ui, &bytes_used_text, |ui| {

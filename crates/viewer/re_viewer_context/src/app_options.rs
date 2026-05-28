@@ -107,12 +107,7 @@ impl Default for AppOptions {
 
             mapbox_access_token: String::new(),
 
-            memory_limit: if cfg!(target_arch = "wasm32") {
-                // On wasm32 we only have 4GB of memory to play around with.
-                re_memory::MemoryLimit::from_bytes(2_500_000_000)
-            } else {
-                MemoryLimit::from_fraction_of_total(0.75)
-            },
+            memory_limit: MemoryLimit::default_for_current_platform(),
 
             max_fetch_stage: FetchStage::default(),
 

@@ -91,6 +91,7 @@ impl MemoryPanel {
         ui: &mut egui::Ui,
         limit: &MemoryLimit,
         mem_usage_tree: Option<re_byte_size::NamedMemUsageTree>,
+        external_trees: &[re_byte_size::NamedMemUsageTree],
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
         storage_context: &StorageContext<'_>,
@@ -114,7 +115,12 @@ impl MemoryPanel {
 
         match self.selected_tab {
             MemoryViewTab::Flamegraph => {
-                memory_tree_ui(ui, mem_usage_tree, &mut self.include_rss_in_flamegraph);
+                memory_tree_ui(
+                    ui,
+                    mem_usage_tree,
+                    external_trees,
+                    &mut self.include_rss_in_flamegraph,
+                );
             }
             MemoryViewTab::TimeGraph => {
                 ui.label("🗠 Rerun Viewer memory use over time");
@@ -559,6 +565,7 @@ fn summarize_callstack(callstack: &str) -> String {
 pub fn memory_tree_ui(
     ui: &mut egui::Ui,
     tree: Option<re_byte_size::NamedMemUsageTree>,
+    external_trees: &[re_byte_size::NamedMemUsageTree],
     include_rss: &mut bool,
 ) {
     // Add explanation at the top
@@ -592,12 +599,13 @@ pub fn memory_tree_ui(
     let include_counted = true; // What our allocator counts. Perfectly accurate.
 
     if include_counted && let Some(counted) = counted {
-        tree = re_byte_size::NamedMemUsageTree::new(
-            "counted",
-            re_byte_size::MemUsageNode::new()
-                .with_named_child(tree)
-                .with_total_size_bytes(counted),
-        );
+        let mut node = re_byte_size::MemUsageNode::new().with_named_child(tree);
+
+        for tree in external_trees {
+            node = node.with_named_child(tree.clone());
+        }
+
+        tree = re_byte_size::NamedMemUsageTree::new("counted", node.with_total_size_bytes(counted));
     }
 
     if *include_rss && let Some(resident) = resident {

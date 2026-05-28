@@ -2,6 +2,7 @@
 
 /// A snapshot of memory usage of a value,
 /// produced by [`MemUsageTreeCapture::capture_mem_usage_tree`].
+#[derive(Clone)]
 pub enum MemUsageTree {
     /// A leaf node with a known size in bytes.
     Bytes(u64),
@@ -33,6 +34,7 @@ impl MemUsageTree {
 }
 
 /// A named child in a [`MemUsageNode`].
+#[derive(Clone)]
 pub struct NamedMemUsageTree {
     /// Name of this child node.
     pub name: String,
@@ -55,7 +57,7 @@ impl NamedMemUsageTree {
 }
 
 /// A node in a [`MemUsageTree`] with children.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct MemUsageNode {
     /// Children of this node.
     children: Vec<NamedMemUsageTree>,
