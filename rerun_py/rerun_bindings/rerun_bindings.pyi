@@ -503,7 +503,8 @@ def spawn(
     executable_path: str | None = None,
     extra_args: list[str] = ...,
     extra_env: list[tuple[str, str]] = ...,
-) -> None:
+    headless: bool = False,
+) -> int | None:
     """Spawn a new viewer."""
 
 #

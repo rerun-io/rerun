@@ -97,6 +97,11 @@ pub mod native;
 #[cfg(not(target_arch = "wasm32"))]
 pub use native::run_native_app;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod headless;
+#[cfg(not(target_arch = "wasm32"))]
+pub use headless::run_headless_app;
+
 // ----------------------------------------------------------------------------
 // When compiling for web:
 

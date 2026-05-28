@@ -54,7 +54,7 @@ perf_telemetry = ["dep:re_perf_telemetry", "re_redap_client/perf_telemetry"]
 perf_telemetry_tracy = ["perf_telemetry", "re_perf_telemetry/tracy"]
 
 
-testing = ["dep:egui_kittest", "dep:tokio", "re_ui/testing", "re_analytics/testing"]
+testing = ["dep:tokio", "re_ui/testing", "re_analytics/testing"]
 
 
 [dependencies]
@@ -117,7 +117,6 @@ re_analytics = { workspace = true, optional = true }
 re_view_map = { workspace = true, optional = true }
 
 # Test dependencies (optional):
-egui_kittest = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 
 
@@ -163,6 +162,7 @@ wgpu.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+egui_kittest.workspace = true
 poll-promise = { workspace = true, features = ["tokio"] }
 re_perf_telemetry = { workspace = true, optional = true }
 tokio.workspace = true
@@ -197,7 +197,6 @@ web-sys = { workspace = true, features = [
 
 
 [dev-dependencies]
-egui_kittest.workspace = true
 re_test_context.workspace = true
 re_test_viewport.workspace = true
 tempfile.workspace = true
