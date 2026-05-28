@@ -9,7 +9,12 @@ import os
 import tempfile
 from pathlib import Path
 
+import torch.multiprocessing
+
 import rerun as rr
+
+# Rerun's tokio runtime is not fork-safe; DataLoader workers must use `spawn`.
+torch.multiprocessing.set_start_method("spawn", force=True)
 
 # Run from a fresh temp dir so the .rrd files this snippet writes don't
 # collide with other snippets executing in parallel from the same cwd.
