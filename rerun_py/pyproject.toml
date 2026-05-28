@@ -53,8 +53,12 @@ tests = [
 ]
 notebook = ["rerun-notebook==0.33.0-rc.1"]
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
-datafusion = ["datafusion==52.3.0", "pandas>=2"] # deprecated, replaced by `dataplatform` (NOLINT)
-dataplatform = [ # NOLINT
+datafusion = ["datafusion==52.3.0", "pandas>=2"] # deprecated, replaced by `catalog`
+dataplatform = [ # deprecated, replaced by `catalog` (NOLINT)
+  "datafusion==52.3.0",
+  "pandas>=2",
+]
+catalog = [
   "datafusion==52.3.0",
   "pandas>=2",
 ] # pandas is needed so pyarrow properly converts nanoseconds (RR-3532)

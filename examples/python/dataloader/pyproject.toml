@@ -3,7 +3,7 @@ name = "dataloader"
 version = "0.1.0"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
-dependencies = ["rerun-sdk[dataloader,dataplatform,tracing]", "huggingface-hub<1.0", "lerobot==0.4"]
+dependencies = ["rerun-sdk[dataloader,catalog,tracing]", "huggingface-hub<1.0", "lerobot==0.4"]
 
 [dependency-groups]
 dev = ["mypy==1.19.1"]
@@ -17,7 +17,7 @@ isolated = true
 package = false
 # Ignore LeRobot's pinned rerun-sdk so resolution picks the local source below.
 # Scoped to this project — does not affect the root workspace.
-override-dependencies = ["rerun-sdk[dataloader,dataplatform,tracing]"]
+override-dependencies = ["rerun-sdk[dataloader,catalog,tracing]"]
 
 # Default `uv sync` uses the in-repo editable rerun-sdk (monorepo dev mode).
 # After syncing, also run `uv pip install ../../../rerun_py/rerun_dev_fixup` to
