@@ -1,7 +1,6 @@
 # Rerun changelog
 
-
-## Unreleased
+## [0.33.0](https://github.com/rerun-io/rerun/compare/0.32.2...0.33.0) - 2026-05-29
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-33
 
