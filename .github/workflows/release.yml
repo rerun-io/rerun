@@ -425,6 +425,8 @@ jobs:
 
       - name: Create comment
         if: inputs.release-type == 'rc' || inputs.release-type == 'final'
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
@@ -531,6 +533,8 @@ jobs:
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
       - name: Create comment
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |

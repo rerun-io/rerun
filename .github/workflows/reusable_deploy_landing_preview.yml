@@ -53,7 +53,9 @@ jobs:
 
       - name: Create pending comment
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.2
+        uses: mshick/add-pr-comment@v3.9.1
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         if: success()
         with:
           message-id: "vercel-preview"
@@ -79,7 +81,9 @@ jobs:
 
       - name: Create PR comment
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.2
+        uses: mshick/add-pr-comment@v3.9.1
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         if: success() && steps.vercel.outputs.vercel_preview_result == 'success'
         with:
           message-id: "vercel-preview"
@@ -95,7 +99,9 @@ jobs:
 
       - name: Create PR comment
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.2
+        uses: mshick/add-pr-comment@v3.9.1
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         if: success() && steps.vercel.outputs.vercel_preview_result == 'failure'
         with:
           message-id: "vercel-preview"
@@ -112,7 +118,9 @@ jobs:
 
       - name: Create PR comment
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.2
+        uses: mshick/add-pr-comment@v3.9.1
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         if: failure()
         with:
           message-id: "vercel-preview"

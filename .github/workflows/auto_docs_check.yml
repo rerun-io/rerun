@@ -59,7 +59,9 @@ jobs:
 
       - name: Add success comment
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.2
+        uses: mshick/add-pr-comment@v3.9.1
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment on success.
+        continue-on-error: true
         if: success()
         with:
           message-id: "cherry-pick-check"
@@ -70,7 +72,7 @@ jobs:
 
       - name: Add failure comment
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.2
+        uses: mshick/add-pr-comment@v3.9.1
         if: failure()
         with:
           message-id: "cherry-pick-check"
