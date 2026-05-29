@@ -262,10 +262,10 @@ uv-lock-check = { depends-on = ["uv-lock-check-workspace", "uv-lock-check-isolat
 # * <https://buf.build/docs/breaking/rules/>
 # * <https://buf.build/docs/lint/rules/>
 
-pb-fmt-check = "buf format --exit-code --diff"
-pb-fmt = "buf format --exit-code --write"
+pb-fmt-check = "buf format --exclude-path .pixi --exit-code --diff"
+pb-fmt = "buf format --exclude-path .pixi --exit-code --write"
 
-pb-lint = "buf lint --error-format=json"
+pb-lint = "buf lint --exclude-path .pixi --error-format=json"
 
 # NOTE(cmc): I'm keeping all the snapshot machinery around if it turns out we need something more robust
 # than a pure git solution in the future. For now, convenience wins.
