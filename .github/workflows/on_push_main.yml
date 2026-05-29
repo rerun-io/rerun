@@ -56,6 +56,7 @@ jobs:
       PY_DOCS_VERSION_NAME: "main"
       CPP_DOCS_VERSION_NAME: "main"
       JS_DOCS_VERSION_NAME: "main"
+      MARKDOWN_DOCS_VERSION_NAME: "dev"
       UPDATE_LATEST: false
     secrets: inherit
 
