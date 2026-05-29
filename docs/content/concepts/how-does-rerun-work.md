@@ -80,19 +80,19 @@ The Python SDK includes:
 - **Catalog SDK**
 - **CLI**, including the Viewer (the `rerun` CLI is made available by installing the `rerun-sdk` Python package)
 
-See: Python SDK [installation instructions](../overview/installing-rerun/python.md) and [quick start guide](../getting-started/data-in/python.md)
+See: Python SDK [installation instructions](../getting-started/install-rerun/python.md) and [quick start guide](../getting-started/data-in.md)
 
 ### Rust SDK
 
 The Logging SDK as a Rust crate.
 
-See: Rust SDK [installation instructions](../overview/installing-rerun/rust.md) and [quick start guide](../getting-started/data-in/rust.md)
+See: Rust SDK [installation instructions](../getting-started/install-rerun/rust.md) and [quick start guide](../getting-started/data-in.md)
 
 ### C++ SDK
 
 The Logging SDK for C++ projects.
 
-See: C++ SDK [installation instructions](../overview/installing-rerun/cpp.md) and [quick start guide](../getting-started/data-in/cpp.md)
+See: C++ SDK [installation instructions](../getting-started/install-rerun/cpp.md) and [quick start guide](../getting-started/data-in.md)
 
 ### The `web-viewer` and `web-viewer-react` NPM packages
 
