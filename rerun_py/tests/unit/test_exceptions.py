@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import inspect
-import os
 from typing import Any
 
 import pytest
@@ -52,9 +51,11 @@ def expected_warnings(warnings: Any, mem: Any, starting_msgs: int, count: int, e
         assert "some value error" in str(w.message), f"mem: {mem}, starting_msgs: {starting_msgs}, count: {count}"
 
 
-def test_stack_tracking() -> None:
-    # Force flushing so we can count the messages
-    os.environ["RERUN_FLUSH_NUM_ROWS"] = "0"
+def test_stack_tracking(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Force flushing so we can count the messages.
+    # Use `monkeypatch` so the env var is reverted at the end of the test: leaking it pollutes the
+    # rest of the session (e.g. it gets inherited by the viewer spawned in the integration tests).
+    monkeypatch.setenv("RERUN_FLUSH_NUM_ROWS", "0")
     rr.init("rerun_example_strict_mode", strict=False, spawn=False)
 
     mem = rr.memory_recording()
