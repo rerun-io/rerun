@@ -1,0 +1,15 @@
+version: v2
+modules:
+  - path: crates/store/re_protos/proto
+  - path: examples/python/objectron/objectron/proto
+lint:
+  use:
+    - STANDARD
+  except:
+    - DIRECTORY_SAME_PACKAGE
+    - PACKAGE_DIRECTORY_MATCH
+  ignore:
+    - examples/python/objectron/objectron/proto
+breaking:
+  use:
+    - FILE
