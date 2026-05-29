@@ -67,7 +67,7 @@ How does one create and store chunks in Rerun, then?
 
 ### The row-oriented logging: `log`
 
-The `log` API is generally [what we show in the getting-started guides](https://rerun.io/docs/getting-started/data-in/python#logging-your-own-data) since it's the easiest to use:
+The `log` API is generally [what we show in the getting-started guides](https://rerun.io/docs/getting-started/data-in#logging-our-first-points) since it's the easiest to use:
 
 snippet: archetypes/scalars_row_updates
 
