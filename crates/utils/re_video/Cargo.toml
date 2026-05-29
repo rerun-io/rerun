@@ -39,6 +39,7 @@ nasm = [
   "dav1d?/default",
 ]
 
+
 [package.metadata.cargo-shear]
 ignored = ["getrandom"]
 

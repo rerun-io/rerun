@@ -265,10 +265,10 @@ uv-lock-check = { depends-on = ["uv-lock-check-workspace", "uv-lock-check-isolat
 # * <https://buf.build/docs/breaking/rules/>
 # * <https://buf.build/docs/lint/rules/>
 
-pb-fmt-check = "buf format --exit-code --diff"
-pb-fmt = "buf format --exit-code --write"
+pb-fmt-check = "buf format --config scripts/ci/buf.yaml --exit-code --diff"
+pb-fmt = "buf format --config scripts/ci/buf.yaml --exit-code --write"
 
-pb-lint = "buf lint --error-format=json"
+pb-lint = "buf lint --config scripts/ci/buf.yaml --error-format=json"
 
 # NOTE(cmc): I'm keeping all the snapshot machinery around if it turns out we need something more robust
 # than a pure git solution in the future. For now, convenience wins.
@@ -285,7 +285,7 @@ pb-lint = "buf lint --error-format=json"
 #   "pb-snapshot-main",
 # ]}
 
-pb-breaking = "echo 'ℹ️ If this CI step is failing even though you did not modify any Protobuf files, that means that somebody purposefully published breaking Protobuf changes onto the main branch in the meantime.\nℹ️ For that reason, the Protobuf definitions on your local branch are now incompatible with those on main.\nℹ️ When that happens, simply rebase your branch on latest main, and the errors will go away.' ; buf breaking --error-format=json --against '.git#branch=origin/main'"
+pb-breaking = "echo 'ℹ️ If this CI step is failing even though you did not modify any Protobuf files, that means that somebody purposefully published breaking Protobuf changes onto the main branch in the meantime.\nℹ️ For that reason, the Protobuf definitions on your local branch are now incompatible with those on main.\nℹ️ When that happens, simply rebase your branch on latest main, and the errors will go away.' ; buf breaking --config scripts/ci/buf.yaml --against-config scripts/ci/buf.yaml --error-format=json --against '.git#branch=origin/main'"
 
 pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
 

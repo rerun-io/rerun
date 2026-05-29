@@ -1,7 +1,8 @@
 # Rerun changelog
 
+## [0.33.0](https://github.com/rerun-io/rerun/compare/0.32.2...0.33.0) - 2026-05-29
 
-## Unreleased
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-33
 
 ### ✨ Overview & highlights
 
@@ -17,6 +18,7 @@ import rerun.blueprint as rrb
 from rerun.experimental import ViewerClient
 
 # Spawn a headless viewer; the client owns its lifetime.
+# ⚠️ you need a graphics driver to run this (software rasterizers like lavapipe are fine too!).
 with ViewerClient(spawn=True, headless=True) as viewer:
     rec = rr.RecordingStream("rerun_example_screenshot")
     rec.connect_grpc(url=viewer.url)
@@ -70,7 +72,7 @@ https://github.com/user-attachments/assets/4543af53-52ca-4488-90b0-8c365f9fb89b
 
 #### Nicer native Viewer title bars on Windows & some Linux desktops
 
-On MacOS we used to have a compact title bar for a very long time. Now the same feature comes finally to Mac
+On MacOS we used to have a compact title bar for a very long time. Now the same feature comes finally to Windows
 and some Linux desktops.
 
 Before:
@@ -105,21 +107,16 @@ Bit too bulky!
 
 If you experience any issues with this you can turn it off in the settings menu.
 
-#### Bugfixes, fixed memory leaks in GC
-
-
-Among other things we finally addressed memory leaks for long running & memory constrained Viewers,
-so if you still experience memory leaking issues please reach out!
-
-Previously some Wayland users experienced hangs with the native Viewer which should be finally addressed now.
-
-As always, more bug reports are always welcome!
-
-
 ### ⚠️ Breaking changes
 
-No breaking changes in this release! \o/
+The Python optional-dependency extra for catalog/query API tools has been renamed to `catalog`.
 
+| Before                       | After                 |
+|------------------------------|-----------------------|
+| `pip install rerun-sdk[dataplatform]` | `pip install rerun-sdk[catalog]` |
+| `pip install rerun-sdk[datafusion]`   | `pip install rerun-sdk[catalog]` |
+
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-33
 
 ### 🔎 Details
 
@@ -132,10 +129,14 @@ No breaking changes in this release! \o/
 - Optional Hub ingestion of customer SDK traces [5a362a3](https://github.com/rerun-io/rerun/commit/5a362a322131957ce4f874e2f16a053083a08cb7)
 - Remove segment id validation with `dataset.reader(..., using_index_value=...)` [7846d38](https://github.com/rerun-io/rerun/commit/7846d3826e6dfbd578ac68d88889a427b003a8cf)
 - Dedup video stream samples in video decoder [d341ba4](https://github.com/rerun-io/rerun/commit/d341ba465d45aecda5a2ddcedd6b8ad791adadf3)
+- Pushdown `LazyChunkStore.filter()` to `LazyStore` [99a2149](https://github.com/rerun-io/rerun/commit/99a21494776e3ce431e6aa22f397fc989b996b11)
+- Add headless viewer mode [b050087](https://github.com/rerun-io/rerun/commit/b05008774816aab3b18f2b3dbc434ac2b871a72d)
+- rerun-sdk[datafusion] and rerun-sdk[dataplatform] extras are now rerun-sdk[catalog] [fcb5b13](https://github.com/rerun-io/rerun/commit/fcb5b13a34d4e0862d4a633838ff6f8344257bc4)
 
 #### 🦀 Rust API
 - Increase the re_sdk viewer spawn timeout to 4s [230cde6](https://github.com/rerun-io/rerun/commit/230cde680c96cdfb9529b8f8a36370ae786f3f59)
 - Optional Hub ingestion of customer SDK traces [5a362a3](https://github.com/rerun-io/rerun/commit/5a362a322131957ce4f874e2f16a053083a08cb7)
+- Add headless viewer mode [b050087](https://github.com/rerun-io/rerun/commit/b05008774816aab3b18f2b3dbc434ac2b871a72d)
 
 #### 🪳 Bug fixes
 - Create spatial topology from schema instead of from chunk data (fixing to sometimes never pull data) [3fffd8b](https://github.com/rerun-io/rerun/commit/3fffd8b91de671adace05000075aecc7861703b1)
@@ -154,6 +155,7 @@ No breaking changes in this release! \o/
 - MCAP: fix `sensor_msgs/PointCloud2` offsets for extra fields [20fe293](https://github.com/rerun-io/rerun/commit/20fe293ea4d741e6d6a75b872e7f7772bd0379d2)
 - Fix AV1 OBU walker cursor drift [c61b60b](https://github.com/rerun-io/rerun/commit/c61b60b4bf551f8125e0acab9b596914e90795cd)
 - `Clear` log support for state timeline [639c5e6](https://github.com/rerun-io/rerun/commit/639c5e60ec59f0fafeb988f5d572731a6b2f6e8c)
+- Take grpc server into account when purging viewer memory [09b0192](https://github.com/rerun-io/rerun/commit/09b0192ce32c2a5f820133bc865d5afb2341fe97)
 
 #### 🌁 Viewer improvements
 - Emit `VideoStream::is_keyframe` in `rrd optimize` [ab74f37](https://github.com/rerun-io/rerun/commit/ab74f37dca39cab50143bfd5579c21eaa2c825a6)
@@ -169,6 +171,7 @@ No breaking changes in this release! \o/
 - Vertical scroll support for state timelines [6dc3e49](https://github.com/rerun-io/rerun/commit/6dc3e49215b21e5ba42b693dcafebbfe784d6ede)
 - Fixes last state in timeline extending to infinity [a13dc44](https://github.com/rerun-io/rerun/commit/a13dc448758bafe355571bfea2b6550c006f4e79)
 - Hovered state highlights time range in time-based views [5258852](https://github.com/rerun-io/rerun/commit/52588526b1c0e6c1eb0b4c67b4d8e8ffaf03c665)
+- Make webdecoder more robust against spurious decoding problems [fb2e5d1](https://github.com/rerun-io/rerun/commit/fb2e5d19c18c3305466826b58f945730cfc1e4e1)
 
 #### 🚀 Performance improvements
 - Faster queries: do not split or compact chunks [0cb8ffb](https://github.com/rerun-io/rerun/commit/0cb8ffb76146623d425e9d9838ba80573b6850f0)
@@ -207,7 +210,6 @@ No breaking changes in this release! \o/
 
 #### 🧑‍💻 Dev-experience
 - Include trace-id in error message on failed registration [bab7682](https://github.com/rerun-io/rerun/commit/bab7682765163e1321fe4fa8605ce5e5b69088fa)
-
 
 
 ## [0.32.2](https://github.com/rerun-io/rerun/compare/0.32.1...0.32.2) - 2026-05-20
