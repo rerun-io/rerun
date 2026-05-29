@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10, <3.13"
 resolution-markers = [
     "python_full_version >= '3.12' and sys_platform == 'darwin'",
@@ -21,7 +21,7 @@ resolution-markers = [
 ]
 
 [manifest]
-overrides = [{ name = "rerun-sdk", extras = ["dataloader", "dataplatform", "tracing"], editable = "../../../rerun_py" }]
+overrides = [{ name = "rerun-sdk", extras = ["dataloader", "catalog", "tracing"], editable = "../../../rerun_py" }]
 
 [[package]]
 name = "accelerate"
@@ -335,7 +335,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "huggingface-hub" },
     { name = "lerobot" },
-    { name = "rerun-sdk", extra = ["dataloader", "dataplatform", "tracing"] },
+    { name = "rerun-sdk", extra = ["catalog", "dataloader", "tracing"] },
 ]
 
 [package.dev-dependencies]
@@ -347,7 +347,7 @@ dev = [
 requires-dist = [
     { name = "huggingface-hub", specifier = "<1.0" },
     { name = "lerobot", specifier = "==0.4" },
-    { name = "rerun-sdk", extras = ["dataloader", "dataplatform", "tracing"], editable = "../../../rerun_py" },
+    { name = "rerun-sdk", extras = ["dataloader", "catalog", "tracing"], editable = "../../../rerun_py" },
 ]
 
 [package.metadata.requires-dev]
@@ -810,7 +810,7 @@ dependencies = [
     { name = "packaging" },
     { name = "pynput" },
     { name = "pyserial" },
-    { name = "rerun-sdk", extra = ["dataloader", "dataplatform", "tracing"] },
+    { name = "rerun-sdk", extra = ["catalog", "dataloader", "tracing"] },
     { name = "setuptools" },
     { name = "termcolor" },
     { name = "torch" },
@@ -2079,16 +2079,16 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+catalog = [
+    { name = "datafusion" },
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pandas", version = "3.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
 dataloader = [
     { name = "av" },
     { name = "pillow" },
     { name = "torch" },
     { name = "torchvision" },
-]
-dataplatform = [
-    { name = "datafusion" },
-    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "pandas", version = "3.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 tracing = [
     { name = "opentelemetry-api" },
@@ -2102,6 +2102,7 @@ requires-dist = [
     { name = "av", marker = "extra == 'dataloader'" },
     { name = "av", marker = "extra == 'tests'", specifier = ">=14.2.0" },
     { name = "datafusion", marker = "extra == 'all'", specifier = "==52.3.0" },
+    { name = "datafusion", marker = "extra == 'catalog'", specifier = "==52.3.0" },
     { name = "datafusion", marker = "extra == 'datafusion'", specifier = "==52.3.0" },
     { name = "datafusion", marker = "extra == 'dataplatform'", specifier = "==52.3.0" },
     { name = "datafusion", marker = "extra == 'tests'", specifier = "==52.3.0" },
@@ -2112,6 +2113,7 @@ requires-dist = [
     { name = "opentelemetry-exporter-otlp-proto-grpc", marker = "extra == 'tracing'" },
     { name = "opentelemetry-sdk", marker = "extra == 'tracing'" },
     { name = "pandas", marker = "extra == 'all'", specifier = ">=2" },
+    { name = "pandas", marker = "extra == 'catalog'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'datafusion'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'dataplatform'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'tests'", specifier = ">=2" },
@@ -2132,7 +2134,7 @@ requires-dist = [
     { name = "torchvision", marker = "extra == 'tests'" },
     { name = "typing-extensions", specifier = ">=4.5" },
 ]
-provides-extras = ["all", "datafusion", "dataloader", "dataplatform", "notebook", "tests", "tracing"]
+provides-extras = ["all", "catalog", "datafusion", "dataloader", "dataplatform", "notebook", "tests", "tracing"]
 
 [[package]]
 name = "safetensors"
