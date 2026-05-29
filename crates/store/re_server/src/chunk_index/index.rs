@@ -13,7 +13,7 @@ use lance_index::DatasetIndexExt as _;
 use re_chunk_store::Chunk;
 use re_log_types::{ComponentPath, EntityPath, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{IndexConfig, IndexProperties};
-use re_protos::common::v1alpha1::ext::SegmentId;
+use re_types_core::SegmentId;
 use re_types_core::{ComponentIdentifier, LayerName};
 
 use crate::chunk_index::{

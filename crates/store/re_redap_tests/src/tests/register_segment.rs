@@ -19,10 +19,10 @@ use re_protos::cloud::v1alpha1::{
     ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse, ext,
 };
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_protos::common::v1alpha1::ext::SegmentId;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk_types::AnyValues;
 use re_types_core::AsComponents;
+use re_types_core::SegmentId;
 use url::Url;
 
 use super::common::{

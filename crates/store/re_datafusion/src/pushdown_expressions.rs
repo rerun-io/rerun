@@ -4,8 +4,8 @@ use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPu
 use itertools::Itertools as _;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
-use re_protos::common::v1alpha1::ext::SegmentId;
 use re_sorbet::metadata::RERUN_KIND;
+use re_types_core::SegmentId;
 use std::ops::Not as _;
 
 fn arrange_binary_expr_as_col_on_left(expr: &BinaryExpr) -> BinaryExpr {

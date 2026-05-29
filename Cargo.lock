@@ -8683,6 +8683,7 @@ dependencies = [
  "re_redap_client",
  "re_sorbet",
  "re_tracing",
+ "re_types_core",
  "re_uri",
  "reqwest",
  "tokio",

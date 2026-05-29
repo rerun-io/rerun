@@ -34,6 +34,7 @@ mod loggable;
 pub mod reflection;
 mod result;
 mod row_id;
+mod segment_id;
 mod timeline_name;
 mod tuid;
 mod view;
@@ -62,6 +63,7 @@ pub use self::result::{
     SerializationResult,
 };
 pub use self::row_id::RowId;
+pub use self::segment_id::SegmentId;
 pub use self::tuid::tuids_to_arrow;
 pub use self::view::{View, ViewClassIdentifier};
 pub use self::wrapper_component::WrapperComponent;

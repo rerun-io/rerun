@@ -46,25 +46,25 @@ impl SorbetSchema {
 }
 
 impl SorbetSchema {
-    pub fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
-        ("rerun:id".to_owned(), chunk_id.to_string())
-    }
-
-    pub fn entity_path_metadata(entity_path: &EntityPath) -> (String, String) {
-        (
-            crate::metadata::SORBET_ENTITY_PATH.to_owned(),
-            entity_path.to_string(),
-        )
-    }
-
-    pub fn segment_id_metadata(segment_id: impl AsRef<str>) -> (String, String) {
-        (
-            "rerun:segment_id".to_owned(),
-            segment_id.as_ref().to_owned(),
-        )
-    }
-
     pub fn arrow_batch_metadata(&self) -> ArrowBatchMetadata {
+        fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
+            ("rerun:id".to_owned(), chunk_id.to_string())
+        }
+
+        fn entity_path_metadata(entity_path: &EntityPath) -> (String, String) {
+            (
+                crate::metadata::SORBET_ENTITY_PATH.to_owned(),
+                entity_path.to_string(),
+            )
+        }
+
+        fn segment_id_metadata(segment_id: impl AsRef<str>) -> (String, String) {
+            (
+                "rerun:segment_id".to_owned(),
+                segment_id.as_ref().to_owned(),
+            )
+        }
+
         let Self {
             columns: _,
             chunk_id,
@@ -79,9 +79,9 @@ impl SorbetSchema {
                     Self::METADATA_KEY_VERSION.to_owned(),
                     Self::METADATA_VERSION.to_string(),
                 )),
-                chunk_id.as_ref().map(Self::chunk_id_metadata),
-                entity_path.as_ref().map(Self::entity_path_metadata),
-                segment_id.as_ref().map(Self::segment_id_metadata),
+                chunk_id.as_ref().map(chunk_id_metadata),
+                entity_path.as_ref().map(entity_path_metadata),
+                segment_id.as_ref().map(segment_id_metadata),
             ]
             .into_iter()
             .flatten(),

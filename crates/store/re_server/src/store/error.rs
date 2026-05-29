@@ -1,7 +1,7 @@
 use re_log_types::{ComponentPath, EntryId};
 use re_protos::EntryName;
-use re_protos::common::v1alpha1::ext::SegmentId;
 use re_types_core::LayerName;
+use re_types_core::SegmentId;
 
 #[derive(thiserror::Error, Debug)]
 #[expect(clippy::enum_variant_names)]

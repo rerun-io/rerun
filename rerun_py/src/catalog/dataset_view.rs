@@ -13,8 +13,8 @@ use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::{QueryExpression, SparseFillStrategy, TimeInt, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPathFilter, ResolvedEntityPathFilter};
-use re_protos::common::v1alpha1::ext::SegmentId;
 use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
+use re_types_core::SegmentId;
 
 use crate::catalog::{
     IndexValuesLike, PyDatasetEntryInternal, PySchemaInternal, PyTableProviderAdapterInternal,

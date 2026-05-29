@@ -12,7 +12,7 @@ use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, TimeInt, TimeType};
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
-use re_protos::common::v1alpha1::ext::SegmentId;
+use re_types_core::SegmentId;
 
 use crate::RecordBatchTestExt as _;
 use crate::tests::common::{
@@ -200,7 +200,7 @@ async fn register_per_segment_dataset(
     data_sources_def
 }
 
-fn per_segment_segment_ids() -> Vec<re_protos::common::v1alpha1::ext::SegmentId> {
+fn per_segment_segment_ids() -> Vec<re_types_core::SegmentId> {
     vec![
         "rr4355_seg1".into(),
         "rr4355_seg2".into(),

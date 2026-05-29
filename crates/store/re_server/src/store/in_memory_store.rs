@@ -193,8 +193,7 @@ impl InMemoryStore {
         layer_name: Option<LayerName>,
         on_duplicate: IfDuplicateBehavior,
         store_kind: StoreKind,
-    ) -> Result<std::collections::BTreeSet<re_protos::common::v1alpha1::ext::SegmentId>, Error>
-    {
+    ) -> Result<std::collections::BTreeSet<re_types_core::SegmentId>, Error> {
         let dataset = self
             .datasets
             .get_mut(&dataset_id)
