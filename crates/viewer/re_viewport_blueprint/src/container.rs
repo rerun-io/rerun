@@ -422,7 +422,7 @@ impl ContainerBlueprint {
                             children.clone(),
                         );
 
-                        for (share, id) in self.col_shares.iter().zip(children.iter()) {
+                        for (share, id) in std::iter::zip(&self.col_shares, &children) {
                             linear.shares.set_share(*id, *share);
                         }
 
@@ -434,7 +434,7 @@ impl ContainerBlueprint {
                             children.clone(),
                         );
 
-                        for (share, id) in self.row_shares.iter().zip(children.iter()) {
+                        for (share, id) in std::iter::zip(&self.row_shares, &children) {
                             linear.shares.set_share(*id, *share);
                         }
 

@@ -32,9 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_radii([0.08]),
     )?;
 
-    let lines: Vec<[glam::Vec3; 2]> = points1
-        .iter()
-        .zip(&points2)
+    let lines: Vec<[glam::Vec3; 2]> = std::iter::zip(&points1, &points2)
         .map(|(&p1, &p2)| (p1, p2).into())
         .collect_vec();
 
@@ -53,9 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rec.set_duration_secs("stable_time", time as f64);
 
         let times = offsets.iter().map(|offset| time + offset).collect_vec();
-        let beads = lines
-            .iter()
-            .zip(&times)
+        let beads = std::iter::zip(&lines, &times)
             .map(|(&[p1, p2], &time)| bounce_lerp(p1, p2, time))
             .collect_vec();
         let colors = times

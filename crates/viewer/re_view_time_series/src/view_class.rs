@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{Plot, PlotPoint};
-use itertools::{Either, Itertools as _};
+use itertools::{Either, Itertools as _, chain};
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
@@ -448,10 +448,8 @@ impl ViewClass for TimeSeriesView {
         let point_series =
             system_output.visualizer_data::<SeriesPointsOutput>(SeriesPointsSystem::identifier())?;
 
-        let all_plot_series: Vec<_> = std::iter::empty()
-            .chain(line_series.all_series.iter())
-            .chain(point_series.all_series.iter())
-            .collect();
+        let all_plot_series: Vec<_> =
+            chain!(&line_series.all_series, &point_series.all_series).collect();
 
         state.num_time_series_last_frame_per_instruction.clear();
 

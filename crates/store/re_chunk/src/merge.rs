@@ -93,7 +93,7 @@ impl Chunk {
         // NOTE: We know they are the same set, and they are in a btree => we can zip them.
         let timelines = {
             re_tracing::profile_scope!("timelines");
-            izip!(self.timelines.iter(), rhs.timelines.iter())
+            izip!(&self.timelines, &rhs.timelines)
                 .filter_map(
                     |((lhs_timeline, lhs_time_chunk), (rhs_timeline, rhs_time_chunk))| {
                         re_log::debug_assert_eq!(lhs_timeline, rhs_timeline);
@@ -309,10 +309,7 @@ impl TimeColumn {
 
         let time_range = self.time_range.union(rhs.time_range);
 
-        let times = self
-            .times_raw()
-            .iter()
-            .chain(rhs.times_raw())
+        let times = std::iter::chain(self.times_raw(), rhs.times_raw())
             .copied()
             .collect_vec();
         let times = ArrowScalarBuffer::from(times);

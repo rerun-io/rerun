@@ -114,9 +114,10 @@ impl ::re_types_core::Loggable for UVec2D {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let offsets = (0..)
-                    .step_by(2usize)
-                    .zip((2usize..).step_by(2usize).take(arrow_data.len()));
+                let offsets = ::std::iter::zip(
+                    (0..).step_by(2usize),
+                    (2usize..).step_by(2usize).take(arrow_data.len()),
+                );
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner

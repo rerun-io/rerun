@@ -139,12 +139,14 @@ impl LoadedMesh {
 
         let vertex_colors = if let Some(vertex_colors) = vertex_colors {
             re_tracing::profile_scope!("copy_colors");
-            vertex_colors
-                .iter()
-                .map(|c| re_renderer::Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
-                .chain(std::iter::repeat(re_renderer::Rgba32Unmul::WHITE))
-                .take(num_positions)
-                .collect::<Vec<_>>()
+            std::iter::chain(
+                vertex_colors
+                    .iter()
+                    .map(|c| re_renderer::Rgba32Unmul::from_rgba_unmul_array(c.to_array())),
+                std::iter::repeat(re_renderer::Rgba32Unmul::WHITE),
+            )
+            .take(num_positions)
+            .collect::<Vec<_>>()
         } else {
             vec![re_renderer::Rgba32Unmul::WHITE; num_positions]
         };

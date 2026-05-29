@@ -64,7 +64,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.send_columns(
         "plot",
         [rerun::TimeColumn::new_sequence("step", 0..64)],
-        sin_columns.chain(custom_columns).chain(nested_columns),
+        itertools::chain!(sin_columns, custom_columns, nested_columns),
     )?;
 
     // Add a line series color to the store data

@@ -1540,7 +1540,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     };
 
-    let with_methods = required.iter().chain(optional.iter()).map(|field| {
+    let with_methods = std::iter::chain(&required, &optional).map(|field| {
         // fn with_*()
         let field_name = format_ident!("{}", field.name);
         let descr_fn_name = format_ident!("descriptor_{field_name}");
@@ -1596,7 +1596,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             quote_doc_line(&format!("Update only some specific fields of a `{name}`."));
         let clear_fields_doc = quote_doc_line(&format!("Clear all the fields of a `{name}`."));
 
-        let fields = required.iter().chain(optional.iter()).map(|field| {
+        let fields = std::iter::chain(&required, &optional).map(|field| {
             let field_name = format_ident!("{}", field.name);
             let descr_fn_name = format_ident!("descriptor_{field_name}");
             let (typ, _) = quote_field_type_from_typ(&field.typ, true);
@@ -1649,15 +1649,15 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         ");
         let columns_unary_doc = quote_doc_lines(&columns_unary_doc.lines().map(|l| l.to_owned()).collect_vec());
 
-        let fields = required.iter().chain(optional.iter()).map(|field| {
+        let fields = std::iter::chain(&required, &optional).map(|field| {
             let field_name = format_ident!("{}", field.name);
             quote!(self.#field_name.map(|#field_name| #field_name.partitioned(_lengths.clone())).transpose()?)
         });
 
-        let field_lengths = required.iter().chain(optional.iter()).map(|field| {
-            format_ident!("len_{}", field.name)
-        }).collect_vec();
-        let unary_fields = required.iter().chain(optional.iter()).map(|field| {
+        let field_lengths = std::iter::chain(&required, &optional)
+            .map(|field| format_ident!("len_{}", field.name))
+            .collect_vec();
+        let unary_fields = std::iter::chain(&required, &optional).map(|field| {
             let field_name = format_ident!("{}", field.name);
             let len_field_name = format_ident!("len_{}", field.name);
             quote!(let #len_field_name = self.#field_name.as_ref().map(|b| b.array.len()))

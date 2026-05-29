@@ -29,6 +29,7 @@ use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
+use re_types_core::LayerName;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
 use tokio_stream::{Stream, StreamExt as _};
@@ -1088,13 +1089,13 @@ where
     pub async fn unregister_from_dataset(
         &mut self,
         dataset_id: EntryId,
-        segments_to_drop: Vec<String>,
-        layers_to_drop: Vec<String>,
+        segments_to_drop: Vec<SegmentId>,
+        layers_to_drop: Vec<LayerName>,
         force: bool,
     ) -> ApiResult<Vec<RecordBatch>> {
         let req = tonic::Request::new(
             UnregisterFromDatasetRequest {
-                segments_to_drop: segments_to_drop.into_iter().map(Into::into).collect(),
+                segments_to_drop,
                 layers_to_drop,
                 force,
             }

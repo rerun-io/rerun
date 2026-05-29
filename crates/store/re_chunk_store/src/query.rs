@@ -30,11 +30,11 @@ impl ChunkStore {
     /// Retrieve all [`EntityPath`]s in the store.
     #[inline]
     pub fn all_entities(&self) -> IntSet<EntityPath> {
-        self.static_chunk_ids_per_entity
-            .keys()
-            .cloned()
-            .chain(self.temporal_chunk_ids_per_entity.keys().cloned())
-            .collect()
+        std::iter::chain(
+            self.static_chunk_ids_per_entity.keys().cloned(),
+            self.temporal_chunk_ids_per_entity.keys().cloned(),
+        )
+        .collect()
     }
 
     /// Returns a vector with all the chunks in this store, sorted in descending order relative to
@@ -110,55 +110,51 @@ impl ChunkStore {
     /// Retrieve all [`EntityPath`]s in the store.
     #[inline]
     pub fn all_entities_sorted(&self) -> BTreeSet<EntityPath> {
-        self.static_chunk_ids_per_entity
-            .keys()
-            .cloned()
-            .chain(self.temporal_chunk_ids_per_entity.keys().cloned())
-            .collect()
+        std::iter::chain(
+            self.static_chunk_ids_per_entity.keys().cloned(),
+            self.temporal_chunk_ids_per_entity.keys().cloned(),
+        )
+        .collect()
     }
 
     /// Retrieve all [`ComponentIdentifier`]s in the store.
     ///
     /// See also [`Self::all_components_sorted`].
     pub fn all_components(&self) -> UnorderedComponentSet {
-        self.static_chunk_ids_per_entity
-            .values()
-            .flat_map(|static_chunks_per_component| static_chunks_per_component.keys())
-            .chain(
-                self.temporal_chunk_ids_per_entity_per_component
-                    .values()
-                    .flat_map(|temporal_chunk_ids_per_timeline| {
-                        temporal_chunk_ids_per_timeline.values().flat_map(
-                            |temporal_chunk_ids_per_component| {
-                                temporal_chunk_ids_per_component.keys()
-                            },
-                        )
-                    }),
-            )
-            .copied()
-            .collect()
+        std::iter::chain(
+            self.static_chunk_ids_per_entity
+                .values()
+                .flat_map(|static_chunks_per_component| static_chunks_per_component.keys()),
+            self.temporal_chunk_ids_per_entity_per_component
+                .values()
+                .flat_map(|temporal_chunk_ids_per_timeline| {
+                    temporal_chunk_ids_per_timeline.values().flat_map(
+                        |temporal_chunk_ids_per_component| temporal_chunk_ids_per_component.keys(),
+                    )
+                }),
+        )
+        .copied()
+        .collect()
     }
 
     /// Retrieve all [`ComponentIdentifier`]s in the store.
     ///
     /// See also [`Self::all_components`].
     pub fn all_components_sorted(&self) -> ComponentSet {
-        self.static_chunk_ids_per_entity
-            .values()
-            .flat_map(|static_chunks_per_component| static_chunks_per_component.keys())
-            .chain(
-                self.temporal_chunk_ids_per_entity_per_component
-                    .values()
-                    .flat_map(|temporal_chunk_ids_per_timeline| {
-                        temporal_chunk_ids_per_timeline.values().flat_map(
-                            |temporal_chunk_ids_per_component| {
-                                temporal_chunk_ids_per_component.keys()
-                            },
-                        )
-                    }),
-            )
-            .copied()
-            .collect()
+        std::iter::chain(
+            self.static_chunk_ids_per_entity
+                .values()
+                .flat_map(|static_chunks_per_component| static_chunks_per_component.keys()),
+            self.temporal_chunk_ids_per_entity_per_component
+                .values()
+                .flat_map(|temporal_chunk_ids_per_timeline| {
+                    temporal_chunk_ids_per_timeline.values().flat_map(
+                        |temporal_chunk_ids_per_component| temporal_chunk_ids_per_component.keys(),
+                    )
+                }),
+        )
+        .copied()
+        .collect()
     }
 
     /// Retrieve all the [`ComponentIdentifier`]s that have been written to for a given [`EntityPath`] on
@@ -205,7 +201,7 @@ impl ChunkStore {
             (None, None) => None,
             (None, Some(comps)) | (Some(comps), None) => Some(comps),
             (Some(static_comps), Some(temporal_comps)) => {
-                Some(static_comps.into_iter().chain(temporal_comps).collect())
+                Some(std::iter::chain(static_comps, temporal_comps).collect())
             }
         }
     }
@@ -254,7 +250,7 @@ impl ChunkStore {
             (None, None) => None,
             (None, Some(comps)) | (Some(comps), None) => Some(comps),
             (Some(static_comps), Some(temporal_comps)) => {
-                Some(static_comps.into_iter().chain(temporal_comps).collect())
+                Some(std::iter::chain(static_comps, temporal_comps).collect())
             }
         }
     }
@@ -787,11 +783,11 @@ impl QueryResults {
         }
 
         debug_assert!(
-            this.chunks
-                .iter()
-                .map(|chunk| chunk.id())
-                .chain(this.missing_virtual.iter().copied())
-                .all_unique()
+            std::iter::chain(
+                this.chunks.iter().map(|chunk| chunk.id()),
+                this.missing_virtual.iter().copied(),
+            )
+            .all_unique()
         );
 
         this
@@ -976,11 +972,10 @@ impl ChunkStore {
                 })
                 .flatten();
 
-            static_chunk_ids
-                .chain(temporal_chunk_ids)
-                // Deduplicate before passing it along.
-                // Both temporal and static chunk "sets" here may have duplicates in them,
-                // so we de-duplicate them together to reduce the number of allocations.
+            // Deduplicate before passing it along.
+            // Both temporal and static chunk "sets" here may have duplicates in them,
+            // so we de-duplicate them together to reduce the number of allocations.
+            std::iter::chain(static_chunk_ids, temporal_chunk_ids)
                 .unique()
                 .collect_vec()
         } else {
@@ -1169,14 +1164,10 @@ impl ChunkStore {
             )
             .into_iter();
 
-            Either::Left(
-                static_chunk_ids
-                    .chain(temporal_chunk_ids)
-                    // Deduplicate before passing it along.
-                    // Both temporal and static chunk "sets" here may have duplicates in them,
-                    // so we de-duplicate them together to reduce the number of allocations.
-                    .unique(),
-            )
+            // Deduplicate before passing it along.
+            // Both temporal and static chunk "sets" here may have duplicates in them,
+            // so we de-duplicate them together to reduce the number of allocations.
+            Either::Left(std::iter::chain(static_chunk_ids, temporal_chunk_ids).unique())
         } else {
             // This cannot yield duplicates by definition.
             Either::Right(Self::range(

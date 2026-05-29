@@ -220,9 +220,7 @@ impl Loggable for MyPoint {
             .downcast_array_ref::<arrow::array::Float32Array>()
             .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float32Array>)?;
 
-        Ok(xs
-            .iter()
-            .zip(ys.iter())
+        Ok(std::iter::zip(xs.iter(), ys.iter())
             .map(|(x, y)| {
                 if let (Some(x), Some(y)) = (x, y) {
                     Some(Self { x, y })
@@ -340,9 +338,7 @@ impl Loggable for MyPoint64 {
             .downcast_array_ref::<arrow::array::Float64Array>()
             .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float64Array>)?;
 
-        Ok(xs
-            .iter()
-            .zip(ys.iter())
+        Ok(std::iter::zip(xs.iter(), ys.iter())
             .map(|(x, y)| {
                 if let (Some(x), Some(y)) = (x, y) {
                     Some(Self { x, y })

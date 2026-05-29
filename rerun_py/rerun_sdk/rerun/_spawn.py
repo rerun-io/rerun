@@ -62,14 +62,10 @@ def _spawn_viewer(
 
     import rerun_bindings
 
-    # Let the spawned rerun process know it's just an app
-    new_env = os.environ.copy()
     # NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
     # what, thus spawning a viewer is pointless (and probably not intended).
     if os.environ.get("_RERUN_TEST_FORCE_SAVE") is not None:
         return None
-    new_env["RERUN_APP_ONLY"] = "true"
-
     return rerun_bindings.spawn(
         port=port,
         memory_limit=memory_limit,
@@ -78,5 +74,7 @@ def _spawn_viewer(
         detach_process=detach_process,
         executable_name=executable_name,
         executable_path=executable_path,
+        # Let the spawned rerun process know it's just an app (skips analytics opt-in etc.).
+        extra_env=[("RERUN_APP_ONLY", "true")],
         headless=headless,
     )

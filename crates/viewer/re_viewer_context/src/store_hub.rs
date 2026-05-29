@@ -431,25 +431,23 @@ impl StoreHub {
 
     /// Called once a frame to make sure the data source order is correct.
     pub fn update_data_source_order(&mut self, loading_sources: &[Arc<LogSource>]) {
-        let keep: HashSet<&LogSource> = loading_sources
-            .iter()
-            .map(|source| &**source)
-            .chain(
-                self.store_bundle
-                    .recordings()
-                    .filter_map(|db| db.data_source.as_ref()),
-            )
-            .collect();
+        let keep: HashSet<&LogSource> = std::iter::chain(
+            loading_sources.iter().map(|source| &**source),
+            self.store_bundle
+                .recordings()
+                .filter_map(|db| db.data_source.as_ref()),
+        )
+        .collect();
         self.data_source_order
             .ordering
             .retain(|source, _| keep.contains(source));
 
-        for source in self
-            .store_bundle
-            .recordings()
-            .filter_map(|db| db.data_source.as_ref())
-            .chain(loading_sources.iter().map(|s| &**s))
-        {
+        for source in std::iter::chain(
+            self.store_bundle
+                .recordings()
+                .filter_map(|db| db.data_source.as_ref()),
+            loading_sources.iter().map(|s| &**s),
+        ) {
             self.data_source_order.add(source);
         }
     }
@@ -1050,7 +1048,7 @@ impl StoreHub {
 
         let target = GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _);
 
-        for store_id in preview_recordings.iter().chain(&active_recordings) {
+        for store_id in std::iter::chain(&preview_recordings, &active_recordings) {
             let time_cursor = time_cursor_for(store_id);
             num_bytes_freed += self.gc_store(target, store_id, time_cursor);
         }
@@ -1157,11 +1155,10 @@ impl StoreHub {
     pub fn gc_blueprints(&mut self, undo_state: &HashMap<StoreId, BlueprintUndoState>) {
         re_tracing::profile_function!();
 
-        for blueprint_id in self
-            .active_blueprint_by_app_id
-            .values()
-            .chain(self.default_blueprint_by_app_id.values())
-        {
+        for blueprint_id in std::iter::chain(
+            self.active_blueprint_by_app_id.values(),
+            self.default_blueprint_by_app_id.values(),
+        ) {
             if let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) {
                 if self.blueprint_last_gc.get(blueprint_id) == Some(&blueprint.generation()) {
                     continue; // no change since last gc

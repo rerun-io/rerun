@@ -237,11 +237,11 @@ pub fn quote_arrow_deserializer(
                     } else {
                         let (#data_src_fields, #data_src_arrays) = (#data_src.fields(), #data_src.columns());
 
-                        let arrays_by_name: ::std::collections::HashMap<_, _> = #data_src_fields
-                            .iter()
-                            .map(|field| field.name().as_str())
-                            .zip(#data_src_arrays)
-                            .collect();
+                        let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                            #data_src_fields.iter().map(|field| field.name().as_str()),
+                            #data_src_arrays,
+                        )
+                        .collect();
 
                         #(#quoted_field_deserializers;)*
 
@@ -674,7 +674,10 @@ fn quote_arrow_field_deserializer(
                     // datastructures for all of our children.
                     Vec::new()
                 } else {
-                    let offsets = (0..).step_by(#length).zip((#length..).step_by(#length).take(#data_src.len()));
+                    let offsets = ::std::iter::zip(
+                        (0..).step_by(#length),
+                        (#length..).step_by(#length).take(#data_src.len()),
+                    );
 
                     let #data_src_inner = {
                         let #data_src_inner = &**#data_src.values();

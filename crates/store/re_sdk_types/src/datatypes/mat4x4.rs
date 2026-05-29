@@ -126,9 +126,10 @@ impl ::re_types_core::Loggable for Mat4x4 {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let offsets = (0..)
-                    .step_by(16usize)
-                    .zip((16usize..).step_by(16usize).take(arrow_data.len()));
+                let offsets = ::std::iter::zip(
+                    (0..).step_by(16usize),
+                    (16usize..).step_by(16usize).take(arrow_data.len()),
+                );
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner

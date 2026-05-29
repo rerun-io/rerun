@@ -242,10 +242,11 @@ pub fn tracking_stats() -> Option<TrackingStatistics> {
             let mut top_medium_callstacks = tracker_stats(&MEDIUM_ALLOCATION_TRACKER.lock());
             is_thread_in_allocation_tracker.set(false);
 
-            let mut top_callstacks: Vec<_> = top_big_callstacks
-                .drain(..)
-                .chain(top_medium_callstacks.drain(..))
-                .collect();
+            let mut top_callstacks: Vec<_> = std::iter::chain(
+                top_big_callstacks.drain(..),
+                top_medium_callstacks.drain(..),
+            )
+            .collect();
 
             #[expect(clippy::cast_possible_wrap)]
             top_callstacks.sort_by_key(|c| -(c.estimated().size as i64));

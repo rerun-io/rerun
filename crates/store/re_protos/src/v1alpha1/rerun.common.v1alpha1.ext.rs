@@ -120,37 +120,7 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
 
 // --- SegmentId ---
 
-#[derive(
-    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
-)]
-pub struct SegmentId {
-    pub id: String,
-}
-
-impl SegmentId {
-    #[inline]
-    pub fn new(id: String) -> Self {
-        Self { id }
-    }
-}
-
-impl From<String> for SegmentId {
-    fn from(id: String) -> Self {
-        Self { id }
-    }
-}
-
-impl From<&str> for SegmentId {
-    fn from(id: &str) -> Self {
-        Self { id: id.to_owned() }
-    }
-}
-
-impl std::fmt::Display for SegmentId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.id.fmt(f)
-    }
-}
+pub use re_types_core::SegmentId;
 
 impl TryFrom<crate::common::v1alpha1::SegmentId> for SegmentId {
     type Error = TypeConversionError;
@@ -167,12 +137,6 @@ impl TryFrom<crate::common::v1alpha1::SegmentId> for SegmentId {
 impl From<SegmentId> for crate::common::v1alpha1::SegmentId {
     fn from(value: SegmentId) -> Self {
         Self { id: Some(value.id) }
-    }
-}
-
-impl AsRef<str> for SegmentId {
-    fn as_ref(&self) -> &str {
-        self.id.as_str()
     }
 }
 

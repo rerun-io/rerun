@@ -216,9 +216,7 @@ pub fn callstack_from(start_patterns: &[&str]) -> String {
     // Trim it a bit:
     let mut stack = stack.as_str();
 
-    let start_patterns = start_patterns
-        .iter()
-        .chain(std::iter::once(&"callstack_from"));
+    let start_patterns = std::iter::chain(start_patterns, std::iter::once(&"callstack_from"));
 
     // Trim the top (closest to the panic handler) to cut out some noise:
     for start_pattern in start_patterns {

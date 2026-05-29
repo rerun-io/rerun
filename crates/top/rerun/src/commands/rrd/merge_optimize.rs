@@ -553,7 +553,7 @@ fn merge_and_compact(
         encoding_options,
         // NOTE: We want to make sure all blueprints come first, so that the viewer can immediately
         // set up the viewport correctly.
-        messages_rbl.chain(messages_rrd),
+        std::iter::chain(messages_rbl, messages_rrd),
         &mut rrd_out,
     )
     .context("couldn't encode messages")?;

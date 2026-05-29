@@ -468,10 +468,8 @@ impl Args {
                 !arg.is_positional() && !arg.is_hide_set() && arg.get_long() != Some("help")
             });
 
-            let full_name = full_name
-                .into_iter()
-                .chain(std::iter::once(name.to_owned()))
-                .collect_vec();
+            let full_name =
+                std::iter::chain(full_name, std::iter::once(name.to_owned())).collect_vec();
 
             if !any_positional_args && !any_floating_args && !any_subcommands {
                 return;

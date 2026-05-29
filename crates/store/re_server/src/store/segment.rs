@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use itertools::Itertools as _;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
+use re_types_core::LayerName;
 
 use crate::store::{Error, Layer, Tracked};
 
@@ -9,7 +10,7 @@ use crate::store::{Error, Layer, Tracked};
 #[derive(Clone)]
 pub struct SegmentInner {
     /// The layers of this segment.
-    layers: HashMap<String, Layer>,
+    layers: HashMap<LayerName, Layer>,
 }
 
 #[derive(Clone)]
@@ -49,7 +50,7 @@ impl Segment {
         self.inner.layers.len()
     }
 
-    pub fn layers(&self) -> &HashMap<String, Layer> {
+    pub fn layers(&self) -> &HashMap<LayerName, Layer> {
         &self.inner.layers
     }
 
@@ -57,17 +58,16 @@ impl Segment {
     ///
     /// Layers are iterated in (registration time, layer name) order, as per how they should appear
     /// in the segment table.
-    pub fn iter_layers(&self) -> impl Iterator<Item = (&str, &Layer)> {
+    pub fn iter_layers(&self) -> impl Iterator<Item = (&LayerName, &Layer)> {
         self.inner
             .layers
             .iter()
             .sorted_by(|(name_a, layer_a), (name_b, layer_b)| {
                 (layer_a.registration_time(), name_a).cmp(&(layer_b.registration_time(), name_b))
             })
-            .map(|(layer_name, layer)| (layer_name.as_str(), layer))
     }
 
-    pub fn layer(&self, layer_name: &str) -> Option<&Layer> {
+    pub fn layer(&self, layer_name: &LayerName) -> Option<&Layer> {
         self.inner.layers.get(layer_name)
     }
 
@@ -87,7 +87,7 @@ impl Segment {
     ///   `on_duplicate = Error`
     pub fn insert_layer(
         &mut self,
-        layer_name: String,
+        layer_name: LayerName,
         layer: Layer,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<LayerInsertOutcome, Error> {
@@ -113,7 +113,7 @@ impl Segment {
     }
 
     /// Returns the removed [`Layer`], if any.
-    pub fn remove_layer(&mut self, layer_name: &str) -> Option<Layer> {
+    pub fn remove_layer(&mut self, layer_name: &LayerName) -> Option<Layer> {
         self.inner.modify().layers.remove(layer_name)
     }
 
@@ -123,7 +123,7 @@ impl Segment {
     /// The layers are visited in unsorted (and unspecified) order.
     pub fn retain_layers<F>(&mut self, f: F)
     where
-        F: FnMut(&String, &mut Layer) -> bool,
+        F: FnMut(&LayerName, &mut Layer) -> bool,
     {
         self.inner.modify().layers.retain(f);
     }

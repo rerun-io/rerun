@@ -185,11 +185,21 @@ jobs:
 
       - name: "Download rerun-cli"
         run: |
-          pixi run fetch-artifact \
-          --commit-sha ${{ steps.get-sha.outputs.sha }} \
-          --artifact rerun-cli \
-          --platform ${{ inputs.PLATFORM }} \
-          --dest rerun_py/rerun_sdk/rerun_cli
+          if [ "${{ inputs.PLATFORM }}" = "macos-arm64" ]; then
+            # macOS gets the Rerun.app bundle so the dock label reads "Rerun"
+            # (see scripts/ci/bundle_macos_app.py).
+            pixi run fetch-artifact \
+              --commit-sha ${{ steps.get-sha.outputs.sha }} \
+              --artifact rerun-cli-macos-app \
+              --platform ${{ inputs.PLATFORM }} \
+              --dest rerun_py/rerun_sdk/rerun_cli
+          else
+            pixi run fetch-artifact \
+              --commit-sha ${{ steps.get-sha.outputs.sha }} \
+              --artifact rerun-cli \
+              --platform ${{ inputs.PLATFORM }} \
+              --dest rerun_py/rerun_sdk/rerun_cli
+          fi
 
       - name: Build
         run: |

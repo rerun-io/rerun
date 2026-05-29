@@ -320,7 +320,7 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
                 DataSource {
                     storage_url: url::Url::from_file_path(recording_path.as_path()).unwrap(),
                     is_prefix: false,
-                    layer: "base".to_owned(),
+                    layer: re_types_core::LayerName::base(),
                     kind: DataSourceKind::Rrd,
                 }
                 .into(),

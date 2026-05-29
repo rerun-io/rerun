@@ -299,7 +299,8 @@ impl UrdfTree {
                 );
             }
 
-            for (name_index, value_index) in (names_start..names_end).zip(values_start..values_end)
+            for (name_index, value_index) in
+                std::iter::zip(names_start..names_end, values_start..values_end)
             {
                 if joint_names.is_null(name_index) || joint_values.is_null(value_index) {
                     bail!(

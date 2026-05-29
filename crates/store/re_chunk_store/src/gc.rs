@@ -360,7 +360,7 @@ impl ChunkStore {
                 ChunkDeletionReason::GarbageCollection,
             );
 
-            dels1.into_iter().chain(dels2).map(Into::into).collect()
+            std::iter::chain(dels1, dels2).map(Into::into).collect()
         }
     }
 

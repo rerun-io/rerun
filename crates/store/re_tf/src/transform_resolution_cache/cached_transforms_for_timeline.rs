@@ -176,10 +176,10 @@ impl CachedTransformsForTimeline {
         if aspects.contains(TransformAspect::Clear) {
             let component = re_sdk_types::archetypes::Clear::descriptor_is_recursive().component;
 
-            for ((time, _row_id), is_recursive_slice) in chunk
-                .iter_component_indices(timeline, component)
-                .zip(chunk.iter_slices::<bool>(component))
-            {
+            for ((time, _row_id), is_recursive_slice) in std::iter::zip(
+                chunk.iter_component_indices(timeline, component),
+                chunk.iter_slices::<bool>(component),
+            ) {
                 if let Some(is_recursive) = is_recursive_slice.values().first()
                     && *is_recursive != 0
                 {
@@ -211,10 +211,10 @@ impl CachedTransformsForTimeline {
         if aspects.contains(TransformAspect::Clear) {
             let component = re_sdk_types::archetypes::Clear::descriptor_is_recursive().component;
 
-            for ((time, _row_id), is_recursive_slice) in chunk
-                .iter_component_indices(timeline, component)
-                .zip(chunk.iter_slices::<bool>(component))
-            {
+            for ((time, _row_id), is_recursive_slice) in std::iter::zip(
+                chunk.iter_component_indices(timeline, component),
+                chunk.iter_slices::<bool>(component),
+            ) {
                 if let Some(is_recursive) = is_recursive_slice.values().first()
                     && *is_recursive != 0
                 {

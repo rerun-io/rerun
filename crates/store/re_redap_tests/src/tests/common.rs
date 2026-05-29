@@ -14,6 +14,7 @@ use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{EntryName, common::v1alpha1::ext::SegmentId};
+use re_types_core::LayerName;
 
 /// Test helper: parse a string into an `EntryName`, panicking on invalid names.
 pub fn entry_name(name: &str) -> EntryName {
@@ -123,7 +124,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
                 .iter()
                 .map(|id| (*id).to_owned().into())
                 .collect(),
-            layers_to_drop: layers_to_drop.iter().map(|s| (*s).to_owned()).collect(),
+            layers_to_drop: layers_to_drop.iter().copied().map(Into::into).collect(),
             force: false,
         };
 
@@ -635,7 +636,8 @@ impl DataSourcesDefinition {
                 storage_url: Url::from_file_path(path.as_path()).unwrap(),
                 layer: layer_name
                     .clone()
-                    .unwrap_or_else(|| ext::DataSource::DEFAULT_LAYER.to_owned()),
+                    .map(LayerName::from)
+                    .unwrap_or_else(LayerName::base),
                 is_prefix: false,
                 kind: ext::DataSourceKind::Rrd,
             })

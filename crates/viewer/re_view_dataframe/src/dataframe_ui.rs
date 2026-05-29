@@ -169,10 +169,7 @@ impl RowsDisplayData {
             .into_iter()
             .map(|data| {
                 DisplayRecordBatch::try_new(
-                    selected_columns
-                        .iter()
-                        .map(|desc| desc.into())
-                        .zip(data)
+                    std::iter::zip(selected_columns.iter().map(|desc| desc.into()), data)
                         .map(|(desc, data)| (desc, ColumnBlueprint::default_ref(), data)),
                 )
             })
@@ -489,7 +486,10 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
         // Iterate over the top row (the summary, thus the `None`), and all additional rows.
         // Note: we must iterate over all rows regardless of the actual number of instances so that
         // the zebra stripes are properly drawn.
-        let instance_indices = std::iter::once(None).chain((0..additional_lines).map(Option::Some));
+        let instance_indices = std::iter::chain(
+            std::iter::once(None),
+            (0..additional_lines).map(Option::Some),
+        );
 
         {
             re_tracing::profile_scope!("rows");

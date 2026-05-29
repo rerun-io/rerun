@@ -10,11 +10,12 @@ use re_arrow_util::RecordBatchExt as _;
 use re_log_encoding::RawRrdManifest;
 use re_log_types::{EntryId, StoreId, StoreKind, TimeType};
 use re_protos::EntryName;
-use re_protos::cloud::v1alpha1::ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails};
+use re_protos::cloud::v1alpha1::ext::{DatasetDetails, DatasetEntry, EntryDetails};
 use re_protos::cloud::v1alpha1::{
     EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
 };
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
+use re_types_core::LayerName;
 
 use crate::store::{
     Error, Layer, LayerInsertOutcome, ResolvedStore, Segment, StoreSlotId, Tracked,
@@ -240,7 +241,7 @@ impl Dataset {
             let mut current_segment_indexes = BTreeMap::default();
 
             for (layer_name, layer) in segment.iter_layers() {
-                layer_names_row.push(layer_name.to_owned());
+                layer_names_row.push(layer_name.clone());
                 storage_urls_row.push(format!("memory:///store/{}", layer.store_slot_id()));
 
                 let layer_properties = layer.compute_properties()?;
@@ -418,7 +419,7 @@ impl Dataset {
                     layers
                         .iter_layers()
                         .filter(|(name, _layer)| layers_of_interest.is_empty()
-                            || layers_of_interest.contains(name))
+                            || layers_of_interest.contains(&name.as_str()))
                 )
             })
             .map(|(segment_id, (layer_name, layer))| {
@@ -427,7 +428,7 @@ impl Dataset {
             });
 
         for (layer_name, segment_id, layer) in layers {
-            layer_names.push(layer_name.to_owned());
+            layer_names.push(layer_name.clone());
             storage_urls.push(format!("memory:///store/{}", layer.store_slot_id()));
             segment_ids.push(segment_id);
             layer_types.push(layer.layer_type().to_owned());
@@ -495,7 +496,7 @@ impl Dataset {
     pub async fn add_layer(
         &mut self,
         segment_id: SegmentId,
-        layer_name: String,
+        layer_name: LayerName,
         store_slot_id: StoreSlotId,
         resolved: ResolvedStore,
         on_duplicate: IfDuplicateBehavior,
@@ -598,7 +599,7 @@ impl Dataset {
         &mut self,
         segments_to_drop: &HashSet<&SegmentId>,
         layers_to_drop: &HashSet<&str>,
-    ) -> Result<Vec<(SegmentId, String)>, Error> {
+    ) -> Result<Vec<(SegmentId, LayerName)>, Error> {
         re_log::debug!(?segments_to_drop, ?layers_to_drop, "remove_layers");
 
         let mut removed_layers = Vec::new();
@@ -639,13 +640,13 @@ impl Dataset {
         &mut self,
         pool: &mut StorePool,
         path: &Path,
-        layer_name: Option<&str>,
+        layer_name: Option<LayerName>,
         on_duplicate: IfDuplicateBehavior,
         store_kind: StoreKind,
     ) -> Result<BTreeSet<SegmentId>, Error> {
         re_log::info!("Loading RRD: {}", path.display());
 
-        let layer_name = layer_name.unwrap_or(DataSource::DEFAULT_LAYER);
+        let layer_name = layer_name.unwrap_or_else(LayerName::base);
         let mut new_segment_ids = BTreeSet::default();
 
         for (store_id, resolved) in ResolvedStore::load_rrd_file(path, store_kind)? {
@@ -654,7 +655,7 @@ impl Dataset {
 
             self.add_layer(
                 segment_id.clone(),
-                layer_name.to_owned(),
+                layer_name.clone(),
                 slot_id,
                 resolved,
                 on_duplicate,

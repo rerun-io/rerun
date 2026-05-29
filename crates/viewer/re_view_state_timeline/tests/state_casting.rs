@@ -133,7 +133,7 @@ where
 {
     let source_component = format!("{archetype_name}:{field_name}");
 
-    for (tick, array) in (0..3i64).zip(arrays) {
+    for (tick, array) in std::iter::zip(0..3i64, arrays) {
         let archetype = DynamicArchetype::new(archetype_name)
             .with_component_from_data(field_name, array.into());
         test_context.log_entity(entity, |builder| {
@@ -275,7 +275,9 @@ fn test_dynamic_archetype_multiple_same_type() {
     let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
     let entity = "/state/multi_same";
 
-    for (tick, (a, b)) in (0..3i64).zip([("Idle", "Off"), ("Active", "On"), ("Idle", "On")]) {
+    for (tick, (a, b)) in
+        std::iter::zip(0..3i64, [("Idle", "Off"), ("Active", "On"), ("Idle", "On")])
+    {
         let archetype = DynamicArchetype::new("multi_str")
             .with_component_from_data("mode", Arc::new(StringArray::from(vec![a])))
             .with_component_from_data("power", Arc::new(StringArray::from(vec![b])));
@@ -352,7 +354,7 @@ fn test_dynamic_archetype_multiple_different_types() {
         ("idle", 0.0_f64, false),
     ];
 
-    for (tick, (s, f, b)) in (0..3i64).zip(frames) {
+    for (tick, (s, f, b)) in std::iter::zip(0..3i64, frames) {
         let archetype = DynamicArchetype::new("multi_mix")
             .with_component_from_data("label", Arc::new(StringArray::from(vec![s])))
             .with_component_from_data("speed", Arc::new(Float64Array::from(vec![f])))

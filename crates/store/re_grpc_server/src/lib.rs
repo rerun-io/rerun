@@ -162,12 +162,12 @@ fn is_origin_allowed(origin: &str, patterns: &[wildmatch::WildMatch]) -> bool {
 /// Patterns are matched against the full `Origin` header value,
 /// using glob-style matching where `*` matches any sequence of characters.
 pub fn cors_layer(extra_allowed_origins: &[String]) -> CorsLayer {
-    let allowed_origin_patterns: Vec<wildmatch::WildMatch> = DEFAULT_CORS_PATTERNS
-        .iter()
-        .copied()
-        .chain(extra_allowed_origins.iter().map(String::as_str))
-        .map(wildmatch::WildMatch::new)
-        .collect();
+    let allowed_origin_patterns: Vec<wildmatch::WildMatch> = std::iter::chain(
+        DEFAULT_CORS_PATTERNS.iter().copied(),
+        extra_allowed_origins.iter().map(String::as_str),
+    )
+    .map(wildmatch::WildMatch::new)
+    .collect();
     CorsLayer::very_permissive().allow_origin(AllowOrigin::predicate(
         move |origin, _request_parts| {
             let Ok(origin) = origin.to_str() else {
@@ -1075,7 +1075,7 @@ impl MessageProxy {
         });
 
         match self.options.playback_behavior {
-            PlaybackBehavior::OldestFirst => Box::pin(history.chain(channel)),
+            PlaybackBehavior::OldestFirst => Box::pin(history.chain(channel)), // NOLINT: Stream::chain
             PlaybackBehavior::NewestFirst => Box::pin(PriorityMerge::new(channel, history)),
         }
     }
@@ -1770,12 +1770,10 @@ mod tests {
         use super::super::{DEFAULT_CORS_PATTERNS, is_origin_allowed};
 
         fn check(origin: &str, extra: &[&str]) -> bool {
-            let patterns: Vec<wildmatch::WildMatch> = DEFAULT_CORS_PATTERNS
-                .iter()
-                .copied()
-                .chain(extra.iter().copied())
-                .map(wildmatch::WildMatch::new)
-                .collect();
+            let patterns: Vec<wildmatch::WildMatch> =
+                std::iter::chain(DEFAULT_CORS_PATTERNS.iter().copied(), extra.iter().copied())
+                    .map(wildmatch::WildMatch::new)
+                    .collect();
             is_origin_allowed(origin, &patterns)
         }
 

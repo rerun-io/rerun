@@ -49,8 +49,7 @@ impl Cylinders3DVisualizer {
             })
             .take(num_instances);
 
-            let half_sizes: Vec<HalfSize3D> = lengths_iter
-                .zip(radii_iter)
+            let half_sizes: Vec<HalfSize3D> = std::iter::zip(lengths_iter, radii_iter)
                 .map(|(Length(length), Radius(radius))| {
                     let radius = clean_length(radius.0);
                     // Cylinder radius is already half the diameter, so we can use it directly.

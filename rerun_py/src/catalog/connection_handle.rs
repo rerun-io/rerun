@@ -18,10 +18,11 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::cloud::v1alpha1::{EntryFilter, QueryDatasetResponse, QueryTasksResponse};
 use re_protos::common::v1alpha1::TaskId;
-use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters};
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{invalid_schema, missing_field};
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle, TraceId};
+use re_types_core::LayerName;
 
 use crate::catalog::table_entry::PyTableInsertModeInternal;
 use crate::catalog::to_py_err;
@@ -287,24 +288,24 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uris: Vec<String>,
-        recording_layers: Vec<String>,
+        recording_layers: Vec<LayerName>,
         on_duplicate: IfDuplicateBehavior,
     ) -> PyResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
         let last_layer = recording_layers
             .last()
             .cloned()
-            .unwrap_or_else(|| DataSource::DEFAULT_LAYER.to_owned());
+            .unwrap_or_else(LayerName::base);
 
-        let data_sources = recording_uris
-            .iter()
-            .zip(
-                recording_layers
-                    .into_iter()
-                    .chain(std::iter::repeat_with(|| last_layer.clone())),
-            )
-            .map(|(url, layer)| DataSource::new_rrd_layer(layer, url))
-            .try_collect()
-            .map_err(to_py_err)?;
+        let data_sources = std::iter::zip(
+            &recording_uris,
+            std::iter::chain(
+                recording_layers,
+                std::iter::repeat_with(|| last_layer.clone()),
+            ),
+        )
+        .map(|(url, layer)| DataSource::new_rrd_layer(layer, url))
+        .try_collect()
+        .map_err(to_py_err)?;
 
         wait_for_future(py, async {
             self.client()
@@ -338,8 +339,8 @@ impl ConnectionHandle {
         &self,
         py: Python<'_>,
         dataset_id: EntryId,
-        segments_to_drop: Vec<String>,
-        layers_to_drop: Vec<String>,
+        segments_to_drop: Vec<SegmentId>,
+        layers_to_drop: Vec<LayerName>,
         force: bool,
     ) -> PyResult<Vec<RecordBatch>> {
         wait_for_future(py, async {
@@ -362,7 +363,7 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         recordings_prefix: String,
-        recordings_layer: String,
+        recordings_layer: LayerName,
         on_duplicate: IfDuplicateBehavior,
     ) -> PyResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
         let data_source = DataSource::new_rrd_layer_prefix(recordings_layer, recordings_prefix)

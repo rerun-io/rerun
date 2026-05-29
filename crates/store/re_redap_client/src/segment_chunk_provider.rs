@@ -7,7 +7,7 @@ use tokio_stream::StreamExt as _;
 use re_chunk::{Chunk, ChunkId};
 use re_log_encoding::{ChunkProvider, ChunkProviderError, RawRrdManifest, RrdManifest};
 use re_log_types::EntryId;
-use re_protos::common::v1alpha1::ext::SegmentId;
+use re_types_core::SegmentId;
 use re_uri::Origin;
 
 use crate::{ApiError, ConnectionRegistryHandle, fetch_chunks_response_to_chunk_and_segment_id};

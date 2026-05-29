@@ -659,9 +659,7 @@ impl DecoderRegistry {
 
     /// Returns all registered decoder identifiers (file + message) as strings.
     pub fn all_identifiers(&self) -> Vec<String> {
-        self.file_factories
-            .keys()
-            .chain(self.msg_factories.keys())
+        std::iter::chain(self.file_factories.keys(), self.msg_factories.keys())
             .map(|id| id.to_string())
             .collect()
     }

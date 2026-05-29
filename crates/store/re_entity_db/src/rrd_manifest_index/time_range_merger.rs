@@ -534,7 +534,7 @@ mod tests {
         );
 
         for (i, (range, (exp_min, exp_max, exp_chunks))) in
-            result.iter().zip(expected.iter()).enumerate()
+            std::iter::zip(result, expected).enumerate()
         {
             assert_eq!(range.min.as_i64(), *exp_min, "Range {i} min mismatch");
             assert_eq!(range.max.as_i64(), *exp_max, "Range {i} max mismatch");

@@ -690,10 +690,7 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
         let fields = self.fields();
         let nested_options = options.nested();
 
-        let items = self
-            .columns()
-            .iter()
-            .zip(fields)
+        let items = std::iter::zip(self.columns(), fields)
             .map(|(a, f)| -> Result<_, ArrowError> {
                 let format = make_ui(a.as_ref(), &nested_options)?;
                 Ok((&**f, format))

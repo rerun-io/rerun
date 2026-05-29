@@ -91,11 +91,11 @@ fn add_state_visualizer_for_component(
     );
 
     let active_visualizer_archetype = ActiveVisualizers::new(
-        existing_instructions
-            .iter()
-            .map(|v| &v.id)
-            .chain(std::iter::once(&new_instruction.id))
-            .map(|v| v.0),
+        std::iter::chain(
+            existing_instructions.iter().map(|v| &v.id),
+            std::iter::once(&new_instruction.id),
+        )
+        .map(|v| v.0),
     );
 
     // If this is the first time we persist ActiveVisualizers for this entity,

@@ -288,12 +288,10 @@ impl<E: Example + 'static> Application<E> {
                 };
 
                 self.re_ctx.before_submit();
-                let submission_index = self.re_ctx.queue.submit(
-                    draw_results
-                        .into_iter()
-                        .map(|d| d.command_buffer)
-                        .chain(std::iter::once(composite_cmd_encoder.finish())),
-                );
+                let submission_index = self.re_ctx.queue.submit(std::iter::chain(
+                    draw_results.into_iter().map(|d| d.command_buffer),
+                    std::iter::once(composite_cmd_encoder.finish()),
+                ));
                 self.window.pre_present_notify();
                 frame.present();
 

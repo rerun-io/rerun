@@ -7,11 +7,11 @@ use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, GetRrdManifestRequest, ScanSegmentTableRequest,
 };
-use re_protos::common::v1alpha1::ext::SegmentId;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk::AsComponents;
 use re_sdk::external::re_log_encoding::{RawRrdManifest, ToApplication as _};
 use re_sdk_types::AnyValues;
+use re_types_core::SegmentId;
 
 use super::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name,

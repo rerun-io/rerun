@@ -162,9 +162,10 @@ impl ::re_types_core::Loggable for LineStrip3D {
                         if arrow_data_inner.is_empty() {
                             Vec::new()
                         } else {
-                            let offsets = (0..)
-                                .step_by(3usize)
-                                .zip((3usize..).step_by(3usize).take(arrow_data_inner.len()));
+                            let offsets = ::std::iter::zip(
+                                (0..).step_by(3usize),
+                                (3usize..).step_by(3usize).take(arrow_data_inner.len()),
+                            );
                             let arrow_data_inner_inner = {
                                 let arrow_data_inner_inner = &**arrow_data_inner.values();
                                 arrow_data_inner_inner

@@ -190,10 +190,10 @@ impl LazyStore {
         let ids: Vec<ChunkId> = per_entity
             .iter()
             .flat_map(|(_, qr)| {
-                qr.chunks
-                    .iter()
-                    .map(|c| c.id())
-                    .chain(qr.missing_virtual.iter().copied())
+                std::iter::chain(
+                    qr.chunks.iter().map(|c| c.id()),
+                    qr.missing_virtual.iter().copied(),
+                )
             })
             .collect();
 

@@ -183,12 +183,12 @@ pub fn pad_list_array_back(list_array: &ListArray, target_len: usize) -> ListArr
     let fields = list_array_fields(list_array);
 
     let offsets = {
-        OffsetBuffer::from_lengths(
+        OffsetBuffer::from_lengths(std::iter::chain(
             list_array
                 .iter()
-                .map(|array| array.map_or(0, |array| array.len()))
-                .chain(repeat_n(0, missing_len)),
-        )
+                .map(|array| array.map_or(0, |array| array.len())),
+            repeat_n(0, missing_len),
+        ))
     };
 
     let values = list_array.values().clone();
@@ -196,12 +196,13 @@ pub fn pad_list_array_back(list_array: &ListArray, target_len: usize) -> ListArr
     let nulls = {
         if let Some(nulls) = list_array.nulls() {
             #[expect(clippy::from_iter_instead_of_collect)]
-            NullBuffer::from_iter(nulls.iter().chain(repeat_n(false, missing_len)))
+            NullBuffer::from_iter(std::iter::chain(nulls.iter(), repeat_n(false, missing_len)))
         } else {
             #[expect(clippy::from_iter_instead_of_collect)]
-            NullBuffer::from_iter(
-                repeat_n(true, list_array.len()).chain(repeat_n(false, missing_len)),
-            )
+            NullBuffer::from_iter(std::iter::chain(
+                repeat_n(true, list_array.len()),
+                repeat_n(false, missing_len),
+            ))
         }
     };
 
@@ -220,13 +221,12 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
     let fields = list_array_fields(list_array);
 
     let offsets = {
-        OffsetBuffer::from_lengths(
-            repeat_n(0, missing_len).chain(
-                list_array
-                    .iter()
-                    .map(|array| array.map_or(0, |array| array.len())),
-            ),
-        )
+        OffsetBuffer::from_lengths(std::iter::chain(
+            repeat_n(0, missing_len),
+            list_array
+                .iter()
+                .map(|array| array.map_or(0, |array| array.len())),
+        ))
     };
 
     let values = list_array.values().clone();
@@ -234,12 +234,13 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
     let nulls = {
         if let Some(nulls) = list_array.nulls() {
             #[expect(clippy::from_iter_instead_of_collect)]
-            NullBuffer::from_iter(repeat_n(false, missing_len).chain(nulls.iter()))
+            NullBuffer::from_iter(std::iter::chain(repeat_n(false, missing_len), nulls.iter()))
         } else {
             #[expect(clippy::from_iter_instead_of_collect)]
-            NullBuffer::from_iter(
-                repeat_n(false, missing_len).chain(repeat_n(true, list_array.len())),
-            )
+            NullBuffer::from_iter(std::iter::chain(
+                repeat_n(false, missing_len),
+                repeat_n(true, list_array.len()),
+            ))
         }
     };
 

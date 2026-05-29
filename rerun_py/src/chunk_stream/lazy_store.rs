@@ -169,11 +169,8 @@ fn evaluate_filter_on_manifest(
     let temporal_map = manifest.temporal_map();
     let static_map = manifest.static_map();
 
-    let matching: Vec<ChunkId> = chunk_ids
-        .iter()
-        .zip(&entity_paths)
-        .zip(&is_static_col)
-        .filter_map(|((&chunk_id, entity_path), &is_static)| {
+    let matching: Vec<ChunkId> = itertools::izip!(chunk_ids, &entity_paths, &is_static_col)
+        .filter_map(|(&chunk_id, entity_path, &is_static)| {
             let view = ManifestRow {
                 chunk_id,
                 entity_path,
@@ -507,10 +504,7 @@ mod pushdown_tests {
         let path = EntityPath::from(entity);
         let manifest = store.manifest();
         let entity_paths: Vec<EntityPath> = manifest.col_chunk_entity_path().collect();
-        manifest
-            .col_chunk_ids()
-            .iter()
-            .zip(&entity_paths)
+        std::iter::zip(manifest.col_chunk_ids(), &entity_paths)
             .filter_map(|(id, p)| if p == &path { Some(*id) } else { None })
             .collect()
     }
@@ -681,15 +675,12 @@ mod pushdown_tests {
         let manifest = store.manifest();
         let is_static_col: Vec<bool> = manifest.col_chunk_is_static().collect();
         let entity_paths: Vec<EntityPath> = manifest.col_chunk_entity_path().collect();
-        let expected: Vec<ChunkId> = manifest
-            .col_chunk_ids()
-            .iter()
-            .zip(&entity_paths)
-            .zip(&is_static_col)
-            .filter_map(|((id, ep), &is_static)| {
-                (ep == &EntityPath::from("/robot") && !is_static).then_some(*id)
-            })
-            .collect();
+        let expected: Vec<ChunkId> =
+            itertools::izip!(manifest.col_chunk_ids(), &entity_paths, &is_static_col)
+                .filter_map(|(id, ep, &is_static)| {
+                    (ep == &EntityPath::from("/robot") && !is_static).then_some(*id)
+                })
+                .collect();
         assert_eq!(sort_ids(matching), sort_ids(expected));
     }
 

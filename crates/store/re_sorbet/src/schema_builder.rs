@@ -43,7 +43,7 @@ impl SchemaBuilder {
         let chunk_schema = chunk_batch.chunk_schema();
 
         for (column_descriptor, array_ref) in
-            (*chunk_schema.columns).iter().zip(chunk_batch.columns())
+            std::iter::zip(chunk_schema.columns.iter(), chunk_batch.columns())
         {
             let this_metadata = match column_descriptor {
                 ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => ColumnMetadata {

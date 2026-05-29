@@ -225,7 +225,8 @@ impl EntityPath {
             return true; // optimization!
         }
 
-        prefix.len() <= self.len() && self.iter().zip(prefix.iter()).all(|(a, b)| a == b)
+        prefix.len() <= self.len()
+            && std::iter::zip(self.iter(), prefix.iter()).all(|(a, b)| a == b)
     }
 
     /// If this path starts with the given prefix,
@@ -243,13 +244,14 @@ impl EntityPath {
     /// Is this a strict descendant of the given path.
     #[inline]
     pub fn is_descendant_of(&self, other: &Self) -> bool {
-        other.len() < self.len() && self.iter().zip(other.iter()).all(|(a, b)| a == b)
+        other.len() < self.len() && std::iter::zip(self.iter(), other.iter()).all(|(a, b)| a == b)
     }
 
     /// Is this a direct child of the other path.
     #[inline]
     pub fn is_child_of(&self, other: &Self) -> bool {
-        other.len() + 1 == self.len() && self.iter().zip(other.iter()).all(|(a, b)| a == b)
+        other.len() + 1 == self.len()
+            && std::iter::zip(self.iter(), other.iter()).all(|(a, b)| a == b)
     }
 
     /// Number of parts
@@ -290,7 +292,9 @@ impl EntityPath {
     }
 
     pub fn join(&self, other: &Self) -> Self {
-        self.iter().chain(other.iter()).cloned().collect()
+        std::iter::chain(self.iter(), other.iter())
+            .cloned()
+            .collect()
     }
 
     /// Helper function to iterate over all incremental [`EntityPath`]s from start to end, NOT including start itself.
@@ -315,7 +319,7 @@ impl EntityPath {
     /// If both paths are the same, the common ancestor is the path itself.
     pub fn common_ancestor(&self, other: &Self) -> Self {
         let mut common = Vec::new();
-        for (a, b) in self.iter().zip(other.iter()) {
+        for (a, b) in std::iter::zip(self.iter(), other.iter()) {
             if a == b {
                 common.push(a.clone());
             } else {
@@ -762,7 +766,7 @@ mod tests {
                 .collect_vec();
             let result = EntityPath::short_names_with_disambiguation(paths.clone());
 
-            for (path, shortened) in paths.iter().zip(entities.iter().map(|e| e.1)) {
+            for (path, shortened) in std::iter::zip(&paths, entities.iter().map(|e| e.1)) {
                 assert_eq!(result[path], shortened);
             }
         }

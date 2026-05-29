@@ -10,8 +10,8 @@ use arrow::array::{Array as _, BooleanArray, RecordBatch, StringArray, UInt64Arr
 use futures::StreamExt as _;
 use re_dataframe::TimelineName;
 use re_log_types::{EntityPath, TimeInt};
-use re_protos::common::v1alpha1::ext::SegmentId;
 use re_redap_client::{ApiError, ApiResult};
+use re_types_core::SegmentId;
 use tokio::sync::mpsc::Sender;
 use tracing::Instrument as _;
 

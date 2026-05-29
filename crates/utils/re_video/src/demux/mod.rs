@@ -1319,12 +1319,10 @@ mod tests {
 
         // Checking our basic assumptions about this data:
         assert_eq!(pts.len(), dts.len());
-        assert!(pts.iter().zip(dts.iter()).all(|(pts, dts)| dts <= pts));
+        assert!(std::iter::zip(&pts, &dts).all(|(pts, dts)| dts <= pts));
 
         // Create fake samples from this.
-        let mut samples = pts
-            .into_iter()
-            .zip(dts)
+        let mut samples = std::iter::zip(pts, dts)
             .map(|(pts, dts)| {
                 SampleMetadataState::Present(SampleMetadata {
                     is_sync: true,

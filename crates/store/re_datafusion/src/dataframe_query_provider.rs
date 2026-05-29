@@ -649,9 +649,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 // rest of the query.
                 .filter(|(segment_id, _)| {
                     self.index_values.as_ref().is_none_or(|iv| {
-                        iv.contains_key(&re_protos::common::v1alpha1::ext::SegmentId::from(
-                            segment_id.as_str(),
-                        ))
+                        iv.contains_key(&re_types_core::SegmentId::from(segment_id.as_str()))
                     })
                 })
                 // we end up with 1 batch per (rerun) segment. Order is important and must be preserved.
