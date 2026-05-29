@@ -71,6 +71,9 @@ scripts = ["scripts/pixi/activate.bat"]
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
+# cc-rs needs an archiver for wasm32 cross-compilation; MSVC's lib.exe isn't found
+# for non-MSVC targets, so point AR at llvm-ar from the llvm-tools conda package.
+AR = "llvm-ar"
 # Prepend scripts/pixi to PATH so our uv wrapper shadows the conda uv.
 # This ensures uv targets .venv instead of the pixi environment.
 PATH = "%PIXI_PROJECT_ROOT%\\scripts\\pixi;%PATH%"
@@ -626,6 +629,7 @@ llvm-tools = "16.0.6.*" # Various Wasm targets fail on mac without llvm-ar
 
 [target.win-64.dependencies]
 buf = "1.*" # not available for linux-aarch64
+llvm-tools = "16.0.6.*" # Wasm targets need llvm-ar for cc-rs (same as osx-arm64)
 
 [feature.cpp.target.linux-64.dependencies]
 sysroot_linux-64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
