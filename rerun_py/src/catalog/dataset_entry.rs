@@ -21,6 +21,7 @@ use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, Segme
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{SegmentChunkProvider, fetch_chunks_response_to_chunk_and_segment_id};
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
+use re_types_core::LayerName;
 use tokio_stream::StreamExt as _;
 
 use super::registration_handle::PyRegistrationHandleInternal;
@@ -344,6 +345,7 @@ impl PyDatasetEntryInternal {
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
         let _span = read_trace_context_from_python(py, "DatasetEntry.register").entered();
 
+        let recording_layers = recording_layers.into_iter().map(LayerName::new).collect();
         let (request_trace_id, results) = connection.register_with_dataset(
             py,
             self_.entry_details.id,
@@ -399,6 +401,8 @@ impl PyDatasetEntryInternal {
         let _span = read_trace_context_from_python(py, "DatasetEntry.unregister").entered();
         let connection = self_.client.borrow(py).connection().clone();
 
+        let segments_to_drop = segments_to_drop.into_iter().map(SegmentId::new).collect();
+        let layers_to_drop = layers_to_drop.into_iter().map(LayerName::new).collect();
         let _results = connection.unregister_from_dataset(
             py,
             self_.entry_details.id,
@@ -446,7 +450,7 @@ impl PyDatasetEntryInternal {
             py,
             self_.entry_details.id,
             recordings_prefix,
-            layer_name,
+            LayerName::new(layer_name),
             on_duplicate,
         )?;
 

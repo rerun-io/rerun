@@ -9411,6 +9411,7 @@ dependencies = [
  "re_perf_telemetry",
  "re_protos",
  "re_tracing",
+ "re_types_core",
  "re_uri",
  "serde",
  "thiserror 2.0.18",

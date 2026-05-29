@@ -42,6 +42,15 @@ impl From<&str> for LayerName {
     }
 }
 
+impl std::str::FromStr for LayerName {
+    type Err = std::convert::Infallible;
+
+    #[inline]
+    fn from_str(name: &str) -> Result<Self, Self::Err> {
+        Ok(Self(name.to_owned()))
+    }
+}
+
 impl From<String> for LayerName {
     #[inline]
     fn from(name: String) -> Self {

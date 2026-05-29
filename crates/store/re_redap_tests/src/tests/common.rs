@@ -124,7 +124,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
                 .iter()
                 .map(|id| (*id).to_owned().into())
                 .collect(),
-            layers_to_drop: layers_to_drop.iter().map(|s| (*s).to_owned()).collect(),
+            layers_to_drop: layers_to_drop.iter().copied().map(Into::into).collect(),
             force: false,
         };
 

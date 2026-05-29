@@ -640,15 +640,13 @@ impl Dataset {
         &mut self,
         pool: &mut StorePool,
         path: &Path,
-        layer_name: Option<&str>,
+        layer_name: Option<LayerName>,
         on_duplicate: IfDuplicateBehavior,
         store_kind: StoreKind,
     ) -> Result<BTreeSet<SegmentId>, Error> {
         re_log::info!("Loading RRD: {}", path.display());
 
-        let layer_name = layer_name
-            .map(LayerName::new)
-            .unwrap_or_else(LayerName::base);
+        let layer_name = layer_name.unwrap_or_else(LayerName::base);
         let mut new_segment_ids = BTreeSet::default();
 
         for (store_id, resolved) in ResolvedStore::load_rrd_file(path, store_kind)? {

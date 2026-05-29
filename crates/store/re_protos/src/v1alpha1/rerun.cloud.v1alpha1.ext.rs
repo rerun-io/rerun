@@ -183,7 +183,7 @@ impl From<RegisterWithDatasetRequest> for crate::cloud::v1alpha1::RegisterWithDa
 #[derive(Debug)]
 pub struct UnregisterFromDatasetRequest {
     pub segments_to_drop: Vec<SegmentId>,
-    pub layers_to_drop: Vec<String>,
+    pub layers_to_drop: Vec<LayerName>,
     pub force: bool,
 }
 
@@ -206,7 +206,7 @@ impl TryFrom<crate::cloud::v1alpha1::UnregisterFromDatasetRequest>
                 .into_iter()
                 .map(TryInto::try_into)
                 .try_collect()?,
-            layers_to_drop,
+            layers_to_drop: layers_to_drop.into_iter().map(LayerName::from).collect(),
             force,
         })
     }
@@ -216,7 +216,7 @@ impl From<UnregisterFromDatasetRequest> for crate::cloud::v1alpha1::UnregisterFr
     fn from(value: UnregisterFromDatasetRequest) -> Self {
         Self {
             segments_to_drop: value.segments_to_drop.into_iter().map(Into::into).collect(),
-            layers_to_drop: value.layers_to_drop,
+            layers_to_drop: value.layers_to_drop.into_iter().map(Into::into).collect(),
             force: value.force,
         }
     }
