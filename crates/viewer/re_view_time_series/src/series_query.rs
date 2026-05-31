@@ -12,12 +12,15 @@ use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, archetypes, compon
 use re_view::clamped_or_nothing;
 use re_viewer_context::{ViewContext, ViewQuery, VisualizerReportSeverity};
 
-use crate::caches::{NumSeriesCache, NumSeriesCacheKey};
+use crate::caches::{NumSeriesLastSeen, NumSeriesLastSeenKey};
 use crate::{MAX_NUM_SERIES_FOR_REMAPPED_SCALARS, PlotPoint, PlotSeriesKind};
 
 type PlotPointsPerSeries = smallvec::SmallVec<[Vec<PlotPoint>; 1]>;
 
-/// Determines how many series there are in the scalar chunks, using the recording's [`NumSeriesCache`].
+/// Determines how many series there are in the scalar chunks.
+///
+/// The count is always derived from the current query results.
+/// [`NumSeriesLastSeen`] only stores the last value per target to warn if it changes.
 ///
 /// If the scalar component has a non-identity mapping (i.e. it's sourced from a different
 /// component or uses a selector), the number of series is capped at
@@ -38,26 +41,40 @@ pub fn determine_num_series(
         .app_options
         .visualizer_limits_enabled;
 
-    let cache_key = NumSeriesCacheKey {
-        query_result_hash: results.query_result_hash(),
+    let last_seen_key = NumSeriesLastSeenKey {
+        view_id: ctx.view_id,
+        entity_path_hash: results.entity_path().hash(),
+        visualizer_instruction_id: results.instruction_id(),
         is_identity_mapping,
         limits_enabled,
     };
 
+    let count = count_series_in_scalar_chunks(all_scalar_chunks, last_seen_key, results);
+
     ctx.viewer_ctx
         .store_context
-        .memoizer(|cache: &mut NumSeriesCache| {
-            cache.get_or_compute(cache_key, || {
-                count_series_in_scalar_chunks(all_scalar_chunks, cache_key, results)
+        // Not a scan skip — only records the last count for change detection.
+        .memoizer(|last_seen: &mut NumSeriesLastSeen| {
+            last_seen.record(last_seen_key, count, |previous, new_count| {
+                results.report_unspecified_source(
+                    VisualizerReportSeverity::Warning,
+                    format!(
+                        "Number of scalar series changed from {} to {} for entity `{}`.",
+                        re_format::format_uint(previous),
+                        re_format::format_uint(new_count),
+                        results.entity_path(),
+                    ),
+                );
             })
         })
 }
 
 fn count_series_in_scalar_chunks(
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
-    cache_key: NumSeriesCacheKey,
+    last_seen_key: NumSeriesLastSeenKey,
     results: &re_view::VisualizerInstructionQueryResults<'_>,
 ) -> usize {
+    // Uses the first non-empty scalar slice only (in chunk iteration order).
     let count = all_scalar_chunks
         .iter()
         .find_map(|chunk| {
@@ -65,10 +82,12 @@ fn count_series_in_scalar_chunks(
                 .iter_slices::<f64>()
                 .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
         })
+        // Rendering default when the query has no scalars.
+        // TODO: A fix would only call `record` when a non-empty slice was found.
         .unwrap_or(1);
 
-    if !cache_key.is_identity_mapping
-        && cache_key.limits_enabled
+    if !last_seen_key.is_identity_mapping
+        && last_seen_key.limits_enabled
         && count > MAX_NUM_SERIES_FOR_REMAPPED_SCALARS
     {
         results.report_unspecified_source(
