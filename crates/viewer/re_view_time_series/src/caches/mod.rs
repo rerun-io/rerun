@@ -1,3 +1,3 @@
-mod num_series_cache;
+mod num_series_last_seen;
 
-pub use num_series_cache::{NumSeriesCache, NumSeriesCacheKey};
+pub use num_series_last_seen::{NumSeriesLastSeen, NumSeriesLastSeenKey};
