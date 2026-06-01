@@ -1,6 +1,6 @@
 ---
 title: How-to
-order: 2
+order: 3
 ---
 
 Guides for using Rerun in more advanced ways.
