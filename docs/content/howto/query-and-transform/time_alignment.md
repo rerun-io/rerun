@@ -1,6 +1,6 @@
 ---
 title: Time-align data
-order: 80
+order: 75
 ---
 
 Real-world data is usually not time-aligned.

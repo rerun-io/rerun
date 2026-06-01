@@ -1,6 +1,6 @@
 ---
 title: Send partial updates over time
-order: 200
+order: 250
 description: How to use the Rerun SDK to send partial data updates over time
 ---
 
