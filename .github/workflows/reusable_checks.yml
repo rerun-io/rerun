@@ -274,6 +274,10 @@ jobs:
     runs-on: ubuntu-latest
     # do not fail entire workflow (e.g. nightly) if this is the only failing check
     continue-on-error: true
+    env:
+      # lychee uses this to avoid GitHub rate limiting when checking github.com links.
+      # See https://github.com/lycheeverse/lychee#github-token
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
