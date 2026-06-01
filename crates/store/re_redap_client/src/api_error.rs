@@ -167,6 +167,36 @@ impl ApiError {
     pub fn tonic(err: tonic::Status, message: impl Into<String>) -> Self {
         let message = message.into();
         let kind = ApiErrorKind::from(err.code());
+
+        // On the web, the browser blocks failed `fetch` calls (CORS, mixed content, server
+        // unreachable, DNS, …) and — for security reasons — hides the actual cause from
+        // JavaScript, surfacing only an opaque message (e.g. `TypeError: Failed to fetch` in
+        // Chrome, `NetworkError when attempting to fetch resource` in Firefox, `Load failed` in
+        // Safari). `tonic-web-wasm-client` wraps all of these as `Error::JsError`, which tonic
+        // turns into a `Code::Unknown` status whose message is prefixed `js api error:`.
+        //
+        // Note: other `Code::Unknown` variants (malformed response, missing content-type, …)
+        // mean the server *did* respond but with non-gRPC data (wrong port, a proxy serving
+        // HTML, …) — those are not network failures, so we deliberately don't add the hint there.
+        //
+        // Point the user at the developer console, where the browser *does* print the real
+        // reason (e.g. the missing CORS header).
+        #[cfg(target_arch = "wasm32")]
+        let (kind, message) = if err.code() == tonic::Code::Unknown
+            && err.message().to_ascii_lowercase().contains("js api error")
+        {
+            (
+                ApiErrorKind::Connection,
+                format!(
+                    "{message}: failed to reach the server. \
+                     This is often a CORS issue, but can also mean the server is unreachable. \
+                     Open your browser's developer console for the underlying error."
+                ),
+            )
+        } else {
+            (kind, message)
+        };
+
         let trace_id = extract_trace_id(err.metadata());
         let err = crate::TonicStatusError::from(err); // Wrap in TonicStatusError so we get our nice Display formatting
         if let Some(trace_id) = trace_id {
