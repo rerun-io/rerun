@@ -1020,6 +1020,28 @@ pub extern "C" fn rr_recording_stream_reset_time(stream: CRecordingStream) {
 }
 
 #[expect(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn rr_recording_stream_set_log_tick_enabled(
+    stream: CRecordingStream,
+    enabled: bool,
+) {
+    if let Some(stream) = RECORDING_STREAMS.lock().get(stream) {
+        stream.set_log_tick_enabled(enabled);
+    }
+}
+
+#[expect(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn rr_recording_stream_set_log_time_enabled(
+    stream: CRecordingStream,
+    enabled: bool,
+) {
+    if let Some(stream) = RECORDING_STREAMS.lock().get(stream) {
+        stream.set_log_time_enabled(enabled);
+    }
+}
+
+#[expect(unsafe_code)]
 #[expect(clippy::result_large_err)]
 #[expect(clippy::needless_pass_by_value)] // Conceptually we're consuming the data_row, as we take ownership of data it points to.
 fn rr_recording_stream_log_impl(

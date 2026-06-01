@@ -822,6 +822,12 @@ def disable_timeline(
 def reset_time(recording: PyRecordingStream | None = None) -> None:
     """Clear all timeline information on this thread."""
 
+def set_log_tick_enabled(enabled: bool, recording: PyRecordingStream | None = None) -> None:
+    """Enable or disable automatic injection of the `log_tick` timeline (disabled by default)."""
+
+def set_log_time_enabled(enabled: bool, recording: PyRecordingStream | None = None) -> None:
+    """Enable or disable automatic injection of the `log_time` timeline (enabled by default)."""
+
 #
 # log any
 #

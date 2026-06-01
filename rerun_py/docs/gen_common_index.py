@@ -157,7 +157,7 @@ CURATED_GROUPS: Final[list[Group]] = [
     ),
     Group(
         title="Timeline functions",
-        items=["set_time", "disable_timeline", "reset_time"],
+        items=["set_time", "disable_timeline", "reset_time", "set_log_tick_enabled", "set_log_time_enabled"],
     ),
     Group(
         title="Columnar API",

@@ -47,6 +47,9 @@ def recording_factory(tmp_path: Path) -> Callable[[Sequence[str]], list[str]]:
         for i, recording_id in enumerate(recording_ids):
             rrd_path = tmp_path / f"recording_{i}.rrd"
             with rr.RecordingStream(f"test_recording_{i}", recording_id=recording_id) as rec:
+                # `log_tick` is opt-in; enable it so these recordings have a deterministic
+                # index column to assert on below.
+                rec.set_log_tick_enabled(True)
                 rec.save(rrd_path)
                 rec.log("points", rr.Points2D([[i, i]]))
                 rec.flush()

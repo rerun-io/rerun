@@ -29,6 +29,14 @@ pub struct CompareCommand {
     /// If specified, the comparison will ignore chunks without components.
     #[clap(long, default_value_t = false)]
     ignore_chunks_without_components: bool,
+
+    /// Timelines to ignore entirely during comparison (their presence, absence, and values).
+    ///
+    /// Useful when comparing recordings produced with different default-timeline settings,
+    /// e.g. `--ignore-timeline log_tick` (which is opt-in).
+    /// Can be specified multiple times.
+    #[clap(long = "ignore-timeline", value_name = "TIMELINE")]
+    ignore_timelines: Vec<String>,
 }
 
 impl CompareCommand {
@@ -43,7 +51,13 @@ impl CompareCommand {
             unordered,
             full_dump,
             ignore_chunks_without_components,
+            ignore_timelines,
         } = self;
+
+        let ignore_timelines: Vec<re_chunk::TimelineName> = ignore_timelines
+            .iter()
+            .map(|name| name.as_str().into())
+            .collect();
 
         re_log::debug!("Comparing {path_to_rrd1:?} to {path_to_rrd2:?}…");
 
@@ -92,10 +106,14 @@ impl CompareCommand {
             let mut unmatched_chunks1 = Vec::new();
 
             for chunk1 in &chunks1 {
-                if let Some(pos) = chunks2_remaining
-                    .iter()
-                    .position(|chunk2| re_chunk::Chunk::ensure_similar(chunk1, chunk2).is_ok())
-                {
+                if let Some(pos) = chunks2_remaining.iter().position(|chunk2| {
+                    re_chunk::Chunk::ensure_similar_ignoring_timelines(
+                        chunk1,
+                        chunk2,
+                        &ignore_timelines,
+                    )
+                    .is_ok()
+                }) {
                     chunks2_remaining.swap_remove(pos);
                 } else {
                     unmatched_chunks1.push(chunk1.clone());
@@ -140,7 +158,12 @@ impl CompareCommand {
             );
 
             for (chunk1, chunk2) in izip!(chunks1, chunks2) {
-                re_chunk::Chunk::ensure_similar(&chunk1, &chunk2).with_context(|| {
+                re_chunk::Chunk::ensure_similar_ignoring_timelines(
+                    &chunk1,
+                    &chunk2,
+                    &ignore_timelines,
+                )
+                .with_context(|| {
                     format!(
                         "Chunks diff:\n{}",
                         similar_asserts::SimpleDiff::from_str(

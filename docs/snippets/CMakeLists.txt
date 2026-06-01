@@ -7,6 +7,7 @@ file(GLOB_RECURSE sources_list CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/all
 
 # Not complete examples (code fragments without main):
 list(FILTER sources_list EXCLUDE REGEX .*/concepts/static/*)
+list(FILTER sources_list EXCLUDE REGEX .*/migration/log_tick_enabled.*)
 list(FILTER sources_list EXCLUDE REGEX .*/migration/transactional_transforms/*)
 list(FILTER sources_list EXCLUDE REGEX .*/tutorials/custom-application-id.*)
 list(FILTER sources_list EXCLUDE REGEX .*/tutorials/custom-recording-id.*)

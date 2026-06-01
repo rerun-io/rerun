@@ -220,6 +220,8 @@ from .sinks import (
 from .time import (
     disable_timeline as disable_timeline,
     reset_time as reset_time,
+    set_log_tick_enabled as set_log_tick_enabled,
+    set_log_time_enabled as set_log_time_enabled,
     set_time as set_time,
 )
 from .web import serve_web_viewer as serve_web_viewer

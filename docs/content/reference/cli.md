@@ -501,6 +501,11 @@ This ignores the `log_time` timeline.
 >
 > [Default: `false`]
 
+* `--ignore-timeline <TIMELINE>`
+> Timelines to ignore entirely during comparison (their presence, absence, and values).
+>
+> Useful when comparing recordings produced with different default-timeline settings, e.g. `--ignore-timeline log_tick` (which is opt-in). Can be specified multiple times.
+
 ## rerun rrd filter
 
 Filters out data from .rrd/.rbl files/streams, and writes the result to standard output.

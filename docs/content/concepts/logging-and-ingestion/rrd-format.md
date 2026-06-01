@@ -87,7 +87,7 @@ What to notice:
 - All Rerun-specific metadata keys are prefixed with `rerun:` (`rerun:entity_path`, `rerun:id`, `rerun:kind`, `rerun:index_name`, …). Sorbet's own metadata uses the `sorbet:` prefix (`sorbet:version`).
 - The chunk-level **metadata** identifies the entity path the chunk belongs to and the chunk's id.
 - The **`RowId`** column is the row identity column (`rerun:kind: control`).
-- Each timeline contributes one **index column** (`frame`, `log_tick`, `log_time`) — `log_tick` and `log_time` are auto-populated by the logging API, `frame` is the user-defined timeline.
+- Each timeline contributes one **index column** (`frame`, `log_tick`, `log_time`) — `log_time` is auto-populated by the logging API (and `log_tick` if opted in), `frame` is the user-defined timeline.
 - Each component contributes one **data column** (`Points3D:colors`, `Points3D:positions`) carrying the per-row values.
 
 

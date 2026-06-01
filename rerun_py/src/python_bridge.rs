@@ -274,6 +274,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_timestamp_nanos_since_epoch, m)?)?;
     m.add_function(wrap_pyfunction!(disable_timeline, m)?)?;
     m.add_function(wrap_pyfunction!(reset_time, m)?)?;
+    m.add_function(wrap_pyfunction!(set_log_tick_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(set_log_time_enabled, m)?)?;
 
     // log any
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
@@ -2053,6 +2055,26 @@ fn reset_time(recording: Option<&PyRecordingStream>) {
         return;
     };
     recording.reset_time();
+}
+
+/// Enable or disable automatic injection of the `log_tick` timeline (disabled by default).
+#[pyfunction]
+#[pyo3(signature = (enabled, recording=None))]
+fn set_log_tick_enabled(enabled: bool, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    recording.set_log_tick_enabled(enabled);
+}
+
+/// Enable or disable automatic injection of the `log_time` timeline (enabled by default).
+#[pyfunction]
+#[pyo3(signature = (enabled, recording=None))]
+fn set_log_time_enabled(enabled: bool, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    recording.set_log_time_enabled(enabled);
 }
 
 // --- Log special ---

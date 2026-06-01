@@ -60,7 +60,8 @@ impl Timeline {
         self.typ
     }
 
-    /// The log time timeline to which all API functions will always log.
+    /// An automatic temporal timeline to which all API functions will always log,
+    /// unless opted-out from.
     ///
     /// This timeline is automatically maintained by the SDKs and captures the wall-clock time at
     /// which point the data was logged (according to the client's wall-clock).
@@ -69,7 +70,7 @@ impl Timeline {
         Self::new(TimelineName::log_time(), TimeType::TimestampNs)
     }
 
-    /// The log tick timeline to which all API functions will always log.
+    /// An automatic tick timeline to which one can opt-in to get on all API log calls.
     ///
     /// This timeline is automatically maintained by the SDKs and captures the logging tick at
     /// which point the data was logged.
