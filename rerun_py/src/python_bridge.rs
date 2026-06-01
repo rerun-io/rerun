@@ -39,7 +39,6 @@ impl PyRuntimeErrorExt for PyRuntimeError {
 }
 
 use crate::chunk::PyChunkInternal;
-use crate::recording::PyRecordingInternal;
 
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
 // otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
@@ -283,7 +282,6 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
     m.add_function(wrap_pyfunction!(send_chunks, m)?)?;
     m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
-    m.add_function(wrap_pyfunction!(send_recording, m)?)?;
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;
@@ -303,9 +301,6 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         asset_video_read_frame_timestamps_nanos,
         m
     )?)?;
-
-    // recording
-    crate::recording::register(m)?;
 
     // chunk
     crate::chunk::register(m)?;
@@ -2302,23 +2297,6 @@ fn send_blueprint(
         recording.send_blueprint(blueprint.inner.take(), activation_cmd);
     } else {
         re_log::warn!("Provided `blueprint` has no store info, cannot send it.");
-    }
-}
-
-/// Send all chunks from a [`PyRecording`] to the given recording stream.
-///
-/// !!! Warning
-///     ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-#[pyfunction]
-#[pyo3(signature = (rrd, recording = None))]
-fn send_recording(rrd: &PyRecordingInternal, recording: Option<&PyRecordingStream>) {
-    let Some(recording) = get_data_recording(recording) else {
-        return;
-    };
-
-    let store = rrd.store.read();
-    for chunk in store.iter_physical_chunks() {
-        recording.send_chunk((**chunk).clone());
     }
 }
 

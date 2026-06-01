@@ -6,9 +6,9 @@ use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyOverflowError, PyRuntimeError, PyValueError};
 use pyo3::types::PyAnyMethods as _;
 use pyo3::{Bound, Py, PyAny, PyErr, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
-use re_chunk_store::{ChunkStore, ChunkStoreHandle, LazyStore};
+use re_chunk_store::LazyStore;
 use re_datafusion::{DatasetManifestProvider, SearchResultsTableProvider, SegmentTableProvider};
-use re_log_types::{EntryId, StoreId, StoreKind};
+use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::ext::{
     DatasetDetails, DatasetEntry, EntryDetails, IndexProperties,
 };
@@ -19,10 +19,9 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_redap_client::{SegmentChunkProvider, fetch_chunks_response_to_chunk_and_segment_id};
+use re_redap_client::SegmentChunkProvider;
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 use re_types_core::LayerName;
-use tokio_stream::StreamExt as _;
 
 use super::registration_handle::PyRegistrationHandleInternal;
 use super::{
@@ -32,7 +31,6 @@ use super::{
 use crate::catalog::entry::set_entry_name;
 use crate::catalog::{AnyComponentColumn, PyIndexColumnSelector, PySchemaInternal};
 use crate::chunk_stream::lazy_store::PyLazyStoreInternal;
-use crate::recording::PyRecordingInternal;
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
@@ -459,69 +457,6 @@ impl PyDatasetEntryInternal {
             results,
             request_trace_id,
         ))
-    }
-
-    /// Download a segment from the dataset.
-    fn download_segment(
-        self_: PyRef<'_, Self>,
-        segment_id: String,
-    ) -> PyResult<PyRecordingInternal> {
-        let _span =
-            read_trace_context_from_python(self_.py(), "DatasetEntry.download_segment").entered();
-        let catalog_client = self_.client.borrow(self_.py());
-        let connection = catalog_client.connection();
-        let dataset_id = self_.entry_details.id;
-        let dataset_name = self_.entry_details.name.clone();
-
-        let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
-            let mut client = connection.client().await?;
-            let response_stream = client
-                .fetch_segment_chunks_by_query(re_redap_client::SegmentQueryParams {
-                    dataset_id,
-                    segment_id: segment_id.clone().into(),
-                    include_static_data: true,
-                    include_temporal_data: true,
-                    query: None,
-                    generate_direct_urls: false,
-                })
-                .await
-                .map_err(to_py_err)?;
-
-            let mut chunks_stream = fetch_chunks_response_to_chunk_and_segment_id(response_stream);
-
-            let store_id = StoreId::new(
-                StoreKind::Recording,
-                dataset_name.to_string(),
-                segment_id.clone(),
-            );
-            let mut store = ChunkStore::new(store_id, Default::default());
-
-            while let Some(chunks) = chunks_stream.next().await {
-                for chunk in chunks.map_err(to_py_err)? {
-                    let (chunk, chunk_segment_id) = chunk;
-
-                    if chunk_segment_id.as_ref().map(AsRef::as_ref) != Some(segment_id.as_str()) {
-                        re_log::warn!(
-                            expected = segment_id,
-                            got = ?chunk_segment_id,
-                            "unexpected segment ID in chunk stream, this is a bug"
-                        );
-                    }
-                    store
-                        .insert_chunk(&std::sync::Arc::new(chunk))
-                        .map_err(to_py_err)?;
-                }
-            }
-
-            Ok(store)
-        });
-
-        let handle = ChunkStoreHandle::new(store?);
-
-        Ok(PyRecordingInternal {
-            store: handle,
-            store_info: None,
-        })
     }
 
     /// Open a remote segment as a [`LazyStore`][rerun.experimental.LazyStore].

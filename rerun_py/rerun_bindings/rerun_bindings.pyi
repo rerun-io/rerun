@@ -189,17 +189,6 @@ class SchemaInternal:
     ) -> ComponentColumnDescriptor: ...
     def __arrow_c_schema__(self) -> Any: ...
 
-class RecordingInternal:
-    def schema(self) -> SchemaInternal: ...
-    def recording_id(self) -> str: ...
-    def application_id(self) -> str: ...
-    def chunks(self) -> ChunkIterator: ...
-    def save(self, path: str) -> None: ...
-
-class RRDArchiveInternal:
-    def num_recordings(self) -> int: ...
-    def all_recordings(self) -> list[RecordingInternal]: ...
-
 class ChunkInternal:
     @property
     def id(self) -> str: ...
@@ -230,28 +219,6 @@ class ChunkInternal:
     def apply_selector(self, source: str, selector: SelectorInternal) -> ChunkInternal: ...
     def __repr__(self) -> str: ...
     def __len__(self) -> int: ...
-
-class ChunkIterator:
-    """An iterator over chunks in a recording."""
-
-    def __iter__(self) -> ChunkIterator:
-        """Implement iter(self)."""
-
-    def __next__(self) -> ChunkInternal:
-        """Implement next(self)."""
-
-def recording_from_chunks(
-    chunks: Any,
-    application_id: str,
-    recording_id: str,
-) -> RecordingInternal:
-    """Create a new recording from an iterable of chunks."""
-
-def load_recording(path_to_rrd: str | os.PathLike[str]) -> RecordingInternal:
-    """Load a single recording from an RRD file."""
-
-def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchiveInternal:
-    """Load a rerun archive from an RRD file."""
 
 def _optimization_profile_values(name: str) -> dict[str, object]:
     """
@@ -922,14 +889,6 @@ def send_blueprint(
 ) -> None:
     """Send a blueprint to the given recording stream."""
 
-def send_recording(rrd: RecordingInternal, recording: PyRecordingStream | None = None) -> None:
-    """
-    Send all chunks from a [`PyRecording`] to the given recording stream.
-
-    !!! Warning
-        ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-    """
-
 #
 # misc
 #
@@ -1068,7 +1027,6 @@ class DatasetEntryInternal:
 
     # ---
 
-    def download_segment(self, segment_id: str) -> RecordingInternal: ...
     def segment_store(self, segment_id: str) -> LazyStoreInternal: ...
 
     # ---

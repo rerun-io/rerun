@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     import datafusion
 
     from rerun.experimental import LazyStore
-    from rerun.recording import Recording  # ty:ignore[deprecated]
 
     from . import (
         CatalogClient,
@@ -522,15 +521,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             layer_name = "base"
 
         return RegistrationHandle(self._internal.register_prefix(recordings_prefix, layer_name, on_duplicate))
-
-    @deprecated(
-        "DatasetEntry.download_segment is deprecated since 0.32. Use DatasetEntry.segment_store instead.",
-    )
-    def download_segment(self, segment_id: str) -> Recording:  # ty:ignore[deprecated]
-        """Download a segment from the dataset."""
-        from rerun.recording import Recording  # ty:ignore[deprecated]
-
-        return Recording(self._internal.download_segment(segment_id))  # ty: ignore[deprecated]
 
     def segment_store(self, segment_id: str) -> LazyStore:
         """

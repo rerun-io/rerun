@@ -90,7 +90,6 @@ plugins:
         common/datatypes.md: datatypes.md
         common/catalog.md: catalog.md
         common/utilities.md: utilities.md
-        common/recording.md: recording.md
         common/server.md: server.md
         common/notebook.md: notebook.md
         common/authentication.md: auth.md

@@ -8,9 +8,8 @@ import uuid
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 
-from typing_extensions import Self, deprecated
+from typing_extensions import Self
 
-import rerun as rr
 from rerun import bindings
 from rerun_bindings import ChunkBatcherConfig as ChunkBatcherConfig  # noqa: TC001
 
@@ -724,27 +723,6 @@ class RecordingStream:
         from .sinks import send_blueprint
 
         send_blueprint(blueprint=blueprint, make_active=make_active, make_default=make_default, recording=self)
-
-    @deprecated(
-        "RecordingStream.send_recording is deprecated since 0.32. Use RecordingStream.send_chunks instead.",
-    )
-    def send_recording(self, recording: rr.recording.Recording) -> None:  # ty:ignore[deprecated]
-        """
-        Send a `Recording` loaded from a `.rrd` to the `RecordingStream`.
-
-        !!! Warning
-            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-
-        Parameters
-        ----------
-        recording:
-            A `Recording` loaded from a `.rrd`.
-
-        """
-
-        from .sinks import send_recording  # ty:ignore[deprecated]
-
-        send_recording(rrd=recording, recording=self)  # ty:ignore[deprecated]
 
     def spawn(
         self,
