@@ -47,7 +47,7 @@ async function fetch_viewer_wasm(
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(
-      `Failed to fetch viewer WASM: ${response.status} ${response.statusText}`,
+      `Failed to fetch viewer Wasm: ${response.status} ${response.statusText}`,
     );
   }
   return wrap_fetch_with_progress(response, on_progress);

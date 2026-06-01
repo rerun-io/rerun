@@ -1663,6 +1663,14 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error("Prefer using tonic::Result<>", line_nr=line_nr))
             num_errors += 1
 
+    if filepath.endswith(".proto"):
+        for line_nr, line in enumerate(source.lines):
+            if source.should_ignore(line_nr):
+                continue
+            if "/// " in line:
+                print(source.error("Use `//` not `///` for comments in .proto files", line_nr=line_nr))
+                num_errors += 1
+
     if filepath.endswith((".rs", ".fbs")):
         errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
@@ -1808,10 +1816,13 @@ def main() -> None:
         "html",
         "js",
         "md",
+        "mjs",
+        "proto",
         "py",
         "rs",
         "sh",
         "toml",
+        "ts",
         "txt",
         "wgsl",
         "yaml",

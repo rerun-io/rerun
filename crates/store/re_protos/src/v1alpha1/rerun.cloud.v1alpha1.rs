@@ -148,14 +148,14 @@ pub struct DataSource {
     /// Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
     #[prost(string, optional, tag = "1")]
     pub storage_url: ::core::option::Option<::prost::alloc::string::String>,
-    /// / Which segment layer should this data source be registered to?
+    /// Which segment layer should this data source be registered to?
     /// /
-    /// / Defaults to `base` if unspecified.
+    /// Defaults to `base` if unspecified.
     #[prost(string, optional, tag = "3")]
     pub layer: ::core::option::Option<::prost::alloc::string::String>,
-    /// / Is this a prefix URL (a directory)?
-    /// / If true, all files of `typ` under this prefix will be
-    /// / considered part of this data source.
+    /// Is this a prefix URL (a directory)?
+    /// If true, all files of `typ` under this prefix will be
+    /// considered part of this data source.
     #[prost(bool, tag = "4")]
     pub prefix: bool,
     /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
@@ -1038,7 +1038,7 @@ impl ::prost::Name for IndexValueList {
         "/rerun.cloud.v1alpha1.IndexValueList".into()
     }
 }
-/// / A chunk-level range query, aka `RangeRelevantChunks`.
+/// A chunk-level range query, aka `RangeRelevantChunks`.
 ///
 /// This has the exact same semantics as the query of the same name on our `ChunkStore`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1654,7 +1654,7 @@ pub struct RegisterTableRequest {
     pub name: ::prost::alloc::string::String,
     /// Information about the table to register.
     ///
-    /// This must be encoded message of one one of the following supported types:
+    /// This must be encoded message of one of the following supported types:
     /// - LanceTable
     #[prost(message, optional, tag = "2")]
     pub provider_details: ::core::option::Option<::prost_types::Any>,
@@ -2189,11 +2189,11 @@ pub mod rerun_cloud_service_client {
     )]
     use tonic::codegen::http::Uri;
     use tonic::codegen::*;
-    /// The Rerun Cloud public API.
+    /// The catalog server public API.
     ///
     /// ## Headers
     ///
-    /// Most endpoints in the Rerun Cloud service require specific gRPC headers to be set.
+    /// Most endpoints in the catalog server service require specific gRPC headers to be set.
     ///
     /// The so-called "standard dataset headers" correspond to at least one of the following headers:
     /// * x-rerun-entry-id: ID of the entry of interest, e.g. `1860390B087BC65F602d68eb646c385c`.
@@ -2821,7 +2821,7 @@ pub mod rerun_cloud_service_client {
             self.inner.server_streaming(req, path, codec).await
         }
         /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
-        /// as information that can be sent back to Rerun Cloud to fetch the actual chunks as part
+        /// as information that can be sent back to the catalog server to fetch the actual chunks as part
         /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
         /// from the server about the chunks that contain relevant information. 2nd step is fetching
         /// those chunks (the actual data).
@@ -2864,7 +2864,7 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
+        /// Fetch specific chunks from the catalog server. In a 2-step query process, result of 1st phase,
         /// that is, the result of `QueryDataset` should include all the necessary information to send
         /// the actual chunk requests, which is the 2nd step of the query process.
         ///
@@ -3313,7 +3313,7 @@ pub mod rerun_cloud_service_server {
             > + std::marker::Send
             + 'static;
         /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
-        /// as information that can be sent back to Rerun Cloud to fetch the actual chunks as part
+        /// as information that can be sent back to the catalog server to fetch the actual chunks as part
         /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
         /// from the server about the chunks that contain relevant information. 2nd step is fetching
         /// those chunks (the actual data).
@@ -3344,7 +3344,7 @@ pub mod rerun_cloud_service_server {
                 Item = std::result::Result<super::FetchChunksResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
+        /// Fetch specific chunks from the catalog server. In a 2-step query process, result of 1st phase,
         /// that is, the result of `QueryDataset` should include all the necessary information to send
         /// the actual chunk requests, which is the 2nd step of the query process.
         ///
@@ -3415,11 +3415,11 @@ pub mod rerun_cloud_service_server {
             request: tonic::Request<super::DoGlobalMaintenanceRequest>,
         ) -> std::result::Result<tonic::Response<super::DoGlobalMaintenanceResponse>, tonic::Status>;
     }
-    /// The Rerun Cloud public API.
+    /// The catalog server public API.
     ///
     /// ## Headers
     ///
-    /// Most endpoints in the Rerun Cloud service require specific gRPC headers to be set.
+    /// Most endpoints in the catalog server service require specific gRPC headers to be set.
     ///
     /// The so-called "standard dataset headers" correspond to at least one of the following headers:
     /// * x-rerun-entry-id: ID of the entry of interest, e.g. `1860390B087BC65F602d68eb646c385c`.
