@@ -187,3 +187,4 @@ The two are interoperable:
 
 - [Chunks](chunks.md): the underlying data model.
 - [Lenses](../query-and-transform/lenses.md): the reshaping primitives used here.
+- [`robot_data_preprocessing`](https://github.com/rerun-io/rerun/tree/main/examples/python/robot_data_preprocessing): a practical example showing how to apply the chunk processing API to robot data.
