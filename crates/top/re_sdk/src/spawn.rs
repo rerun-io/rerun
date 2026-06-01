@@ -414,7 +414,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<SpawnInfo, SpawnError> {
         let bind_addr =
             std::net::SocketAddr::new(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST), port);
         let mut bound = false;
-        for i in 0..20 {
+        for i in 0..30 {
             re_log::debug!("connection attempt {}", i + 1);
             if TcpStream::connect_timeout(&bind_addr, Duration::from_secs(1)).is_ok() {
                 bound = true;
@@ -423,6 +423,11 @@ pub fn spawn(opts: &SpawnOptions) -> Result<SpawnInfo, SpawnError> {
             std::thread::sleep(Duration::from_millis(200));
         }
 
+        if !bound {
+            re_log::warn!(
+                "Spawned Rerun Viewer did not bind to port {port} in time. Connections to it may fail."
+            );
+        }
         re_log::debug_assert!(
             bound,
             "Spawned Rerun Viewer did not bind to port {port} in time"
