@@ -104,6 +104,12 @@ class RRDArchive:
     def __init__(self, inner: RRDArchiveInternal) -> None:
         self._internal = inner
 
+    def __len__(self) -> int:
+        return self.num_recordings()
+
+    def __iter__(self) -> Generator[Recording, None, None]:
+        yield from self.all_recordings()
+
     def num_recordings(self) -> int:
         """The number of recordings in the archive."""
         return self._internal.num_recordings()

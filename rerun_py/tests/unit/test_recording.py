@@ -286,6 +286,22 @@ def test_load_recording_path_types(tmp_path: pathlib.Path) -> None:
     assert recording is not None
 
 
+def test_archive_len_and_iter(tmp_path: pathlib.Path) -> None:
+    rrd = tmp_path / "tmp.rrd"
+
+    expected_recording_id = uuid.uuid4()
+    with rr.RecordingStream(APP_ID, recording_id=expected_recording_id) as rec:
+        rec.save(rrd)
+        rec.log("foo", rr.TextLog("bar"))
+
+    archive = rr.recording.load_archive(rrd)
+
+    assert len(archive) == 1
+    recordings = list(archive)
+    assert len(recordings) == 1
+    assert recordings[0].recording_id() == str(expected_recording_id)
+
+
 def test_chunk_record_batch(tmp_path: pathlib.Path, snapshot: syrupy.SnapshotAssertion) -> None:
     """Test that Chunk.format() returns a human-readable table with expected data."""
 
