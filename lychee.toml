@@ -153,6 +153,7 @@ exclude = [
   'https://static.rerun.io/rgbd_dataset', # Base data link for rgbd dataset.
   'https://storage.googleapis.com/', # Storage API entrypoint, not a link.
   'https://ref\.rerun\.io/prose/?$', # GCS bucket prefix, no directory index.
+  'https://build\.rerun\.io/mirror/mozilla/sccache/?$', # GCS bucket prefix, no directory index.
 
   # Not accessible from CI.
   '.github/workflows/.*.yml', # GitHub action workflows cause issues on CI.
