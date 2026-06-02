@@ -26,6 +26,9 @@ table VoxelGridMap (
   voxel_indices: [rerun.components.VoxelIndex] ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 
   /// The scene unit size of a single voxel cell.
+  ///
+  /// This defines the side length of each voxel cube.
+  /// Anisotropic (non-cubic) voxels are currently not supported.
   cell_size: rerun.components.CellSize ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1100);
 
   // --- Optional ---
