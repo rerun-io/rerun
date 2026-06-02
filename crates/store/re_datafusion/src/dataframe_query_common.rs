@@ -37,7 +37,9 @@ use re_protos::{
 use re_redap_client::{ApiError, ApiResult, ConnectionClient, ConnectionRegistryHandle};
 
 use crate::{IntoDfError as _, SegmentStreamExec};
-use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
+use re_sorbet::{
+    BatchType, ChunkColumnDescriptors, ColumnDescriptor, ColumnKind, ComponentColumnSelector,
+};
 use re_uri::Origin;
 use std::any::Any;
 use std::cmp::Ordering;
@@ -489,6 +491,32 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 }
             }
 
+            // Component projection pushdown: narrow `fuzzy_descriptors` to the components the
+            // projection and filters reference, so the server skips chunks for unselected ones
+            // (e.g. a heavy `VideoStream:sample` next to a tiny `is_keyframe`). Gated on
+            // `SparseFillStrategy::None`, like the entity-path narrowing above.
+            //
+            // Only narrow on a strict subset. An empty list means "all components" server-side,
+            // and a full read projects every column, so listing all of them would be a no-op
+            // were it not that the server treats a non-empty list as exhaustive and drops
+            // static-only components (those with no temporal index). Leaving it empty is correct.
+            //
+            // TODO(RR-3157): ideally `DatasetView` would let users select components explicitly,
+            // so we wouldn't have to infer them from the query.
+            if self.query_expression.sparse_fill_strategy == SparseFillStrategy::None
+                && let Some(projected_components) = projection.map(|projection| {
+                    extract_projected_components(&self.schema, projection, filters)
+                })
+                && !projected_components.is_empty()
+                && projected_components.len() < all_schema_components(&self.schema).len()
+            {
+                for query in &mut dataset_queries {
+                    if query.fuzzy_descriptors.is_empty() {
+                        query.fuzzy_descriptors = projected_components.iter().cloned().collect();
+                    }
+                }
+            }
+
             let mut query_expression = self.query_expression.clone();
 
             let mut chunk_info_batches = Vec::with_capacity(dataset_queries.len());
@@ -754,6 +782,75 @@ fn entity_path_from_field(field: &Field) -> Option<EntityPath> {
         .metadata()
         .get(re_sorbet::metadata::SORBET_ENTITY_PATH)
         .map(|s| EntityPath::from(&**s))
+}
+
+/// The component identifier of a field, or `None` if it isn't a component column.
+///
+/// Only genuine component columns carry an entity path; gating on it (the
+/// same signal `extract_projected_entity_paths` uses) drops the prepended,
+/// unmarked `rerun_segment_id`, which would otherwise be misclassified as a
+/// `Component` (`ColumnKind` defaults to `Component` for unmarked fields).
+/// Index/time columns also lack an entity path, so the same gate excludes
+/// them (and as a backstop they carry `rerun:kind=index`, which
+/// `try_from_arrow_field` maps to a non-`Component` descriptor).
+fn component_from_field(field: &Field) -> Option<String> {
+    field
+        .metadata()
+        .get(re_sorbet::metadata::SORBET_ENTITY_PATH)?;
+    match ColumnDescriptor::try_from_arrow_field(None, field) {
+        Ok(ColumnDescriptor::Component(component)) => Some(component.component.to_string()),
+        _ => None,
+    }
+}
+
+/// Every component identifier present in `schema`.
+///
+/// Used to detect a full projection: when the projection references every
+/// component, narrowing `fuzzy_descriptors` is a no-op for chunk skipping, but
+/// the server treats a non-empty list as exhaustive and would drop chunks for
+/// static-only components (those with no temporal index). So we only narrow when
+/// the projection is a strict subset.
+fn all_schema_components(schema: &SchemaRef) -> BTreeSet<String> {
+    schema
+        .fields()
+        .iter()
+        .filter_map(|field| component_from_field(field))
+        .collect()
+}
+
+/// Component identifiers referenced by a query's projection and filters.
+///
+/// Counterpart to [`extract_projected_entity_paths`] at component granularity:
+/// it lets the scan narrow `fuzzy_descriptors` so the server skips chunks for
+/// unselected components (e.g. a heavy `VideoStream:sample` sitting next to a tiny `is_keyframe`).
+/// Time/index and `rerun_segment_id` columns are not components and are simply ignored.
+fn extract_projected_components(
+    schema: &SchemaRef,
+    projection: &[usize],
+    filters: &[Expr],
+) -> BTreeSet<String> {
+    let mut components = BTreeSet::new();
+
+    for &idx in projection {
+        if let Some(component) = component_from_field(schema.field(idx)) {
+            components.insert(component);
+        }
+    }
+
+    // Filters may reference components outside the projection (e.g. `WHERE
+    // is_keyframe IS NOT NULL` while only the index is projected); those chunks
+    // are still needed to evaluate the filter, so keep them too.
+    for filter in filters {
+        for col_ref in filter.column_refs() {
+            if let Ok(field) = schema.field_with_name(col_ref.name())
+                && let Some(component) = component_from_field(field)
+            {
+                components.insert(component);
+            }
+        }
+    }
+
+    components
 }
 
 /// Compute the output schema for a query on a dataset. When we call `get_dataset_schema`
@@ -1271,6 +1368,38 @@ mod tests {
         ))
     }
 
+    /// Like [`make_schema_with_entities`] but with `rerun:component` metadata, so
+    /// component columns parse to their real identifiers (`positions`, `colors`,
+    /// `transform`) instead of falling back to the full column name — matching
+    /// the metadata that real dataset schemas carry.
+    fn make_schema_with_components() -> SchemaRef {
+        use re_sorbet::metadata::{RERUN_KIND, SORBET_ENTITY_PATH};
+        // `re_types_core::FIELD_METADATA_KEY_COMPONENT`.
+        const COMPONENT: &str = "rerun:component";
+
+        let index_metadata = HashMap::from([(RERUN_KIND.to_owned(), "index".to_owned())]);
+        let component_metadata = |entity: &str, component: &str| {
+            HashMap::from([
+                (SORBET_ENTITY_PATH.to_owned(), entity.to_owned()),
+                (COMPONENT.to_owned(), component.to_owned()),
+            ])
+        };
+
+        Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("rerun_segment_id", DataType::Utf8, false),
+                Field::new("log_time", DataType::Int64, false).with_metadata(index_metadata),
+                Field::new("/points:Position3D:positions", DataType::Utf8, true)
+                    .with_metadata(component_metadata("/points", "positions")),
+                Field::new("/points:Color:colors", DataType::Utf8, true)
+                    .with_metadata(component_metadata("/points", "colors")),
+                Field::new("/cameras:Transform3D:transform", DataType::Utf8, true)
+                    .with_metadata(component_metadata("/cameras", "transform")),
+            ],
+            HashMap::new(),
+        ))
+    }
+
     #[test]
     fn test_projection_single_entity() {
         let schema = make_schema_with_entities();
@@ -1332,6 +1461,84 @@ mod tests {
         // Only /points from projection — filters don't add entity paths
         assert_eq!(paths.len(), 1);
         assert!(paths.contains(&EntityPath::from("/points")));
+    }
+
+    #[test]
+    fn test_component_projection_single() {
+        let schema = make_schema_with_components();
+        // Select seg_id + log_time + only the positions component of /points.
+        let projection = vec![0, 1, 2];
+        let components = extract_projected_components(&schema, &projection, &[]);
+        assert_eq!(
+            components,
+            once("positions".to_owned()).collect::<BTreeSet<_>>(),
+            "only the projected component should be selected, not its sibling `colors`",
+        );
+    }
+
+    #[test]
+    fn test_component_projection_skips_non_component_columns() {
+        let schema = make_schema_with_components();
+        // Select only seg_id + log_time — neither is a component column.
+        let projection = vec![0, 1];
+        let components = extract_projected_components(&schema, &projection, &[]);
+        assert!(
+            components.is_empty(),
+            "segment-id and index columns must not be treated as components",
+        );
+    }
+
+    #[test]
+    fn test_component_projection_filter_adds_component() {
+        use datafusion::logical_expr::col;
+
+        let schema = make_schema_with_components();
+        // Project only the positions component, but filter on a sibling component.
+        let projection = vec![0, 2];
+        let filters = vec![col("/points:Color:colors").is_not_null()];
+        let components = extract_projected_components(&schema, &projection, &filters);
+        assert_eq!(
+            components,
+            ["positions".to_owned(), "colors".to_owned()]
+                .into_iter()
+                .collect::<BTreeSet<_>>(),
+            "a component referenced only by a filter must still be fetched",
+        );
+    }
+
+    #[test]
+    fn test_all_schema_components() {
+        let schema = make_schema_with_components();
+        assert_eq!(
+            all_schema_components(&schema),
+            [
+                "positions".to_owned(),
+                "colors".to_owned(),
+                "transform".to_owned()
+            ]
+            .into_iter()
+            .collect::<BTreeSet<_>>(),
+            "every component column in the schema must be reported, deduped",
+        );
+    }
+
+    #[test]
+    fn test_component_projection_full_read_is_not_narrowed() {
+        // A full read projects every column. The projected components then equal
+        // the full schema set, so the scan must NOT narrow `fuzzy_descriptors`
+        // (an exhaustive list would drop static-only components server-side).
+        let schema = make_schema_with_components();
+        let projection: Vec<usize> = (0..schema.fields().len()).collect();
+        let projected = extract_projected_components(&schema, &projection, &[]);
+        assert_eq!(
+            projected,
+            all_schema_components(&schema),
+            "projecting all columns must reference every component",
+        );
+        assert!(
+            projected.len() >= all_schema_components(&schema).len(),
+            "a full projection is not a strict subset, so narrowing must be skipped",
+        );
     }
 
     #[test]
