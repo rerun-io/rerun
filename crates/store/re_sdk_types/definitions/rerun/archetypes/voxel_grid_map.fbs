@@ -68,7 +68,7 @@ table VoxelGridMap (
   /// Defaults to 1.0 (fully opaque).
   opacity: rerun.components.Opacity ("attr.rerun.component_optional", nullable, order: 4000);
 
-  /// Scalar value range mapped to the colormap.
+  /// Scalar value range for color-mapping.
   ///
   /// Defaults to `[0.0, 1.0]`.
   value_range: rerun.components.ValueRange ("attr.rerun.component_optional", nullable, order: 4100);
