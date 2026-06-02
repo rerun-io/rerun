@@ -37,7 +37,7 @@ table VoxelGridMap (
 
   /// Optional colors for each voxel.
   ///
-  /// Explicit colors take precedence over scalar values.
+  /// If set, these colors take precedence over color-mapped scalar values.
   colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 2100);
 
   /// Translation of the minimum corner of voxel `[0, 0, 0]`.
