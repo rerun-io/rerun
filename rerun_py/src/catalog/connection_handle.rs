@@ -8,7 +8,7 @@ use itertools::Itertools as _;
 use pyo3::exceptions::PyValueError;
 use pyo3::{PyResult, Python};
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk_store::QueryExpression;
+use re_chunk_store::{QueryExpression, SparseFillStrategy};
 use re_datafusion::query_from_query_expression;
 use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
@@ -585,7 +585,10 @@ impl ConnectionHandle {
             .map(|ident| ident.to_string())
             .collect();
 
-        let query = query_from_query_expression(query_expression);
+        let query = query_from_query_expression(
+            query_expression,
+            query_expression.sparse_fill_strategy != SparseFillStrategy::None,
+        );
 
         let request = QueryDatasetRequest {
             segment_ids: segment_ids

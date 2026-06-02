@@ -44,24 +44,6 @@ pub async fn query_dataset_simple_filter(service: impl RerunCloudService) {
         .await;
 
     let client = create_test_client(service).await;
-    let query = re_chunk_store::QueryExpression {
-        view_contents: Some(std::iter::once((EntityPath::from("my/entity"), None)).collect()),
-        filtered_index: Some("frame_nr".into()),
-        ..Default::default()
-    };
-
-    let table_provider = DataframeQueryTableProvider::new_from_client(
-        client,
-        dataset_entry.details.id,
-        &query,
-        &[] as &[&str],
-        None,
-        None,       // arrow_schema — let the provider fetch it
-        None,       // trace_headers
-        Vec::new(), // metrics_collectors
-    )
-    .await
-    .unwrap();
 
     let ctx = SessionContext::default();
     let state = ctx.state();
@@ -73,17 +55,66 @@ pub async fn query_dataset_simple_filter(service: impl RerunCloudService) {
             "seg_id_eq",
         ),
         (col("frame_nr").eq(lit(50)), "frame_nr_eq"),
+        // 2-sided range — the path that `replace_time_in_query` +
+        // `merge_queries_and` pair with a latest_at, and which the
+        // post-pushdown scrub strips when `sparse_fill_strategy=None`. The
+        // snapshot exercises end-to-end row-correctness for the patched path.
+        (
+            col("frame_nr")
+                .gt_eq(lit(40))
+                .and(col("frame_nr").lt_eq(lit(60))),
+            "frame_nr_range",
+        ),
     ];
 
-    for (filter, snapshot_name) in tests {
-        query_dataset_snapshot(
-            &table_provider,
-            &ctx,
-            &state,
-            filter,
-            &format!("simple_dataset_{snapshot_name}"),
+    // Run every filter case under both `SparseFillStrategy` variants so any
+    // future operator added to `tests` automatically picks up fill-mode
+    // coverage. Per-operator regressions under fill (e.g. a refactor of
+    // `replace_time_in_query`'s `synthesize_latest_at` gating that drops
+    // `latest_at` for the wrong arm) surface here without needing a parallel
+    // test harness.
+    //
+    // Snapshot naming: the `None` variant keeps the historical
+    // `simple_dataset_{name}` prefix so existing snapshots are unaffected;
+    // the `LatestAtGlobal` variant appends `_fill_latest_at` for the new
+    // snapshots.
+    for (sparse_fill_strategy, suffix) in [
+        (re_chunk_store::SparseFillStrategy::None, ""),
+        (
+            re_chunk_store::SparseFillStrategy::LatestAtGlobal,
+            "_fill_latest_at",
+        ),
+    ] {
+        let query = re_chunk_store::QueryExpression {
+            view_contents: Some(std::iter::once((EntityPath::from("my/entity"), None)).collect()),
+            filtered_index: Some("frame_nr".into()),
+            sparse_fill_strategy,
+            ..Default::default()
+        };
+
+        let table_provider = DataframeQueryTableProvider::new_from_client(
+            client.clone(),
+            dataset_entry.details.id,
+            &query,
+            &[] as &[&str],
+            None,
+            None,       // arrow_schema — let the provider fetch it
+            None,       // trace_headers
+            Vec::new(), // metrics_collectors
         )
-        .await;
+        .await
+        .unwrap();
+
+        for (filter, snapshot_name) in &tests {
+            query_dataset_snapshot(
+                &table_provider,
+                &ctx,
+                &state,
+                filter.clone(),
+                &format!("simple_dataset_{snapshot_name}{suffix}"),
+            )
+            .await;
+        }
     }
 
     // SAFETY:
@@ -94,6 +125,169 @@ pub async fn query_dataset_simple_filter(service: impl RerunCloudService) {
             None => std::env::remove_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED"),
         }
     }
+}
+
+/// Regression guard for the post-pushdown `latest_at` scrub in
+/// [`DataframeQueryTableProvider::scan`].
+///
+/// Drives an identical 2-sided range filter (`frame_nr ∈ [40, 60]`) through
+/// the table provider twice — once with `SparseFillStrategy::None` and once
+/// with `SparseFillStrategy::LatestAtGlobal` — and snapshots both row sets.
+///
+/// What this protects against:
+///
+/// - **Correctness for the patched, non-fill path**: the
+///   `frame_nr_range_no_fill` snapshot pins the exact rows returned after
+///   the scrub. If the scrub ever drops `range` (or otherwise corrupts the
+///   request), this snapshot will diff.
+/// - **Behavioral fidelity of the fill path**: the
+///   `frame_nr_range_fill_latest_at` snapshot pins the rows returned when
+///   `LatestAtGlobal` is requested. The scrub MUST NOT fire here, so the
+///   request retains `latest_at` and the server still emits the
+///   latest-at-fill rows the user asked for. If the scrub ever runs
+///   unconditionally, fill-mode rows disappear and this snapshot diffs.
+/// - **The two snapshots must remain non-identical** (fill mode produces
+///   strictly more rows than the pure range scan). An explicit assertion
+///   enforces this.
+pub async fn query_dataset_range_filter_with_and_without_latest_at_fill(
+    service: impl RerunCloudService,
+) {
+    #![expect(unsafe_code)]
+    let original_env = std::env::var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED").ok();
+
+    // SAFETY:
+    // This is simply a test
+    unsafe { std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "3") };
+
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::multi_chunked_entities(
+                "my_segment_id1",
+                &["my/entity", "my/other/entity"],
+            ),
+            LayerDefinition::multi_chunked_entities("my_segment_id2", &["my/entity"]),
+            LayerDefinition::multi_chunked_entities(
+                "my_segment_id3",
+                &["my/entity", "another/one", "yet/another/one"],
+            ),
+        ],
+    );
+
+    let dataset_name = "dataset";
+    let dataset_entry = service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    let client = create_test_client(service).await;
+
+    // The same 2-sided range that exercises `merge_queries_and`, used in
+    // both the no-fill and the fill-latest-at variants below.
+    let range_filter = col("frame_nr")
+        .gt_eq(lit(40))
+        .and(col("frame_nr").lt_eq(lit(60)));
+
+    // Variant 1: sparse_fill_strategy=None (default). The post-pushdown
+    // scrub fires; the server sees a pure range request.
+    let no_fill_query = re_chunk_store::QueryExpression {
+        view_contents: Some(std::iter::once((EntityPath::from("my/entity"), None)).collect()),
+        filtered_index: Some("frame_nr".into()),
+        sparse_fill_strategy: re_chunk_store::SparseFillStrategy::None,
+        ..Default::default()
+    };
+    let no_fill_provider = DataframeQueryTableProvider::new_from_client(
+        client.clone(),
+        dataset_entry.details.id,
+        &no_fill_query,
+        &[] as &[&str],
+        None,
+        None,
+        None,
+        Vec::new(),
+    )
+    .await
+    .unwrap();
+    query_dataset_count_and_snapshot(
+        &no_fill_provider,
+        range_filter.clone(),
+        "frame_nr_range_no_fill",
+    )
+    .await;
+
+    // Variant 2: sparse_fill_strategy=LatestAtGlobal. The scrub MUST be
+    // gated off here; the server needs `latest_at` to drive fill.
+    let fill_query = re_chunk_store::QueryExpression {
+        view_contents: Some(std::iter::once((EntityPath::from("my/entity"), None)).collect()),
+        filtered_index: Some("frame_nr".into()),
+        sparse_fill_strategy: re_chunk_store::SparseFillStrategy::LatestAtGlobal,
+        ..Default::default()
+    };
+    let fill_provider = DataframeQueryTableProvider::new_from_client(
+        client,
+        dataset_entry.details.id,
+        &fill_query,
+        &[] as &[&str],
+        None,
+        None,
+        None,
+        Vec::new(),
+    )
+    .await
+    .unwrap();
+    query_dataset_count_and_snapshot(
+        &fill_provider,
+        range_filter,
+        "frame_nr_range_fill_latest_at",
+    )
+    .await;
+
+    // SAFETY:
+    // This is simply a test
+    unsafe {
+        match original_env {
+            Some(val) => std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", val),
+            None => std::env::remove_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED"),
+        }
+    }
+}
+
+async fn query_dataset_count_and_snapshot<T: DataframeClientAPI>(
+    table_provider: &DataframeQueryTableProvider<T>,
+    filter: Expr,
+    snapshot_name: &str,
+) {
+    let ctx = SessionContext::default();
+    let state = ctx.state();
+    let plan = table_provider
+        .scan(&state, None, &[filter], None)
+        .await
+        .unwrap();
+
+    let num_partitions = plan.output_partitioning().partition_count();
+    let results = (0..num_partitions)
+        .map(|partition| plan.execute(partition, ctx.task_ctx()))
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+
+    let stream = futures::stream::iter(results);
+    let results: Vec<RecordBatch> = stream
+        .flat_map(|stream| stream)
+        .try_collect()
+        .await
+        .unwrap();
+    let results = concat_record_batches(&results);
+
+    insta::assert_snapshot!(
+        format!("{snapshot_name}_schema"),
+        results.format_schema_snapshot()
+    );
+
+    let filtered_results = results.horizontally_sorted().auto_sort_rows().unwrap();
+    insta::assert_snapshot!(
+        format!("{snapshot_name}_data"),
+        filtered_results.format_snapshot(false)
+    );
 }
 
 pub async fn query_dataset_with_limit(service: impl RerunCloudService) {

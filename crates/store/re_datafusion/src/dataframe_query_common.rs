@@ -276,7 +276,10 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
         // must be driven from `view_contents` itself rather than the derived list.
         let select_all_entity_paths = query_expression.view_contents.is_none();
 
-        let query = query_from_query_expression(query_expression);
+        let query = query_from_query_expression(
+            query_expression,
+            query_expression.sparse_fill_strategy != SparseFillStrategy::None,
+        );
         let fuzzy_descriptors: Vec<String> = query_expression
             .view_contents
             .as_ref()
@@ -332,6 +335,19 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             metrics_collectors,
             filter_capture: Arc::new(Mutex::new(None)),
         })
+    }
+
+    /// Whether pushdown should synthesize a `latest_at` alongside its
+    /// rewritten `range`. True iff the caller requested sparse-fill semantics
+    /// — synthesizing `latest_at` under [`SparseFillStrategy::None`] would
+    /// force an expensive server-side latest-at fan-out whose rows the
+    /// caller has already opted out of.
+    ///
+    /// Same gate drives the entity-path projection narrowing block in `scan`
+    /// (in its inverted form): both optimizations are only safe when no fill
+    /// is requested.
+    fn synthesize_latest_at(&self) -> bool {
+        self.query_expression.sparse_fill_strategy != SparseFillStrategy::None
     }
 
     fn selector_from_column(column: &Column) -> Option<ComponentColumnSelector> {
@@ -419,6 +435,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             let scan_start_wall = SystemTime::now();
             let scan_start = Instant::now();
 
+            let synthesize_latest_at = self.synthesize_latest_at();
             let FilterCapture {
                 total: filters_total,
                 all_signatures: filters_signatures,
@@ -431,7 +448,12 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             let mut filters_pushed_down: usize = 0;
             let mut filters_applied_client_side: usize = 0;
             for filter in filters {
-                match apply_filter_expr_to_queries(dataset_queries.clone(), filter, &self.schema)? {
+                match apply_filter_expr_to_queries(
+                    dataset_queries.clone(),
+                    filter,
+                    &self.schema,
+                    synthesize_latest_at,
+                )? {
                     Some(updated_queries) => {
                         filters_pushed_down += 1;
                         dataset_queries = updated_queries;
@@ -448,7 +470,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             // from excluded entities would produce rows with filled values that the
             // user expects.
             let mut entity_path_narrowing_applied = false;
-            if self.query_expression.sparse_fill_strategy == SparseFillStrategy::None
+            if !synthesize_latest_at
                 && let Some(projected_paths) = projection.map(|projection| {
                     extract_projected_entity_paths(&self.schema, projection, filters)
                 })
@@ -631,6 +653,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
     ) -> datafusion::common::Result<Vec<TableProviderFilterPushDown>> {
         let filter_columns = Self::compute_column_is_neq_null_filter(filters);
         let non_null_columns = filter_columns.iter().flatten().collect::<Vec<_>>();
+        let synthesize_latest_at = self.synthesize_latest_at();
         let results: Vec<TableProviderFilterPushDown> = if let Some(col) = non_null_columns.first()
         {
             let col = *col;
@@ -643,6 +666,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                             filter_expr,
                             &self.query_dataset_request,
                             &self.schema,
+                            synthesize_latest_at,
                         )
                     }
                 })
@@ -651,7 +675,12 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             filters
                 .iter()
                 .map(|filter_expr| {
-                    filter_expr_is_supported(filter_expr, &self.query_dataset_request, &self.schema)
+                    filter_expr_is_supported(
+                        filter_expr,
+                        &self.query_dataset_request,
+                        &self.schema,
+                        synthesize_latest_at,
+                    )
                 })
                 .try_collect()?
         };
@@ -994,13 +1023,33 @@ pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAgg
     }
 }
 
-pub fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
+/// Build a server-side [`Query`] from a [`QueryExpression`].
+///
+/// `synthesize_latest_at` controls whether a non-static query carries a
+/// `latest_at` derived from [`QueryExpression::min_latest_at`]. Pass `true`
+/// when the caller wants sparse-fill semantics
+/// ([`SparseFillStrategy::LatestAtGlobal`]); pass `false` (the common case,
+/// [`SparseFillStrategy::None`]) to skip — without fill, the `range` already
+/// carries everything the server needs and the synthesized `latest_at` would
+/// only drive an expensive latest-at fan-out for rows the caller has opted
+/// out of.
+///
+/// Static-only queries ([`QueryExpression::is_static`]) always carry
+/// [`QueryLatestAt::new_static`] regardless of the flag — that marker is the
+/// sole signal the server uses to filter to static chunks; stripping it
+/// would turn a static-only request into a full-dataset scan.
+pub fn query_from_query_expression(
+    query_expression: &QueryExpression,
+    synthesize_latest_at: bool,
+) -> Query {
     let latest_at = if query_expression.is_static() {
         Some(QueryLatestAt::new_static())
-    } else {
+    } else if synthesize_latest_at {
         query_expression
             .min_latest_at()
             .map(|latest_at| QueryLatestAt::global(Some(latest_at.timeline()), latest_at.at()))
+    } else {
+        None
     };
 
     Query {
@@ -1392,6 +1441,107 @@ mod tests {
         }
 
         assert_eq!(query.entity_paths, original);
+    }
+
+    // -------------------------------------------------------------------
+    // `query_from_query_expression` — gating of `latest_at` synthesis on
+    // `synthesize_latest_at` for the user-supplied-range path. This is the
+    // path that previously had NO coverage: a `QueryExpression` carrying a
+    // `filtered_index_range` (or `filtered_index_values` / `using_index_values`)
+    // with `sparse_fill_strategy = None`. Pre-altitude-fix, this path would
+    // ship `latest_at=Some(...)` to the server because `min_latest_at()`
+    // populated it unconditionally — the scrub helper was the safety net.
+    // Post-fix, `synthesize_latest_at=false` must drop the latest_at at
+    // construction; the static-only marker must survive regardless.
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn test_query_from_expr_user_supplied_range_no_fill_drops_latest_at() {
+        use re_log_types::{AbsoluteTimeRange, TimeInt};
+
+        let query_expression = QueryExpression {
+            view_contents: None,
+            filtered_index: Some("frame_nr".into()),
+            filtered_index_range: Some(AbsoluteTimeRange::new(
+                TimeInt::new_temporal(100),
+                TimeInt::new_temporal(200),
+            )),
+            sparse_fill_strategy: SparseFillStrategy::None,
+            ..Default::default()
+        };
+
+        let query = super::query_from_query_expression(&query_expression, false);
+
+        assert!(
+            query.latest_at.is_none(),
+            "user-supplied range with sparse_fill=None must not ship latest_at",
+        );
+        let range = query.range.as_ref().expect("range must be set");
+        assert_eq!(
+            range.index_range,
+            AbsoluteTimeRange {
+                min: TimeInt::new_temporal(100),
+                max: TimeInt::new_temporal(200),
+            },
+            "range must come from filtered_index_range verbatim",
+        );
+    }
+
+    #[test]
+    fn test_query_from_expr_user_supplied_range_fill_keeps_latest_at() {
+        use re_log_types::{AbsoluteTimeRange, TimeInt};
+
+        let query_expression = QueryExpression {
+            view_contents: None,
+            filtered_index: Some("frame_nr".into()),
+            filtered_index_range: Some(AbsoluteTimeRange::new(
+                TimeInt::new_temporal(100),
+                TimeInt::new_temporal(200),
+            )),
+            sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
+            ..Default::default()
+        };
+
+        let query = super::query_from_query_expression(&query_expression, true);
+
+        let la = query
+            .latest_at
+            .as_ref()
+            .expect("LatestAtGlobal must ship latest_at");
+        assert_eq!(la.at, TimeInt::new_temporal(100));
+        assert!(
+            la.index.is_some(),
+            "non-static latest_at must carry timeline"
+        );
+        assert!(query.range.is_some(), "range must still be set");
+    }
+
+    #[test]
+    fn test_query_from_expr_static_preserves_new_static_regardless_of_flag() {
+        // `filtered_index = None` ⇒ `is_static() = true` ⇒ `latest_at` must
+        // be `new_static()` even when `synthesize_latest_at=false`. The
+        // static marker is the sole signal the server uses to filter to
+        // static chunks; stripping it turns a static-only request into a
+        // full-dataset scan.
+        let query_expression = QueryExpression {
+            view_contents: None,
+            filtered_index: None,
+            sparse_fill_strategy: SparseFillStrategy::None,
+            ..Default::default()
+        };
+
+        let query = super::query_from_query_expression(&query_expression, false);
+
+        let la = query
+            .latest_at
+            .as_ref()
+            .expect("static-only must carry new_static() latest_at");
+        assert!(
+            la.is_static(),
+            "latest_at must be `new_static()` for static-only queries even when \
+             synthesize_latest_at=false",
+        );
+        assert!(query.range.is_none(), "static-only must have no range");
     }
 
     /// Build a synthetic chunk-info `RecordBatch` from parallel column vectors.
