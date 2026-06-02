@@ -1,4 +1,4 @@
-use crate::analytics::{QueryInfo, QueryType};
+use crate::analytics::{QueryInfo, QueryType, expr_filter_signature};
 use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use crate::batch_coalescer::coalescer::CoalescerOptions;
 use crate::metrics_capture::QueryMetrics;
@@ -20,6 +20,7 @@ use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
+use parking_lot::Mutex;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, IndexValue, QueryExpression, SparseFillStrategy};
 use re_log_types::{EntityPath, EntryId};
@@ -107,6 +108,31 @@ pub struct DataframeQueryTableProvider<T: DataframeClientAPI> {
     /// provider into every `SegmentStreamExec` it builds. Empty when no
     /// `query_metrics()` scope was active.
     metrics_collectors: Vec<crate::MetricsCollector>,
+
+    /// Filter expressions offered by DataFusion at planning time, stored for
+    /// inclusion in the `cloud_query_dataset` analytics span.
+    ///
+    /// `Arc` so that the value survives any clone made between planning and scan.
+    filter_capture: Arc<Mutex<Option<FilterCapture>>>,
+}
+
+/// Per-filter classification data captured in [`DataframeQueryTableProvider::supports_filters_pushdown`]
+/// and consumed in [`DataframeQueryTableProvider::scan`].
+#[derive(Default, Debug)]
+struct FilterCapture {
+    total: u32,
+
+    /// Semicolon-delimited SQL signatures of all offered filters (in DataFusion's order).
+    all_signatures: String,
+
+    /// Signatures of filters classified as [`TableProviderFilterPushDown::Exact`].
+    exact_signatures: String,
+
+    /// Signatures of filters classified as [`TableProviderFilterPushDown::Inexact`].
+    inexact_signatures: String,
+
+    /// Signatures of filters classified as [`TableProviderFilterPushDown::Unsupported`].
+    unsupported_signatures: String,
 }
 
 /// This trait provides the specific methods used when interacting with the
@@ -304,6 +330,7 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             trace_headers,
             analytics: None,
             metrics_collectors,
+            filter_capture: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -391,6 +418,14 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
         async {
             let scan_start_wall = SystemTime::now();
             let scan_start = Instant::now();
+
+            let FilterCapture {
+                total: filters_total,
+                all_signatures: filters_signatures,
+                exact_signatures: filters_signatures_exact,
+                inexact_signatures: filters_signatures_inexact,
+                unsupported_signatures: filters_signatures_unsupported,
+            } = self.filter_capture.lock().take().unwrap_or_default();
 
             let mut dataset_queries = vec![self.query_dataset_request.clone()];
             let mut filters_pushed_down: usize = 0;
@@ -513,6 +548,11 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 filters_pushed_down,
                 filters_applied_client_side,
                 entity_path_narrowing_applied,
+                filters_total,
+                filters_signatures,
+                filters_signatures_exact,
+                filters_signatures_inexact,
+                filters_signatures_unsupported,
             };
 
             // Construct the plan's `QueryMetrics` here so it can be shared by
@@ -591,9 +631,10 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
     ) -> datafusion::common::Result<Vec<TableProviderFilterPushDown>> {
         let filter_columns = Self::compute_column_is_neq_null_filter(filters);
         let non_null_columns = filter_columns.iter().flatten().collect::<Vec<_>>();
-        if let Some(col) = non_null_columns.first() {
+        let results: Vec<TableProviderFilterPushDown> = if let Some(col) = non_null_columns.first()
+        {
             let col = *col;
-            Ok(std::iter::zip(&filter_columns, filters)
+            std::iter::zip(&filter_columns, filters)
                 .map(|(column_selector, filter_expr)| {
                     if Some(col) == column_selector.as_ref() {
                         Ok(TableProviderFilterPushDown::Exact)
@@ -605,15 +646,38 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                         )
                     }
                 })
-                .try_collect()?)
+                .try_collect()?
         } else {
-            Ok(filters
+            filters
                 .iter()
                 .map(|filter_expr| {
                     filter_expr_is_supported(filter_expr, &self.query_dataset_request, &self.schema)
                 })
-                .try_collect()?)
+                .try_collect()?
+        };
+
+        let mut all_sigs: Vec<String> = Vec::with_capacity(filters.len());
+        let mut exact_sigs: Vec<String> = Vec::new();
+        let mut inexact_sigs: Vec<String> = Vec::new();
+        let mut unsupported_sigs: Vec<String> = Vec::new();
+        for (filter, result) in std::iter::zip(filters, &results) {
+            let sig = expr_filter_signature(filter);
+            all_sigs.push(sig.clone());
+            match result {
+                TableProviderFilterPushDown::Exact => exact_sigs.push(sig),
+                TableProviderFilterPushDown::Inexact => inexact_sigs.push(sig),
+                TableProviderFilterPushDown::Unsupported => unsupported_sigs.push(sig),
+            }
         }
+        *self.filter_capture.lock() = Some(FilterCapture {
+            total: filters.len() as u32,
+            all_signatures: all_sigs.join(";"),
+            exact_signatures: exact_sigs.join(";"),
+            inexact_signatures: inexact_sigs.join(";"),
+            unsupported_signatures: unsupported_sigs.join(";"),
+        });
+
+        Ok(results)
     }
 }
 

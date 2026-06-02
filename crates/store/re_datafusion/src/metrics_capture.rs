@@ -276,6 +276,11 @@ mod tests {
             filters_pushed_down: 1,
             filters_applied_client_side: 0,
             entity_path_narrowing_applied: true,
+            filters_total: 0,
+            filters_signatures: String::new(),
+            filters_signatures_exact: String::new(),
+            filters_signatures_inexact: String::new(),
+            filters_signatures_unsupported: String::new(),
         }
     }
 
