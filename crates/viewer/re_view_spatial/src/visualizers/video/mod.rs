@@ -546,7 +546,10 @@ impl From<VideoPlayerError> for VideoPlaybackIssue {
             should_request_more_frames: error.should_request_more_frames(),
             show_frame: match error {
                 VideoPlayerError::NegativeTimestamp
-                | VideoPlayerError::InsufficientSampleData(_) => false,
+                | VideoPlayerError::InsufficientSampleData(_)
+                | VideoPlayerError::Decoding(re_video::DecodeError::WaitingForCodecDetails) => {
+                    false
+                }
 
                 VideoPlayerError::EmptyBuffer
                 | VideoPlayerError::UnloadedSampleData(_)
