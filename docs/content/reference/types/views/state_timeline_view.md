@@ -29,3 +29,4 @@ snippet: views/state_timeline
 
 * [`StateChange`](../archetypes/state_change.md)
 * [`StateConfiguration`](../archetypes/state_configuration.md)
+

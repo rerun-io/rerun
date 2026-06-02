@@ -6,12 +6,13 @@ title: "VoxelGridMap"
 ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 A sparse 3D voxel grid map with grid indices and a uniform cell size.
 
-This archetype is intended for occupancy maps and other sparse volumetric maps where only
-listed voxels are rendered.
+This archetype is intended for 3D occupancy maps and other volumetric data
+represented as a sparse, uniform grid of voxels.
 
-The `translation` component defines the minimum corner of voxel `[0, 0, 0]`.
-A voxel center is `(index + 0.5) * cell_size` in local grid coordinates, then transformed by
-the optional pose and the entity transform.
+The minimum corner of the voxel with `[0, 0, 0]` index is located at the origin of the entity's coordinate frame
+and can have an additional offset from there through the optional translation and rotation fields.
+
+A voxel center is at `(index + 0.5) * cell_size` in local grid coordinates (i.e. relative to the minimum corner).
 
 ## Fields
 ### Required
@@ -43,3 +44,4 @@ the optional pose and the entity transform.
 ### Simple sparse voxel grid map
 
 snippet: archetypes/voxel_grid_map_simple
+

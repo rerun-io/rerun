@@ -24,3 +24,4 @@ A list of properties associated with a recording.
 ### Setting recording properties
 
 snippet: concepts/recording_properties
+

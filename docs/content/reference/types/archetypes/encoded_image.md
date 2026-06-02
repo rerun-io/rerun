@@ -44,3 +44,4 @@ snippet: archetypes/encoded_image
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/1200w.png">
   <img src="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/full.png">
 </picture>
+

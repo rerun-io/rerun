@@ -21,3 +21,5 @@ Struct(
  * 🌊 [C++ API docs for `TensorDimensionIndexSelection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TensorDimensionIndexSelection.html)
  * 🐍 [Python API docs for `TensorDimensionIndexSelection`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TensorDimensionIndexSelection)
  * 🦀 [Rust API docs for `TensorDimensionIndexSelection`](https://docs.rs/rerun/latest/rerun/components/struct.TensorDimensionIndexSelection.html)
+
+

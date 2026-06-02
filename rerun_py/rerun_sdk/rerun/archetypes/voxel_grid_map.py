@@ -31,12 +31,13 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
     """
     **Archetype**: A sparse 3D voxel grid map with grid indices and a uniform cell size.
 
-    This archetype is intended for occupancy maps and other sparse volumetric maps where only
-    listed voxels are rendered.
+    This archetype is intended for 3D occupancy maps and other volumetric data
+    represented as a sparse, uniform grid of voxels.
 
-    The `translation` component defines the minimum corner of voxel `[0, 0, 0]`.
-    A voxel center is `(index + 0.5) * cell_size` in local grid coordinates, then transformed by
-    the optional pose and the entity transform.
+    The minimum corner of the voxel with `[0, 0, 0]` index is located at the origin of the entity's coordinate frame
+    and can have an additional offset from there through the optional translation and rotation fields.
+
+    A voxel center is at `(index + 0.5) * cell_size` in local grid coordinates (i.e. relative to the minimum corner).
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 
@@ -100,9 +101,12 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         Parameters
         ----------
         voxel_indices:
-            Integer voxel indices to render.
+            Indices of the voxels within the grid volume.
         cell_size:
             The scene unit size of a single voxel cell.
+
+            This defines the side length of each voxel cube.
+            Anisotropic (non-cubic) voxels are currently not supported.
         values:
             Optional scalar occupancy or value data for each voxel.
 
@@ -110,7 +114,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         colors:
             Optional colors for each voxel.
 
-            Explicit colors take precedence over scalar values.
+            If set, these colors take precedence over color-mapped scalar values.
         translation:
             Translation of the minimum corner of voxel `[0, 0, 0]`.
 
@@ -136,7 +140,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
 
             Defaults to 1.0 (fully opaque).
         value_range:
-            Scalar value range mapped to the colormap.
+            Scalar value range for color-mapping.
 
             Defaults to `[0.0, 1.0]`.
         colormap:
@@ -209,9 +213,12 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         voxel_indices:
-            Integer voxel indices to render.
+            Indices of the voxels within the grid volume.
         cell_size:
             The scene unit size of a single voxel cell.
+
+            This defines the side length of each voxel cube.
+            Anisotropic (non-cubic) voxels are currently not supported.
         values:
             Optional scalar occupancy or value data for each voxel.
 
@@ -219,7 +226,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         colors:
             Optional colors for each voxel.
 
-            Explicit colors take precedence over scalar values.
+            If set, these colors take precedence over color-mapped scalar values.
         translation:
             Translation of the minimum corner of voxel `[0, 0, 0]`.
 
@@ -245,7 +252,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
 
             Defaults to 1.0 (fully opaque).
         value_range:
-            Scalar value range mapped to the colormap.
+            Scalar value range for color-mapping.
 
             Defaults to `[0.0, 1.0]`.
         colormap:
@@ -390,9 +397,12 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         Parameters
         ----------
         voxel_indices:
-            Integer voxel indices to render.
+            Indices of the voxels within the grid volume.
         cell_size:
             The scene unit size of a single voxel cell.
+
+            This defines the side length of each voxel cube.
+            Anisotropic (non-cubic) voxels are currently not supported.
         values:
             Optional scalar occupancy or value data for each voxel.
 
@@ -400,7 +410,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         colors:
             Optional colors for each voxel.
 
-            Explicit colors take precedence over scalar values.
+            If set, these colors take precedence over color-mapped scalar values.
         translation:
             Translation of the minimum corner of voxel `[0, 0, 0]`.
 
@@ -426,7 +436,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
 
             Defaults to 1.0 (fully opaque).
         value_range:
-            Scalar value range mapped to the colormap.
+            Scalar value range for color-mapping.
 
             Defaults to `[0.0, 1.0]`.
         colormap:
@@ -505,7 +515,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         default=None,
         converter=components.VoxelIndexBatch._converter,  # type: ignore[misc]
     )
-    # Integer voxel indices to render.
+    # Indices of the voxels within the grid volume.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -515,6 +525,9 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         converter=components.CellSizeBatch._converter,  # type: ignore[misc]
     )
     # The scene unit size of a single voxel cell.
+    #
+    # This defines the side length of each voxel cube.
+    # Anisotropic (non-cubic) voxels are currently not supported.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -536,7 +549,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
     )
     # Optional colors for each voxel.
     #
-    # Explicit colors take precedence over scalar values.
+    # If set, these colors take precedence over color-mapped scalar values.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -597,7 +610,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         default=None,
         converter=components.ValueRangeBatch._converter,  # type: ignore[misc]
     )
-    # Scalar value range mapped to the colormap.
+    # Scalar value range for color-mapping.
     #
     # Defaults to `[0.0, 1.0]`.
     #

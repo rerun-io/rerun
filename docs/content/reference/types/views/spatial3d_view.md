@@ -95,3 +95,4 @@ snippet: views/spatial3d
 * [`SegmentationImage`](../archetypes/segmentation_image.md) (if logged under a projection)
 * [`VideoFrameReference`](../archetypes/video_frame_reference.md) (if logged under a projection)
 * [`VideoStream`](../archetypes/video_stream.md) (if logged under a projection)
+

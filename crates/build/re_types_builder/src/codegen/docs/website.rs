@@ -82,7 +82,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 object.kind.plural_snake_case(),
                 object.snake_case_name()
             ));
-            files_to_write.insert(path, trim_page_end(page));
+            files_to_write.insert(path, page);
         }
 
         for (kind, order, prelude, kind_objects) in [
@@ -125,17 +125,11 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
             let path = self
                 .docs_dir
                 .join(format!("{}.md", kind.plural_snake_case()));
-            files_to_write.insert(path, trim_page_end(page));
+            files_to_write.insert(path, page);
         }
 
         files_to_write
     }
-}
-
-fn trim_page_end(mut page: String) -> String {
-    page.truncate(page.trim_end().len());
-    page.push('\n');
-    page
 }
 
 fn collect_view_types_per_archetype(objects: &Objects) -> ViewsPerArchetype {

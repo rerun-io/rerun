@@ -43,3 +43,4 @@ snippet: archetypes/ellipses2d_simple
 ### Batch of 2D ellipses
 
 snippet: archetypes/ellipses2d_batch
+

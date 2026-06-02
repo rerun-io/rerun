@@ -95,3 +95,4 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`Visible`](components/visible.md): Whether the container, view, entity or instance is currently visible.
 * [`VoxelIndex`](components/voxel_index.md): Integer index of a voxel in a sparse 3D voxel grid.
 * [`VoxelValue`](components/voxel_value.md): Optional scalar occupancy or value associated with a voxel.
+

@@ -33,3 +33,4 @@ See [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archetypes/
 ### Simple MCAP message
 
 snippet: archetypes/mcap_message_simple
+

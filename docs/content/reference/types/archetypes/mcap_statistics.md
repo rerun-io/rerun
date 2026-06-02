@@ -43,3 +43,4 @@ and the [MCAP specification](https://mcap.dev/) for complete format details.
 ### Simple MCAP statistics
 
 snippet: archetypes/mcap_statistics_simple
+

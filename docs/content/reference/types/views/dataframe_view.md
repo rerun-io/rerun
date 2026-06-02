@@ -44,3 +44,4 @@ snippet: views/dataframe
 ## Visualized archetypes
 
 Any data can be displayed by the Dataframe view.
+

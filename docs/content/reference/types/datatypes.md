@@ -57,3 +57,4 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`VideoTimestamp`](datatypes/video_timestamp.md): Presentation timestamp within a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
 * [`ViewCoordinates`](datatypes/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 * [`VisibleTimeRange`](datatypes/visible_time_range.md): Visible time range bounds for a specific timeline.
+

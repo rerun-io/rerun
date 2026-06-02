@@ -26,12 +26,13 @@
 namespace rerun::archetypes {
     /// **Archetype**: A sparse 3D voxel grid map with grid indices and a uniform cell size.
     ///
-    /// This archetype is intended for occupancy maps and other sparse volumetric maps where only
-    /// listed voxels are rendered.
+    /// This archetype is intended for 3D occupancy maps and other volumetric data
+    /// represented as a sparse, uniform grid of voxels.
     ///
-    /// The `translation` component defines the minimum corner of voxel `[0, 0, 0]`.
-    /// A voxel center is `(index + 0.5) * cell_size` in local grid coordinates, then transformed by
-    /// the optional pose and the entity transform.
+    /// The minimum corner of the voxel with `[0, 0, 0]` index is located at the origin of the entity's coordinate frame
+    /// and can have an additional offset from there through the optional translation and rotation fields.
+    ///
+    /// A voxel center is at `(index + 0.5) * cell_size` in local grid coordinates (i.e. relative to the minimum corner).
     ///
     /// ## Example
     ///
@@ -81,10 +82,13 @@ namespace rerun::archetypes {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct VoxelGridMap {
-        /// Integer voxel indices to render.
+        /// Indices of the voxels within the grid volume.
         std::optional<ComponentBatch> voxel_indices;
 
         /// The scene unit size of a single voxel cell.
+        ///
+        /// This defines the side length of each voxel cube.
+        /// Anisotropic (non-cubic) voxels are currently not supported.
         std::optional<ComponentBatch> cell_size;
 
         /// Optional scalar occupancy or value data for each voxel.
@@ -94,7 +98,7 @@ namespace rerun::archetypes {
 
         /// Optional colors for each voxel.
         ///
-        /// Explicit colors take precedence over scalar values.
+        /// If set, these colors take precedence over color-mapped scalar values.
         std::optional<ComponentBatch> colors;
 
         /// Translation of the minimum corner of voxel `[0, 0, 0]`.
@@ -125,7 +129,7 @@ namespace rerun::archetypes {
         /// Defaults to 1.0 (fully opaque).
         std::optional<ComponentBatch> opacity;
 
-        /// Scalar value range mapped to the colormap.
+        /// Scalar value range for color-mapping.
         ///
         /// Defaults to `[0.0, 1.0]`.
         std::optional<ComponentBatch> value_range;
@@ -215,7 +219,7 @@ namespace rerun::archetypes {
         /// Clear all the fields of a `VoxelGridMap`.
         static VoxelGridMap clear_fields();
 
-        /// Integer voxel indices to render.
+        /// Indices of the voxels within the grid volume.
         VoxelGridMap with_voxel_indices(
             const Collection<rerun::components::VoxelIndex>& _voxel_indices
         ) && {
@@ -225,6 +229,9 @@ namespace rerun::archetypes {
         }
 
         /// The scene unit size of a single voxel cell.
+        ///
+        /// This defines the side length of each voxel cube.
+        /// Anisotropic (non-cubic) voxels are currently not supported.
         VoxelGridMap with_cell_size(const rerun::components::CellSize& _cell_size) && {
             cell_size =
                 ComponentBatch::from_loggable(_cell_size, Descriptor_cell_size).value_or_throw();
@@ -252,7 +259,7 @@ namespace rerun::archetypes {
 
         /// Optional colors for each voxel.
         ///
-        /// Explicit colors take precedence over scalar values.
+        /// If set, these colors take precedence over color-mapped scalar values.
         VoxelGridMap with_colors(const Collection<rerun::components::Color>& _colors) && {
             colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
             return std::move(*this);
@@ -350,7 +357,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Scalar value range mapped to the colormap.
+        /// Scalar value range for color-mapping.
         ///
         /// Defaults to `[0.0, 1.0]`.
         VoxelGridMap with_value_range(const rerun::components::ValueRange& _value_range) && {

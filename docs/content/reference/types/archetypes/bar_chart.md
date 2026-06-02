@@ -39,3 +39,4 @@ snippet: archetypes/bar_chart
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/1200w.png">
   <img src="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/full.png">
 </picture>
+

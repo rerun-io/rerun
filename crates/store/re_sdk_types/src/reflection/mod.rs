@@ -3862,14 +3862,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "voxel_indices",
                         display_name: "Voxel indices",
                         component_type: "rerun.components.VoxelIndex".into(),
-                        docstring_md: "Integer voxel indices to render.",
+                        docstring_md: "Indices of the voxels within the grid volume.",
                         flags: ArchetypeFieldFlags::REQUIRED,
                     },
                     ArchetypeFieldReflection {
                         name: "cell_size",
                         display_name: "Cell size",
                         component_type: "rerun.components.CellSize".into(),
-                        docstring_md: "The scene unit size of a single voxel cell.",
+                        docstring_md: "The scene unit size of a single voxel cell.\n\nThis defines the side length of each voxel cube.\nAnisotropic (non-cubic) voxels are currently not supported.",
                         flags: ArchetypeFieldFlags::REQUIRED,
                     },
                     ArchetypeFieldReflection {
@@ -3883,7 +3883,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "colors",
                         display_name: "Colors",
                         component_type: "rerun.components.Color".into(),
-                        docstring_md: "Optional colors for each voxel.\n\nExplicit colors take precedence over scalar values.",
+                        docstring_md: "Optional colors for each voxel.\n\nIf set, these colors take precedence over color-mapped scalar values.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -3918,7 +3918,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "value_range",
                         display_name: "Value range",
                         component_type: "rerun.components.ValueRange".into(),
-                        docstring_md: "Scalar value range mapped to the colormap.\n\nDefaults to `[0.0, 1.0]`.",
+                        docstring_md: "Scalar value range for color-mapping.\n\nDefaults to `[0.0, 1.0]`.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {

@@ -35,3 +35,4 @@ snippet: views/text_document
 ## Visualized archetypes
 
 * [`TextDocument`](../archetypes/text_document.md)
+

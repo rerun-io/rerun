@@ -23,12 +23,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A sparse 3D voxel grid map with grid indices and a uniform cell size.
 ///
-/// This archetype is intended for occupancy maps and other sparse volumetric maps where only
-/// listed voxels are rendered.
+/// This archetype is intended for 3D occupancy maps and other volumetric data
+/// represented as a sparse, uniform grid of voxels.
 ///
-/// The `translation` component defines the minimum corner of voxel `[0, 0, 0]`.
-/// A voxel center is `(index + 0.5) * cell_size` in local grid coordinates, then transformed by
-/// the optional pose and the entity transform.
+/// The minimum corner of the voxel with `[0, 0, 0]` index is located at the origin of the entity's coordinate frame
+/// and can have an additional offset from there through the optional translation and rotation fields.
+///
+/// A voxel center is at `(index + 0.5) * cell_size` in local grid coordinates (i.e. relative to the minimum corner).
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 ///
@@ -66,10 +67,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct VoxelGridMap {
-    /// Integer voxel indices to render.
+    /// Indices of the voxels within the grid volume.
     pub voxel_indices: Option<SerializedComponentBatch>,
 
     /// The scene unit size of a single voxel cell.
+    ///
+    /// This defines the side length of each voxel cube.
+    /// Anisotropic (non-cubic) voxels are currently not supported.
     pub cell_size: Option<SerializedComponentBatch>,
 
     /// Optional scalar occupancy or value data for each voxel.
@@ -79,7 +83,7 @@ pub struct VoxelGridMap {
 
     /// Optional colors for each voxel.
     ///
-    /// Explicit colors take precedence over scalar values.
+    /// If set, these colors take precedence over color-mapped scalar values.
     pub colors: Option<SerializedComponentBatch>,
 
     /// Translation of the minimum corner of voxel `[0, 0, 0]`.
@@ -110,7 +114,7 @@ pub struct VoxelGridMap {
     /// Defaults to 1.0 (fully opaque).
     pub opacity: Option<SerializedComponentBatch>,
 
-    /// Scalar value range mapped to the colormap.
+    /// Scalar value range for color-mapping.
     ///
     /// Defaults to `[0.0, 1.0]`.
     pub value_range: Option<SerializedComponentBatch>,
@@ -576,7 +580,7 @@ impl VoxelGridMap {
         self.columns(std::iter::repeat_n(1, len))
     }
 
-    /// Integer voxel indices to render.
+    /// Indices of the voxels within the grid volume.
     #[inline]
     pub fn with_voxel_indices(
         mut self,
@@ -587,6 +591,9 @@ impl VoxelGridMap {
     }
 
     /// The scene unit size of a single voxel cell.
+    ///
+    /// This defines the side length of each voxel cube.
+    /// Anisotropic (non-cubic) voxels are currently not supported.
     #[inline]
     pub fn with_cell_size(mut self, cell_size: impl Into<crate::components::CellSize>) -> Self {
         self.cell_size = try_serialize_field(Self::descriptor_cell_size(), [cell_size]);
@@ -620,7 +627,7 @@ impl VoxelGridMap {
 
     /// Optional colors for each voxel.
     ///
-    /// Explicit colors take precedence over scalar values.
+    /// If set, these colors take precedence over color-mapped scalar values.
     #[inline]
     pub fn with_colors(
         mut self,
@@ -739,7 +746,7 @@ impl VoxelGridMap {
         self
     }
 
-    /// Scalar value range mapped to the colormap.
+    /// Scalar value range for color-mapping.
     ///
     /// Defaults to `[0.0, 1.0]`.
     #[inline]
