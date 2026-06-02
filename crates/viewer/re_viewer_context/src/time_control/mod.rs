@@ -242,6 +242,9 @@ pub struct TimeControl {
     ///
     /// Becomes `highlighted_range` on the next [`TimeControl::update`].
     highlighted_range_next_frame: Option<TimeRangeHighlight>,
+
+    /// If the user has interacted since the last `update`, if so don't update time this frame.
+    just_interacted: bool,
 }
 
 impl Default for TimeControl {
@@ -256,6 +259,7 @@ impl Default for TimeControl {
             loop_mode: LoopMode::Off,
             highlighted_range: None,
             highlighted_range_next_frame: None,
+            just_interacted: false,
         }
     }
 }
@@ -272,6 +276,7 @@ impl re_byte_size::SizeBytes for TimeControl {
             loop_mode: _,
             highlighted_range: _,
             highlighted_range_next_frame: _,
+            just_interacted: _,
         } = self;
         states.heap_size_bytes()
     }
@@ -492,6 +497,8 @@ impl TimeControl {
             should_diff_state,
         } = *params;
 
+        let just_interacted = std::mem::take(&mut self.just_interacted);
+
         // Swap highlight buffer: `highlighted_range_next_frame` (set by the
         // command handler since the previous `update`) becomes readable via
         // `highlighted_range` this frame.
@@ -513,89 +520,93 @@ impl TimeControl {
             return TimeControlResponse::no_repaint(); // we have no data on this timeline yet, so bail
         };
 
-        let needs_repaint = match self.play_state() {
-            PlayState::Paused => {
-                // It's possible that the playback is paused because e.g. it reached its end, but
-                // then the user decides to switch timelines.
-                // When they do so, it might be the case that they switch to a timeline they've
-                // never interacted with before, in which case we don't even have a time state yet.
-                let state = self.states.entry(*self.timeline_name()).or_insert_with(|| {
-                    TimeState::new(if self.following {
-                        full_range.max()
-                    } else {
-                        full_range.min()
-                    })
-                });
-
-                state.last_paused_time = Some(state.time);
-                self.start_buffering(); // in case we hit play again!
-                NeedsRepaint::No
-            }
-
-            PlayState::Playing => {
-                let state = self
-                    .states
-                    .entry(*self.timeline_name())
-                    .or_insert_with(|| TimeState::new(full_range.min()));
-
-                if self.buffer_behavior.pauses_on_buffer() && is_buffering {
-                    // Do not move time cursor until we are done buffering
-                    NeedsRepaint::No
-                } else {
-                    // Don't auto-pause once we are actually playing.
-                    // `AlwaysBuffer` is sticky and stays in place.
-                    if self.buffer_behavior == BufferBehavior::WaitForDataThenPlay {
-                        self.buffer_behavior = BufferBehavior::Play;
-                    }
-
-                    let dt = stable_dt.min(0.1) * self.speed;
-
-                    if self.loop_mode == LoopMode::Off && full_range.max() <= state.time {
-                        // We've reached the end of the data
-                        self.set_time_ad_hoc(full_range.max().into());
-
-                        if more_data_is_streaming_in {
-                            // then let's wait for it without pausing!
+        let needs_repaint = if just_interacted {
+            NeedsRepaint::Yes
+        } else {
+            match self.play_state() {
+                PlayState::Paused => {
+                    // It's possible that the playback is paused because e.g. it reached its end, but
+                    // then the user decides to switch timelines.
+                    // When they do so, it might be the case that they switch to a timeline they've
+                    // never interacted with before, in which case we don't even have a time state yet.
+                    let state = self.states.entry(*self.timeline_name()).or_insert_with(|| {
+                        TimeState::new(if self.following {
+                            full_range.max()
                         } else {
-                            self.pause(blueprint_ctx);
-                        }
+                            full_range.min()
+                        })
+                    });
+
+                    state.last_paused_time = Some(state.time);
+                    self.start_buffering(); // in case we hit play again!
+                    NeedsRepaint::No
+                }
+
+                PlayState::Playing => {
+                    let state = self
+                        .states
+                        .entry(*self.timeline_name())
+                        .or_insert_with(|| TimeState::new(full_range.min()));
+
+                    if self.buffer_behavior.pauses_on_buffer() && is_buffering {
+                        // Do not move time cursor until we are done buffering
                         NeedsRepaint::No
                     } else {
-                        let mut new_time = state.time;
-
-                        let loop_range = match self.loop_mode {
-                            LoopMode::Off => None,
-                            LoopMode::Selection => state.time_selection,
-                            LoopMode::All => Some(full_range.into()),
-                        };
-
-                        match self.timeline.timeline().map(|t| t.typ()) {
-                            Some(TimeType::Sequence) => {
-                                new_time += TimeReal::from(state.fps * dt);
-                            }
-                            Some(TimeType::DurationNs | TimeType::TimestampNs) => {
-                                new_time += TimeReal::from(Duration::from_secs(dt));
-                            }
-                            None => {}
+                        // Don't auto-pause once we are actually playing.
+                        // `AlwaysBuffer` is sticky and stays in place.
+                        if self.buffer_behavior == BufferBehavior::WaitForDataThenPlay {
+                            self.buffer_behavior = BufferBehavior::Play;
                         }
 
-                        if let Some(loop_range) = loop_range
-                            && loop_range.max < new_time
-                        {
-                            new_time = loop_range.min; // loop!
+                        let dt = stable_dt.min(0.1) * self.speed;
+
+                        if self.loop_mode == LoopMode::Off && full_range.max() <= state.time {
+                            // We've reached the end of the data
+                            self.set_time_ad_hoc(full_range.max().into());
+
+                            if more_data_is_streaming_in {
+                                // then let's wait for it without pausing!
+                            } else {
+                                self.pause(blueprint_ctx);
+                            }
+                            NeedsRepaint::No
+                        } else {
+                            let mut new_time = state.time;
+
+                            let loop_range = match self.loop_mode {
+                                LoopMode::Off => None,
+                                LoopMode::Selection => state.time_selection,
+                                LoopMode::All => Some(full_range.into()),
+                            };
+
+                            match self.timeline.timeline().map(|t| t.typ()) {
+                                Some(TimeType::Sequence) => {
+                                    new_time += TimeReal::from(state.fps * dt);
+                                }
+                                Some(TimeType::DurationNs | TimeType::TimestampNs) => {
+                                    new_time += TimeReal::from(Duration::from_secs(dt));
+                                }
+                                None => {}
+                            }
+
+                            if let Some(loop_range) = loop_range
+                                && loop_range.max < new_time
+                            {
+                                new_time = loop_range.min; // loop!
+                            }
+
+                            self.set_time_ad_hoc(new_time);
+
+                            NeedsRepaint::Yes
                         }
-
-                        self.set_time_ad_hoc(new_time);
-
-                        NeedsRepaint::Yes
                     }
                 }
-            }
-            PlayState::Following => {
-                // Set the time to the max:
-                self.set_time_ad_hoc(full_range.max().into());
+                PlayState::Following => {
+                    // Set the time to the max:
+                    self.set_time_ad_hoc(full_range.max().into());
 
-                NeedsRepaint::No // no need for request_repaint - we already repaint when new data arrives
+                    NeedsRepaint::No // no need for request_repaint - we already repaint when new data arrives
+                }
             }
         };
 
