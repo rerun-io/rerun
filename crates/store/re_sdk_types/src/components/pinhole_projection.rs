@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -32,7 +33,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///    0.0  1496.1  744.5
 ///    0.0     0.0    1.0
 /// ```
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, ::re_byte_size::SizeBytes)]
 pub struct PinholeProjection(pub crate::datatypes::Mat3x3);
 
 impl ::re_types_core::WrapperComponent for PinholeProjection {
@@ -77,17 +78,5 @@ impl std::ops::DerefMut for PinholeProjection {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Mat3x3 {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for PinholeProjection {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Mat3x3>::is_pod()
     }
 }

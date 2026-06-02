@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: The description of a container.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct ContainerBlueprint {
     /// The class of the view.
     pub container_kind: Option<SerializedComponentBatch>,
@@ -466,19 +467,5 @@ impl ContainerBlueprint {
     ) -> Self {
         self.grid_columns = try_serialize_field(Self::descriptor_grid_columns(), [grid_columns]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ContainerBlueprint {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.container_kind.heap_size_bytes()
-            + self.display_name.heap_size_bytes()
-            + self.contents.heap_size_bytes()
-            + self.col_shares.heap_size_bytes()
-            + self.row_shares.heap_size_bytes()
-            + self.active_tab.heap_size_bytes()
-            + self.visible.heap_size_bytes()
-            + self.grid_columns.heap_size_bytes()
     }
 }

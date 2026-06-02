@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: This configures extra drawing config for the 3D view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct SpatialInformation {
     /// The target reference frame for all transformations.
     ///
@@ -251,14 +252,5 @@ impl SpatialInformation {
         self.show_bounding_box =
             try_serialize_field(Self::descriptor_show_bounding_box(), [show_bounding_box]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for SpatialInformation {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.target_frame.heap_size_bytes()
-            + self.show_axes.heap_size_bytes()
-            + self.show_bounding_box.heap_size_bytes()
     }
 }

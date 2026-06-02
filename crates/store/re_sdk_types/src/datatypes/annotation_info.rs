@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -25,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Color and label will be used to annotate entities/keypoints which reference the id.
 /// The id refers either to a class or key-point id
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct AnnotationInfo {
     /// [`datatypes::ClassId`][crate::datatypes::ClassId] or [`datatypes::KeypointId`][crate::datatypes::KeypointId] to which this annotation info belongs.
     pub id: u16,
@@ -304,19 +305,5 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 .with_context("rerun.datatypes.AnnotationInfo")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AnnotationInfo {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.id.heap_size_bytes() + self.label.heap_size_bytes() + self.color.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u16>::is_pod()
-            && <Option<crate::datatypes::Utf8>>::is_pod()
-            && <Option<crate::datatypes::Rgba32>>::is_pod()
     }
 }

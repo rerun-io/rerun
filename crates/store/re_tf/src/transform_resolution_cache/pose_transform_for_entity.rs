@@ -18,7 +18,7 @@ use super::cached_transforms_for_timeline::CachedTransformsForTimeline;
 /// All instance poses for a given entity over time.
 ///
 /// Similar to [`super::tree_transforms_for_child_frame::TreeTransformsForChildFrame`], but for poses associated with an entity path.
-#[derive(Debug)]
+#[derive(Debug, SizeBytes)]
 pub struct PoseTransformForEntity {
     pub entity_path: EntityPath,
     pub poses_per_time: Mutex<BookkeepingBTreeMap<TimeInt, CachedTransformValue<Vec<DAffine3>>>>,
@@ -30,17 +30,6 @@ impl Clone for PoseTransformForEntity {
             entity_path: self.entity_path.clone(),
             poses_per_time: Mutex::new(self.poses_per_time.lock().clone()),
         }
-    }
-}
-
-impl SizeBytes for PoseTransformForEntity {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            entity_path,
-            poses_per_time,
-        } = self;
-
-        entity_path.heap_size_bytes() + poses_per_time.lock().heap_size_bytes()
     }
 }
 

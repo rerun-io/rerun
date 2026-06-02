@@ -367,12 +367,23 @@ where
 /// For any state that should be persisted, use the Blueprint!
 /// This state is used for transient state, such as animation or uncommitted ui state like dragging a camera.
 /// (on mouse release, the camera would be committed to the blueprint).
-pub trait ViewState: std::any::Any + Sync + Send + re_byte_size::SizeBytes {
+pub trait ViewState: std::any::Any + Sync + Send {
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+
+    /// How many bytes this state uses on the heap.
+    fn heap_size_bytes(&self) -> u64;
+}
+
+/// Bridges `dyn ViewState` back to `SizeBytes`, so containers like `Box<dyn ViewState>` can be sized.
+impl re_byte_size::SizeBytes for dyn ViewState {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        ViewState::heap_size_bytes(self)
+    }
 }
 
 /// Implementation of an empty view state.
@@ -383,6 +394,10 @@ impl ViewState for () {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        0
     }
 }
 

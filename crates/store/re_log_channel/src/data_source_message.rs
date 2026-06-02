@@ -9,7 +9,7 @@ use re_log_types::{LogMsg, StoreId, TableMsg, impl_into_enum};
 /// Message from a data source.
 ///
 /// May contain limited UI commands for instrumenting the state of the receiving end.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub enum DataSourceMessage {
     /// A piece of the index of all the chunks in a recording.
     ///
@@ -30,17 +30,6 @@ pub enum DataSourceMessage {
     ///
     /// Non-ui receivers can safely ignore these.
     UiCommand(DataSourceUiCommand),
-}
-
-impl re_byte_size::SizeBytes for DataSourceMessage {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::RrdManifest(_, manifest) => manifest.heap_size_bytes(),
-            Self::LogMsg(log_msg) => log_msg.heap_size_bytes(),
-            Self::TableMsg(table_msg) => table_msg.heap_size_bytes(),
-            Self::RrdManifestComplete(_) | Self::UiCommand(_) => 0,
-        }
-    }
 }
 
 impl_into_enum!(LogMsg, DataSourceMessage, LogMsg);

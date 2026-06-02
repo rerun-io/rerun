@@ -173,18 +173,8 @@ impl ColormapWithRange {
 }
 
 /// Hash used for identifying blobs stored in a store.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct StoredBlobCacheKey(pub Hash64);
-
-impl re_byte_size::SizeBytes for StoredBlobCacheKey {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 impl StoredBlobCacheKey {
     pub const ZERO: Self = Self(Hash64::ZERO);

@@ -48,25 +48,10 @@ impl std::fmt::Display for VersionedInstancePath {
 ///
 /// The easiest way to construct this type is to use either [`crate::InstancePathHash::versioned`]
 /// or [`crate::VersionedInstancePath::hash`].
-#[derive(Clone, Copy, Eq)]
+#[derive(Clone, Copy, Eq, re_byte_size::SizeBytes)]
 pub struct VersionedInstancePathHash {
     pub instance_path_hash: InstancePathHash,
     pub row_id: RowId,
-}
-
-impl re_byte_size::SizeBytes for VersionedInstancePathHash {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            instance_path_hash: _,
-            row_id: _,
-        } = self;
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl std::fmt::Debug for VersionedInstancePathHash {

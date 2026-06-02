@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -109,7 +110,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Pinhole {
     /// Camera projection, from image coordinates to view coordinates.
     ///
@@ -828,19 +829,5 @@ impl Pinhole {
     ) -> Self {
         self.line_width = try_serialize_field(Self::descriptor_line_width(), line_width);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Pinhole {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.image_from_camera.heap_size_bytes()
-            + self.resolution.heap_size_bytes()
-            + self.camera_xyz.heap_size_bytes()
-            + self.child_frame.heap_size_bytes()
-            + self.parent_frame.heap_size_bytes()
-            + self.image_plane_distance.heap_size_bytes()
-            + self.color.heap_size_bytes()
-            + self.line_width.heap_size_bytes()
     }
 }

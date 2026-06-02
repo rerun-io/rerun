@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -59,7 +60,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct GeoLineStrings {
     /// The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
     pub line_strings: Option<SerializedComponentBatch>,
@@ -342,14 +343,5 @@ impl GeoLineStrings {
     ) -> Self {
         self.colors = try_serialize_field(Self::descriptor_colors(), colors);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for GeoLineStrings {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.line_strings.heap_size_bytes()
-            + self.radii.heap_size_bytes()
-            + self.colors.heap_size_bytes()
     }
 }

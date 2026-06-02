@@ -22,23 +22,10 @@ use std::collections::VecDeque;
 /// v.pop_front();
 /// assert_eq!(v.get(1), Some(&1));
 /// ```
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, re_byte_size::SizeBytes)]
 pub struct StableIndexDeque<T> {
     vec: VecDeque<T>,
     index_offset: usize,
-}
-
-impl<T> re_byte_size::SizeBytes for StableIndexDeque<T>
-where
-    T: re_byte_size::SizeBytes,
-{
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            vec,
-            index_offset: _,
-        } = self;
-        vec.heap_size_bytes()
-    }
 }
 
 impl<T> StableIndexDeque<T> {

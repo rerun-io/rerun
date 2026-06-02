@@ -171,6 +171,7 @@ impl RangeResults {
 // --- Cache implementation ---
 
 /// Caches the results of `Range` queries for a given [`QueryCacheKey`].
+#[derive(re_byte_size::SizeBytes)]
 pub struct RangeCache {
     /// For debugging purposes.
     pub cache_key: QueryCacheKey,
@@ -271,21 +272,6 @@ impl SizeBytes for RangeCachedChunk {
             // Consider it amortized.
             0
         }
-    }
-}
-
-impl SizeBytes for RangeCache {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            cache_key,
-            chunks,
-            pending_invalidations,
-        } = self;
-
-        cache_key.heap_size_bytes()
-            + chunks.heap_size_bytes()
-            + pending_invalidations.heap_size_bytes()
     }
 }
 

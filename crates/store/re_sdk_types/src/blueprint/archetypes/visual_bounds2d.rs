@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -30,7 +31,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// based on the bounding-box of the data or other camera information present in the view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct VisualBounds2D {
     /// Controls the visible range of a 2D view.
     ///
@@ -161,12 +162,5 @@ impl VisualBounds2D {
     ) -> Self {
         self.range = try_serialize_field(Self::descriptor_range(), [range]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VisualBounds2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.range.heap_size_bytes()
     }
 }

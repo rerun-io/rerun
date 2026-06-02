@@ -1,4 +1,3 @@
-use re_byte_size::SizeBytes;
 use re_log_types::StoreId;
 
 use crate::{Error, Fragment, Origin, RedapUri};
@@ -10,7 +9,7 @@ use crate::{Error, Fragment, Origin, RedapUri};
 ///
 /// `segment_id` is currently mandatory, and `time_range` is optional.
 /// In the future we will add richer queries.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
 pub struct DatasetSegmentUri {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
@@ -21,19 +20,6 @@ pub struct DatasetSegmentUri {
 
     // Fragment parameters: these affect what the viewer focuses on:
     pub fragment: Fragment,
-}
-
-impl SizeBytes for DatasetSegmentUri {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            origin,
-            dataset_id: _,
-            segment_id,
-            fragment,
-        } = self;
-
-        origin.heap_size_bytes() + segment_id.heap_size_bytes() + fragment.heap_size_bytes()
-    }
 }
 
 impl std::fmt::Display for DatasetSegmentUri {

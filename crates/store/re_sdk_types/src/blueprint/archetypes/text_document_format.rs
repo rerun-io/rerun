@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -26,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// These options only apply to plain text documents and have no effect on Markdown documents.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TextDocumentFormat {
     /// Whether to use a monospace font for the document body.
     ///
@@ -214,12 +215,5 @@ impl TextDocumentFormat {
     ) -> Self {
         self.word_wrap = try_serialize_field(Self::descriptor_word_wrap(), [word_wrap]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TextDocumentFormat {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.monospace.heap_size_bytes() + self.word_wrap.heap_size_bytes()
     }
 }

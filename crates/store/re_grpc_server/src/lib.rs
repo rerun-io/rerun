@@ -571,28 +571,18 @@ enum Event {
     CaptureMemory,
 }
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 struct TableMsgProto {
     id: TableIdProto,
     data: DataframePartProto,
 }
 // -----------------------------------------------------------------------------------
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 enum LogOrTableMsgProto {
     LogMsg(LogMsgProto),
     Table(TableMsgProto),
     UiCommand(DataSourceUiCommand),
-}
-
-impl SizeBytes for LogOrTableMsgProto {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::LogMsg(log_msg) => log_msg.heap_size_bytes(),
-            Self::Table(table) => table.heap_size_bytes(),
-            Self::UiCommand(cmd) => cmd.heap_size_bytes(),
-        }
-    }
 }
 
 impl From<LogMsgProto> for LogOrTableMsgProto {
@@ -949,13 +939,6 @@ impl EventLoop {
         if self.options.memory_limit.is_limited() {
             self.history.gc(self.options.memory_limit.as_bytes());
         }
-    }
-}
-
-impl SizeBytes for TableMsgProto {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { id, data } = self;
-        id.heap_size_bytes() + data.heap_size_bytes()
     }
 }
 

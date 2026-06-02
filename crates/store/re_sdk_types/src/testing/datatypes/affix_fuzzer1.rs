@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct AffixFuzzer1 {
     pub single_float_optional: Option<f32>,
     pub single_string_required: ::re_types_core::ArrowString,
@@ -1054,33 +1055,5 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer1")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer1 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.single_float_optional.heap_size_bytes()
-            + self.single_string_required.heap_size_bytes()
-            + self.single_string_optional.heap_size_bytes()
-            + self.many_floats_optional.heap_size_bytes()
-            + self.many_strings_required.heap_size_bytes()
-            + self.many_strings_optional.heap_size_bytes()
-            + self.flattened_scalar.heap_size_bytes()
-            + self.almost_flattened_scalar.heap_size_bytes()
-            + self.from_parent.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<f32>>::is_pod()
-            && <::re_types_core::ArrowString>::is_pod()
-            && <Option<::re_types_core::ArrowString>>::is_pod()
-            && <Option<::arrow::buffer::ScalarBuffer<f32>>>::is_pod()
-            && <Vec<::re_types_core::ArrowString>>::is_pod()
-            && <Option<Vec<::re_types_core::ArrowString>>>::is_pod()
-            && <f32>::is_pod()
-            && <crate::testing::datatypes::FlattenedScalar>::is_pod()
-            && <Option<bool>>::is_pod()
     }
 }

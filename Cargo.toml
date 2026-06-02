@@ -106,6 +106,7 @@ re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.34.0-alpha.
 re_auth = { path = "crates/utils/re_auth", version = "=0.34.0-alpha.1", default-features = false }
 re_backoff = { path = "crates/utils/re_backoff", version = "=0.34.0-alpha.1", default-features = false }
 re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.34.0-alpha.1", default-features = false }
+re_byte_size_derive = { path = "crates/utils/re_byte_size_derive", version = "=0.34.0-alpha.1", default-features = false }
 re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.34.0-alpha.1", default-features = false }
 re_case = { path = "crates/utils/re_case", version = "=0.34.0-alpha.1", default-features = false }
 re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.34.0-alpha.1", default-features = false }
@@ -332,6 +333,7 @@ ply-rs-bw = { version = "=3.0.0", default-features = false } # ply-rs-bw has rel
 poll-promise = "0.3.0"
 pollster = "0.4.0"
 prettyplease = "0.2.37"
+proc-macro-crate = "3.4"
 proc-macro2 = { version = "1.0.106", default-features = false }
 profiling = { version = "1.0.17", default-features = false }
 prometheus-client = "0.24.0"
@@ -497,6 +499,7 @@ debug = false
 "re_build_info".debug = true
 "re_build_tools".debug = true
 "re_byte_size".debug = true
+"re_byte_size_derive".debug = true
 "re_capabilities".debug = true
 "re_case".debug = true
 "re_chunk_store_ui".debug = true

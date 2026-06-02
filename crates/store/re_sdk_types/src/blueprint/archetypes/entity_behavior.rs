@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: General visualization behavior of an entity.
 ///
 /// TODO(#6541): Fields of this archetype currently only have an effect when logged in the blueprint store.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct EntityBehavior {
     /// Whether the entity can be interacted with.
     ///
@@ -219,12 +220,5 @@ impl EntityBehavior {
     pub fn with_visible(mut self, visible: impl Into<crate::components::Visible>) -> Self {
         self.visible = try_serialize_field(Self::descriptor_visible(), [visible]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for EntityBehavior {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.interactive.heap_size_bytes() + self.visible.heap_size_bytes()
     }
 }

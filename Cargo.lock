@@ -8337,8 +8337,19 @@ dependencies = [
  "insta",
  "macaw",
  "parking_lot",
+ "re_byte_size_derive",
  "smallvec",
  "vec1",
+]
+
+[[package]]
+name = "re_byte_size_derive"
+version = "0.34.0-alpha.1+dev"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -9008,6 +9019,7 @@ dependencies = [
  "parking_lot",
  "re_arrow_util",
  "re_build_info",
+ "re_byte_size",
  "re_chunk",
  "re_log",
  "re_log_types",
@@ -9156,6 +9168,7 @@ version = "0.34.0-alpha.1+dev"
 dependencies = [
  "cfg-if",
  "parking_lot",
+ "re_byte_size",
  "re_log",
 ]
 
@@ -9820,6 +9833,7 @@ version = "0.34.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
+ "re_byte_size",
  "re_chunk",
  "re_context_menu",
  "re_entity_db",

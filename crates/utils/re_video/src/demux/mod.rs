@@ -901,7 +901,7 @@ impl VideoDataDescription {
 /// The state of the current sample.
 ///
 /// When the source is loaded, all of its samples will be either `Present` or `Skip`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub enum SampleMetadataState {
     /// Sample is present and contains video data.
     Present(SampleMetadata),
@@ -1035,18 +1035,6 @@ impl SampleMetadataState {
     }
 }
 
-impl re_byte_size::SizeBytes for SampleMetadataState {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::Present(sample_metadata) => sample_metadata.heap_size_bytes(),
-            Self::Unloaded {
-                source_id: _,
-                min_dts: _,
-            } => 0,
-        }
-    }
-}
-
 /// A single sample in a video.
 ///
 /// This is equivalent to MP4's definition of a single sample.
@@ -1066,11 +1054,11 @@ impl re_byte_size::SizeBytes for SampleMetadataState {
 ///
 /// The interpretation is up to the caller of [`SampleMetadata::get`]: `re_video`
 /// itself only forwards the value to the user-supplied fetch callback.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub enum VideoSource {
     /// The bytes occupy this byte range within a single source buffer the user
     /// already knows about. Used for e.g. mp4 assets.
-    Span(Span<u32>),
+    Span(#[size_bytes(ignore)] /* pod without size bytes impl */ Span<u32>),
 
     /// An identifier pair the host resolves to the sample's bytes.
     ///
@@ -1118,17 +1106,7 @@ impl VideoSource {
     }
 }
 
-impl re_byte_size::SizeBytes for VideoSource {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub struct SampleMetadata {
     /// Is this the start of a new (closed) group of pictures?
     ///
@@ -1174,16 +1152,6 @@ pub struct SampleMetadata {
     pub source: VideoSource,
 }
 
-impl re_byte_size::SizeBytes for SampleMetadata {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
-}
-
 impl SampleMetadata {
     /// Read the sample from the video data.
     ///
@@ -1218,13 +1186,18 @@ impl SampleMetadata {
 }
 
 /// Errors that can occur when loading a video.
-#[derive(thiserror::Error, Debug)]
+// Close enough.
+#[derive(thiserror::Error, Debug, re_byte_size::SizeBytes)]
 pub enum VideoLoadError {
     #[error("The video file is empty (zero bytes)")]
     ZeroBytes,
 
     #[error("MP4 error: {0}")]
-    ParseMp4(#[from] re_mp4::Error),
+    ParseMp4(
+        #[from]
+        #[size_bytes(ignore)]
+        re_mp4::Error,
+    ),
 
     #[error("Video file has no video tracks")]
     NoVideoTrack,
@@ -1242,11 +1215,13 @@ pub enum VideoLoadError {
 
     #[error("The media type of the blob is not a video: {provided_or_detected_media_type}")]
     MimeTypeIsNotAVideo {
+        #[size_bytes(ignore)]
         provided_or_detected_media_type: String,
     },
 
     #[error("MIME type '{provided_or_detected_media_type}' is not supported for videos")]
     UnsupportedMimeType {
+        #[size_bytes(ignore)]
         provided_or_detected_media_type: String,
     },
 
@@ -1256,19 +1231,13 @@ pub enum VideoLoadError {
 
     // `FourCC`'s debug impl doesn't quote the result
     #[error("Video track uses unsupported codec \"{0}\"")] // NOLINT
-    UnsupportedCodec(re_mp4::FourCC),
+    UnsupportedCodec(#[size_bytes(ignore)] re_mp4::FourCC),
 
     #[error("Unable to determine codec string from the video contents")]
     UnableToDetermineCodecString,
 
     #[error("Failed to parse H.264 SPS from mp4: {0:?}")]
-    SpsParsingError(h264_reader::nal::sps::SpsError),
-}
-
-impl re_byte_size::SizeBytes for VideoLoadError {
-    fn heap_size_bytes(&self) -> u64 {
-        0 // close enough
-    }
+    SpsParsingError(#[size_bytes(ignore)] h264_reader::nal::sps::SpsError),
 }
 
 impl std::fmt::Debug for VideoDataDescription {

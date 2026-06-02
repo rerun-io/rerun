@@ -29,7 +29,7 @@ use crate::{ChunkDirectLineage, ChunkStoreChunkStats, ChunkStoreError, ChunkStor
 /// In other words, these thresholds define the target chunk size window from both directions.
 ///
 // TODO(emilk): we should be able to turn on/off merging and splitting independently.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub struct ChunkStoreConfig {
     /// If `true` (the default), the store will emit events when its contents are modified in
     /// any way (insertion, GC), that can be subscribed to.
@@ -113,17 +113,6 @@ impl Default for ChunkStoreConfig {
     #[inline]
     fn default() -> Self {
         Self::DEFAULT
-    }
-}
-
-impl re_byte_size::SizeBytes for ChunkStoreConfig {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
     }
 }
 
@@ -284,7 +273,7 @@ fn chunk_store_config() {
 
 pub type ChunkIdSet = BTreeSet<ChunkId>;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, re_byte_size::SizeBytes)]
 pub struct ChunkIdSetPerTime {
     /// Keeps track of the longest interval being currently stored in the two maps below.
     ///
@@ -327,20 +316,6 @@ pub struct ChunkIdSetPerTime {
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
-impl re_byte_size::SizeBytes for ChunkIdSetPerTime {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            max_interval_length,
-            per_start_time,
-            per_end_time,
-        } = self;
-
-        max_interval_length.heap_size_bytes()
-            + per_start_time.heap_size_bytes()
-            + per_end_time.heap_size_bytes()
-    }
-}
-
 pub type ChunkIdSetPerTimePerComponent = IntMap<ComponentIdentifier, ChunkIdSetPerTime>;
 
 pub type ChunkIdSetPerTimePerComponentPerTimeline =
@@ -374,7 +349,7 @@ pub struct ColumnMetadata {
 }
 
 /// Internal state that needs to be maintained in order to compute [`ColumnMetadata`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub struct ColumnMetadataState {
     /// Whether this column contains either no data or only contains null and/or empty values (`[]`).
     ///
@@ -386,17 +361,6 @@ pub struct ColumnMetadataState {
     ///
     /// Starts as `false` and flips to `true` once static data is observed. Never goes back.
     pub is_static: bool,
-}
-
-impl re_byte_size::SizeBytes for ColumnMetadataState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            is_semantically_empty,
-            is_static,
-        } = self;
-
-        is_semantically_empty.heap_size_bytes() + is_static.heap_size_bytes()
-    }
 }
 
 /// Incremented on each edit.
@@ -498,7 +462,7 @@ impl ChunkStoreHandle {
 
 /// This keeps track of all missing virtual [`ChunkId`]s and all
 /// used physical [`ChunkId`]s.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, re_byte_size::SizeBytes)]
 pub struct QueriedChunkIdTracker {
     /// Used physical chunks.
     pub used_physical: HashSet<ChunkId>,
@@ -515,17 +479,6 @@ pub struct QueriedChunkIdTracker {
     // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
     // their own tracking. And document it so.
     pub missing_virtual: HashSet<ChunkId>,
-}
-
-impl re_byte_size::SizeBytes for QueriedChunkIdTracker {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            used_physical,
-            missing_virtual,
-        } = self;
-
-        used_physical.heap_size_bytes() + missing_virtual.heap_size_bytes()
-    }
 }
 
 /// A complete chunk store: covers all timelines, all entities, everything.

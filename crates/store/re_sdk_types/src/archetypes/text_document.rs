@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -91,7 +92,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct TextDocument {
     /// Contents of the text document.
     pub text: Option<SerializedComponentBatch>,
@@ -343,12 +344,5 @@ impl TextDocument {
     ) -> Self {
         self.media_type = try_serialize_field(Self::descriptor_media_type(), media_type);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TextDocument {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.text.heap_size_bytes() + self.media_type.heap_size_bytes()
     }
 }

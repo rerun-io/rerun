@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -33,7 +34,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// 0----1          \ /
 ///                  4
 /// ```
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct LineStrip3D(pub Vec<crate::datatypes::Vec3D>);
 
 impl ::re_types_core::Component for LineStrip3D {
@@ -253,17 +254,5 @@ impl ::re_types_core::Loggable for LineStrip3D {
 impl<I: Into<crate::datatypes::Vec3D>, T: IntoIterator<Item = I>> From<T> for LineStrip3D {
     fn from(v: T) -> Self {
         Self(v.into_iter().map(|v| v.into()).collect())
-    }
-}
-
-impl ::re_byte_size::SizeBytes for LineStrip3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::datatypes::Vec3D>>::is_pod()
     }
 }

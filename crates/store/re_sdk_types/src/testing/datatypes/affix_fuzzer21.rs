@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct AffixFuzzer21 {
     pub single_half: half::f16,
     pub many_halves: ::arrow::buffer::ScalarBuffer<half::f16>,
@@ -286,17 +287,5 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                 .with_context("rerun.testing.datatypes.AffixFuzzer21")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer21 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.single_half.heap_size_bytes() + self.many_halves.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <half::f16>::is_pod() && <::arrow::buffer::ScalarBuffer<half::f16>>::is_pod()
     }
 }

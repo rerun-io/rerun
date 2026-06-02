@@ -38,7 +38,7 @@ use crate::{MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY, PlotSeries
 
 // ---
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 pub struct TimeSeriesViewState {
     /// The range of the scalar values currently on screen.
     ///
@@ -72,6 +72,8 @@ pub struct TimeSeriesViewState {
     /// data-space points to screen-space for `re_renderer` primitives.
     ///
     /// `None` on the first frame (before `plot.show()` has run).
+    // `egui_plot::PlotTransform` doesn't impl `SizeBytes`; it's POD with no heap.
+    #[size_bytes(ignore)]
     pub plot_transform: Option<egui_plot::PlotTransform>,
 
     /// How many time units correspond to a single physical pixel on the plot.
@@ -97,23 +99,6 @@ impl Default for TimeSeriesViewState {
     }
 }
 
-impl re_byte_size::SizeBytes for TimeSeriesViewState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            scalar_range: _,
-            full_data_time_range: _,
-            time_offset: _,
-            default_series_name_formats,
-            num_time_series_last_frame_per_instruction,
-            plot_transform: _,
-            time_per_pixel: _,
-        } = self;
-
-        default_series_name_formats.heap_size_bytes()
-            + num_time_series_last_frame_per_instruction.heap_size_bytes()
-    }
-}
-
 impl ViewState for TimeSeriesViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -121,6 +106,10 @@ impl ViewState for TimeSeriesViewState {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
     }
 }
 

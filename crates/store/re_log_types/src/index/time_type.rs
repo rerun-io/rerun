@@ -11,7 +11,18 @@ use super::TimeInt;
 use crate::{AbsoluteTimeRange, TimestampFormat};
 
 /// The type of a [`TimeInt`] or [`crate::Timeline`].
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, num_derive::FromPrimitive)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    num_derive::FromPrimitive,
+    re_byte_size::SizeBytes,
+)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeType {
     /// Used e.g. for frames in a film.
@@ -22,18 +33,6 @@ pub enum TimeType {
 
     /// Nanoseconds since unix epoch (1970-01-01 00:00:00 UTC).
     TimestampNs,
-}
-
-impl re_byte_size::SizeBytes for TimeType {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl std::fmt::Display for TimeType {

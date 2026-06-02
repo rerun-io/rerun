@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -204,7 +205,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Points3D {
     /// All the 3D positions at which the point cloud shows points.
     pub positions: Option<SerializedComponentBatch>,
@@ -696,18 +697,5 @@ impl Points3D {
     ) -> Self {
         self.keypoint_ids = try_serialize_field(Self::descriptor_keypoint_ids(), keypoint_ids);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Points3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.positions.heap_size_bytes()
-            + self.radii.heap_size_bytes()
-            + self.colors.heap_size_bytes()
-            + self.labels.heap_size_bytes()
-            + self.show_labels.heap_size_bytes()
-            + self.class_ids.heap_size_bytes()
-            + self.keypoint_ids.heap_size_bytes()
     }
 }

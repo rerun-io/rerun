@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -29,7 +30,16 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
 /// at 100% UI scaling, UI points are equal to pixels
 /// The Viewer's UI scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Debug,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct Radius(pub crate::datatypes::Float32);
 
@@ -75,17 +85,5 @@ impl std::ops::DerefMut for Radius {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Radius {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
     }
 }

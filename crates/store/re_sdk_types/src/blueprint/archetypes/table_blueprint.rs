@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Blueprint for configuring the styling of a table.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TableBlueprint {
     /// The name of the column that contains recording URIs for segment previews.
     ///
@@ -333,15 +334,5 @@ impl TableBlueprint {
     ) -> Self {
         self.url_column = try_serialize_field(Self::descriptor_url_column(), [url_column]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TableBlueprint {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.segment_preview_column.heap_size_bytes()
-            + self.flag_column.heap_size_bytes()
-            + self.grid_view_card_title.heap_size_bytes()
-            + self.url_column.heap_size_bytes()
     }
 }

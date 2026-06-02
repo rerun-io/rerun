@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -27,7 +28,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Entities in this list that are not present in the view are ignored.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct ColumnOrder(pub Vec<crate::datatypes::EntityPath>);
 
 impl ::re_types_core::Component for ColumnOrder {
@@ -218,17 +219,5 @@ impl ::re_types_core::Loggable for ColumnOrder {
 impl<I: Into<crate::datatypes::EntityPath>, T: IntoIterator<Item = I>> From<T> for ColumnOrder {
     fn from(v: T) -> Self {
         Self(v.into_iter().map(|v| v.into()).collect())
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ColumnOrder {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::datatypes::EntityPath>>::is_pod()
     }
 }

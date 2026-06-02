@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -38,6 +39,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     Hash,
     bytemuck::Pod,
     bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
@@ -151,17 +153,5 @@ impl From<KeypointId> for u16 {
     #[inline]
     fn from(value: KeypointId) -> Self {
         value.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for KeypointId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u16>::is_pod()
     }
 }

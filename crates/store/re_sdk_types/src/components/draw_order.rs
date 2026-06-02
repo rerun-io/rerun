@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -27,7 +28,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Within an entity draw order is governed by the order of the components.
 ///
 /// Draw order for entities with the same draw order is generally undefined.
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct DrawOrder(pub crate::datatypes::Float32);
 
@@ -73,17 +74,5 @@ impl std::ops::DerefMut for DrawOrder {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for DrawOrder {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
     }
 }

@@ -159,6 +159,7 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::allow_attributes)]\n");
     code.push_str("#![allow(clippy::clone_on_copy)]\n");
     code.push_str("#![allow(clippy::cloned_instead_of_copied)]\n");
+    code.push_str("#![allow(clippy::eq_op)]\n"); // `IS_POD` consts of different types resolve to the same trait item, so `SizeBytes` derivations look like equal operands.
     code.push_str("#![allow(clippy::map_flatten)]\n");
     code.push_str("#![allow(clippy::needless_question_mark)]\n");
     code.push_str("#![allow(clippy::new_without_default)]\n");
@@ -308,53 +309,14 @@ fn quote_struct(
 
     let quoted_builder = quote_builder_from_obj(reporter, objects, obj);
 
-    let quoted_heap_size_bytes = {
-        let heap_size_bytes_impl = if is_tuple_struct_from_obj(obj) {
-            quote!(self.0.heap_size_bytes())
-        } else if obj.fields.is_empty() {
-            quote!(0)
-        } else {
-            let quoted_heap_size_bytes = obj.fields.iter().map(|obj_field| {
-                let field_name = format_ident!("{}", obj_field.name);
-                quote!(self.#field_name.heap_size_bytes())
-            });
-            quote!(#(#quoted_heap_size_bytes)+*)
-        };
-
-        let is_pod_impl = if obj.fields.is_empty() {
-            quote!(true)
-        } else {
-            let quoted_is_pods = obj.fields.iter().map(|obj_field| {
-                let quoted_field_type = quote_field_type_from_object_field(obj, obj_field);
-                quote!(<#quoted_field_type>::is_pod())
-            });
-            quote!(#(#quoted_is_pods)&&*)
-        };
-
-        let quoted_is_pod = (!obj.is_archetype()).then_some(quote! {
-            #[inline]
-            fn is_pod() -> bool {
-                #is_pod_impl
-            }
-        });
-
-        quote! {
-            impl ::re_byte_size::SizeBytes for #name {
-                #[inline]
-                fn heap_size_bytes(&self) -> u64 {
-                    #heap_size_bytes_impl
-                }
-
-                #quoted_is_pod
-            }
-        }
-    };
+    let quoted_derive_size_bytes = quote!(#[derive(::re_byte_size::SizeBytes)]);
 
     let tokens = quote! {
         #quoted_doc
         #quoted_derive_clone_debug
         #quoted_derive_clause
         #quoted_derive_default_clause
+        #quoted_derive_size_bytes
         #quoted_repr_clause
         #quoted_custom_clause
         #quoted_deprecation_summary
@@ -365,8 +327,6 @@ fn quote_struct(
         #quoted_from_impl
 
         #quoted_builder
-
-        #quoted_heap_size_bytes
     };
 
     tokens
@@ -420,56 +380,13 @@ fn quote_union(
 
     let quoted_trait_impls = quote_trait_impls_from_obj(reporter, type_registry, objects, obj);
 
-    let quoted_heap_size_bytes = {
-        let quoted_matches = fields.iter().map(|obj_field| {
-            let name = format_ident!("{}", re_case::to_pascal_case(&obj_field.name));
-
-            if obj_field.typ == Type::Unit {
-                quote!(Self::#name => 0)
-            } else {
-                quote!(Self::#name(v) => v.heap_size_bytes())
-            }
-        });
-
-        let is_pod_impl = {
-            let quoted_is_pods: Vec<_> = obj
-                .fields
-                .iter()
-                .filter(|obj_field| obj_field.typ != Type::Unit)
-                .map(|obj_field| {
-                    let quoted_field_type = quote_field_type_from_object_field(obj, obj_field);
-                    quote!(<#quoted_field_type>::is_pod())
-                })
-                .collect();
-            if quoted_is_pods.is_empty() {
-                quote!(true)
-            } else {
-                quote!(#(#quoted_is_pods)&&*)
-            }
-        };
-
-        quote! {
-            impl ::re_byte_size::SizeBytes for #name {
-                #[inline]
-                fn heap_size_bytes(&self) -> u64 {
-                    #![allow(clippy::match_same_arms)]
-                    match self {
-                        #(#quoted_matches),*
-                    }
-                }
-
-                #[inline]
-                fn is_pod() -> bool {
-                    #is_pod_impl
-                }
-            }
-        }
-    };
+    let quoted_derive_size_bytes = quote!(#[derive(::re_byte_size::SizeBytes)]);
 
     let tokens = quote! {
         #quoted_doc
         #quoted_derive_clone_debug
         #quoted_derive_clause
+        #quoted_derive_size_bytes
         #quoted_repr_clause
         #quoted_custom_clause
         pub enum #name {
@@ -477,8 +394,6 @@ fn quote_union(
         }
 
         #quoted_trait_impls
-
-        #quoted_heap_size_bytes
     };
 
     tokens
@@ -650,6 +565,7 @@ fn quote_enum(
     let tokens = quote! {
         #quoted_doc
         #[derive( #(#derives,)* )]
+        #[derive(::re_byte_size::SizeBytes)]
         #quoted_custom_clause
         #[repr(#repr_type)]
         pub enum #name {
@@ -689,17 +605,6 @@ fn quote_enum(
             }
         }
 
-        impl ::re_byte_size::SizeBytes for #name {
-            #[inline]
-            fn heap_size_bytes(&self) -> u64 {
-                0
-            }
-
-            #[inline]
-            fn is_pod() -> bool {
-                true
-            }
-        }
     };
 
     tokens

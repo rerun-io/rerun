@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -25,7 +26,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Specified in nanoseconds.
 /// Presentation timestamps are typically measured as time since video start.
-#[derive(Clone, Debug, Default, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone, Debug, Default, Copy, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes,
+)]
 pub struct VideoTimestamp(
     /// Presentation timestamp value in nanoseconds.
     pub i64,
@@ -139,17 +142,5 @@ impl From<VideoTimestamp> for i64 {
     #[inline]
     fn from(value: VideoTimestamp) -> Self {
         value.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VideoTimestamp {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <i64>::is_pod()
     }
 }

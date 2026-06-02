@@ -1051,16 +1051,21 @@ type InspectSinkFn = Box<dyn FnOnce(&dyn LogSink) + Send + 'static>;
 
 type FlushResult = Result<(), SinkFlushError>;
 
+#[derive(re_byte_size::SizeBytes)]
 enum Command {
     RecordMsg(LogMsg),
     SwapSink {
+        #[size_bytes(ignore)]
         new_sink: Box<dyn LogSink>,
+        #[size_bytes(ignore)]
         timeout: Duration,
     },
     // TODO(#10444): This should go away with more explicit sinks.
-    InspectSink(InspectSinkFn),
+    InspectSink(#[size_bytes(ignore)] InspectSinkFn),
     Flush {
+        #[size_bytes(ignore)]
         on_done: Sender<FlushResult>,
+        #[size_bytes(ignore)]
         timeout: Duration,
     },
 
@@ -1069,7 +1074,9 @@ enum Command {
     /// `RecordingStream.__exit__` to ensure file-backed recordings are consumable as soon as
     /// the `with`-block exits, without waiting for GC.
     FinalizeDeferredSinks {
+        #[size_bytes(ignore)]
         on_done: Sender<()>,
+        #[size_bytes(ignore)]
         timeout: Duration,
     },
     PopPendingChunks,
@@ -1088,20 +1095,6 @@ impl std::fmt::Debug for Command {
                 .finish_non_exhaustive(),
             Self::PopPendingChunks => write!(f, "PopPendingChunks"),
             Self::Shutdown => write!(f, "Shutdown"),
-        }
-    }
-}
-
-impl re_byte_size::SizeBytes for Command {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::RecordMsg(msg) => msg.heap_size_bytes(),
-            Self::SwapSink { .. }
-            | Self::InspectSink(_)
-            | Self::Flush { .. }
-            | Self::FinalizeDeferredSinks { .. }
-            | Self::PopPendingChunks
-            | Self::Shutdown => 0,
         }
     }
 }

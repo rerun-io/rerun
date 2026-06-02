@@ -4,7 +4,7 @@ use crate::{Chunk, Frame, Receiver, Sender, Time, VideoDataDescription};
 
 use super::{TimedDecodingError, VideoPlayerError};
 
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 pub(super) struct DecoderOutput {
     /// Frames sorted by PTS.
     ///
@@ -22,6 +22,7 @@ pub(super) struct DecoderOutput {
     frames_by_pts: BTreeMap<Time, Frame>,
 
     /// Set on error; reset on success.
+    #[size_bytes(ignore)]
     error: Option<TimedDecodingError>,
 }
 
@@ -32,21 +33,14 @@ impl DecoderOutput {
     }
 }
 
-impl re_byte_size::SizeBytes for DecoderOutput {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            frames_by_pts,
-            error: _,
-        } = self;
-        frames_by_pts.heap_size_bytes()
-    }
-}
-
 /// Internal implementation detail of the [`super::VideoPlayer`].
 ///
 /// Expected to be reset upon backwards seeking.
+#[derive(re_byte_size::SizeBytes)]
 pub struct VideoSampleDecoder {
     debug_name: String,
+    // TODO(RR-3800): maybe we should count this
+    #[size_bytes(ignore)]
     decoder: Box<dyn crate::AsyncDecoder>,
 
     frame_receiver: Receiver<crate::FrameResult>,
@@ -54,21 +48,6 @@ pub struct VideoSampleDecoder {
 
     /// The [`Chunk::sample_idx`] of the latest submitted sample.
     latest_sample_idx: Option<usize>,
-}
-
-impl re_byte_size::SizeBytes for VideoSampleDecoder {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            debug_name,
-            decoder: _, // TODO(RR-3800): maybe we should count this
-            frame_receiver,
-            decoder_output,
-            latest_sample_idx: _,
-        } = self;
-        debug_name.heap_size_bytes()
-            + frame_receiver.current_bytes()
-            + decoder_output.heap_size_bytes()
-    }
 }
 
 impl VideoSampleDecoder {

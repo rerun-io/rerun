@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A list of properties associated with a recording.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct RecordingInfo {
     /// When the recording started.
     ///
@@ -264,12 +265,5 @@ impl RecordingInfo {
     ) -> Self {
         self.name = try_serialize_field(Self::descriptor_name(), name);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for RecordingInfo {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.start_time.heap_size_bytes() + self.name.heap_size_bytes()
     }
 }

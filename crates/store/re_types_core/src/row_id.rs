@@ -60,6 +60,7 @@ use crate::Loggable as _;
     Hash,
     bytemuck::AnyBitPattern,
     bytemuck::NoUninit,
+    re_byte_size::SizeBytes,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RowId(pub(crate) re_tuid::Tuid);
@@ -153,18 +154,6 @@ impl RowId {
     pub fn slice_from_arrow(array: &arrow::array::FixedSizeBinaryArray) -> &[Self] {
         re_log::debug_assert_eq!(array.data_type(), &Self::arrow_datatype());
         bytemuck::cast_slice(array.value_data())
-    }
-}
-
-impl re_byte_size::SizeBytes for RowId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
     }
 }
 

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -33,7 +34,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// and the [MCAP specification](https://mcap.dev/) for complete format details.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct McapStatistics {
     /// Total number of data messages contained in the MCAP recording.
     ///
@@ -757,20 +758,5 @@ impl McapStatistics {
             channel_message_counts,
         );
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for McapStatistics {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.message_count.heap_size_bytes()
-            + self.schema_count.heap_size_bytes()
-            + self.channel_count.heap_size_bytes()
-            + self.attachment_count.heap_size_bytes()
-            + self.metadata_count.heap_size_bytes()
-            + self.chunk_count.heap_size_bytes()
-            + self.message_start_time.heap_size_bytes()
-            + self.message_end_time.heap_size_bytes()
-            + self.channel_message_counts.heap_size_bytes()
     }
 }

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -26,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Used in MCAP statistics to track how many messages were recorded per channel.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct ChannelMessageCounts(
     /// The channel ID to message count pairs.
     pub Vec<crate::datatypes::ChannelCountPair>,
@@ -170,17 +171,5 @@ impl<I: Into<crate::datatypes::ChannelCountPair>, T: IntoIterator<Item = I>> Fro
 {
     fn from(v: T) -> Self {
         Self(v.into_iter().map(|v| v.into()).collect())
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ChannelMessageCounts {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::datatypes::ChannelCountPair>>::is_pod()
     }
 }

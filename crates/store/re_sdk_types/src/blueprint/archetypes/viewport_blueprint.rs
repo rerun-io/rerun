@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: The top-level description of the viewport.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct ViewportBlueprint {
     /// The layout of the views
     pub root_container: Option<SerializedComponentBatch>,
@@ -357,16 +358,5 @@ impl ViewportBlueprint {
             past_viewer_recommendations,
         );
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ViewportBlueprint {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.root_container.heap_size_bytes()
-            + self.maximized.heap_size_bytes()
-            + self.auto_layout.heap_size_bytes()
-            + self.auto_views.heap_size_bytes()
-            + self.past_viewer_recommendations.heap_size_bytes()
     }
 }

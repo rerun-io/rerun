@@ -1,7 +1,7 @@
 /// A unique numeric index for each individual instance within a batch.
 ///
 /// Use [`Instance::ALL`] to refer to all instances in a batch.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Instance(pub(crate) u64);
 

@@ -20,7 +20,7 @@ pub use blueprint_ext::{TIME_PANEL_PATH, time_panel_blueprint_entity_path};
 pub use command::{MoveDirection, MoveSpeed, TimeControlCommand};
 
 /// What [`TimeControl`] should do when data is buffering.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub enum BufferBehavior {
     /// Advance time even while data is buffering. The visualizer is responsible
     /// for rendering whatever data it has.
@@ -83,7 +83,9 @@ impl re_byte_size::SizeBytes for TimeRangeHighlight {
 }
 
 /// The time range we are currently zoomed in on.
-#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq)]
+#[derive(
+    Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq, re_byte_size::SizeBytes,
+)]
 pub struct TimeView {
     /// Where start of the range.
     pub min: TimeReal,
@@ -106,7 +108,9 @@ impl From<AbsoluteTimeRange> for TimeView {
 }
 
 /// State per timeline.
-#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq)]
+#[derive(
+    Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq, re_byte_size::SizeBytes,
+)]
 struct TimeState {
     /// The current time (play marker).
     time: TimeReal,
@@ -133,18 +137,6 @@ struct TimeState {
     view: Option<TimeView>,
 }
 
-impl re_byte_size::SizeBytes for TimeState {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
 impl TimeState {
     fn new(time: impl Into<TimeReal>) -> Self {
         Self {
@@ -166,7 +158,9 @@ impl TimeState {
 ///   present in the entity database. A pending timeline is promoted to `UserEdited`
 ///   once data containing that timeline arrives (see [`TimeControl::select_valid_timeline`]).
 // TODO(andreas): This should be a blueprint property and follow the usual rules of how we determine fallbacks.
-#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Debug)]
+#[derive(
+    serde::Deserialize, serde::Serialize, Clone, PartialEq, Debug, re_byte_size::SizeBytes,
+)]
 enum ActiveTimeline {
     /// Automatically selected based on heuristics. Re-evaluated every frame.
     Auto(Timeline),
@@ -210,7 +204,7 @@ impl ActiveTimeline {
 ///
 /// The commands write both to this struct and to blueprints when
 /// applicable.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, re_byte_size::SizeBytes)]
 pub struct TimeControl {
     /// Name of the timeline (e.g. `log_time`).
     timeline: ActiveTimeline,
@@ -261,24 +255,6 @@ impl Default for TimeControl {
             highlighted_range_next_frame: None,
             just_interacted: false,
         }
-    }
-}
-
-impl re_byte_size::SizeBytes for TimeControl {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            timeline: _,
-            states,
-            playing: _,
-            following: _,
-            buffer_behavior: _,
-            speed: _,
-            loop_mode: _,
-            highlighted_range: _,
-            highlighted_range_next_frame: _,
-            just_interacted: _,
-        } = self;
-        states.heap_size_bytes()
     }
 }
 

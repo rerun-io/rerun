@@ -604,6 +604,7 @@ impl LatestAtResults {
 // --- Cached implementation ---
 
 /// Caches the results of `LatestAt` queries for a given [`QueryCacheKey`].
+#[derive(re_byte_size::SizeBytes)]
 pub struct LatestAtCache {
     /// For debugging purposes.
     pub cache_key: QueryCacheKey,
@@ -685,22 +686,6 @@ impl SizeBytes for LatestAtCachedChunk {
         } else {
             Chunk::heap_size_bytes(chunk)
         }
-    }
-}
-
-impl SizeBytes for LatestAtCache {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            cache_key: _,
-            per_query_time,
-            pending_invalidations,
-        } = self;
-
-        let per_query_time = per_query_time.heap_size_bytes();
-        let pending_invalidations = pending_invalidations.heap_size_bytes();
-
-        per_query_time + pending_invalidations
     }
 }
 

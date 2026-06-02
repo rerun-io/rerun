@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -81,7 +82,7 @@ use crate::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Clear {
     pub is_recursive: Option<SerializedComponentBatch>,
 }
@@ -261,12 +262,5 @@ impl Clear {
     ) -> Self {
         self.is_recursive = try_serialize_field(Self::descriptor_is_recursive(), is_recursive);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Clear {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.is_recursive.heap_size_bytes()
     }
 }

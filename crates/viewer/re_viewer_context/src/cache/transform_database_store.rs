@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ahash::HashSet;
 use parking_lot::{ArcRwLockReadGuard, RawRwLock};
-use re_byte_size::SizeBytes;
+use re_byte_size::SizeBytes as _;
 use re_chunk::{LatestAtQuery, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
@@ -15,7 +15,8 @@ use super::Cache;
 /// Stores a [`TransformResolutionCache`] for each recording.
 ///
 /// Ensures that the cache stays up to date.
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
+#[size_bytes(profile)]
 pub struct TransformDatabaseStoreCache {
     transform_cache: Option<TransformResolutionCache>,
 
@@ -92,22 +93,6 @@ impl TransformDatabaseStoreCache {
 
     pub fn transform_forest(&self) -> Option<Arc<re_tf::TransformForest>> {
         self.transform_forest.clone()
-    }
-}
-
-impl SizeBytes for TransformDatabaseStoreCache {
-    fn heap_size_bytes(&self) -> u64 {
-        re_tracing::profile_function!();
-
-        let Self {
-            transform_cache,
-            transform_forest,
-            used_timelines,
-        } = self;
-
-        transform_cache.heap_size_bytes()
-            + transform_forest.heap_size_bytes()
-            + used_timelines.heap_size_bytes()
     }
 }
 

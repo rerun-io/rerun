@@ -6,6 +6,7 @@ use crate::{Receiver, Sender, VideoDataDescription};
 
 pub use super::sync_decoder::SyncDecoder;
 
+#[derive(re_byte_size::SizeBytes)]
 enum Command {
     Chunk(Chunk),
 
@@ -13,16 +14,6 @@ enum Command {
     Reset(Box<VideoDataDescription>),
 
     Stop,
-}
-
-impl re_byte_size::SizeBytes for Command {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::Chunk(chunk) => chunk.heap_size_bytes(),
-            Self::Reset(video_data_description) => video_data_description.heap_size_bytes(),
-            Self::Stop => 0,
-        }
-    }
 }
 
 #[derive(Clone)]

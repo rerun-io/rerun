@@ -21,7 +21,7 @@ use smallvec::smallvec;
 /// Description of a mesh that can be procedurally generated.
 ///
 /// Obtain the actual mesh by passing this to [`WireframeCache`] or [`SolidCache`].
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, re_byte_size::SizeBytes)]
 pub enum ProcMeshKey {
     /// A unit cube, centered; its bounds are ±0.5.
     Cube,
@@ -57,6 +57,7 @@ pub enum ProcMeshKey {
         // can have parts which are independently offset, thus allowing us to stretch a
         // single sphere/capsule mesh into an arbitrary length and radius capsule.
         // (Tapered capsules will still need distinct meshes.)
+        #[size_bytes(ignore)] // `NotNan<f32>` doesn't impl `SizeBytes`.
         length: NotNan<f32>,
 
         /// Number of triangle subdivisions to use to create a finer, rounder mesh.
@@ -82,12 +83,6 @@ pub enum ProcMeshKey {
         /// showing a minimal set of lines that outline the shape.
         axes_only: bool,
     },
-}
-
-impl re_byte_size::SizeBytes for ProcMeshKey {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
 }
 
 impl ProcMeshKey {
@@ -124,12 +119,11 @@ impl ProcMeshKey {
 
 /// A renderable mesh generated from a [`ProcMeshKey`] by the [`WireframeCache`],
 /// which is to be drawn as lines rather than triangles.
-#[derive(Debug)]
+#[derive(Debug, re_byte_size::SizeBytes)]
 pub struct WireframeMesh {
-    #[expect(unused)]
+    #[size_bytes(ignore)]
     pub bbox: macaw::BoundingBox,
 
-    #[expect(unused)]
     pub vertex_count: usize,
 
     /// Collection of line strips making up the wireframe.
@@ -138,20 +132,6 @@ pub struct WireframeMesh {
     /// `re_renderer::Renderer` implementation that takes instanced meshes and applies
     /// the line shader to them, instead of doing immediate-mode accumulation of line strips.
     pub line_strips: Vec<Vec<Vec3>>,
-}
-
-impl re_byte_size::SizeBytes for WireframeMesh {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            bbox: _,
-            vertex_count: _,
-            line_strips,
-        } = self;
-        line_strips
-            .iter()
-            .map(|strip| strip.len() * std::mem::size_of::<Vec3>())
-            .sum::<usize>() as _
-    }
 }
 
 /// A renderable mesh generated from a [`ProcMeshKey`] by the [`SolidCache`],

@@ -111,7 +111,7 @@ impl From<AnnexBStreamWriteError> for Error {
 }
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 struct FFmpegFrameInfo {
     /// The start of a new group of pictures?
     ///
@@ -140,24 +140,10 @@ struct FFmpegFrameInfo {
     decode_timestamp: Time,
 }
 
-impl re_byte_size::SizeBytes for FFmpegFrameInfo {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
-
+#[derive(re_byte_size::SizeBytes)]
 enum FFmpegFrameData {
     Chunk(Chunk),
     Quit,
-}
-
-impl re_byte_size::SizeBytes for FFmpegFrameData {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::Chunk(chunk) => chunk.heap_size_bytes(),
-            Self::Quit => 0,
-        }
-    }
 }
 
 /// Wraps an stdin with a shared shutdown boolean.

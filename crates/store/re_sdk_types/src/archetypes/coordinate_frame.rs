@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -85,7 +86,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct CoordinateFrame {
     /// The coordinate frame to use for the current entity.
     ///
@@ -264,12 +265,5 @@ impl CoordinateFrame {
     ) -> Self {
         self.frame = try_serialize_field(Self::descriptor_frame(), frame);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for CoordinateFrame {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.frame.heap_size_bytes()
     }
 }

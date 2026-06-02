@@ -63,7 +63,7 @@ impl std::fmt::Debug for ArrowRecordBatchReleaseCallback {
 }
 
 /// Message containing an Arrow payload
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 #[must_use]
 pub struct ArrowMsg {
     /// Unique identifier for the chunk in this message.
@@ -72,6 +72,7 @@ pub struct ArrowMsg {
     /// Schema and data for all control & data columns.
     pub batch: ArrowRecordBatch, // TODO(#10343): make this a `re_sorbet::ChunkBatch`
 
+    #[size_bytes(ignore)]
     pub on_release: Option<ArrowRecordBatchReleaseCallback>,
 }
 

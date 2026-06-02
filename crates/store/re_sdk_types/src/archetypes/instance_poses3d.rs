@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -105,7 +106,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct InstancePoses3D {
     /// Translation vectors.
     pub translations: Option<SerializedComponentBatch>,
@@ -468,16 +469,5 @@ impl InstancePoses3D {
     ) -> Self {
         self.mat3x3 = try_serialize_field(Self::descriptor_mat3x3(), mat3x3);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for InstancePoses3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.translations.heap_size_bytes()
-            + self.rotation_axis_angles.heap_size_bytes()
-            + self.quaternions.heap_size_bytes()
-            + self.scales.heap_size_bytes()
-            + self.mat3x3.heap_size_bytes()
     }
 }

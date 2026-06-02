@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: A timeline column in a table.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, ::re_byte_size::SizeBytes)]
 pub struct TimelineColumn {
     /// Is this column visible?
     ///
@@ -268,17 +269,5 @@ impl ::re_types_core::Loggable for TimelineColumn {
                 .with_context("rerun.blueprint.datatypes.TimelineColumn")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TimelineColumn {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.visible.heap_size_bytes() + self.timeline.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod() && <crate::datatypes::Utf8>::is_pod()
     }
 }

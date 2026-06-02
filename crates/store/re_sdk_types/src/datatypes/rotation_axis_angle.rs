@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: 3D rotation represented by a rotation around a given axis.
-#[derive(Clone, Debug, Copy, PartialEq)]
+#[derive(Clone, Debug, Copy, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct RotationAxisAngle {
     /// Axis to rotate around.
     ///
@@ -294,17 +295,5 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                     .with_context("rerun.datatypes.RotationAxisAngle")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for RotationAxisAngle {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.axis.heap_size_bytes() + self.angle.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec3D>::is_pod() && <crate::datatypes::Angle>::is_pod()
     }
 }

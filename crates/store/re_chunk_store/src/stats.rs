@@ -88,7 +88,7 @@ impl ChunkStore {
 /// A temporal chunk has dense timelines.
 ///
 /// Each chunk can contain multiple components (columns).
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, re_byte_size::SizeBytes)]
 pub struct ChunkStoreChunkStats {
     /// The number of chunks this is the stats for.
     pub num_chunks: u64,
@@ -111,18 +111,6 @@ pub struct ChunkStoreChunkStats {
 
     /// How many _component batches_ ("cells").
     pub num_events: u64,
-}
-
-impl SizeBytes for ChunkStoreChunkStats {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl std::fmt::Display for ChunkStoreChunkStats {

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -23,7 +24,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A test of an enumerate with specified values.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 #[repr(u8)]
 pub enum ValuedEnum {
     /// One.
@@ -155,17 +156,5 @@ impl ::re_types_core::reflection::Enum for ValuedEnum {
             42 => Some(Self::TheAnswer),
             _ => None,
         }
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ValuedEnum {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
     }
 }

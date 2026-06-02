@@ -888,7 +888,7 @@ impl Chunk {
 
 // ---
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub struct TimeColumn {
     pub(crate) timeline: Timeline,
 
@@ -1747,23 +1747,6 @@ impl re_byte_size::SizeBytes for Chunk {
         }
 
         size_bytes
-    }
-}
-
-impl re_byte_size::SizeBytes for TimeColumn {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            timeline,
-            times,
-            is_sorted,
-            time_range,
-        } = self;
-
-        timeline.heap_size_bytes()
-            + times.heap_size_bytes()
-            + is_sorted.heap_size_bytes()
-            + time_range.heap_size_bytes()
     }
 }
 

@@ -19,15 +19,9 @@ use crate::{
     VideoDataDescription, VideoEncodingDetails, player::VideoPlaybackIssueSeverity,
 };
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct WebVideoFrame(pub(super) web_sys::VideoFrame);
-
-impl re_byte_size::SizeBytes for WebVideoFrame {
-    fn heap_size_bytes(&self) -> u64 {
-        0 // Part of Browser's memory, not wasm heap.
-    }
-}
+pub struct WebVideoFrame(#[size_bytes(ignore)] pub(super) web_sys::VideoFrame);
 
 impl Drop for WebVideoFrame {
     fn drop(&mut self) {
@@ -45,18 +39,13 @@ impl std::ops::Deref for WebVideoFrame {
 }
 
 /// Messages sent to the output callback.
+#[derive(re_byte_size::SizeBytes)]
 enum OutputCallbackMessage {
     Reset,
     FrameInfo {
         web_timestamp_us: u64,
         frame_info: FrameInfo,
     },
-}
-
-impl re_byte_size::SizeBytes for OutputCallbackMessage {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
 }
 
 pub struct WebVideoDecoder {

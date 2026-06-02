@@ -8,7 +8,7 @@ use re_sdk_types::{Archetype, Component};
 use re_viewer_context::ViewContext;
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct ForceLayoutParams {
     // Link
     pub(super) force_link_enabled: Enabled,
@@ -28,18 +28,6 @@ pub struct ForceLayoutParams {
     pub(super) force_collision_enabled: Enabled,
     pub(super) force_collision_strength: ForceStrength,
     pub(super) force_collision_iterations: ForceIterations,
-}
-
-impl re_byte_size::SizeBytes for ForceLayoutParams {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 /// Convenience struct for querying the components of a blueprint archetype or its fallbacks.

@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 /// A sorted, immutable collection of inclusive ranges mapped to values.
 ///
 /// Supports O(log N) queries for overlapping ranges.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub struct SortedRangeMap<K, V> {
     /// Entries sorted by `range.start()`.
     entries: Vec<(RangeInclusive<K>, V)>,
@@ -19,17 +19,6 @@ impl<K, V> Default for SortedRangeMap<K, V> {
             entries: Vec::new(),
             max_end: Vec::new(),
         }
-    }
-}
-
-impl<K, V> re_byte_size::SizeBytes for SortedRangeMap<K, V>
-where
-    K: re_byte_size::SizeBytes + Ord + Copy,
-    V: re_byte_size::SizeBytes,
-{
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { entries, max_end } = self;
-        entries.heap_size_bytes() + max_end.heap_size_bytes()
     }
 }
 

@@ -133,7 +133,7 @@ use crate::{CodecError, CodecResult, Decodable as _, StreamFooterEntry, ToApplic
 /// which in turn will affect the Sorbet schema of the recording too.
 ///
 /// Filtering RRD manifests is very non trivial and should only be performed with great care.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub struct RawRrdManifest {
     /// The recording ID that was used to identify the original recording.
     ///
@@ -166,26 +166,11 @@ pub struct RawRrdManifest {
     pub data: arrow::array::RecordBatch,
 }
 
-impl re_byte_size::SizeBytes for RawRrdManifest {
-    fn heap_size_bytes(&self) -> u64 {
-        re_tracing::profile_function!();
-
-        let Self {
-            store_id,
-            sorbet_schema,
-            sorbet_schema_sha256: _,
-            data,
-        } = self;
-
-        store_id.heap_size_bytes() + sorbet_schema.heap_size_bytes() + data.heap_size_bytes()
-    }
-}
-
 /// A map based representation of the static data within an [`RawRrdManifest`].
 pub type RrdManifestStaticMap = IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>>;
 
 /// The individual entries in an [`RrdManifestTemporalMap`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub struct RrdManifestTemporalMapEntry {
     /// The time range covered by this entry.
     pub time_range: AbsoluteTimeRange,
@@ -195,17 +180,6 @@ pub struct RrdManifestTemporalMapEntry {
     /// At most, this is the same as the number of rows in the chunk as a whole. For a specific
     /// entry it might be less, since chunks allow sparse components.
     pub num_rows: u64,
-}
-
-impl re_byte_size::SizeBytes for RrdManifestTemporalMapEntry {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 /// A map based representation of the temporal data within an [`RawRrdManifest`].

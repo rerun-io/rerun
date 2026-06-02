@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -58,7 +59,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Asset3D {
     /// The asset's bytes.
     pub blob: Option<SerializedComponentBatch>,
@@ -387,14 +388,5 @@ impl Asset3D {
     ) -> Self {
         self.albedo_factor = try_serialize_field(Self::descriptor_albedo_factor(), albedo_factor);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Asset3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.blob.heap_size_bytes()
-            + self.media_type.heap_size_bytes()
-            + self.albedo_factor.heap_size_bytes()
     }
 }

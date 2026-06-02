@@ -7,7 +7,7 @@ use re_log_types::{EntityPath, EntityPathPart};
 /// A recursive tree structure that maintains the entity hierarchy.
 ///
 /// The tree contains a list of subtrees, and so on recursively.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub struct EntityTree {
     /// Full path prefix to the root of this (sub)tree.
     pub path: EntityPath,
@@ -122,13 +122,6 @@ impl EntityTree {
         }
 
         visit(self, &mut predicate)
-    }
-}
-
-impl re_byte_size::SizeBytes for EntityTree {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { path, children } = self;
-        path.heap_size_bytes() + children.heap_size_bytes()
     }
 }
 

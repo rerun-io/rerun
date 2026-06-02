@@ -8,22 +8,13 @@ use re_viewer_context::{
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 pub struct TensorVisualization {
     pub tensor_row_id: RowId,
+    // Tensor is already counted as part of the store.
+    #[size_bytes(ignore)]
     pub tensor: TensorData,
     pub data_range: ValueRange,
-}
-
-impl re_byte_size::SizeBytes for TensorVisualization {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            tensor_row_id: _,
-            tensor: _, // Tensor is already counted as part of the store.
-            data_range: _,
-        } = self;
-        0
-    }
 }
 
 #[derive(Default)]

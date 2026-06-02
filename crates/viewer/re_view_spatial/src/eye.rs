@@ -20,24 +20,14 @@ use crate::scene_bounding_boxes::SceneBoundingBoxes;
 /// Note: we prefer the word "eye" to not confuse it with logged cameras.
 ///
 /// Our view-space uses RUB (X=Right, Y=Up, Z=Back).
-#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize, re_byte_size::SizeBytes,
+)]
 pub struct Eye {
     pub world_from_rub_view: IsoTransform,
 
     /// If no angle is present, this is an orthographic camera.
     pub fov_y: Option<f32>,
-}
-
-impl re_byte_size::SizeBytes for Eye {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl Eye {
@@ -164,17 +154,10 @@ impl Eye {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 struct EyeInterpolation {
     elapsed_time: f32,
     start: Eye,
-}
-
-impl re_byte_size::SizeBytes for EyeInterpolation {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
 }
 
 impl EyeInterpolation {
@@ -202,7 +185,7 @@ impl EyeInterpolation {
 /// Some non-persistent state for the eye.
 ///
 /// Note: we use "eye" so we don't confuse this with logged camera.
-#[derive(Default, Clone, Debug, PartialEq)]
+#[derive(Default, Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct EyeState {
     /// Vertical field of view in radians.
     fov_y: Option<f32>,
@@ -229,27 +212,6 @@ pub struct EyeState {
     pub last_look_target: Option<Vec3>,
     pub last_orbit_radius: Option<f32>,
     pub last_eye_up: Option<Vec3>,
-}
-
-impl re_byte_size::SizeBytes for EyeState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            fov_y: _,
-            velocity: _,
-            last_tracked_entity,
-            interpolation,
-            spin: _,
-            last_eye,
-            last_interaction_time: _,
-            last_look_target: _,
-            last_orbit_radius: _,
-            last_eye_up: _,
-        } = self;
-
-        last_tracked_entity.heap_size_bytes()
-            + interpolation.heap_size_bytes()
-            + last_eye.heap_size_bytes()
-    }
 }
 
 /// Utility struct for handling eye control parameter changes,
