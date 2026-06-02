@@ -123,6 +123,10 @@ verify_sha1() {
   actual="$(sha1_file "$archive")"
   actual="$(printf '%s' "$actual" | tr '[:upper:]' '[:lower:]')"
   expected="$(printf '%s' "$expected" | tr '[:upper:]' '[:lower:]')"
+  # GNU checksum tools prefix hashes with `\` when paths contain backslashes.
+  # See also: https://unix.stackexchange.com/a/424629
+  actual="${actual#\\}"
+  expected="${expected#\\}"
   if [[ "$actual" != "$expected" ]]; then
     echo "SHA1 mismatch for $(basename "$archive"): expected $expected, got $actual" >&2
     exit 1
