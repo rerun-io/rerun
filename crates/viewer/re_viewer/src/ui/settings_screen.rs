@@ -170,6 +170,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     {
         let ExperimentalAppOptions {
             table_cards_and_blueprints,
+            gamepad_navigation,
         } = experimental;
         separator_with_some_space(ui);
         ui.strong("Experimental");
@@ -178,6 +179,19 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
                 "Enable table blueprints embedded in Arrow schema metadata, plus grid view mode for server supplied tables.\n\n\
                  When enabled, tables can carry inline view definitions for segment previews, and a list/grid toggle appears in the table title bar.",
             );
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let gamepad_navigation_response = ui
+                .re_checkbox(gamepad_navigation, "Gamepad navigation")
+                .on_hover_text("Enable gamepad navigation in 3D spatial views.");
+            if gamepad_navigation_response.changed() && !*gamepad_navigation {
+                re_gamepad::clear_event_waker();
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let _ = gamepad_navigation;
+        }
     }
 }
 

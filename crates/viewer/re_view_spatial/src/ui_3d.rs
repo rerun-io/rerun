@@ -172,11 +172,21 @@ impl SpatialView3D {
         )?;
         state_3d.update(scene_view_coordinates);
 
+        let is_selected_view = ctx
+            .selection_state()
+            .selected_items()
+            .single_item()
+            .and_then(Item::view_id)
+            == Some(query.view_id);
+        let enable_gamepad_navigation =
+            ctx.app_options().experimental.gamepad_navigation && is_selected_view;
+
         let eye = state_3d.eye_state.update(
             &view_context,
             &response,
             space_cameras,
             &state.bounding_boxes,
+            enable_gamepad_navigation,
         )?;
 
         state.state_3d = state_3d;

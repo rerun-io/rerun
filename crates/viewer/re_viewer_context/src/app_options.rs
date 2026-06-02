@@ -197,4 +197,7 @@ pub struct ExperimentalAppOptions {
     /// This enables table blueprints embedded in Arrow schema metadata,
     /// plus the table/grid view toggle for card-based table layouts.
     pub table_cards_and_blueprints: bool,
+
+    /// Enable gamepad navigation in 3D spatial views.
+    pub gamepad_navigation: bool,
 }

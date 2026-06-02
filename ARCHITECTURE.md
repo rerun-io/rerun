@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/architecture_diagram/2217ecdf522ffe91443568ad13a8e9c80d4214c7/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/2217ecdf522ffe91443568ad13a8e9c80d4214c7/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/2217ecdf522ffe91443568ad13a8e9c80d4214c7/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/2217ecdf522ffe91443568ad13a8e9c80d4214c7/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/2217ecdf522ffe91443568ad13a8e9c80d4214c7/1200w.png">
+  <img src="https://static.rerun.io/architecture_diagram/1504f1f67ae92c7307f2c3c7de239d23001773e7/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/1504f1f67ae92c7307f2c3c7de239d23001773e7/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/1504f1f67ae92c7307f2c3c7de239d23001773e7/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/1504f1f67ae92c7307f2c3c7de239d23001773e7/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/1504f1f67ae92c7307f2c3c7de239d23001773e7/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -141,6 +141,7 @@ Update instructions:
 | re_component_fallbacks | Provides default fallbacks for Rerun components in the fallback provider registry.                         |
 | re_component_ui        | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_dataframe_ui        | Rich table widget over DataFusion.                                                                         |
+| re_gamepad             | Gamepad input handling for the Rerun viewer.                                                              |
 | re_memory_view         | Flamegraph visualization for memory usage trees                                                            |
 | re_plot                | Plot ui components shared between time series and bar chart view.                                          |
 | re_recording_panel     | The UI for the recording panel.                                                                            |
