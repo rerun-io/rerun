@@ -1,3 +1,4 @@
+mod asset_layer;
 mod chunk_key;
 mod dataset;
 mod error;
