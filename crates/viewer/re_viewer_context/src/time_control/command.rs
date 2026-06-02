@@ -197,6 +197,8 @@ impl TimeControl {
                 }
                 self.select_valid_timeline(db);
 
+                self.just_interacted = true;
+
                 NeedsRepaint::Yes
             }
             TimeControlCommand::SetActiveTimeline(timeline_name) => {
@@ -226,6 +228,8 @@ impl TimeControl {
                     self.states
                         .insert(*timeline_name, TimeState::new(full_range.min));
                 }
+
+                self.just_interacted = true;
 
                 NeedsRepaint::Yes
             }
@@ -300,6 +304,8 @@ impl TimeControl {
                         .or_insert_with(|| TimeState::new(full_range.min))
                         .time = full_range.min.into();
 
+                    self.just_interacted = true;
+
                     NeedsRepaint::Yes
                 } else {
                     NeedsRepaint::No
@@ -311,6 +317,9 @@ impl TimeControl {
                         .entry(*self.timeline_name())
                         .or_insert_with(|| TimeState::new(full_range.max))
                         .time = full_range.max.into();
+
+                    self.just_interacted = true;
+
                     NeedsRepaint::Yes
                 } else {
                     NeedsRepaint::No
@@ -323,6 +332,8 @@ impl TimeControl {
                     if let Some(state) = self.states.get_mut(self.timeline.name()) {
                         state.time = full_range.min.into();
                     }
+
+                    self.just_interacted = true;
 
                     NeedsRepaint::Yes
                 } else {
@@ -453,6 +464,7 @@ impl TimeControl {
 
                 self.exit_follow_mode(db, blueprint_ctx);
                 self.start_buffering();
+                self.just_interacted = true;
 
                 if repaint {
                     NeedsRepaint::Yes
@@ -477,6 +489,8 @@ impl TimeControl {
                     .entry(*self.timeline_name())
                     .or_insert_with(|| TimeState::new(*time));
                 state.time = *time;
+
+                self.just_interacted = true;
 
                 if repaint {
                     NeedsRepaint::Yes
