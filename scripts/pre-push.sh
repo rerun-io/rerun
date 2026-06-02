@@ -9,7 +9,7 @@ if ! command -v "pixi" > /dev/null 2>&1; then
     exit 1
 fi
 
-while read local_ref local_sha remote_ref remote_sha; do
+while read -r local_ref _local_sha _remote_ref _remote_sha; do
     # Extract the branch name from the local reference
     branch_name=$(echo "$local_ref" | sed 's/^refs\/heads\///')
 
@@ -18,7 +18,7 @@ while read local_ref local_sha remote_ref remote_sha; do
 
     # Check if the pushed branch matches the active branch
     if [ "$branch_name" = "$active_branch" ]; then
-        exec pixi run fast-lint $@
+        exec pixi run fast-lint "$@"
     else
         echo "Skipping fast-lint because the pushed branch ($branch_name) does not match the active branch ($active_branch)."
     fi
