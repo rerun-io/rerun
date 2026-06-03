@@ -93,9 +93,9 @@ mod gpu_data {
     pub struct UniformBuffer {
         pub world_from_grid: wgpu_buffer_types::Mat4,
         pub cell_size_opacity_depth_offset: wgpu_buffer_types::Vec4,
-        pub picking_object_id: wgpu_buffer_types::UVec2RowPadded,
-        pub outline_mask_ids: wgpu_buffer_types::UVec2RowPadded,
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 9],
+        pub picking_object_id: wgpu_buffer_types::UVec2,
+        pub outline_mask_ids: wgpu_buffer_types::UVec2,
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 10],
     }
 }
 
