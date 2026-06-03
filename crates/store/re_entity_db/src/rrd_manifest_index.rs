@@ -210,14 +210,14 @@ impl RrdManifestIndex {
             }
         }
 
+        self.sorted_chunks
+            .update(entity_tree, delta.temporal_map());
+
         let new_full_manifest = if let Some(existing) = self.manifest.take() {
             Arc::new(RrdManifest::concat(&[&existing, &delta])?)
         } else {
             delta
         };
-
-        self.sorted_chunks =
-            SortedTemporalChunks::new(entity_tree, new_full_manifest.temporal_map());
 
         self.manifest = Some(new_full_manifest);
 

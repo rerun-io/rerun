@@ -100,7 +100,7 @@ impl SortedTemporalChunks {
     ///
     /// Should be called when a new rrd manifest is appended.
     // TODO(emilk): handle incremental ingestion
-    fn update(
+    pub(super) fn update(
         &mut self,
         entity_tree: &EntityTree,
         native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
