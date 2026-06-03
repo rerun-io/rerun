@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import NotRequired, TypedDict
+from typing import TypedDict
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import NotRequired
 
 from rerun_export.utils import get_entity_path
 
