@@ -16,7 +16,7 @@ use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreHandle, ChunkTrackingMode, LatestAtQuery, RangeQuery,
 };
 use re_log_encoding::ToTransport as _;
-use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, Timeline};
+use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, TimelineName};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, DoBandwidthTestResponse,
@@ -1415,8 +1415,8 @@ impl RerunCloudService for RerunCloudHandler {
 
                     let mut missing_timelines: BTreeSet<String> =
                         timelines.keys().cloned().collect();
-                    for (timeline, range) in &meta.timelines {
-                        let timeline_name = timeline.name().as_str();
+                    for (timeline_name, range) in &meta.timelines {
+                        let timeline_name = timeline_name.as_str();
                         missing_timelines.remove(timeline_name);
 
                         let timeline_data = timelines
@@ -1874,7 +1874,7 @@ struct ChunkMetadata {
     entity_path: String,
     is_static: bool,
     byte_size: u64,
-    timelines: IntMap<Timeline, AbsoluteTimeRange>,
+    timelines: IntMap<TimelineName, AbsoluteTimeRange>,
 }
 
 impl ChunkMetadata {
@@ -1882,7 +1882,7 @@ impl ChunkMetadata {
         let timelines = chunk
             .timelines()
             .values()
-            .map(|col| (*col.timeline(), col.time_range()))
+            .map(|col| (*col.timeline().name(), col.time_range()))
             .collect();
         Self {
             chunk_id: chunk.id(),
@@ -1897,7 +1897,7 @@ impl ChunkMetadata {
         manifest: &re_log_encoding::RrdManifest,
         chunk_id: ChunkId,
         row_idx: usize,
-        chunk_timelines: Option<&IntMap<Timeline, AbsoluteTimeRange>>,
+        chunk_timelines: Option<&IntMap<TimelineName, AbsoluteTimeRange>>,
     ) -> Self {
         Self {
             chunk_id,
@@ -1972,7 +1972,31 @@ fn get_chunks_for_query_results(
                     all_chunks.push(chunk);
                 }
             }
-            all_missing.extend(results.missing_virtual);
+            // Range tightening for virtual chunks. `range_relevant_chunks_for_all_components`
+            // post-filters physical chunks against the per-chunk timeline range, but the
+            // start-time-indexed scan that produces `missing_virtual` can pull in chunks
+            // whose actual time range falls outside the query (the index lookup widens by
+            // the longest chunk interval). Without this drop, lazy stores leak those
+            // chunks to the client and rows outside the requested range show up in the
+            // result set. Latest-at is unaffected because it doesn't fan out via
+            // `missing_virtual` here.
+            for chunk_id in results.missing_virtual {
+                let keep = match resolved {
+                    // Eager stores already went through the physical post-filter above.
+                    ResolvedStore::Eager(_) => true,
+                    ResolvedStore::Lazy(lazy) => match lazy.timeline_ranges().get(&chunk_id) {
+                        // No temporal entry => static chunk; let it through (matches the
+                        // `chunk.is_static() && include_static` branch of the physical filter).
+                        None => true,
+                        Some(per_timeline) => per_timeline
+                            .get(&range.index)
+                            .is_some_and(|time_range| time_range.intersects(range.index_range)),
+                    },
+                };
+                if keep {
+                    all_missing.insert(chunk_id);
+                }
+            }
         }
     }
 
