@@ -1937,7 +1937,6 @@ dependencies = [
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "tqdm" },
-    { name = "typing-extensions" },
 ]
 
 [package.dev-dependencies]
@@ -1959,7 +1958,6 @@ requires-dist = [
     { name = "rerun-sdk", editable = "../../../rerun_py" },
     { name = "scipy" },
     { name = "tqdm" },
-    { name = "typing-extensions" },
 ]
 
 [package.metadata.requires-dev]

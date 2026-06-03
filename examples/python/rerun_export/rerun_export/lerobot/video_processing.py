@@ -321,10 +321,7 @@ def infer_video_shape_from_table(
     decoded = decode_video_frame(
         samples=[sample_bytes], times_ns=times_ns, target_time_ns=target_time_ns, video_format=video_format
     )
-    shape = decoded.shape
-    if len(shape) != 3:
-        raise ValueError(f"Expected decoded video frame shape (height, width, channels), got {shape}.")
-    return shape[0], shape[1], shape[2]
+    return decoded.shape
 
 
 def infer_video_shape(

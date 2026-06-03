@@ -13,7 +13,6 @@ dependencies = [
   "pyarrow",
   "rerun-sdk",
   "scipy",
-  "typing_extensions",
   "tqdm",
 ]
 
