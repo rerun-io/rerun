@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -65,7 +66,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     Ok(())
 /// }
 /// ```
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct VoxelGridMap {
     /// Indices of the voxels within the grid volume.
     pub voxel_indices: Option<SerializedComponentBatch>,
@@ -791,21 +792,5 @@ impl VoxelGridMap {
     ) -> Self {
         self.colormap = try_serialize_field(Self::descriptor_colormap(), colormap);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VoxelGridMap {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.voxel_indices.heap_size_bytes()
-            + self.cell_size.heap_size_bytes()
-            + self.values.heap_size_bytes()
-            + self.colors.heap_size_bytes()
-            + self.translation.heap_size_bytes()
-            + self.rotation_axis_angle.heap_size_bytes()
-            + self.quaternion.heap_size_bytes()
-            + self.opacity.heap_size_bytes()
-            + self.value_range.heap_size_bytes()
-            + self.colormap.heap_size_bytes()
     }
 }
