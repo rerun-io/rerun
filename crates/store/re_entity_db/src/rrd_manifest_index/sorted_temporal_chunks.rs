@@ -56,6 +56,7 @@ pub(super) struct SortedEntityTemporalChunks {
     ///
     /// This does NOT include data from child entities.
     per_component: IntMap<re_chunk::ComponentIdentifier, Vec<ChunkCountInfo>>,
+
 }
 
 impl SortedEntityTemporalChunks {
@@ -79,7 +80,7 @@ impl SortedEntityTemporalChunks {
 
 /// Pre-sorted temporal chunk cache organized by timeline and entity.
 ///
-/// This cache is rebuilt whenever the manifest is updated via [`Self::update`].
+/// Incrementally updated via [`Self::update`] when a new manifest delta arrives.
 #[derive(Default, Clone, re_byte_size::SizeBytes)]
 pub struct SortedTemporalChunks {
     per_timeline: BTreeMap<TimelineName, IntMap<EntityPathHash, SortedEntityTemporalChunks>>,
@@ -96,10 +97,7 @@ impl SortedTemporalChunks {
         slf
     }
 
-    /// Update the cache from the manifest's temporal map and entity tree.
-    ///
-    /// Should be called when a new rrd manifest is appended.
-    // TODO(emilk): handle incremental ingestion
+    /// Update the cache incrementally from a manifest delta.
     pub(super) fn update(
         &mut self,
         entity_tree: &EntityTree,
@@ -107,31 +105,42 @@ impl SortedTemporalChunks {
     ) {
         re_tracing::profile_function!();
 
-        // First collect per-component data from the manifest
+        // Scratch space for tracking which chunks were added by this delta.
+        // timeline → entity_hash → chunks
+        let mut new_chunks: BTreeMap<TimelineName, IntMap<EntityPathHash, Vec<ChunkCountInfo>>> =
+            Default::default();
+
+        // First collect per-component data from the delta
         for (entity, per_timeline) in native_temporal_map {
             for (timeline, per_component) in per_timeline {
                 let sorted_per_entity = self.per_timeline.entry(*timeline.name()).or_default();
                 let entity_chunks = sorted_per_entity.entry(entity.hash()).or_default();
+                let track = new_chunks.entry(*timeline.name()).or_default();
 
                 for (component, chunks) in per_component {
+                    let new: Vec<_> = chunks
+                        .iter()
+                        .map(|(id, entry)| ChunkCountInfo {
+                            id: *id,
+                            time_range: entry.time_range,
+                            num_rows: entry.num_rows,
+                        })
+                        .collect();
+
                     let component_chunks =
                         entity_chunks.per_component.entry(*component).or_default();
-                    component_chunks.extend(chunks.iter().map(|(id, entry)| ChunkCountInfo {
-                        id: *id,
-                        time_range: entry.time_range,
-                        num_rows: entry.num_rows,
-                    }));
-
-                    // Dedup chunks
-                    component_chunks.sort_by_key(|info| info.id);
-                    component_chunks.dedup_by_key(|info| info.id);
+                    component_chunks.extend(new.iter().cloned());
 
                     // Then sort by start time
                     component_chunks.sort_by_key(|info| info.time_range.min);
+
+                    track.entry(entity.hash()).or_default().extend(new);
                 }
             }
         }
 
+        // Aggregate delta entries bottom-up so every entity includes new
+        // chunks from its descendants.
         /// Bottom-up entity traversal
         fn visit(current: &EntityTree, visitor: &mut impl FnMut(&EntityTree)) {
             for child in current.children.values() {
@@ -141,44 +150,35 @@ impl SortedTemporalChunks {
         }
 
         visit(entity_tree, &mut |node: &EntityTree| {
-            for per_entity in self.per_timeline.values_mut() {
-                // Collect all chunks from direct children which now already includes
-                // their descendants and components
-                let child_chunks = node
-                    .children
-                    .values()
-                    .filter_map(|v| per_entity.get(&v.path.hash()).map(|c| c.per_entity.iter()))
-                    .flatten()
-                    .cloned()
-                    .collect::<Vec<_>>();
-
-                let mut entry = per_entity.entry(node.path.hash());
-                let chunks = match entry {
-                    std::collections::hash_map::Entry::Occupied(ref mut entry) => {
-                        let chunks = entry.get_mut();
-                        chunks.per_entity.extend(child_chunks);
-                        chunks
-                    }
-                    std::collections::hash_map::Entry::Vacant(entry) => {
-                        entry.insert(SortedEntityTemporalChunks {
-                            per_entity: child_chunks,
-                            per_component: Default::default(),
-                        })
-                    }
+            for (timeline_name, per_entity) in self.per_timeline.iter_mut() {
+                let Some(scratch) = new_chunks.get_mut(timeline_name) else {
+                    continue;
                 };
 
-                // Collect this entity's own component chunks
-                chunks
-                    .per_entity
-                    .extend(chunks.per_component.values().flatten().cloned());
+                // Collect all new chunks from direct children which now already
+                // includes their descendants' new chunks
+                let mut new_entity_chunks = Vec::new();
+                for child in node.children.values() {
+                    if let Some(cc) = scratch.get(&child.path.hash()) {
+                        new_entity_chunks.extend(cc.iter().cloned());
+                    }
+                }
+
+                // Collect this entity's own new component chunks
+                let entry = scratch.entry(node.path.hash()).or_default();
+                new_entity_chunks.append(entry);
+
+                if new_entity_chunks.is_empty() {
+                    continue;
+                }
 
                 // Deduplicate while also merging counts and time ranges.
                 //
                 // The `native_temporal_map` stores row counts per-component, not for the whole chunk.
                 // So if the same chunk appears for multiple components, we need to union their time and
                 // sum up their row counts.
-                chunks.per_entity.sort_by_key(|info| info.id);
-                chunks.per_entity.dedup_by(|a, b| {
+                new_entity_chunks.sort_by_key(|info| info.id);
+                new_entity_chunks.dedup_by(|a, b| {
                     if a.id == b.id {
                         // Same chunk ID: merge into b
                         b.time_range = b.time_range.union(a.time_range);
@@ -190,7 +190,12 @@ impl SortedTemporalChunks {
                 });
 
                 // Then sort by time range
+
+                let chunks = per_entity.entry(node.path.hash()).or_default();
+                chunks.per_entity.extend(new_entity_chunks.iter().cloned());
                 chunks.per_entity.sort_by_key(|info| info.time_range.min);
+
+                *entry = new_entity_chunks;
             }
         });
     }
