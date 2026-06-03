@@ -188,7 +188,7 @@ impl IntroItem {
                             }
                             ui.spacing_mut().item_spacing.x = 0.0;
                             ui.weak("for address ");
-                            ui.strong(format!("{}", &origin.host));
+                            ui.strong(format!("{}", origin.host));
                         });
                     }
                     CloudState { has_server: Some(origin), login: LoginState::Auth { .. } } => {
@@ -209,7 +209,7 @@ pub fn intro_section(ui: &mut egui::Ui, ctx: &AppContext<'_>, cloud_state: &Clou
     ui.add_space(32.0);
 
     if let Some(auth) = ctx.auth_context {
-        ui.strong(RichText::new(format!("Hi, {}!", &auth.email)).size(15.0));
+        ui.strong(RichText::new(format!("Hi, {}!", auth.email)).size(15.0));
 
         if ui.add(Button::new("Log out").secondary().small()).clicked() {
             ctx.command_sender.send_system(SystemCommand::Logout);

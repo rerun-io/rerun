@@ -795,13 +795,7 @@ impl EyeState {
             .component_or_empty::<re_sdk_types::components::EntityPath>(
                 EyeControls3D::descriptor_tracking_entity().component,
             )?
-            .and_then(|tracking_entity| {
-                if tracking_entity.is_empty() {
-                    None
-                } else {
-                    Some(tracking_entity)
-                }
-            });
+            .filter(|tracking_entity| !tracking_entity.is_empty());
 
         if let Some(tracking_entity) = &tracking_entity {
             let tracking_entity = EntityPath::from(tracking_entity.as_str());

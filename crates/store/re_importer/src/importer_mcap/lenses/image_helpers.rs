@@ -98,18 +98,12 @@ pub(crate) fn extract_image_buffer()
             let step = step_array.value(i) as usize;
             let row_stride = if step > 0 {
                 step
-            } else if height > 0 {
-                blob.len() / height
             } else {
-                0
+                blob.len().checked_div(height).unwrap_or(0)
             };
 
             // Bytes per row without any padding.
-            let bytes_per_row = if height > 0 {
-                total_num_bytes / height
-            } else {
-                0
-            };
+            let bytes_per_row = total_num_bytes.checked_div(height).unwrap_or(0);
 
             if row_stride > bytes_per_row && height > 0 {
                 // Row stride larger than the actual pixel data -- strip per-row padding.

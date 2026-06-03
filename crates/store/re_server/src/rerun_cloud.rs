@@ -216,7 +216,7 @@ impl RerunCloudHandler {
                 })?;
                 let meta = std::fs::metadata(&path).map_err(|err| match err.kind() {
                     std::io::ErrorKind::NotFound => {
-                        tonic::Status::invalid_argument(format!("Directory not found: {:?}", &path))
+                        tonic::Status::invalid_argument(format!("Directory not found: {path:?}"))
                     }
                     _ => tonic::Status::invalid_argument(format!(
                         "Failed to read directory metadata {path:?}: {err:#}"

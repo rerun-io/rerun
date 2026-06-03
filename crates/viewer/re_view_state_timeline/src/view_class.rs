@@ -876,7 +876,7 @@ fn paint_jagged_band(
     for k in 0..=JAGGED_TOOTH_COUNT {
         let y0 = rect.top() + (k as f32 - 0.5) * tooth_h;
         let y1 = y0 + tooth_h;
-        let apex = egui::pos2(rect.right(), (y0 + y1) * 0.5);
+        let apex = egui::pos2(rect.right(), f32::midpoint(y0, y1));
         painter.add(egui::epaint::PathShape::convex_polygon(
             vec![
                 egui::pos2(jagged_right, y0),

@@ -206,7 +206,7 @@ impl QueryCache {
         let fraction_to_purge = target.target_fraction_from_size(self.total_size_bytes());
 
         let mut caches = self.latest_at_per_cache_key.write();
-        for (_key, cache) in caches.iter_mut() {
+        for cache in caches.values_mut() {
             let mut cache = cache.write();
 
             let split_point =

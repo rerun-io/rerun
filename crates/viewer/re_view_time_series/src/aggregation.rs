@@ -14,6 +14,8 @@
 //! The first and last output points are time-aligned to the input's time bounds
 //! to prevent visual glitches at the edges.
 
+use egui::emath::fast_midpoint;
+
 use crate::{PlotPoint, PlotPointAttrs};
 
 /// Implements aggregation behaviors for `Average`.
@@ -193,9 +195,9 @@ impl MinMaxAggregator {
                 Self::MinMaxAverage => {
                     // Don't average a single point with itself.
                     if j > 1 {
-                        acc_min.value = (acc_min.value + acc_max.value) * 0.5;
+                        acc_min.value = fast_midpoint(acc_min.value, acc_max.value);
                         acc_min.attrs.radius_ui =
-                            (acc_min.attrs.radius_ui + acc_max.attrs.radius_ui) * 0.5;
+                            fast_midpoint(acc_min.attrs.radius_ui, acc_max.attrs.radius_ui);
                     }
                     aggregated.push(acc_min);
                 }

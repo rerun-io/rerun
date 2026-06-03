@@ -165,13 +165,7 @@ impl TensorStats {
             };
 
             // If we didn't find a finite range, set it to None.
-            finite_range.and_then(|r| {
-                if r.0.is_finite() && r.1.is_finite() {
-                    Some(r)
-                } else {
-                    None
-                }
-            })
+            finite_range.filter(|&r| r.0.is_finite() && r.1.is_finite())
         }
         .unwrap_or_else(|| (tensor.dtype().min_value(), tensor.dtype().max_value()));
 

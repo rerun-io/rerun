@@ -298,7 +298,6 @@ impl<'ctx> LineBatchBuilder<'_, 'ctx> {
         #![expect(clippy::tuple_array_conversions)] // false positive
 
         let old_strip_count = self.0.strips_buffer.len();
-        let mut strip_index = old_strip_count as u32;
 
         let num_strips_added = segments.len();
         let num_vertices_added = num_strips_added * 2;
@@ -307,10 +306,9 @@ impl<'ctx> LineBatchBuilder<'_, 'ctx> {
         // color/radius/tag properties.
         // However, if we don't assign different strip indices, we don't know when a strip (==segment) starts and ends.
         // TODO(andreas): There's likely some low hanging fruit here to make this faster by collapsing into a single call to `add_vertices`.
-        for (a, b) in segments {
+        for (strip_index, (a, b)) in std::iter::zip(old_strip_count as u32.., segments) {
             self.add_vertices([a, b].into_iter(), strip_index)
                 .ok_or_log_error_once();
-            strip_index += 1;
         }
 
         self.create_strip_builder(num_strips_added, num_vertices_added)

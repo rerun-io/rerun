@@ -332,7 +332,7 @@ async fn dataset_rrd_manifest_snapshot(
     let rrd_manifest = rrd_manifest.unwrap();
 
     insta::assert_snapshot!(
-        format!("{snapshot_name}"),
+        snapshot_name.to_owned(),
         rrd_manifest
             .data
             // Chunk offsets and sizes cannot possibly align across different implementations that

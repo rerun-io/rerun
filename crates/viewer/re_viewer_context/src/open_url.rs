@@ -1408,9 +1408,7 @@ mod tests {
             )
             .sharable_url(base_url_param)
             .unwrap(),
-            format!(
-                "https://foo.com/test?url=rerun%3A%2F%2F127.0.0.1%3A1234%2Fdataset%2F1830B33B45B963E7774455beb91701ae%3Fsegment_id%3Dpid"
-            )
+            "https://foo.com/test?url=rerun%3A%2F%2F127.0.0.1%3A1234%2Fdataset%2F1830B33B45B963E7774455beb91701ae%3Fsegment_id%3Dpid".to_owned()
         );
 
         assert_eq!(

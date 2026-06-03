@@ -492,9 +492,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             let index_range = if query.filtered_index.is_none() {
                 AbsoluteTimeRange::EMPTY // static-only
             } else if let Some(using_index_values) = query.using_index_values.as_ref() {
-                using_index_values
-                    .first()
-                    .and_then(|start| using_index_values.last().map(|end| (start, end)))
+                Option::zip(using_index_values.first(), using_index_values.last())
                     .map_or(AbsoluteTimeRange::EMPTY, |(start, end)| {
                         AbsoluteTimeRange::new(*start, *end)
                     })
@@ -1329,13 +1327,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .selected_contents
             .iter()
             .map(|(view_idx, column)| match column {
-                ColumnDescriptor::RowId(_) => state
-                    .view_chunks
-                    .first()
-                    .and_then(|vec| vec.first()) // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
-                    .zip(iter_state.view_chunks.first().and_then(|vec| vec.first())) // NOLINT: Option::zip
-                    .map(|(cc, cs)| as_array_ref(cc.chunk.row_ids_array().slice(cs.cursor as _, 1)))
-                    .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
+                ColumnDescriptor::RowId(_) => Option::zip(
+                    state.view_chunks.first().and_then(|vec| vec.first()), // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
+                    iter_state.view_chunks.first().and_then(|vec| vec.first()),
+                )
+                .map(|(cc, cs)| as_array_ref(cc.chunk.row_ids_array().slice(cs.cursor as _, 1)))
+                .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
 
                 ColumnDescriptor::Time(descr) => resolved.get(descr.timeline().name()).map_or_else(
                     || arrow::array::new_null_array(&column.arrow_datatype(), 1),

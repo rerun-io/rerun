@@ -192,7 +192,7 @@ This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
         let parameter_name = &property.name;
         let property_type = &objects[property_type_fqname];
         let property_name = &property_type.name;
-        let property_type_name = format!("blueprint_archetypes.{}", &property_type.name);
+        let property_type_name = format!("blueprint_archetypes.{}", property_type.name);
         code.push_indented(1, format!("if {parameter_name} is not None:"), 1);
         code.push_indented(
             2,
