@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Visible time range bounds for a specific timeline.
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct TimeRange {
     /// Low time boundary for sequence timeline.
     pub start: crate::datatypes::TimeRangeBoundary,
@@ -199,18 +200,5 @@ impl crate::Loggable for TimeRange {
                     .with_context("rerun.datatypes.TimeRange")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TimeRange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.start.heap_size_bytes() + self.end.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TimeRangeBoundary>::is_pod()
-            && <crate::datatypes::TimeRangeBoundary>::is_pod()
     }
 }

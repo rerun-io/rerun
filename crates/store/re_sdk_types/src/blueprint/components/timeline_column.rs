@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: A timeline column in a text log table.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Hash, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct TimelineColumn(
     /// The timeline column.
@@ -73,17 +74,5 @@ impl std::ops::DerefMut for TimelineColumn {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::TimelineColumn {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TimelineColumn {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::datatypes::TimelineColumn>::is_pod()
     }
 }

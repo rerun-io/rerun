@@ -6,7 +6,7 @@ use re_viewer_context::{SystemExecutionOutput, ViewClass as _};
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::iter_spatial_data;
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 pub struct SceneBoundingBoxes {
     /// Overall bounding box of the scene for the current query.
     pub current: macaw::BoundingBox,
@@ -27,20 +27,6 @@ pub struct SceneBoundingBoxes {
 
     /// Per-entity regions of interest for the current query.
     pub region_of_interest_per_entity: IntMap<EntityPathHash, macaw::BoundingBox>,
-}
-
-impl re_byte_size::SizeBytes for SceneBoundingBoxes {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            current: _,
-            per_entity,
-            region_of_interest_current: _,
-            region_of_interest_smoothed: _,
-            region_of_interest_per_entity,
-        } = self;
-
-        per_entity.heap_size_bytes() + region_of_interest_per_entity.heap_size_bytes()
-    }
 }
 
 impl Default for SceneBoundingBoxes {

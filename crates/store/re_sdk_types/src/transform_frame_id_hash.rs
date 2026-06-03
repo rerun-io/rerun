@@ -17,15 +17,8 @@ use crate::components::TransformFrameId;
 ///
 /// There's no `Into` conversions for entity paths in order to keep these conversions explicit,
 /// marking clearly where we retrieve the implicit frame id's of an entity path.
-#[derive(Copy, Clone, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub struct TransformFrameIdHash(Hash64);
-
-impl re_byte_size::SizeBytes for TransformFrameIdHash {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-}
 
 impl std::hash::Hash for TransformFrameIdHash {
     #[inline]

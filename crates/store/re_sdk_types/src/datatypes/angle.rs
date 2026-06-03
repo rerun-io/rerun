@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,17 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Angle in radians.
-#[derive(Clone, Debug, Copy, Default, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Debug,
+    Copy,
+    Default,
+    PartialEq,
+    PartialOrd,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct Angle {
     /// Angle in radians. One turn is equal to 2π (or τ) radians.
@@ -143,17 +154,5 @@ impl From<Angle> for f32 {
     #[inline]
     fn from(value: Angle) -> Self {
         value.radians
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Angle {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.radians.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <f32>::is_pod()
     }
 }

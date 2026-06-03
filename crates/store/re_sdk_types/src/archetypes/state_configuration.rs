@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -68,7 +69,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     Ok(())
 /// }
 /// ```
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct StateConfiguration {
     /// The raw state values that this configuration applies to.
     ///
@@ -408,15 +409,5 @@ impl StateConfiguration {
     ) -> Self {
         self.visible = try_serialize_field(Self::descriptor_visible(), visible);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for StateConfiguration {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.values.heap_size_bytes()
-            + self.labels.heap_size_bytes()
-            + self.colors.heap_size_bytes()
-            + self.visible.heap_size_bytes()
     }
 }

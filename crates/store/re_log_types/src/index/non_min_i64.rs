@@ -39,7 +39,7 @@ impl From<core::convert::Infallible> for TryFromIntError {
 // ---
 
 /// An integer that is known not to equal its minimum value.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct NonMinI64(core::num::NonZeroI64);
 

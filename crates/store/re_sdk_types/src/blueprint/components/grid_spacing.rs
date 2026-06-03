@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Space between grid lines of one line to the next in scene units.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, ::re_byte_size::SizeBytes)]
 pub struct GridSpacing(
     /// Space between grid lines of one line to the next in scene units.
     pub crate::datatypes::Float32,
@@ -72,17 +73,5 @@ impl std::ops::DerefMut for GridSpacing {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for GridSpacing {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
     }
 }

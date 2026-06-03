@@ -18,7 +18,7 @@ use crate::ChunkStore;
 /// This makes it usable in virtual contexts where lineage information alone should never force the
 /// underlying data to remain in local memory, such as the store's virtual indexes.
 /// Use [`ChunkDirectLineage::to_report`] to generate a [`ChunkDirectLineageReport`] instead.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub enum ChunkDirectLineage {
     /// This chunk resulted from the splitting of that other chunk. It must have siblings, somewhere.
     ///
@@ -63,18 +63,6 @@ pub enum ChunkDirectLineage {
     ///
     /// Once garbage collected, this data will be unrecoverable.
     Volatile,
-}
-
-impl re_byte_size::SizeBytes for ChunkDirectLineage {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::SplitFrom(chunk_id, chunk_ids) => {
-                chunk_id.heap_size_bytes() + chunk_ids.heap_size_bytes()
-            }
-            Self::CompactedFrom(btree_set) => btree_set.heap_size_bytes(),
-            Self::RootFromManifest { .. } | Self::Volatile => 0,
-        }
-    }
 }
 
 impl std::fmt::Debug for ChunkDirectLineage {

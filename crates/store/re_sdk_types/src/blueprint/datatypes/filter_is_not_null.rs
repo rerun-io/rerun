@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: Configuration for the filter is not null feature of the dataframe view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct FilterIsNotNull {
     /// Whether the filter by event feature is active.
     pub active: crate::datatypes::Bool,
@@ -211,18 +212,5 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                 .with_context("rerun.blueprint.datatypes.FilterIsNotNull")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for FilterIsNotNull {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.active.heap_size_bytes() + self.column.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
-            && <crate::blueprint::datatypes::ComponentColumnSelector>::is_pod()
     }
 }

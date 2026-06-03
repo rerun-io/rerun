@@ -72,7 +72,7 @@ impl RenderItem<'_> {
 }
 
 /// View state for pan/zoom.
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 struct StateTimelineViewState {
     /// Visible time range, in the same representation as the timeline panel.
     /// `None` means "fit all data" — populated on the next frame from the data range.
@@ -83,17 +83,6 @@ struct StateTimelineViewState {
     active_timeline: Option<TimelineName>,
 }
 
-impl re_byte_size::SizeBytes for StateTimelineViewState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            time_view: _,
-            active_timeline,
-        } = self;
-
-        active_timeline.heap_size_bytes()
-    }
-}
-
 impl ViewState for StateTimelineViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -101,6 +90,10 @@ impl ViewState for StateTimelineViewState {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
     }
 }
 

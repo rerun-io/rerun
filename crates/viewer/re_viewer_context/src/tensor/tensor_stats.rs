@@ -3,7 +3,7 @@ use ndarray::ArrayViewD;
 use re_sdk_types::tensor_data::TensorDataType;
 
 /// Stats about a tensor or image.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, re_byte_size::SizeBytes)]
 pub struct TensorStats {
     /// The range of values, ignoring `NaN`s.
     ///
@@ -15,16 +15,6 @@ pub struct TensorStats {
     /// If no finite values are present, this takes the maximum finite range
     /// of the underlying data type.
     pub finite_range: (f64, f64),
-}
-
-impl re_byte_size::SizeBytes for TensorStats {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl TensorStats {

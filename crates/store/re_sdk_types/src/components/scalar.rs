@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,16 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: A scalar value, encoded as a 64-bit floating point.
 ///
 /// Used for time series plots.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Debug,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct Scalar(pub crate::datatypes::Float64);
 
@@ -70,17 +80,5 @@ impl std::ops::DerefMut for Scalar {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Float64 {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Scalar {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float64>::is_pod()
     }
 }

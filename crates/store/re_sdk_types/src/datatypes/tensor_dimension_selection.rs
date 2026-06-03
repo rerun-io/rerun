@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Selection of a single tensor dimension.
-#[derive(Clone, Debug, Default, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Copy, Hash, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct TensorDimensionSelection {
     /// The dimension number to select.
     pub dimension: u32,
@@ -212,17 +213,5 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
                 .with_context("rerun.datatypes.TensorDimensionSelection")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TensorDimensionSelection {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.dimension.heap_size_bytes() + self.invert.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u32>::is_pod() && <bool>::is_pod()
     }
 }

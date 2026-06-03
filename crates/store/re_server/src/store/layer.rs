@@ -12,6 +12,7 @@ use re_log_types::{AbsoluteTimeRange, Timeline};
 use super::StoreSlotId;
 use super::resolved_store::ResolvedStore;
 
+/// The contents of a ([`re_types_core::SegmentId`], [`re_types_core::LayerName`]) pair.
 #[derive(Clone)]
 pub struct Layer {
     store_slot_id: StoreSlotId,

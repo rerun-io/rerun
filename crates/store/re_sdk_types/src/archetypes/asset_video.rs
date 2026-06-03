@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -133,7 +134,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct AssetVideo {
     /// The asset's bytes.
     pub blob: Option<SerializedComponentBatch>,
@@ -378,12 +379,5 @@ impl AssetVideo {
     ) -> Self {
         self.media_type = try_serialize_field(Self::descriptor_media_type(), media_type);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AssetVideo {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.blob.heap_size_bytes() + self.media_type.heap_size_bytes()
     }
 }

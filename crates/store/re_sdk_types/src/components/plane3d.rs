@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -30,7 +31,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Note: although the normal will be passed through to the
 /// datastore as provided, when used in the Viewer, planes will always be normalized.
 /// I.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5
-#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct Plane3D(pub crate::datatypes::Plane3D);
 
@@ -76,17 +79,5 @@ impl std::ops::DerefMut for Plane3D {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Plane3D {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Plane3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Plane3D>::is_pod()
     }
 }

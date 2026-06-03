@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A connection between two [`datatypes::KeypointId`][crate::datatypes::KeypointId]s.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct KeypointPair {
     /// The first point of the pair.
     pub keypoint0: crate::datatypes::KeypointId,
@@ -228,17 +229,5 @@ impl ::re_types_core::Loggable for KeypointPair {
                 .with_context("rerun.datatypes.KeypointPair")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for KeypointPair {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.keypoint0.heap_size_bytes() + self.keypoint1.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::KeypointId>::is_pod() && <crate::datatypes::KeypointId>::is_pod()
     }
 }

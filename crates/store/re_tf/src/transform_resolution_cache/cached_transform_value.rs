@@ -2,7 +2,7 @@ use re_byte_size::{BookkeepingBTreeMap, SizeBytes};
 use re_log_types::TimeInt;
 use re_sdk_types::{ChunkId, RowId};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, SizeBytes)]
 pub enum CachedTransformValue<T> {
     /// Cache is invalidated, we don't know what state we're in.
     Invalidated {
@@ -22,15 +22,6 @@ impl<T> CachedTransformValue<T> {
         match self {
             Self::Resident { row_id, .. } | Self::Invalidated { row_id, .. } => Some(*row_id),
             Self::Cleared => None,
-        }
-    }
-}
-
-impl<T: SizeBytes> SizeBytes for CachedTransformValue<T> {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::Resident { value, .. } => value.heap_size_bytes(),
-            Self::Invalidated { .. } | Self::Cleared => 0,
         }
     }
 }

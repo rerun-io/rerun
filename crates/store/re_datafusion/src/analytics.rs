@@ -25,6 +25,7 @@ use std::ops::Range;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 
+use datafusion::logical_expr::Expr;
 use datafusion::physical_plan::metrics::{ExecutionPlanMetricsSet, MetricBuilder, MetricsSet};
 use opentelemetry_proto::tonic::{
     collector::trace::v1::{ExportTraceServiceRequest, ExportTraceServiceResponse},
@@ -364,6 +365,27 @@ pub struct QueryInfo {
     /// True when projection-based entity-path narrowing actually trimmed the set of
     /// entity paths sent to `query_dataset`.
     pub entity_path_narrowing_applied: bool,
+
+    /// Number of filter expressions DataFusion presented to
+    /// `supports_filters_pushdown` at planning time (equals
+    /// `filters_pushed_down + filters_applied_client_side`).
+    pub filters_total: u32,
+
+    /// Semicolon-delimited SQL representations of every offered filter
+    /// (e.g. `"(log_time > 0);rerun_segment_id IN ('a', 'b')"`).
+    pub filters_signatures: String,
+
+    /// Semicolon-delimited SQL signatures of filters classified as
+    /// [`datafusion::logical_expr::TableProviderFilterPushDown::Exact`] at planning time.
+    pub filters_signatures_exact: String,
+
+    /// Semicolon-delimited SQL signatures of filters classified as
+    /// [`datafusion::logical_expr::TableProviderFilterPushDown::Inexact`] at planning time.
+    pub filters_signatures_inexact: String,
+
+    /// Semicolon-delimited SQL signatures of filters classified as
+    /// [`datafusion::logical_expr::TableProviderFilterPushDown::Unsupported`] at planning time.
+    pub filters_signatures_unsupported: String,
 }
 
 /// Tracks a query in progress. Accumulates per-query state across phases.
@@ -847,6 +869,11 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
                 filters_pushed_down,
                 filters_applied_client_side,
                 entity_path_narrowing_applied,
+                filters_total,
+                filters_signatures,
+                filters_signatures_exact,
+                filters_signatures_inexact,
+                filters_signatures_unsupported,
             },
         total_duration,
         time_to_first_chunk,
@@ -927,6 +954,31 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
         ),
     ];
 
+    if *filters_total > 0 {
+        attributes.push(kv_int("filters_total", i64::from(*filters_total)));
+    }
+    if !filters_signatures.is_empty() {
+        attributes.push(kv_string("filters_signatures", filters_signatures));
+    }
+    if !filters_signatures_exact.is_empty() {
+        attributes.push(kv_string(
+            "filters_signatures_exact",
+            filters_signatures_exact,
+        ));
+    }
+    if !filters_signatures_inexact.is_empty() {
+        attributes.push(kv_string(
+            "filters_signatures_inexact",
+            filters_signatures_inexact,
+        ));
+    }
+    if !filters_signatures_unsupported.is_empty() {
+        attributes.push(kv_string(
+            "filters_signatures_unsupported",
+            filters_signatures_unsupported,
+        ));
+    }
+
     if let Some(name) = primary_index_name.as_deref() {
         attributes.push(kv_string("primary_index_name", name));
     }
@@ -978,6 +1030,22 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
 // other server-side scan stats (rows_scanned, fragments_*, …) are not
 // reachable from the client today and will be added via server-side OTLP
 // span enrichment in a follow-up.
+
+/// Produce a SQL representation of a DataFusion filter expression for analytics.
+///
+/// Falls back to `variant_name()` for expressions the SQL unparser doesn't support.
+/// The result is escaped so that individual signatures can be safely joined with `;`.
+pub(crate) fn expr_filter_signature(expr: &Expr) -> String {
+    let sql = datafusion::sql::unparser::expr_to_sql(expr)
+        .map(|e| e.to_string())
+        .unwrap_or_else(|_| expr.variant_name().to_owned());
+    escape_sig_str(&sql)
+}
+
+/// Escape `\` and `;` so individual signatures can be safely joined with `;`.
+fn escape_sig_str(s: &str) -> String {
+    s.replace('\\', "\\\\").replace(';', "\\;")
+}
 
 /// Underlying provider variant of a table entry.
 ///
@@ -1079,6 +1147,15 @@ pub struct TableQueryInfo {
 
     /// Wall-clock start..end of the scan. End is set at `Drop` time.
     pub time_range: Range<SystemTime>,
+
+    /// Total number of filter exprs DataFusion offered to `supports_filters_pushdown`.
+    /// Zero when the method was never called (no filters in the query).
+    pub filters_total: u32,
+
+    /// Semicolon-delimited SQL representations of every offered filter, in
+    /// the same order DataFusion supplied them. Empty when none were offered.
+    /// See [`expr_filter_signature`].
+    pub filters_signatures: String,
 }
 
 /// Accumulates per-scan counters from the streaming-provider IO loop.
@@ -1276,6 +1353,8 @@ pub(crate) fn build_table_query_span(
         has_limit,
         limit_value,
         time_range: _,
+        filters_total,
+        ref filters_signatures,
     } = *info;
 
     let start_time_unix_nano = nanos_since_epoch(&wall_clock_range.start);
@@ -1325,6 +1404,13 @@ pub(crate) fn build_table_query_span(
 
     if let Some(kind) = error_kind {
         attributes.push(kv_string("error_kind", kind));
+    }
+
+    if filters_total > 0 {
+        attributes.push(kv_int("filters_total", i64::from(filters_total)));
+    }
+    if !filters_signatures.is_empty() {
+        attributes.push(kv_string("filters_signatures", filters_signatures));
     }
 
     let links = trace_id
@@ -1416,6 +1502,11 @@ mod tests {
             filters_pushed_down: 0,
             filters_applied_client_side: 0,
             entity_path_narrowing_applied: false,
+            filters_total: 0,
+            filters_signatures: String::new(),
+            filters_signatures_exact: String::new(),
+            filters_signatures_inexact: String::new(),
+            filters_signatures_unsupported: String::new(),
         }
     }
 
@@ -1718,6 +1809,8 @@ mod table_query_tests {
             has_limit: false,
             limit_value: None,
             time_range: SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+            filters_total: 0,
+            filters_signatures: String::new(),
         }
     }
 
@@ -2118,6 +2211,11 @@ mod explain_metrics_set_tests {
             filters_pushed_down,
             filters_applied_client_side,
             entity_path_narrowing_applied,
+            filters_total: 0,
+            filters_signatures: String::new(),
+            filters_signatures_exact: String::new(),
+            filters_signatures_inexact: String::new(),
+            filters_signatures_unsupported: String::new(),
         }
     }
 
@@ -2202,5 +2300,180 @@ mod explain_metrics_set_tests {
             Some(5),
         );
         assert_eq!(metric_value_by_name(&set, "num_partitions"), Some(4));
+    }
+}
+
+#[cfg(test)]
+mod expr_filter_signature_tests {
+    use datafusion::logical_expr::expr::InList;
+    use datafusion::logical_expr::{Between, col, lit};
+
+    use super::*;
+
+    #[test]
+    fn binary_expr_column_on_left() {
+        let expr = col("frame_nr").gt(lit(100i64));
+        assert_eq!(expr_filter_signature(&expr), "(frame_nr > 100)");
+    }
+
+    #[test]
+    fn binary_expr_column_on_right() {
+        let expr = lit(100i64).lt(col("frame_nr"));
+        assert_eq!(expr_filter_signature(&expr), "(100 < frame_nr)");
+    }
+
+    #[test]
+    fn binary_expr_equality() {
+        let expr = col("rerun_segment_id").eq(lit("some-segment"));
+        assert_eq!(
+            expr_filter_signature(&expr),
+            "(rerun_segment_id = 'some-segment')"
+        );
+    }
+
+    #[test]
+    fn between_expr() {
+        let expr = Expr::Between(Between {
+            expr: Box::new(col("log_time")),
+            negated: false,
+            low: Box::new(lit(0i64)),
+            high: Box::new(lit(1000i64)),
+        });
+        assert_eq!(
+            expr_filter_signature(&expr),
+            "(log_time BETWEEN 0 AND 1000)"
+        );
+    }
+
+    #[test]
+    fn in_list_expr() {
+        let expr = Expr::InList(InList {
+            expr: Box::new(col("rerun_segment_id")),
+            list: vec![lit("a"), lit("b")],
+            negated: false,
+        });
+        assert_eq!(
+            expr_filter_signature(&expr),
+            "rerun_segment_id IN ('a', 'b')"
+        );
+    }
+
+    #[test]
+    fn alias_is_transparent() {
+        let expr = col("frame_nr").gt(lit(5i64)).alias("my_filter");
+        assert_eq!(expr_filter_signature(&expr), "(frame_nr > 5)");
+    }
+
+    #[test]
+    fn plain_column_reference() {
+        let expr = col("something");
+        assert_eq!(expr_filter_signature(&expr), "something");
+    }
+
+    #[test]
+    fn semicolon_in_column_name_is_escaped() {
+        // SQL quotes the identifier as "my;col"; the `;` is then escaped for join safety.
+        let expr = col("my;col").gt(lit(0i64));
+        assert_eq!(expr_filter_signature(&expr), "(\"my\\;col\" > 0)");
+    }
+
+    #[test]
+    fn backslash_in_column_name_is_escaped() {
+        // SQL quotes the identifier as "my\col"; the `\` is then escaped.
+        let expr = col("my\\col").gt(lit(0i64));
+        assert_eq!(expr_filter_signature(&expr), "(\"my\\\\col\" > 0)");
+    }
+}
+
+#[cfg(test)]
+mod filter_capture_span_tests {
+    use std::collections::HashSet;
+
+    use super::*;
+
+    fn dummy_info_with_filters(offered: u32, signatures: &str) -> TableQueryInfo {
+        TableQueryInfo {
+            table_id: "tbl-1".to_owned(),
+            table_kind: TableKind::Lance,
+            caller: TableQueryCaller::CatalogResolver,
+            schema_total_columns: 4,
+            projected_columns: 4,
+            has_limit: false,
+            limit_value: None,
+            time_range: web_time::SystemTime::UNIX_EPOCH
+                ..web_time::SystemTime::UNIX_EPOCH + web_time::Duration::from_secs(1),
+            filters_total: offered,
+            filters_signatures: signatures.to_owned(),
+        }
+    }
+
+    fn attribute_keys(span: &opentelemetry_proto::tonic::trace::v1::Span) -> HashSet<&str> {
+        span.attributes.iter().map(|kv| kv.key.as_str()).collect()
+    }
+
+    fn find_int(span: &opentelemetry_proto::tonic::trace::v1::Span, key: &str) -> Option<i64> {
+        use opentelemetry_proto::tonic::common::v1::any_value::Value;
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::IntValue(i) => Some(*i),
+                _ => None,
+            })
+    }
+
+    fn find_string<'a>(
+        span: &'a opentelemetry_proto::tonic::trace::v1::Span,
+        key: &str,
+    ) -> Option<&'a str> {
+        use opentelemetry_proto::tonic::common::v1::any_value::Value;
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::StringValue(s) => Some(s.as_str()),
+                _ => None,
+            })
+    }
+
+    #[test]
+    fn filters_omitted_when_none_offered() {
+        let info = dummy_info_with_filters(0, "");
+        let span = build_table_query_span(
+            &info,
+            TableScanStatsSnapshot::default(),
+            web_time::SystemTime::UNIX_EPOCH
+                ..web_time::SystemTime::UNIX_EPOCH + web_time::Duration::from_secs(1),
+            web_time::Duration::ZERO,
+            None,
+            None,
+            None,
+            None,
+        );
+        let keys = attribute_keys(&span);
+        assert!(!keys.contains("filters_total"), "must be absent when zero");
+        assert!(
+            !keys.contains("filters_signatures"),
+            "must be absent when empty"
+        );
+    }
+
+    #[test]
+    fn filters_emitted_when_present() {
+        let sigs = "(frame_nr > 100);rerun_segment_id IN ('a', 'b')";
+        let info = dummy_info_with_filters(2, sigs);
+        let span = build_table_query_span(
+            &info,
+            TableScanStatsSnapshot::default(),
+            web_time::SystemTime::UNIX_EPOCH
+                ..web_time::SystemTime::UNIX_EPOCH + web_time::Duration::from_secs(1),
+            web_time::Duration::ZERO,
+            None,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(find_int(&span, "filters_total"), Some(2));
+        assert_eq!(find_string(&span, "filters_signatures"), Some(sigs));
     }
 }

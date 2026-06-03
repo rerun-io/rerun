@@ -27,7 +27,7 @@ fn hash(value: impl std::hash::Hash) -> u64 {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Copy, Clone, Eq)]
+#[derive(Copy, Clone, Eq, re_byte_size::SizeBytes)]
 pub struct InternedString {
     hash: u64, // TODO(emilk): consider removing the hash from the `InternedString` (benchmark!)
     string: &'static str,
@@ -296,14 +296,11 @@ macro_rules! declare_new_type {
         }
 
         impl re_byte_size::SizeBytes for $StructName {
+            const IS_POD: bool = true;
+
             #[inline]
             fn heap_size_bytes(&self) -> u64 {
                 0
-            }
-
-            #[inline]
-            fn is_pod() -> bool {
-                true
             }
         }
     };

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: The query for the dataframe view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct DataframeQuery {
     /// The timeline for this query.
     ///
@@ -425,18 +426,5 @@ impl DataframeQuery {
     ) -> Self {
         self.auto_scroll = try_serialize_field(Self::descriptor_auto_scroll(), [auto_scroll]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for DataframeQuery {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.timeline.heap_size_bytes()
-            + self.filter_by_range.heap_size_bytes()
-            + self.filter_is_not_null.heap_size_bytes()
-            + self.apply_latest_at.heap_size_bytes()
-            + self.select.heap_size_bytes()
-            + self.entity_order.heap_size_bytes()
-            + self.auto_scroll.heap_size_bytes()
     }
 }

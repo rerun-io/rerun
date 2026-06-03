@@ -9,7 +9,7 @@ use crate::{TimeInt, TimeReal};
 /// Can be resolved from [`re_types_core::datatypes::TimeRange`] (which *may* have relative bounds) using a given timeline & cursor.
 ///
 /// Should not include [`TimeInt::STATIC`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct AbsoluteTimeRange {
     pub min: TimeInt,
@@ -142,18 +142,6 @@ impl AbsoluteTimeRange {
     }
 }
 
-impl re_byte_size::SizeBytes for AbsoluteTimeRange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
 impl From<AbsoluteTimeRange> for RangeInclusive<TimeInt> {
     fn from(range: AbsoluteTimeRange) -> Self {
         range.min..=range.max
@@ -163,7 +151,7 @@ impl From<AbsoluteTimeRange> for RangeInclusive<TimeInt> {
 // ----------------------------------------------------------------------------
 
 /// Like [`AbsoluteTimeRange`], but using [`TimeReal`] for improved precision.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct AbsoluteTimeRangeF {
     pub min: TimeReal,

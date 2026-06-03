@@ -9,7 +9,7 @@ use re_renderer::PickingLayerProcessor;
 use crate::PickableTexturedRect;
 use crate::eye::Eye;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub enum PickingHitType {
     /// The hit was a textured rect.
     TexturedRect,
@@ -21,11 +21,12 @@ pub enum PickingHitType {
     GuiOverlay,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, re_byte_size::SizeBytes)]
 pub struct PickingRayHit {
     /// What entity or instance got hit by the picking ray.
     ///
     /// The ray hit position may not actually be on this entity, as we allow snapping to closest entity!
+    // `InstancePathHash` doesn't impl `SizeBytes`; it's all POD (no heap).
     pub instance_path_hash: InstancePathHash,
 
     /// Where the ray hit the entity.
@@ -37,7 +38,7 @@ pub struct PickingRayHit {
     pub hit_type: PickingHitType,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, re_byte_size::SizeBytes)]
 pub struct PickingResult {
     /// Picking ray hits.
     ///
@@ -47,36 +48,6 @@ pub struct PickingResult {
     /// or "aggressive" objects like 2D images which we always want to pick, even if they're in the background.
     /// (This is very useful for 2D scenes and so far we keep this behavior in 3D for simplicity)
     pub hits: Vec<PickingRayHit>,
-}
-
-impl re_byte_size::SizeBytes for PickingHitType {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl re_byte_size::SizeBytes for PickingRayHit {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl re_byte_size::SizeBytes for PickingResult {
-    fn heap_size_bytes(&self) -> u64 {
-        re_byte_size::SizeBytes::heap_size_bytes(&self.hits)
-    }
 }
 
 impl PickingResult {

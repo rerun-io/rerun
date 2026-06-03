@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **View**: A time series view for scalars over time, for use with [`archetypes::Scalars`][crate::archetypes::Scalars].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, ::re_byte_size::SizeBytes)]
 pub struct TimeSeriesView {
     /// Configures the horizontal axis of the plot.
     pub axis_x: crate::blueprint::archetypes::TimeAxis,
@@ -49,25 +50,5 @@ impl ::re_types_core::View for TimeSeriesView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
         "TimeSeries".into()
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TimeSeriesView {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.axis_x.heap_size_bytes()
-            + self.axis_y.heap_size_bytes()
-            + self.plot_legend.heap_size_bytes()
-            + self.background.heap_size_bytes()
-            + self.time_ranges.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::archetypes::TimeAxis>::is_pod()
-            && <crate::blueprint::archetypes::ScalarAxis>::is_pod()
-            && <crate::blueprint::archetypes::PlotLegend>::is_pod()
-            && <crate::blueprint::archetypes::PlotBackground>::is_pod()
-            && <crate::blueprint::archetypes::VisibleTimeRanges>::is_pod()
     }
 }

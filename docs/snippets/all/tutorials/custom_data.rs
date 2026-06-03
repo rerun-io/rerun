@@ -39,19 +39,12 @@ impl rerun::AsComponents for CustomPoints3D {
 // ---
 
 /// A custom [`rerun::Component`] that is backed by a builtin [`rerun::Float32`] scalar.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, rerun::SizeBytes)]
 struct Confidence(rerun::Float32);
 
 impl From<f32> for Confidence {
     fn from(v: f32) -> Self {
         Self(rerun::Float32(v))
-    }
-}
-
-impl rerun::SizeBytes for Confidence {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
     }
 }
 

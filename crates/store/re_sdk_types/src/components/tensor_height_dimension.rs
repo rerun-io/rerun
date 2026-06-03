@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Specifies which dimension to use for height.
-#[derive(Clone, Debug, Hash, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, Hash, Copy, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct TensorHeightDimension(pub crate::datatypes::TensorDimensionSelection);
 
@@ -68,17 +69,5 @@ impl std::ops::DerefMut for TensorHeightDimension {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::TensorDimensionSelection {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TensorHeightDimension {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TensorDimensionSelection>::is_pod()
     }
 }

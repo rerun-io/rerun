@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -80,7 +81,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/transform3d_axes/574c482088e9d317b19127fc8bef957dbfd3abe8/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct TransformAxes3D {
     /// Visual length of the 3 axes.
     ///
@@ -334,12 +335,5 @@ impl TransformAxes3D {
     ) -> Self {
         self.show_frame = try_serialize_field(Self::descriptor_show_frame(), show_frame);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TransformAxes3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.axis_length.heap_size_bytes() + self.show_frame.heap_size_bytes()
     }
 }

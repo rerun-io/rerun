@@ -19,14 +19,21 @@ use re_types_core::LayerName;
 
 use crate::store::{
     Error, Layer, LayerInsertOutcome, ResolvedStore, Segment, StoreSlotId, Tracked,
-    store_pool::StorePool,
+    asset_layer::AssetLayer, store_pool::StorePool,
 };
 
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
 pub struct DatasetInner {
     name: EntryName,
+
     details: DatasetDetails,
+
+    /// Copied into all [`Self::segments`] on registration of new segments/new [`AssetLayer`]s.
+    #[expect(unused)] // TODO(RR-4755): enable registration of asset layers
+    asset_layers: Vec<AssetLayer>,
+
     segments: HashMap<SegmentId, Segment>,
+
     #[cfg(feature = "lance")]
     indexes: crate::chunk_index::DatasetChunkIndexes,
 }
@@ -56,7 +63,8 @@ impl Dataset {
             inner: Tracked::new(DatasetInner {
                 name,
                 details,
-                segments: HashMap::default(),
+                asset_layers: Default::default(),
+                segments: Default::default(),
                 #[cfg(feature = "lance")]
                 indexes: crate::chunk_index::DatasetChunkIndexes::new(id),
             }),

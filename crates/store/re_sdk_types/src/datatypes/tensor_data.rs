@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -29,7 +30,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// These dimensions are combined with an index to look up values from the `buffer` field,
 /// which stores a contiguous array of typed values.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct TensorData {
     /// The shape of the tensor, i.e. the length of each dimension.
     pub shape: ::arrow::buffer::ScalarBuffer<u64>,
@@ -472,19 +473,5 @@ impl ::re_types_core::Loggable for TensorData {
                 .with_context("rerun.datatypes.TensorData")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TensorData {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.shape.heap_size_bytes() + self.names.heap_size_bytes() + self.buffer.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <::arrow::buffer::ScalarBuffer<u64>>::is_pod()
-            && <Option<Vec<::re_types_core::ArrowString>>>::is_pod()
-            && <crate::datatypes::TensorBuffer>::is_pod()
     }
 }

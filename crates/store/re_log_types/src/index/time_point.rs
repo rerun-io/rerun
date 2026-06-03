@@ -10,7 +10,7 @@ use crate::TimelineName;
 /// If a [`TimePoint`] is empty ([`TimePoint::default`]), the data will be considered _static_.
 /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
 /// any temporal data of the same type.
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimePoint(BTreeMap<TimelineName, TimeCell>);
 
@@ -135,13 +135,6 @@ impl TimePoint {
     #[inline]
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&TimelineName, &TimeCell)> {
         self.0.iter()
-    }
-}
-
-impl re_byte_size::SizeBytes for TimePoint {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
     }
 }
 

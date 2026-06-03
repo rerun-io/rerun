@@ -73,6 +73,7 @@ pub struct VideoFrameTexture {
     pub frame_info: Option<re_video::FrameInfo>,
 }
 
+#[derive(re_byte_size::SizeBytes)]
 struct PlayerEntry {
     player: VideoPlayer,
 
@@ -81,38 +82,16 @@ struct PlayerEntry {
     used_last_frame: bool,
 }
 
-impl re_byte_size::SizeBytes for PlayerEntry {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            player,
-            used_last_frame: _,
-        } = self;
-        player.heap_size_bytes()
-    }
-}
-
 /// Video data + decoder(s).
 ///
 /// Supports asynchronously decoding video into GPU textures via [`Video::frame_at`].
+#[derive(re_byte_size::SizeBytes)]
 pub struct Video {
     debug_name: String,
     video_description: re_video::VideoDataDescription,
     players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
+    #[size_bytes(ignore)]
     decode_settings: DecodeSettings,
-}
-
-impl re_byte_size::SizeBytes for Video {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            debug_name,
-            video_description,
-            players,
-            decode_settings: _,
-        } = self;
-        debug_name.heap_size_bytes()
-            + video_description.heap_size_bytes()
-            + players.lock().heap_size_bytes()
-    }
 }
 
 impl Drop for Video {

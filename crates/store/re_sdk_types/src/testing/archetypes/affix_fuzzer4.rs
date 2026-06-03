@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct AffixFuzzer4 {
     pub fuzz2101: Option<SerializedComponentBatch>,
     pub fuzz2102: Option<SerializedComponentBatch>,
@@ -865,29 +866,5 @@ impl AffixFuzzer4 {
     ) -> Self {
         self.fuzz2118 = try_serialize_field(Self::descriptor_fuzz2118(), fuzz2118);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer4 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.fuzz2101.heap_size_bytes()
-            + self.fuzz2102.heap_size_bytes()
-            + self.fuzz2103.heap_size_bytes()
-            + self.fuzz2104.heap_size_bytes()
-            + self.fuzz2105.heap_size_bytes()
-            + self.fuzz2106.heap_size_bytes()
-            + self.fuzz2107.heap_size_bytes()
-            + self.fuzz2108.heap_size_bytes()
-            + self.fuzz2109.heap_size_bytes()
-            + self.fuzz2110.heap_size_bytes()
-            + self.fuzz2111.heap_size_bytes()
-            + self.fuzz2112.heap_size_bytes()
-            + self.fuzz2113.heap_size_bytes()
-            + self.fuzz2114.heap_size_bytes()
-            + self.fuzz2115.heap_size_bytes()
-            + self.fuzz2116.heap_size_bytes()
-            + self.fuzz2117.heap_size_bytes()
-            + self.fuzz2118.heap_size_bytes()
     }
 }

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -26,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// This is internal to [`components::AnnotationContext`][crate::components::AnnotationContext].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct ClassDescriptionMapElem {
     /// The key: the [`components::ClassId`][crate::components::ClassId].
     pub class_id: crate::datatypes::ClassId,
@@ -222,17 +223,5 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                 .with_context("rerun.datatypes.ClassDescriptionMapElem")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ClassDescriptionMapElem {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.class_id.heap_size_bytes() + self.class_description.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::ClassId>::is_pod() && <crate::datatypes::ClassDescription>::is_pod()
     }
 }

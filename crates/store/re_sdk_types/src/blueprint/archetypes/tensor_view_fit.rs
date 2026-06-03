@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configures how a selected tensor slice is shown on screen.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TensorViewFit {
     /// How the image is scaled to fit the view.
     pub scaling: Option<SerializedComponentBatch>,
@@ -149,12 +150,5 @@ impl TensorViewFit {
     ) -> Self {
         self.scaling = try_serialize_field(Self::descriptor_scaling(), [scaling]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TensorViewFit {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.scaling.heap_size_bytes()
     }
 }

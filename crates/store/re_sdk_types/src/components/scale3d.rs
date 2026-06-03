@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -26,7 +27,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// A scale of 1.0 means no scaling.
 /// A scale of 2.0 means doubling the size.
 /// Each component scales along the corresponding axis.
-#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct Scale3D(pub crate::datatypes::Vec3D);
 
@@ -72,17 +75,5 @@ impl std::ops::DerefMut for Scale3D {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Vec3D {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Scale3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec3D>::is_pod()
     }
 }

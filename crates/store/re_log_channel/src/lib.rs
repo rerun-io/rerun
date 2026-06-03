@@ -273,19 +273,21 @@ pub fn log_channel(source: LogSource) -> (LogSender, LogReceiver) {
 /// The payload of a [`SmartMessage`].
 ///
 /// Either data or an end-of-stream marker.
+#[derive(re_byte_size::SizeBytes)]
 pub enum SmartMessagePayload {
     /// A message sent down the channel.
     Msg(DataSourceMessage),
 
     /// When received, flush anything already received and then call the given callback.
     Flush {
+        #[size_bytes(ignore)]
         on_flush_done: Box<dyn FnOnce() + Send>,
     },
 
     /// The [`LogSender`] has quit.
     ///
     /// `None` indicates the sender left gracefully, an error indicates otherwise.
-    Quit(Option<Box<dyn std::error::Error + Send>>),
+    Quit(#[size_bytes(ignore)] Option<Box<dyn std::error::Error + Send>>),
 }
 
 impl std::fmt::Debug for SmartMessagePayload {
@@ -298,8 +300,9 @@ impl std::fmt::Debug for SmartMessagePayload {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, re_byte_size::SizeBytes)]
 pub struct SmartMessage {
+    #[size_bytes(ignore)]
     pub source: Arc<LogSource>,
     pub payload: SmartMessagePayload,
 }
@@ -316,16 +319,6 @@ impl SmartMessage {
         match self.payload {
             SmartMessagePayload::Msg(msg) => Some(msg),
             SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => None,
-        }
-    }
-}
-
-impl re_byte_size::SizeBytes for SmartMessage {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { source: _, payload } = self;
-        match payload {
-            SmartMessagePayload::Msg(msg) => msg.heap_size_bytes(),
-            SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(..) => 0,
         }
     }
 }

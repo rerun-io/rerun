@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -28,7 +29,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Not every intra-coded frame qualifies. Some codecs have intra-only frames that may
 /// still reference existing decoder state and are therefore not valid sync points.
 /// See [`components::VideoCodec`][crate::components::VideoCodec] for the codec-specific definition of a keyframe.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct IsKeyframe(pub crate::datatypes::Bool);
 
@@ -74,17 +75,5 @@ impl std::ops::DerefMut for IsKeyframe {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for IsKeyframe {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
     }
 }

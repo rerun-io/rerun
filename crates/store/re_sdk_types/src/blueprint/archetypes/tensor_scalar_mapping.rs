@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configures how tensor scalars are mapped to color.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TensorScalarMapping {
     /// Filter used when zooming in on the tensor.
     ///
@@ -252,14 +253,5 @@ impl TensorScalarMapping {
     pub fn with_gamma(mut self, gamma: impl Into<crate::components::GammaCorrection>) -> Self {
         self.gamma = try_serialize_field(Self::descriptor_gamma(), [gamma]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TensorScalarMapping {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.mag_filter.heap_size_bytes()
-            + self.colormap.heap_size_bytes()
-            + self.gamma.heap_size_bytes()
     }
 }

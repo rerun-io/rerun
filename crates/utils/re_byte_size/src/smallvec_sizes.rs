@@ -10,14 +10,14 @@ impl<T: SizeBytes, const N: usize> SizeBytes for SmallVec<[T; N]> {
             // The `SmallVec` is still smaller than the threshold so no heap data has been
             // allocated yet, beyond the heap data each element might have.
 
-            if T::is_pod() {
+            if T::IS_POD {
                 0 // early-out
             } else {
                 self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
             }
         } else {
             // NOTE: It's all on the heap at this point.
-            if T::is_pod() {
+            if T::IS_POD {
                 (self.capacity() * std::mem::size_of::<T>()) as _
             } else {
                 (self.capacity() * std::mem::size_of::<T>()) as u64

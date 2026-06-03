@@ -4,7 +4,7 @@ use crate::{AbsoluteTimeRange, TimeType, TimelineName, TimestampFormat};
 
 /// A time frame/space, e.g. `log_time` or `frame_nr`, coupled with the type of time
 /// it keeps.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Timeline {
     /// Name of the timeline (e.g. `log_time`).
@@ -150,18 +150,6 @@ impl Timeline {
 }
 
 impl nohash_hasher::IsEnabled for Timeline {}
-
-impl re_byte_size::SizeBytes for Timeline {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 // required for [`nohash_hasher`].
 impl std::hash::Hash for Timeline {

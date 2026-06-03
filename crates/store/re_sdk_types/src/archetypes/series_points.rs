@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -79,7 +80,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct SeriesPoints {
     /// Color for the corresponding series.
     ///
@@ -469,16 +470,5 @@ impl SeriesPoints {
     ) -> Self {
         self.marker_sizes = try_serialize_field(Self::descriptor_marker_sizes(), marker_sizes);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for SeriesPoints {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.colors.heap_size_bytes()
-            + self.markers.heap_size_bytes()
-            + self.names.heap_size_bytes()
-            + self.visible_series.heap_size_bytes()
-            + self.marker_sizes.heap_size_bytes()
     }
 }

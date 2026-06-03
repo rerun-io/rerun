@@ -21,7 +21,7 @@ pub(super) fn default_runtime() -> Arc<Runtime> {
 ///
 /// Carries the [`FunctionRegistry`] and any future shared state
 /// needed during evaluation.
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 pub struct Runtime {
     function_registry: Arc<FunctionRegistry>,
 }
@@ -74,13 +74,5 @@ impl Runtime {
         }
 
         res
-    }
-}
-
-impl re_byte_size::SizeBytes for Runtime {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { function_registry } = self;
-
-        function_registry.heap_size_bytes()
     }
 }

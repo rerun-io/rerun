@@ -28,15 +28,9 @@ mod test_player;
 /// * raw video stream data (pointers into all live rerun-chunks holding video frame data)
 /// * metadata with that we know about the stream (where are I-frames etc.)
 /// * active players for this stream and their state
+#[derive(re_byte_size::SizeBytes)]
 pub struct PlayableVideoStream {
     pub video_renderer: re_renderer::video::Video,
-}
-
-impl re_byte_size::SizeBytes for PlayableVideoStream {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { video_renderer } = self;
-        video_renderer.heap_size_bytes()
-    }
 }
 
 impl PlayableVideoStream {
@@ -48,44 +42,20 @@ impl PlayableVideoStream {
 /// Entry in the video stream cache.
 ///
 /// Keeps track of usage so we know when to remove from the cache.
+#[derive(re_byte_size::SizeBytes)]
 struct VideoStreamCacheEntry {
     used_this_frame: AtomicBool,
     video_stream: Arc<RwLock<PlayableVideoStream>>,
     known_chunk_ranges: BTreeMap<ChunkId, ChunkSampleRange>,
 }
 
-impl re_byte_size::SizeBytes for VideoStreamCacheEntry {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            used_this_frame: _,
-            video_stream,
-            known_chunk_ranges,
-        } = self;
-
-        video_stream.read().heap_size_bytes() + known_chunk_ranges.heap_size_bytes()
-    }
-}
-
 /// Identifies a video stream.
 
-#[derive(Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Hash, Eq, PartialEq, re_byte_size::SizeBytes)]
 struct VideoStreamKey {
     entity_path: EntityPathHash,
     timeline: TimelineName,
     sample_component: re_chunk::ComponentIdentifier,
-}
-
-impl re_byte_size::SizeBytes for VideoStreamKey {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            entity_path,
-            timeline,
-            sample_component,
-        } = self;
-        entity_path.heap_size_bytes()
-            + timeline.heap_size_bytes()
-            + sample_component.heap_size_bytes()
-    }
 }
 
 /// Caches metadata and active players for video streams.
@@ -945,7 +915,7 @@ fn timescale_for_timeline(
 
 /// This is the inclusive range all samples of the chunk is in. But there
 /// may also be samples from other chunks in this range.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 struct ChunkSampleRange {
     first_sample: re_video::SampleIndex,
 
@@ -1000,12 +970,6 @@ impl ChunkSampleRange {
 
     fn idx_range(&self) -> std::ops::Range<re_video::SampleIndex> {
         self.first_sample..self.last_sample + 1
-    }
-}
-
-impl re_byte_size::SizeBytes for ChunkSampleRange {
-    fn heap_size_bytes(&self) -> u64 {
-        0
     }
 }
 

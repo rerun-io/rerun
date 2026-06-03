@@ -19,7 +19,7 @@ use re_viewport_blueprint::ViewProperty;
 use super::visualizer_system::{Entry, TextLogSystem};
 
 // TODO(andreas): This should be a blueprint component.
-#[derive(Clone, PartialEq, Eq, Default)]
+#[derive(Clone, PartialEq, Eq, Default, re_byte_size::SizeBytes)]
 pub struct TextViewState {
     /// Keeps track of the latest time selection made by the user.
     ///
@@ -41,18 +41,6 @@ pub struct TextViewState {
     last_columns_min_sizes: Vec<u32>,
 }
 
-impl re_byte_size::SizeBytes for TextViewState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            latest_time: _,
-            last_anchor_time: _,
-            seen_levels,
-            last_columns_min_sizes,
-        } = self;
-        seen_levels.heap_size_bytes() + last_columns_min_sizes.heap_size_bytes()
-    }
-}
-
 impl ViewState for TextViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -60,6 +48,10 @@ impl ViewState for TextViewState {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
     }
 }
 

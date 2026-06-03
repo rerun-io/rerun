@@ -1,6 +1,6 @@
 ---
 title: Dataset Resampling
-order: 110
+order: 105
 ---
 
 This snippet demonstrates how to resample a dataset based on the time index of one component

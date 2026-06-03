@@ -77,7 +77,7 @@ pub type VisualizerViewReport = BTreeMap<ViewSystemIdentifier, VisualizerTypeRep
 /// Diagnostics from executing a single visualizer type within a view.
 ///
 /// For a high-level failure handling overview, see the `re_viewer` crate documentation.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub enum VisualizerTypeReport {
     /// The entire visualizer type failed to execute for this view.
     ///
@@ -85,7 +85,8 @@ pub enum VisualizerTypeReport {
     /// This is rare and almost always a bug in the Viewer itself.
     /// (So rare, in fact, that today we sometimes lump these together with per-instruction
     /// errors.)
-    OverallError(VisualizerInstructionReport),
+    // Assume small and/or rare.
+    OverallError(#[size_bytes(ignore)] VisualizerInstructionReport),
 
     /// The visualizer executed, but produced per-instruction reports (errors and/or warnings).
     ///
@@ -93,15 +94,6 @@ pub enum VisualizerTypeReport {
     /// [`VisualizerInstructionReport`]s. These are somewhat common, practically never infect
     /// other entities, and are often not completely fatal.
     PerInstructionReport(BTreeMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>),
-}
-
-impl re_byte_size::SizeBytes for VisualizerTypeReport {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::OverallError(_err) => 0, // assume small and/or rare
-            Self::PerInstructionReport(reports) => reports.heap_size_bytes(),
-        }
-    }
 }
 
 impl VisualizerTypeReport {

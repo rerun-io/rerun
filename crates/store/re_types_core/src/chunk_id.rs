@@ -37,7 +37,16 @@ use crate::Loggable as _;
 /// think carefully about your `RowId`s in these cases.
 #[repr(C, align(1))]
 #[derive(
-    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::AnyBitPattern, bytemuck::NoUninit,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    bytemuck::AnyBitPattern,
+    bytemuck::NoUninit,
+    re_byte_size::SizeBytes,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ChunkId(pub(crate) re_tuid::Tuid);
@@ -136,18 +145,6 @@ impl ChunkId {
                 actual: array.data_type().clone().into(),
             })
         }
-    }
-}
-
-impl re_byte_size::SizeBytes for ChunkId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
     }
 }
 

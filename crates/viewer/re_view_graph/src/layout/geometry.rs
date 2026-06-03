@@ -2,7 +2,7 @@
 
 use egui::{Pos2, Rect, Vec2};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub enum PathGeometry {
     /// A simple straight edge.
     Line { source: Pos2, target: Pos2 },
@@ -18,34 +18,10 @@ pub enum PathGeometry {
     // We could add other geometries, such as `Orthogonal` here too.
 }
 
-impl re_byte_size::SizeBytes for PathGeometry {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, re_byte_size::SizeBytes)]
 pub struct EdgeGeometry {
     pub target_arrow: bool,
     pub path: PathGeometry,
-}
-
-impl re_byte_size::SizeBytes for EdgeGeometry {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl EdgeGeometry {

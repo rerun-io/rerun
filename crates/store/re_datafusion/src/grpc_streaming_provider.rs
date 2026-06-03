@@ -402,6 +402,8 @@ mod table_query_pipeline_tests {
                 has_limit: false,
                 limit_value: None,
                 time_range: web_time::SystemTime::now()..web_time::SystemTime::now(),
+                filters_total: 0,
+                filters_signatures: String::new(),
             },
             web_time::Instant::now(),
         )
@@ -606,6 +608,8 @@ mod table_query_pipeline_tests {
                 has_limit: false,
                 limit_value: None,
                 time_range: web_time::SystemTime::now()..web_time::SystemTime::now(),
+                filters_total: 0,
+                filters_signatures: String::new(),
             },
             crate::analytics::TableScanStatsSnapshot {
                 grpc_requests: 2,

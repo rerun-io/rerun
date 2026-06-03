@@ -116,20 +116,12 @@ fn assert_component_batch_object_safe() {
 /// * See [`AsComponents`] for logging serialized data.
 ///
 /// [`AsComponents`]: [crate::AsComponents]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub struct SerializedComponentBatch {
     // TODO(cmc): Maybe Cow<> this one if it grows bigger. Or intern descriptors altogether, most likely.
     pub descriptor: ComponentDescriptor,
 
     pub array: arrow::array::ArrayRef,
-}
-
-impl re_byte_size::SizeBytes for SerializedComponentBatch {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { array, descriptor } = self;
-        array.heap_size_bytes() + descriptor.heap_size_bytes()
-    }
 }
 
 impl PartialEq for SerializedComponentBatch {
@@ -188,7 +180,7 @@ impl SerializedComponentBatch {
 /// A column's worth of component data.
 ///
 /// If a [`SerializedComponentBatch`] represents one row's worth of data
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, re_byte_size::SizeBytes)]
 pub struct SerializedComponentColumn {
     pub list_array: arrow::array::ListArray,
 
@@ -223,13 +215,6 @@ impl SerializedComponentColumn {
             list_array,
             descriptor,
         })
-    }
-}
-
-impl re_byte_size::SizeBytes for SerializedComponentColumn {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.list_array.heap_size_bytes() + self.descriptor.heap_size_bytes()
     }
 }
 

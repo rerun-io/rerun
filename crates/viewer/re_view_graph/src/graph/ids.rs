@@ -3,22 +3,10 @@ use re_sdk_types::components;
 
 use super::GraphNodeHash;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub struct NodeId {
     pub entity_hash: EntityPathHash,
     pub node_hash: GraphNodeHash,
-}
-
-impl re_byte_size::SizeBytes for NodeId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl nohash_hasher::IsEnabled for NodeId {}
@@ -47,23 +35,11 @@ impl std::fmt::Debug for NodeId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub struct EdgeId {
     // TODO(grtlr): Consider something more storage efficient here
     pub source: NodeId,
     pub target: NodeId,
-}
-
-impl re_byte_size::SizeBytes for EdgeId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl EdgeId {

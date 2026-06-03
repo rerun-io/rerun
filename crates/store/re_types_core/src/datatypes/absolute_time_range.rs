@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Two [`datatypes::TimeInt`][crate::datatypes::TimeInt] describing a range of time.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 pub struct AbsoluteTimeRange {
     /// Start of the range.
     pub min: crate::datatypes::TimeInt,
@@ -207,17 +208,5 @@ impl crate::Loggable for AbsoluteTimeRange {
                     .with_context("rerun.datatypes.AbsoluteTimeRange")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AbsoluteTimeRange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.min.heap_size_bytes() + self.max.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TimeInt>::is_pod() && <crate::datatypes::TimeInt>::is_pod()
     }
 }

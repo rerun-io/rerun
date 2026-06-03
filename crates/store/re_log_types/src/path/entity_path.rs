@@ -12,15 +12,8 @@ use crate::hash::Hash64;
 // ----------------------------------------------------------------------------
 
 /// A 64 bit hash of [`EntityPath`] with very small risk of collision.
-#[derive(Copy, Clone, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub struct EntityPathHash(Hash64);
-
-impl re_byte_size::SizeBytes for EntityPathHash {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-}
 
 impl EntityPathHash {
     /// Sometimes used as the hash of `None`.
@@ -97,13 +90,14 @@ impl std::fmt::Debug for EntityPathHash {
 ///     ])
 /// );
 /// ```
-#[derive(Clone, Eq)]
+#[derive(Clone, Eq, SizeBytes)]
 pub struct EntityPath {
     /// precomputed hash
     hash: EntityPathHash,
 
     // [`Arc`] used for cheap cloning, and to keep down the size of [`EntityPath`].
     // We mostly use the hash for lookups and comparisons anyway!
+    #[size_bytes(ignore)] // NOTE: we assume it's amortized due to the `Arc`
     parts: Arc<Vec<EntityPathPart>>,
 }
 
@@ -409,13 +403,6 @@ impl EntityPath {
             .into_iter()
             .map(|(str, entity)| (entity.entity, str))
             .collect()
-    }
-}
-
-impl SizeBytes for EntityPath {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0 // NOTE: we assume it's amortized due to the `Arc`
     }
 }
 

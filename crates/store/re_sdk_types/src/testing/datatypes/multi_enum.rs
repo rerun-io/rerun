@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct MultiEnum {
     /// The first value.
     pub value1: crate::testing::datatypes::EnumTest,
@@ -200,18 +201,5 @@ impl ::re_types_core::Loggable for MultiEnum {
                 .with_context("rerun.testing.datatypes.MultiEnum")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for MultiEnum {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.value1.heap_size_bytes() + self.value2.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::testing::datatypes::EnumTest>::is_pod()
-            && <Option<crate::testing::datatypes::ValuedEnum>>::is_pod()
     }
 }

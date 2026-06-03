@@ -19,6 +19,14 @@ pub struct Mutex<T> {
     lock: parking_lot::Mutex<T>,
 }
 
+impl<T: re_byte_size::SizeBytes> re_byte_size::SizeBytes for Mutex<T> {
+    const IS_POD: bool = T::IS_POD;
+
+    fn heap_size_bytes(&self) -> u64 {
+        self.lock().heap_size_bytes()
+    }
+}
+
 /// The lock you get from [`Mutex`].
 pub use parking_lot::MutexGuard;
 

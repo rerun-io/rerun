@@ -42,7 +42,7 @@
 /// The raw bytes of the `Tuid` sorts in time order as the `Tuid` itself,
 /// and the `Tuid` is byte-aligned so you can just transmute between `Tuid` and raw bytes.
 #[repr(C, align(1))]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd, re_byte_size::SizeBytes)]
 #[cfg_attr(
     feature = "bytemuck",
     derive(bytemuck::AnyBitPattern, bytemuck::NoUninit)
@@ -289,18 +289,6 @@ fn random_u64() -> u64 {
     let mut bytes = [0_u8; 8];
     getrandom::fill(&mut bytes).expect("Couldn't get random bytes");
     u64::from_be_bytes(bytes)
-}
-
-impl re_byte_size::SizeBytes for Tuid {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 #[test]

@@ -4081,6 +4081,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "gilrs"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3fa85c2e35dc565c90511917897ea4eae16b77f2773d5223536f7b602536d462"
+dependencies = [
+ "fnv",
+ "gilrs-core",
+ "log",
+ "uuid",
+ "vec_map",
+]
+
+[[package]]
+name = "gilrs-core"
+version = "0.6.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d23f2cc5144060a7f8d9e02d3fce5d06705376568256a509cdbc3c24d47e4f04"
+dependencies = [
+ "inotify",
+ "js-sys",
+ "libc",
+ "libudev-sys",
+ "log",
+ "nix",
+ "objc2-core-foundation",
+ "objc2-io-kit",
+ "uuid",
+ "vec_map",
+ "wasm-bindgen",
+ "web-sys",
+ "windows",
+]
+
+[[package]]
 name = "gimli"
 version = "0.32.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5783,6 +5817,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libudev-sys"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c8469b4a23b962c1396b9b451dda50ef5b283e8dd309d69033475fa9b334324"
+dependencies = [
+ "libc",
+ "pkg-config",
+]
+
+[[package]]
 name = "libz-rs-sys"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6755,6 +6799,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33fafba39597d6dc1fb709123dfa8289d39406734be322956a69f0931c73bb15"
 dependencies = [
+ "bitflags 2.11.0",
  "libc",
  "objc2-core-foundation",
 ]
@@ -8337,8 +8382,19 @@ dependencies = [
  "insta",
  "macaw",
  "parking_lot",
+ "re_byte_size_derive",
  "smallvec",
  "vec1",
+]
+
+[[package]]
+name = "re_byte_size_derive"
+version = "0.34.0-alpha.1+dev"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -8776,6 +8832,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_gamepad"
+version = "0.34.0-alpha.1+dev"
+dependencies = [
+ "gilrs",
+ "glam",
+ "parking_lot",
+ "re_log",
+]
+
+[[package]]
 name = "re_grpc_client"
 version = "0.34.0-alpha.1+dev"
 dependencies = [
@@ -9008,6 +9074,7 @@ dependencies = [
  "parking_lot",
  "re_arrow_util",
  "re_build_info",
+ "re_byte_size",
  "re_chunk",
  "re_log",
  "re_log_types",
@@ -9156,6 +9223,7 @@ version = "0.34.0-alpha.1+dev"
 dependencies = [
  "cfg-if",
  "parking_lot",
+ "re_byte_size",
  "re_log",
 ]
 
@@ -9820,6 +9888,7 @@ version = "0.34.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
+ "re_byte_size",
  "re_chunk",
  "re_context_menu",
  "re_entity_db",
@@ -10259,6 +10328,7 @@ dependencies = [
  "re_entity_db",
  "re_error",
  "re_format",
+ "re_gamepad",
  "re_log",
  "re_log_types",
  "re_mp4",
@@ -10459,6 +10529,7 @@ dependencies = [
  "re_entity_db",
  "re_error",
  "re_format",
+ "re_gamepad",
  "re_importer",
  "re_log",
  "re_log_channel",
@@ -13144,6 +13215,12 @@ dependencies = [
  "serde",
  "smallvec",
 ]
+
+[[package]]
+name = "vec_map"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "vello_common"

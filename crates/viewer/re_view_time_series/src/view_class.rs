@@ -13,7 +13,7 @@ use re_sdk_types::blueprint::components::{
     Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
 };
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, Visible};
-use re_sdk_types::datatypes::TimeRange;
+use re_sdk_types::datatypes::{TimeRange, TimeRangeBoundary};
 use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
@@ -38,7 +38,7 @@ use crate::{MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY, PlotSeries
 
 // ---
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 pub struct TimeSeriesViewState {
     /// The range of the scalar values currently on screen.
     ///
@@ -72,6 +72,8 @@ pub struct TimeSeriesViewState {
     /// data-space points to screen-space for `re_renderer` primitives.
     ///
     /// `None` on the first frame (before `plot.show()` has run).
+    // `egui_plot::PlotTransform` doesn't impl `SizeBytes`; it's POD with no heap.
+    #[size_bytes(ignore)]
     pub plot_transform: Option<egui_plot::PlotTransform>,
 
     /// How many time units correspond to a single physical pixel on the plot.
@@ -97,23 +99,6 @@ impl Default for TimeSeriesViewState {
     }
 }
 
-impl re_byte_size::SizeBytes for TimeSeriesViewState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            scalar_range: _,
-            full_data_time_range: _,
-            time_offset: _,
-            default_series_name_formats,
-            num_time_series_last_frame_per_instruction,
-            plot_transform: _,
-            time_per_pixel: _,
-        } = self;
-
-        default_series_name_formats.heap_size_bytes()
-            + num_time_series_last_frame_per_instruction.heap_size_bytes()
-    }
-}
-
 impl ViewState for TimeSeriesViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -121,6 +106,10 @@ impl ViewState for TimeSeriesViewState {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
     }
 }
 
@@ -749,6 +738,7 @@ impl ViewClass for TimeSeriesView {
             }
 
             let mut plot_double_clicked = false;
+            let mut new_view_time_range = None;
             let egui_plot::PlotResponse {
                 inner: (),
                 response,
@@ -759,10 +749,14 @@ impl ViewClass for TimeSeriesView {
                     && let Some(pointer) = plot_ui.pointer_coordinate()
                 {
                     let time = re_log_types::TimeReal::from(pointer.x as i64 + time_offset);
-                    ctx.send_time_commands([
-                        TimeControlCommand::SetTimeClamped(time),
-                        TimeControlCommand::Pause,
-                    ]);
+
+                    set_time(
+                        ctx,
+                        current_time,
+                        &view_time_range,
+                        &mut new_view_time_range,
+                        time,
+                    );
                 }
 
                 plot_double_clicked = plot_ui.response().double_clicked();
@@ -850,18 +844,16 @@ impl ViewClass for TimeSeriesView {
                 ctx.handle_select_hover_drag_interactions(&response, hovered, false);
             }
 
-            // Decide if the time cursor should be displayed, and if so where:
-            let time_x = current_time
-                .map(|current_time| (current_time.saturating_sub(time_offset)) as f64)
-                .filter(|&x| {
-                    // only display the time cursor when it's actually above the plot area
-                    transform.bounds().min()[0] <= x && x <= transform.bounds().max()[0]
-                })
-                .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
-
-            if let Some(time_x) = time_x {
-                paint_time_cursor(ctx, ui, &response, &transform, time_offset, time_x);
-            }
+            paint_time_cursor(
+                ctx,
+                ui,
+                &response,
+                &transform,
+                time_offset,
+                current_time,
+                &view_time_range,
+                &mut new_view_time_range,
+            );
 
             // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.
             let is_resetting = plot_double_clicked && hovered_data_result.is_none();
@@ -876,27 +868,40 @@ impl ViewClass for TimeSeriesView {
                     [x_range.end(), y_range.end()],
                 );
 
-                if unchanged_bounds != *transform.bounds() {
-                    let new_x_range = transform_axis_range(transform, 0);
-                    let new_x_range_rounded =
-                        Range1D::new(new_x_range.start().round(), new_x_range.end().round());
+                if unchanged_bounds != *transform.bounds() || new_view_time_range.is_some() {
+                    if let Some(new_view_time_range) = new_view_time_range
+                        .or_else(|| {
+                            let new_x_range = transform_axis_range(transform, 0);
 
-                    let new_view_time_range =
-                        re_sdk_types::blueprint::components::TimeRange(TimeRange {
-                            start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                re_sdk_types::datatypes::TimeInt(
-                                    (new_x_range_rounded.start() as i64)
-                                        .saturating_add(time_offset),
-                                ),
-                            ),
-                            end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                re_sdk_types::datatypes::TimeInt(
-                                    (new_x_range_rounded.end() as i64).saturating_add(time_offset),
-                                ),
-                            ),
-                        });
+                            if new_x_range == x_range {
+                                return None;
+                            }
 
-                    if new_x_range != x_range && view_time_range != new_view_time_range {
+                            let new_x_range_rounded = Range1D::new(
+                                new_x_range.start().round(),
+                                new_x_range.end().round(),
+                            );
+
+                            let new_view_time_range = TimeRange {
+                                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                                    re_sdk_types::datatypes::TimeInt(
+                                        (new_x_range_rounded.start() as i64)
+                                            .saturating_add(time_offset),
+                                    ),
+                                ),
+                                end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                                    re_sdk_types::datatypes::TimeInt(
+                                        (new_x_range_rounded.end() as i64)
+                                            .saturating_add(time_offset),
+                                    ),
+                                ),
+                            };
+
+                            Some(new_view_time_range)
+                        })
+                        .map(re_sdk_types::blueprint::components::TimeRange)
+                        && view_time_range != new_view_time_range
+                    {
                         time_range_property.save_blueprint_component(
                             ctx,
                             &TimeAxis::descriptor_view_range(),
@@ -991,6 +996,42 @@ impl ViewClass for TimeSeriesView {
         })
         .inner
     }
+}
+
+fn set_time(
+    ctx: &ViewerContext<'_>,
+    current_time: Option<i64>,
+    view_time_range: &re_sdk_types::blueprint::components::TimeRange,
+    new_view_time_range: &mut Option<TimeRange>,
+    time: re_log_types::TimeReal,
+) {
+    if let Some(current_time) = current_time {
+        let current_time = re_log_types::TimeInt::new_temporal(current_time);
+        let time = time.floor();
+
+        let time_diff = current_time.as_i64() - time.as_i64();
+
+        let mut either_relative = false;
+        let mut map_time_range_boundary = |boundary| {
+            if let TimeRangeBoundary::CursorRelative(offset) = boundary {
+                either_relative = true;
+                TimeRangeBoundary::CursorRelative((offset.0 + time_diff).into())
+            } else {
+                boundary
+            }
+        };
+
+        *new_view_time_range = Some(TimeRange {
+            start: map_time_range_boundary(view_time_range.start),
+            end: map_time_range_boundary(view_time_range.end),
+        })
+        .filter(|_| either_relative);
+    }
+
+    ctx.send_time_commands([
+        TimeControlCommand::SetTimeClamped(time),
+        TimeControlCommand::Pause,
+    ]);
 }
 
 fn all_scalar_mappings_for(
@@ -1366,8 +1407,23 @@ fn paint_time_cursor(
     response: &egui::Response,
     transform: &egui_plot::PlotTransform,
     time_offset: i64,
-    mut time_x: f32,
+    current_time: Option<i64>,
+    view_time_range: &re_sdk_types::blueprint::components::TimeRange,
+    new_view_time_range: &mut Option<TimeRange>,
 ) {
+    // Decide if the time cursor should be displayed, and if so where:
+    let time_x = current_time
+        .map(|current_time| (current_time.saturating_sub(time_offset)) as f64)
+        .filter(|&x| {
+            // only display the time cursor when it's actually above the plot area
+            transform.bounds().min()[0] <= x && x <= transform.bounds().max()[0]
+        })
+        .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
+
+    let Some(mut time_x) = time_x else {
+        return;
+    };
+
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
     let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
         .expand(interact_radius);
@@ -1390,6 +1446,7 @@ fn paint_time_cursor(
 
     if is_being_dragged && let Some(pointer_pos) = pointer_pos {
         let aim_radius = ui.input(|i| i.aim_radius());
+
         let new_offset_time = egui::emath::smart_aim::best_in_range_f64(
             transform
                 .value_from_position(pointer_pos - aim_radius * Vec2::X)
@@ -1403,10 +1460,13 @@ fn paint_time_cursor(
         // Avoid frame-delay:
         time_x = pointer_pos.x;
 
-        ctx.send_time_commands([
-            TimeControlCommand::SetTimeClamped(new_time.into()),
-            TimeControlCommand::Pause,
-        ]);
+        set_time(
+            ctx,
+            current_time,
+            view_time_range,
+            new_view_time_range,
+            new_time.into(),
+        );
     }
 
     let highlighted = is_near || is_being_dragged;

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -34,7 +35,16 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// row 1 | flat_columns[1] flat_columns[4] flat_columns[7]
 /// row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 /// ```
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Copy,
+    PartialEq,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct TransformMat3x3(pub crate::datatypes::Mat3x3);
 
@@ -80,17 +90,5 @@ impl std::ops::DerefMut for TransformMat3x3 {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Mat3x3 {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TransformMat3x3 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Mat3x3>::is_pod()
     }
 }

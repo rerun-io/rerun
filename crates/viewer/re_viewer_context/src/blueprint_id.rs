@@ -18,12 +18,10 @@ pub struct BlueprintId<T: BlueprintIdRegistry> {
 }
 
 impl<T: BlueprintIdRegistry> re_byte_size::SizeBytes for BlueprintId<T> {
+    const IS_POD: bool = true;
+
     fn heap_size_bytes(&self) -> u64 {
         0
-    }
-
-    fn is_pod() -> bool {
-        true
     }
 }
 

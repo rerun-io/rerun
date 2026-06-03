@@ -63,6 +63,12 @@ EXECUTABLE_EXTENSION = ""
 # This ensures uv targets .venv instead of the pixi environment.
 PATH = "${PIXI_PROJECT_ROOT}/scripts/pixi:${PATH}"
 
+[target.linux-64.activation.env]
+# `gilrs` uses `pkg-config` to find libudev on Linux. Prefer Pixi's pkgconf and
+# make the Pixi pkg-config files visible before falling back to host paths.
+PKG_CONFIG = "pkgconf"
+PKG_CONFIG_PATH = "${CONDA_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}"
+
 [target.win-64.activation]
 # Run ensure-rerun-env to set up pyo3-build.cfg and uv shim.
 # This is a polyglot .bat that works in both cmd.exe and bash (Git Bash).
@@ -617,7 +623,9 @@ rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
 uv = "==0.9.17"
 
 [target.linux-64.dependencies]
+libudev = "257.4.*" # for `gilrs` Linux backend
 patchelf = ">=0.17"
+pkgconf = ">=2" # Provides `pkg-config` for `gilrs` Linux backend.
 meilisearch = "1.5.1.*" # not available for linux-aarch64
 buf = "1.*" # not available for linux-aarch64
 

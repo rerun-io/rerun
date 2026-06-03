@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -41,7 +42,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///  * Back = 6
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable, ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct ViewCoordinates(
     /// The directions of the [x, y, z] axes.
@@ -243,17 +246,5 @@ impl From<ViewCoordinates> for [u8; 3usize] {
     #[inline]
     fn from(value: ViewCoordinates) -> Self {
         value.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ViewCoordinates {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[u8; 3usize]>::is_pod()
     }
 }

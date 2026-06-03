@@ -11,7 +11,7 @@ use re_mutex::Mutex;
 pub type ChunkPromise = poll_promise::Promise<Result<Vec<Chunk>, ()>>;
 
 /// Information about a batch of chunks being downloaded.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub struct RequestInfo {
     /// What chunks are included in this batch.
     pub root_chunk_ids: ahash::HashSet<ChunkId>,
@@ -27,17 +27,19 @@ pub struct RequestInfo {
 }
 
 /// Represents a batch of chunks being downloaded.
+#[derive(re_byte_size::SizeBytes)]
 pub struct ChunkBatchRequest {
     // The poll_promise API is a bit unergonomic.
     // For one, it is not `Sync`.
     // For another, it is not `Clone`.
     // There is room for something better here at some point.
+    #[size_bytes(ignore)] // No byte size impl
     pub promise: Mutex<Option<ChunkPromise>>,
 
     pub info: Arc<RequestInfo>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, re_byte_size::SizeBytes)]
 pub struct ByteFloat(pub f64);
 
 impl std::iter::Sum for ByteFloat {
@@ -65,12 +67,15 @@ impl std::ops::Div<f32> for ByteFloat {
 /// In-progress downloads of chunks.
 ///
 /// Used for larger-than-RAM streaming.
+#[derive(re_byte_size::SizeBytes)]
 pub struct ChunkRequests {
     requests: Vec<ChunkBatchRequest>,
 
+    #[size_bytes(ignore)] // No byte size impl
     pub download_size_history: emath::History<ByteFloat>,
 
     // Used for debug UI. Could maybe be a `egui::History`.
+    #[size_bytes(ignore)] // No byte size impl
     pub recently_canceled: emath::History<usize>,
 }
 
