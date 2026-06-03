@@ -36,6 +36,7 @@ use std::sync::Arc;
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use re_build_info::CrateVersion;
 
+use re_types_core::SegmentId;
 pub use re_types_core::TimelineName;
 
 pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
@@ -345,6 +346,30 @@ impl From<&str> for RecordingId {
 impl From<String> for RecordingId {
     fn from(s: String) -> Self {
         Self(Arc::new(s))
+    }
+}
+
+impl From<SegmentId> for RecordingId {
+    fn from(value: SegmentId) -> Self {
+        Self(Arc::new(value.into()))
+    }
+}
+
+impl From<RecordingId> for SegmentId {
+    fn from(value: RecordingId) -> Self {
+        value.as_str().into()
+    }
+}
+
+impl From<&SegmentId> for RecordingId {
+    fn from(value: &SegmentId) -> Self {
+        Self(Arc::new(value.to_string()))
+    }
+}
+
+impl From<&RecordingId> for SegmentId {
+    fn from(value: &RecordingId) -> Self {
+        value.as_str().into()
     }
 }
 

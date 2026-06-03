@@ -190,7 +190,7 @@ impl LogSource {
             // We only show things we know are very-soon-to-be recordings:
             Self::File { path, .. } => Some(path.to_string_lossy().into_owned()),
             Self::HttpStream { url, .. } => Some(url.clone()),
-            Self::RedapGrpcStream { uri, .. } => Some(uri.segment_id.clone()),
+            Self::RedapGrpcStream { uri, .. } => Some(uri.segment_id.to_string()),
 
             Self::RrdWebEvent
             | Self::JsChannel { .. }

@@ -181,7 +181,7 @@ impl ConnectionHandle {
                 .await
                 .map_err(to_py_err)?
                 .iter()
-                .map(|id| id.id.clone())
+                .map(|id| id.to_string())
                 .collect::<Vec<_>>())
         })
     }

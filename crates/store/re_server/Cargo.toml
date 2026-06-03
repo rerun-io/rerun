@@ -24,7 +24,7 @@ all-features = true
 default = []
 
 # TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
-## Enable reading in LanceDB files.
+## Enable reading in LanceDB files. Required for tables.
 lance = ["dep:lance", "dep:lance-index", "dep:lance-linalg"]
 
 [dependencies]

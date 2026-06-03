@@ -126,17 +126,18 @@ impl TryFrom<crate::common::v1alpha1::SegmentId> for SegmentId {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::SegmentId) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: value
-                .id
-                .ok_or(missing_field!(crate::common::v1alpha1::SegmentId, "id"))?,
-        })
+        Ok(Self::from(value.id.ok_or(missing_field!(
+            crate::common::v1alpha1::SegmentId,
+            "id"
+        ))?))
     }
 }
 
 impl From<SegmentId> for crate::common::v1alpha1::SegmentId {
     fn from(value: SegmentId) -> Self {
-        Self { id: Some(value.id) }
+        Self {
+            id: Some(value.into()),
+        }
     }
 }
 

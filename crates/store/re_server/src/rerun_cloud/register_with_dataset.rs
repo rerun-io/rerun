@@ -12,7 +12,7 @@ use crate::store::{
     Error, InMemoryStore, LayerInfo, ResolvedStore, StoreSlotId, TASK_ID_SUCCESS, TaskResult,
 };
 
-/// Return type of [`crate::rerun_cloud::RerunCloudHandler::do_register_with_dataset`].
+/// Return type of [`do_register_with_dataset`].
 #[derive(Default)]
 pub struct RegisterWithDatasetResult {
     /// Recording IDs from the registered RRDs, one per data source.
@@ -39,14 +39,14 @@ pub struct RegisterWithDatasetResult {
 enum ValidatedSource {
     File {
         rrd_path: PathBuf,
-        layer_name: LayerName,
+        layer_info: Arc<LayerInfo>,
         storage_url: url::Url,
     },
     Memory {
         store_slot_id: StoreSlotId,
         resolved: ResolvedStore,
         segment_id: SegmentId,
-        layer_name: LayerName,
+        layer_info: Arc<LayerInfo>,
     },
 }
 
@@ -86,7 +86,7 @@ fn validate_sources(
 ) -> tonic::Result<(StoreKind, Vec<ValidatedSource>)> {
     // `seen` tracks (segment_id, layer_name) → URLs to detect intra-request dups.
     // The `on_duplicate` flag only applies to cross-request conflicts.
-    let mut seen: BTreeMap<(String, LayerName), Vec<url::Url>> = BTreeMap::new();
+    let mut seen: BTreeMap<(SegmentId, LayerName), Vec<url::Url>> = BTreeMap::new();
     let mut validated: Vec<ValidatedSource> = Vec::new();
 
     let store_kind = store.dataset(dataset_id)?.store_kind();
@@ -127,19 +127,24 @@ fn validate_sources(
             layer
         };
 
+        let layer_info = Arc::new(LayerInfo {
+            name: layer_name,
+            layer_class,
+        });
+
         if storage_url.scheme() == "memory" {
             validated.push(validate_memory_source(
                 store,
                 store_kind,
                 &storage_url,
-                layer_name,
+                layer_info,
                 &mut seen,
             )?);
             continue;
         }
 
         if let Some(file_source) =
-            validate_file_source(store_kind, &storage_url, layer_name, &mut seen)?
+            validate_file_source(store_kind, &storage_url, layer_info, &mut seen)?
         {
             validated.push(file_source);
         }
@@ -154,8 +159,8 @@ fn validate_memory_source(
     store: &InMemoryStore,
     expected_store_kind: StoreKind,
     storage_url: &url::Url,
-    layer_name: LayerName,
-    seen: &mut BTreeMap<(String, LayerName), Vec<url::Url>>,
+    layer_info: Arc<LayerInfo>,
+    seen: &mut BTreeMap<(SegmentId, LayerName), Vec<url::Url>>,
 ) -> tonic::Result<ValidatedSource> {
     let store_slot_id = parse_memory_url(storage_url)?;
     let resolved = store.resolve_store(&store_slot_id).ok_or_else(|| {
@@ -169,13 +174,13 @@ fn validate_memory_source(
         )));
     }
     let segment_id = SegmentId::new(store_id.recording_id().to_string());
-    let key = (segment_id.id.clone(), layer_name.clone());
+    let key = (segment_id.clone(), layer_info.name.clone());
     seen.entry(key).or_default().push(storage_url.clone());
     Ok(ValidatedSource::Memory {
         store_slot_id,
         resolved,
         segment_id,
-        layer_name,
+        layer_info,
     })
 }
 
@@ -183,8 +188,8 @@ fn validate_memory_source(
 fn validate_file_source(
     store_kind: StoreKind,
     storage_url: &url::Url,
-    layer_name: LayerName,
-    seen: &mut BTreeMap<(String, LayerName), Vec<url::Url>>,
+    layer_info: Arc<LayerInfo>,
+    seen: &mut BTreeMap<(SegmentId, LayerName), Vec<url::Url>>,
 ) -> tonic::Result<Option<ValidatedSource>> {
     let Ok(rrd_path) = storage_url.to_file_path() else {
         return if storage_url.scheme() == "file" && storage_url.host().is_some() {
@@ -220,7 +225,10 @@ fn validate_file_source(
             continue;
         }
         matched = true;
-        let key = (store_id.recording_id().to_string(), layer_name.clone());
+        let key = (
+            SegmentId::from(store_id.recording_id()),
+            layer_info.name.clone(),
+        );
         seen.entry(key).or_default().push(storage_url.clone());
     }
 
@@ -230,13 +238,13 @@ fn validate_file_source(
 
     Ok(Some(ValidatedSource::File {
         rrd_path,
-        layer_name,
+        layer_info,
         storage_url: storage_url.clone(),
     }))
 }
 
 fn check_intra_request_duplicates(
-    seen: &BTreeMap<(String, LayerName), Vec<url::Url>>,
+    seen: &BTreeMap<(SegmentId, LayerName), Vec<url::Url>>,
 ) -> tonic::Result<()> {
     let duplicates: Vec<_> = seen.iter().filter(|(_, urls)| urls.len() > 1).collect();
     if duplicates.is_empty() {
@@ -276,31 +284,24 @@ fn load_sources(
                 store_slot_id,
                 resolved,
                 segment_id,
-                layer_name,
+                layer_info,
             } => {
                 ready.push(ReadySource {
                     storage_url: format!("memory:///store/{store_slot_id}"),
                     store_slot_id,
                     resolved,
                     segment_id,
-                    layer_info: Arc::new(LayerInfo {
-                        name: layer_name,
-                        layer_class: LayerClass::Segment,
-                    }),
+                    layer_info,
                 });
             }
 
             ValidatedSource::File {
                 rrd_path,
-                layer_name,
+                layer_info,
                 storage_url,
             } => {
                 re_log::info!("Loading RRD: {}", rrd_path.display());
 
-                let layer_info = Arc::new(LayerInfo {
-                    name: layer_name,
-                    layer_class: LayerClass::Segment,
-                });
                 for (store_id, resolved) in ResolvedStore::load_rrd_file(&rrd_path, store_kind)? {
                     ready.push(ReadySource {
                         store_slot_id: StoreSlotId::new(),

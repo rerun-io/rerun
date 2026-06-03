@@ -138,10 +138,11 @@ impl super::Index {
             let predicates = layers
                 .iter()
                 .map(|(segment, layer)| {
-                    (cast(col(FIELD_RERUN_SEGMENT_ID), DataType::Utf8).eq(lit(&segment.id))).and(
-                        cast(col(FIELD_RERUN_SEGMENT_LAYER), DataType::Utf8)
-                            .eq(lit(layer.as_str())),
-                    )
+                    (cast(col(FIELD_RERUN_SEGMENT_ID), DataType::Utf8).eq(lit(segment.as_str())))
+                        .and(
+                            cast(col(FIELD_RERUN_SEGMENT_LAYER), DataType::Utf8)
+                                .eq(lit(layer.as_str())),
+                        )
                 })
                 .collect();
 
@@ -163,7 +164,7 @@ impl super::Index {
                     format!(
                         "(CAST({} AS string) = '{}' AND CAST({} AS string) = '{}')",
                         FIELD_RERUN_SEGMENT_ID,
-                        segment.id.replace('\'', "''"),
+                        segment.as_str().replace('\'', "''"),
                         FIELD_RERUN_SEGMENT_LAYER,
                         layer.replace('\'', "''"),
                     )
@@ -235,7 +236,7 @@ impl super::Index {
         let dict_keys = UInt8Array::from_iter_values(std::iter::repeat_n(0, total_instances));
 
         let segment_id_array = {
-            let segment_id_values = StringArray::from_iter_values([segment_id.id.as_str()]);
+            let segment_id_values = StringArray::from_iter_values([segment_id.as_str()]);
             DictionaryArray::new(dict_keys.clone(), Arc::new(segment_id_values))
         };
 

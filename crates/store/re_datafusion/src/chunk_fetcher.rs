@@ -141,7 +141,7 @@ struct MergedRangeRequest {
     chunks: Vec<ChunkInMergedRange>,
 
     /// Segment ID the chunks in this merged range belong to.
-    segment_id: Option<String>,
+    segment_id: Option<SegmentId>,
 
     /// `ETag` the manifest registered for the source object, when known.
     expected_etag: Option<ETag>,
@@ -180,7 +180,7 @@ impl DirectFetchError {
 
     /// The source object backing this fetch has changed since the dataset was
     /// registered. Non-retryable: re-trying produces the same drift.
-    fn source_changed(segment_id: Option<&str>) -> Self {
+    fn source_changed(segment_id: Option<&SegmentId>) -> Self {
         let msg = if let Some(id) = segment_id {
             format!("{SOURCE_CHANGED_MESSAGE}: {id}")
         } else {
@@ -431,7 +431,7 @@ fn merge_ranges_for_url(
     url: String,
     mut chunks: Vec<(usize, u64, u64)>, // (original_row_index, offset, length)
     max_gap_size: usize,
-    segment_id: Option<String>,
+    segment_id: Option<SegmentId>,
     expected_etag: Option<ETag>,
     registration_time: Option<jiff::Timestamp>,
 ) -> Vec<MergedRangeRequest> {
@@ -624,7 +624,7 @@ async fn fetch_batch_via_direct_urls(
     // sharing a URL share both, and we stash them once on first sight.
     struct UrlGroup {
         ranges: Vec<(usize, u64, u64)>,
-        segment_id: Option<String>,
+        segment_id: Option<SegmentId>,
         expected_etag: Option<ETag>,
         registration_time: Option<jiff::Timestamp>,
     }
@@ -662,7 +662,7 @@ async fn fetch_batch_via_direct_urls(
                 ranges: Vec::new(),
                 segment_id: segment_ids
                     .filter(|arr| !arr.is_null(i))
-                    .map(|arr| arr.value(i).to_owned()),
+                    .map(|arr| SegmentId::from(arr.value(i).to_owned())),
                 expected_etag: chunk_key.etag,
                 registration_time: chunk_key.registration_time,
             })
@@ -840,7 +840,7 @@ async fn fetch_merged_range(
         expected_etag,
         registration_time,
     } = request;
-    let segment_id = segment_id.as_deref();
+    let segment_id = segment_id.as_ref();
     let expected_etag = expected_etag.as_ref();
     let registration_time = *registration_time;
 
@@ -908,7 +908,7 @@ async fn fetch_merged_range(
                         _ => false,
                     };
                     re_log::error!(
-                        segment_id = segment_id.unwrap_or("unknown"),
+                        segment_id = segment_id.map(|s| s.as_str()).unwrap_or("unknown"),
                         url = logged_url,
                         range_start,
                         range_end,

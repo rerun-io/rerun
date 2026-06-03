@@ -227,7 +227,7 @@ mod tests {
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
-        assert_eq!(segment_id, "sid");
+        assert_eq!(segment_id.as_str(), "sid");
         assert_eq!(fragment, Default::default());
     }
 
@@ -243,7 +243,7 @@ mod tests {
         };
 
         // Legacy `partition_id` is parsed into `segment_id`.
-        assert_eq!(segment_id, "pid");
+        assert_eq!(segment_id.as_str(), "pid");
     }
 
     /// Test that `segment_id` and `partition_id` together do not work.
@@ -277,7 +277,7 @@ mod tests {
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
-        assert_eq!(segment_id, "sid");
+        assert_eq!(segment_id.as_str(), "sid");
         assert_eq!(
             fragment,
             Fragment {
@@ -313,7 +313,7 @@ mod tests {
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
-        assert_eq!(segment_id, "sid");
+        assert_eq!(segment_id.as_str(), "sid");
         assert_eq!(fragment, Fragment::default());
     }
 

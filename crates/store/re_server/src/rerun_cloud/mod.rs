@@ -811,7 +811,7 @@ impl RerunCloudService for RerunCloudHandler {
                         StoreId::new(
                             StoreKind::Recording,
                             entry_id.to_string(),
-                            segment_id.id.clone(),
+                            segment_id.clone(),
                         ),
                         self.eager_chunk_store_config.clone(),
                     )
@@ -1433,7 +1433,7 @@ impl RerunCloudService for RerunCloudHandler {
                         timeline_data.1.push(None);
                     }
 
-                    chunk_segment_ids.push(segment_id.id.clone());
+                    chunk_segment_ids.push(segment_id.to_string());
                     chunk_ids.push(meta.chunk_id);
                     chunk_entity_path.push(meta.entity_path.clone());
                     chunk_is_static.push(meta.is_static);

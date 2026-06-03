@@ -7,29 +7,19 @@ use re_types_core::LayerName;
 use crate::store::{Error, Source, Tracked};
 
 /// The mutable inner state of a [`Segment`], wrapped in [`Tracked`] for automatic timestamp updates.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SegmentInner {
     /// The sources for all the layers this segment belongs to.
     sources: HashMap<LayerName, Arc<Source>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Segment {
     inner: Tracked<SegmentInner>,
 }
 
-impl Default for Segment {
-    fn default() -> Self {
-        Self {
-            inner: Tracked::new(SegmentInner {
-                sources: HashMap::default(),
-            }),
-        }
-    }
-}
-
 /// What happened to a segment's layer map as a result of an
-/// [`Segment::insert_segment`] call.
+/// [`Segment::insert_source`] call.
 #[must_use]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SourceInsertOutcome {

@@ -7,8 +7,8 @@ mod viewer_section;
 use std::net::TcpListener;
 
 pub use kittest_harness_ext::HarnessExt;
-use re_protos::common::v1alpha1::SegmentId;
 use re_redap_client::{ApiResult, ConnectionClient, ConnectionRegistry};
+use re_sdk_types::SegmentId;
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
 // pub use viewer_section::GetSection;

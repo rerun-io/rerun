@@ -222,7 +222,7 @@ impl PyRegistrationHandleInternal {
 
                 Ok(descriptors
                     .iter()
-                    .map(|d| d.segment_id.id.clone())
+                    .map(|d| d.segment_id.to_string())
                     .collect())
             }
             .instrument(span),
@@ -337,7 +337,7 @@ fn process_task_response(
             for &idx in indices {
                 let desc = &descriptors[idx];
 
-                let segment_id = desc.segment_id.id.clone();
+                let segment_id = desc.segment_id.to_string();
                 let error = match status {
                     "success" => None,
                     "cancelled" => Some("registration was cancelled".to_owned()),

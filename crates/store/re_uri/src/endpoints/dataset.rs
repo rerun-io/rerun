@@ -1,4 +1,5 @@
 use re_log_types::StoreId;
+use re_types_core::SegmentId;
 
 use crate::{Error, Fragment, Origin, RedapUri};
 
@@ -16,7 +17,7 @@ pub struct DatasetSegmentUri {
 
     // Query parameters: these affect what data is returned.
     /// Currently mandatory.
-    pub segment_id: String,
+    pub segment_id: SegmentId,
 
     // Fragment parameters: these affect what the viewer focuses on:
     pub fragment: Fragment,
@@ -57,11 +58,11 @@ impl DatasetSegmentUri {
             match key.as_ref() {
                 // Accept legacy `partition_id` query parameter.
                 "partition_id" => {
-                    legacy_partition_id = Some(value.to_string());
+                    legacy_partition_id = Some(SegmentId::from(value));
                 }
 
                 "segment_id" => {
-                    segment_id = Some(value.to_string());
+                    segment_id = Some(SegmentId::from(value));
                 }
                 _ => {
                     // We ignore unknown query keys that may be from urls from prior/newer versions.

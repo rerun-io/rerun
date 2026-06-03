@@ -107,7 +107,7 @@ impl ChunkProvider for SegmentChunkProvider {
     }
 
     fn source(&self) -> String {
-        format!("segment '{}'", self.segment_id.id)
+        format!("segment '{}'", self.segment_id)
     }
 
     fn load_chunks(&self, ids: &[ChunkId]) -> Result<Vec<Arc<Chunk>>, ChunkProviderError> {

@@ -489,7 +489,7 @@ pub async fn stream_blueprint_and_segment_from_server(
         store_info,
         &tx,
         dataset_id.into(),
-        segment_id.into(),
+        segment_id,
         fragment,
         &options,
     )

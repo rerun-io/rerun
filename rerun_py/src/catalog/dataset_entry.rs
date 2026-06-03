@@ -288,7 +288,7 @@ impl PyDatasetEntryInternal {
         Ok(re_uri::DatasetSegmentUri {
             origin: connection.origin().clone(),
             dataset_id: self_.entry_details.id.id,
-            segment_id,
+            segment_id: SegmentId::from(segment_id),
             fragment: re_uri::Fragment {
                 selection: None,
                 when: timeline.map(|timeline| {

@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef as ArrowSchemaRef};
 use re_log_types::EntityPath;
-use re_types_core::ChunkId;
+use re_types_core::{ChunkId, SegmentId};
 
 use crate::{
     ArrowBatchMetadata, SorbetColumnDescriptors, SorbetError, TimestampMetadata, migrate_schema_ref,
@@ -26,7 +26,7 @@ pub struct SorbetSchema {
     pub entity_path: Option<EntityPath>,
 
     /// The segment id that this chunk belongs to.
-    pub segment_id: Option<String>,
+    pub segment_id: Option<SegmentId>,
 
     /// Timing statistics.
     pub timestamps: TimestampMetadata,
@@ -154,7 +154,7 @@ impl SorbetSchema {
         let segment_id = metadata
             .get("rerun:segment_id")
             .or_else(|| metadata.get("rerun:partition_id"))
-            .map(|s| s.to_owned());
+            .map(|s| SegmentId::from(s.as_str()));
 
         // Verify version
         if let Some(batch_version) = metadata.get(Self::METADATA_KEY_VERSION)
@@ -208,7 +208,7 @@ mod tests {
         // Verify that segment_id is correctly populated from the legacy partition_id
         assert_eq!(
             sorbet_schema.segment_id,
-            Some(partition_id_value.to_owned()),
+            Some(partition_id_value.into()),
             "Legacy rerun:partition_id should be read as segment_id"
         );
     }
@@ -241,7 +241,7 @@ mod tests {
         // Verify that segment_id takes precedence
         assert_eq!(
             sorbet_schema.segment_id,
-            Some(segment_id_value.to_owned()),
+            Some(segment_id_value.into()),
             "rerun:segment_id should take precedence over rerun:partition_id"
         );
     }
