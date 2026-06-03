@@ -20,7 +20,6 @@ use re_redap_tests::{
     register_and_wait,
 };
 use re_server::{RerunCloudHandler, RerunCloudHandlerBuilder};
-use re_types_core::LayerName;
 
 fn build() -> RerunCloudHandler {
     RerunCloudHandlerBuilder::new().build()
@@ -65,13 +64,8 @@ async fn register_memory_url_cross_dataset() {
     // --- Step 2: Create dataset B, register using the memory:// URL ---
     let dataset_b = service.create_dataset_entry_with_name("dataset_b").await;
 
-    let memory_data_source: re_protos::cloud::v1alpha1::DataSource = ext::DataSource {
-        storage_url: url::Url::parse(&memory_url).unwrap(),
-        is_prefix: false,
-        layer: LayerName::base(),
-        kind: ext::DataSourceKind::Rrd,
-    }
-    .into();
+    let memory_data_source: re_protos::cloud::v1alpha1::DataSource =
+        ext::DataSource::new_rrd(&memory_url).unwrap().into();
 
     let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
         data_sources: vec![memory_data_source.clone()],
@@ -147,13 +141,8 @@ async fn register_memory_url_not_found() {
     let fake_tuid = re_tuid::Tuid::new();
     let fake_memory_url = format!("memory:///store/{fake_tuid}");
 
-    let memory_data_source: re_protos::cloud::v1alpha1::DataSource = ext::DataSource {
-        storage_url: url::Url::parse(&fake_memory_url).unwrap(),
-        is_prefix: false,
-        layer: LayerName::base(),
-        kind: ext::DataSourceKind::Rrd,
-    }
-    .into();
+    let memory_data_source: re_protos::cloud::v1alpha1::DataSource =
+        ext::DataSource::new_rrd(&fake_memory_url).unwrap().into();
 
     let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
         data_sources: vec![memory_data_source],

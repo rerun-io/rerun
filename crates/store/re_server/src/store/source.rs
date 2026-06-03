@@ -8,25 +8,53 @@ use itertools::Itertools as _;
 use re_byte_size::SizeBytes as _;
 use re_log_encoding::RawRrdManifest;
 use re_log_types::{AbsoluteTimeRange, Timeline};
+use re_protos::cloud::v1alpha1::ext::DataSourceKind;
+
+use crate::store::LayerInfo;
 
 use super::StoreSlotId;
 use super::resolved_store::ResolvedStore;
 
 /// The contents of a ([`re_types_core::SegmentId`], [`re_types_core::LayerName`]) pair.
-#[derive(Clone)]
-pub struct Layer {
+///
+/// A dataset is a table, where the columns are segments, and the rows layers.
+/// This is the content of a single cell in that table.
+pub struct Source {
     store_slot_id: StoreSlotId,
+
     resolved: ResolvedStore,
+
     registration_time: jiff::Timestamp,
+
+    /// .rrd, .mcap, …
+    data_source_kind: DataSourceKind,
+
+    /// All sources in the same layer share the same [`LayerInfo`].
+    layer_info: Arc<LayerInfo>,
 }
 
-impl Layer {
-    pub fn new(store_slot_id: StoreSlotId, resolved: ResolvedStore) -> Self {
+impl Source {
+    pub fn new(
+        store_slot_id: StoreSlotId,
+        resolved: ResolvedStore,
+        data_source_kind: DataSourceKind,
+        layer_info: Arc<LayerInfo>,
+    ) -> Self {
         Self {
             store_slot_id,
             resolved,
             registration_time: jiff::Timestamp::now(),
+            data_source_kind,
+            layer_info,
         }
+    }
+
+    pub fn data_source_kind(&self) -> DataSourceKind {
+        self.data_source_kind
+    }
+
+    pub fn layer_info(&self) -> &LayerInfo {
+        &self.layer_info
     }
 
     pub fn store_slot_id(&self) -> StoreSlotId {
@@ -44,12 +72,6 @@ impl Layer {
     pub fn last_updated_at(&self) -> jiff::Timestamp {
         //TODO(ab): change this if we ever mutate a layer somehow?
         self.registration_time
-    }
-
-    #[expect(clippy::unused_self)]
-    pub fn layer_type(&self) -> &'static str {
-        //TODO(ab): what should that actually be?
-        "rrd"
     }
 
     pub fn num_chunks(&self) -> u64 {
@@ -336,9 +358,15 @@ mod tests {
         for chunk in &chunks {
             eager_store.insert_chunk(chunk).unwrap();
         }
-        let eager_layer = Layer::new(
+        let test_layer_info = Arc::new(LayerInfo {
+            name: re_types_core::LayerName::base(),
+            layer_class: re_types_core::LayerClass::Segment,
+        });
+        let eager_layer = Source::new(
             StoreSlotId::new(),
             ResolvedStore::Eager(ChunkStoreHandle::new(eager_store)),
+            DataSourceKind::Rrd,
+            test_layer_info.clone(),
         );
 
         // Lazy backend: same chunks, written to an RRD file with footer, then loaded lazily.
@@ -355,7 +383,12 @@ mod tests {
         let provider =
             Arc::new(RrdChunkProvider::try_from_file(store_file, &rrd_path, raw_manifest).unwrap());
         let lazy = Arc::new(LazyStore::new(provider));
-        let lazy_layer = Layer::new(StoreSlotId::new(), ResolvedStore::Lazy(lazy));
+        let lazy_layer = Source::new(
+            StoreSlotId::new(),
+            ResolvedStore::Lazy(lazy),
+            DataSourceKind::Rrd,
+            test_layer_info,
+        );
 
         let lazy_manifest = lazy_layer.rrd_manifest().unwrap();
         let eager_manifest = eager_layer.rrd_manifest().unwrap();

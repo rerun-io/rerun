@@ -5,7 +5,7 @@ use futures::StreamExt as _;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
 use re_protos::cloud::v1alpha1::QueryDatasetResponse;
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource, DataSourceKind, Query, QueryDatasetRequest, QueryLatestAt, QueryRange,
+    DataSource, Query, QueryDatasetRequest, QueryLatestAt, QueryRange,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -317,12 +317,9 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
         .register_with_dataset_name_blocking(
             dataset_name,
             vec![
-                DataSource {
-                    storage_url: url::Url::from_file_path(recording_path.as_path()).unwrap(),
-                    is_prefix: false,
-                    layer: re_types_core::LayerName::base(),
-                    kind: DataSourceKind::Rrd,
-                }
+                DataSource::new_rrd_url(
+                    url::Url::from_file_path(recording_path.as_path()).unwrap(),
+                )
                 .into(),
             ],
         )

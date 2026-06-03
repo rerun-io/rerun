@@ -14,7 +14,6 @@ use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{EntryName, common::v1alpha1::ext::SegmentId};
-use re_types_core::LayerName;
 
 /// Test helper: parse a string into an `EntryName`, panicking on invalid names.
 pub fn entry_name(name: &str) -> EntryName {
@@ -632,14 +631,12 @@ impl DataSourcesDefinition {
     pub fn to_data_sources_ext(&self) -> Vec<ext::DataSource> {
         self.layers
             .iter()
-            .map(|(layer_name, path)| ext::DataSource {
-                storage_url: Url::from_file_path(path.as_path()).unwrap(),
-                layer: layer_name
-                    .clone()
-                    .map(LayerName::from)
-                    .unwrap_or_else(LayerName::base),
-                is_prefix: false,
-                kind: ext::DataSourceKind::Rrd,
+            .map(|(layer_name, path)| {
+                let url = Url::from_file_path(path.as_path()).unwrap();
+                match layer_name {
+                    None => ext::DataSource::new_rrd_url(url),
+                    Some(layer) => ext::DataSource::new_rrd_layer(layer, url.as_str()).unwrap(),
+                }
             })
             .collect()
     }

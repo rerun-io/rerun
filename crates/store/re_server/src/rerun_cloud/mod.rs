@@ -27,7 +27,6 @@ use re_protos::cloud::v1alpha1::{
     RegisterTableResponse, RegisterWithDatasetResponse, ScanDatasetManifestRequest,
     ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse,
 };
-use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_protos::headers::RerunHeadersExtractorExt as _;
 use re_protos::missing_field;
@@ -44,11 +43,14 @@ use re_protos::{
 use re_tuid::Tuid;
 use re_types_core::LayerName;
 
+mod register_with_dataset;
+use self::register_with_dataset::{RegisterWithDatasetResult, do_register_with_dataset};
+
 use crate::OnError;
 use crate::entrypoint::NamedPath;
-use crate::store::ResolvedStore;
+use crate::store::LayerInfo;
 use crate::store::{
-    ChunkKey, Dataset, Error, InMemoryStore, StoreSlotId, TASK_ID_SUCCESS, Table, TaskResult,
+    ChunkKey, Dataset, InMemoryStore, ResolvedStore, StoreSlotId, Table, TaskResult,
 };
 
 #[derive(Debug)]
@@ -187,12 +189,12 @@ impl RerunCloudHandler {
         Ok(dataset
             .segments_from_ids(segment_ids)
             .flat_map(|(segment_id, segment)| {
-                segment.iter_layers().map(|(layer_name, layer)| {
+                segment.iter_sources().map(|(layer_name, source)| {
                     (
                         segment_id.clone(),
                         layer_name.clone(),
-                        layer.store_slot_id(),
-                        layer.resolved_store().clone(),
+                        source.store_slot_id(),
+                        source.resolved_store().clone(),
                     )
                 })
             })
@@ -422,7 +424,6 @@ impl RerunCloudHandler {
             .collect())
     }
 }
-
 #[tonic::async_trait]
 impl RerunCloudService for RerunCloudHandler {
     async fn version(
@@ -676,7 +677,6 @@ impl RerunCloudService for RerunCloudHandler {
     }
 
     // --- Manifest Registry ---
-
     async fn register_with_dataset(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::RegisterWithDatasetRequest>,
@@ -698,257 +698,13 @@ impl RerunCloudService for RerunCloudHandler {
             ));
         }
 
-        // Phase 1: Extract store IDs cheaply and check for intra-request duplicates.
-        //
-        // We extract store IDs from the RRD footer (fast) or by scanning messages
-        // for SetStoreInfo (fallback for older files without footers). This avoids
-        // full chunk loading on the unhappy path (duplicates found).
-        //
-        // The `on_duplicate` flag only affects cross-request duplicates (conflicts with
-        // already-registered segments), not intra-request duplicates.
-        enum ValidatedSource {
-            File {
-                rrd_path: PathBuf,
-                layer_name: LayerName,
-                storage_url: url::Url,
-            },
-            Memory {
-                store_slot_id: StoreSlotId,
-                resolved: ResolvedStore,
-                segment_id: SegmentId,
-                layer_name: LayerName,
-            },
-        }
-
-        let mut seen: BTreeMap<(String, LayerName), Vec<url::Url>> = BTreeMap::new();
-        let mut validated_sources: Vec<ValidatedSource> = Vec::new();
-
-        let store_kind = store.dataset(dataset_id)?.store_kind();
-
-        for source in data_sources {
-            let ext::DataSource {
-                storage_url,
-                is_prefix,
-                layer,
-                kind,
-            } = source;
-
-            // TODO(ab): Should some or all of these errors be returned as task error instead?
-            // (No point in doing so unless this is tested in re_redap_tests.)
-            if is_prefix {
-                return Err(tonic::Status::internal(
-                    "register_with_dataset: prefix data sources should have been resolved already",
-                ));
-            }
-
-            if kind != ext::DataSourceKind::Rrd {
-                return Err(tonic::Status::unimplemented(
-                    "register_with_dataset: only RRD data sources are implemented",
-                ));
-            }
-
-            let layer = if layer.is_empty() {
-                LayerName::base()
-            } else {
-                layer
-            };
-
-            // Handle memory:// URLs (re-registration of existing stores)
-            if storage_url.scheme() == "memory" {
-                let store_slot_id = parse_memory_url(&storage_url)?;
-                let resolved = store.resolve_store(&store_slot_id).ok_or_else(|| {
-                    tonic::Status::not_found(format!(
-                        "store not found for memory URL: {storage_url}"
-                    ))
-                })?;
-                let store_id = resolved.store_id();
-                if store_id.kind() != store_kind {
-                    continue;
-                }
-                let segment_id = SegmentId::new(store_id.recording_id().to_string());
-                let key = (segment_id.id.clone(), layer.clone());
-                seen.entry(key).or_default().push(storage_url.clone());
-                validated_sources.push(ValidatedSource::Memory {
-                    store_slot_id,
-                    resolved,
-                    segment_id,
-                    layer_name: layer,
-                });
-                continue;
-            }
-
-            let Ok(rrd_path) = storage_url.to_file_path() else {
-                return if storage_url.scheme() == "file" && storage_url.host().is_some() {
-                    Err(tonic::Status::not_found(format!(
-                        "RRD file not found, file URI should not have a host: {storage_url} (this may be caused by invalid relative-path URI)"
-                    )))
-                } else {
-                    Err(tonic::Status::not_found(format!(
-                        "RRD file not found, could not load URI: {storage_url}"
-                    )))
-                };
-            };
-
-            if !rrd_path.exists() {
-                return Err(tonic::Status::not_found(format!(
-                    "RRD file not found, file does not exists: {rrd_path:?}"
-                )));
-            }
-
-            if !rrd_path.is_file() {
-                return Err(tonic::Status::not_found(format!(
-                    "RRD file not found, path is not a file: {rrd_path:?}"
-                )));
-            }
-
-            // Extract store IDs cheaply (footer or message scan, no chunk loading)
-            let store_ids = load_store_ids(&rrd_path)?;
-
-            for store_id in store_ids {
-                if store_id.kind() != store_kind {
-                    continue;
-                }
-
-                let segment_id_str = store_id.recording_id().to_string();
-                let key = (segment_id_str, layer.clone());
-
-                seen.entry(key).or_default().push(storage_url.clone());
-            }
-
-            validated_sources.push(ValidatedSource::File {
-                rrd_path,
-                layer_name: layer,
-                storage_url,
-            });
-        }
-
-        // Check for intra-request duplicates
-        let duplicates: Vec<_> = seen.iter().filter(|(_, urls)| urls.len() > 1).collect();
-
-        if !duplicates.is_empty() {
-            let details: Vec<String> = duplicates
-                .iter()
-                .map(|((segment_id, layer), urls)| {
-                    let uri_lines = urls
-                        .iter()
-                        .map(|u| format!("    {u}"))
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    format!("  segment id: {segment_id}, layer name: {layer}\n{uri_lines}")
-                })
-                .collect();
-            return Err(tonic::Status::invalid_argument(format!(
-                "duplicate segment layers in request:\n{}",
-                details.join("\n")
-            )));
-        }
-
-        // Phase 2: Load file sources and unify with memory sources into a common form.
-        struct ReadySource {
-            store_slot_id: StoreSlotId,
-            resolved: ResolvedStore,
-            segment_id: SegmentId,
-            layer_name: LayerName,
-            storage_url: String,
-        }
-
-        let mut ready_sources: Vec<ReadySource> = Vec::new();
-
-        for source in validated_sources {
-            match source {
-                ValidatedSource::Memory {
-                    store_slot_id,
-                    resolved,
-                    segment_id,
-                    layer_name,
-                } => {
-                    ready_sources.push(ReadySource {
-                        storage_url: format!("memory:///store/{store_slot_id}"),
-                        store_slot_id,
-                        resolved,
-                        segment_id,
-                        layer_name,
-                    });
-                }
-
-                ValidatedSource::File {
-                    rrd_path,
-                    layer_name,
-                    storage_url,
-                } => {
-                    re_log::info!("Loading RRD: {}", rrd_path.display());
-
-                    for (store_id, resolved) in ResolvedStore::load_rrd_file(&rrd_path, store_kind)?
-                    {
-                        ready_sources.push(ReadySource {
-                            store_slot_id: StoreSlotId::new(),
-                            resolved,
-                            segment_id: SegmentId::new(store_id.recording_id().to_string()),
-                            layer_name: layer_name.clone(),
-                            storage_url: storage_url.to_string(),
-                        });
-                    }
-                }
-            }
-        }
-
-        // Phase 3: Register all stores in the pool, then add layers to dataset.
-        let mut segment_ids: Vec<String> = vec![];
-        let mut segment_layers: Vec<LayerName> = vec![];
-        let mut segment_types: Vec<String> = vec![];
-        let mut storage_urls: Vec<String> = vec![];
-        let mut task_ids: Vec<String> = vec![];
-        let mut failed_task_results: Vec<(TaskId, TaskResult)> = vec![];
-
-        for source in &ready_sources {
-            store.register_store_with_id(source.store_slot_id, &source.resolved);
-        }
-
-        {
-            let dataset = store.dataset_mut(dataset_id)?;
-
-            for source in ready_sources {
-                let add_result = dataset
-                    .add_layer(
-                        source.segment_id.clone(),
-                        source.layer_name.clone(),
-                        source.store_slot_id,
-                        source.resolved,
-                        on_duplicate,
-                    )
-                    .await;
-
-                match add_result {
-                    Ok(()) => {
-                        segment_ids.push(source.segment_id.to_string());
-                        segment_layers.push(source.layer_name);
-                        segment_types.push("rrd".to_owned());
-                        storage_urls.push(source.storage_url);
-                        task_ids.push(TASK_ID_SUCCESS.to_owned());
-                    }
-
-                    Err(Error::SchemaConflict(msg)) => {
-                        segment_ids.push(String::new());
-                        segment_layers.push(source.layer_name);
-                        segment_types.push("rrd".to_owned());
-                        storage_urls.push(source.storage_url);
-
-                        let task_id = TaskId::new();
-                        task_ids.push(task_id.id.clone());
-                        failed_task_results.push((task_id, TaskResult::failed(&msg)));
-                    }
-
-                    Err(other_err) => {
-                        return Err(other_err.into());
-                    }
-                }
-            }
-        }
-
-        // Register all task results now that the mutable borrow of dataset is done
-        for (task_id, result) in failed_task_results {
-            store.task_registry().register_failure(task_id, result);
-        }
+        let RegisterWithDatasetResult {
+            segment_ids,
+            segment_layers,
+            segment_types,
+            storage_urls,
+            task_ids,
+        } = do_register_with_dataset(&mut store, dataset_id, data_sources, on_duplicate).await?;
 
         let record_batch = RegisterWithDatasetResponse::create_dataframe(
             segment_ids,
@@ -1082,9 +838,12 @@ impl RerunCloudService for RerunCloudHandler {
 
         for (entity_path, store_slot_id, resolved) in handles {
             dataset
-                .add_layer(
+                .add_source(
                     entity_path,
-                    LayerName::base(),
+                    Arc::new(LayerInfo {
+                        name: LayerName::base(),
+                        layer_class: re_types_core::LayerClass::Segment,
+                    }),
                     store_slot_id,
                     resolved,
                     IfDuplicateBehavior::Error,
@@ -2076,45 +1835,6 @@ impl RerunCloudService for RerunCloudHandler {
             CreateTableEntryResponse { table }.try_into()?,
         ))
     }
-}
-
-/// Extracts unique store IDs from an RRD file without loading chunk data.
-///
-/// Returns a deduplicated set because a single RRD can contain duplicate
-/// `SetStoreInfo` messages for the same store.
-fn load_store_ids(rrd_path: &std::path::Path) -> tonic::Result<BTreeSet<StoreId>> {
-    let reader = std::io::BufReader::new(
-        std::fs::File::open(rrd_path)
-            .map_err(|err| tonic::Status::internal(format!("Failed to open RRD file: {err:#}")))?,
-    );
-    let decoder = re_log_encoding::DecoderApp::decode_lazy(reader);
-
-    let mut store_ids = BTreeSet::new();
-    for msg_result in decoder {
-        let msg = msg_result.map_err(|err| {
-            tonic::Status::internal(format!("Failed to decode RRD message: {err:#}"))
-        })?;
-        if let re_log_types::LogMsg::SetStoreInfo(info) = msg {
-            store_ids.insert(info.info.store_id);
-        }
-    }
-
-    Ok(store_ids)
-}
-
-/// Parses a `memory:///store/{store_slot_id}` URL and returns the [`StoreSlotId`].
-fn parse_memory_url(url: &url::Url) -> tonic::Result<StoreSlotId> {
-    let path = url.path();
-    let slot_id_str = path.strip_prefix("/store/").ok_or_else(|| {
-        tonic::Status::invalid_argument(format!(
-            "invalid memory URL format, expected memory:///store/{{store_slot_id}}: {url}"
-        ))
-    })?;
-    slot_id_str.parse::<StoreSlotId>().map_err(|err| {
-        tonic::Status::invalid_argument(format!(
-            "invalid store slot ID in memory URL '{url}': {err}"
-        ))
-    })
 }
 
 /// Retrieves the entry ID based on HTTP headers.

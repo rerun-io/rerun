@@ -14,7 +14,7 @@ use re_chunk::TimelineName;
 use re_log_types::{AbsoluteTimeRange, external::re_types_core::ComponentBatch as _};
 use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
-use re_types_core::LayerName;
+use re_types_core::{LayerClass, LayerName};
 
 use crate::cloud::v1alpha1::{
     DoBandwidthTestResponse, EntryKind, FetchChunksRequest, GetDatasetSchemaResponse,
@@ -2331,10 +2331,20 @@ impl ScanDatasetManifestResponse {
 
 // --- DataSource --
 
+/// The file format of a [`DataSource`].
 // NOTE: Match the values of the Protobuf definition to keep life simple.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum DataSourceKind {
+    /// Rerun recording data (`.rrd` files).
     Rrd = 1,
+}
+
+impl std::fmt::Display for DataSourceKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Rrd => write!(f, "rrd"),
+        }
+    }
 }
 
 impl TryFrom<crate::cloud::v1alpha1::DataSourceKind> for DataSourceKind {
@@ -2431,12 +2441,28 @@ fn datasourcekind_roundtrip() {
     assert_eq!(DataSourceKind::Rrd, kind);
 }
 
+/// A pointer to one or more recording files stored in object storage.
+///
+/// A `DataSource` identifies a single file (when `is_prefix = false`) or
+/// all files that share a common URL prefix (when `is_prefix = true`).
+/// Every source belongs to a named [`LayerName`] within the dataset and
+/// carries a [`LayerClass`] that describes how segments relate to the layer.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DataSource {
+    /// URL of the recording file, or the common prefix when `is_prefix` is `true`.
     pub storage_url: url::Url,
+
+    /// If `true`, `storage_url` is a prefix and matches all objects with that prefix.
     pub is_prefix: bool,
+
+    /// The dataset layer this source belongs to (default: `"base"`).
     pub layer: LayerName,
+
+    /// File format of the recording data.
     pub kind: DataSourceKind,
+
+    /// Whether this layer holds asset data (shared across segments) or per-segment data.
+    pub layer_class: LayerClass,
 }
 
 impl DataSource {
@@ -2448,6 +2474,7 @@ impl DataSource {
             is_prefix: false,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Segment,
         })
     }
 
@@ -2457,6 +2484,7 @@ impl DataSource {
             is_prefix: true,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Segment,
         })
     }
 
@@ -2469,6 +2497,7 @@ impl DataSource {
             is_prefix: false,
             layer: LayerName::new(layer.as_ref()),
             kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Segment,
         })
     }
 
@@ -2481,7 +2510,74 @@ impl DataSource {
             is_prefix: true,
             layer: LayerName::new(layer.as_ref()),
             kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Segment,
         })
+    }
+
+    pub fn new_rrd_url(storage_url: url::Url) -> Self {
+        Self {
+            storage_url,
+            is_prefix: false,
+            layer: LayerName::base(),
+            kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Segment,
+        }
+    }
+
+    pub fn new_rrd_prefix_url(storage_url: url::Url) -> Self {
+        Self {
+            storage_url,
+            is_prefix: true,
+            layer: LayerName::base(),
+            kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Segment,
+        }
+    }
+
+    pub fn new_rrd_asset_layer(
+        layer: impl AsRef<str>,
+        storage_url: impl AsRef<str>,
+    ) -> Result<Self, url::ParseError> {
+        Ok(Self {
+            storage_url: storage_url.as_ref().parse()?,
+            is_prefix: false,
+            layer: LayerName::new(layer.as_ref()),
+            kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Asset,
+        })
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::LayerClass> for LayerClass {
+    type Error = TypeConversionError;
+
+    fn try_from(class: crate::cloud::v1alpha1::LayerClass) -> Result<Self, Self::Error> {
+        match class {
+            crate::cloud::v1alpha1::LayerClass::Asset => Ok(Self::Asset),
+            crate::cloud::v1alpha1::LayerClass::Segment => Ok(Self::Segment),
+            crate::cloud::v1alpha1::LayerClass::Unspecified => {
+                Err(TypeConversionError::InvalidField {
+                    package_name: "rerun.cloud.v1alpha1",
+                    type_name: "LayerClass",
+                    field_name: "",
+                    reason: "enum value unspecified".to_owned(),
+                })
+            }
+        }
+    }
+}
+
+fn layer_class_from_i32(class: i32) -> Result<LayerClass, TypeConversionError> {
+    let class = crate::cloud::v1alpha1::LayerClass::try_from(class)?;
+    class.try_into()
+}
+
+impl From<LayerClass> for crate::cloud::v1alpha1::LayerClass {
+    fn from(value: LayerClass) -> Self {
+        match value {
+            LayerClass::Asset => Self::Asset,
+            LayerClass::Segment => Self::Segment,
+        }
     }
 }
 
@@ -2492,6 +2588,7 @@ impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
             prefix: value.is_prefix,
             layer: Some(value.layer.into()),
             typ: value.kind as i32,
+            layer_class: crate::cloud::v1alpha1::LayerClass::from(value.layer_class) as i32,
         }
     }
 }
@@ -2514,11 +2611,18 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
 
         let prefix = data_source.prefix;
 
+        let layer_class = if data_source.layer_class == 0 {
+            LayerClass::Segment // default when unspecified
+        } else {
+            layer_class_from_i32(data_source.layer_class)?
+        };
+
         Ok(Self {
             storage_url,
             is_prefix: prefix,
             layer,
             kind,
+            layer_class,
         })
     }
 }

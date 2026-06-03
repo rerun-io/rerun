@@ -7,6 +7,7 @@ use std::sync::{Arc, OnceLock};
 
 use ahash::{HashMap, HashMapExt as _};
 use futures::StreamExt as _;
+use re_chunk_store::Chunk;
 use re_log_types::{ComponentPath, EntityPath, EntryId};
 use re_protos::cloud::v1alpha1::ext::{
     CreateIndexRequest, IndexColumn, IndexConfig, SearchDatasetRequest,
@@ -20,8 +21,8 @@ use re_types_core::SegmentId;
 use re_types_core::{ComponentIdentifier, LayerName};
 use tracing::instrument;
 
-use crate::rerun_cloud::SearchDatasetResponseStream;
 use crate::store::{Dataset, Error as StoreError};
+use crate::{rerun_cloud::SearchDatasetResponseStream, store::ResolvedStore};
 // Fields in an index table
 
 pub const FIELD_RERUN_SEGMENT_ID: &str = "rerun_segment_id";
@@ -201,11 +202,10 @@ impl DatasetChunkIndexes {
 
     // ----- Called by Dataset
 
-    pub async fn on_layer_added(
+    pub async fn on_source_added(
         &self,
         segment_id: SegmentId,
-        resolved: &crate::store::ResolvedStore,
-        layer_name: &LayerName,
+        source: &Arc<crate::store::Source>,
         _overwritten: bool,
     ) -> Result<(), StoreError> {
         // Fast path: no indexes exist, nothing to do (no chunk loading needed).
@@ -213,12 +213,12 @@ impl DatasetChunkIndexes {
             return Ok(());
         }
 
+        let layer_name = &source.layer_info().name;
+
         // Collect physical chunks from the store, loading on demand for lazy stores.
-        let chunks: Vec<std::sync::Arc<re_chunk_store::Chunk>> = match resolved {
-            crate::store::ResolvedStore::Eager(h) => {
-                h.read().iter_physical_chunks().cloned().collect()
-            }
-            crate::store::ResolvedStore::Lazy(lazy) => lazy
+        let chunks: Vec<Arc<Chunk>> = match source.resolved_store() {
+            ResolvedStore::Eager(h) => h.read().iter_physical_chunks().cloned().collect(),
+            ResolvedStore::Lazy(lazy) => lazy
                 .load_all_chunks()
                 .map_err(|err| StoreError::IndexingError(format!("{err:#}")))?,
         };
@@ -320,16 +320,13 @@ impl DatasetChunkIndexes {
         // Backfill existing data in the index
         let mut backfill = Vec::new();
         for (segment_id, segment) in dataset.segments() {
-            for (layer_name, layer) in segment.layers() {
-                let chunks: Vec<std::sync::Arc<re_chunk_store::Chunk>> =
-                    match layer.resolved_store() {
-                        crate::store::ResolvedStore::Eager(h) => {
-                            h.read().iter_physical_chunks().cloned().collect()
-                        }
-                        crate::store::ResolvedStore::Lazy(lazy) => lazy
-                            .load_all_chunks()
-                            .map_err(|err| StoreError::IndexingError(format!("{err:#}")))?,
-                    };
+            for (layer_name, source) in segment.iter_sources() {
+                let chunks: Vec<Arc<Chunk>> = match source.resolved_store() {
+                    ResolvedStore::Eager(h) => h.read().iter_physical_chunks().cloned().collect(),
+                    ResolvedStore::Lazy(lazy) => lazy
+                        .load_all_chunks()
+                        .map_err(|err| StoreError::IndexingError(format!("{err:#}")))?,
+                };
                 for chunk in chunks {
                     if chunk.entity_path() == entity_path
                         && chunk.components().0.contains_key(component)
@@ -441,9 +438,12 @@ mod tests {
         let store_slot_id = crate::store::StoreSlotId::new();
 
         dataset
-            .add_layer(
+            .add_source(
                 segment_id,
-                layer_name,
+                std::sync::Arc::new(crate::store::LayerInfo {
+                    name: layer_name,
+                    layer_class: re_types_core::LayerClass::Segment,
+                }),
                 store_slot_id,
                 crate::store::ResolvedStore::Eager(handle),
                 IfDuplicateBehavior::Error,

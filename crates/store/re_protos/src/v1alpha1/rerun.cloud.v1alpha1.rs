@@ -161,6 +161,10 @@ pub struct DataSource {
     /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
     #[prost(enumeration = "DataSourceKind", tag = "2")]
     pub typ: i32,
+    /// ⚠️ UNSTABLE: Is this an asset layer (shared across all segments) or a segment layer (one recording per segment)?
+    /// Defaults to LAYER_CLASS_SEGMENT if unspecified.
+    #[prost(enumeration = "LayerClass", tag = "5")]
+    pub layer_class: i32,
 }
 impl ::prost::Name for DataSource {
     const NAME: &'static str = "DataSource";
@@ -2018,6 +2022,38 @@ impl DataSourceKind {
         match value {
             "DATA_SOURCE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
             "DATA_SOURCE_KIND_RRD" => Some(Self::Rrd),
+            _ => None,
+        }
+    }
+}
+/// ⚠️ UNSTABLE: Describes the class of a dataset layer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum LayerClass {
+    Unspecified = 0,
+    /// Asset layer: a single source (recording) shared across all segments in the layer.
+    Asset = 1,
+    /// Segment layer: one (or zero) sources (recordings) per segment in the layer.
+    Segment = 2,
+}
+impl LayerClass {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "LAYER_CLASS_UNSPECIFIED",
+            Self::Asset => "LAYER_CLASS_ASSET",
+            Self::Segment => "LAYER_CLASS_SEGMENT",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "LAYER_CLASS_UNSPECIFIED" => Some(Self::Unspecified),
+            "LAYER_CLASS_ASSET" => Some(Self::Asset),
+            "LAYER_CLASS_SEGMENT" => Some(Self::Segment),
             _ => None,
         }
     }

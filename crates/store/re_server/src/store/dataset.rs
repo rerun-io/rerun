@@ -10,7 +10,7 @@ use re_arrow_util::RecordBatchExt as _;
 use re_log_encoding::RawRrdManifest;
 use re_log_types::{EntryId, StoreId, StoreKind, TimeType};
 use re_protos::EntryName;
-use re_protos::cloud::v1alpha1::ext::{DatasetDetails, DatasetEntry, EntryDetails};
+use re_protos::cloud::v1alpha1::ext::{DataSourceKind, DatasetDetails, DatasetEntry, EntryDetails};
 use re_protos::cloud::v1alpha1::{
     EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
 };
@@ -18,7 +18,7 @@ use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, Segme
 use re_types_core::LayerName;
 
 use crate::store::{
-    Error, Layer, LayerInsertOutcome, ResolvedStore, Segment, StoreSlotId, Tracked,
+    Error, LayerInfo, ResolvedStore, Segment, Source, SourceInsertOutcome, StoreSlotId, Tracked,
     asset_layer::AssetLayer, store_pool::StorePool,
 };
 
@@ -192,11 +192,11 @@ impl Dataset {
         }
     }
 
-    pub fn iter_layers(&self) -> impl Iterator<Item = &Layer> {
+    pub fn iter_sources(&self) -> impl Iterator<Item = &Source> {
         self.inner
             .segments
             .values()
-            .flat_map(|segment| segment.iter_layers().map(|(_, layer)| layer))
+            .flat_map(|segment| segment.iter_sources().map(|(_, source)| source))
     }
 
     // TODO(ab): now that we systematically check the merged schema upon registration, we could
@@ -215,7 +215,7 @@ impl Dataset {
         }
 
         // Recompute schema
-        let schema = Schema::try_merge(self.iter_layers().map(|layer| layer.schema()))?;
+        let schema = Schema::try_merge(self.iter_sources().map(|source| source.schema()))?;
         let schema_arc = Arc::new(schema.clone());
         *cache = Some((updated_at, Arc::clone(&schema_arc)));
 
@@ -241,14 +241,14 @@ impl Dataset {
         let mut all_index_ranges = Vec::with_capacity(row_count);
 
         for (segment_id, segment) in &self.inner.segments {
-            let layer_count = segment.layer_count();
+            let layer_count = segment.source_count();
             let mut layer_names_row = Vec::with_capacity(layer_count);
             let mut storage_urls_row = Vec::with_capacity(layer_count);
 
             let mut current_segment_properties = BTreeMap::default();
             let mut current_segment_indexes = BTreeMap::default();
 
-            for (layer_name, layer) in segment.iter_layers() {
+            for (layer_name, layer) in segment.iter_sources() {
                 layer_names_row.push(layer_name.clone());
                 storage_urls_row.push(format!("memory:///store/{}", layer.store_slot_id()));
 
@@ -389,14 +389,14 @@ impl Dataset {
             .filter(|(segment_id, _)| {
                 segments_of_interest.is_empty() || segments_of_interest.contains(segment_id)
             })
-            .flat_map(|(segment_id, layers)| {
+            .flat_map(|(segment_id, segment)| {
                 itertools::izip!(
                     std::iter::repeat(segment_id),
-                    layers
-                        .layers()
+                    segment
+                        .sources()
                         .keys()
-                        .filter(|layer| layers_of_interest.is_empty()
-                            || layers_of_interest.contains(layer.as_str()))
+                        .filter(|layer_name| layers_of_interest.is_empty()
+                            || layers_of_interest.contains(layer_name.as_str()))
                 )
             })
             .count();
@@ -421,31 +421,31 @@ impl Dataset {
             .filter(|(segment_id, _)| {
                 segments_of_interest.is_empty() || segments_of_interest.contains(segment_id)
             })
-            .flat_map(|(segment_id, layers)| {
+            .flat_map(|(segment_id, segment)| {
                 itertools::izip!(
                     std::iter::repeat(segment_id),
-                    layers
-                        .iter_layers()
+                    segment
+                        .iter_sources()
                         .filter(|(name, _layer)| layers_of_interest.is_empty()
                             || layers_of_interest.contains(&name.as_str()))
                 )
             })
-            .map(|(segment_id, (layer_name, layer))| {
+            .map(|(segment_id, (layer_name, source))| {
                 let segment_id = segment_id.to_string();
-                (layer_name, segment_id, layer)
+                (layer_name, segment_id, source)
             });
 
-        for (layer_name, segment_id, layer) in layers {
+        for (layer_name, segment_id, source) in layers {
             layer_names.push(layer_name.clone());
-            storage_urls.push(format!("memory:///store/{}", layer.store_slot_id()));
+            storage_urls.push(format!("memory:///store/{}", source.store_slot_id()));
             segment_ids.push(segment_id);
-            layer_types.push(layer.layer_type().to_owned());
-            registration_times.push(layer.registration_time().as_nanosecond() as i64);
-            last_updated_at.push(layer.last_updated_at().as_nanosecond() as i64);
-            num_chunks.push(layer.num_chunks());
-            size_bytes.push(layer.size_bytes());
+            layer_types.push(source.data_source_kind().to_string());
+            registration_times.push(source.registration_time().as_nanosecond() as i64);
+            last_updated_at.push(source.last_updated_at().as_nanosecond() as i64);
+            num_chunks.push(source.num_chunks());
+            size_bytes.push(source.size_bytes());
             schema_sha256s.push(
-                layer
+                source
                     .schema_sha256()
                     .map_err(Error::failed_to_extract_properties)?,
             );
@@ -455,7 +455,7 @@ impl Dataset {
             registration_statuses
                 .push(re_protos::cloud::v1alpha1::ext::LayerRegistrationStatus::Done.to_string());
 
-            properties.push(layer.compute_properties()?);
+            properties.push(source.compute_properties()?);
         }
 
         let base_record_batch = ScanDatasetManifestResponse::create_dataframe(
@@ -490,8 +490,8 @@ impl Dataset {
         // Each layer produces its own manifest (Lazy clones its cached footer, Eager rebuilds
         // from chunks), then we merge them under the segment-scoped store id.
         let per_layer: Vec<RawRrdManifest> = partition
-            .iter_layers()
-            .map(|(_, layer)| layer.rrd_manifest())
+            .iter_sources()
+            .map(|(_, source)| source.rrd_manifest())
             .try_collect()?;
 
         RawRrdManifest::merge(segment_store_id, per_layer)
@@ -501,14 +501,15 @@ impl Dataset {
     // we can't expect there are no async calls without the lance feature
     #[allow(clippy::allow_attributes)]
     #[allow(clippy::unused_async)]
-    pub async fn add_layer(
+    pub async fn add_source(
         &mut self,
         segment_id: SegmentId,
-        layer_name: LayerName,
+        layer_info: Arc<LayerInfo>,
         store_slot_id: StoreSlotId,
         resolved: ResolvedStore,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
+        let layer_name = &layer_info.name;
         re_log::debug!(?segment_id, ?layer_name, "add_layer");
 
         // Validate schema compatibility before inserting.
@@ -539,26 +540,29 @@ impl Dataset {
                 ))
             })?;
 
+        let source = Arc::new(Source::new(
+            store_slot_id,
+            resolved,
+            DataSourceKind::Rrd,
+            layer_info,
+        ));
+
         let outcome = self
             .inner
             .modify()
             .segments
             .entry(segment_id.clone())
             .or_default()
-            .insert_layer(
-                layer_name.clone(),
-                Layer::new(store_slot_id, resolved.clone()),
-                on_duplicate,
-            )?;
+            .insert_source(source.clone(), on_duplicate)?;
 
-        // Refresh the schema cache after each successful add_layer to avoid
+        // Refresh the schema cache after each successful add_source to avoid
         // the O(N²) recompute pattern when register_with_dataset adds many
         // layers in a single batch. `self.inner.modify()` always bumps
         // `updated_at`, which would otherwise invalidate the cache on every
         // iteration.
         //
         // - Inserted:     dataset schema is exactly `merged_schema`.
-        // - Skipped:      insert_layer was a no-op, so the schema is
+        // - Skipped:      insert_source was a no-op, so the schema is
         //                 unchanged → reuse `current_schema`.
         // - Overwritten:  the old layer's exclusive fields may no longer be
         //                 present anywhere, so the schema may shrink in ways
@@ -570,19 +574,18 @@ impl Dataset {
             let mut cache = self.cached_schema.lock();
             let updated_at = self.updated_at();
             *cache = match outcome {
-                LayerInsertOutcome::Inserted => Some((updated_at, Arc::new(merged_schema))),
-                LayerInsertOutcome::Skipped => Some((updated_at, Arc::new(current_schema))),
-                LayerInsertOutcome::Overwritten => None,
+                SourceInsertOutcome::Inserted => Some((updated_at, Arc::new(merged_schema))),
+                SourceInsertOutcome::Skipped => Some((updated_at, Arc::new(current_schema))),
+                SourceInsertOutcome::Overwritten => None,
             };
         }
 
         #[cfg(feature = "lance")]
         self.indexes()
-            .on_layer_added(
+            .on_source_added(
                 segment_id,
-                &resolved,
-                &layer_name,
-                outcome == LayerInsertOutcome::Overwritten,
+                &source,
+                outcome == SourceInsertOutcome::Overwritten,
             )
             .await?;
 
@@ -617,7 +620,7 @@ impl Dataset {
             // TODO(cmc): we could have fast paths if segments.is_empty() or layers.is_empty() or both.
             segments.retain(|segment_id, segment| {
                 if segments_to_drop.is_empty() || segments_to_drop.contains(segment_id) {
-                    segment.retain_layers(|layer_name, _layer| {
+                    segment.retain_sources(|layer_name, _source| {
                         if layers_to_drop.is_empty() || layers_to_drop.contains(layer_name.as_str())
                         {
                             removed_layers.push((segment_id.clone(), layer_name.clone()));
@@ -627,7 +630,7 @@ impl Dataset {
                         }
                     });
 
-                    segment.layer_count() > 0
+                    segment.source_count() > 0
                 } else {
                     true
                 }
@@ -655,15 +658,19 @@ impl Dataset {
         re_log::info!("Loading RRD: {}", path.display());
 
         let layer_name = layer_name.unwrap_or_else(LayerName::base);
+        let layer_info = Arc::new(LayerInfo {
+            name: layer_name.clone(),
+            layer_class: re_types_core::LayerClass::Segment,
+        });
         let mut new_segment_ids = BTreeSet::default();
 
         for (store_id, resolved) in ResolvedStore::load_rrd_file(path, store_kind)? {
             let segment_id = SegmentId::new(store_id.recording_id().to_string());
             let slot_id = pool.register(&resolved);
 
-            self.add_layer(
+            self.add_source(
                 segment_id.clone(),
-                layer_name.clone(),
+                layer_info.clone(),
                 slot_id,
                 resolved,
                 on_duplicate,

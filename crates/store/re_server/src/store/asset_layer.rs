@@ -2,7 +2,7 @@
 
 use re_types_core::LayerName;
 
-use crate::store::{ResolvedStore, StoreSlotId};
+use crate::store::Source;
 
 /// Some data that is shared by the entire dataset.
 ///
@@ -15,7 +15,5 @@ use crate::store::{ResolvedStore, StoreSlotId};
 /// each chunk once.
 pub struct AssetLayer {
     pub name: LayerName,
-    pub registration_time: jiff::Timestamp,
-    pub store_slot_id: StoreSlotId,
-    pub resolved: ResolvedStore,
+    pub source: Source,
 }

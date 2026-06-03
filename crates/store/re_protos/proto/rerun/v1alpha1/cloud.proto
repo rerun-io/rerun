@@ -341,11 +341,26 @@ message DataSource {
 
   // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
   DataSourceKind typ = 2;
+
+  // ⚠️ UNSTABLE: Is this an asset layer (shared across all segments) or a segment layer (one recording per segment)?
+  // Defaults to LAYER_CLASS_SEGMENT if unspecified.
+  LayerClass layer_class = 5;
 }
 
 enum DataSourceKind {
   DATA_SOURCE_KIND_UNSPECIFIED = 0;
   DATA_SOURCE_KIND_RRD = 1;
+}
+
+// ⚠️ UNSTABLE: Describes the class of a dataset layer.
+enum LayerClass {
+  LAYER_CLASS_UNSPECIFIED = 0;
+
+  // Asset layer: a single source (recording) shared across all segments in the layer.
+  LAYER_CLASS_ASSET = 1;
+
+  // Segment layer: one (or zero) sources (recordings) per segment in the layer.
+  LAYER_CLASS_SEGMENT = 2;
 }
 
 message RegisterWithDatasetRequest {

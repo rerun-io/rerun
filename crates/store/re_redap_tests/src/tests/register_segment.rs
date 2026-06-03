@@ -14,9 +14,9 @@ use re_log_types::{EntityPath, TimeType};
 use re_protos::cloud::v1alpha1::ext::{DatasetDetails, RegisterWithDatasetRequest};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    CreateDatasetEntryRequest, DataSource, DataSourceKind, GetDatasetManifestSchemaRequest,
-    GetSegmentTableSchemaRequest, ReadDatasetEntryRequest, ScanDatasetManifestRequest,
-    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse, ext,
+    CreateDatasetEntryRequest, GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest,
+    ReadDatasetEntryRequest, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
+    ScanSegmentTableRequest, ScanSegmentTableResponse, ext,
 };
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -355,14 +355,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
 
     fe.register_with_dataset_name_blocking(
         dataset_name,
-        vec![
-            DataSource {
-                storage_url: Some(root_url.to_string()),
-                prefix: true,
-                layer: None,
-                typ: DataSourceKind::Rrd as i32,
-            }, //
-        ],
+        vec![ext::DataSource::new_rrd_prefix_url(root_url).into()],
     )
     .await;
 
@@ -404,12 +397,9 @@ pub async fn register_bad_file_uri_should_error(service: impl RerunCloudService)
 
     for (test_name, bad_uri) in test_cases {
         let request = RegisterWithDatasetRequest {
-            data_sources: vec![ext::DataSource {
-                storage_url: url::Url::parse(bad_uri).unwrap(),
-                layer: re_types_core::LayerName::base(),
-                is_prefix: false,
-                kind: ext::DataSourceKind::Rrd,
-            }],
+            data_sources: vec![ext::DataSource::new_rrd_url(
+                url::Url::parse(bad_uri).unwrap(),
+            )],
             on_duplicate: Default::default(),
         };
 
