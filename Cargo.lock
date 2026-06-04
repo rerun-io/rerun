@@ -8439,7 +8439,6 @@ dependencies = [
  "re_sorbet",
  "re_span",
  "re_tracing",
- "re_tuid",
  "re_types_core",
  "similar-asserts",
  "thiserror 2.0.18",

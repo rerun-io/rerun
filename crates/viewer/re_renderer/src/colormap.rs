@@ -6,8 +6,18 @@ use re_log::debug_assert;
 // ---
 
 // NOTE: Keep in sync with `colormap.wgsl`!
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 #[repr(u32)]
 pub enum Colormap {
     // Reserve 0 for "disabled"

@@ -332,8 +332,18 @@ impl Component for MyPoint64 {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable, SizeBytes)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 #[repr(transparent)]
 pub struct MyColor(pub u32);
 
@@ -398,8 +408,9 @@ impl Component for MyColor {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Debug, Clone, PartialEq, Eq, re_byte_size::SizeBytes)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Debug, Clone, PartialEq, Eq, re_byte_size::SizeBytes, serde::Deserialize, serde::Serialize,
+)]
 pub struct MyLabel(pub String);
 
 re_types_core::macros::impl_into_cow!(MyLabel);
@@ -441,8 +452,18 @@ impl Component for MyLabel {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable, SizeBytes)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 #[repr(transparent)]
 pub struct MyIndex(pub u64);
 

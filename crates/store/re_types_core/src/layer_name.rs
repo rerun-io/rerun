@@ -5,8 +5,9 @@
 //
 // NOTE: Intentionally does not implement `Default` — a blank layer name is
 // almost always a bug. Use [`LayerName::base`] when you really want `"base"`.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
+#[derive(
+    Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, ::serde::Deserialize, ::serde::Serialize,
+)]
 pub struct LayerName(String);
 
 impl LayerName {

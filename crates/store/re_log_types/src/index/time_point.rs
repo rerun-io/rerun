@@ -10,8 +10,19 @@ use crate::TimelineName;
 /// If a [`TimePoint`] is empty ([`TimePoint::default`]), the data will be considered _static_.
 /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
 /// any temporal data of the same type.
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct TimePoint(BTreeMap<TimelineName, TimeCell>);
 
 impl std::fmt::Display for TimePoint {

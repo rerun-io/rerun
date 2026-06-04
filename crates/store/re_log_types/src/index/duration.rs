@@ -1,8 +1,9 @@
 use std::ops::RangeInclusive;
 
 /// A signed duration represented as nanoseconds since unix epoch
-#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize,
+)]
 pub struct Duration(i64);
 
 impl Duration {

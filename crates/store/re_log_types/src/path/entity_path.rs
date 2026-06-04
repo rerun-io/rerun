@@ -587,7 +587,6 @@ impl Loggable for EntityPath {
 
 // ----------------------------------------------------------------------------
 
-#[cfg(feature = "serde")]
 impl serde::Serialize for EntityPath {
     #[inline]
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -595,7 +594,6 @@ impl serde::Serialize for EntityPath {
     }
 }
 
-#[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for EntityPath {
     #[inline]
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {

@@ -344,14 +344,12 @@ fn test_tuid_formatting() {
 // -------------------------------------------------------------------------------
 
 // For backwards compatibility with our MsgPack encoder/decoder
-#[cfg(feature = "serde")]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(serde::Deserialize, serde::Serialize)]
 struct LegacyTuid {
     time_nanos: u64,
     inc: u64,
 }
 
-#[cfg(feature = "serde")]
 impl serde::Serialize for Tuid {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -365,7 +363,6 @@ impl serde::Serialize for Tuid {
     }
 }
 
-#[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for Tuid {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

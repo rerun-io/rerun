@@ -47,8 +47,9 @@ use crate::Loggable as _;
     bytemuck::AnyBitPattern,
     bytemuck::NoUninit,
     re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
 )]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ChunkId(pub(crate) re_tuid::Tuid);
 
 impl std::fmt::Debug for ChunkId {

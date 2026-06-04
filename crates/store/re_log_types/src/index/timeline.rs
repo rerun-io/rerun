@@ -4,8 +4,18 @@ use crate::{AbsoluteTimeRange, TimeType, TimelineName, TimestampFormat};
 
 /// A time frame/space, e.g. `log_time` or `frame_nr`, coupled with the type of time
 /// it keeps.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct Timeline {
     /// Name of the timeline (e.g. `log_time`).
     name: TimelineName,

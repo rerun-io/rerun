@@ -202,7 +202,6 @@ impl core::fmt::UpperHex for NonMinI64 {
     }
 }
 
-#[cfg(feature = "serde")]
 impl serde::Serialize for NonMinI64 {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -213,7 +212,6 @@ impl serde::Serialize for NonMinI64 {
     }
 }
 
-#[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for NonMinI64 {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

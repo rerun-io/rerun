@@ -8,8 +8,16 @@ use re_log::debug_assert;
 ///
 /// Resolved on-the-fly in shader code. See shader/utils/size.wgsl
 #[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, re_byte_size::SizeBytes)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct Size(pub f32);
 
 impl Size {

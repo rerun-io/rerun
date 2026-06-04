@@ -7,8 +7,18 @@ use std::borrow::Cow;
 ///
 /// Each segment is an episode, potentially consisting of many layers,
 /// each backed by its own .rrd file.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    re_byte_size::SizeBytes,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub struct SegmentId {
     id: String,
 }

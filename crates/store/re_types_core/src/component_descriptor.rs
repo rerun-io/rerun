@@ -7,8 +7,17 @@ use crate::{ArchetypeName, ComponentIdentifier, ComponentType};
 /// Every component at a given entity path is uniquely identified by the
 /// `component` field of the descriptor. The `archetype` and `component_type`
 /// fields provide additional information about the semantics of the data.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct ComponentDescriptor {
     /// Optional name of the `Archetype` associated with this data.
     ///

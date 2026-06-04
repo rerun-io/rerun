@@ -10,7 +10,6 @@
 
 pub mod external {
     pub use nohash_hasher;
-    #[cfg(feature = "serde")]
     pub use serde;
 }
 
@@ -132,7 +131,6 @@ impl std::fmt::Display for InternedString {
     }
 }
 
-#[cfg(feature = "serde")]
 impl serde::Serialize for InternedString {
     #[inline]
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -140,7 +138,6 @@ impl serde::Serialize for InternedString {
     }
 }
 
-#[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for InternedString {
     #[inline]
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {

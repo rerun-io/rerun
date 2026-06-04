@@ -623,8 +623,9 @@ pub enum YuvMatrixCoefficients {
 ///
 /// On the web this directly corresponds to
 /// <https://www.w3.org/TR/webcodecs/#hardware-acceleration>
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Default, Hash, serde::Deserialize, serde::Serialize,
+)]
 pub enum DecodeHardwareAcceleration {
     /// May use hardware acceleration if available and compatible with the codec.
     #[default]
@@ -642,8 +643,7 @@ pub enum DecodeHardwareAcceleration {
 }
 
 /// Settings for video decoding.
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash, serde::Deserialize, serde::Serialize)]
 pub struct DecodeSettings {
     /// How the video should be decoded.
     pub hw_acceleration: DecodeHardwareAcceleration,
