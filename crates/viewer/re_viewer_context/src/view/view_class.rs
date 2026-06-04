@@ -3,15 +3,16 @@ use std::collections::BTreeMap;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_chunk_store::MissingChunkReporter;
-use re_log_types::EntityPath;
+use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::ViewClassIdentifier;
 use vec1::Vec1;
 
 use super::ViewContext;
 use crate::{
-    IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings, SystemExecutionOutput,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext, VisualizableReason,
+    DragAndDropFeedback, IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings,
+    SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext,
+    VisualizableReason,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
@@ -307,6 +308,25 @@ pub trait ViewClass: Send + Sync {
         _view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         Ok(())
+    }
+
+    /// Handle components being dragged over a view of this class.
+    ///
+    /// This is the component-drop counterpart to the generic entity-drop handling done by the
+    /// viewport. The viewport calls this for every view tile hovered by a `Components` payload,
+    /// then uses the returned [`DragAndDropFeedback`] to drive the cursor and drop-target frame —
+    /// just like it does for entities. Implementors only decide acceptability and, when
+    /// `released` is `true`, perform the actual mutation.
+    ///
+    /// The default implementation ignores components (most views don't accept them).
+    fn handle_component_drop(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _view_id: ViewId,
+        _component_paths: &[ComponentPath],
+        _released: bool,
+    ) -> DragAndDropFeedback {
+        DragAndDropFeedback::Ignore
     }
 
     /// Draws the ui for this view class and handles ui events.

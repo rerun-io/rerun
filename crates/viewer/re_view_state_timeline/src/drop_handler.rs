@@ -52,11 +52,62 @@ pub fn handle_component_drop(
     }
 }
 
+/// The mapping that a dropped component would produce: remap `StateChange.state` from it.
+fn recommended_mappings_for_component(component_path: &ComponentPath) -> RecommendedMappings {
+    RecommendedMappings::new(
+        StateChange::descriptor_state().component,
+        VisualizerComponentSource::SourceComponent {
+            source_component: component_path.component,
+            selector: String::new(),
+        },
+    )
+}
+
+/// Whether dropping `component_path` would add a new `StateVisualizer`.
+///
+/// Returns `false` if an equivalent visualizer already exists, in which case the drop would be a
+/// no-op. Used both to drive drag-and-drop feedback and to skip redundant additions on drop.
+pub fn can_drop_component(
+    ctx: &ViewerContext<'_>,
+    view_id: ViewId,
+    component_path: &ComponentPath,
+) -> bool {
+    let existing_instructions = ctx
+        .lookup_query_result(view_id)
+        .tree
+        .lookup_result_by_path(component_path.entity_path.hash())
+        .map(|data_result| data_result.visualizer_instructions.clone())
+        .unwrap_or_default();
+
+    let recommended_mappings = recommended_mappings_for_component(component_path);
+
+    !existing_instructions.iter().any(|v| {
+        v.visualizer_type == StateVisualizer::identifier()
+            && recommended_mappings.is_covered_by(&v.component_mappings)
+    })
+}
+
+/// Whether dropping any of `component_paths` would add a new `StateVisualizer`.
+pub fn can_drop_any_component(
+    ctx: &ViewerContext<'_>,
+    view_id: ViewId,
+    component_paths: &[ComponentPath],
+) -> bool {
+    component_paths
+        .iter()
+        .any(|cp| can_drop_component(ctx, view_id, cp))
+}
+
 fn add_state_visualizer_for_component(
     ctx: &ViewerContext<'_>,
     view_id: ViewId,
     component_path: &ComponentPath,
 ) {
+    // Skip if an equivalent visualizer already exists.
+    if !can_drop_component(ctx, view_id, component_path) {
+        return;
+    }
+
     let entity_path = &component_path.entity_path;
     let override_base_path =
         ViewContents::blueprint_base_visualizer_path_for_entity(view_id.uuid(), entity_path);
@@ -68,21 +119,7 @@ fn add_state_visualizer_for_component(
         .map(|data_result| data_result.visualizer_instructions.clone())
         .unwrap_or_default();
 
-    let recommended_mappings = RecommendedMappings::new(
-        StateChange::descriptor_state().component,
-        VisualizerComponentSource::SourceComponent {
-            source_component: component_path.component,
-            selector: String::new(),
-        },
-    );
-
-    // Skip if an equivalent visualizer already exists.
-    if existing_instructions.iter().any(|v| {
-        v.visualizer_type == StateVisualizer::identifier()
-            && recommended_mappings.is_covered_by(&v.component_mappings)
-    }) {
-        return;
-    }
+    let recommended_mappings = recommended_mappings_for_component(component_path);
 
     let new_instruction = recommended_mappings.into_visualizer_instruction(
         VisualizerInstructionId::new_random(),

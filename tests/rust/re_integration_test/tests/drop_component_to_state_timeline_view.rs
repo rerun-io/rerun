@@ -81,7 +81,7 @@ pub async fn test_drop_component_to_state_timeline_view() {
     // second drop should match the snapshot after the first.
     harness.streams_tree().drag_label("scalars");
     harness.hover_at(drop_point);
-    assert_eq!(harness.cursor_icon(), egui::CursorIcon::Grabbing);
+    assert_eq!(harness.cursor_icon(), egui::CursorIcon::NoDrop);
     harness.drop_at(drop_point);
     harness.snapshot_app("drop_component_to_state_timeline_view_4_after_redrop");
     assert_eq!(harness.cursor_icon(), egui::CursorIcon::Default);

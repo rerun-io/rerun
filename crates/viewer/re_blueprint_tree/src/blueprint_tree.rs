@@ -1053,7 +1053,7 @@ impl BlueprintTree {
         };
         if dragged_contents.iter().any(parent_contains_dragged_content) {
             ctx.drag_and_drop_manager()
-                .set_feedback(DragAndDropFeedback::Reject);
+                .set_feedback(DragAndDropFeedback::Reject(None));
             return;
         }
 
@@ -1066,7 +1066,7 @@ impl BlueprintTree {
         let Contents::Container(target_container_id) = drop_target.target_parent_id else {
             // this shouldn't happen
             ctx.drag_and_drop_manager()
-                .set_feedback(DragAndDropFeedback::Reject);
+                .set_feedback(DragAndDropFeedback::Reject(None));
             return;
         };
 
