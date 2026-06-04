@@ -22,9 +22,9 @@ use streaming_history::StreamingHistory;
 
 // ----------------------------------------------------------------------------
 
-/// Which view to show in the memory panel.
+/// Which view to show in the dev panel.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum_macros::EnumIter)]
-enum MemoryViewTab {
+enum DevPanelTab {
     #[default]
     Flamegraph,
 
@@ -39,7 +39,7 @@ enum MemoryViewTab {
     Gpu,
 }
 
-impl MemoryViewTab {
+impl DevPanelTab {
     fn label(&self) -> &'static str {
         match self {
             Self::Flamegraph => "Flamegraph",
@@ -53,15 +53,15 @@ impl MemoryViewTab {
 }
 
 #[derive(Default)]
-pub struct MemoryPanel {
+pub struct DevPanel {
     history: MemoryHistory,
     streaming_history: StreamingHistory,
     memory_purge_times: Vec<f64>,
-    selected_tab: MemoryViewTab,
+    selected_tab: DevPanelTab,
     include_rss_in_flamegraph: bool,
 }
 
-impl MemoryPanel {
+impl DevPanel {
     /// Call once per frame
     pub fn update(
         &mut self,
@@ -106,7 +106,7 @@ impl MemoryPanel {
         // Tab selector at the top
         ui.horizontal_wrapped(|ui| {
             use strum::IntoEnumIterator as _;
-            for tab in MemoryViewTab::iter() {
+            for tab in DevPanelTab::iter() {
                 ui.selectable_value(&mut self.selected_tab, tab, tab.label());
             }
         });
@@ -114,7 +114,7 @@ impl MemoryPanel {
         ui.separator();
 
         match self.selected_tab {
-            MemoryViewTab::Flamegraph => {
+            DevPanelTab::Flamegraph => {
                 memory_tree_ui(
                     ui,
                     mem_usage_tree,
@@ -122,32 +122,32 @@ impl MemoryPanel {
                     &mut self.include_rss_in_flamegraph,
                 );
             }
-            MemoryViewTab::TimeGraph => {
+            DevPanelTab::TimeGraph => {
                 ui.label("🗠 Rerun Viewer memory use over time");
                 self.plot(ui, limit);
             }
-            MemoryViewTab::Stores => {
+            DevPanelTab::Stores => {
                 egui::ScrollArea::vertical()
                     .auto_shrink(false)
                     .show(ui, |ui| {
                         Self::store_stats_ui(ui, store_stats);
                     });
             }
-            MemoryViewTab::Streaming => {
+            DevPanelTab::Streaming => {
                 server_streaming_tab::server_streaming_tab_ui(
                     ui,
                     storage_context,
                     &self.streaming_history,
                 );
             }
-            MemoryViewTab::AllocationTracking => {
+            DevPanelTab::AllocationTracking => {
                 egui::ScrollArea::vertical()
                     .auto_shrink(false)
                     .show(ui, |ui| {
                         Self::allocation_tracking_ui(ui);
                     });
             }
-            MemoryViewTab::Gpu => {
+            DevPanelTab::Gpu => {
                 egui::ScrollArea::vertical()
                     .auto_shrink(false)
                     .show(ui, |ui| {

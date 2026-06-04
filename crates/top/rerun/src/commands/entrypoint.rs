@@ -1244,7 +1244,7 @@ fn serve_web(
 
         // Spawn a server which the Web Viewer can connect to.
         // All `rxs` are consumed by the server.
-        // We don't render a memory panel here so we don't need to keep the handle.
+        // We don't render a dev panel here so we don't need to keep the handle.
         let _ = re_grpc_server::spawn_from_rx_set(
             server_addr,
             server_options,
@@ -1297,7 +1297,7 @@ fn serve_grpc(
 
     let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
     // Spawn a server which the Web Viewer can connect to.
-    // No memory panel in this mode, so we drop the handle.
+    // No dev panel in this mode, so we drop the handle.
     let _ = re_grpc_server::spawn_from_rx_set(
         server_addr,
         server_options,

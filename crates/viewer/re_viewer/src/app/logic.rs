@@ -738,7 +738,7 @@ impl App {
                     Some(current_mem_use.saturating_sub(total_chunk_bytes));
             }
 
-            self.memory_panel.note_memory_purge();
+            self.dev_panel.note_memory_purge();
         }
     }
 

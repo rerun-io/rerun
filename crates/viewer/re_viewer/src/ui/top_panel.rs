@@ -648,7 +648,7 @@ fn memory_use_label_ui(
                     ui.end_row();
                 });
 
-            ui.weak("See memory panel for more info");
+            ui.weak("See dev panel for more info");
         });
     } else if let Some(rss) = mem.resident {
         let bytes_used_text = re_format::format_bytes(rss as _);

@@ -935,8 +935,8 @@ impl App {
                 }
             }
 
-            UICommand::ToggleMemoryPanel => {
-                self.memory_panel_open ^= true;
+            UICommand::ToggleDevPanel => {
+                self.dev_panel_open ^= true;
             }
             UICommand::TogglePanelStateOverrides => {
                 self.panel_state_overrides_active ^= true;

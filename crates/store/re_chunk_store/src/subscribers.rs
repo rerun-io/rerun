@@ -16,7 +16,7 @@ type SharedStoreSubscriber = RwLock<Box<dyn ChunkStoreSubscriber>>;
 ///
 /// [`ChunkStoreSubscriber`]s can be used to build both secondary indices and trigger systems.
 ///
-/// The [`MemUsageTreeCapture`] bound lets the viewer's memory panel show how much memory each subscriber uses.
+/// The [`MemUsageTreeCapture`] bound lets the viewer's dev panel show how much memory each subscriber uses.
 pub trait ChunkStoreSubscriber: MemUsageTreeCapture + std::any::Any + Send + Sync {
     /// Arbitrary name for the subscriber.
     ///
@@ -68,7 +68,7 @@ pub trait ChunkStoreSubscriber: MemUsageTreeCapture + std::any::Any + Send + Syn
 
 /// A [`ChunkStoreSubscriber`] that is instantiated for each unique [`StoreId`].
 ///
-/// The [`MemUsageTreeCapture`] bound lets the viewer's memory panel show memory usage per [`StoreId`].
+/// The [`MemUsageTreeCapture`] bound lets the viewer's dev panel show memory usage per [`StoreId`].
 pub trait PerStoreChunkSubscriber: MemUsageTreeCapture + Send + Sync + Default {
     /// Arbitrary name for the subscriber.
     ///

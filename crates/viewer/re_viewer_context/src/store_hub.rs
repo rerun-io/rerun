@@ -176,7 +176,7 @@ pub struct BlueprintPersistence {
     pub deleter: Option<Box<BlueprintDeleter>>,
 }
 
-/// Convenient information used for `MemoryPanel`.
+/// Convenient information used for `DevPanel`.
 ///
 /// This is per [`StoreId`], which could be either a recording or a blueprint.
 pub struct StoreStats {
@@ -190,7 +190,7 @@ pub struct StoreStats {
     pub cache_vram_usage: MemUsageTree,
 }
 
-/// Convenient information used for `MemoryPanel`
+/// Convenient information used for `DevPanel`
 #[derive(Default)]
 pub struct StoreHubStats {
     pub store_stats: BTreeMap<StoreId, StoreStats>,

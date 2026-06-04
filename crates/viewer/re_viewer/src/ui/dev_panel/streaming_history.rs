@@ -5,7 +5,7 @@ use super::chunk_event_stats::ChunkEventStats;
 
 /// Tracks server streaming metrics over time.
 ///
-/// Only updated while the memory panel is open.
+/// Only updated while the dev panel is open.
 pub struct StreamingHistory {
     pub bandwidth_bytes_per_sec: History<f64>,
     pub pending_bytes: History<f64>,

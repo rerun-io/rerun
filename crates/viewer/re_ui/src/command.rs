@@ -64,7 +64,7 @@ pub enum UICommand {
     CaptureProfileTrace,
 
     TogglePanelStateOverrides,
-    ToggleMemoryPanel,
+    ToggleDevPanel,
     ToggleTopPanel,
     ToggleBlueprintPanel,
     ExpandBlueprintPanel,
@@ -238,9 +238,9 @@ impl UICommand {
                 "Capture profiling data and save them as a .puffin file",
             ),
 
-            Self::ToggleMemoryPanel => (
-                "Toggle memory panel",
-                "View and track current RAM usage inside Rerun Viewer",
+            Self::ToggleDevPanel => (
+                "Toggle dev panel",
+                "View developer stats like RAM usage inside Rerun Viewer",
             ),
 
             Self::TogglePanelStateOverrides => (
@@ -474,7 +474,7 @@ impl UICommand {
             Self::OpenProfiler => smallvec![ctrl_shift(Key::P)],
             #[cfg(not(target_arch = "wasm32"))]
             Self::CaptureProfileTrace => smallvec![],
-            Self::ToggleMemoryPanel => smallvec![ctrl_shift(Key::M)],
+            Self::ToggleDevPanel => smallvec![ctrl_shift(Key::M)],
             Self::TogglePanelStateOverrides => smallvec![],
             Self::ToggleTopPanel => smallvec![],
             Self::ToggleBlueprintPanel => smallvec![ctrl_shift(Key::B)],

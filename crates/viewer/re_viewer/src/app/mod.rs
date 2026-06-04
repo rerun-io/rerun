@@ -104,8 +104,8 @@ pub struct App {
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
 
-    memory_panel: crate::memory_panel::MemoryPanel,
-    memory_panel_open: bool,
+    dev_panel: crate::dev_panel::DevPanel,
+    dev_panel_open: bool,
     pub(crate) external_memory_users: crate::external_memory::ExternalMemoryUsers,
 
     /// Cached app overhead: total memory use minus sum of all recording chunk sizes.
@@ -446,8 +446,8 @@ impl App {
             )),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
 
-            memory_panel: Default::default(),
-            memory_panel_open: false,
+            dev_panel: Default::default(),
+            dev_panel_open: false,
             external_memory_users: crate::external_memory::ExternalMemoryUsers::default_users(),
             cached_app_overhead_bytes: None,
 
@@ -1158,9 +1158,9 @@ impl eframe::App for App {
             self.frame_time_history.add(ui.input(|i| i.time), seconds);
         }
 
-        // NOTE: Memory stats can be very costly to compute, so only do so if the memory panel is opened.
+        // NOTE: Memory stats can be very costly to compute, so only do so if the dev panel is opened.
         let mem_usage_tree = self
-            .memory_panel_open
+            .dev_panel_open
             .then(|| re_byte_size::NamedMemUsageTree::new("App", self.capture_mem_usage_tree()));
 
         self.external_memory_users.update();
@@ -1253,15 +1253,15 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        // NOTE: Store and caching stats are very costly to compute: only do so if the memory panel
+        // NOTE: Store and caching stats are very costly to compute: only do so if the dev panel
         // is opened.
-        let store_stats = self.memory_panel_open.then(|| store_hub.stats());
+        let store_stats = self.dev_panel_open.then(|| store_hub.stats());
 
         // do early, before doing too many allocations
         let store_bundle_for_streaming = self
-            .memory_panel_open
+            .dev_panel_open
             .then(|| store_hub.store_bundle() as &re_entity_db::StoreBundle);
-        self.memory_panel.update(
+        self.dev_panel.update(
             &gpu_resource_stats,
             store_stats.as_ref(),
             store_bundle_for_streaming,

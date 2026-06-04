@@ -85,7 +85,7 @@ impl App {
                     ui,
                 );
 
-                self.memory_panel_ui(
+                self.dev_panel_ui(
                     ui,
                     gpu_resource_stats,
                     mem_usage_tree,
@@ -169,7 +169,7 @@ impl App {
         }
     }
 
-    fn memory_panel_ui(
+    fn dev_panel_ui(
         &mut self,
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
@@ -183,18 +183,18 @@ impl App {
             ..ui.tokens().bottom_panel_frame(window_frame)
         };
 
-        let external_trees = if self.memory_panel_open {
+        let external_trees = if self.dev_panel_open {
             self.external_memory_users.captured_trees()
         } else {
             &[]
         };
 
-        egui::Panel::bottom("memory_panel")
+        egui::Panel::bottom("dev_panel")
             .default_size(300.0)
             .resizable(true)
             .frame(frame)
-            .show_animated_inside(ui, self.memory_panel_open, |ui| {
-                self.memory_panel.ui(
+            .show_animated_inside(ui, self.dev_panel_open, |ui| {
+                self.dev_panel.ui(
                     ui,
                     &self.state.app_options().memory_limit,
                     mem_usage_tree,
