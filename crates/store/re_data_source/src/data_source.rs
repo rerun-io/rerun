@@ -178,6 +178,15 @@ impl LogDataSource {
                 })
                 .ok()?;
 
+            // `data:` and `blob:` URLs are only fetchable through the browser's `fetch`.
+            #[cfg(target_arch = "wasm32")]
+            if url.scheme() == "data" || url.scheme() == "blob" {
+                return Some(Self::HttpUrl {
+                    url,
+                    follow: options.follow,
+                });
+            }
+
             // We can only load http/s urls, so don't try to load any other schemes
             if url.scheme() != "http" && url.scheme() != "https" {
                 return None;
@@ -555,6 +564,12 @@ mod tests {
             // be parsed as an http url.
             "example.com/some-file",
             "aaaa",
+            // `data:`/`blob:` URLs are only fetchable on the web (browser `fetch`); on native
+            // they're rejected rather than attempted as real HTTP requests. See the wasm-only
+            // branch in `from_uri`.
+            "data:application/octet-stream;base64,UlJEMAo=",
+            "data:,inline-text",
+            "blob:https://example.com/550e8400-e29b-41d4-a716-446655440000",
         ];
 
         let file_source = FileSource::DragAndDrop {
