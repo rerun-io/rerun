@@ -5,9 +5,10 @@ use re_chunk_store::ComponentColumnDescriptor;
 use re_chunk_store::{ChunkStoreHandle, QueryExpression};
 use re_log_types::EntityPathFilter;
 use re_query::{QueryCache, QueryCacheHandle, StorageEngine, StorageEngineLike};
-use re_sorbet::ChunkColumnDescriptors;
+use re_sorbet::{ChunkColumnDescriptors, ColumnDescriptor};
 
 use crate::QueryHandle;
+use crate::query::compute_user_selection;
 
 // --- Queries ---
 
@@ -81,6 +82,31 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
     pub fn schema_for_query(&self, query: &QueryExpression) -> ChunkColumnDescriptors {
         self.engine
             .with(|store, _cache| store.schema_for_query(query))
+    }
+
+    /// Returns the column descriptors that will appear in the query's output,
+    /// in the order they will appear, after both view-contents filtering and
+    /// the user's `selection` (if any) have been applied.
+    ///
+    /// When `query.selection` is `None`, this is equivalent to
+    /// `schema_for_query(query).indices_and_components()` (i.e. all view
+    /// columns except `row_id`).
+    ///
+    /// When `query.selection` is `Some`, the output matches the resolution
+    /// performed by [`QueryHandle`] at init time — including synthesizing
+    /// placeholder descriptors for selectors that did not hit any column in
+    /// the view (those columns will emit all-null values at query time).
+    ///
+    /// Computed cheaply: no `QueryHandle` is built, no chunks are fetched.
+    pub fn selected_schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
+        let view_contents = self.schema_for_query(query).indices_and_components();
+        match query.selection.as_deref() {
+            None => view_contents,
+            Some(selection) => compute_user_selection(&view_contents, selection)
+                .into_iter()
+                .map(|(_, descr)| descr)
+                .collect(),
+        }
     }
 
     /// Starts a new query by instantiating a [`QueryHandle`].

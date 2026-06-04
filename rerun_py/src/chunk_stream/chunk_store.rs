@@ -4,15 +4,21 @@ use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 
 use re_chunk::Chunk;
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
-use re_log_types::{StoreId, StoreKind};
+use re_chunk_store::{
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, SparseFillStrategy,
+    StaticColumnSelection, ViewContentsSelector,
+};
+use re_datafusion::LocalChunkStoreTableProvider;
+use re_log_types::{EntityPathFilter, StoreId, StoreKind};
 
 use super::error::ChunkPipelineError;
 use super::py_stream::PyLazyChunkStreamInternal;
 use super::stream::LazyChunkStream;
 use super::summary::{SummaryRow, format_summary};
 use super::{ChunkStream, ChunkStreamFactory};
-use crate::catalog::PySchemaInternal;
+use crate::catalog::{
+    IndexValuesLike, PySchemaInternal, PyTableProviderAdapterInternal, to_py_err,
+};
 use crate::chunk::PyChunkInternal;
 
 /// A fully-materialized, in-memory chunk store.
@@ -115,6 +121,95 @@ impl PyChunkStoreInternal {
         // Each compile() snapshots the store's current physical chunks.
         PyLazyChunkStreamInternal::new(LazyChunkStream::from_factory(self.clone()))
     }
+
+    /// Build a `TableProvider` for an in-process DataFusion query over this store.
+    ///
+    /// All keyword arguments are required at this internal layer; defaults
+    /// live in the public `ChunkStore.reader()` wrapper.
+    #[expect(clippy::fn_params_excessive_bools)]
+    #[expect(clippy::needless_pass_by_value)] // PyO3 extraction yields owned values
+    #[pyo3(signature = (
+        *,
+        index,
+        contents,
+        include_semantically_empty_columns,
+        include_tombstone_columns,
+        fill_latest_at,
+        using_index_values,
+    ))]
+    fn reader(
+        &self,
+        index: Option<String>,
+        contents: Option<Vec<String>>,
+        include_semantically_empty_columns: bool,
+        include_tombstone_columns: bool,
+        fill_latest_at: bool,
+        using_index_values: Option<IndexValuesLike<'_>>,
+    ) -> PyResult<PyTableProviderAdapterInternal> {
+        // `LocalChunkStoreTableProvider::try_new` validates `index` against the
+        // store schema and returns an error if it doesn't exist.
+        let view_contents =
+            build_view_contents_from_filters(&self.handle.read(), contents.as_deref());
+        let using_index_values = using_index_values
+            .map(|v| v.to_index_values())
+            .transpose()?;
+
+        let static_only = index.is_none();
+        let query = QueryExpression {
+            view_contents: Some(view_contents),
+            include_semantically_empty_columns,
+            include_tombstone_columns,
+            include_static_columns: if static_only {
+                StaticColumnSelection::StaticOnly
+            } else {
+                StaticColumnSelection::Both
+            },
+            filtered_index: index.map(Into::into),
+            filtered_index_range: None,
+            filtered_index_values: None,
+            using_index_values,
+            filtered_is_not_null: None,
+            sparse_fill_strategy: if fill_latest_at {
+                SparseFillStrategy::LatestAtGlobal
+            } else {
+                SparseFillStrategy::None
+            },
+            selection: None,
+        };
+
+        let provider =
+            LocalChunkStoreTableProvider::try_new(self.handle.clone(), query).map_err(to_py_err)?;
+        Ok(PyTableProviderAdapterInternal::new(
+            Arc::new(provider),
+            /* streaming= */ true,
+        ))
+    }
+}
+
+/// Build a `ViewContentsSelector` from `contents` expressions, applied
+/// against the store's currently known entities.
+///
+/// Semantics mirror [`PyDatasetViewInternal::filter_contents`]:
+/// * `None` → everything (`/**`)
+/// * `Some([])` → nothing (`-/**`)
+/// * `Some(exprs)` → join `exprs` with spaces and parse as a filter.
+fn build_view_contents_from_filters(
+    store: &ChunkStore,
+    contents: Option<&[String]>,
+) -> ViewContentsSelector {
+    let filter = match contents {
+        None => EntityPathFilter::parse_forgiving("/**").resolve_without_substitutions(),
+        Some([]) => EntityPathFilter::parse_forgiving("-/**").resolve_without_substitutions(),
+        Some(exprs) => {
+            EntityPathFilter::parse_forgiving(exprs.join(" ")).resolve_without_substitutions()
+        }
+    };
+    store
+        .all_entities()
+        .into_iter()
+        .filter(|ep| filter.matches(ep))
+        .map(|ep| (ep, None))
+        .collect()
 }
 
 impl ChunkStreamFactory for PyChunkStoreInternal {

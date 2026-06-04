@@ -1267,6 +1267,11 @@ class _IndexValuesLikeInternal:
     def to_index_values(self) -> npt.NDArray[np.int64]: ...
     def len(self) -> int: ...
 
+class TableProviderAdapterInternal:
+    """Internal opaque adapter exposing a Rust DataFusion `TableProvider` to Python via the FFI capsule protocol."""
+
+    def __datafusion_table_provider__(self, session: Any) -> Any: ...
+
 class IndexProperties:
     """The properties and configuration of a user-defined index."""
 
@@ -1576,6 +1581,16 @@ class ChunkStoreInternal:
     def num_chunks(self) -> int: ...
     def summary(self) -> str: ...
     def stream(self) -> LazyChunkStreamInternal: ...
+    def reader(
+        self,
+        *,
+        index: str | None,
+        contents: list[str] | None,
+        include_semantically_empty_columns: bool,
+        include_tombstone_columns: bool,
+        fill_latest_at: bool,
+        using_index_values: IndexValuesLike | None,
+    ) -> TableProviderAdapterInternal: ...
 
 class LazyStoreInternal:
     """Internal implementation. Use LazyStore from rerun.experimental instead."""
@@ -1701,6 +1716,7 @@ class LazyChunkStreamInternal:
         chunk insertion. The Python wrapper `LazyChunkStream.collect(optimize=...)`
         is the intended entry point.
         """
+
     def to_chunks(self) -> list[ChunkInternal]: ...
     def __iter__(self) -> LazyChunkStreamIterator: ...
     @staticmethod

@@ -423,6 +423,102 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 }
 
+/// Apply a user-supplied `selection` against a view-contents schema and
+/// return the resolved column list.
+///
+/// Each entry is `(idx, descr)` where `idx` is the column's position in
+/// `view_contents` if the selection hit a real column, or `usize::MAX` if
+/// the selector did not match (the corresponding entry will emit all-null
+/// values at query time).
+///
+/// Used by both [`QueryHandle::init_`] and [`crate::QueryEngine::selected_schema_for_query`].
+#[tracing::instrument(level = "trace", skip_all)]
+pub(crate) fn compute_user_selection(
+    view_contents: &[ColumnDescriptor],
+    selection: &[ColumnSelector],
+) -> Vec<(usize, ColumnDescriptor)> {
+    selection
+        .iter()
+        .map(|column| match column {
+            ColumnSelector::RowId => view_contents
+                .iter()
+                .enumerate()
+                .find_map(|(idx, view_column)| {
+                    if let ColumnDescriptor::RowId(descr) = view_column {
+                        Some((idx, ColumnDescriptor::RowId(descr.clone())))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| {
+                    (
+                        usize::MAX,
+                        ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
+                    )
+                }),
+
+            ColumnSelector::Time(selected_column) => {
+                let TimeColumnSelector {
+                    timeline: selected_timeline,
+                } = selected_column;
+
+                view_contents
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, view_column)| {
+                        if let ColumnDescriptor::Time(view_descr) = view_column {
+                            Some((idx, view_descr))
+                        } else {
+                            None
+                        }
+                    })
+                    .find(|(_idx, view_descr)| *view_descr.timeline().name() == *selected_timeline)
+                    .map_or_else(
+                        || {
+                            (
+                                usize::MAX,
+                                ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
+                                    *selected_timeline,
+                                )),
+                            )
+                        },
+                        |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
+                    )
+            }
+
+            ColumnSelector::Component(selected_column) => view_contents
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, view_column)| {
+                    if let ColumnDescriptor::Component(view_descr) = view_column {
+                        Some((idx, view_descr))
+                    } else {
+                        None
+                    }
+                })
+                .find(|(_idx, view_descr)| view_descr.matches(selected_column))
+                .map_or_else(
+                    || {
+                        (
+                            usize::MAX,
+                            ColumnDescriptor::Component(ComponentColumnDescriptor {
+                                entity_path: selected_column.entity_path.clone(),
+                                archetype: None,
+                                component: selected_column.component.as_str().into(),
+                                component_type: None,
+                                store_datatype: ArrowDataType::Null,
+                                is_static: false,
+                                is_tombstone: false,
+                                is_semantically_empty: false,
+                            }),
+                        )
+                    },
+                    |(idx, view_descr)| (idx, ColumnDescriptor::Component(view_descr.clone())),
+                ),
+        })
+        .collect_vec()
+}
+
 impl<E: StorageEngineLike> QueryHandle<E> {
     /// Lazily initialize internal private state.
     ///
@@ -471,7 +567,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // The caller might have selected columns that do not exist in the view: they should
         // still appear in the results.
         let selected_contents: Vec<(_, _)> = if let Some(selection) = query.selection.as_ref() {
-            Self::compute_user_selection(&view_contents, selection)
+            compute_user_selection(&view_contents, selection)
         } else {
             view_contents.clone().into_iter().enumerate().collect()
         };
@@ -723,95 +819,6 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 }
             }
         }
-    }
-
-    #[tracing::instrument(level = "trace", skip_all)]
-    fn compute_user_selection(
-        view_contents: &[ColumnDescriptor],
-        selection: &[ColumnSelector],
-    ) -> Vec<(usize, ColumnDescriptor)> {
-        selection
-            .iter()
-            .map(|column| match column {
-                ColumnSelector::RowId => view_contents
-                    .iter()
-                    .enumerate()
-                    .find_map(|(idx, view_column)| {
-                        if let ColumnDescriptor::RowId(descr) = view_column {
-                            Some((idx, ColumnDescriptor::RowId(descr.clone())))
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or_else(|| {
-                        (
-                            usize::MAX,
-                            ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
-                        )
-                    }),
-
-                ColumnSelector::Time(selected_column) => {
-                    let TimeColumnSelector {
-                        timeline: selected_timeline,
-                    } = selected_column;
-
-                    view_contents
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(idx, view_column)| {
-                            if let ColumnDescriptor::Time(view_descr) = view_column {
-                                Some((idx, view_descr))
-                            } else {
-                                None
-                            }
-                        })
-                        .find(|(_idx, view_descr)| {
-                            *view_descr.timeline().name() == *selected_timeline
-                        })
-                        .map_or_else(
-                            || {
-                                (
-                                    usize::MAX,
-                                    ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
-                                        *selected_timeline,
-                                    )),
-                                )
-                            },
-                            |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
-                        )
-                }
-
-                ColumnSelector::Component(selected_column) => view_contents
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(idx, view_column)| {
-                        if let ColumnDescriptor::Component(view_descr) = view_column {
-                            Some((idx, view_descr))
-                        } else {
-                            None
-                        }
-                    })
-                    .find(|(_idx, view_descr)| view_descr.matches(selected_column))
-                    .map_or_else(
-                        || {
-                            (
-                                usize::MAX,
-                                ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                    entity_path: selected_column.entity_path.clone(),
-                                    archetype: None,
-                                    component: selected_column.component.as_str().into(),
-                                    component_type: None,
-                                    store_datatype: ArrowDataType::Null,
-                                    is_static: false,
-                                    is_tombstone: false,
-                                    is_semantically_empty: false,
-                                }),
-                            )
-                        },
-                        |(idx, view_descr)| (idx, ColumnDescriptor::Component(view_descr.clone())),
-                    ),
-            })
-            .collect_vec()
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
