@@ -51,7 +51,7 @@ import-obj = ["dep:tobj"]
 import-stl = ["dep:stl_io"]
 
 [dependencies]
-re_byte_size = { workspace = true, features = ["derive"] }
+re_byte_size.workspace = true
 re_error.workspace = true
 re_log.workspace = true
 re_mutex.workspace = true

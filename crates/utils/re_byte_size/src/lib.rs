@@ -19,7 +19,6 @@ pub use self::mem_usage_tree::{
 };
 
 /// Derive macro for the `SizeBytes` trait.
-#[cfg(feature = "derive")]
 pub use re_byte_size_derive::SizeBytes;
 
 // ---
