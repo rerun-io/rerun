@@ -277,6 +277,15 @@ impl PointCloudBatchBuilder<'_, '_> {
         self
     }
 
+    /// Sets [`PointCloudBatchFlags::FLAG_ENABLE_SHADING`] for this batch.
+    #[inline]
+    pub fn enable_shading(mut self, enabled: bool) -> Self {
+        self.batch_mut()
+            .flags
+            .set(PointCloudBatchFlags::FLAG_ENABLE_SHADING, enabled);
+        self
+    }
+
     /// Sets the picking object id for the current batch.
     #[inline]
     pub fn picking_object_id(mut self, picking_object_id: PickingLayerObjectId) -> Self {

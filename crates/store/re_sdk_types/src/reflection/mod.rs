@@ -1152,6 +1152,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <PointShading as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Defines how points are shaded.",
+                deprecation_summary: None,
+                custom_placeholder: Some(PointShading::default().to_arrow()?),
+                datatype: PointShading::arrow_datatype(),
+                is_enum: true,
+                verify_arrow_array: PointShading::verify_arrow_array,
+            },
+        ),
+        (
             <Position2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A position in 2D space.",
@@ -3300,6 +3311,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Show labels",
                         component_type: "rerun.components.ShowLabels".into(),
                         docstring_md: "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshold.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "point_shading",
+                        display_name: "Point shading",
+                        component_type: "rerun.components.PointShading".into(),
+                        docstring_md: "How points should be shaded.\n\nIf not set, points are rendered with [`components.PointShading#Gradient`](https://rerun.io/docs/reference/types/components/point_shading?speculative-link) by default.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {

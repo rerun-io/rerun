@@ -9,6 +9,7 @@
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/keypoint_id.hpp"
+#include "../components/point_shading.hpp"
 #include "../components/position3d.hpp"
 #include "../components/radius.hpp"
 #include "../components/show_labels.hpp"
@@ -218,6 +219,11 @@ namespace rerun::archetypes {
         /// or the number of instances on this entity is under a certain threshold.
         std::optional<ComponentBatch> show_labels;
 
+        /// How points should be shaded.
+        ///
+        /// If not set, points are rendered with `components::PointShading::Gradient` by default.
+        std::optional<ComponentBatch> point_shading;
+
         /// Optional class Ids for the points.
         ///
         /// The `components::ClassId` provides colors and labels if not specified explicitly.
@@ -258,6 +264,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
             ArchetypeName, "Points3D:show_labels",
             Loggable<rerun::components::ShowLabels>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `point_shading` field.
+        static constexpr auto Descriptor_point_shading = ComponentDescriptor(
+            ArchetypeName, "Points3D:point_shading",
+            Loggable<rerun::components::PointShading>::ComponentType
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
@@ -334,6 +345,27 @@ namespace rerun::archetypes {
         ) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// How points should be shaded.
+        ///
+        /// If not set, points are rendered with `components::PointShading::Gradient` by default.
+        Points3D with_point_shading(const rerun::components::PointShading& _point_shading) && {
+            point_shading = ComponentBatch::from_loggable(_point_shading, Descriptor_point_shading)
+                                .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `point_shading` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_point_shading` should
+        /// be used when logging a single row's worth of data.
+        Points3D with_many_point_shading(
+            const Collection<rerun::components::PointShading>& _point_shading
+        ) && {
+            point_shading = ComponentBatch::from_loggable(_point_shading, Descriptor_point_shading)
+                                .value_or_throw();
             return std::move(*this);
         }
 

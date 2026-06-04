@@ -18,6 +18,7 @@ If there are multiple instance poses, the entire point cloud will be repeated fo
 ### Optional
 * `labels`: [`Text`](../components/text.md)
 * `show_labels`: [`ShowLabels`](../components/show_labels.md)
+* `point_shading`: [`PointShading`](../components/point_shading.md)
 * `class_ids`: [`ClassId`](../components/class_id.md)
 * `keypoint_ids`: [`KeypointId`](../components/keypoint_id.md)
 
