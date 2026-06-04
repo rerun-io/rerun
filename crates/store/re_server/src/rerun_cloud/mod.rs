@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -175,13 +175,13 @@ impl RerunCloudHandler {
     }
 
     /// Returns all the chunk stores of the specified dataset and segment ids. If `segment_ids`
-    /// is empty, return stores of all segments.
+    /// is `None`, return stores of all segments.
     ///
     /// Returns (segment id, layer name, store) tuples.
     async fn get_chunk_stores(
         &self,
         dataset_id: EntryId,
-        segment_ids: &[SegmentId],
+        segment_ids: Option<&[SegmentId]>,
     ) -> tonic::Result<Vec<(SegmentId, LayerName, StoreSlotId, ResolvedStore)>> {
         let store = self.store.read().await;
         let dataset = store.dataset(dataset_id)?;
@@ -740,14 +740,17 @@ impl RerunCloudService for RerunCloudHandler {
             force: _, // OSS doesn't even have statuses
         } = request.into_inner().try_into()?;
 
-        let segments_to_drop = segments_to_drop.iter().collect();
-        let layers_to_drop = layers_to_drop.iter().map(|s| s.as_str()).collect();
+        // As per our proto conventions, an empty list means "all":
+        let segments_to_drop: Option<HashSet<&SegmentId>> =
+            (!segments_to_drop.is_empty()).then(|| segments_to_drop.iter().collect());
+        let layers_to_drop: Option<HashSet<&LayerName>> =
+            (!layers_to_drop.is_empty()).then(|| layers_to_drop.iter().collect());
 
-        let dataset_manifest_removed =
-            dataset.dataset_manifest_filtered(&segments_to_drop, &layers_to_drop)?;
+        let dataset_manifest_removed = dataset
+            .dataset_manifest_filtered(segments_to_drop.as_ref(), layers_to_drop.as_ref())?;
 
         _ = dataset
-            .remove_layers(&segments_to_drop, &layers_to_drop)
+            .remove_layers(segments_to_drop.as_ref(), layers_to_drop.as_ref())
             .await?;
 
         store.cleanup_store_pool();
@@ -1231,7 +1234,12 @@ impl RerunCloudService for RerunCloudHandler {
                 _ => None,
             };
 
-        let chunk_stores = self.get_chunk_stores(entry_id, &segment_ids).await?;
+        // As per our proto conventions, an empty list means "all":
+        let segments_of_interest = (!segment_ids.is_empty()).then_some(segment_ids.as_slice());
+
+        let chunk_stores = self
+            .get_chunk_stores(entry_id, segments_of_interest)
+            .await?;
 
         if chunk_stores.is_empty() {
             let stream = futures::stream::iter([{

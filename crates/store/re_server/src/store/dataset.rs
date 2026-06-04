@@ -132,7 +132,7 @@ impl Dataset {
 
     /// Returns the segments from the given list of id.
     ///
-    /// As per our proto conventions, all segments are returned if none is listed.
+    /// All segments are returned if `segment_ids` is `None`.
     ///
     /// Unknown segment IDs are silently skipped rather than treated as errors:
     /// callers (notably `QueryDataset`) may receive segment IDs from a DataFusion
@@ -144,16 +144,16 @@ impl Dataset {
     /// round-trip to validate IDs client-side.
     pub fn segments_from_ids<'a>(
         &'a self,
-        segment_ids: &'a [SegmentId],
+        segment_ids: Option<&'a [SegmentId]>,
     ) -> impl Iterator<Item = (&'a SegmentId, &'a Segment)> {
-        if segment_ids.is_empty() {
-            Either::Left(self.inner.segments.iter())
-        } else {
-            Either::Right(
+        if let Some(segment_ids) = segment_ids {
+            Either::Left(
                 segment_ids
                     .iter()
                     .filter_map(|id| self.inner.segments.get(id).map(|segment| (id, segment))),
             )
+        } else {
+            Either::Right(self.inner.segments.iter())
         }
     }
 
@@ -380,20 +380,20 @@ impl Dataset {
     }
 
     pub fn dataset_manifest(&self) -> Result<RecordBatch, Error> {
-        self.dataset_manifest_filtered(&Default::default(), &Default::default())
+        self.dataset_manifest_filtered(None, None)
     }
 
     /// Like [`Self::dataset_manifest`] but filtered down to just the segments/layers of interest.
     ///
     /// This method acts as a *product* filter:
-    /// * empty `segments_of_interest` + empty `layers_of_interest`: everything
-    /// * empty `segments_of_interest` + non-empty `layers_of_interest`: return specified layers for *all* segments
-    /// * non-empty `segments_of_interest` + empty `layers_of_interest`: return *all* layers for specified segments
-    /// * non-empty `segments_of_interest` + non-empty `layers_of_interest`: return *all* specified layers for *all* specified segments
+    /// * `None` `segments_of_interest` + `None` `layers_of_interest`: everything
+    /// * `None` `segments_of_interest` + `Some` `layers_of_interest`: return specified layers for *all* segments
+    /// * `Some` `segments_of_interest` + `None` `layers_of_interest`: return *all* layers for specified segments
+    /// * `Some` `segments_of_interest` + `Some` `layers_of_interest`: return *all* specified layers for *all* specified segments
     pub fn dataset_manifest_filtered(
         &self,
-        segments_of_interest: &HashSet<&SegmentId>,
-        layers_of_interest: &HashSet<&str>,
+        segments_of_interest: Option<&HashSet<&SegmentId>>,
+        layers_of_interest: Option<&HashSet<&LayerName>>,
     ) -> Result<RecordBatch, Error> {
         // The manifest is built from the per-segment sources, so an asset layer
         // is listed once per segment (via its propagated per-segment copies, which
@@ -409,15 +409,14 @@ impl Dataset {
             .segments
             .iter()
             .filter(|(segment_id, _)| {
-                segments_of_interest.is_empty() || segments_of_interest.contains(segment_id)
+                segments_of_interest.is_none_or(|segments| segments.contains(segment_id))
             })
             .flat_map(|(segment_id, segment)| {
                 itertools::izip!(
                     std::iter::repeat(segment_id),
-                    segment
-                        .iter_sources()
-                        .filter(|(name, _layer)| layers_of_interest.is_empty()
-                            || layers_of_interest.contains(&name.as_str()))
+                    segment.iter_sources().filter(|(name, _layer)| {
+                        layers_of_interest.is_none_or(|layers| layers.contains(name))
+                    })
                 )
             })
             .map(|(segment_id, (layer_name, source))| {
@@ -749,27 +748,27 @@ impl Dataset {
     /// Unregisters segments and layers from the dataset.
     ///
     /// This method acts as a *product* filter:
-    /// * empty `segments_to_drop` + empty `layers_to_drop`: remove everything
-    /// * empty `segments_to_drop` + non-empty `layers_to_drop`: remove specified layers for *all* segments
-    /// * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
-    /// * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
+    /// * `None` `segments_to_drop` + `None` `layers_to_drop`: remove everything
+    /// * `None` `segments_to_drop` + `Some` `layers_to_drop`: remove specified layers for *all* segments
+    /// * `Some` `segments_to_drop` + `None` `layers_to_drop`: remove *all* layers for specified segments
+    /// * `Some` `segments_to_drop` + `Some` `layers_to_drop`: delete *all* specified layers for *all* specified segments
     //
     // we can't expect there are no async calls without the lance feature
     #[allow(clippy::allow_attributes)]
     #[allow(clippy::unused_async)]
     pub async fn remove_layers(
         &mut self,
-        segments_to_drop: &HashSet<&SegmentId>,
-        layers_to_drop: &HashSet<&str>,
+        segments_to_drop: Option<&HashSet<&SegmentId>>,
+        layers_to_drop: Option<&HashSet<&LayerName>>,
     ) -> Result<Vec<(SegmentId, LayerName)>, Error> {
         re_log::debug!(?segments_to_drop, ?layers_to_drop, "remove_layers");
 
         // Asset layers are dataset-level, so they are only removed when no segment
         // filter is given. Their per-segment copies are removed by the loop below.
-        if segments_to_drop.is_empty() {
+        if segments_to_drop.is_none() {
             self.inner.modify().asset_layers.retain(|source| {
                 let layer_name = &source.layer_info().name;
-                !(layers_to_drop.is_empty() || layers_to_drop.contains(layer_name.as_str()))
+                !layers_to_drop.is_none_or(|layers| layers.contains(layer_name))
             });
         }
 
@@ -779,10 +778,9 @@ impl Dataset {
 
             // TODO(cmc): we could have fast paths if segments.is_empty() or layers.is_empty() or both.
             segments.retain(|segment_id, segment| {
-                if segments_to_drop.is_empty() || segments_to_drop.contains(segment_id) {
+                if segments_to_drop.is_none_or(|segments| segments.contains(segment_id)) {
                     segment.retain_sources(|layer_name, _source| {
-                        if layers_to_drop.is_empty() || layers_to_drop.contains(layer_name.as_str())
-                        {
+                        if layers_to_drop.is_none_or(|layers| layers.contains(layer_name)) {
                             removed_layers.push((segment_id.clone(), layer_name.clone()));
                             false
                         } else {
