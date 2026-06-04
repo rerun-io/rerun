@@ -178,10 +178,10 @@ pub fn collect_scalars(
         results.report_unspecified_source(
             VisualizerReportSeverity::Warning,
             format!(
-                "Scalar series width does not match the allocated {} series for entity `{}` \
-                 (first non-empty slice in chunk order).",
-                re_format::format_uint(num_series),
+                "Number of scalars for entity `{}` varies between timestamps in the query, \
+                currently rendering {} series",
                 results.entity_path(),
+                re_format::format_uint(num_series),
             ),
         );
     }
