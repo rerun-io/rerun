@@ -784,6 +784,12 @@ impl App {
         let mut recordings_info: HashMap<StoreId, RecordingPrefetchInfo> = HashMap::default();
 
         for recording in store_hub.store_bundle().recordings() {
+            if !recording.can_fetch_chunks_from_redap() {
+                // Clear tracked chunk ids.
+                recording.storage_engine().store().take_tracked_chunk_ids();
+
+                continue;
+            }
             if recording.is_downloading_first_part_of_manifest() {
                 // We need at least ONE part of the manifest before prefetching chunks.
                 continue;

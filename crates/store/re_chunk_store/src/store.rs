@@ -11,7 +11,8 @@ use re_log::debug_assert;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, TimeInt};
 
-use crate::{ChunkDirectLineage, ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
+use crate::lineage::TrackedDirectChunkLineage;
+use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
 
 // ---
 
@@ -533,8 +534,9 @@ pub struct ChunkStore {
     /// * A reference to an RRD manifest, from which the chunk was virtually loaded from, and where
     ///   it can still be reached, provided that the associated Redap server still exists.
     ///
-    /// This is purely additive: never garbage collected.
-    pub(crate) chunks_lineage: HashMap<ChunkId, ChunkDirectLineage>,
+    /// For non-manifest chunk lineages this is internally ref counted, and lineages are dropped
+    /// when no physical chunk, or other lineage is referencing it.
+    pub(crate) chunks_lineage: HashMap<ChunkId, TrackedDirectChunkLineage>,
 
     /// Anytime a chunk gets split during insertion, this is recorded here.
     ///
@@ -582,7 +584,7 @@ pub struct ChunkStore {
     /// * performance of the query engine
     /// * hard to reason about for downstream consumers building secondary datastructures (e.g. video cache)
     ///
-    /// This is purely additive: never garbage collected.
+    /// This is garbage collected together with `chunks_lineage`.
     ///
     /// `HashMap<OriginalChunkId, CompactedChunkId>`
     pub(crate) leaky_compactions: HashMap<ChunkId, ChunkId>,

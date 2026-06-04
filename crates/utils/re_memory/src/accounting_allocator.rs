@@ -315,11 +315,13 @@ unsafe impl<InnerAllocator: std::alloc::GlobalAlloc> std::alloc::GlobalAlloc
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
+        // Note deallocation first, otherwise there'd be a race where another allocation could allocate
+        // at this pointer before we note down the dealloc.
+        note_dealloc(ptr, layout.size());
+
         // SAFETY:
         // We just do book-keeping and then let another allocator do all the actual work.
         unsafe { self.allocator.dealloc(ptr, layout) };
-
-        note_dealloc(ptr, layout.size());
     }
 
     unsafe fn realloc(
