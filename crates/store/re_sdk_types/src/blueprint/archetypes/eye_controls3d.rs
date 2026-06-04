@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -26,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// This configures the camera through which the 3D scene is viewed.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct EyeControls3D {
     /// The kind of the eye for the spatial 3D view.
     ///
@@ -421,18 +422,5 @@ impl EyeControls3D {
     ) -> Self {
         self.spin_speed = try_serialize_field(Self::descriptor_spin_speed(), [spin_speed]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for EyeControls3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.kind.heap_size_bytes()
-            + self.position.heap_size_bytes()
-            + self.look_target.heap_size_bytes()
-            + self.eye_up.heap_size_bytes()
-            + self.speed.heap_size_bytes()
-            + self.tracking_entity.heap_size_bytes()
-            + self.spin_speed.heap_size_bytes()
     }
 }

@@ -1,6 +1,6 @@
 ---
 title: View Operations
-order: 70
+order: 65
 ---
 
 Robotics data has many sensors and many columns.

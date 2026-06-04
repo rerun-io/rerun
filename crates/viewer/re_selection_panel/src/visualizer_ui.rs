@@ -1242,11 +1242,11 @@ fn add_new_visualizer_button(
             component_mappings,
         );
         let active_visualizer_archetype = ActiveVisualizers::new(
-            active_visualizers
-                .iter()
-                .map(|v| &v.id)
-                .chain(std::iter::once(&new_instruction.id))
-                .map(|v| v.0),
+            std::iter::chain(
+                active_visualizers.iter().map(|v| &v.id),
+                std::iter::once(&new_instruction.id),
+            )
+            .map(|v| v.0),
         );
 
         // If this is the first time we log `ActiveVisualizers`, we have to write out the instructions for all
@@ -1300,18 +1300,16 @@ fn component_mappings_for_new_visualizer(
         .iter()
         .find(|(viz, _)| viz == visualizer_type)
         .map(|(_, reason)| *reason);
-    let all_mapping_candidates = component_mapping_recommendations
+    let all_mapping_candidates = std::iter::chain(
+        component_mapping_recommendations.into_iter().flatten(),
+        component_mappings_for_required_components_from_visualizability(
+            entity_path,
+            visualizer_type,
+            visualizable_reason,
+        )
         .into_iter()
-        .flatten()
-        .chain(
-            component_mappings_for_required_components_from_visualizability(
-                entity_path,
-                visualizer_type,
-                visualizable_reason,
-            )
-            .into_iter()
-            .map(RecommendedMappings::from_mappings),
-        );
+        .map(RecommendedMappings::from_mappings),
+    );
 
     // Now out of this list of all mappings, pick the best one!
     //

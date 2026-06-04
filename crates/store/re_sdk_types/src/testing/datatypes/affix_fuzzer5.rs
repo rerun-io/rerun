@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct AffixFuzzer5 {
     pub single_optional_union: Option<crate::testing::datatypes::AffixFuzzer4>,
 }
@@ -117,11 +118,11 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let single_optional_union = {
                     if !arrays_by_name.contains_key("single_optional_union") {
                         return Err(DeserializationError::missing_struct_field(
@@ -182,17 +183,5 @@ impl std::ops::DerefMut for AffixFuzzer5 {
     #[inline]
     fn deref_mut(&mut self) -> &mut Option<crate::testing::datatypes::AffixFuzzer4> {
         &mut self.single_optional_union
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer5 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.single_optional_union.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::testing::datatypes::AffixFuzzer4>>::is_pod()
     }
 }

@@ -120,12 +120,12 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
 
             executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rerun-fetch")
 
-            def submit_fetch(chunk: np.ndarray) -> Future[tuple[list[Target], dict[str, pa.Table]]]:
+            def submit_fetch(chunk: np.ndarray) -> Future[tuple[list[Target], dict[str, dict[str, pa.Table]]]]:
                 # Copy the calling thread's contextvars so _fetch_arrow's span is
                 # parented under the current OTel context instead of appearing as a root trace.
                 ctx = contextvars.copy_context()
 
-                def fetch() -> tuple[list[Target], dict[str, pa.Table]]:
+                def fetch() -> tuple[list[Target], dict[str, dict[str, pa.Table]]]:
                     return ctx.run(
                         _fetch_arrow,
                         view=view,
@@ -139,7 +139,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                 return executor.submit(fetch)
 
             try:
-                pending: Future[tuple[list[Target], dict[str, pa.Table]]] | None = submit_fetch(chunks[0])
+                pending: Future[tuple[list[Target], dict[str, dict[str, pa.Table]]]] | None = submit_fetch(chunks[0])
                 for i, _ in enumerate(chunks):
                     assert pending is not None
                     targets, seg_tables = pending.result()

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -26,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct ForceManyBody {
     /// Whether the many body force is enabled.
     ///
@@ -209,12 +210,5 @@ impl ForceManyBody {
     ) -> Self {
         self.strength = try_serialize_field(Self::descriptor_strength(), [strength]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ForceManyBody {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.enabled.heap_size_bytes() + self.strength.heap_size_bytes()
     }
 }

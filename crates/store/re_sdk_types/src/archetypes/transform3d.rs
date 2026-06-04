@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -268,7 +269,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Transform3D {
     /// Translation vector.
     ///
@@ -917,19 +918,5 @@ impl Transform3D {
     ) -> Self {
         self.parent_frame = try_serialize_field(Self::descriptor_parent_frame(), parent_frame);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Transform3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.translation.heap_size_bytes()
-            + self.rotation_axis_angle.heap_size_bytes()
-            + self.quaternion.heap_size_bytes()
-            + self.scale.heap_size_bytes()
-            + self.mat3x3.heap_size_bytes()
-            + self.relation.heap_size_bytes()
-            + self.child_frame.heap_size_bytes()
-            + self.parent_frame.heap_size_bytes()
     }
 }

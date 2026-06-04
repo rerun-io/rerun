@@ -142,22 +142,23 @@ fn main() -> anyhow::Result<()> {
     // Being able to log fast isn't particularly useful if the data happens to be corrupt at the
     // other end, so make sure we can encode/decode everything that was logged.
     if check && let Some(storage) = storage {
+        use itertools::Itertools as _;
         use rerun::external::re_log_encoding;
         use rerun::external::re_log_encoding::ToTransport as _;
-        let msgs: anyhow::Result<Vec<_>> = storage
+        let msgs: Vec<_> = storage
             .take()
             .into_iter()
-            .map(|msg| Ok(msg.to_transport(re_log_encoding::rrd::Compression::LZ4)?))
-            .collect();
+            .map(|msg| anyhow::Ok(msg.to_transport(re_log_encoding::rrd::Compression::LZ4)?))
+            .try_collect()?;
 
         use rerun::external::re_log_encoding::ToApplication as _;
         let mut app_id_injector = re_log_encoding::DummyApplicationIdInjector::new("dummy");
-        let msgs: anyhow::Result<Vec<_>> = msgs?
+        let msgs: Vec<_> = msgs
             .into_iter()
-            .map(|msg| Ok(msg.to_application((&mut app_id_injector, None))?))
-            .collect();
+            .map(|msg| anyhow::Ok(msg.to_application((&mut app_id_injector, None))?))
+            .try_collect()?;
 
-        let _ = msgs?;
+        let _ = msgs;
     }
 
     Ok(())

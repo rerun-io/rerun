@@ -18,12 +18,10 @@ pub struct BlueprintId<T: BlueprintIdRegistry> {
 }
 
 impl<T: BlueprintIdRegistry> re_byte_size::SizeBytes for BlueprintId<T> {
+    const IS_POD: bool = true;
+
     fn heap_size_bytes(&self) -> u64 {
         0
-    }
-
-    fn is_pod() -> bool {
-        true
     }
 }
 
@@ -93,11 +91,11 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
 
     #[inline]
     pub fn as_entity_path(&self) -> EntityPath {
-        T::registry_path()
-            .iter()
-            .cloned()
-            .chain(std::iter::once(EntityPathPart::new(self.id.to_string())))
-            .collect()
+        std::iter::chain(
+            T::registry_path().iter().cloned(),
+            std::iter::once(EntityPathPart::new(self.id.to_string())),
+        )
+        .collect()
     }
 
     #[inline]

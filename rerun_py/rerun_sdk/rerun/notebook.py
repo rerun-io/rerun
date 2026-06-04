@@ -420,7 +420,7 @@ class Viewer:
         Parameters
         ----------
         top: str
-            State of the panel, positioned on the top of the viewer.
+            State of the top panel of the viewer.
         blueprint: str
             State of the blueprint panel, positioned on the left side of the viewer.
         selection: str

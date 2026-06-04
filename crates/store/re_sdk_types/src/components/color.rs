@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -25,7 +26,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// The color is stored as a 32-bit integer, where the most significant
 /// byte is `R` and the least significant byte is `A`.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Debug,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct Color(pub crate::datatypes::Rgba32);
 
@@ -71,17 +83,5 @@ impl std::ops::DerefMut for Color {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Rgba32 {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Color {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Rgba32>::is_pod()
     }
 }

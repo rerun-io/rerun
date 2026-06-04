@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,24 +25,12 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **View**: A view for displaying state transitions over time, for use with [`archetypes::StateChange`][crate::archetypes::StateChange].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, ::re_byte_size::SizeBytes)]
 pub struct StateTimelineView {}
 
 impl ::re_types_core::View for StateTimelineView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
         "StateTimeline".into()
-    }
-}
-
-impl ::re_byte_size::SizeBytes for StateTimelineView {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
     }
 }

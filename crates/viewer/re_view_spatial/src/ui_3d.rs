@@ -33,7 +33,7 @@ use crate::visualizers::{CamerasVisualizerOutput, collect_ui_labels};
 
 // ---
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 pub struct View3DState {
     pub eye_state: EyeState,
 
@@ -46,20 +46,6 @@ pub struct View3DState {
 
     pub show_smoothed_bbox: bool,
     pub show_per_entity_bbox: bool,
-}
-
-impl re_byte_size::SizeBytes for View3DState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            eye_state,
-            scene_view_coordinates: _,
-            eye_interact_fade_in: _,
-            eye_interact_fade_change_time: _,
-            show_smoothed_bbox: _,
-            show_per_entity_bbox: _,
-        } = self;
-        eye_state.heap_size_bytes()
-    }
 }
 
 impl Default for View3DState {
@@ -186,11 +172,21 @@ impl SpatialView3D {
         )?;
         state_3d.update(scene_view_coordinates);
 
+        let is_selected_view = ctx
+            .selection_state()
+            .selected_items()
+            .single_item()
+            .and_then(Item::view_id)
+            == Some(query.view_id);
+        let enable_gamepad_navigation =
+            ctx.app_options().experimental.gamepad_navigation && is_selected_view;
+
         let eye = state_3d.eye_state.update(
             &view_context,
             &response,
             space_cameras,
             &state.bounding_boxes,
+            enable_gamepad_navigation,
         )?;
 
         state.state_3d = state_3d;

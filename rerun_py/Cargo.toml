@@ -126,6 +126,10 @@ thiserror.workspace = true
 re_perf_telemetry = { workspace = true, features = ["session_id_reader"], optional = true }
 
 
+[dev-dependencies]
+tempfile.workspace = true
+
+
 [build-dependencies]
 re_build_tools.workspace = true
 pyo3-build-config.workspace = true

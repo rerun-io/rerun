@@ -419,7 +419,7 @@ mod tests {
             re_uri::DatasetSegmentUri {
                 origin: origin.clone(),
                 dataset_id,
-                segment_id: "segment_id".to_owned(),
+                segment_id: "segment_id".into(),
                 fragment: re_uri::Fragment::default(),
             },
         ));
@@ -444,7 +444,7 @@ mod tests {
             re_uri::DatasetSegmentUri {
                 origin: origin.clone(),
                 dataset_id,
-                segment_id: "segment_id".to_owned(),
+                segment_id: "segment_id".into(),
                 fragment: re_uri::Fragment {
                     selection: selection.to_data_path(),
                     when: Some((*timeline.name(), TimeCell::new(timeline.typ(), 234))),

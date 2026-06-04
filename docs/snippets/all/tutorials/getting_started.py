@@ -5,9 +5,20 @@ Logging SDK and is therefore available in Python, Rust, and C++.
 """
 
 import math
+import os
+import tempfile
 from pathlib import Path
 
+import torch.multiprocessing
+
 import rerun as rr
+
+# Rerun's tokio runtime is not fork-safe; DataLoader workers must use `spawn`.
+torch.multiprocessing.set_start_method("spawn", force=True)
+
+# Run from a fresh temp dir so the .rrd files this snippet writes don't
+# collide with other snippets executing in parallel from the same cwd.
+os.chdir(tempfile.mkdtemp())
 
 # Materialize the .rrd that the catalog regions below register against.
 # Same code as the Log step's three-language snippet, repeated here so this
@@ -17,13 +28,21 @@ with rr.RecordingStream(
 ) as _rec:
     _rec.save("run-1.rrd")
     for _t in range(10):
-        _rec.set_time("t", duration=_t)
+        _rec.set_time("step", sequence=_t)
         _rec.log("/arm/shoulder", rr.Scalars(math.sin(_t * 0.5)))
         _rec.log("/arm/elbow", rr.Scalars(math.cos(_t * 0.5)))
 
+# Start an in-process catalog server on a random port so this snippet runs
+# end-to-end. In a real workflow you'd run `rerun server` in a separate
+# terminal, which is what the docs show.
+_server = rr.server.Server()
+server_url = _server.url()
+
 
 # region: setup
-client = rr.catalog.CatalogClient("rerun+http://127.0.0.1:51234")
+# `server_url` is the catalog URL — defaults to "rerun+http://127.0.0.1:51234"
+# when running `rerun server` locally.
+client = rr.catalog.CatalogClient(server_url)
 # endregion: setup
 
 
@@ -49,7 +68,7 @@ dataset.register(
 
 
 # region: query
-df = dataset.filter_contents(["/arm/**"]).reader(index="t")
+df = dataset.filter_contents(["/arm/**"]).reader(index="step")
 print(
     df.select(
         "rerun_segment_id",
@@ -58,3 +77,28 @@ print(
     )
 )
 # endregion: query
+
+# region: train
+from torch.utils.data import DataLoader
+
+from rerun.experimental.dataloader import (
+    DataSource,
+    Field,
+    NumericDecoder,
+    RerunIterableDataset,
+)
+
+ds = RerunIterableDataset(
+    source=DataSource(dataset=dataset),
+    index="step",
+    fields={
+        "shoulder": Field(
+            "/arm/shoulder:Scalars:scalars", decode=NumericDecoder()
+        ),
+        "elbow": Field("/arm/elbow:Scalars:scalars", decode=NumericDecoder()),
+    },
+)
+
+for batch in DataLoader(ds, batch_size=4):
+    print(batch)
+# endregion: train

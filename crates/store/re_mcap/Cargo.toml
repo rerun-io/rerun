@@ -29,6 +29,7 @@ arrow.workspace = true
 byteorder.workspace = true
 crossbeam.workspace = true
 cdr-encoding.workspace = true
+itertools.workspace = true
 mcap.workspace = true
 prost-reflect.workspace = true
 rayon.workspace = true

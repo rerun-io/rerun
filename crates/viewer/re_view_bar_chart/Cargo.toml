@@ -34,6 +34,7 @@ ahash.workspace = true
 arrow.workspace = true
 egui_plot.workspace = true
 egui.workspace = true
+itertools.workspace = true
 
 [dev-dependencies]
 re_test_viewport.workspace = true

@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
     // Listen for gRPC connections.
-    let rx = re_grpc_server::spawn_with_recv(
+    let (rx, _grpc_server_handle) = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9876".parse()?,
         Default::default(),
         re_grpc_server::shutdown::never(),
@@ -156,6 +156,5 @@ fn log_state_data() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     let _ = rec.flush_blocking();
-
     Ok(())
 }

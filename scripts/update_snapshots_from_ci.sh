@@ -16,8 +16,8 @@ else
 fi
 
 # remove any existing .new.png that might have been left behind
-find . -type d -path "*/tests/snapshots*" | while read dir; do
-    find "$dir" -type f -name "*.new.png" | while read file; do
+find . -type d -path "*/tests/snapshots*" | while read -r dir; do
+    find "$dir" -type f -name "*.new.png" | while read -r file; do
         rm "$file"
     done
 done

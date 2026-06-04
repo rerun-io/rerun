@@ -4,8 +4,18 @@ use crate::{AbsoluteTimeRange, TimeType, TimelineName, TimestampFormat};
 
 /// A time frame/space, e.g. `log_time` or `frame_nr`, coupled with the type of time
 /// it keeps.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct Timeline {
     /// Name of the timeline (e.g. `log_time`).
     name: TimelineName,
@@ -60,7 +70,8 @@ impl Timeline {
         self.typ
     }
 
-    /// The log time timeline to which all API functions will always log.
+    /// An automatic temporal timeline to which all API functions will always log,
+    /// unless opted-out from.
     ///
     /// This timeline is automatically maintained by the SDKs and captures the wall-clock time at
     /// which point the data was logged (according to the client's wall-clock).
@@ -69,7 +80,7 @@ impl Timeline {
         Self::new(TimelineName::log_time(), TimeType::TimestampNs)
     }
 
-    /// The log tick timeline to which all API functions will always log.
+    /// An automatic tick timeline to which one can opt-in to get on all API log calls.
     ///
     /// This timeline is automatically maintained by the SDKs and captures the logging tick at
     /// which point the data was logged.
@@ -149,18 +160,6 @@ impl Timeline {
 }
 
 impl nohash_hasher::IsEnabled for Timeline {}
-
-impl re_byte_size::SizeBytes for Timeline {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 // required for [`nohash_hasher`].
 impl std::hash::Hash for Timeline {

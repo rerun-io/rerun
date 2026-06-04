@@ -47,57 +47,10 @@ By default, the `"base"` layer name is used.
 Registering two `.rrd` files with the same recording ID (that is, with the same segment ID) to the same dataset, and using the same layer name, will result in the second `.rrd` overwriting the first.
 Additive registration can be achieved by using different layer names for different `.rrd`s with the same recording ID/segment ID.
 
-```d2
-direction: left
-
-Catalog: {
-  shape: cylinder
-
-  my_dataset: {
-    label: "my_dataset"
-
-    segment_a: {
-      label: "segment_a"
-
-      base: {
-        label: "layer\n\"base\""
-        shape: parallelogram
-      }
-    }
-
-    segment_b: {
-      label: "segment_b"
-
-      base: {
-        label: "layer\n\"base\""
-        shape: parallelogram
-      }
-      annotations: {
-        label: "layer\n\"extra\""
-        shape: parallelogram
-      }
-    }
-  }
-}
-
-Object Store: {
-  shape: cylinder
-
-  "recording_a.rrd": {
-    shape: page
-  }
-  "recording_b.rrd": {
-    shape: page
-  }
-  "extra_b.rrd": {
-    shape: page
-  }
-}
-
-Object Store."recording_a.rrd" -> Catalog.my_dataset.segment_a.base
-Object Store."recording_b.rrd" -> Catalog.my_dataset.segment_b.base
-Object Store."extra_b.rrd" -> Catalog.my_dataset.segment_b.annotations
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/6a9690740962bcda73b78a847c04862ba646461a_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/97520fa2e99046614f595be752eec7c48c405e51_d2-light.svg" alt="">
+</div>
 
 Layers are immutable and can only be overwritten by registering a new `.rrd` file. In other words, datasets support the following mutation operations:
 - _create segment_: by registering a `.rrd` with a "new" recording ID
@@ -115,19 +68,10 @@ This differs from the table model, where the schema is defined upfront (_schema-
 
 In this context, the schema of a dataset is the union of schemas of its segments, which themselves are the union of the schemas of their layers.
 
-```d2
-grid-rows: 3
-grid-gap: 10
-
-"my_dataset schema": { width: 400; style.fill: "${d2-config.theme-overrides.B5}" }
-
-"segment_a schema".width: 200
-"segment_b schema".width: 200
-
-base1: "base\nschema" { width: 95; style.fill: "${d2-config.theme-overrides.N5}" }
-extra: "extra\nschema" { width: 95; style.fill: "${d2-config.theme-overrides.N5}" }
-base2: "base\nschema" { width: 200; style.fill: "${d2-config.theme-overrides.N5}" }
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/f98523a3b94a18887af13ad8b45a05f685480a2d_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/43ed31f276a37305d671c76e9ae4083667ccb988_d2-light.svg" alt="">
+</div>
 
 Datasets maintain a minimal level of schema self-consistency.
 Registering a `.rrd` whose schema is incompatible with the current dataset schema will result in an error.

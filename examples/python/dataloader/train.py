@@ -42,7 +42,8 @@ CHUNK_SIZE = 50
 EPOCHS = 5
 BATCH_SIZE = 8
 LR = 1e-5
-NUM_WORKERS = 8
+NUM_WORKERS = 4
+FETCH_SIZE = 256
 
 
 class CollateFn:
@@ -93,6 +94,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of training epochs")
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Training batch size")
     parser.add_argument("--num-workers", type=int, default=NUM_WORKERS, help="DataLoader worker processes")
+    parser.add_argument(
+        "--fetch-size",
+        type=int,
+        default=FETCH_SIZE,
+        help="Samples fetched per server query for the iterable dataset",
+    )
     parser.add_argument("--lr", type=float, default=LR, help="Learning rate")
     parser.add_argument(
         "--dataset-style",
@@ -150,7 +157,7 @@ def main() -> None:
     if args.dataset_style == "map":
         ds = RerunMapDataset(source=source, index="frame_index", fields=fields)
     else:
-        ds = RerunIterableDataset(source=source, index="frame_index", fields=fields, fetch_size=512)
+        ds = RerunIterableDataset(source=source, index="frame_index", fields=fields, fetch_size=args.fetch_size)
     print(f"Using {args.dataset_style} dataset with {len(ds)} samples (after window trimming)")
 
     # IterableDataset doesn't support indexing, so probe shape via iteration.

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,16 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: The metric size of one grid cell in local scene units.
 ///
 /// E.g. for 2D grid maps, this is the physical size represented by a single pixel or cell.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Debug,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct CellSize(pub crate::datatypes::Float32);
 
@@ -70,17 +80,5 @@ impl std::ops::DerefMut for CellSize {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for CellSize {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
     }
 }

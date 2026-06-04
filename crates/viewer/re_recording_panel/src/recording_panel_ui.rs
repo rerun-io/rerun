@@ -898,10 +898,12 @@ fn expand_folder_nodes_containing_entry(
 /// Iterate every ancestor folder path of a dotted hierarchy `path`, shallowest first,
 /// including `path` itself. `"a.b.c"` → `"a"`, `"a.b"`, `"a.b.c"`. Allocation-free.
 fn ancestor_folder_paths(path: &str) -> impl Iterator<Item = &str> {
-    path.match_indices(re_uri::DATASET_HIERARCHY_SEPARATOR)
-        .map(|(idx, _)| &path[..idx])
-        .chain(std::iter::once(path))
-        .filter(|s| !s.is_empty())
+    std::iter::chain(
+        path.match_indices(re_uri::DATASET_HIERARCHY_SEPARATOR)
+            .map(|(idx, _)| &path[..idx]),
+        std::iter::once(path),
+    )
+    .filter(|s| !s.is_empty())
 }
 
 #[cfg(test)]

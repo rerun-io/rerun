@@ -11,20 +11,10 @@ use std::sync::Arc;
 /// Per-channel histogram of an 8-bit `RGB` image.
 ///
 /// Each channel has 256 bins.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub struct Rgb8Histogram {
     /// One 256-bin histogram per channel (R, G, B).
     pub bins: [[u64; 256]; 3],
-}
-
-impl re_byte_size::SizeBytes for Rgb8Histogram {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl Rgb8Histogram {

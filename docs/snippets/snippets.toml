@@ -17,6 +17,7 @@
 [snippets_ref.snippets.opt_out]
 # Migration snippets rarely make sense as part of the snippet index.
 "migration/log_line" = ["cpp", "rust", "py"]
+"migration/log_tick_enabled" = ["cpp", "rust", "py"]
 "migration/transactional_transforms" = ["cpp", "rust", "py"]
 
 # These archetypes will ignore the associated snippets in the snippet index.
@@ -155,6 +156,7 @@ backwards_check = [
   "howto/dataframe_operations",
   "howto/dataframe_performance",
   "howto/dataloader",
+  "tutorials/getting_started",
   "howto/dataset_resampling",
   "howto/layers",
   "howto/lerobot_export",
@@ -409,6 +411,11 @@ backwards_check = [
   "rust",
   "py",
 ]
+"migration/log_tick_enabled" = [ # Not a complete example -- just a couple of method calls
+  "cpp",
+  "rust",
+  "py",
+]
 "migration/transactional_transforms" = [ # Not a complete example -- just a couple of log lines
   "cpp",
   "rust",
@@ -465,7 +472,6 @@ backwards_check = [
   "py",
 ]
 "tutorials/getting_started" = [
-  "py", # Requires a separately-running catalog server
   "cpp", # Not implemented
   "rust", # Not implemented
 ]

@@ -35,7 +35,8 @@ use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, Pla
 use futures::FutureExt as _;
 use futures_util::Stream;
 use io_loop::chunk_stream_io_loop;
-use re_dataframe::{Index, QueryExpression};
+use itertools::Itertools as _;
+use re_dataframe::{Index, QueryExpression, TimelineName};
 use re_protos::cloud::v1alpha1::ScanSegmentTableResponse;
 use re_redap_client::{ApiError, ApiResult};
 
@@ -136,6 +137,16 @@ pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
     projected_schema: SchemaRef,
     client: T,
     chunk_infos: Vec<RecordBatch>,
+
+    /// Name of the timeline named by `query_expression.filtered_index`,
+    /// if any. Plumbed through to the IO loop so it can extract the
+    /// per-chunk `{timeline}:start` values from the `chunk_info`
+    /// columns and build per-segment manifests for the CPU worker's
+    /// horizon-driven emit + GC. `TimelineName` is `Copy` (interned
+    /// `Arc<str>`), so propagating it end-to-end avoids the
+    /// String→&str→TimelineName conversion dance an owned `String`
+    /// would force at each hop.
+    filtered_index_timeline: Option<TimelineName>,
 
     chunk_tx: Option<Sender<ApiResult<CpuWorkerMsg>>>,
     store_output_channel: Receiver<RecordBatch>,
@@ -258,6 +269,7 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
 
             let client = this.client.clone();
             let chunk_infos = this.chunk_infos.clone();
+            let filtered_index_timeline = this.filtered_index_timeline;
             let pending_analytics = this.pending_analytics.clone();
             let pipeline_budget = Arc::clone(&this.pipeline_budget);
             let metrics = Arc::clone(&this.metrics);
@@ -273,6 +285,7 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
                         chunk_stream_io_loop(
                             client,
                             chunk_infos,
+                            filtered_index_timeline,
                             chunk_tx,
                             pending_analytics,
                             pipeline_budget,
@@ -450,7 +463,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
                 .map(|field| {
                     ColumnDescriptor::try_from_arrow_field(None, field).map(ColumnSelector::from)
                 })
-                .collect::<Result<Vec<_>, _>>()
+                .try_collect()
                 .map_err(|err| exec_datafusion_err!("{err}"))?;
 
             query_expression.selection = Some(selection);
@@ -620,7 +633,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
 
         let random_state = ahash::RandomState::with_seeds(0, 0, 0, 0);
-        let chunk_infos = {
+        let chunk_infos: Vec<_> = {
             re_tracing::profile_scope!("concat_chunk_infos_per_segment");
             self.chunk_info
                 .iter()
@@ -636,15 +649,13 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 // rest of the query.
                 .filter(|(segment_id, _)| {
                     self.index_values.as_ref().is_none_or(|iv| {
-                        iv.contains_key(&re_protos::common::v1alpha1::ext::SegmentId::from(
-                            segment_id.as_str(),
-                        ))
+                        iv.contains_key(&re_types_core::SegmentId::from(segment_id.as_str()))
                     })
                 })
                 // we end up with 1 batch per (rerun) segment. Order is important and must be preserved.
                 // See SegmentStreamExec::try_new for details on ordering.
                 .map(|(_, batches)| re_arrow_util::concat_polymorphic_batches(batches))
-                .collect::<Result<Vec<_>, _>>()
+                .try_collect()
                 .map_err(|err| {
                     ApiError::deserialization_with_source(
                         None,
@@ -692,11 +703,14 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             ),
         );
 
+        let filtered_index_timeline = self.query_expression.filtered_index;
+
         let stream = DataframeSegmentStreamInner {
             projected_schema: self.projected_schema.clone(),
             store_output_channel: batches_rx,
             client,
             chunk_infos,
+            filtered_index_timeline,
             chunk_tx: Some(chunk_tx),
             io_join_handle: None,
             cpu_join_handle,

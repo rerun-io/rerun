@@ -18,6 +18,7 @@ use arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
 use arrow::buffer::ScalarBuffer;
 use arrow::compute::concat_batches;
 use crossbeam::channel::Sender;
+use itertools::Itertools as _;
 use parking_lot::RwLock;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use re_chunk::{ArrowArray as _, ChunkId};
@@ -232,9 +233,7 @@ impl LeRobotDatasetV3 {
 
         // Read all data at once
         let reader = ParquetRecordBatchReaderBuilder::try_new(file)?.build()?;
-        let batches: Vec<RecordBatch> = reader
-            .collect::<Result<_, _>>()
-            .map_err(LeRobotError::Arrow)?;
+        let batches: Vec<RecordBatch> = reader.try_collect().map_err(LeRobotError::Arrow)?;
 
         if batches.is_empty() {
             return Ok(());

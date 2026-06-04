@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -25,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: The innermost datatype of an image.
 ///
 /// How individual color channel components are encoded.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(u8)]
 pub enum ChannelDatatype {
     /// 8-bit unsigned integer.
@@ -212,17 +213,5 @@ impl ::re_types_core::reflection::Enum for ChannelDatatype {
             35 => Some(Self::F64),
             _ => None,
         }
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ChannelDatatype {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
     }
 }

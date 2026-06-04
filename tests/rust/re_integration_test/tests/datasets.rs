@@ -117,7 +117,7 @@ pub async fn start_with_segment_fragment_url() {
             port: server.port(),
         },
         dataset_id,
-        segment_id: segment_id.id().to_owned(),
+        segment_id,
         fragment: re_uri::Fragment {
             selection: None,
             when: Some((

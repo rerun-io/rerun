@@ -99,20 +99,18 @@ pub struct PickingLayerObjectId(pub u64);
 /// Typically used to identify instances.
 /// Some renderers might allow to change only this part of the picking identifier at a fine grained level.
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug, PartialEq, Eq)]
+#[derive(
+    Clone,
+    Copy,
+    bytemuck::Zeroable,
+    bytemuck::Pod,
+    Default,
+    Debug,
+    PartialEq,
+    Eq,
+    re_byte_size::SizeBytes,
+)]
 pub struct PickingLayerInstanceId(pub u64);
-
-impl re_byte_size::SizeBytes for PickingLayerInstanceId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 /// Combination of `PickingLayerObjectId` and `PickingLayerInstanceId`.
 ///

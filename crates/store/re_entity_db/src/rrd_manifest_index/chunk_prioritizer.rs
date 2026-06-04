@@ -18,7 +18,7 @@ use crate::{
     sorted_range_map::{OverlapIterState, SortedRangeMap},
 };
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, re_byte_size::SizeBytes)]
 pub struct PrioritizationState {
     /// We're not allowed to have more things in-transit (on-wire)
     /// right now.
@@ -97,37 +97,16 @@ impl Default for ChunkPrefetchOptions {
 /// Special chunks for which we need the entire history, not just the latest-at value.
 ///
 /// Right now, this is only used for transform-related chunks.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, re_byte_size::SizeBytes)]
 struct HighPrioChunks {
     /// Sorted by time range min.
     temporal_chunks: BTreeMap<TimelineName, Vec<HighPrioChunk>>,
 }
 
-impl re_byte_size::SizeBytes for HighPrioChunks {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { temporal_chunks } = self;
-        temporal_chunks.heap_size_bytes()
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 struct HighPrioChunk {
     chunk_id: ChunkId,
     time_range: AbsoluteTimeRange,
-}
-
-impl re_byte_size::SizeBytes for HighPrioChunk {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            chunk_id: _,
-            time_range: _,
-        } = self;
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 #[derive(Default)]
@@ -354,7 +333,7 @@ impl PrioritizedRootChunk {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct ComponentPathKey {
     entity_path: EntityPathHash,
     component: ComponentIdentifier,
@@ -371,22 +350,7 @@ impl ComponentPathKey {
     }
 }
 
-impl re_byte_size::SizeBytes for ComponentPathKey {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            entity_path: _,
-            component: _,
-        } = self;
-
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-#[derive(Clone, Default)]
+#[derive(Clone, Default, re_byte_size::SizeBytes)]
 pub struct ProtectedChunks {
     /// All root chunks that we have an interest in having loaded,
     /// (or at least a part of them).
@@ -401,14 +365,7 @@ pub struct ProtectedChunks {
     pub physical: HashSet<ChunkId>,
 }
 
-impl re_byte_size::SizeBytes for ProtectedChunks {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { roots, physical } = self;
-        roots.heap_size_bytes() + physical.heap_size_bytes()
-    }
-}
-
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct ChunkPrioritizer {
     protected_chunks: ProtectedChunks,
@@ -438,30 +395,6 @@ pub struct ChunkPrioritizer {
     /// Carried into the optional pass so those chunks are skipped (not double-counted).
     /// Reset at the start of each required pass.
     frame_visited: HashSet<ChunkId>,
-}
-
-impl re_byte_size::SizeBytes for ChunkPrioritizer {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            protected_chunks,
-            latest_result: _,
-            chunk_requests: _, // not yet implemented
-            root_chunk_intervals: virtual_chunk_intervals,
-            static_chunk_ids,
-            high_priority_chunks,
-            component_paths_from_root_id,
-            components_of_interest,
-            frame_visited,
-        } = self;
-
-        protected_chunks.heap_size_bytes()
-            + virtual_chunk_intervals.heap_size_bytes()
-            + static_chunk_ids.heap_size_bytes()
-            + high_priority_chunks.heap_size_bytes()
-            + component_paths_from_root_id.heap_size_bytes()
-            + components_of_interest.heap_size_bytes()
-            + frame_visited.heap_size_bytes()
-    }
 }
 
 #[derive(Clone, Copy)]

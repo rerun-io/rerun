@@ -7,11 +7,11 @@ use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, GetRrdManifestRequest, ScanSegmentTableRequest,
 };
-use re_protos::common::v1alpha1::ext::SegmentId;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk::AsComponents;
 use re_sdk::external::re_log_encoding::{RawRrdManifest, ToApplication as _};
 use re_sdk_types::AnyValues;
+use re_types_core::SegmentId;
 
 use super::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name,
@@ -38,7 +38,7 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
             .unwrap();
 
     use futures::StreamExt as _;
-    let mut chunks = service
+    let mut chunks: Vec<_> = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {
             chunk_infos: vec![rrd_manifest.data.clone().into()],
         }))
@@ -50,7 +50,7 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
         .unwrap();
 
     // IMPORTANT: `FetchChunks` does not guarantee chunk ordering
@@ -332,7 +332,7 @@ async fn dataset_rrd_manifest_snapshot(
     let rrd_manifest = rrd_manifest.unwrap();
 
     insta::assert_snapshot!(
-        format!("{snapshot_name}"),
+        snapshot_name.to_owned(),
         rrd_manifest
             .data
             // Chunk offsets and sizes cannot possibly align across different implementations that

@@ -251,11 +251,10 @@ impl ViewBlueprint {
         let bp_engine = blueprint.storage_engine();
         if let Some(tree) = bp_engine.store().entity_tree().subtree(&current_path) {
             tree.visit_children_recursively(|path| {
-                let sub_path: EntityPath = new_path
-                    .iter()
-                    .chain(&path[current_path.len()..])
-                    .cloned()
-                    .collect();
+                let sub_path: EntityPath =
+                    std::iter::chain(new_path.iter(), &path[current_path.len()..])
+                        .cloned()
+                        .collect();
 
                 let chunk = Chunk::builder(sub_path)
                     .with_row(

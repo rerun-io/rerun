@@ -9,6 +9,7 @@ use arrow::array::{
 };
 use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer};
 use arrow::datatypes::DataType as ArrowDataType;
+use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_component_ui::REDAP_THUMBNAIL_VARIANT;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
@@ -464,7 +465,7 @@ impl DisplayRecordBatch {
         let mut num_rows = None;
         let mut batch_row_ids = None;
 
-        let mut columns = data
+        let mut columns: Vec<DisplayColumn> = data
             .map(|(column_descriptor, column_blueprint, column_data)| {
                 if num_rows.is_none() {
                     num_rows = Some(column_data.len());
@@ -482,7 +483,7 @@ impl DisplayRecordBatch {
 
                 column
             })
-            .collect::<Result<Vec<DisplayColumn>, _>>()?;
+            .try_collect()?;
 
         // If we have row_ids, give a reference to all component columns.
         if let Some(batch_row_ids) = batch_row_ids {

@@ -6,9 +6,9 @@ use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyOverflowError, PyRuntimeError, PyValueError};
 use pyo3::types::PyAnyMethods as _;
 use pyo3::{Bound, Py, PyAny, PyErr, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
-use re_chunk_store::{ChunkStore, ChunkStoreHandle, LazyStore};
+use re_chunk_store::LazyStore;
 use re_datafusion::{DatasetManifestProvider, SearchResultsTableProvider, SegmentTableProvider};
-use re_log_types::{EntryId, StoreId, StoreKind};
+use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::ext::{
     DatasetDetails, DatasetEntry, EntryDetails, IndexProperties,
 };
@@ -19,9 +19,9 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_redap_client::{SegmentChunkProvider, fetch_chunks_response_to_chunk_and_segment_id};
+use re_redap_client::SegmentChunkProvider;
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
-use tokio_stream::StreamExt as _;
+use re_types_core::LayerName;
 
 use super::registration_handle::PyRegistrationHandleInternal;
 use super::{
@@ -31,7 +31,6 @@ use super::{
 use crate::catalog::entry::set_entry_name;
 use crate::catalog::{AnyComponentColumn, PyIndexColumnSelector, PySchemaInternal};
 use crate::chunk_stream::lazy_store::PyLazyStoreInternal;
-use crate::recording::PyRecordingInternal;
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
@@ -289,9 +288,7 @@ impl PyDatasetEntryInternal {
         Ok(re_uri::DatasetSegmentUri {
             origin: connection.origin().clone(),
             dataset_id: self_.entry_details.id.id,
-            segment_id,
-
-            //TODO(ab): add support for this
+            segment_id: SegmentId::from(segment_id),
             fragment: re_uri::Fragment {
                 selection: None,
                 when: timeline.map(|timeline| {
@@ -305,7 +302,7 @@ impl PyDatasetEntryInternal {
                         }),
                     )
                 }),
-                time_selection: end_cell.zip(timeline).map(|(end, timeline)| {
+                time_selection: Option::zip(end_cell, timeline).map(|(end, timeline)| {
                     let start = start_cell.unwrap_or(end);
                     re_uri::TimeSelection {
                         timeline: re_chunk::Timeline::new(timeline, start.typ()),
@@ -346,7 +343,8 @@ impl PyDatasetEntryInternal {
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
         let _span = read_trace_context_from_python(py, "DatasetEntry.register").entered();
 
-        let results = connection.register_with_dataset(
+        let recording_layers = recording_layers.into_iter().map(LayerName::new).collect();
+        let (request_trace_id, results) = connection.register_with_dataset(
             py,
             self_.entry_details.id,
             recording_uris,
@@ -357,6 +355,7 @@ impl PyDatasetEntryInternal {
         Ok(PyRegistrationHandleInternal::new(
             self_.client.clone_ref(py),
             results,
+            request_trace_id,
         ))
     }
 
@@ -400,6 +399,8 @@ impl PyDatasetEntryInternal {
         let _span = read_trace_context_from_python(py, "DatasetEntry.unregister").entered();
         let connection = self_.client.borrow(py).connection().clone();
 
+        let segments_to_drop = segments_to_drop.into_iter().map(SegmentId::new).collect();
+        let layers_to_drop = layers_to_drop.into_iter().map(LayerName::new).collect();
         let _results = connection.unregister_from_dataset(
             py,
             self_.entry_details.id,
@@ -443,81 +444,70 @@ impl PyDatasetEntryInternal {
         let connection = self_.client.borrow(py).connection().clone();
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
 
-        let results = connection.register_with_dataset_prefix(
+        let (request_trace_id, results) = connection.register_with_dataset_prefix(
             py,
             self_.entry_details.id,
             recordings_prefix,
-            layer_name,
+            LayerName::new(layer_name),
             on_duplicate,
         )?;
 
         Ok(PyRegistrationHandleInternal::new(
             self_.client.clone_ref(py),
             results,
+            request_trace_id,
         ))
     }
 
-    /// Download a segment from the dataset.
-    fn download_segment(
+    /// Register a single RRD URI as an asset layer (shared across all segments in the dataset).
+    ///
+    /// Unlike segment layers (one recording per segment), an asset layer is a single recording
+    /// that is shared across all segments. This is useful for deduplicating common assets such
+    /// as robot URDFs or environment meshes.
+    ///
+    /// !!! warning
+    ///     This is an incomplete, experimental API and may change or be removed in future versions without
+    ///     going through the normal deprecation cycle.
+    ///
+    /// Parameters
+    /// ----------
+    /// layer_name: str
+    ///     The name of the asset layer.
+    ///
+    /// recording_uri: str
+    ///     The URI of the RRD recording to register as the asset.
+    ///
+    /// on_duplicate: str
+    ///     How to handle the case where the layer already exists. One of "error", "skip", or "replace".
+    #[pyo3(name = "_register_asset_layer")]
+    #[pyo3(signature = (*, layer_name, recording_uri, on_duplicate))]
+    #[pyo3(text_signature = "(self, /, *, layer_name, recording_uri, on_duplicate)")]
+    fn register_asset_layer(
         self_: PyRef<'_, Self>,
-        segment_id: String,
-    ) -> PyResult<PyRecordingInternal> {
+        layer_name: String,
+        recording_uri: String,
+        on_duplicate: &str,
+    ) -> PyResult<PyRegistrationHandleInternal> {
+        let py = self_.py();
         let _span =
-            read_trace_context_from_python(self_.py(), "DatasetEntry.download_segment").entered();
-        let catalog_client = self_.client.borrow(self_.py());
-        let connection = catalog_client.connection();
-        let dataset_id = self_.entry_details.id;
-        let dataset_name = self_.entry_details.name.clone();
+            // TODO(RR-4797): remove experimental status
+            read_trace_context_from_python(py, "DatasetEntry._register_asset_layer").entered();
+        let connection = self_.client.borrow(py).connection().clone();
+        let on_duplicate = parse_on_duplicate(on_duplicate)?;
 
-        let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
-            let mut client = connection.client().await?;
-            let response_stream = client
-                .fetch_segment_chunks_by_query(re_redap_client::SegmentQueryParams {
-                    dataset_id,
-                    segment_id: segment_id.clone().into(),
-                    include_static_data: true,
-                    include_temporal_data: true,
-                    query: None,
-                    generate_direct_urls: false,
-                })
-                .await
-                .map_err(to_py_err)?;
+        let (request_trace_id, results) = connection.register_asset_layer(
+            py,
+            self_.entry_details.id,
+            recording_uri,
+            LayerName::new(layer_name),
+            on_duplicate,
+        )?;
 
-            let mut chunks_stream = fetch_chunks_response_to_chunk_and_segment_id(response_stream);
-
-            let store_id = StoreId::new(
-                StoreKind::Recording,
-                dataset_name.to_string(),
-                segment_id.clone(),
-            );
-            let mut store = ChunkStore::new(store_id, Default::default());
-
-            while let Some(chunks) = chunks_stream.next().await {
-                for chunk in chunks.map_err(to_py_err)? {
-                    let (chunk, chunk_segment_id) = chunk;
-
-                    if chunk_segment_id.as_ref().map(AsRef::as_ref) != Some(segment_id.as_str()) {
-                        re_log::warn!(
-                            expected = segment_id,
-                            got = ?chunk_segment_id,
-                            "unexpected segment ID in chunk stream, this is a bug"
-                        );
-                    }
-                    store
-                        .insert_chunk(&std::sync::Arc::new(chunk))
-                        .map_err(to_py_err)?;
-                }
-            }
-
-            Ok(store)
-        });
-
-        let handle = ChunkStoreHandle::new(store?);
-
-        Ok(PyRecordingInternal {
-            store: handle,
-            store_info: None,
-        })
+        Ok(PyRegistrationHandleInternal::new(
+            self_.client.clone_ref(py),
+            results,
+            request_trace_id,
+        ))
     }
 
     /// Open a remote segment as a [`LazyStore`][rerun.experimental.LazyStore].

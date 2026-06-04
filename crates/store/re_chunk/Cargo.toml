@@ -22,15 +22,6 @@ all-features = true
 [features]
 default = []
 
-## Enable (de)serialization using serde.
-serde = ["re_log_types/serde", "re_tuid/serde", "re_types_core/serde"]
-
-
-[package.metadata.cargo-shear]
-ignored = [
-  "re_tuid", # used only via the `serde` feature flag (`re_tuid/serde`)
-]
-
 
 [dependencies]
 
@@ -45,7 +36,6 @@ re_quota_channel.workspace = true
 re_sorbet.workspace = true
 re_span.workspace = true
 re_tracing.workspace = true
-re_tuid.workspace = true
 re_types_core.workspace = true
 
 # External

@@ -1,11 +1,10 @@
 use std::ops::Deref;
 
-use re_byte_size::SizeBytes;
 use re_sdk_types::components;
 
 use crate::TransformFrameIdHash;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct ResolvedPinholeProjection {
     /// All components that are updated atomically are cached.
     pub(crate) cached: ResolvedPinholeProjectionCached,
@@ -27,17 +26,7 @@ impl Deref for ResolvedPinholeProjection {
     }
 }
 
-impl SizeBytes for ResolvedPinholeProjection {
-    fn is_pod() -> bool {
-        true
-    }
-
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct ResolvedPinholeProjectionCached {
     /// The parent frame of the pinhole projection.
     pub parent: TransformFrameIdHash,
@@ -45,14 +34,4 @@ pub struct ResolvedPinholeProjectionCached {
     pub image_from_camera: components::PinholeProjection,
 
     pub resolution: Option<components::Resolution>,
-}
-
-impl SizeBytes for ResolvedPinholeProjectionCached {
-    fn is_pod() -> bool {
-        true
-    }
-
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
 }

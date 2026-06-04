@@ -31,11 +31,20 @@ The converter loads RRD files into the OSS server, infers data types from the re
 ### Installation
 
 This example has its own `uv` project, separate from the workspace `.venv`, because LeRobot pins an
-incompatible `rerun-sdk`. From the repo root:
+incompatible `rerun-sdk`.
+
+**Standalone** (sparse-checkout of just this directory, no local Rerun build):
+
+```bash
+uv sync --no-sources --no-dev
+```
+
+**Monorepo dev** (full repo checkout, editable local `rerun-sdk`):
 
 ```bash
 cd examples/python/rerun_export
-uv sync                         # builds local rerun-sdk + installs lerobot into ./.venv
+RERUN_ALLOW_MISSING_BIN=1 uv sync
+uv pip install ../../../rerun_py/rerun_dev_fixup
 ```
 
 Then either `source .venv/bin/activate` or prefix subsequent commands with `uv run`.

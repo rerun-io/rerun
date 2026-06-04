@@ -29,10 +29,13 @@ mod chunk_id;
 mod component_batch;
 mod component_descriptor;
 mod dynamic_archetype;
+mod layer_class;
+mod layer_name;
 mod loggable;
 pub mod reflection;
 mod result;
 mod row_id;
+mod segment_id;
 mod timeline_name;
 mod tuid;
 mod view;
@@ -52,6 +55,8 @@ pub use self::component_descriptor::{
     FIELD_METADATA_KEY_COMPONENT_TYPE,
 };
 pub use self::dynamic_archetype::DynamicArchetype;
+pub use self::layer_class::LayerClass;
+pub use self::layer_name::LayerName;
 pub use self::loggable::{
     Component, ComponentSet, ComponentType, DatatypeName, Loggable, UnorderedComponentSet,
 };
@@ -60,6 +65,7 @@ pub use self::result::{
     SerializationResult,
 };
 pub use self::row_id::RowId;
+pub use self::segment_id::SegmentId;
 pub use self::tuid::tuids_to_arrow;
 pub use self::view::{View, ViewClassIdentifier};
 pub use self::wrapper_component::WrapperComponent;

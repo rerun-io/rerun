@@ -39,7 +39,6 @@ impl PyRuntimeErrorExt for PyRuntimeError {
 }
 
 use crate::chunk::PyChunkInternal;
-use crate::recording::PyRecordingInternal;
 
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
 // otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
@@ -275,6 +274,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_timestamp_nanos_since_epoch, m)?)?;
     m.add_function(wrap_pyfunction!(disable_timeline, m)?)?;
     m.add_function(wrap_pyfunction!(reset_time, m)?)?;
+    m.add_function(wrap_pyfunction!(set_log_tick_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(set_log_time_enabled, m)?)?;
 
     // log any
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
@@ -283,7 +284,6 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
     m.add_function(wrap_pyfunction!(send_chunks, m)?)?;
     m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
-    m.add_function(wrap_pyfunction!(send_recording, m)?)?;
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;
@@ -303,9 +303,6 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         asset_video_read_frame_timestamps_nanos,
         m
     )?)?;
-
-    // recording
-    crate::recording::register(m)?;
 
     // chunk
     crate::chunk::register(m)?;
@@ -386,7 +383,7 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
     py.detach(|| -> Result<(), SinkFlushError> {
         // Now flush all recordings to handle weird cases where the data in the queue
         // is actually holding onto the ref to the recording.
-        for recording in all_recordings().iter().chain(orphaned_recordings().iter()) {
+        for recording in std::iter::chain(&*all_recordings(), &*orphaned_recordings()) {
             recording.flush_blocking()?;
         }
 
@@ -1029,6 +1026,7 @@ fn send_mem_sink_as_default_blueprint(
     executable_path = None,
     extra_args = vec![],
     extra_env = vec![],
+    headless = false,
 ))]
 fn spawn(
     port: u16,
@@ -1040,7 +1038,8 @@ fn spawn(
     executable_path: Option<String>,
     extra_args: Vec<String>,
     extra_env: Vec<(String, String)>,
-) -> PyResult<()> {
+    headless: bool,
+) -> PyResult<Option<u32>> {
     let spawn_opts = re_sdk::SpawnOptions {
         port,
         wait_for_bind: true,
@@ -1053,10 +1052,11 @@ fn spawn(
         extra_args,
         extra_env,
         new: false,
+        headless,
     };
 
     re_sdk::spawn(&spawn_opts)
-        .map(|_| ())
+        .map(|info| info.child_pid)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
@@ -2057,6 +2057,26 @@ fn reset_time(recording: Option<&PyRecordingStream>) {
     recording.reset_time();
 }
 
+/// Enable or disable automatic injection of the `log_tick` timeline (disabled by default).
+#[pyfunction]
+#[pyo3(signature = (enabled, recording=None))]
+fn set_log_tick_enabled(enabled: bool, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    recording.set_log_tick_enabled(enabled);
+}
+
+/// Enable or disable automatic injection of the `log_time` timeline (enabled by default).
+#[pyfunction]
+#[pyo3(signature = (enabled, recording=None))]
+fn set_log_time_enabled(enabled: bool, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    recording.set_log_time_enabled(enabled);
+}
+
 // --- Log special ---
 
 /// Log an arrow message.
@@ -2299,23 +2319,6 @@ fn send_blueprint(
         recording.send_blueprint(blueprint.inner.take(), activation_cmd);
     } else {
         re_log::warn!("Provided `blueprint` has no store info, cannot send it.");
-    }
-}
-
-/// Send all chunks from a [`PyRecording`] to the given recording stream.
-///
-/// !!! Warning
-///     ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-#[pyfunction]
-#[pyo3(signature = (rrd, recording = None))]
-fn send_recording(rrd: &PyRecordingInternal, recording: Option<&PyRecordingStream>) {
-    let Some(recording) = get_data_recording(recording) else {
-        return;
-    };
-
-    let store = rrd.store.read();
-    for chunk in store.iter_physical_chunks() {
-        recording.send_chunk((**chunk).clone());
     }
 }
 

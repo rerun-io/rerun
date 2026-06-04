@@ -18,7 +18,7 @@ use re_log_types::{
     AbsoluteTimeRange, DataPath, NonMinI64, TimeCell, TimeType, Timeline, TimelineName,
 };
 use re_tuid::Tuid;
-use re_types_core::Loggable as _;
+use re_types_core::{Loggable as _, SegmentId};
 use re_uri::{DatasetSegmentUri, Fragment, Origin, TimeSelection};
 
 #[derive(Debug)]
@@ -269,7 +269,7 @@ impl ScalarUDFImpl for SegmentUrlUdf {
                 continue;
             }
 
-            let segment_id = segment_ids.value(row).to_owned();
+            let segment_id = SegmentId::from(segment_ids.value(row).to_owned());
 
             let when = time_info.as_ref().and_then(|(time_type, ts_array)| {
                 if ts_array.is_null(row) {

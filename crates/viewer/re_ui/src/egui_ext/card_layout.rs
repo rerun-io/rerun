@@ -125,7 +125,7 @@ impl CardLayout {
         let visible = ui.clip_rect();
         let mut row_y = full_rect.min.y;
 
-        for (row_idx, (row, row_height)) in rows.iter().zip(row_heights.iter()).enumerate() {
+        for (row_idx, (row, row_height)) in std::iter::zip(&rows, &row_heights).enumerate() {
             // Skip rows outside the visible area.
             if row_y > visible.max.y {
                 break; // Done!

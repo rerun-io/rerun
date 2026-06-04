@@ -304,10 +304,7 @@ fn render_bool_mapping_rows(
 
     // Force-write the canonical bool values list if the stored values don't already match.
     let bool_values_need_seeding = !(values.len() == BOOL_VALUES.len()
-        && values
-            .iter()
-            .zip(BOOL_VALUES)
-            .all(|(stored, canonical)| stored == canonical));
+        && std::iter::zip(values, BOOL_VALUES).all(|(stored, canonical)| stored == canonical));
 
     let mut changes = ChangeFlags::default();
 

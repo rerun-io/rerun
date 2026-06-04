@@ -29,9 +29,8 @@ impl From<String> for InvalidEntryNameError {
 ///
 /// Uses an `Arc<str>` internally to allow for cheap cloning.
 // TODO(RR-3718): Entry names should support a broader set of characters.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))] // Only used for tests
-#[cfg_attr(feature = "serde", serde(transparent))]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)] // Only used for tests
+#[serde(transparent)]
 pub struct EntryName(Arc<str>);
 
 impl EntryName {

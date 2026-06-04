@@ -1,5 +1,5 @@
 ---
 title: Migration
 order: 1000
-redirect: reference/migration/migration-0-32
+redirect: reference/migration/migration-0-34
 ---

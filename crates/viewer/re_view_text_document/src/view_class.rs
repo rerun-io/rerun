@@ -38,6 +38,10 @@ impl ViewState for TextDocumentViewState {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
+    }
 }
 
 #[derive(Default)]

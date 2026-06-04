@@ -15,7 +15,7 @@ use re_protos::cloud::v1alpha1::EntryKind;
 use re_protos::cloud::v1alpha1::ext::{DatasetDetails, EntryDetails, ProviderDetails, TableEntry};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_tuid::Tuid;
-use re_types_core::{ComponentBatch as _, Loggable as _};
+use re_types_core::{ComponentBatch as _, LayerName, Loggable as _};
 
 use crate::OnError;
 use crate::entrypoint::NamedPath;
@@ -190,11 +190,10 @@ impl InMemoryStore {
         &mut self,
         dataset_id: EntryId,
         path: &std::path::Path,
-        layer_name: Option<&str>,
+        layer_name: Option<LayerName>,
         on_duplicate: IfDuplicateBehavior,
         store_kind: StoreKind,
-    ) -> Result<std::collections::BTreeSet<re_protos::common::v1alpha1::ext::SegmentId>, Error>
-    {
+    ) -> Result<std::collections::BTreeSet<re_types_core::SegmentId>, Error> {
         let dataset = self
             .datasets
             .get_mut(&dataset_id)

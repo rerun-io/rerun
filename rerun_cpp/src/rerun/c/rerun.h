@@ -604,6 +604,22 @@ void rr_recording_stream_disable_timeline(
 /// No-op for destroyed/non-existing streams.
 extern void rr_recording_stream_reset_time(rr_recording_stream stream);
 
+/// Enable or disable automatic injection of the `log_tick` timeline into logged data.
+///
+/// `log_tick` is a per-recording counter that increments on every logging call.
+/// It is disabled by default (it can also be controlled via the `RERUN_LOG_TICK` environment variable).
+///
+/// No-op for destroyed/non-existing streams.
+extern void rr_recording_stream_set_log_tick_enabled(rr_recording_stream stream, bool enabled);
+
+/// Enable or disable automatic injection of the `log_time` timeline into logged data.
+///
+/// `log_time` is the wall-clock time at which data was logged.
+/// It is enabled by default (it can also be controlled via the `RERUN_LOG_TIME` environment variable).
+///
+/// No-op for destroyed/non-existing streams.
+extern void rr_recording_stream_set_log_time_enabled(rr_recording_stream stream, bool enabled);
+
 /// Log the given data to the given stream.
 ///
 /// If `inject_time` is set to `true`, the row's timestamp data will be

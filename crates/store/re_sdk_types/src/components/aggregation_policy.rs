@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -27,7 +28,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// This is used for lines in plots when the X axis distance of individual points goes below a single pixel,
 /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
 /// (and readability) in such situations as it prevents overdraw.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(u8)]
 pub enum AggregationPolicy {
     /// No aggregation.
@@ -186,17 +187,5 @@ impl ::re_types_core::reflection::Enum for AggregationPolicy {
         Self::variants()
             .get((value as usize).wrapping_sub(1))
             .copied()
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AggregationPolicy {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
     }
 }

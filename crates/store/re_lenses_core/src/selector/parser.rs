@@ -31,17 +31,9 @@ where
     tokens: std::iter::Peekable<I>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub enum Literal {
     String(String),
-}
-
-impl re_byte_size::SizeBytes for Literal {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::String(s) => s.heap_size_bytes(),
-        }
-    }
 }
 
 impl std::fmt::Display for Literal {
@@ -52,7 +44,7 @@ impl std::fmt::Display for Literal {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub enum Expr {
     Identity,
     Field(String),
@@ -85,20 +77,6 @@ pub enum Expr {
     // correct modeling would be to add the `map` function to the registry,
     // and defining it in terms of collect (`[ .[] | f]`).
     Map(Box<Self>),
-}
-
-impl re_byte_size::SizeBytes for Expr {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::Identity | Self::Index(_) | Self::Each => 0,
-            Self::Field(s) => s.heap_size_bytes(),
-            Self::Pipe { left, right, .. } => left.heap_size_bytes() + right.heap_size_bytes(),
-            Self::Try(inner) | Self::NonNull(inner) | Self::Map(inner) => inner.heap_size_bytes(),
-            Self::Function { name, arguments } => {
-                name.heap_size_bytes() + arguments.heap_size_bytes()
-            }
-        }
-    }
 }
 
 impl std::fmt::Display for Expr {

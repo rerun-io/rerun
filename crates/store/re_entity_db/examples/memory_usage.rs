@@ -51,6 +51,7 @@ fn live_bytes() -> usize {
 
 // ----------------------------------------------------------------------------
 
+use itertools::Itertools as _;
 use re_chunk::{Chunk, RowId};
 use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{StoreId, StoreKind, entity_path};
@@ -79,8 +80,8 @@ fn log_messages() {
     }
 
     fn decode_log_msg(mut bytes: &[u8]) -> LogMsg {
-        let mut messages = re_log_encoding::Decoder::decode_lazy(&mut bytes)
-            .collect::<Result<Vec<LogMsg>, _>>()
+        let mut messages: Vec<LogMsg> = re_log_encoding::Decoder::decode_lazy(&mut bytes)
+            .try_collect()
             .unwrap();
         assert!(bytes.is_empty());
         assert_eq!(messages.len(), 1);

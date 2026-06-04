@@ -274,8 +274,41 @@ fn is_log_enabled(
 
 /// Check if an environment variable is set to a truthy value.
 ///
-/// Returns `true` if the environment variable is set to "1", "true", or "yes" (case-insensitive).
-/// Returns `false` otherwise (including when the variable is not set).
+/// Returns `true` if the environment variable is set to "1/true/yes/on" (case-insensitive).
+/// Returns `false` if the environment variable is set to "0/false/no/off" (case-insensitive).
+/// Otherwise returns `None`.
+///
+/// # Example
+///
+/// ```ignore
+/// if env_var_flag("TELEMETRY_ENABLED") == Some(true) {
+///     // enable telemetry
+/// }
+/// ```
+pub fn env_var_flag(var_name: &str) -> Option<bool> {
+    match std::env::var(var_name)
+        .ok()?
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "" => None,
+        "0" | "false" | "no" | "off" => Some(false),
+        "1" | "true" | "yes" | "on" => Some(true),
+        value => {
+            crate::warn_once!(
+                "Ignoring unrecognized value {value:?} for environment variable {var_name:?} \
+                    (expected one of: 1/true/yes/on, 0/false/no/off); falling back to the default."
+            );
+            None
+        }
+    }
+}
+
+/// Check if an environment variable is set to a truthy value.
+///
+/// Returns `true` if the environment variable is set to "1/true/yes/on" (case-insensitive).
+/// Otherwise returns `false`.
 ///
 /// # Example
 ///
@@ -285,12 +318,7 @@ fn is_log_enabled(
 /// }
 /// ```
 pub fn env_var_is_truthy(var_name: &str) -> bool {
-    std::env::var(var_name)
-        .map(|v| {
-            let v = v.to_lowercase();
-            v == "1" || v == "true" || v == "yes"
-        })
-        .unwrap_or(false)
+    env_var_flag(var_name).unwrap_or(false)
 }
 
 /// Is `RERUN_VERY_STRICT` set to a truthy value?

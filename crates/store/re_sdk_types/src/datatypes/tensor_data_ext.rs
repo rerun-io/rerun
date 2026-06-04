@@ -99,7 +99,7 @@ impl TensorData {
     pub fn get(&self, index: &[u64]) -> Option<TensorElement> {
         let mut stride: usize = 1;
         let mut offset: usize = 0;
-        for (&size, &index) in self.shape.iter().zip(index).rev() {
+        for (&size, &index) in std::iter::zip(&self.shape, index).rev() {
             if size <= index {
                 return None;
             }

@@ -10,6 +10,7 @@ mod stats;
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use itertools::Itertools as _;
 #[cfg(not(target_arch = "wasm32"))]
 use re_chunk::RowId;
 use re_chunk::external::nohash_hasher::IntMap;
@@ -302,7 +303,7 @@ impl TopicFilter {
         self.include = include
             .iter()
             .map(|pattern| regex_lite::Regex::new(pattern))
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
         Ok(self)
     }
 
@@ -310,7 +311,7 @@ impl TopicFilter {
         self.exclude = exclude
             .iter()
             .map(|pattern| regex_lite::Regex::new(pattern))
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
         Ok(self)
     }
 
@@ -658,9 +659,7 @@ impl DecoderRegistry {
 
     /// Returns all registered decoder identifiers (file + message) as strings.
     pub fn all_identifiers(&self) -> Vec<String> {
-        self.file_factories
-            .keys()
-            .chain(self.msg_factories.keys())
+        std::iter::chain(self.file_factories.keys(), self.msg_factories.keys())
             .map(|id| id.to_string())
             .collect()
     }

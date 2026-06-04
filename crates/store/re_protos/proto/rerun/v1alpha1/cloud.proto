@@ -8,11 +8,11 @@ import "google/protobuf/timestamp.proto";
 import "rerun/v1alpha1/common.proto";
 import "rerun/v1alpha1/log_msg.proto";
 
-// The Rerun Cloud public API.
+// The catalog server public API.
 //
 // ## Headers
 //
-// Most endpoints in the Rerun Cloud service require specific gRPC headers to be set.
+// Most endpoints in the catalog server service require specific gRPC headers to be set.
 //
 // The so-called "standard dataset headers" correspond to at least one of the following headers:
 // * x-rerun-entry-id: ID of the entry of interest, e.g. `1860390B087BC65F602d68eb646c385c`.
@@ -165,7 +165,7 @@ service RerunCloudService {
   rpc SearchDataset(SearchDatasetRequest) returns (stream SearchDatasetResponse) {}
 
   // Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
-  // as information that can be sent back to Rerun Cloud to fetch the actual chunks as part
+  // as information that can be sent back to the catalog server to fetch the actual chunks as part
   // of `FetchChunks` request. In this 2-step query process, 1st step is getting information
   // from the server about the chunks that contain relevant information. 2nd step is fetching
   // those chunks (the actual data).
@@ -189,7 +189,7 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers.
   rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
 
-  // Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
+  // Fetch specific chunks from the catalog server. In a 2-step query process, result of 1st phase,
   // that is, the result of `QueryDataset` should include all the necessary information to send
   // the actual chunk requests, which is the 2nd step of the query process.
   //
@@ -329,23 +329,42 @@ message DataSource {
   // Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
   optional string storage_url = 1;
 
-  /// Which segment layer should this data source be registered to?
+  // Which segment layer should this data source be registered to?
   ///
-  /// Defaults to `base` if unspecified.
+  // Defaults to `base` if unspecified.
   optional string layer = 3;
 
-  /// Is this a prefix URL (a directory)?
-  /// If true, all files of `typ` under this prefix will be
-  /// considered part of this data source.
+  // Is this a prefix URL (a directory)?
+  // If true, all files of `typ` under this prefix will be
+  // considered part of this data source.
   bool prefix = 4;
 
   // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
   DataSourceKind typ = 2;
+
+  // ⚠️ UNSTABLE: Is this an asset layer (shared across all segments) or a segment layer (one recording per segment)?
+  // Defaults to LAYER_CLASS_SEGMENT if unspecified.
+  //
+  // TODO(RR-4797): remove unstable-warning
+  LayerClass layer_class = 5;
 }
 
 enum DataSourceKind {
   DATA_SOURCE_KIND_UNSPECIFIED = 0;
   DATA_SOURCE_KIND_RRD = 1;
+}
+
+// ⚠️ UNSTABLE: Describes the class of a dataset layer.
+//
+// TODO(RR-4797): remove unstable-warning.
+enum LayerClass {
+  LAYER_CLASS_UNSPECIFIED = 0;
+
+  // Asset layer: a single source (recording) shared across all segments in the layer.
+  LAYER_CLASS_ASSET = 1;
+
+  // Segment layer: one (or zero) sources (recordings) per segment in the layer.
+  LAYER_CLASS_SEGMENT = 2;
 }
 
 message RegisterWithDatasetRequest {
@@ -812,7 +831,7 @@ message IndexValueList {
   repeated int64 values = 1;
 }
 
-/// A chunk-level range query, aka `RangeRelevantChunks`.
+// A chunk-level range query, aka `RangeRelevantChunks`.
 //
 // This has the exact same semantics as the query of the same name on our `ChunkStore`.
 message QueryRange {
@@ -1115,7 +1134,7 @@ message RegisterTableRequest {
 
   // Information about the table to register.
   //
-  // This must be encoded message of one one of the following supported types:
+  // This must be encoded message of one of the following supported types:
   // - LanceTable
   google.protobuf.Any provider_details = 2;
 

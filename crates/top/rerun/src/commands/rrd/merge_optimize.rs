@@ -553,7 +553,7 @@ fn merge_and_compact(
         encoding_options,
         // NOTE: We want to make sure all blueprints come first, so that the viewer can immediately
         // set up the viewport correctly.
-        messages_rbl.chain(messages_rrd),
+        std::iter::chain(messages_rbl, messages_rrd),
         &mut rrd_out,
     )
     .context("couldn't encode messages")?;
@@ -650,16 +650,12 @@ fn log_chunk_size_stats(
     let avg_rows = total_rows / num_chunks;
     let unordered_pct = num_unordered as f64 / num_chunks as f64 * 100.0;
 
-    let rest_avg_bytes_str = if rest_num_chunks == 0 {
-        "N/A".to_owned()
-    } else {
-        re_format::format_bytes((rest_total_bytes / rest_num_chunks) as _)
-    };
-    let rest_avg_rows_str = if rest_num_chunks == 0 {
-        "N/A".to_owned()
-    } else {
-        re_format::format_uint(rest_total_rows / rest_num_chunks)
-    };
+    let rest_avg_bytes_str = rest_total_bytes
+        .checked_div(rest_num_chunks)
+        .map_or_else(|| "N/A".to_owned(), |x| re_format::format_bytes(x as _));
+    let rest_avg_rows_str = rest_total_rows
+        .checked_div(rest_num_chunks)
+        .map_or_else(|| "N/A".to_owned(), re_format::format_uint);
 
     re_log::info!(
         num_chunks,

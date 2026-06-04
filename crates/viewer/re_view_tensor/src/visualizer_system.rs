@@ -8,22 +8,13 @@ use re_viewer_context::{
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 pub struct TensorVisualization {
     pub tensor_row_id: RowId,
+    // Tensor is already counted as part of the store.
+    #[size_bytes(ignore)]
     pub tensor: TensorData,
     pub data_range: ValueRange,
-}
-
-impl re_byte_size::SizeBytes for TensorVisualization {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            tensor_row_id: _,
-            tensor: _, // Tensor is already counted as part of the store.
-            data_range: _,
-        } = self;
-        0
-    }
 }
 
 #[derive(Default)]
@@ -81,9 +72,10 @@ impl VisualizerSystem for TensorSystem {
             }
 
             let all_tensors_indexed = all_tensor_chunks.chunks().iter().flat_map(move |chunk| {
-                chunk
-                    .iter_component_indices(query.timeline)
-                    .zip(chunk.iter_component::<TensorData>())
+                std::iter::zip(
+                    chunk.iter_component_indices(query.timeline),
+                    chunk.iter_component::<TensorData>(),
+                )
             });
             let all_ranges = results.iter_optional(Tensor::descriptor_value_range().component);
 

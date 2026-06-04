@@ -114,22 +114,24 @@ impl TypeRegistry {
 
             // NOTE: Inject the null markers' field first and foremost! That way it is
             // guaranteed to be stable and forward-compatible.
-            let fields = std::iter::once(LazyField {
-                name: "_null_markers".into(),
-                data_type: AtomicDataType::Null.into(),
-                // NOTE: The spec doesn't allow a `Null` array to be non-nullable. Not that
-                // we care either way.
-                is_nullable: true,
-                metadata: Default::default(),
-            })
-            .chain(obj.fields.iter_mut().map(|field| LazyField {
-                name: field.name.clone(),
-                data_type: self.arrow_datatype_from_type(field.typ.clone(), field),
-                // NOTE: The spec doesn't allow a `Null` array to be non-nullable.
-                // We map Unit -> Null in enum fields, so this must be nullable.
-                is_nullable: field.typ == Type::Unit,
-                metadata: Default::default(),
-            }))
+            let fields = std::iter::chain(
+                std::iter::once(LazyField {
+                    name: "_null_markers".into(),
+                    data_type: AtomicDataType::Null.into(),
+                    // NOTE: The spec doesn't allow a `Null` array to be non-nullable. Not that
+                    // we care either way.
+                    is_nullable: true,
+                    metadata: Default::default(),
+                }),
+                obj.fields.iter_mut().map(|field| LazyField {
+                    name: field.name.clone(),
+                    data_type: self.arrow_datatype_from_type(field.typ.clone(), field),
+                    // NOTE: The spec doesn't allow a `Null` array to be non-nullable.
+                    // We map Unit -> Null in enum fields, so this must be nullable.
+                    is_nullable: field.typ == Type::Unit,
+                    metadata: Default::default(),
+                }),
+            )
             .collect();
 
             LazyDatatype::Object {

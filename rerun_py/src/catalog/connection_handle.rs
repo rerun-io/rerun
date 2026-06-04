@@ -4,10 +4,11 @@ use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use arrow::ffi_stream::ArrowArrayStreamReader;
 use arrow::pyarrow::PyArrowType;
+use itertools::Itertools as _;
 use pyo3::exceptions::PyValueError;
-use pyo3::{PyErr, PyResult, Python};
+use pyo3::{PyResult, Python};
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk_store::QueryExpression;
+use re_chunk_store::{QueryExpression, SparseFillStrategy};
 use re_datafusion::query_from_query_expression;
 use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
@@ -17,10 +18,11 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::cloud::v1alpha1::{EntryFilter, QueryDatasetResponse, QueryTasksResponse};
 use re_protos::common::v1alpha1::TaskId;
-use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters};
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{invalid_schema, missing_field};
-use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
+use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle, TraceId};
+use re_types_core::LayerName;
 
 use crate::catalog::table_entry::PyTableInsertModeInternal;
 use crate::catalog::to_py_err;
@@ -179,7 +181,7 @@ impl ConnectionHandle {
                 .await
                 .map_err(to_py_err)?
                 .iter()
-                .map(|id| id.id.clone())
+                .map(|id| id.to_string())
                 .collect::<Vec<_>>())
         })
     }
@@ -286,24 +288,24 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uris: Vec<String>,
-        recording_layers: Vec<String>,
+        recording_layers: Vec<LayerName>,
         on_duplicate: IfDuplicateBehavior,
-    ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+    ) -> PyResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
         let last_layer = recording_layers
             .last()
             .cloned()
-            .unwrap_or_else(|| DataSource::DEFAULT_LAYER.to_owned());
+            .unwrap_or_else(LayerName::base);
 
-        let data_sources = recording_uris
-            .iter()
-            .zip(
-                recording_layers
-                    .into_iter()
-                    .chain(std::iter::repeat_with(|| last_layer.clone())),
-            )
-            .map(|(url, layer)| DataSource::new_rrd_layer(layer, url))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(to_py_err)?;
+        let data_sources = std::iter::zip(
+            &recording_uris,
+            std::iter::chain(
+                recording_layers,
+                std::iter::repeat_with(|| last_layer.clone()),
+            ),
+        )
+        .map(|(url, layer)| DataSource::new_rrd_layer(layer, url))
+        .try_collect()
+        .map_err(to_py_err)?;
 
         wait_for_future(py, async {
             self.client()
@@ -337,8 +339,8 @@ impl ConnectionHandle {
         &self,
         py: Python<'_>,
         dataset_id: EntryId,
-        segments_to_drop: Vec<String>,
-        layers_to_drop: Vec<String>,
+        segments_to_drop: Vec<SegmentId>,
+        layers_to_drop: Vec<LayerName>,
         force: bool,
     ) -> PyResult<Vec<RecordBatch>> {
         wait_for_future(py, async {
@@ -361,9 +363,9 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         recordings_prefix: String,
-        recordings_layer: String,
+        recordings_layer: LayerName,
         on_duplicate: IfDuplicateBehavior,
-    ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+    ) -> PyResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
         let data_source = DataSource::new_rrd_layer_prefix(recordings_layer, recordings_prefix)
             .map_err(to_py_err)?;
         let data_sources = vec![data_source];
@@ -372,6 +374,29 @@ impl ConnectionHandle {
             self.client()
                 .await?
                 .register_with_dataset(dataset_id, data_sources, on_duplicate)
+                .await
+                .map_err(to_py_err)
+        })
+    }
+
+    /// Initiate registration of a single recording as an asset layer (shared across all segments)
+    /// and return the corresponding task descriptors.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn register_asset_layer(
+        &self,
+        py: Python<'_>,
+        dataset_id: EntryId,
+        recording_uri: String,
+        layer_name: LayerName,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> PyResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
+        let data_source =
+            DataSource::new_rrd_asset_layer(layer_name, recording_uri.parse().map_err(to_py_err)?);
+
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .register_with_dataset(dataset_id, vec![data_source], on_duplicate)
                 .await
                 .map_err(to_py_err)
         })
@@ -487,14 +512,14 @@ impl ConnectionHandle {
                     return Err(to_py_err(err));
                 }
 
-                let col_indices = [
+                let col_indices: Vec<_> = [
                     QueryTasksResponse::FIELD_TASK_ID,
                     QueryTasksResponse::FIELD_EXEC_STATUS,
                     QueryTasksResponse::FIELD_MSGS,
                 ]
                 .iter()
                 .map(|name| schema.index_of(name))
-                .collect::<Result<Vec<_>, _>>()
+                .try_collect()
                 .map_err(|err| {
                     to_py_err(ApiError::deserialization_with_source(
                         trace_id,
@@ -530,8 +555,13 @@ impl ConnectionHandle {
             }
 
             if !errors.is_empty() {
+                // Put the trace-id early, before the (potentially long) list of errors.
+                let trace_id_line = match trace_id {
+                    Some(trace_id) => format!("\nTask-completion query trace-id: {trace_id}"),
+                    None => String::new(),
+                };
                 let msg = format!(
-                    "all tasks completed, but the following errors occurred:\n{}",
+                    "All tasks completed, but the following errors occurred.{trace_id_line}\n\n{}",
                     errors.join("\n")
                 );
                 Err(PyValueError::new_err(msg))
@@ -578,7 +608,10 @@ impl ConnectionHandle {
             .map(|ident| ident.to_string())
             .collect();
 
-        let query = query_from_query_expression(query_expression);
+        let query = query_from_query_expression(
+            query_expression,
+            query_expression.sparse_fill_strategy != SparseFillStrategy::None,
+        );
 
         let request = QueryDatasetRequest {
             segment_ids: segment_ids
@@ -613,16 +646,14 @@ impl ConnectionHandle {
                 .into_inner();
 
             // TODO(jleibs): Make this streaming
-            let record_batches: Result<Vec<RecordBatch>, PyErr> = response_stream
+            let record_batches: Vec<RecordBatch> = response_stream
                 .collect::<Result<Vec<_>, _>>()
                 .await
                 .map_err(to_py_err)?
                 .into_iter()
                 .filter_map(|response| response.data)
                 .map(|dataframe_part| dataframe_part.try_into().map_err(to_py_err))
-                .collect();
-
-            let record_batches = record_batches?;
+                .try_collect()?;
 
             // TODO(jleibs): Still need a better pattern for getting these schemas
             let first = record_batches

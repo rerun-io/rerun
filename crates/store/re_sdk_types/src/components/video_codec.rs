@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -28,7 +29,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// For more details see check the [video reference](https://rerun.io/docs/reference/video).
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 #[repr(u32)]
 pub enum VideoCodec {
     /// AOMedia Video 1 (AV1)
@@ -223,17 +224,5 @@ impl ::re_types_core::reflection::Enum for VideoCodec {
             0x76703039 => Some(Self::VP9),
             _ => None,
         }
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VideoCodec {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
     }
 }

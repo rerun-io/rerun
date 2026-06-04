@@ -309,9 +309,7 @@ async fn test_old_rrds_in_current_viewer() {
         results.extend_harness(&mut harness);
     }
 
-    let untriggered: Vec<&str> = EXPECTED_NOTIFICATIONS
-        .iter()
-        .zip(expected_triggered.iter())
+    let untriggered: Vec<&str> = std::iter::zip(EXPECTED_NOTIFICATIONS, &expected_triggered)
         .filter(|(_, triggered)| !**triggered)
         .map(|(msg, _)| *msg)
         .collect();

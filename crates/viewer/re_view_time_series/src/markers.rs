@@ -8,6 +8,7 @@
 use std::sync::Arc;
 
 use glam::{Vec2, Vec3, vec2, vec3};
+use itertools::Itertools as _;
 use re_renderer::{
     Color32, OutlineMaskPreference, PickingLayerId, RenderContext, ShapeBuilder,
     mesh::{CpuMesh, GpuMesh, MeshError},
@@ -43,7 +44,7 @@ impl MarkerMeshes {
                 let cpu_mesh = build_marker_cpu_mesh(shape, render_ctx);
                 GpuMesh::new(render_ctx, &cpu_mesh).map(Arc::new)
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
         Ok(Self { meshes })
     }
 

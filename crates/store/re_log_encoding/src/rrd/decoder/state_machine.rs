@@ -649,7 +649,7 @@ mod tests {
     fn two_concatenated_streams_protobuf() {
         let (input1, data1) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
         let (input2, data2) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
-        let input = input1.into_iter().chain(input2).collect::<Vec<_>>();
+        let input = std::iter::chain(input1, input2).collect::<Vec<_>>();
 
         let mut decoder = DecoderApp::new();
 

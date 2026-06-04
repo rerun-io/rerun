@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use re_byte_size::{BookkeepingBTreeMap, SizeBytes};
+use re_byte_size::BookkeepingBTreeMap;
 use re_log_types::TimeInt;
 
 use super::cached_transform_value::CachedTransformValue;
@@ -19,7 +19,7 @@ pub type FrameTransformTimeMap =
 pub type PinholeProjectionMap =
     BookkeepingBTreeMap<TimeInt, CachedTransformValue<ResolvedPinholeProjectionCached>>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct TransformsForChildFrameEvents {
     /// There can be only a single parent at any point in time, but it may change over time.
     /// Whenever it changes, the previous parent frame is no longer reachable.
@@ -72,16 +72,5 @@ impl TransformsForChildFrameEvents {
         } = self;
 
         frame_transforms.is_empty() && pinhole_projections.is_empty()
-    }
-}
-
-impl SizeBytes for TransformsForChildFrameEvents {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            frame_transforms,
-            pinhole_projections,
-        } = self;
-
-        frame_transforms.heap_size_bytes() + pinhole_projections.heap_size_bytes()
     }
 }

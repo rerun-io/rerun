@@ -44,7 +44,6 @@
 # ---
 # name: test_schema_recording
   '''
-  Index(timeline:log_tick)
   Index(timeline:log_time)
   Index(timeline:my_index)
   Column name: /points:Points3D:colors

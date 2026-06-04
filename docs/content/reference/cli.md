@@ -185,6 +185,13 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
+* `--headless <HEADLESS>`
+> Run the viewer in headless mode (no OS window).
+>
+> The viewer is driven by an offscreen `egui_kittest` harness, while the gRPC server keeps running so SDK clients can still log data and request screenshots via `save_screenshot`.
+>
+> [Default: `false`]
+
 * `--window-size <WINDOW_SIZE>`
 > Set the screen resolution (in logical points), e.g. "1920x1080". Useful together with `--screenshot-to`.
 
@@ -493,6 +500,11 @@ This ignores the `log_time` timeline.
 > If specified, the comparison will ignore chunks without components.
 >
 > [Default: `false`]
+
+* `--ignore-timeline <TIMELINE>`
+> Timelines to ignore entirely during comparison (their presence, absence, and values).
+>
+> Useful when comparing recordings produced with different default-timeline settings, e.g. `--ignore-timeline log_tick` (which is opt-in). Can be specified multiple times.
 
 ## rerun rrd filter
 

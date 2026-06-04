@@ -5,10 +5,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .save("run-1.rrd")?;
 
     for t in 0..10 {
-        let t = t as f64;
-        rec.set_duration_secs("t", t);
-        rec.log("/arm/shoulder", &rerun::Scalars::single((t * 0.5).sin()))?;
-        rec.log("/arm/elbow", &rerun::Scalars::single((t * 0.5).cos()))?;
+        rec.set_time_sequence("step", t);
+        let tf = t as f64;
+        rec.log("/arm/shoulder", &rerun::Scalars::single((tf * 0.5).sin()))?;
+        rec.log("/arm/elbow", &rerun::Scalars::single((tf * 0.5).cos()))?;
     }
 
     Ok(())

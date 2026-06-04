@@ -71,4 +71,22 @@ pub trait ChunkStream: Send {
 /// (e.g. paths, decoder settings, etc.).
 pub trait ChunkStreamFactory: Send + Sync {
     fn create(&self) -> Result<Box<dyn ChunkStream>, error::ChunkPipelineError>;
+
+    /// Create a stream with `filter` pushed into the source as far as the source can manage.
+    ///
+    /// The returned stream is responsible for producing chunks that satisfy `filter` —
+    /// implementations that can't fully absorb the filter wrap their result in an
+    /// [`engine::FilterStream`] (the default impl does exactly that).
+    ///
+    /// The default implementation does no pushdown: it calls [`Self::create`] and wraps the
+    /// result with the input filter. Sources that can do better should override this.
+    fn create_with_pushdown(
+        &self,
+        filter: &stream::StructuredFilter,
+    ) -> Result<Box<dyn ChunkStream>, error::ChunkPipelineError> {
+        Ok(Box::new(engine::FilterStream::new(
+            self.create()?,
+            filter.clone(),
+        )))
+    }
 }

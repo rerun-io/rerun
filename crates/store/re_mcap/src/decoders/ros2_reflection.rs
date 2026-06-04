@@ -464,7 +464,10 @@ fn resolve_complex_type<'a>(
 }
 
 fn ensure_complex_field_types_resolve(message_schema: &MessageSchema) -> anyhow::Result<()> {
-    for spec in std::iter::once(&message_schema.spec).chain(message_schema.dependencies.iter()) {
+    for spec in std::iter::chain(
+        std::iter::once(&message_schema.spec),
+        &message_schema.dependencies,
+    ) {
         for field in &spec.fields {
             ensure_field_type_resolves(spec, &field.name, &field.ty, &message_schema.dependencies)?;
         }

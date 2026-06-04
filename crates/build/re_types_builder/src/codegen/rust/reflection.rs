@@ -146,8 +146,8 @@ fn generate_component_reflection(
             extension_contents_for_fqname
                 .get(&obj.fqname)
                 .is_some_and(|contents| {
-                    contents.contains(&format!("impl Default for {}", &obj.name))
-                        || contents.contains(&format!("impl Default for super::{}", &obj.name))
+                    contents.contains(&format!("impl Default for {}", obj.name))
+                        || contents.contains(&format!("impl Default for super::{}", obj.name))
                 });
         let custom_placeholder = if auto_derive_default || has_custom_default_impl {
             quote! { Some(#type_name::default().to_arrow()?) }

@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{Read as _, Seek as _, SeekFrom};
 use std::sync::Arc;
 
+use itertools::Itertools as _;
 use re_chunk::{Chunk, ChunkId};
 use re_span::Span;
 
@@ -46,7 +47,7 @@ pub fn read_chunks(
                 .ok_or(CodecError::ChunkNotInManifest { chunk_id: id })?;
             Ok((id, Span::from_start_len(offsets[row], sizes[row])))
         })
-        .collect::<Result<_, _>>()?;
+        .try_collect()?;
 
     if entries.is_empty() {
         return Ok(Vec::new());

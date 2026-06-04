@@ -118,7 +118,8 @@ pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};
 pub use self::time_control::{
     MoveDirection, MoveSpeed, TIME_PANEL_PATH, TimeControl, TimeControlCommand,
-    TimeControlResponse, TimeControlUpdateParams, TimeView, time_panel_blueprint_entity_path,
+    TimeControlResponse, TimeControlUpdateParams, TimeRangeHighlight, TimeRangeHighlightKind,
+    TimeView, time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
     BufferAndFormatMatch, DatatypeMatch, IndicatedEntities, PerVisualizerInstruction,

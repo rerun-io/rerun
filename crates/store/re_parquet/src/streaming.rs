@@ -111,11 +111,11 @@ fn build_iterator(
         })
         .collect();
 
-    let excluded: std::collections::HashSet<usize> = timeline_infos
-        .iter()
-        .map(|tl| tl.column_index)
-        .chain(static_col_map.iter().map(|(idx, _)| *idx))
-        .collect();
+    let excluded: std::collections::HashSet<usize> = std::iter::chain(
+        timeline_infos.iter().map(|tl| tl.column_index),
+        static_col_map.iter().map(|(idx, _)| *idx),
+    )
+    .collect();
 
     let column_groups = compute_column_groups(
         &schema,

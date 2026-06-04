@@ -49,6 +49,11 @@ table Points3D (
   /// or the number of instances on this entity is under a certain threshold.
   show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3100);
 
+  /// How points should be shaded.
+  ///
+  /// If not set, points are rendered with [components.PointShading.Gradient] by default.
+  point_shading: rerun.components.PointShading ("attr.rerun.component_optional", nullable, order: 3150);
+
   /// Optional class Ids for the points.
   ///
   /// The [components.ClassId] provides colors and labels if not specified explicitly.

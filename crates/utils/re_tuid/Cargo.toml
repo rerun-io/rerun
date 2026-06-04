@@ -25,9 +25,6 @@ default = []
 ## Enable bytemuck support.
 bytemuck = ["dep:bytemuck"]
 
-## Enable (de)serialization using serde.
-serde = ["dep:serde"]
-
 
 [dependencies]
 re_byte_size.workspace = true
@@ -35,11 +32,11 @@ re_log.workspace = true
 
 document-features.workspace = true
 getrandom.workspace = true
+serde = { workspace = true, features = ["derive"] }
 web-time.workspace = true
 
 # Optional dependencies
 bytemuck = { workspace = true, optional = true, features = ["derive"] }
-serde = { workspace = true, features = ["derive"], optional = true }
 
 [dev-dependencies]
 criterion.workspace = true

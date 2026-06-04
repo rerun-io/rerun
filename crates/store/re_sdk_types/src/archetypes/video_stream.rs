@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -32,7 +33,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// TODO(#10422): [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference] does not yet work with [`archetypes::VideoStream`][crate::archetypes::VideoStream].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct VideoStream {
     /// The codec used to encode the video chunks.
     ///
@@ -519,16 +520,5 @@ impl VideoStream {
     ) -> Self {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VideoStream {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.codec.heap_size_bytes()
-            + self.sample.heap_size_bytes()
-            + self.is_keyframe.heap_size_bytes()
-            + self.opacity.heap_size_bytes()
-            + self.draw_order.heap_size_bytes()
     }
 }

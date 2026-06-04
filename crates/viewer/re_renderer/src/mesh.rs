@@ -368,7 +368,7 @@ impl GpuMesh {
             let mesh_bind_group_layout = ctx.renderer::<MeshRenderer>().bind_group_layout;
 
             for (material, uniform_buffer_binding) in
-                data.materials.iter().zip(uniform_buffer_bindings)
+                std::iter::zip(&data.materials, uniform_buffer_bindings)
             {
                 let bind_group = pools.bind_groups.alloc(
                     device,

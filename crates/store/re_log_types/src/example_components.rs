@@ -122,7 +122,7 @@ impl ::re_types_core::AsComponents for MyPoints {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, SizeBytes)]
 #[repr(C)]
 pub struct MyPoint {
     pub x: f32,
@@ -152,19 +152,6 @@ impl MyPoint {
 }
 
 re_types_core::macros::impl_into_cow!(MyPoint);
-
-impl SizeBytes for MyPoint {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { x: _, y: _ } = self;
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 impl Loggable for MyPoint {
     fn arrow_datatype() -> arrow::datatypes::DataType {
@@ -220,9 +207,7 @@ impl Loggable for MyPoint {
             .downcast_array_ref::<arrow::array::Float32Array>()
             .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float32Array>)?;
 
-        Ok(xs
-            .iter()
-            .zip(ys.iter())
+        Ok(std::iter::zip(xs.iter(), ys.iter())
             .map(|(x, y)| {
                 if let (Some(x), Some(y)) = (x, y) {
                     Some(Self { x, y })
@@ -242,7 +227,7 @@ impl Component for MyPoint {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, SizeBytes)]
 #[repr(C)]
 pub struct MyPoint64 {
     pub x: f64,
@@ -272,19 +257,6 @@ impl MyPoint64 {
 }
 
 re_types_core::macros::impl_into_cow!(MyPoint64);
-
-impl SizeBytes for MyPoint64 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { x: _, y: _ } = self;
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 impl Loggable for MyPoint64 {
     fn arrow_datatype() -> arrow::datatypes::DataType {
@@ -340,9 +312,7 @@ impl Loggable for MyPoint64 {
             .downcast_array_ref::<arrow::array::Float64Array>()
             .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float64Array>)?;
 
-        Ok(xs
-            .iter()
-            .zip(ys.iter())
+        Ok(std::iter::zip(xs.iter(), ys.iter())
             .map(|(x, y)| {
                 if let (Some(x), Some(y)) = (x, y) {
                     Some(Self { x, y })
@@ -362,8 +332,18 @@ impl Component for MyPoint64 {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 #[repr(transparent)]
 pub struct MyColor(pub u32);
 
@@ -390,19 +370,6 @@ impl From<u32> for MyColor {
 }
 
 re_types_core::macros::impl_into_cow!(MyColor);
-
-impl SizeBytes for MyColor {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self(_) = self;
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 impl Loggable for MyColor {
     fn arrow_datatype() -> arrow::datatypes::DataType {
@@ -441,19 +408,12 @@ impl Component for MyColor {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Debug, Clone, PartialEq, Eq, re_byte_size::SizeBytes, serde::Deserialize, serde::Serialize,
+)]
 pub struct MyLabel(pub String);
 
 re_types_core::macros::impl_into_cow!(MyLabel);
-
-impl SizeBytes for MyLabel {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self(s) = self;
-        s.heap_size_bytes()
-    }
-}
 
 impl Loggable for MyLabel {
     fn arrow_datatype() -> arrow::datatypes::DataType {
@@ -492,8 +452,18 @@ impl Component for MyLabel {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 #[repr(transparent)]
 pub struct MyIndex(pub u64);
 
@@ -515,19 +485,6 @@ impl MyIndex {
 }
 
 re_types_core::macros::impl_into_cow!(MyIndex);
-
-impl SizeBytes for MyIndex {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self(_) = self;
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 impl Loggable for MyIndex {
     fn arrow_datatype() -> arrow::datatypes::DataType {

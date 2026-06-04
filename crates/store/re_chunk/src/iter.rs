@@ -724,6 +724,44 @@ impl ChunkComponentSlicer for String {
     }
 }
 
+/// Like `slice::<String>()` but distinguishes between null and empty strings:
+/// `None` for null entries, `Some("")` for an explicitly-empty string.
+// TODO(RR-4740): if null ends up meaning reset, remove this slicer.
+impl ChunkComponentSlicer for Option<String> {
+    type Item<'a> = Vec<Option<ArrowString>>;
+
+    fn slice<'a>(
+        component: ComponentIdentifier,
+        array: &'a dyn ArrowArray,
+        component_spans: impl Iterator<Item = Span<usize>> + 'a,
+    ) -> impl Iterator<Item = Vec<Option<ArrowString>>> {
+        let Some(utf8_array) = array.downcast_array_ref::<ArrowStringArray>() else {
+            error_on_downcast_failure(component, "ArrowStringArray", array.data_type());
+            return Either::Left(std::iter::empty());
+        };
+
+        let values = utf8_array.values().clone();
+        let offsets = utf8_array.offsets().clone();
+        let lengths = offsets.lengths().collect_vec();
+        let nulls = utf8_array.nulls().cloned();
+
+        Either::Right(component_spans.map(move |range| {
+            let span = range.range();
+            let offsets = &offsets[span.clone()];
+            let lengths = &lengths[span.clone()];
+            izip!(span, offsets, lengths)
+                .map(|(i, &idx, &len)| {
+                    if nulls.as_ref().is_some_and(|n| !n.is_valid(i)) {
+                        None
+                    } else {
+                        Some(ArrowString::from(values.slice_with_length(idx as _, len)))
+                    }
+                })
+                .collect_vec()
+        }))
+    }
+}
+
 impl ChunkComponentSlicer for bool {
     type Item<'a> = ArrowBooleanBuffer;
 

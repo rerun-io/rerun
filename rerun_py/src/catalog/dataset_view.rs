@@ -6,14 +6,15 @@ use crate::trace_context::extract_trace_context_from_contextvar;
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
+use itertools::Itertools as _;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::{QueryExpression, SparseFillStrategy, TimeInt, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPathFilter, ResolvedEntityPathFilter};
-use re_protos::common::v1alpha1::ext::SegmentId;
 use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
+use re_types_core::SegmentId;
 
 use crate::catalog::{
     IndexValuesLike, PyDatasetEntryInternal, PySchemaInternal, PyTableProviderAdapterInternal,
@@ -245,7 +246,7 @@ impl PyDatasetViewInternal {
                 values_map
                     .into_iter()
                     .map(|(k, v)| v.to_index_values().map(|v| (SegmentId::from(k), v)))
-                    .collect::<Result<BTreeMap<_, _>, _>>()
+                    .try_collect()
             })
             .transpose()?;
 

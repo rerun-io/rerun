@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -30,7 +31,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Note that any [`archetypes::Transform3D`][crate::archetypes::Transform3D]s logged with both `parent_frame` and `child_frame` set
 /// describes a relationship between these parent and child transform frames, **not** the transform frame
 /// that the entity path may be using (defined by an [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame]).
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct TransformFrameId(pub crate::datatypes::Utf8);
 
@@ -76,17 +77,5 @@ impl std::ops::DerefMut for TransformFrameId {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TransformFrameId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
     }
 }

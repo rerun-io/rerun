@@ -9,6 +9,7 @@
 //! To go from a freshly decoded transport-level type to its application-level equivalent, use [`ToApplication`].
 //! To prepare an application-level type for encoding, use [`ToTransport`].
 
+use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_log_types::{BlueprintActivationCommand, SetStoreInfo};
 
@@ -56,15 +57,13 @@ impl ToTransport for crate::RrdFooter {
     type Context<'a> = ();
 
     fn to_transport(&self, (): Self::Context<'_>) -> Result<Self::Output, CodecError> {
-        let manifests: Result<Vec<_>, _> = self
+        let manifests: Vec<_> = self
             .manifests
             .values()
             .map(|manifest| manifest.to_transport(()))
-            .collect();
+            .try_collect()?;
 
-        Ok(Self::Output {
-            manifests: manifests?,
-        })
+        Ok(Self::Output { manifests })
     }
 }
 

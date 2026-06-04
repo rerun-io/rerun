@@ -15,6 +15,14 @@ on:
       CPP_DOCS_VERSION_NAME:
         required: true
         type: string
+      MARKDOWN_DOCS_VERSION_NAME:
+        required: true
+        type: string
+        description: |
+          Version label to upload markdown docs/examples under on GCS
+          (`gs://rerun-docs/prose/{label}/`). Use `dev` for non-final
+          releases / pushes to main, the semver string for final
+          releases, or `pr-{N}` for PR previews.
       RELEASE_VERSION:
         required: false
         type: string
@@ -200,3 +208,39 @@ jobs:
         if: ${{ inputs.UPDATE_LATEST }}
         run: |
           pixi run uv run --group dev scripts/update_docs_url_rewrite.py --version ${{ inputs.JS_DOCS_VERSION_NAME }} --language js
+
+  # ---------------------------------------------------------------------------
+
+  md-deploy-docs:
+    name: Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
+
+      - uses: prefix-dev/setup-pixi@v0.9.4
+        with:
+          pixi-version: v0.55.0
+
+      - id: "auth"
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: "Upload markdown docs & examples to GCS"
+        env:
+          ISR_BYPASS_TOKEN: ${{ secrets.ISR_BYPASS_TOKEN }}
+          VERSION_LABEL: ${{ inputs.MARKDOWN_DOCS_VERSION_NAME }}
+          MARK_LATEST: ${{ inputs.UPDATE_LATEST }}
+          RERUN_COMMIT: ${{ inputs.RELEASE_COMMIT }}
+        run: |
+          ARGS=(upload --version "$VERSION_LABEL" --purge-token "$ISR_BYPASS_TOKEN")
+          if [ "$MARK_LATEST" = "true" ]; then
+            ARGS+=(--mark-latest)
+          fi
+          if [ -n "$RERUN_COMMIT" ]; then
+            ARGS+=(--rerun-commit "$RERUN_COMMIT")
+          fi
+          pixi run uv run scripts/ci/upload_docs.py "${ARGS[@]}"

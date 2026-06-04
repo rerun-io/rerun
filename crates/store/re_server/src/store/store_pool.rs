@@ -41,7 +41,7 @@ impl std::str::FromStr for StoreSlotId {
 /// A lookup index of [`ResolvedStore`]s keyed by [`StoreSlotId`].
 ///
 /// The pool holds **weak** references. The strong (owning) references live in
-/// [`Layer`](super::Layer)s. When all layers drop a store, the weak entry
+/// [`crate::store::source::Source`]. When all layers drop a store, the weak entry
 /// expires naturally. Call [`StorePool::cleanup`] to sweep expired entries.
 #[derive(Default)]
 pub struct StorePool {

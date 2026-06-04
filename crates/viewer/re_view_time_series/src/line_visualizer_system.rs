@@ -1,11 +1,10 @@
 use itertools::Itertools as _;
 use rayon::prelude::*;
-use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
-use re_log_types::{EntityPath, TimeInt};
+use re_log_types::TimeInt;
 use re_sdk_types::components::{self, AggregationPolicy, InterpolationMode, StrokeWidth};
 use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{Archetype as _, archetypes};
-use re_view::{ChunksWithComponent, range_with_blueprint_resolved_data};
+use re_view::{ChunksWithComponent, collect_recursive_clears, range_with_blueprint_resolved_data};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext, ViewQuery,
@@ -48,11 +47,12 @@ impl VisualizerSystem for SeriesLinesSystem {
             .with_allow_static_data(false)
             .into(),
 
-            queried: archetypes::Scalars::all_components()
-                .iter()
-                .chain(archetypes::SeriesLines::all_components().iter())
-                .cloned()
-                .collect(),
+            queried: std::iter::chain(
+                archetypes::Scalars::all_components().iter(),
+                archetypes::SeriesLines::all_components().iter(),
+            )
+            .cloned()
+            .collect(),
         }
     }
 
@@ -362,8 +362,10 @@ impl SeriesLinesSystem {
             None,
             &query,
             data_result,
-            archetypes::Scalars::all_component_identifiers()
-                .chain(archetypes::SeriesLines::all_component_identifiers()),
+            std::iter::chain(
+                archetypes::Scalars::all_component_identifiers(),
+                archetypes::SeriesLines::all_component_identifiers(),
+            ),
             instruction,
         );
 
@@ -570,77 +572,4 @@ impl SeriesLinesSystem {
 
         series
     }
-}
-
-fn collect_recursive_clears(
-    ctx: &ViewContext<'_>,
-    query: &RangeQuery,
-    entity_path: &EntityPath,
-) -> Vec<(TimeInt, RowId)> {
-    re_tracing::profile_function!();
-
-    let mut cleared_indices = Vec::new();
-
-    let mut clear_entity_path = entity_path.clone();
-    let clear_descriptor = archetypes::Clear::descriptor_is_recursive();
-
-    // Bootstrap in case there's a pending clear out of the visible time range.
-    {
-        let results = ctx.recording_engine().cache().latest_at(
-            &LatestAtQuery::new(query.timeline, query.range.min()),
-            &clear_entity_path,
-            [clear_descriptor.component],
-        );
-
-        cleared_indices.extend(
-            results
-                .get(clear_descriptor.component)
-                .iter()
-                .flat_map(|chunk| {
-                    itertools::izip!(
-                        chunk.iter_component_indices(*query.timeline(), clear_descriptor.component),
-                        chunk.iter_slices::<bool>(clear_descriptor.component)
-                    )
-                })
-                .filter_map(|(index, is_recursive_buffer)| {
-                    let is_recursive =
-                        !is_recursive_buffer.is_empty() && is_recursive_buffer.value(0);
-                    (is_recursive || clear_entity_path == *entity_path).then_some(index)
-                }),
-        );
-    }
-
-    loop {
-        let results = ctx.recording_engine().cache().range(
-            query,
-            &clear_entity_path,
-            [clear_descriptor.component],
-        );
-
-        cleared_indices.extend(
-            results
-                .get(clear_descriptor.component)
-                .unwrap_or_default()
-                .iter()
-                .flat_map(|chunk| {
-                    itertools::izip!(
-                        chunk.iter_component_indices(*query.timeline(), clear_descriptor.component),
-                        chunk.iter_slices::<bool>(clear_descriptor.component)
-                    )
-                })
-                .filter_map(|(index, is_recursive_buffer)| {
-                    let is_recursive =
-                        !is_recursive_buffer.is_empty() && is_recursive_buffer.value(0);
-                    (is_recursive || clear_entity_path == *entity_path).then_some(index)
-                }),
-        );
-
-        let Some(parent_entity_path) = clear_entity_path.parent() else {
-            break;
-        };
-
-        clear_entity_path = parent_entity_path;
-    }
-
-    cleared_indices
 }

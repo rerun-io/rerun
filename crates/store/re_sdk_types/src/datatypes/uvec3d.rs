@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,18 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A uint32 vector in 3D space.
-#[derive(Clone, Debug, Default, Copy, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(C)]
 pub struct UVec3D(pub [u32; 3usize]);
 
@@ -114,9 +126,10 @@ impl ::re_types_core::Loggable for UVec3D {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let offsets = (0..)
-                    .step_by(3usize)
-                    .zip((3usize..).step_by(3usize).take(arrow_data.len()));
+                let offsets = ::std::iter::zip(
+                    (0..).step_by(3usize),
+                    (3usize..).step_by(3usize).take(arrow_data.len()),
+                );
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner
@@ -220,17 +233,5 @@ impl From<UVec3D> for [u32; 3usize] {
     #[inline]
     fn from(value: UVec3D) -> Self {
         value.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for UVec3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[u32; 3usize]>::is_pod()
     }
 }

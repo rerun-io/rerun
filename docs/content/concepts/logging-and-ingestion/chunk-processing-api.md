@@ -14,34 +14,10 @@ The API is designed to support distributed execution in the future.
 
 The Chunk Processing API is built from three kinds of primitives — readers, stores, and lazy streams — that compose into a pipeline executed by a terminal call:
 
-```d2
-direction: right
-
-Reader: {
-  shape: parallelogram
-}
-
-Store: {
-  shape: cylinder
-}
-
-LazyChunkStream: {
-  shape: rectangle
-  label: |md `LazyChunkStream`|
-}
-
-Terminal call: {
-  shape: parallelogram
-  label: "Terminal\ncall"
-}
-
-
-Reader -> Store: |md `.store()`|
-Reader -> LazyChunkStream: |md `.stream()`|
-Store -> LazyChunkStream: |md `.stream()`|
-LazyChunkStream -> LazyChunkStream: |md `filter`/`lenses`/`map`/…|
-LazyChunkStream -> Terminal call
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/b7b8066dc15f6d78d23ff780d6ecc830b1f3b05c_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/6bf30bb1480977c570880549e98fbfbe7b6c8f84_d2-light.svg" alt="">
+</div>
 
 ### Readers
 
@@ -211,3 +187,4 @@ The two are interoperable:
 
 - [Chunks](chunks.md): the underlying data model.
 - [Lenses](../query-and-transform/lenses.md): the reshaping primitives used here.
+- [`robot_data_preprocessing`](https://github.com/rerun-io/rerun/tree/main/examples/python/robot_data_preprocessing): a practical example showing how to apply the chunk processing API to robot data.

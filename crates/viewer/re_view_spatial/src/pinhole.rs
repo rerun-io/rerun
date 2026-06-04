@@ -1,22 +1,10 @@
 /// A pinhole camera model.
 ///
 /// Corresponds roughly to the [`re_sdk_types::archetypes::Pinhole`] archetype, but uses render-friendly types.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct Pinhole {
     pub image_from_camera: glam::Mat3,
     pub resolution: glam::Vec2,
-}
-
-impl re_byte_size::SizeBytes for Pinhole {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl Pinhole {

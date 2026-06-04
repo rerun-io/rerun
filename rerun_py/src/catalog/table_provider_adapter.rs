@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
-use crate::utils::get_tokio_runtime;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::proto::logical_extension_codec::FFI_LogicalExtensionCodec;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::prelude::{PyAnyMethods as _, PyCapsuleMethods as _};
 use pyo3::types::PyCapsule;
 use pyo3::{Bound, PyAny, PyResult, pyclass, pymethods};
+
+use crate::utils::get_tokio_runtime;
 
 /// Adapter to expose a [`TableProvider`] to the Python side via the DataFusion FFI capsule protocol.
 #[pyclass(

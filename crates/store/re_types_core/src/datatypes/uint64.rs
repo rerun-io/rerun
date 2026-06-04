@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,9 @@ use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 64bit unsigned integer.
-#[derive(Clone, Debug, Default, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone, Debug, Default, Copy, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes,
+)]
 pub struct UInt64(pub u64);
 
 crate::macros::impl_into_cow!(UInt64);
@@ -133,17 +136,5 @@ impl From<UInt64> for u64 {
     #[inline]
     fn from(value: UInt64) -> Self {
         value.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for UInt64 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u64>::is_pod()
     }
 }

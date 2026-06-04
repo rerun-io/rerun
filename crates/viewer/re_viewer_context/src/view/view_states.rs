@@ -20,16 +20,9 @@ use crate::{
 /// view state between them since it may contain recording-specific data.
 type ViewStateKey = (StoreId, ViewId);
 
+#[derive(re_byte_size::SizeBytes)]
 struct ActivePreview {
     time_control: TimeControl,
-}
-
-impl re_byte_size::SizeBytes for ActivePreview {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { time_control } = self;
-
-        time_control.heap_size_bytes()
-    }
 }
 
 impl Default for ActivePreview {
@@ -43,24 +36,13 @@ impl Default for ActivePreview {
 /// Shared playback state for all preview recordings shown in grid or table cards.
 ///
 /// All active previews have their own [`TimeControl`].
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 pub struct PreviewState {
     /// The previews that are currently active.
     active_previews: ahash::HashMap<StoreId, ActivePreview>,
 
     /// URIs that have already been requested.
     pub requested_uris: ahash::HashSet<re_uri::DatasetSegmentUri>,
-}
-
-impl re_byte_size::SizeBytes for PreviewState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            active_previews,
-            requested_uris,
-        } = self;
-
-        active_previews.heap_size_bytes() + requested_uris.heap_size_bytes()
-    }
 }
 
 impl PreviewState {
@@ -131,7 +113,7 @@ impl PreviewState {
 
 /// State for the `View`s that persists across frames but otherwise
 /// is not saved.
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 pub struct ViewStates {
     states: HashMap<ViewStateKey, Box<dyn ViewState>>,
 
@@ -145,19 +127,6 @@ pub struct ViewStates {
     // TODO(isse): Should we have one preview state per table/dataset?
     /// Playback state shared across all preview recordings shown in grid/table cards.
     pub preview_state: Option<PreviewState>,
-}
-
-impl re_byte_size::SizeBytes for ViewStates {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            states,
-            visualizer_reports,
-            preview_state,
-        } = self;
-        states.heap_size_bytes()
-            + visualizer_reports.heap_size_bytes()
-            + preview_state.heap_size_bytes()
-    }
 }
 
 impl re_byte_size::MemUsageTreeCapture for ViewStates {

@@ -27,8 +27,8 @@ OWNER = "rerun-io"
 REPO = "rerun"
 INCLUDE_LABELS = False  # It adds quite a bit of visual noise
 
-# Cache for organization members to avoid repeated API calls
-_org_members_cache: set[str] | None = None
+# Cache for contributor classification to avoid repeated API calls
+_external_contributor_cache: dict[str, bool] = {}
 
 
 def eprint(*args: Any, **kwargs: Any) -> None:
@@ -37,7 +37,7 @@ def eprint(*args: Any, **kwargs: Any) -> None:
 
 @dataclass
 class PrInfo:
-    gh_user_name: str | None
+    gh_user_names: list[str]
     pr_title: str
     labels: list[str]
 
@@ -48,43 +48,64 @@ class CommitInfo:
     title: str
     pr_number: int | None
     source_ref_hash: str | None
+    co_author_user_names: list[str]
 
 
-def get_rerun_org_members() -> set[str]:
-    """Fetch all members of the rerun-io GitHub organization."""
-    global _org_members_cache
+def unique_user_names(user_names: list[str]) -> list[str]:
+    """Deduplicate GitHub usernames while preserving order."""
+    seen = set()
+    unique = []
+    for user_name in user_names:
+        if user_name not in seen and not user_name.endswith("[bot]"):
+            seen.add(user_name)
+            unique.append(user_name)
+    return unique
 
-    if _org_members_cache is not None:
-        return _org_members_cache
+
+def is_external_contributor(user_name: str) -> bool:
+    """Return whether a GitHub user looks external to Rerun.
+
+    We intentionally use the repository permissions endpoint instead of the org members endpoint,
+    since the latter only returns public org memberships.
+    """
+    if user_name in _external_contributor_cache:
+        return _external_contributor_cache[user_name]
 
     try:
-        # Use gh CLI to fetch organization members
-        # Note: only PUBLIC members will be fetched!
-        # You can see which members are public and private at https://github.com/orgs/rerun-io/people
-        # That's also where members can change themselves from Private to Public.
         result = subprocess.run(
-            ["gh", "api", f"/orgs/{OWNER}/members", "--paginate", "--jq", ".[].login"],
+            [
+                "gh",
+                "api",
+                f"/repos/{OWNER}/{REPO}/collaborators/{user_name}/permission",
+                "--jq",
+                ".permission",
+            ],
             capture_output=True,
             text=True,
             check=True,
         )
-
-        members = set()
-        for line in result.stdout.strip().split("\n"):
-            if line.strip():  # Skip empty lines
-                members.add(line.strip())
-
-        _org_members_cache = members
-        eprint(f"Fetched {len(members)} members from rerun-io organization")
-        return members
-
+        permission = result.stdout.strip()
+        is_external = permission not in {"admin", "maintain", "write", "triage"}
     except subprocess.CalledProcessError as e:
         eprint(
-            f"ERROR fetching org members: {e.stderr.strip()}. You need to install the GitHub CLI tools: https://cli.github.com/ and authenticate with github."
+            f"ERROR fetching repository permission for @{user_name}: {e.stderr.strip()}. Assuming external contributor."
         )
-        # Return empty set as fallback to avoid breaking the script
-        _org_members_cache = set()
-        return _org_members_cache
+        is_external = True
+
+    _external_contributor_cache[user_name] = is_external
+    return is_external
+
+
+def github_user_names_from_co_authors(commit_message: str) -> list[str]:
+    """Extract GitHub usernames from Co-authored-by trailers using GitHub noreply emails."""
+    user_names = []
+    for match in re.finditer(
+        r"^Co-authored-by:\s+.*<(?:(?:\d+)\+)?([^@<>]+)@users\.noreply\.github\.com>$",
+        commit_message,
+        re.MULTILINE,
+    ):
+        user_names.append(match.group(1))
+    return unique_user_names(user_names)
 
 
 # Slow
@@ -114,7 +135,12 @@ def fetch_reality_pr_info(commit_hash: str) -> PrInfo | None:
             return None
 
         labels = pr_data["labels"]
-        return PrInfo(gh_user_name=None, pr_title=pr_data["title"], labels=labels)
+        author = pr_data.get("author")
+        return PrInfo(
+            gh_user_names=unique_user_names([author] if author is not None else []),
+            pr_title=pr_data["title"],
+            labels=labels,
+        )
 
     except subprocess.CalledProcessError as e:
         # Commit doesn't exist in Reality repo, or API error
@@ -145,14 +171,12 @@ def fetch_pr_info_from_commit_info(commit_info: CommitInfo) -> PrInfo | None:
                 if rerun_pr_info is not None:
                     # Use title and labels from Reality, author from Rerun
                     return PrInfo(
-                        gh_user_name=rerun_pr_info.gh_user_name,
+                        gh_user_names=unique_user_names(rerun_pr_info.gh_user_names + commit_info.co_author_user_names),
                         pr_title=reality_pr_info.pr_title,
                         labels=reality_pr_info.labels,
                     )
-            # No Rerun PR number, so just use Reality info without author attribution
-            # Set author to None so it won't be attributed
             return PrInfo(
-                gh_user_name=None,
+                gh_user_names=unique_user_names(reality_pr_info.gh_user_names + commit_info.co_author_user_names),
                 pr_title=reality_pr_info.pr_title,
                 labels=reality_pr_info.labels,
             )
@@ -160,7 +184,10 @@ def fetch_pr_info_from_commit_info(commit_info: CommitInfo) -> PrInfo | None:
 
     # Priority 2: Fallback to Rerun repo using PR number
     if commit_info.pr_number is not None:
-        return fetch_pr_info(commit_info.pr_number)
+        pr_info = fetch_pr_info(commit_info.pr_number)
+        if pr_info is not None:
+            pr_info.gh_user_names = unique_user_names(pr_info.gh_user_names + commit_info.co_author_user_names)
+        return pr_info
 
     # No PR info available
     return None
@@ -189,7 +216,7 @@ def fetch_pr_info(pr_number: int) -> PrInfo | None:
         pr_data = json.loads(result.stdout)
         labels = [label["name"] for label in pr_data["labels"]]
         gh_user_name = pr_data["author"]["login"]
-        return PrInfo(gh_user_name=gh_user_name, pr_title=pr_data["title"], labels=labels)
+        return PrInfo(gh_user_names=unique_user_names([gh_user_name]), pr_title=pr_data["title"], labels=labels)
 
     except subprocess.CalledProcessError as e:
         eprint(
@@ -223,6 +250,7 @@ def get_commit_info(commit: Any) -> CommitInfo:
         title=title,
         pr_number=pr_number,
         source_ref_hash=source_ref_hash,
+        co_author_user_names=github_user_names_from_co_authors(commit.message),
     )
 
 
@@ -352,9 +380,18 @@ def main() -> None:
                 summary += f" ({', '.join(labels)})"
 
             if pr_info is not None:
-                gh_user_name = pr_info.gh_user_name
-                if gh_user_name is not None and gh_user_name not in get_rerun_org_members():
+                external_contributors = [
+                    gh_user_name for gh_user_name in pr_info.gh_user_names if is_external_contributor(gh_user_name)
+                ]
+                if len(external_contributors) == 1:
+                    gh_user_name = external_contributors[0]
                     summary += f" (thanks [@{gh_user_name}](https://github.com/{gh_user_name})!)"
+                elif 1 < len(external_contributors):
+                    thanks = ", ".join(
+                        f"[@{gh_user_name}](https://github.com/{gh_user_name})"
+                        for gh_user_name in external_contributors
+                    )
+                    summary += f" (thanks {thanks}!)"
 
             if labels == ["⛴ release"]:
                 continue  # Ignore release PRs

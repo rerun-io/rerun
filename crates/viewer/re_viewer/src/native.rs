@@ -21,7 +21,7 @@ pub fn run_native_app(
 
     let native_options = eframe_options(force_wgpu_backend);
 
-    let window_title = "Rerun Viewer";
+    let window_title = "Rerun";
     eframe::run_native(
         window_title,
         native_options,

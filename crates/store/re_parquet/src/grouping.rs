@@ -608,7 +608,7 @@ fn warn_shadowed_rules(rules: &[ColumnRule]) {
             let a = &rules[i].suffixes;
             let b = &rules[j].suffixes;
             if a.len() == b.len() {
-                let shadows = a.iter().zip(b.iter()).all(|(sa, sb)| {
+                let shadows = std::iter::zip(a, b).all(|(sa, sb)| {
                     let sa = sa.strip_prefix('_').unwrap_or(sa.as_str());
                     let sb = sb.strip_prefix('_').unwrap_or(sb.as_str());
                     sb.ends_with(sa)

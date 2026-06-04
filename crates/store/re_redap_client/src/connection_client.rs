@@ -29,6 +29,7 @@ use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
+use re_types_core::LayerName;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
 use tokio_stream::{Stream, StreamExt as _};
@@ -36,7 +37,7 @@ use tonic::IntoStreamingRequest as _;
 use tonic::codegen::{Body, StdError};
 use url::Url;
 
-use crate::{ApiError, ApiResponseStream, ApiResult, extract_trace_id};
+use crate::{ApiError, ApiResponseStream, ApiResult, TraceId, extract_trace_id};
 
 /// Extension trait for [`tonic::Response`] that extracts both the inner value
 /// and the server's trace-id in one step.
@@ -340,7 +341,7 @@ where
             .entries
             .into_iter()
             .map(TryInto::try_into)
-            .collect::<Result<Vec<EntryDetails>, _>>()
+            .try_collect()
             .map_err(|err| {
                 ApiError::deserialization_with_source(
                     trace_id,
@@ -809,11 +810,8 @@ where
     ) -> ApiResult<Vec<RecordBatch>> {
         let stream = self.query_dataset_raw(params).await?;
         let trace_id = stream.trace_id();
-        stream
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()?
+        let responses: Vec<_> = stream.collect::<Vec<_>>().await.into_iter().try_collect()?;
+        responses
             .into_iter()
             .map(|resp| {
                 resp.data.ok_or_else(|| {
@@ -872,11 +870,8 @@ where
     ) -> ApiResult<FetchChunksResponseStream> {
         let stream = self.query_dataset_raw(params).await?;
         let query_trace_id = stream.trace_id();
-        let chunk_info_batches = stream
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()?
+        let responses: Vec<_> = stream.collect::<Vec<_>>().await.into_iter().try_collect()?;
+        let chunk_info_batches: Vec<_> = responses
             .into_iter()
             .map(|resp| {
                 resp.data.ok_or_else(|| {
@@ -888,7 +883,7 @@ where
                     )
                 })
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
 
         if chunk_info_batches.is_empty() {
             return Ok(ApiResponseStream::new(
@@ -926,7 +921,7 @@ where
         dataset_id: EntryId,
         data_sources: Vec<DataSource>,
         on_duplicate: IfDuplicateBehavior,
-    ) -> ApiResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+    ) -> ApiResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
         let req = tonic::Request::new(RegisterWithDatasetRequest {
             data_sources,
             on_duplicate,
@@ -1017,7 +1012,7 @@ where
         let storage_url_column = get_string_array(RegisterWithDatasetResponse::FIELD_STORAGE_URL)?;
         let task_id_column = get_string_array(RegisterWithDatasetResponse::FIELD_TASK_ID)?;
 
-        itertools::izip!(
+        let descriptors = itertools::izip!(
             segment_id_column,
             segment_type_column,
             storage_url_column,
@@ -1067,7 +1062,9 @@ where
                 },
             })
         })
-        .collect()
+        .try_collect()?;
+
+        Ok((trace_id, descriptors))
     }
 
     /// Unregisters segments and layers from the dataset.
@@ -1092,13 +1089,13 @@ where
     pub async fn unregister_from_dataset(
         &mut self,
         dataset_id: EntryId,
-        segments_to_drop: Vec<String>,
-        layers_to_drop: Vec<String>,
+        segments_to_drop: Vec<SegmentId>,
+        layers_to_drop: Vec<LayerName>,
         force: bool,
     ) -> ApiResult<Vec<RecordBatch>> {
         let req = tonic::Request::new(
             UnregisterFromDatasetRequest {
-                segments_to_drop: segments_to_drop.into_iter().map(Into::into).collect(),
+                segments_to_drop,
                 layers_to_drop,
                 force,
             }

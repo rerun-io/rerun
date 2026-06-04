@@ -110,17 +110,21 @@ mod rvl_decoder;
 
 use crate::{SampleIndex, Time, VideoDataDescription, player::VideoPlaybackIssueSeverity};
 
-#[derive(thiserror::Error, Debug, Clone)]
+#[derive(thiserror::Error, Debug, Clone, re_byte_size::SizeBytes)]
 pub enum DecodeError {
     #[error("Waiting for encoding details")]
     WaitingForCodecDetails,
 
     #[error("Unsupported codec: {0}")]
-    UnsupportedCodec(String),
+    UnsupportedCodec(#[size_bytes(ignore)] String),
 
     #[cfg(with_dav1d)]
     #[error("dav1d: {0}")]
-    Dav1d(#[from] dav1d::Error),
+    Dav1d(
+        #[from]
+        #[size_bytes(ignore)]
+        dav1d::Error,
+    ),
 
     #[error("To enabled native AV1 decoding, compile Rerun with the `nasm` feature enabled.")]
     Dav1dWithoutNasm,
@@ -131,27 +135,25 @@ pub enum DecodeError {
     NoDav1dOnLinuxArm64,
 
     #[error("Image decode error: {0}")]
-    ImageDecoder(String),
+    ImageDecoder(#[size_bytes(ignore)] String),
 
     #[error(transparent)]
-    RvlDecoder(re_rvl::RvlDecodeError),
+    RvlDecoder(#[size_bytes(ignore)] re_rvl::RvlDecodeError),
 
     #[cfg(target_arch = "wasm32")]
     #[error(transparent)]
-    WebDecoder(#[from] webcodecs::WebError),
+    WebDecoder(
+        #[from]
+        #[size_bytes(ignore)]
+        webcodecs::WebError,
+    ),
 
     #[cfg(with_ffmpeg)]
     #[error(transparent)]
-    Ffmpeg(std::sync::Arc<FFmpegError>),
+    Ffmpeg(#[size_bytes(ignore)] std::sync::Arc<FFmpegError>),
 
     #[error("Unsupported bits per component: {0}")]
-    BadBitsPerComponent(usize),
-}
-
-impl re_byte_size::SizeBytes for DecodeError {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
+    BadBitsPerComponent(#[size_bytes(ignore)] usize),
 }
 
 impl DecodeError {
@@ -361,6 +363,7 @@ pub fn new_decoder(
 /// For details on how to interpret the data, see [`crate::SampleMetadata`].
 ///
 /// In MP4, one sample is one frame.
+#[derive(re_byte_size::SizeBytes)]
 pub struct Chunk {
     /// The start of a new group of pictures?
     ///
@@ -408,39 +411,14 @@ pub struct Chunk {
     pub duration: Option<Time>,
 }
 
-impl re_byte_size::SizeBytes for Chunk {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            is_sync: _,
-            data,
-            sample_idx: _,
-            frame_nr: _,
-            decode_timestamp: _,
-            presentation_timestamp: _,
-            duration: _,
-        } = self;
-        data.heap_size_bytes()
-    }
-}
-
 /// CPU-side data for a decoded frame.
+#[derive(re_byte_size::SizeBytes)]
 pub struct DecodedFrameContent {
     pub data: Vec<u8>,
     pub width: u32,
     pub height: u32,
+    #[size_bytes(ignore)]
     pub format: PixelFormat,
-}
-
-impl re_byte_size::SizeBytes for DecodedFrameContent {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            data,
-            width: _,
-            height: _,
-            format: _,
-        } = self;
-        data.heap_size_bytes()
-    }
 }
 
 impl DecodedFrameContent {
@@ -463,6 +441,7 @@ pub type FrameContent = DecodedFrameContent;
 /// from a CPU-side decoder (e.g. RVL depth). The two are kept in one type so
 /// downstream code can treat them uniformly.
 #[cfg(target_arch = "wasm32")]
+#[derive(re_byte_size::SizeBytes)]
 pub enum FrameContent {
     /// Browser-owned frame produced by WebCodecs/browser image decoding.
     ///
@@ -472,16 +451,6 @@ pub enum FrameContent {
     /// CPU-side decoded data, used when browser decoding would lose information,
     /// for instance when decoding 16bit images (for which as of writing there's no way to get out the raw data)
     Decoded(DecodedFrameContent),
-}
-
-#[cfg(target_arch = "wasm32")]
-impl re_byte_size::SizeBytes for FrameContent {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::WebVideoFrame(frame) => frame.heap_size_bytes(),
-            Self::Decoded(frame) => frame.heap_size_bytes(),
-        }
-    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -502,7 +471,7 @@ impl FrameContent {
 }
 
 /// Meta information about a decoded video frame, as reported by the decoder.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub struct FrameInfo {
     /// The start of a new group of pictures?
     ///
@@ -570,16 +539,11 @@ impl FrameInfo {
 }
 
 /// One decoded video frame.
+#[derive(re_byte_size::SizeBytes)]
 pub struct Frame {
     pub content: FrameContent,
+    #[size_bytes(ignore)]
     pub info: FrameInfo,
-}
-
-impl re_byte_size::SizeBytes for Frame {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { content, info: _ } = self;
-        content.heap_size_bytes()
-    }
 }
 
 /// Pixel format/layout used by [`FrameContent::data`].
@@ -659,8 +623,9 @@ pub enum YuvMatrixCoefficients {
 ///
 /// On the web this directly corresponds to
 /// <https://www.w3.org/TR/webcodecs/#hardware-acceleration>
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Default, Hash, serde::Deserialize, serde::Serialize,
+)]
 pub enum DecodeHardwareAcceleration {
     /// May use hardware acceleration if available and compatible with the codec.
     #[default]
@@ -678,8 +643,7 @@ pub enum DecodeHardwareAcceleration {
 }
 
 /// Settings for video decoding.
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash, serde::Deserialize, serde::Serialize)]
 pub struct DecodeSettings {
     /// How the video should be decoded.
     pub hw_acceleration: DecodeHardwareAcceleration,

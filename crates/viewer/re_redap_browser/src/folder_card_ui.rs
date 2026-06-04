@@ -160,5 +160,5 @@ fn collect_cards(
         }
     }
 
-    subfolders.into_values().chain(direct_entries).collect()
+    std::iter::chain(subfolders.into_values(), direct_entries).collect()
 }

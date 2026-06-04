@@ -202,6 +202,34 @@ jobs:
       - name: Check example thumbnails
         run: pixi run uvpy ./scripts/ci/thumbnails.py check
 
+  check-doc-order:
+    name: Check docs order
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: prefix-dev/setup-pixi@v0.9.4
+        with:
+          pixi-version: v0.55.0
+
+      - name: Check docs order
+        run: pixi run uvpy ./scripts/ci/check_doc_order.py
+
+  check-no-d2-code-blocks:
+    name: Check for D2 code blocks
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: prefix-dev/setup-pixi@v0.9.4
+        with:
+          pixi-version: v0.55.0
+
+      - name: Check for D2 code blocks
+        run: pixi run uvpy ./scripts/ci/check_d2_diagrams.py
+
   spell-check:
     name: Spell Check
     timeout-minutes: 60

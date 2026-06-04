@@ -564,12 +564,7 @@ impl BlueprintResolvedResultsExt<'_> for BlueprintResolvedRangeResults<'_> {
 
                 // TODO(cmc): this `collect_vec()` sucks, let's keep an eye on it and see if it ever
                 // becomes an issue.
-                Cow::Owned(
-                    defaults
-                        .into_iter()
-                        .chain(results_chunks.iter().cloned())
-                        .collect_vec(),
-                )
+                Cow::Owned(std::iter::chain(defaults, results_chunks.iter().cloned()).collect_vec())
             }
             ComponentSourceKind::Override => {
                 self.overrides

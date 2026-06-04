@@ -1,9 +1,10 @@
 use std::str::FromStr;
 
 /// The id for an entry (i.e. a dataset or a table) in a remote catalog.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(transparent))]
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, serde::Deserialize, serde::Serialize,
+)]
+#[serde(transparent)]
 pub struct EntryId {
     pub id: re_tuid::Tuid,
 }

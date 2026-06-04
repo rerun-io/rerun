@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **View**: For viewing spatial 2D data.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, ::re_byte_size::SizeBytes)]
 pub struct Spatial2DView {
     /// Configuration for the background of the view.
     pub background: crate::blueprint::archetypes::Background,
@@ -46,21 +47,5 @@ impl ::re_types_core::View for Spatial2DView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
         "2D".into()
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Spatial2DView {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.background.heap_size_bytes()
-            + self.visual_bounds.heap_size_bytes()
-            + self.time_ranges.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::archetypes::Background>::is_pod()
-            && <crate::blueprint::archetypes::VisualBounds2D>::is_pod()
-            && <crate::blueprint::archetypes::VisibleTimeRanges>::is_pod()
     }
 }

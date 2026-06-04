@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -30,7 +31,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// path.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct AnnotationContext(
     /// List of class descriptions, mapping class indices to class names, colors etc.
     pub Vec<crate::datatypes::ClassDescriptionMapElem>,
@@ -174,17 +175,5 @@ impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = 
 {
     fn from(v: T) -> Self {
         Self(v.into_iter().map(|v| v.into()).collect())
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AnnotationContext {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::datatypes::ClassDescriptionMapElem>>::is_pod()
     }
 }

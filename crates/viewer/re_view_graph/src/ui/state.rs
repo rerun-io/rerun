@@ -9,20 +9,10 @@ use crate::layout::{ForceLayoutParams, ForceLayoutProvider, Layout, LayoutReques
 /// View state for the custom view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 pub struct GraphViewState {
     pub layout_state: LayoutState,
     pub visual_bounds: Option<VisualBounds2D>,
-}
-
-impl re_byte_size::SizeBytes for GraphViewState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            layout_state,
-            visual_bounds,
-        } = self;
-        layout_state.heap_size_bytes() + visual_bounds.heap_size_bytes()
-    }
 }
 
 impl GraphViewState {
@@ -56,12 +46,16 @@ impl ViewState for GraphViewState {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
+    }
 }
 
 /// The following is a simple state machine that keeps track of the different
 /// layouts and if they need to be recomputed. It also holds the state of the
 /// force-based simulation.
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 pub enum LayoutState {
     #[default]
     None,
@@ -75,24 +69,6 @@ pub enum LayoutState {
         provider: ForceLayoutProvider,
         params: ForceLayoutParams,
     },
-}
-
-impl re_byte_size::SizeBytes for LayoutState {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::None => 0,
-            Self::InProgress {
-                layout,
-                provider,
-                params,
-            }
-            | Self::Finished {
-                layout,
-                provider,
-                params,
-            } => layout.heap_size_bytes() + provider.heap_size_bytes() + params.heap_size_bytes(),
-        }
-    }
 }
 
 impl LayoutState {

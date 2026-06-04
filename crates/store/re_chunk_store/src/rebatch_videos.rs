@@ -629,14 +629,12 @@ fn split_into_gop_groups<'a>(
         split_points.insert(0, 0);
     }
 
-    split_points
-        .windows(2)
-        .map(|w| &sample_index[w[0]..w[1]])
-        .chain(std::iter::once(
-            &sample_index[*split_points.last().unwrap_or(&0)..],
-        ))
-        .filter(|group| !group.is_empty())
-        .collect()
+    std::iter::chain(
+        split_points.windows(2).map(|w| &sample_index[w[0]..w[1]]),
+        std::iter::once(&sample_index[*split_points.last().unwrap_or(&0)..]),
+    )
+    .filter(|group| !group.is_empty())
+    .collect()
 }
 
 /// Materialize a GoP group into a single [`Chunk`] by extracting rows from source chunks.

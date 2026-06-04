@@ -39,6 +39,7 @@ re_uri.workspace = true
 # External
 anyhow.workspace = true
 async-stream.workspace = true
+futures.workspace = true
 itertools.workspace = true
 parking_lot.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport", "router"] }

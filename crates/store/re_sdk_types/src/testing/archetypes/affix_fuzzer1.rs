@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct AffixFuzzer1 {
     pub fuzz1001: Option<SerializedComponentBatch>,
     pub fuzz1002: Option<SerializedComponentBatch>,
@@ -1330,33 +1331,5 @@ impl AffixFuzzer1 {
     ) -> Self {
         self.fuzz1022 = try_serialize_field(Self::descriptor_fuzz1022(), fuzz1022);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer1 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.fuzz1001.heap_size_bytes()
-            + self.fuzz1002.heap_size_bytes()
-            + self.fuzz1003.heap_size_bytes()
-            + self.fuzz1004.heap_size_bytes()
-            + self.fuzz1005.heap_size_bytes()
-            + self.fuzz1006.heap_size_bytes()
-            + self.fuzz1007.heap_size_bytes()
-            + self.fuzz1008.heap_size_bytes()
-            + self.fuzz1009.heap_size_bytes()
-            + self.fuzz1010.heap_size_bytes()
-            + self.fuzz1011.heap_size_bytes()
-            + self.fuzz1012.heap_size_bytes()
-            + self.fuzz1013.heap_size_bytes()
-            + self.fuzz1014.heap_size_bytes()
-            + self.fuzz1015.heap_size_bytes()
-            + self.fuzz1016.heap_size_bytes()
-            + self.fuzz1017.heap_size_bytes()
-            + self.fuzz1018.heap_size_bytes()
-            + self.fuzz1019.heap_size_bytes()
-            + self.fuzz1020.heap_size_bytes()
-            + self.fuzz1021.heap_size_bytes()
-            + self.fuzz1022.heap_size_bytes()
     }
 }

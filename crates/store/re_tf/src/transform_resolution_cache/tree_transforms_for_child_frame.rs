@@ -24,7 +24,7 @@ use super::transforms_for_child_frame_events::TransformsForChildFrameEvents;
 /// Cached transforms from a single child frame to a (potentially changing) parent frame over time.
 ///
 /// Incorporates any static transforms that may apply to this entity.
-#[derive(Debug)]
+#[derive(Debug, SizeBytes)]
 pub struct TreeTransformsForChildFrame {
     // Is None if this is about static time.
     #[cfg(debug_assertions)]
@@ -75,25 +75,6 @@ impl PartialEq for TreeTransformsForChildFrame {
             && associated_entity_path_static == &other.associated_entity_path_static
             && child_frame == &other.child_frame
             && *events.read() == *other.events.read()
-    }
-}
-
-impl SizeBytes for TreeTransformsForChildFrame {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            associated_entity_path_temporal,
-            associated_entity_path_static,
-            child_frame,
-            events,
-
-            #[cfg(debug_assertions)]
-                timeline: _,
-        } = self;
-
-        associated_entity_path_temporal.heap_size_bytes()
-            + associated_entity_path_static.heap_size_bytes()
-            + child_frame.heap_size_bytes()
-            + events.read().heap_size_bytes()
     }
 }
 

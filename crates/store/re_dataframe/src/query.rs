@@ -423,6 +423,102 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 }
 
+/// Apply a user-supplied `selection` against a view-contents schema and
+/// return the resolved column list.
+///
+/// Each entry is `(idx, descr)` where `idx` is the column's position in
+/// `view_contents` if the selection hit a real column, or `usize::MAX` if
+/// the selector did not match (the corresponding entry will emit all-null
+/// values at query time).
+///
+/// Used by both [`QueryHandle::init_`] and [`crate::QueryEngine::selected_schema_for_query`].
+#[tracing::instrument(level = "trace", skip_all)]
+pub(crate) fn compute_user_selection(
+    view_contents: &[ColumnDescriptor],
+    selection: &[ColumnSelector],
+) -> Vec<(usize, ColumnDescriptor)> {
+    selection
+        .iter()
+        .map(|column| match column {
+            ColumnSelector::RowId => view_contents
+                .iter()
+                .enumerate()
+                .find_map(|(idx, view_column)| {
+                    if let ColumnDescriptor::RowId(descr) = view_column {
+                        Some((idx, ColumnDescriptor::RowId(descr.clone())))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| {
+                    (
+                        usize::MAX,
+                        ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
+                    )
+                }),
+
+            ColumnSelector::Time(selected_column) => {
+                let TimeColumnSelector {
+                    timeline: selected_timeline,
+                } = selected_column;
+
+                view_contents
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, view_column)| {
+                        if let ColumnDescriptor::Time(view_descr) = view_column {
+                            Some((idx, view_descr))
+                        } else {
+                            None
+                        }
+                    })
+                    .find(|(_idx, view_descr)| *view_descr.timeline().name() == *selected_timeline)
+                    .map_or_else(
+                        || {
+                            (
+                                usize::MAX,
+                                ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
+                                    *selected_timeline,
+                                )),
+                            )
+                        },
+                        |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
+                    )
+            }
+
+            ColumnSelector::Component(selected_column) => view_contents
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, view_column)| {
+                    if let ColumnDescriptor::Component(view_descr) = view_column {
+                        Some((idx, view_descr))
+                    } else {
+                        None
+                    }
+                })
+                .find(|(_idx, view_descr)| view_descr.matches(selected_column))
+                .map_or_else(
+                    || {
+                        (
+                            usize::MAX,
+                            ColumnDescriptor::Component(ComponentColumnDescriptor {
+                                entity_path: selected_column.entity_path.clone(),
+                                archetype: None,
+                                component: selected_column.component.as_str().into(),
+                                component_type: None,
+                                store_datatype: ArrowDataType::Null,
+                                is_static: false,
+                                is_tombstone: false,
+                                is_semantically_empty: false,
+                            }),
+                        )
+                    },
+                    |(idx, view_descr)| (idx, ColumnDescriptor::Component(view_descr.clone())),
+                ),
+        })
+        .collect_vec()
+}
+
 impl<E: StorageEngineLike> QueryHandle<E> {
     /// Lazily initialize internal private state.
     ///
@@ -471,7 +567,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // The caller might have selected columns that do not exist in the view: they should
         // still appear in the results.
         let selected_contents: Vec<(_, _)> = if let Some(selection) = query.selection.as_ref() {
-            Self::compute_user_selection(&view_contents, selection)
+            compute_user_selection(&view_contents, selection)
         } else {
             view_contents.clone().into_iter().enumerate().collect()
         };
@@ -492,9 +588,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             let index_range = if query.filtered_index.is_none() {
                 AbsoluteTimeRange::EMPTY // static-only
             } else if let Some(using_index_values) = query.using_index_values.as_ref() {
-                using_index_values
-                    .first()
-                    .and_then(|start| using_index_values.last().map(|end| (start, end)))
+                Option::zip(using_index_values.first(), using_index_values.last())
                     .map_or(AbsoluteTimeRange::EMPTY, |(start, end)| {
                         AbsoluteTimeRange::new(*start, *end)
                     })
@@ -727,95 +821,6 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         }
     }
 
-    #[tracing::instrument(level = "trace", skip_all)]
-    fn compute_user_selection(
-        view_contents: &[ColumnDescriptor],
-        selection: &[ColumnSelector],
-    ) -> Vec<(usize, ColumnDescriptor)> {
-        selection
-            .iter()
-            .map(|column| match column {
-                ColumnSelector::RowId => view_contents
-                    .iter()
-                    .enumerate()
-                    .find_map(|(idx, view_column)| {
-                        if let ColumnDescriptor::RowId(descr) = view_column {
-                            Some((idx, ColumnDescriptor::RowId(descr.clone())))
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or_else(|| {
-                        (
-                            usize::MAX,
-                            ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
-                        )
-                    }),
-
-                ColumnSelector::Time(selected_column) => {
-                    let TimeColumnSelector {
-                        timeline: selected_timeline,
-                    } = selected_column;
-
-                    view_contents
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(idx, view_column)| {
-                            if let ColumnDescriptor::Time(view_descr) = view_column {
-                                Some((idx, view_descr))
-                            } else {
-                                None
-                            }
-                        })
-                        .find(|(_idx, view_descr)| {
-                            *view_descr.timeline().name() == *selected_timeline
-                        })
-                        .map_or_else(
-                            || {
-                                (
-                                    usize::MAX,
-                                    ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
-                                        *selected_timeline,
-                                    )),
-                                )
-                            },
-                            |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
-                        )
-                }
-
-                ColumnSelector::Component(selected_column) => view_contents
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(idx, view_column)| {
-                        if let ColumnDescriptor::Component(view_descr) = view_column {
-                            Some((idx, view_descr))
-                        } else {
-                            None
-                        }
-                    })
-                    .find(|(_idx, view_descr)| view_descr.matches(selected_column))
-                    .map_or_else(
-                        || {
-                            (
-                                usize::MAX,
-                                ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                    entity_path: selected_column.entity_path.clone(),
-                                    archetype: None,
-                                    component: selected_column.component.as_str().into(),
-                                    component_type: None,
-                                    store_datatype: ArrowDataType::Null,
-                                    is_static: false,
-                                    is_tombstone: false,
-                                    is_semantically_empty: false,
-                                }),
-                            )
-                        },
-                        |(idx, view_descr)| (idx, ColumnDescriptor::Component(view_descr.clone())),
-                    ),
-            })
-            .collect_vec()
-    }
-
     #[tracing::instrument(level = "debug", skip_all)]
     fn fetch_view_chunks(
         query: &QueryExpression,
@@ -952,11 +957,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         .filter_map(|chunk| chunk_filter_recursive_only(&chunk))
                     });
 
-                let chunks = flat_chunks
-                    .into_iter()
-                    .chain(recursive_chunks)
-                    // The component data is irrelevant.
-                    // We do not expose the actual tombstones to end-users, only their _effect_.
+                // The component data is irrelevant.
+                // We do not expose the actual tombstones to end-users, only their _effect_.
+                let chunks = std::iter::chain(flat_chunks, recursive_chunks)
                     .map(|chunk| chunk.components_removed())
                     .collect_vec();
 
@@ -1108,12 +1111,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             return;
         }
 
-        for (state_chunks, iter_chunks) in state
-            .view_chunks
-            .iter()
-            .zip(iter_state.view_chunks.iter_mut())
+        for (state_chunks, iter_chunks) in
+            std::iter::zip(&state.view_chunks, &mut iter_state.view_chunks)
         {
-            for (bundle, cc) in state_chunks.iter().zip(iter_chunks.iter_mut()) {
+            for (bundle, cc) in std::iter::zip(state_chunks, iter_chunks) {
                 // NOTE: The chunk has been densified already: its global time range is the same as
                 // the time range for the specific component of interest.
                 let Some(time_column) = bundle.chunk.timelines().get(&state.filtered_index) else {
@@ -1333,13 +1334,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .selected_contents
             .iter()
             .map(|(view_idx, column)| match column {
-                ColumnDescriptor::RowId(_) => state
-                    .view_chunks
-                    .first()
-                    .and_then(|vec| vec.first()) // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
-                    .zip(iter_state.view_chunks.first().and_then(|vec| vec.first()))
-                    .map(|(cc, cs)| as_array_ref(cc.chunk.row_ids_array().slice(cs.cursor as _, 1)))
-                    .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
+                ColumnDescriptor::RowId(_) => Option::zip(
+                    state.view_chunks.first().and_then(|vec| vec.first()), // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
+                    iter_state.view_chunks.first().and_then(|vec| vec.first()),
+                )
+                .map(|(cc, cs)| as_array_ref(cc.chunk.row_ids_array().slice(cs.cursor as _, 1)))
+                .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
 
                 ColumnDescriptor::Time(descr) => resolved.get(descr.timeline().name()).map_or_else(
                     || arrow::array::new_null_array(&column.arrow_datatype(), 1),
@@ -1385,15 +1385,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         view_streaming_state.clear();
         view_streaming_state.resize_with(state.view_chunks.len(), || None);
         let cur_index_value_i64 = cur_index_value.as_i64();
-        for (view_column_idx, (view_chunks, iter_chunks)) in state
-            .view_chunks
-            .iter()
-            .zip(iter_state.view_chunks.iter_mut())
-            .enumerate()
+        for (view_column_idx, (view_chunks, iter_chunks)) in
+            std::iter::zip(&state.view_chunks, &mut iter_state.view_chunks).enumerate()
         {
             let mut entry: Option<StreamingJoinStateEntry<'state>> = None;
 
-            'overlaps: for (cc, cs) in view_chunks.iter().zip(iter_chunks.iter_mut()) {
+            'overlaps: for (cc, cs) in std::iter::zip(view_chunks, iter_chunks) {
                 // H1: skip chunks that already finished a prior row.
                 if cs.exhausted {
                     continue 'overlaps;
@@ -1816,12 +1813,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             continue;
                         };
 
-                        if let Some((cc, cs)) = state
-                            .view_chunks
-                            .first()
-                            .and_then(|v| v.first())
-                            .zip(iter_state.view_chunks.first().and_then(|v| v.first()))
-                        {
+                        if let Some((cc, cs)) = Option::zip(
+                            state.view_chunks.first().and_then(|v| v.first()),
+                            iter_state.view_chunks.first().and_then(|v| v.first()),
+                        ) {
                             // TODO(#9922): verify that using the row:ids from the first chunk
                             // always makes sense.
                             let id = std::ptr::from_ref::<Chunk>(&cc.chunk);
@@ -2140,7 +2135,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             let cs_chunks = &mut iter_state.view_chunks[view_idx];
             let mut found: Option<ColumnRunClass> = None;
 
-            for (chunk_idx, (cc, cs)) in std::iter::zip(chunks, cs_chunks.iter_mut()).enumerate() {
+            for (chunk_idx, (cc, cs)) in std::iter::zip(chunks, cs_chunks).enumerate() {
                 if cs.exhausted {
                     continue;
                 }
@@ -2654,11 +2649,11 @@ mod tests {
         let query = QueryExpression {
             filtered_index,
             filtered_index_values: Some(
-                [0, 30, 60, 90]
-                    .into_iter()
-                    .map(TimeInt::new_temporal)
-                    .chain(std::iter::once(TimeInt::STATIC))
-                    .collect(),
+                std::iter::chain(
+                    [0, 30, 60, 90].into_iter().map(TimeInt::new_temporal),
+                    std::iter::once(TimeInt::STATIC),
+                )
+                .collect(),
             ),
             ..Default::default()
         };
@@ -2695,11 +2690,13 @@ mod tests {
             let query = QueryExpression {
                 filtered_index,
                 using_index_values: Some(
-                    [0, 15, 30, 30, 45, 60, 75, 90]
-                        .into_iter()
-                        .map(TimeInt::new_temporal)
-                        .chain(std::iter::once(TimeInt::STATIC))
-                        .collect(),
+                    std::iter::chain(
+                        [0, 15, 30, 30, 45, 60, 75, 90]
+                            .into_iter()
+                            .map(TimeInt::new_temporal),
+                        std::iter::once(TimeInt::STATIC),
+                    )
+                    .collect(),
                 ),
                 ..Default::default()
             };
@@ -2723,11 +2720,13 @@ mod tests {
             let query = QueryExpression {
                 filtered_index,
                 using_index_values: Some(
-                    [0, 15, 30, 30, 45, 60, 75, 90]
-                        .into_iter()
-                        .map(TimeInt::new_temporal)
-                        .chain(std::iter::once(TimeInt::STATIC))
-                        .collect(),
+                    std::iter::chain(
+                        [0, 15, 30, 30, 45, 60, 75, 90]
+                            .into_iter()
+                            .map(TimeInt::new_temporal),
+                        std::iter::once(TimeInt::STATIC),
+                    )
+                    .collect(),
                 ),
                 sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
                 ..Default::default()
@@ -3334,11 +3333,13 @@ mod tests {
             let query = QueryExpression {
                 filtered_index,
                 using_index_values: Some(
-                    [0, 15, 30, 30, 45, 60, 75, 90]
-                        .into_iter()
-                        .map(TimeInt::new_temporal)
-                        .chain(std::iter::once(TimeInt::STATIC))
-                        .collect(),
+                    std::iter::chain(
+                        [0, 15, 30, 30, 45, 60, 75, 90]
+                            .into_iter()
+                            .map(TimeInt::new_temporal),
+                        std::iter::once(TimeInt::STATIC),
+                    )
+                    .collect(),
                 ),
                 ..Default::default()
             };
@@ -4426,13 +4427,13 @@ mod tests {
                     other.len(),
                     "{label}: per-row count diverged vs {other_label}",
                 );
-                for (i, (a_row, b_row)) in rows_fwd.iter().zip(other).enumerate() {
+                for (i, (a_row, b_row)) in std::iter::zip(&rows_fwd, other).enumerate() {
                     assert_eq!(
                         a_row.len(),
                         b_row.len(),
                         "{label}: per-row column count diverged at row {i} vs {other_label}",
                     );
-                    for (col_idx, (a, b)) in a_row.iter().zip(b_row).enumerate() {
+                    for (col_idx, (a, b)) in std::iter::zip(a_row, b_row).enumerate() {
                         assert_eq!(
                             a.to_data(),
                             b.to_data(),

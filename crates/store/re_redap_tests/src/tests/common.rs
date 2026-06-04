@@ -123,7 +123,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
                 .iter()
                 .map(|id| (*id).to_owned().into())
                 .collect(),
-            layers_to_drop: layers_to_drop.iter().map(|s| (*s).to_owned()).collect(),
+            layers_to_drop: layers_to_drop.iter().copied().map(Into::into).collect(),
             force: false,
         };
 
@@ -631,13 +631,12 @@ impl DataSourcesDefinition {
     pub fn to_data_sources_ext(&self) -> Vec<ext::DataSource> {
         self.layers
             .iter()
-            .map(|(layer_name, path)| ext::DataSource {
-                storage_url: Url::from_file_path(path.as_path()).unwrap(),
-                layer: layer_name
-                    .clone()
-                    .unwrap_or_else(|| ext::DataSource::DEFAULT_LAYER.to_owned()),
-                is_prefix: false,
-                kind: ext::DataSourceKind::Rrd,
+            .map(|(layer_name, path)| {
+                let url = Url::from_file_path(path.as_path()).unwrap();
+                match layer_name {
+                    None => ext::DataSource::new_rrd_url(url),
+                    Some(layer) => ext::DataSource::new_rrd_layer(layer, url.as_str()).unwrap(),
+                }
             })
             .collect()
     }

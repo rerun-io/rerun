@@ -19,41 +19,32 @@ struct CustomPoints3D {
 
 impl rerun::AsComponents for CustomPoints3D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-        self.points3d
-            .as_serialized_batches()
-            .into_iter()
-            .chain(
-                std::iter::once(self.confidences.as_ref().and_then(|batch| {
-                    batch.serialized(ComponentDescriptor {
-                        archetype: Some("user.CustomPoints3D".into()),
-                        component: "user.CustomPoints3D:confidences".into(),
-                        component_type: Some(
-                            <Confidence as rerun::Component>::name(),
-                        ),
-                    })
-                }))
-                .flatten(),
-            )
-            .collect()
+        std::iter::chain(
+            self.points3d.as_serialized_batches(),
+            std::iter::once(self.confidences.as_ref().and_then(|batch| {
+                batch.serialized(ComponentDescriptor {
+                    archetype: Some("user.CustomPoints3D".into()),
+                    component: "user.CustomPoints3D:confidences".into(),
+                    component_type: Some(
+                        <Confidence as rerun::Component>::name(),
+                    ),
+                })
+            }))
+            .flatten(),
+        )
+        .collect()
     }
 }
 
 // ---
 
 /// A custom [`rerun::Component`] that is backed by a builtin [`rerun::Float32`] scalar.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, rerun::SizeBytes)]
 struct Confidence(rerun::Float32);
 
 impl From<f32> for Confidence {
     fn from(v: f32) -> Self {
         Self(rerun::Float32(v))
-    }
-}
-
-impl rerun::SizeBytes for Confidence {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
     }
 }
 

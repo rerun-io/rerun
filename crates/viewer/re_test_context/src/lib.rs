@@ -156,7 +156,8 @@ pub trait VisualizerBlueprintContext: BlueprintContext {
 
             self.save_blueprint_archetypes(
                 visualizer_path,
-                std::iter::once(&instruction as &dyn AsComponents).chain(
+                std::iter::chain(
+                    std::iter::once(&instruction as &dyn AsComponents),
                     visualizer
                         .overrides
                         .iter()
@@ -349,10 +350,8 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
         .into(),
 
         // None of these matter for tests as we're not going to draw to a surfaces.
-        surface: egui_wgpu::SurfaceConfig {
-            present_mode: wgpu::PresentMode::Immediate,
-            desired_maximum_frame_latency: None,
-        },
+        present_mode: wgpu::PresentMode::Immediate,
+        desired_maximum_frame_latency: None,
         on_surface_status: Arc::new(|_| {
             unreachable!("tests aren't expected to draw to surfaces");
         }),

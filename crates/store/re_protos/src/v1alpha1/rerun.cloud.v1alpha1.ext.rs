@@ -7,12 +7,14 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, Field, FieldRef, Int32Type, Int64Type, Schema, TimeUnit};
 use arrow::error::ArrowError;
+use itertools::Itertools as _;
 use prost::Name as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::{AbsoluteTimeRange, external::re_types_core::ComponentBatch as _};
 use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
+use re_types_core::{LayerClass, LayerName};
 
 use crate::cloud::v1alpha1::{
     DoBandwidthTestResponse, EntryKind, FetchChunksRequest, GetDatasetSchemaResponse,
@@ -160,7 +162,7 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterWithDatasetRequest> for RegisterWit
             data_sources: data_sources
                 .into_iter()
                 .map(TryInto::try_into)
-                .collect::<Result<Vec<_>, _>>()?,
+                .try_collect()?,
             on_duplicate: on_duplicate.try_into()?,
         })
     }
@@ -181,7 +183,7 @@ impl From<RegisterWithDatasetRequest> for crate::cloud::v1alpha1::RegisterWithDa
 #[derive(Debug)]
 pub struct UnregisterFromDatasetRequest {
     pub segments_to_drop: Vec<SegmentId>,
-    pub layers_to_drop: Vec<String>,
+    pub layers_to_drop: Vec<LayerName>,
     pub force: bool,
 }
 
@@ -203,8 +205,8 @@ impl TryFrom<crate::cloud::v1alpha1::UnregisterFromDatasetRequest>
             segments_to_drop: segments_to_drop
                 .into_iter()
                 .map(TryInto::try_into)
-                .collect::<Result<Vec<_>, _>>()?,
-            layers_to_drop,
+                .try_collect()?,
+            layers_to_drop: layers_to_drop.into_iter().map(LayerName::from).collect(),
             force,
         })
     }
@@ -214,7 +216,7 @@ impl From<UnregisterFromDatasetRequest> for crate::cloud::v1alpha1::UnregisterFr
     fn from(value: UnregisterFromDatasetRequest) -> Self {
         Self {
             segments_to_drop: value.segments_to_drop.into_iter().map(Into::into).collect(),
-            layers_to_drop: value.layers_to_drop,
+            layers_to_drop: value.layers_to_drop.into_iter().map(Into::into).collect(),
             force: value.force,
         }
     }
@@ -301,7 +303,7 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
             .segment_ids
             .into_iter()
             .map(TryInto::try_into)
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
 
         let result = Self {
             segment_ids,
@@ -313,7 +315,7 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
                     let id: re_tuid::Tuid = tuid.try_into()?;
                     Ok::<_, tonic::Status>(re_chunk::ChunkId::from_u128(id.as_u128()))
                 })
-                .collect::<Result<Vec<_>, _>>()?,
+                .try_collect()?,
 
             entity_paths: value
                 .entity_paths
@@ -323,7 +325,7 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
                         tonic::Status::invalid_argument(format!("invalid entity path: {err}"))
                     })
                 })
-                .collect::<Result<Vec<_>, _>>()?,
+                .try_collect()?,
 
             select_all_entity_paths: value.select_all_entity_paths,
 
@@ -581,7 +583,7 @@ impl QueryDatasetResponse {
     pub fn create_dataframe(
         chunk_ids: Vec<re_chunk::ChunkId>,
         chunk_segment_ids: Vec<String>,
-        chunk_layer_names: Vec<String>,
+        chunk_layer_names: Vec<LayerName>,
         chunk_keys: Vec<&[u8]>,
         chunk_entity_paths: Vec<String>,
         chunk_is_static: Vec<bool>,
@@ -608,7 +610,7 @@ impl QueryDatasetResponse {
     pub fn create_dataframe_with_timelines(
         chunk_ids: Vec<re_chunk::ChunkId>,
         chunk_segment_ids: Vec<String>,
-        chunk_layer_names: Vec<String>,
+        chunk_layer_names: Vec<LayerName>,
         chunk_keys: Vec<&[u8]>,
         chunk_entity_paths: Vec<String>,
         chunk_is_static: Vec<bool>,
@@ -623,6 +625,11 @@ impl QueryDatasetResponse {
         let mut chunk_direct_url_expiry_builder =
             PrimitiveDictionaryBuilder::<Int32Type, Int64Type>::new();
         chunk_direct_url_expiry_builder.extend(chunk_direct_urls_expiry);
+
+        let chunk_layer_names: Vec<String> = chunk_layer_names
+            .into_iter()
+            .map(LayerName::into_string)
+            .collect();
 
         let mut fields: Vec<FieldRef> = Self::fields();
         let mut columns: Vec<ArrayRef> = vec![
@@ -1981,13 +1988,17 @@ impl RegisterWithDatasetResponse {
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
         segment_ids: Vec<String>,
-        segment_layers: Vec<String>,
+        segment_layers: Vec<LayerName>,
         segment_types: Vec<String>,
         storage_urls: Vec<String>,
         task_ids: Vec<String>,
     ) -> arrow::error::Result<RecordBatch> {
         let row_count = segment_ids.len();
         let schema = Arc::new(Self::schema());
+        let segment_layers: Vec<String> = segment_layers
+            .into_iter()
+            .map(LayerName::into_string)
+            .collect();
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(segment_ids)),
             Arc::new(StringArray::from(segment_layers)),
@@ -2030,7 +2041,9 @@ impl UnregisterFromDatasetResponse {
 
 // --- ScanSegmentTableResponse --
 
+// One row per segment
 impl ScanSegmentTableResponse {
+    /// The unique identifier of the segment.
     pub const FIELD_SEGMENT_ID: &str = "rerun_segment_id";
 
     /// Layer names for this segment, one per layer.
@@ -2117,7 +2130,7 @@ impl ScanSegmentTableResponse {
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
         segment_ids: Vec<String>,
-        layer_names: Vec<Vec<String>>,
+        layer_names: Vec<Vec<LayerName>>,
         storage_urls: Vec<Vec<String>>,
         last_updated_at: Vec<i64>,
         num_chunks: Vec<u64>,
@@ -2129,9 +2142,11 @@ impl ScanSegmentTableResponse {
         let mut layer_names_builder =
             ListBuilder::new(StringBuilder::new()).with_field(Self::field_layer_names_inner());
 
-        for mut inner_vec in layer_names {
-            for layer_name in inner_vec.drain(..) {
-                layer_names_builder.values().append_value(layer_name)
+        for inner_vec in layer_names {
+            for layer_name in inner_vec {
+                layer_names_builder
+                    .values()
+                    .append_value(layer_name.as_str());
             }
             layer_names_builder.append(true);
         }
@@ -2172,20 +2187,51 @@ impl ScanSegmentTableResponse {
 
 // --- ScanDatasetManifestResponse --
 
+/// Column constants and helpers for the dataset manifest.
+///
+/// Terminology:
+/// * A *layer* is a named slice of data that spans many segments (e.g. "base", "embeddings").
+///     * A *Segment Layer* has one source per segment it appears in (=every segment is different)
+///     * An *Asset Layer* consists of a single source shared by all segments of the dataset (e.g. "robot_urdf").
+/// * A *source* is a single `.rrd` (or, in the future, `.mcap` etc)
+/// * A single segment is the concatenation of all the sources of all the layers it has data in.
+///
+/// The dataset manifest has one row per (layer, segment) pair,
+/// i.e. a segment layer appears once per segment it has data in.
+/// An asset layer is also listed once per segment,
+/// even though all of those rows are backed by the same shared source.
+/// Corollary: an asset layer registered to a dataset without segments is invisible in the manifest.
+//
+// TODO(RR-4807): consider this choice, e.g. a single row per asset layer with a NULL segment id instead.
 impl ScanDatasetManifestResponse {
+    /// The name of the layer.
     pub const FIELD_LAYER_NAME: &str = "rerun_layer_name";
+
+    /// The segment this row belongs to.
     pub const FIELD_SEGMENT_ID: &str = "rerun_segment_id";
+
+    /// Where the data of this row's source is stored.
     pub const FIELD_STORAGE_URL: &str = "rerun_storage_url";
+
+    /// The kind of data source backing this row, e.g. `rrd` (see `DataSourceKind`).
     pub const FIELD_LAYER_TYPE: &str = "rerun_layer_type";
 
-    /// Time at which the layer was initially registered.
+    /// Time at which this row's source was initially registered.
     pub const FIELD_REGISTRATION_TIME: &str = "rerun_registration_time";
 
     /// When was this row of the manifest modified last?
     pub const FIELD_LAST_UPDATED_AT: &str = "rerun_last_updated_at";
+
+    /// Total number of chunks in this row's source.
     pub const FIELD_NUM_CHUNKS: &str = "rerun_num_chunks";
+
+    /// Total size in bytes of this row's source.
     pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
+
+    /// SHA-256 hash of the schema of this row's source.
     pub const FIELD_SCHEMA_SHA256: &str = "rerun_schema_sha256";
+
+    /// The registration status of this row's source (see [`LayerRegistrationStatus`]).
     pub const FIELD_REGISTRATION_STATUS: &str = "rerun_registration_status";
 
     pub fn field_layer_name() -> FieldRef {
@@ -2265,7 +2311,7 @@ impl ScanDatasetManifestResponse {
 
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
-        layer_names: Vec<String>,
+        layer_names: Vec<LayerName>,
         segment_ids: Vec<String>,
         storage_urls: Vec<String>,
         layer_types: Vec<String>,
@@ -2284,6 +2330,10 @@ impl ScanDatasetManifestResponse {
             schema_sha256_builder.append_value(sha256.as_slice())?;
         }
 
+        let layer_names: Vec<String> = layer_names
+            .into_iter()
+            .map(LayerName::into_string)
+            .collect();
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(layer_names)),
             Arc::new(StringArray::from(segment_ids)),
@@ -2314,10 +2364,20 @@ impl ScanDatasetManifestResponse {
 
 // --- DataSource --
 
+/// The file format of a [`DataSource`].
 // NOTE: Match the values of the Protobuf definition to keep life simple.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum DataSourceKind {
+    /// Rerun recording data (`.rrd` files).
     Rrd = 1,
+}
+
+impl std::fmt::Display for DataSourceKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Rrd => write!(f, "rrd"),
+        }
+    }
 }
 
 impl TryFrom<crate::cloud::v1alpha1::DataSourceKind> for DataSourceKind {
@@ -2414,23 +2474,40 @@ fn datasourcekind_roundtrip() {
     assert_eq!(DataSourceKind::Rrd, kind);
 }
 
+/// A pointer to one or more recording files stored in object storage.
+///
+/// A `DataSource` identifies a single file (when `is_prefix = false`) or
+/// all files that share a common URL prefix (when `is_prefix = true`).
+/// Every source belongs to a named [`LayerName`] within the dataset and
+/// carries a [`LayerClass`] that describes how segments relate to the layer.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DataSource {
+    /// URL of the recording file, or the common prefix when `is_prefix` is `true`.
     pub storage_url: url::Url,
+
+    /// If `true`, `storage_url` is a prefix and matches all objects with that prefix.
     pub is_prefix: bool,
-    pub layer: String,
+
+    /// The dataset layer this source belongs to (default: `"base"`).
+    pub layer: LayerName,
+
+    /// File format of the recording data.
     pub kind: DataSourceKind,
+
+    /// Whether this layer holds asset data (shared across segments) or per-segment data.
+    pub layer_class: LayerClass,
 }
 
 impl DataSource {
-    pub const DEFAULT_LAYER: &str = "base";
+    pub const DEFAULT_LAYER: &str = LayerName::DEFAULT_STR;
 
     pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
-            layer: Self::DEFAULT_LAYER.to_owned(),
+            layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Segment,
         })
     }
 
@@ -2438,8 +2515,9 @@ impl DataSource {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
-            layer: Self::DEFAULT_LAYER.to_owned(),
+            layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Segment,
         })
     }
 
@@ -2450,8 +2528,9 @@ impl DataSource {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
-            layer: layer.as_ref().into(),
+            layer: LayerName::new(layer.as_ref()),
             kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Segment,
         })
     }
 
@@ -2462,9 +2541,73 @@ impl DataSource {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
-            layer: layer.as_ref().into(),
+            layer: LayerName::new(layer.as_ref()),
             kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Segment,
         })
+    }
+
+    pub fn new_rrd_url(storage_url: url::Url) -> Self {
+        Self {
+            storage_url,
+            is_prefix: false,
+            layer: LayerName::base(),
+            kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Segment,
+        }
+    }
+
+    pub fn new_rrd_prefix_url(storage_url: url::Url) -> Self {
+        Self {
+            storage_url,
+            is_prefix: true,
+            layer: LayerName::base(),
+            kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Segment,
+        }
+    }
+
+    pub fn new_rrd_asset_layer(layer: impl AsRef<str>, storage_url: url::Url) -> Self {
+        Self {
+            storage_url,
+            is_prefix: false,
+            layer: LayerName::new(layer.as_ref()),
+            kind: DataSourceKind::Rrd,
+            layer_class: LayerClass::Asset,
+        }
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::LayerClass> for LayerClass {
+    type Error = TypeConversionError;
+
+    fn try_from(class: crate::cloud::v1alpha1::LayerClass) -> Result<Self, Self::Error> {
+        match class {
+            crate::cloud::v1alpha1::LayerClass::Asset => Ok(Self::Asset),
+            crate::cloud::v1alpha1::LayerClass::Segment => Ok(Self::Segment),
+            crate::cloud::v1alpha1::LayerClass::Unspecified => {
+                Err(TypeConversionError::InvalidField {
+                    package_name: "rerun.cloud.v1alpha1",
+                    type_name: "LayerClass",
+                    field_name: "",
+                    reason: "enum value unspecified".to_owned(),
+                })
+            }
+        }
+    }
+}
+
+fn layer_class_from_i32(class: i32) -> Result<LayerClass, TypeConversionError> {
+    let class = crate::cloud::v1alpha1::LayerClass::try_from(class)?;
+    class.try_into()
+}
+
+impl From<LayerClass> for crate::cloud::v1alpha1::LayerClass {
+    fn from(value: LayerClass) -> Self {
+        match value {
+            LayerClass::Asset => Self::Asset,
+            LayerClass::Segment => Self::Segment,
+        }
     }
 }
 
@@ -2473,8 +2616,9 @@ impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
         crate::cloud::v1alpha1::DataSource {
             storage_url: Some(value.storage_url.to_string()),
             prefix: value.is_prefix,
-            layer: Some(value.layer),
+            layer: Some(value.layer.into()),
             typ: value.kind as i32,
+            layer_class: crate::cloud::v1alpha1::LayerClass::from(value.layer_class) as i32,
         }
     }
 }
@@ -2490,17 +2634,25 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
 
         let layer = data_source
             .layer
-            .unwrap_or_else(|| Self::DEFAULT_LAYER.to_owned());
+            .map(LayerName::from)
+            .unwrap_or_else(LayerName::base);
 
         let kind = DataSourceKind::try_from(data_source.typ)?;
 
         let prefix = data_source.prefix;
+
+        let layer_class = if data_source.layer_class == 0 {
+            LayerClass::Segment // default when unspecified
+        } else {
+            layer_class_from_i32(data_source.layer_class)?
+        };
 
         Ok(Self {
             storage_url,
             is_prefix: prefix,
             layer,
             kind,
+            layer_class,
         })
     }
 }
@@ -3026,7 +3178,7 @@ mod tests {
     fn test_query_dataset_response_create_dataframe() {
         let chunk_ids = vec![re_chunk::ChunkId::new(), re_chunk::ChunkId::new()];
         let chunk_segment_ids = vec!["segment_id_1".to_owned(), "segment_id_2".to_owned()];
-        let chunk_layer_names = vec!["layer1".to_owned(), "layer2".to_owned()];
+        let chunk_layer_names = vec![LayerName::from("layer1"), LayerName::from("layer2")];
         let chunk_keys = vec![b"key1".to_byte_slice(), b"key2".to_byte_slice()];
         let chunk_entity_paths = vec!["/".to_owned(), "/".to_owned()];
         let chunk_is_static = vec![true, false];
@@ -3055,7 +3207,10 @@ mod tests {
     #[test]
     fn test_scan_segment_table_response_create_dataframe() {
         let segment_ids = vec!["1".to_owned(), "2".to_owned()];
-        let layer_names = vec![vec!["a".to_owned(), "b".to_owned()], vec!["c".to_owned()]];
+        let layer_names = vec![
+            vec![LayerName::from("a"), LayerName::from("b")],
+            vec![LayerName::from("c")],
+        ];
         let storage_urls = vec![vec!["d".to_owned(), "e".to_owned()], vec!["f".to_owned()]];
         let last_updated_at = vec![1, 2];
         let num_chunks = vec![1, 2];
@@ -3239,7 +3394,7 @@ mod tests {
     /// Ensure `crate_dataframe` implementation is consistent with `schema()`
     #[test]
     fn test_scan_dataset_manifest_response_create_dataframe() {
-        let layer_name = vec!["a".to_owned()];
+        let layer_name = vec![LayerName::from("a")];
         let segment_id = vec!["1".to_owned()];
         let storage_url = vec!["d".to_owned()];
         let layer_type = vec!["c".to_owned()];

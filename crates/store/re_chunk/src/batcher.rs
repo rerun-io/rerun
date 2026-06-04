@@ -125,7 +125,7 @@ impl std::fmt::Debug for BatcherHooks {
 /// Defines the different thresholds of the associated [`ChunkBatcher`].
 ///
 /// See [`Self::default`] and [`Self::from_env`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub struct ChunkBatcherConfig {
     /// Duration of the periodic tick.
     //
@@ -424,24 +424,16 @@ impl Drop for ChunkBatcherInner {
     }
 }
 
+#[derive(re_byte_size::SizeBytes)]
 enum Command {
     AppendChunk(Chunk),
     AppendRow(EntityPath, PendingRow),
     Flush {
+        #[size_bytes(ignore)]
         on_done: crossbeam::channel::Sender<()>,
     },
     UpdateConfig(ChunkBatcherConfig),
     Shutdown,
-}
-
-impl re_byte_size::SizeBytes for Command {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::AppendChunk(chunk) => chunk.heap_size_bytes(),
-            Self::AppendRow(_, row) => row.heap_size_bytes(),
-            Self::Flush { .. } | Self::UpdateConfig(_) | Self::Shutdown => 0,
-        }
-    }
 }
 
 impl Command {
@@ -786,7 +778,7 @@ fn batching_thread(
 /// A single row's worth of data (i.e. a single log call).
 ///
 /// Send those to the batcher to build up a [`Chunk`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub struct PendingRow {
     /// Auto-generated `TUID`, uniquely identifying this event and keeping track of the client's
     /// wall-clock.
@@ -826,19 +818,6 @@ impl PendingRow {
                 .map(|component| (component.descriptor.component, component))
                 .collect(),
         )
-    }
-}
-
-impl re_byte_size::SizeBytes for PendingRow {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            row_id,
-            timepoint,
-            components,
-        } = self;
-
-        row_id.heap_size_bytes() + timepoint.heap_size_bytes() + components.heap_size_bytes()
     }
 }
 

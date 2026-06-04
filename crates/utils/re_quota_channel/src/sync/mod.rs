@@ -423,6 +423,13 @@ impl<T> Receiver<T> {
     }
 }
 
+impl<T> re_byte_size::SizeBytes for Receiver<T> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.current_bytes()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// Create a new byte-bounded channel.

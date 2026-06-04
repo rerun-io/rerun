@@ -318,7 +318,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
         // Split the available width equally across the views, left-to-right, with no gap.
         ui.spacing_mut().item_spacing.x = 0.0;
         ui.columns(resolved.len(), |cols| {
-            for (col_ui, resolved) in cols.iter_mut().zip(resolved.into_iter()) {
+            for (col_ui, resolved) in std::iter::zip(cols, resolved) {
                 let Some(Resolved {
                     view_id,
                     view_blueprint,

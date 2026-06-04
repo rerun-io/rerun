@@ -1,5 +1,5 @@
-use re_byte_size::SizeBytes;
 use re_log_types::StoreId;
+use re_types_core::SegmentId;
 
 use crate::{Error, Fragment, Origin, RedapUri};
 
@@ -10,30 +10,17 @@ use crate::{Error, Fragment, Origin, RedapUri};
 ///
 /// `segment_id` is currently mandatory, and `time_range` is optional.
 /// In the future we will add richer queries.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
 pub struct DatasetSegmentUri {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
 
     // Query parameters: these affect what data is returned.
     /// Currently mandatory.
-    pub segment_id: String,
+    pub segment_id: SegmentId,
 
     // Fragment parameters: these affect what the viewer focuses on:
     pub fragment: Fragment,
-}
-
-impl SizeBytes for DatasetSegmentUri {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            origin,
-            dataset_id: _,
-            segment_id,
-            fragment,
-        } = self;
-
-        origin.heap_size_bytes() + segment_id.heap_size_bytes() + fragment.heap_size_bytes()
-    }
 }
 
 impl std::fmt::Display for DatasetSegmentUri {
@@ -71,11 +58,11 @@ impl DatasetSegmentUri {
             match key.as_ref() {
                 // Accept legacy `partition_id` query parameter.
                 "partition_id" => {
-                    legacy_partition_id = Some(value.to_string());
+                    legacy_partition_id = Some(SegmentId::from(value));
                 }
 
                 "segment_id" => {
-                    segment_id = Some(value.to_string());
+                    segment_id = Some(SegmentId::from(value));
                 }
                 _ => {
                     // We ignore unknown query keys that may be from urls from prior/newer versions.

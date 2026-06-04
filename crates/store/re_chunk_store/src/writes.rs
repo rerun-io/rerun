@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
 use arrow::array::Array as _;
 use itertools::Itertools as _;
 
@@ -10,12 +10,20 @@ use re_chunk::{Chunk, EntityPath, RowId};
 use re_log::debug_assert;
 use re_log_encoding::{RrdManifest, RrdManifestTemporalMapEntry};
 
+use crate::lineage::TrackedDirectChunkLineage;
 use crate::store::ChunkIdSetPerTime;
 use crate::{
     ChunkDeletionReason, ChunkDirectLineage, ChunkDirectLineageReport, ChunkId, ChunkStore,
     ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffAddition,
     ChunkStoreError, ChunkStoreEvent, ChunkStoreResult,
 };
+
+pub(crate) struct LineageDroppingCtx<'a> {
+    pub chunks_lineage: &'a mut HashMap<ChunkId, TrackedDirectChunkLineage>,
+    pub leaky_compactions: &'a mut HashMap<ChunkId, ChunkId>,
+    pub split_on_ingest: &'a mut HashSet<ChunkId>,
+    pub dangling_splits: &'a mut HashMap<ChunkId, Vec<ChunkId>>,
+}
 
 // ---
 
@@ -56,7 +64,11 @@ impl ChunkStore {
                 .map(|chunk_id| {
                     (
                         *chunk_id,
-                        ChunkDirectLineage::RootFromManifest { is_static: true },
+                        TrackedDirectChunkLineage {
+                            lineage: ChunkDirectLineage::RootFromManifest { is_static: true },
+                            ref_count: 0,
+                            descends_from_manifest: true,
+                        },
                     )
                 }),
         );
@@ -77,7 +89,11 @@ impl ChunkStore {
                 .map(|chunk_id| {
                     (
                         *chunk_id,
-                        ChunkDirectLineage::RootFromManifest { is_static: false },
+                        TrackedDirectChunkLineage {
+                            lineage: ChunkDirectLineage::RootFromManifest { is_static: false },
+                            ref_count: 0,
+                            descends_from_manifest: true,
+                        },
                     )
                 }),
         );
@@ -187,6 +203,56 @@ impl ChunkStore {
 
         let diffs = self.insert_chunk_impl(chunk, ChunkDirectLineageReport::Volatile)?;
         Ok(self.finalize_events(diffs))
+    }
+
+    fn insert_lineage_if_missing(&mut self, chunk_id: ChunkId, lineage: &ChunkDirectLineageReport) {
+        let lineage: ChunkDirectLineage = lineage.into();
+
+        let descends_from_manifest = match &lineage {
+            ChunkDirectLineage::SplitFrom(chunk_id, _) => self.descends_from_manifest(chunk_id),
+            ChunkDirectLineage::CompactedFrom(chunks) => {
+                chunks.iter().any(|c| self.descends_from_manifest(c))
+            }
+            ChunkDirectLineage::RootFromManifest { .. } => true,
+            ChunkDirectLineage::Volatile => false,
+        };
+
+        match self.chunks_lineage.entry(chunk_id) {
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                entry.insert(TrackedDirectChunkLineage {
+                    // Zero for now, add to this later.
+                    ref_count: 0,
+                    descends_from_manifest,
+                    lineage: lineage.clone(),
+                });
+
+                for chunk_id in lineage.iter_referenced_chunks() {
+                    let Some(l) = self.chunks_lineage.get_mut(chunk_id) else {
+                        continue;
+                    };
+
+                    l.ref_count += 1;
+                }
+            }
+            std::collections::hash_map::Entry::Occupied(entry) => {
+                if cfg!(debug_assertions) {
+                    if matches!(
+                        entry.get().lineage,
+                        ChunkDirectLineage::RootFromManifest { .. }
+                    ) && matches!(lineage, ChunkDirectLineage::Volatile)
+                    {
+                        // If we've already indicated that this chunk is from the manifest, don't
+                        // override with the default lineage `Volatile`.
+                    } else {
+                        re_log::debug_assert_eq!(
+                            entry.get().lineage,
+                            lineage,
+                            "Lineage for a specific chunk id should never change ({chunk_id})",
+                        );
+                    }
+                }
+            }
+        }
     }
 
     fn insert_chunk_impl(
@@ -307,10 +373,8 @@ impl ChunkStore {
             );
         }
 
-        self.chunks_lineage
-            .entry(chunk.id())
-            // `.or_insert_with` because we don't want to lose the RRD manifest lineage if there is one.
-            .or_insert_with(|| (&lineage).into());
+        // "if missing" because we don't want to lose the RRD manifest lineage if there is one.
+        self.insert_lineage_if_missing(chunk.id(), &lineage);
 
         // Splitting a static chunk just seems like a terrible idea in general.
         let chunk_is_static = chunk.is_static();
@@ -526,6 +590,16 @@ impl ChunkStore {
                         debug_assert!(chunk_removed.is_some());
 
                         if let Some(chunk_removed) = chunk_removed {
+                            Self::drop_lineage_reference(
+                                &mut LineageDroppingCtx {
+                                    chunks_lineage: &mut self.chunks_lineage,
+                                    leaky_compactions: &mut self.leaky_compactions,
+                                    split_on_ingest: &mut self.split_on_ingest,
+                                    dangling_splits: &mut self.dangling_splits,
+                                },
+                                &chunk_id,
+                            );
+
                             self.static_chunks_stats -=
                                 ChunkStoreChunkStats::from_chunk(&chunk_removed);
                             diffs.push(ChunkStoreDiff::deletion(
@@ -663,19 +737,22 @@ impl ChunkStore {
             };
             if let Some(elected_chunk) = &elected_chunk {
                 // NOTE: The chunk that we've just added has been compacted already!
-                let srcs: BTreeMap<_, _> =
-                    std::iter::once((chunk_before_processing.id(), chunk_before_processing))
-                        .chain(
-                            // NOTE: deep removal, we don't want a compacted chunk to linger on!
-                            self.remove_chunks_deep(
-                                vec![elected_chunk.clone()],
-                                None,
-                                ChunkDeletionReason::Compaction,
-                            )
-                            .into_iter()
-                            .map(|diff| (diff.chunk.id(), diff.chunk)),
-                        )
-                        .collect();
+                //
+                // We build `srcs` eagerly from the chunks we already have in hand, then wire up
+                // `leaky_compactions` and the new compacted chunk's lineage entry *before* removing
+                // the elected chunk. That way the elected chunk's `ref_count` is bumped by the new
+                // compacted chunk's lineage, and the cascading cleanup inside `remove_chunks_deep`
+                // sees a ref > 0 and leaves it (and the leaky_compactions entries that point to it)
+                // alone.
+                let srcs: BTreeMap<ChunkId, Arc<Chunk>> = [
+                    (
+                        chunk_before_processing.id(),
+                        Arc::clone(&chunk_before_processing),
+                    ),
+                    (elected_chunk.id(), Arc::clone(elected_chunk)),
+                ]
+                .into_iter()
+                .collect();
 
                 for source_id in srcs.keys().copied() {
                     let found = self
@@ -698,7 +775,17 @@ impl ChunkStore {
                     }
                 }
 
-                add.direct_lineage = ChunkDirectLineageReport::CompactedFrom(srcs);
+                let direct_lineage = ChunkDirectLineageReport::CompactedFrom(srcs);
+                self.insert_lineage_if_missing(chunk_or_compacted.id(), &direct_lineage);
+
+                // NOTE: deep removal, we don't want a compacted chunk to linger on!
+                self.remove_chunks_deep(
+                    vec![elected_chunk.clone()],
+                    None,
+                    ChunkDeletionReason::Compaction,
+                );
+
+                add.direct_lineage = direct_lineage;
             }
 
             (chunk_or_compacted, vec![add.into()])
@@ -706,15 +793,12 @@ impl ChunkStore {
 
         self.physical_chunks_per_chunk_id
             .insert(chunk_after_processing.id(), chunk_after_processing.clone());
-
-        for diff in &diffs {
-            if let ChunkStoreDiff::Addition(add) = diff
-                && let report @ ChunkDirectLineageReport::CompactedFrom(_) = &add.direct_lineage
-            {
-                self.chunks_lineage
-                    .insert(add.chunk_after_processing.id(), report.into());
-            }
+        // Account for the physical reference. The matching decrement happens in
+        // `remove_chunks_shallow` (via `drop_lineage_reference`).
+        if let Some(l) = self.chunks_lineage.get_mut(&chunk_after_processing.id()) {
+            l.ref_count += 1;
         }
+
         all_diffs.extend(diffs);
 
         // NOTE: ⚠️Make sure to recompute the Row ID range! The chunk might have been compacted
@@ -725,6 +809,52 @@ impl ChunkStore {
         }
 
         Ok(all_diffs)
+    }
+
+    fn remove_lineage_and_decrement_referenced_chunks(
+        ctx: &mut LineageDroppingCtx<'_>,
+        chunk_id: &ChunkId,
+    ) {
+        if let Some(lineage) = ctx.chunks_lineage.remove(chunk_id) {
+            ctx.leaky_compactions.remove(chunk_id);
+            ctx.split_on_ingest.remove(chunk_id);
+            ctx.dangling_splits.remove(chunk_id);
+
+            for chunk_id in lineage.iter_referenced_chunks() {
+                Self::drop_lineage_reference(ctx, chunk_id);
+            }
+        }
+    }
+
+    pub(crate) fn drop_lineage_reference(ctx: &mut LineageDroppingCtx<'_>, chunk_id: &ChunkId) {
+        let Some(lineage) = ctx.chunks_lineage.get_mut(chunk_id) else {
+            return;
+        };
+
+        lineage.ref_count = lineage.ref_count.saturating_sub(1);
+
+        if lineage.descends_from_manifest || lineage.ref_count > 0 {
+            return;
+        }
+
+        // Only remove splits if all siblings aren't referenced.
+        if let ChunkDirectLineage::SplitFrom(_, siblings) = &lineage.lineage {
+            let siblings = siblings.clone();
+
+            if siblings.iter().any(|chunk_id| {
+                ctx.chunks_lineage
+                    .get(chunk_id)
+                    .is_some_and(|l| l.ref_count > 0)
+            }) {
+                return;
+            }
+
+            for chunk_id in siblings {
+                Self::remove_lineage_and_decrement_referenced_chunks(ctx, &chunk_id);
+            }
+        }
+
+        Self::remove_lineage_and_decrement_referenced_chunks(ctx, chunk_id);
     }
 
     /// Finds the most appropriate candidate for compaction.
@@ -999,9 +1129,7 @@ impl ChunkStore {
                 *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
             });
 
-        let diffs: Vec<_> = dropped_static_chunks
-            .into_iter()
-            .chain(dropped_temporal_chunks)
+        let diffs: Vec<_> = std::iter::chain(dropped_static_chunks, dropped_temporal_chunks)
             .map(|chunk| ChunkStoreDiff::deletion(chunk, ChunkDeletionReason::ExplicitDrop))
             .collect();
 

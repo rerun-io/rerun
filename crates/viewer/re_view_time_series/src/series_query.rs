@@ -215,10 +215,10 @@ pub fn collect_colors(
         re_tracing::profile_scope!("override/default fast path");
 
         if let Some(colors) = all_color_chunks[0].iter_slices::<u32>().next() {
-            for (points, color) in points_per_series
-                .iter_mut()
-                .zip(clamped_or_nothing(colors, num_series))
-            {
+            for (points, color) in std::iter::zip(
+                points_per_series.iter_mut(),
+                clamped_or_nothing(colors, num_series),
+            ) {
                 let color = map_raw_color(color);
                 for point in points {
                     point.attrs.color = color;
@@ -236,10 +236,10 @@ pub fn collect_colors(
         if let Some(color_array) = fallback_array.as_primitive_opt::<UInt32Type>() {
             let fallback_colors = color_array.values();
 
-            for (points, color) in points_per_series
-                .iter_mut()
-                .zip(clamped_or_nothing(fallback_colors.as_ref(), num_series))
-            {
+            for (points, color) in std::iter::zip(
+                points_per_series.iter_mut(),
+                clamped_or_nothing(fallback_colors.as_ref(), num_series),
+            ) {
                 let color = map_raw_color(color);
                 for point in points {
                     point.attrs.color = color;
@@ -273,10 +273,10 @@ pub fn collect_colors(
         } else {
             all_frames.for_each(|(i, (_index, _scalars, colors))| {
                 if let Some(colors) = colors {
-                    for (points, color) in points_per_series
-                        .iter_mut()
-                        .zip(clamped_or_nothing(colors, num_series))
-                    {
+                    for (points, color) in std::iter::zip(
+                        points_per_series.iter_mut(),
+                        clamped_or_nothing(colors, num_series),
+                    ) {
                         points[i].attrs.color = map_raw_color(color);
                     }
                 }
@@ -289,8 +289,7 @@ pub fn collect_colors(
 /// For selectors like `data[]`, strips the `[]` suffix before adding indices.
 fn expand_series_names(names: &[String], num_series: usize) -> Vec<String> {
     let name_count = names.len();
-    (0..num_series)
-        .zip(clamped_or_nothing(names, num_series))
+    std::iter::zip(0..num_series, clamped_or_nothing(names, num_series))
         .map(|(i, name)| {
             if i < name_count {
                 name.clone()
@@ -373,10 +372,10 @@ pub fn collect_radius_ui(
             re_tracing::profile_scope!("override/default fast path");
 
             if let Some(radius) = all_radius_chunks[0].iter_slices::<f32>().next() {
-                for (points, radius) in points_per_series
-                    .iter_mut()
-                    .zip(clamped_or_nothing(radius, num_series))
-                {
+                for (points, radius) in std::iter::zip(
+                    points_per_series.iter_mut(),
+                    clamped_or_nothing(radius, num_series),
+                ) {
                     let radius = radius * radius_multiplier;
                     for point in points {
                         point.attrs.radius_ui = radius;
@@ -408,10 +407,10 @@ pub fn collect_radius_ui(
             } else {
                 all_frames.for_each(|(i, (_index, _scalars, radius))| {
                     if let Some(radii) = radius {
-                        for (points, stroke_width) in points_per_series
-                            .iter_mut()
-                            .zip(clamped_or_nothing(radii, num_series))
-                        {
+                        for (points, stroke_width) in std::iter::zip(
+                            points_per_series.iter_mut(),
+                            clamped_or_nothing(radii, num_series),
+                        ) {
                             points[i].attrs.radius_ui = stroke_width * radius_multiplier;
                         }
                     }

@@ -20,8 +20,9 @@ const PROPERTIES_PART: &str = "__properties";
 /// either the escaped or the unescaped version of it.
 ///
 /// In the file system analogy, this is the name of a folder.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone, Debug, Hash, PartialEq, Eq, re_byte_size::SizeBytes, serde::Deserialize, serde::Serialize,
+)]
 pub struct EntityPathPart(
     /// We use an interned string for fast copies, fast hashing, and to save memory.
     /// Note that `re_string_interner` never frees memory, but even if a user
@@ -29,12 +30,6 @@ pub struct EntityPathPart(
     /// will still only be in the low megabytes.
     InternedString,
 );
-
-impl re_byte_size::SizeBytes for EntityPathPart {
-    fn heap_size_bytes(&self) -> u64 {
-        0 // it's interned
-    }
-}
 
 impl EntityPathPart {
     /// The given string is expected to be unescaped, i.e. any `\` is treated as a normal character.

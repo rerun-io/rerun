@@ -7,12 +7,12 @@ use futures::StreamExt as _;
 use re_protos::cloud::v1alpha1::QueryTasksResponse;
 use re_protos::cloud::v1alpha1::ext::{DataSource, QueryTasksOnCompletionResponse};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
-use re_protos::common::v1alpha1::SegmentId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_redap_client::ConnectionClient;
 use re_sdk::external::re_tuid;
 use re_sdk::time::TimeType;
 use re_sdk::{RecordingStreamBuilder, TimeCell};
+use re_sdk_types::SegmentId;
 use re_viewer::external::re_sdk_types::archetypes;
 
 pub async fn load_test_data(mut client: ConnectionClient) -> Result<SegmentId, Box<dyn Error>> {
@@ -78,6 +78,7 @@ pub async fn load_test_data_with_name(
             IfDuplicateBehavior::Error,
         )
         .await?
+        .1
         .into_iter()
         .next()
         .expect("We created this with one segment");
@@ -120,5 +121,5 @@ pub async fn load_test_data_with_name(
         }
     }
 
-    Ok(segment_id.into())
+    Ok(segment_id)
 }

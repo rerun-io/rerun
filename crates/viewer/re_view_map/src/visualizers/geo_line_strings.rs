@@ -103,8 +103,8 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 // iterate over all instances
                 for (instance_index, (line, color, radius)) in itertools::izip!(
                     lines,
-                    colors.iter().chain(std::iter::repeat(&last_color)),
-                    radii.iter().chain(std::iter::repeat(&last_radii)),
+                    std::iter::chain(colors, std::iter::repeat(&last_color)),
+                    std::iter::chain(radii, std::iter::repeat(&last_radii)),
                 )
                 .enumerate()
                 {

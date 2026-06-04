@@ -57,14 +57,15 @@ impl Boxes2D {
 
         // The box semantics are such that the last half-size is used for all remaining boxes.
         if let Some(last_half_size) = half_sizes.last() {
-            let centers: Vec<_> = mins
-                .into_iter()
-                .zip(half_sizes.iter().chain(std::iter::repeat(last_half_size)))
-                .map(|(min, half_size)| {
-                    let min = min.into();
-                    Position2D::new(min.x() + half_size.x(), min.y() + half_size.y())
-                })
-                .collect();
+            let centers: Vec<_> = std::iter::zip(
+                mins,
+                std::iter::chain(&half_sizes, std::iter::repeat(last_half_size)),
+            )
+            .map(|(min, half_size)| {
+                let min = min.into();
+                Position2D::new(min.x() + half_size.x(), min.y() + half_size.y())
+            })
+            .collect();
             Self::from_half_sizes(half_sizes).with_centers(centers)
         } else {
             if mins.into_iter().next().is_some() {

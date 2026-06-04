@@ -72,7 +72,7 @@ impl rerun::external::re_sdk_types::ArchetypeReflectionMarker for ColorCoordinat
 /// The different modes for displaying color coordinates in the custom view.
 ///
 /// This blueprint component is manually encoded as a `UInt32` below.
-#[derive(Default, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Default, Debug, PartialEq, Eq, Clone, Copy, rerun::SizeBytes)]
 pub enum ColorCoordinatesMode {
     #[default]
     Hs,
@@ -104,16 +104,6 @@ impl ColorCoordinatesMode {
                 "invalid color coordinates mode: {value}"
             ))),
         }
-    }
-}
-
-impl rerun::SizeBytes for ColorCoordinatesMode {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
     }
 }
 

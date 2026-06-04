@@ -11,7 +11,7 @@ DEST_DIR="tests/assets/rrd"
 
 # TODO(emilk): only update missing files
 echo "Generating example .rrd files…"
-pixi run build-examples rrd --install --channel main ${DEST_DIR}/examples
+pixi run build-examples rrd --install --channel main "${DEST_DIR}/examples"
 
 echo "Generating snippet .rrd files…"
 pixi run uvpy docs/snippets/compare_snippet_output.py --no-py --no-cpp --write-missing-backward-assets

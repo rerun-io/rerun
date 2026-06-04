@@ -5,7 +5,7 @@ use re_types_core::{ArchetypeName, ComponentDescriptor, ComponentIdentifier, Com
 use crate::{ArrowFieldMetadata, BatchType, ColumnKind, ComponentColumnSelector, MetadataExt as _};
 
 /// This is an [`ArrowField`] that contains specific meta-data.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct ComponentColumnDescriptor {
     /// The Arrow datatype of the stored column.
     ///
@@ -64,27 +64,6 @@ pub struct ComponentColumnDescriptor {
     /// *IMPORTANT*: this is not always accurate, see [`crate::ChunkBatch::chunk_schema`].
     //TODO(#10315): fix this footgun
     pub is_semantically_empty: bool,
-}
-
-impl re_byte_size::SizeBytes for ComponentColumnDescriptor {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            entity_path,
-            archetype,
-            component,
-            component_type,
-            store_datatype,
-            is_static: _,
-            is_tombstone: _,
-            is_semantically_empty: _,
-        } = self;
-        entity_path.heap_size_bytes()
-            + archetype.heap_size_bytes()
-            + component.heap_size_bytes()
-            + component_type.heap_size_bytes()
-            + store_datatype.heap_size_bytes()
-    }
 }
 
 impl PartialOrd for ComponentColumnDescriptor {

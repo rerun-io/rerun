@@ -100,7 +100,14 @@ fn phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<String> {
         .iter()
         .find(|l| l.entity_path == EntityPath::from(entity))
         .unwrap_or_else(|| panic!("no lane for entity {entity}"));
-    lane.phases.iter().map(|p| p.label.clone()).collect()
+    lane.phases
+        .iter()
+        .map(|p| {
+            p.content
+                .as_ref()
+                .map_or_else(String::new, |s| s.label.clone())
+        })
+        .collect()
 }
 
 fn value_kind(lanes_data: &StateLanesData, entity: &str) -> StateValueKind {
@@ -126,7 +133,7 @@ where
 {
     let source_component = format!("{archetype_name}:{field_name}");
 
-    for (tick, array) in (0..3i64).zip(arrays) {
+    for (tick, array) in std::iter::zip(0..3i64, arrays) {
         let archetype = DynamicArchetype::new(archetype_name)
             .with_component_from_data(field_name, array.into());
         test_context.log_entity(entity, |builder| {
@@ -268,7 +275,9 @@ fn test_dynamic_archetype_multiple_same_type() {
     let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
     let entity = "/state/multi_same";
 
-    for (tick, (a, b)) in (0..3i64).zip([("Idle", "Off"), ("Active", "On"), ("Idle", "On")]) {
+    for (tick, (a, b)) in
+        std::iter::zip(0..3i64, [("Idle", "Off"), ("Active", "On"), ("Idle", "On")])
+    {
         let archetype = DynamicArchetype::new("multi_str")
             .with_component_from_data("mode", Arc::new(StringArray::from(vec![a])))
             .with_component_from_data("power", Arc::new(StringArray::from(vec![b])));
@@ -311,8 +320,13 @@ fn test_dynamic_archetype_multiple_same_type() {
         .find(|l| l.label.contains("multi_str:power"))
         .expect("expected a lane sourced from multi_str:power");
 
-    let mode_labels: Vec<_> = mode_lane.phases.iter().map(|p| p.label.clone()).collect();
-    let power_labels: Vec<_> = power_lane.phases.iter().map(|p| p.label.clone()).collect();
+    let phase_label = |p: &re_view_state_timeline::StateLanePhase| {
+        p.content
+            .as_ref()
+            .map_or_else(String::new, |s| s.label.clone())
+    };
+    let mode_labels: Vec<_> = mode_lane.phases.iter().map(phase_label).collect();
+    let power_labels: Vec<_> = power_lane.phases.iter().map(phase_label).collect();
     assert_eq!(mode_labels, vec!["Idle", "Active", "Idle"]);
     // "On" at ticks 1 and 2 merge into a single phase.
     assert_eq!(power_labels, vec!["Off", "On"]);
@@ -340,7 +354,7 @@ fn test_dynamic_archetype_multiple_different_types() {
         ("idle", 0.0_f64, false),
     ];
 
-    for (tick, (s, f, b)) in (0..3i64).zip(frames) {
+    for (tick, (s, f, b)) in std::iter::zip(0..3i64, frames) {
         let archetype = DynamicArchetype::new("multi_mix")
             .with_component_from_data("label", Arc::new(StringArray::from(vec![s])))
             .with_component_from_data("speed", Arc::new(Float64Array::from(vec![f])))

@@ -28,7 +28,7 @@ use sorted_temporal_chunks::SortedTemporalChunks;
 /// Is the following chunk loaded?
 ///
 /// The order here is used for priority to show the state in the ui (lower is more prioritized)
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, re_byte_size::SizeBytes)]
 enum LoadState {
     /// The chunk is not fully loaded, nor being loaded.
     ///
@@ -54,7 +54,7 @@ impl LoadState {
 }
 
 /// Info about a single chunk that we know ahead of loading it.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub struct RootChunkInfo {
     pub entity_path: EntityPath,
 
@@ -82,19 +82,7 @@ impl RootChunkInfo {
     }
 }
 
-impl re_byte_size::SizeBytes for RootChunkInfo {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            entity_path,
-            state: _,
-            row_id: _,
-            temporals,
-        } = self;
-        entity_path.heap_size_bytes() + temporals.heap_size_bytes()
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, re_byte_size::SizeBytes)]
 pub struct TemporalChunkInfo {
     pub timeline: Timeline,
 
@@ -107,19 +95,8 @@ pub struct TemporalChunkInfo {
     pub num_rows_for_all_entities_all_components: u64,
 }
 
-impl re_byte_size::SizeBytes for TemporalChunkInfo {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
 /// A cache used to calculate which ranges are loaded from a latest at perspective.
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 struct LoadedRanges {
     ranges: time_range_merger::MergedRanges,
 
@@ -127,19 +104,11 @@ struct LoadedRanges {
     timeline: TimelineName,
 }
 
-impl re_byte_size::SizeBytes for LoadedRanges {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { ranges, timeline } = self;
-
-        ranges.heap_size_bytes() + timeline.heap_size_bytes()
-    }
-}
-
 /// A secondary index that keeps track of which chunks have been loaded into memory.
 ///
 /// This is constructed from an [`RrdManifest`], which is what the server sends to the client/viewer.
 /// The manifest may be received in parts and concatenated together.
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct RrdManifestIndex {
     /// The raw manifest (accumulated from possibly multiple parts).
@@ -743,34 +712,6 @@ fn warn_when_editing_recording(store_kind: StoreKind, warning: &str) {
         StoreKind::Blueprint => {
             // We edit blueprint by generating new chunks in the viewer.
         }
-    }
-}
-
-impl re_byte_size::SizeBytes for RrdManifestIndex {
-    fn heap_size_bytes(&self) -> u64 {
-        re_tracing::profile_function!();
-
-        let Self {
-            entity_has_static_data,
-            manifest,
-            sorted_chunks,
-            loaded_ranges,
-            root_chunks: virtual_chunks,
-            chunk_prioritizer,
-            timelines,
-            data_time_ranges,
-            full_uncompressed_size: _,
-            manifest_complete: _,
-        } = self;
-
-        entity_has_static_data.heap_size_bytes()
-            + manifest.heap_size_bytes()
-            + sorted_chunks.heap_size_bytes()
-            + loaded_ranges.heap_size_bytes()
-            + virtual_chunks.heap_size_bytes()
-            + chunk_prioritizer.heap_size_bytes()
-            + timelines.heap_size_bytes()
-            + data_time_ranges.heap_size_bytes()
     }
 }
 

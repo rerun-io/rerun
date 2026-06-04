@@ -10,7 +10,6 @@
 
 pub mod external {
     pub use nohash_hasher;
-    #[cfg(feature = "serde")]
     pub use serde;
 }
 
@@ -27,7 +26,7 @@ fn hash(value: impl std::hash::Hash) -> u64 {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Copy, Clone, Eq)]
+#[derive(Copy, Clone, Eq, re_byte_size::SizeBytes)]
 pub struct InternedString {
     hash: u64, // TODO(emilk): consider removing the hash from the `InternedString` (benchmark!)
     string: &'static str,
@@ -132,7 +131,6 @@ impl std::fmt::Display for InternedString {
     }
 }
 
-#[cfg(feature = "serde")]
 impl serde::Serialize for InternedString {
     #[inline]
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -140,7 +138,6 @@ impl serde::Serialize for InternedString {
     }
 }
 
-#[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for InternedString {
     #[inline]
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -296,14 +293,11 @@ macro_rules! declare_new_type {
         }
 
         impl re_byte_size::SizeBytes for $StructName {
+            const IS_POD: bool = true;
+
             #[inline]
             fn heap_size_bytes(&self) -> u64 {
                 0
-            }
-
-            #[inline]
-            fn is_pod() -> bool {
-                true
             }
         }
     };

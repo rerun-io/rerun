@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Left or right boundary of a time range.
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub enum TimeRangeBoundary {
     /// Boundary is a value relative to the time cursor.
     CursorRelative(crate::datatypes::TimeInt),
@@ -321,22 +322,5 @@ impl crate::Loggable for TimeRangeBoundary {
                     .with_context("rerun.datatypes.TimeRangeBoundary")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TimeRangeBoundary {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        #![allow(clippy::match_same_arms)]
-        match self {
-            Self::CursorRelative(v) => v.heap_size_bytes(),
-            Self::Absolute(v) => v.heap_size_bytes(),
-            Self::Infinite => 0,
-        }
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TimeInt>::is_pod() && <crate::datatypes::TimeInt>::is_pod()
     }
 }

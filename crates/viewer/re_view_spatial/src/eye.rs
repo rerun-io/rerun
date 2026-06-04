@@ -20,24 +20,14 @@ use crate::scene_bounding_boxes::SceneBoundingBoxes;
 /// Note: we prefer the word "eye" to not confuse it with logged cameras.
 ///
 /// Our view-space uses RUB (X=Right, Y=Up, Z=Back).
-#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize, re_byte_size::SizeBytes,
+)]
 pub struct Eye {
     pub world_from_rub_view: IsoTransform,
 
     /// If no angle is present, this is an orthographic camera.
     pub fov_y: Option<f32>,
-}
-
-impl re_byte_size::SizeBytes for Eye {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl Eye {
@@ -164,17 +154,10 @@ impl Eye {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 struct EyeInterpolation {
     elapsed_time: f32,
     start: Eye,
-}
-
-impl re_byte_size::SizeBytes for EyeInterpolation {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
 }
 
 impl EyeInterpolation {
@@ -202,14 +185,16 @@ impl EyeInterpolation {
 /// Some non-persistent state for the eye.
 ///
 /// Note: we use "eye" so we don't confuse this with logged camera.
-#[derive(Default, Clone, Debug, PartialEq)]
+#[derive(Default, Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct EyeState {
     /// Vertical field of view in radians.
     fov_y: Option<f32>,
 
     velocity: Vec3,
 
-    /// The lasst tracked entity.
+    gamepad_interaction: Option<GamepadInteraction>,
+
+    /// The last tracked entity.
     ///
     /// This should not be used to get the current tracked entity, get that
     /// via view properties instead.
@@ -231,25 +216,18 @@ pub struct EyeState {
     pub last_eye_up: Option<Vec3>,
 }
 
-impl re_byte_size::SizeBytes for EyeState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            fov_y: _,
-            velocity: _,
-            last_tracked_entity,
-            interpolation,
-            spin: _,
-            last_eye,
-            last_interaction_time: _,
-            last_look_target: _,
-            last_orbit_radius: _,
-            last_eye_up: _,
-        } = self;
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
+struct GamepadInteraction {
+    pos: Vec3,
+    look_target: Vec3,
+    eye_up: Vec3,
+}
 
-        last_tracked_entity.heap_size_bytes()
-            + interpolation.heap_size_bytes()
-            + last_eye.heap_size_bytes()
-    }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum GamepadNavigationStatus {
+    Disconnected,
+    ConnectedInactive,
+    Active,
 }
 
 /// Utility struct for handling eye control parameter changes,
@@ -448,9 +426,11 @@ impl EyeController {
     /// Rotate based on a certain number of pixel delta.
     pub fn rotate(&mut self, delta: egui::Vec2) {
         let sensitivity = 0.004; // radians-per-point. TODO(emilk): take fov_y and canvas size into account
+        self.rotate_radians(sensitivity * delta);
+    }
 
-        let delta = sensitivity * delta;
-
+    /// Rotate based on a yaw/pitch delta in radians.
+    fn rotate_radians(&mut self, delta: egui::Vec2) {
         let mut rot = self.rotation();
         let radius = self.radius();
 
@@ -622,13 +602,73 @@ impl EyeController {
         }
     }
 
+    /// Listen to an active gamepad to move the eye.
+    fn handle_gamepad_navigation(
+        &mut self,
+        eye_state: &mut EyeState,
+        egui_ctx: &egui::Context,
+        enabled: bool,
+    ) -> GamepadNavigationStatus {
+        if !enabled {
+            return GamepadNavigationStatus::Disconnected;
+        }
+
+        let repaint_ctx = egui_ctx.clone();
+        re_gamepad::set_event_waker(move || repaint_ctx.request_repaint());
+
+        let dt = egui_ctx.input(|input| input.stable_dt.at_most(0.1));
+        let Some(navigation) = re_gamepad::navigation_from_active_gamepad(dt) else {
+            return GamepadNavigationStatus::Disconnected;
+        };
+
+        if !navigation.is_active() {
+            eye_state.velocity = Vec3::ZERO;
+            return GamepadNavigationStatus::ConnectedInactive;
+        }
+
+        let local_movement = navigation.local_movement;
+        let speed = (self.speed as f32) * navigation.speed_multiplier;
+        let world_movement = self.rotation() * (speed * local_movement);
+
+        eye_state.velocity = if local_movement == Vec3::ZERO {
+            Vec3::ZERO
+        } else {
+            egui::lerp(
+                eye_state.velocity..=world_movement,
+                egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
+            )
+        };
+        let delta = eye_state.velocity * dt;
+
+        self.pos += delta;
+        self.look_target += delta;
+
+        if navigation.look_delta_radians.length_squared() > 1.0e-6 {
+            self.rotate_radians(egui::vec2(
+                navigation.look_delta_radians.x,
+                navigation.look_delta_radians.y,
+            ));
+        }
+
+        self.did_interact |= navigation.is_active();
+        let requires_repaint =
+            navigation.is_active() || eye_state.velocity.length() > 0.01 * self.speed as f32;
+
+        if requires_repaint {
+            egui_ctx.request_repaint();
+        }
+
+        GamepadNavigationStatus::Active
+    }
+
     fn handle_input(
         &mut self,
         eye_state: &mut EyeState,
         response: &egui::Response,
         drag_threshold: f32,
         scene_bounding_box: &macaw::BoundingBox,
-    ) {
+        enable_gamepad_navigation: bool,
+    ) -> GamepadNavigationStatus {
         // Modify speed based on modifiers:
         let os = response.ctx.os();
         response.ctx.input(|input| {
@@ -656,9 +696,14 @@ impl EyeController {
             response.request_focus();
         }
 
+        let gamepad_navigation_status =
+            self.handle_gamepad_navigation(eye_state, &response.ctx, enable_gamepad_navigation);
+
         if self.did_interact {
             eye_state.last_interaction_time = Some(response.ctx.time());
         }
+
+        gamepad_navigation_status
     }
 }
 
@@ -726,6 +771,7 @@ impl EyeState {
         response: &egui::Response,
         cameras: &[PinholeWrapper],
         bounding_boxes: &SceneBoundingBoxes,
+        enable_gamepad_navigation: bool,
     ) -> Result<Eye, ViewPropertyQueryError> {
         let mut eye_controller = EyeController::from_blueprint(ctx, eye_property, self.fov_y)?;
 
@@ -737,19 +783,19 @@ impl EyeState {
             ..
         } = eye_controller;
 
+        if let Some(gamepad_interaction) = &self.gamepad_interaction {
+            eye_controller.pos = gamepad_interaction.pos;
+            eye_controller.look_target = gamepad_interaction.look_target;
+            eye_controller.eye_up = gamepad_interaction.eye_up;
+        }
+
         let mut drag_threshold = 0.0;
 
         let tracking_entity = eye_property
             .component_or_empty::<re_sdk_types::components::EntityPath>(
                 EyeControls3D::descriptor_tracking_entity().component,
             )?
-            .and_then(|tracking_entity| {
-                if tracking_entity.is_empty() {
-                    None
-                } else {
-                    Some(tracking_entity)
-                }
-            });
+            .filter(|tracking_entity| !tracking_entity.is_empty());
 
         if let Some(tracking_entity) = &tracking_entity {
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
@@ -763,20 +809,47 @@ impl EyeState {
 
         // We do input before tracking entity, because the input can cause the eye
         // to stop tracking.
-        eye_controller.handle_input(self, response, drag_threshold, &bounding_boxes.current);
+        let gamepad_navigation_status = eye_controller.handle_input(
+            self,
+            response,
+            drag_threshold,
+            &bounding_boxes.current,
+            enable_gamepad_navigation,
+        );
+
+        match gamepad_navigation_status {
+            GamepadNavigationStatus::Active => {
+                self.gamepad_interaction = Some(GamepadInteraction {
+                    pos: eye_controller.pos,
+                    look_target: eye_controller.look_target,
+                    eye_up: eye_controller.eye_up,
+                });
+            }
+            GamepadNavigationStatus::ConnectedInactive | GamepadNavigationStatus::Disconnected => {
+                if self.gamepad_interaction.take().is_some() {
+                    eye_controller.did_interact = true;
+                }
+            }
+        }
 
         // If we interacted we write to the blueprint so reset spin offset.
         if eye_controller.did_interact {
             self.spin = None;
         }
 
-        eye_controller.save_to_blueprint(
-            ctx.viewer_ctx,
-            eye_property,
-            old_pos,
-            old_look_target,
-            old_eye_up,
-        );
+        // Gamepad input is not tracked by egui's `is_interacting` undo heuristic. Avoid creating
+        // one undo point per poll frame by only writing the final pose when the gamepad returns to
+        // neutral or disconnects.
+        // TODO(michael): find a nicer way to handle this, e.g. through a dedicated `interacting()` function.
+        if gamepad_navigation_status != GamepadNavigationStatus::Active {
+            eye_controller.save_to_blueprint(
+                ctx.viewer_ctx,
+                eye_property,
+                old_pos,
+                old_look_target,
+                old_eye_up,
+            );
+        }
 
         if let Some(tracked_eye) = self.handle_tracking_entity(
             ctx,
@@ -1114,6 +1187,7 @@ impl EyeState {
         response: &egui::Response,
         pinhole_cameras: &[PinholeWrapper],
         bounding_boxes: &SceneBoundingBoxes,
+        enable_gamepad_navigation: bool,
     ) -> Result<Eye, ViewPropertyQueryError> {
         let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
             ctx.blueprint_db(),
@@ -1127,6 +1201,7 @@ impl EyeState {
             response,
             pinhole_cameras,
             bounding_boxes,
+            enable_gamepad_navigation,
         )?;
 
         // If we use fallbacks for position and look target, continue to

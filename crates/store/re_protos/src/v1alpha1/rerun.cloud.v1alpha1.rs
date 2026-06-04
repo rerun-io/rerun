@@ -148,19 +148,25 @@ pub struct DataSource {
     /// Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
     #[prost(string, optional, tag = "1")]
     pub storage_url: ::core::option::Option<::prost::alloc::string::String>,
-    /// / Which segment layer should this data source be registered to?
+    /// Which segment layer should this data source be registered to?
     /// /
-    /// / Defaults to `base` if unspecified.
+    /// Defaults to `base` if unspecified.
     #[prost(string, optional, tag = "3")]
     pub layer: ::core::option::Option<::prost::alloc::string::String>,
-    /// / Is this a prefix URL (a directory)?
-    /// / If true, all files of `typ` under this prefix will be
-    /// / considered part of this data source.
+    /// Is this a prefix URL (a directory)?
+    /// If true, all files of `typ` under this prefix will be
+    /// considered part of this data source.
     #[prost(bool, tag = "4")]
     pub prefix: bool,
     /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
     #[prost(enumeration = "DataSourceKind", tag = "2")]
     pub typ: i32,
+    /// ⚠️ UNSTABLE: Is this an asset layer (shared across all segments) or a segment layer (one recording per segment)?
+    /// Defaults to LAYER_CLASS_SEGMENT if unspecified.
+    ///
+    /// TODO(RR-4797): remove unstable-warning
+    #[prost(enumeration = "LayerClass", tag = "5")]
+    pub layer_class: i32,
 }
 impl ::prost::Name for DataSource {
     const NAME: &'static str = "DataSource";
@@ -1038,7 +1044,7 @@ impl ::prost::Name for IndexValueList {
         "/rerun.cloud.v1alpha1.IndexValueList".into()
     }
 }
-/// / A chunk-level range query, aka `RangeRelevantChunks`.
+/// A chunk-level range query, aka `RangeRelevantChunks`.
 ///
 /// This has the exact same semantics as the query of the same name on our `ChunkStore`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1654,7 +1660,7 @@ pub struct RegisterTableRequest {
     pub name: ::prost::alloc::string::String,
     /// Information about the table to register.
     ///
-    /// This must be encoded message of one one of the following supported types:
+    /// This must be encoded message of one of the following supported types:
     /// - LanceTable
     #[prost(message, optional, tag = "2")]
     pub provider_details: ::core::option::Option<::prost_types::Any>,
@@ -2022,6 +2028,40 @@ impl DataSourceKind {
         }
     }
 }
+/// ⚠️ UNSTABLE: Describes the class of a dataset layer.
+///
+/// TODO(RR-4797): remove unstable-warning.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum LayerClass {
+    Unspecified = 0,
+    /// Asset layer: a single source (recording) shared across all segments in the layer.
+    Asset = 1,
+    /// Segment layer: one (or zero) sources (recordings) per segment in the layer.
+    Segment = 2,
+}
+impl LayerClass {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "LAYER_CLASS_UNSPECIFIED",
+            Self::Asset => "LAYER_CLASS_ASSET",
+            Self::Segment => "LAYER_CLASS_SEGMENT",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "LAYER_CLASS_UNSPECIFIED" => Some(Self::Unspecified),
+            "LAYER_CLASS_ASSET" => Some(Self::Asset),
+            "LAYER_CLASS_SEGMENT" => Some(Self::Segment),
+            _ => None,
+        }
+    }
+}
 #[derive(
     serde::Serialize,
     serde::Deserialize,
@@ -2189,11 +2229,11 @@ pub mod rerun_cloud_service_client {
     )]
     use tonic::codegen::http::Uri;
     use tonic::codegen::*;
-    /// The Rerun Cloud public API.
+    /// The catalog server public API.
     ///
     /// ## Headers
     ///
-    /// Most endpoints in the Rerun Cloud service require specific gRPC headers to be set.
+    /// Most endpoints in the catalog server service require specific gRPC headers to be set.
     ///
     /// The so-called "standard dataset headers" correspond to at least one of the following headers:
     /// * x-rerun-entry-id: ID of the entry of interest, e.g. `1860390B087BC65F602d68eb646c385c`.
@@ -2821,7 +2861,7 @@ pub mod rerun_cloud_service_client {
             self.inner.server_streaming(req, path, codec).await
         }
         /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
-        /// as information that can be sent back to Rerun Cloud to fetch the actual chunks as part
+        /// as information that can be sent back to the catalog server to fetch the actual chunks as part
         /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
         /// from the server about the chunks that contain relevant information. 2nd step is fetching
         /// those chunks (the actual data).
@@ -2864,7 +2904,7 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
+        /// Fetch specific chunks from the catalog server. In a 2-step query process, result of 1st phase,
         /// that is, the result of `QueryDataset` should include all the necessary information to send
         /// the actual chunk requests, which is the 2nd step of the query process.
         ///
@@ -3313,7 +3353,7 @@ pub mod rerun_cloud_service_server {
             > + std::marker::Send
             + 'static;
         /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
-        /// as information that can be sent back to Rerun Cloud to fetch the actual chunks as part
+        /// as information that can be sent back to the catalog server to fetch the actual chunks as part
         /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
         /// from the server about the chunks that contain relevant information. 2nd step is fetching
         /// those chunks (the actual data).
@@ -3344,7 +3384,7 @@ pub mod rerun_cloud_service_server {
                 Item = std::result::Result<super::FetchChunksResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
+        /// Fetch specific chunks from the catalog server. In a 2-step query process, result of 1st phase,
         /// that is, the result of `QueryDataset` should include all the necessary information to send
         /// the actual chunk requests, which is the 2nd step of the query process.
         ///
@@ -3415,11 +3455,11 @@ pub mod rerun_cloud_service_server {
             request: tonic::Request<super::DoGlobalMaintenanceRequest>,
         ) -> std::result::Result<tonic::Response<super::DoGlobalMaintenanceResponse>, tonic::Status>;
     }
-    /// The Rerun Cloud public API.
+    /// The catalog server public API.
     ///
     /// ## Headers
     ///
-    /// Most endpoints in the Rerun Cloud service require specific gRPC headers to be set.
+    /// Most endpoints in the catalog server service require specific gRPC headers to be set.
     ///
     /// The so-called "standard dataset headers" correspond to at least one of the following headers:
     /// * x-rerun-entry-id: ID of the entry of interest, e.g. `1860390B087BC65F602d68eb646c385c`.

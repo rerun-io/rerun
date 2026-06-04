@@ -1,5 +1,4 @@
 use std::collections::hash_map::Entry;
-use std::sync::LazyLock;
 
 use ahash::HashMap;
 use js_sys::{Function, Uint8Array};
@@ -20,15 +19,9 @@ use crate::{
     VideoDataDescription, VideoEncodingDetails, player::VideoPlaybackIssueSeverity,
 };
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct WebVideoFrame(pub(super) web_sys::VideoFrame);
-
-impl re_byte_size::SizeBytes for WebVideoFrame {
-    fn heap_size_bytes(&self) -> u64 {
-        0 // Part of Browser's memory, not wasm heap.
-    }
-}
+pub struct WebVideoFrame(#[size_bytes(ignore)] pub(super) web_sys::VideoFrame);
 
 impl Drop for WebVideoFrame {
     fn drop(&mut self) {
@@ -46,6 +39,7 @@ impl std::ops::Deref for WebVideoFrame {
 }
 
 /// Messages sent to the output callback.
+#[derive(re_byte_size::SizeBytes)]
 enum OutputCallbackMessage {
     Reset,
     FrameInfo {
@@ -54,18 +48,13 @@ enum OutputCallbackMessage {
     },
 }
 
-impl re_byte_size::SizeBytes for OutputCallbackMessage {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
-
 pub struct WebVideoDecoder {
     codec: VideoCodec,
 
     timescale: Timescale,
     first_frame_pts: Time,
 
+    codec_config: Option<web_sys::VideoDecoderConfig>,
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
     output_sender: Sender<FrameResult>,
@@ -130,21 +119,9 @@ unsafe impl Send for WebVideoFrame {}
 #[expect(clippy::undocumented_unsafe_blocks)]
 unsafe impl Sync for WebVideoFrame {}
 
-static IS_FIREFOX: LazyLock<bool> = LazyLock::new(|| {
-    web_sys::window()
-        .and_then(|w| w.navigator().user_agent().ok())
-        .is_some_and(|ua| ua.to_lowercase().contains("firefox"))
-});
-
 impl Drop for WebVideoDecoder {
     fn drop(&mut self) {
         re_log::debug!("Dropping WebVideoDecoder");
-        if *IS_FIREFOX {
-            // As of Firefox 140.0.4 we observe frequent tab crashes when calling `close` on a video decoder.
-            // It would be nice to at least call `reset` instead, but that _also_ tends to crash the tab.
-            // See https://bugzilla.mozilla.org/show_bug.cgi?id=1976929 for more details.
-            return;
-        }
 
         if let Err(err) = self.decoder.close() {
             if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>()
@@ -183,17 +160,33 @@ impl WebVideoDecoder {
             .find_map(|s| s.sample())
             .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
+        let codec_config = video_descr
+            .encoding_details
+            .as_ref()
+            .map(|encoding_details| js_video_decoder_config(encoding_details, hw_acceleration));
+
         Ok(Self {
             codec: video_descr.codec.clone(),
 
             timescale,
             first_frame_pts,
 
+            codec_config,
             decoder,
             hw_acceleration,
             output_sender,
             output_callback_tx,
         })
+    }
+
+    fn configure_webdecoder(&self) -> Result<(), WebError> {
+        let codec_config = self
+            .codec_config
+            .as_ref()
+            .ok_or(WebError::NotEnoughCodecInformation)?;
+        self.decoder
+            .configure(codec_config)
+            .map_err(|err| WebError::ConfigureFailure(string_from_js_value(&err)))
     }
 }
 
@@ -260,6 +253,38 @@ impl AsyncDecoder for WebVideoDecoder {
 
         let web_chunk = EncodedVideoChunk::new(&web_chunk)
             .map_err(|err| WebError::CreateChunk(string_from_js_value(&err)))?;
+
+        // Check the state of the decoder before submitting a chunk.
+        // We observed the decoder sometimes to enter into a closed or unconfigured state on its own,
+        // so we simply always do configuration just in time.
+        match self.decoder.state() {
+            // https://www.w3.org/TR/webcodecs/#dom-codecstate-closed
+            // "The codec is no longer usable and underlying system resources have been released."
+            // So we recreate the whole decoder from scratch.
+            web_sys::CodecState::Closed => {
+                let (decoder, output_callback_tx) = init_video_decoder(self.output_sender.clone())?;
+                self.decoder = decoder;
+                self.output_callback_tx = output_callback_tx;
+
+                self.configure_webdecoder()?;
+            }
+
+            // https://www.w3.org/TR/webcodecs/#dom-codecstate-unconfigured
+            // "The codec is not configured for encoding or decoding."
+            web_sys::CodecState::Unconfigured => {
+                self.configure_webdecoder()?;
+            }
+
+            // https://www.w3.org/TR/webcodecs/#dom-codecstate-configured
+            //A valid configuration has been provided. The codec is ready for encoding or decoding.
+            web_sys::CodecState::Configured => {}
+
+            // Shouldn't happen other than for spec changes or bugs in the stack.
+            other => {
+                re_log::warn_once!("Unexpected video decoder state: {other:?}");
+            }
+        }
+
         self.decoder
             .decode(&web_chunk)
             .map_err(|err| WebError::DecodeChunk(string_from_js_value(&err)))?;
@@ -277,15 +302,10 @@ impl AsyncDecoder for WebVideoDecoder {
             .send(OutputCallbackMessage::Reset)
             .ok();
 
-        if *IS_FIREFOX {
-            // As of Firefox 140.0.4 we observe frequent tab crashes when calling `reset` on a video decoder.
-            // See https://bugzilla.mozilla.org/show_bug.cgi?id=1976929 for more details.
-            let (decoder, output_callback_tx) = init_video_decoder(self.output_sender.clone())?;
-            self.decoder = decoder;
-            self.output_callback_tx = output_callback_tx;
-        } else if let Err(_err) = self.decoder.reset() {
+        if let Err(_err) = self.decoder.reset() {
             // It can happen that reset fails after a previously encountered error.
             // In that case, start over completely and try again!
+            // We don't do this bit lazily since we don't know for sure what state the decoder is in after a failed reset.
             re_log::debug!("Video decoder reset failed, recreating decoder.");
             let (decoder, output_callback_tx) = init_video_decoder(self.output_sender.clone())?;
             self.decoder = decoder;
@@ -303,13 +323,13 @@ impl AsyncDecoder for WebVideoDecoder {
             .encoding_details
             .as_ref()
             .ok_or(WebError::NotEnoughCodecInformation)?;
+        self.codec_config = Some(js_video_decoder_config(
+            encoding_details,
+            self.hw_acceleration,
+        ));
 
-        self.decoder
-            .configure(&js_video_decoder_config(
-                encoding_details,
-                self.hw_acceleration,
-            ))
-            .map_err(|err| WebError::ConfigureFailure(string_from_js_value(&err)).into())
+        // Actual codec configuration happens lazily on the first call to `submit_chunk`.
+        Ok(())
     }
 
     /// Called after submitting the last chunk.

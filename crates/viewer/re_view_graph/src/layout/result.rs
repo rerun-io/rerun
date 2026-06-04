@@ -6,19 +6,11 @@ use re_chunk::EntityPath;
 use super::EdgeGeometry;
 use crate::graph::{EdgeId, NodeId};
 
-#[derive(Debug)]
+#[derive(Debug, re_byte_size::SizeBytes)]
 pub struct Layout {
     pub(super) nodes: ahash::HashMap<NodeId, Rect>,
     pub(super) edges: ahash::HashMap<EdgeId, Vec<EdgeGeometry>>,
     pub(super) entities: Vec<(EntityPath, Rect)>,
-}
-
-impl re_byte_size::SizeBytes for Layout {
-    fn heap_size_bytes(&self) -> u64 {
-        self.nodes.heap_size_bytes()
-            + self.edges.heap_size_bytes()
-            + self.entities.heap_size_bytes()
-    }
 }
 
 fn bounding_rect_from_iter(rectangles: impl Iterator<Item = egui::Rect>) -> egui::Rect {

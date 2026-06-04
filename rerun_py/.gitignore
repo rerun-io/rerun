@@ -3,6 +3,7 @@
 pyo3-build.cfg
 rerun_sdk/rerun_cli/rerun
 rerun_sdk/rerun_cli/rerun.exe
+rerun_sdk/rerun_cli/Rerun.app/
 site/
 venv/
 wheels/

@@ -3,6 +3,7 @@
 use std::borrow::Borrow;
 use std::collections::HashMap;
 
+use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::{LogMsg, StoreId};
@@ -150,7 +151,7 @@ impl FooterState {
     }
 
     fn finish(self) -> Result<crate::RrdFooter, EncodeError> {
-        let manifests: Result<HashMap<StoreId, crate::RawRrdManifest>, _> = self
+        let manifests: HashMap<StoreId, crate::RawRrdManifest> = self
             .manifests
             .into_iter()
             .map(|(store_id, state)| {
@@ -159,11 +160,9 @@ impl FooterState {
                     .build(store_id.clone())
                     .map(|m| (store_id, m))
             })
-            .collect();
+            .try_collect()?;
 
-        Ok(crate::RrdFooter {
-            manifests: manifests?,
-        })
+        Ok(crate::RrdFooter { manifests })
     }
 }
 

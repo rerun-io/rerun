@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -26,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// For this purpose, we assume that the winding order of vertices in a mesh is
 /// consistent and that front faces are defined as those with vertices in counter clockwise order.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(u8)]
 pub enum MeshFaceRendering {
     /// Show both back and front faces.
@@ -165,17 +166,5 @@ impl ::re_types_core::reflection::Enum for MeshFaceRendering {
         Self::variants()
             .get((value as usize).wrapping_sub(1))
             .copied()
-    }
-}
-
-impl ::re_byte_size::SizeBytes for MeshFaceRendering {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
     }
 }

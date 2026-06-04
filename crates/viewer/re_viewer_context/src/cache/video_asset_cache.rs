@@ -19,7 +19,10 @@ use crate::image_info::StoredBlobCacheKey;
 
 // ----------------------------------------------------------------------------
 
+#[derive(re_byte_size::SizeBytes)]
 struct Entry {
+    // `AtomicBool` doesn't impl `SizeBytes`; it's POD (no heap).
+    #[size_bytes(ignore)]
     used_this_frame: AtomicBool,
 
     /// Keeps failed loads around, so we can don't try again and again.
@@ -27,17 +30,6 @@ struct Entry {
 
     /// Debug name for this video entry (typically the entity path).
     debug_name: String,
-}
-
-impl re_byte_size::SizeBytes for Entry {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            used_this_frame: _,
-            video,
-            debug_name,
-        } = self;
-        debug_name.heap_size_bytes() + video.heap_size_bytes()
-    }
 }
 
 /// Caches videos assets and their players based on media type & row id.

@@ -95,17 +95,13 @@ pub fn update_simulation(
     simulation
 }
 
+#[derive(re_byte_size::SizeBytes)]
 pub struct ForceLayoutProvider {
     // If all nodes are fixed, we can skip the simulation.
+    // `fjadra::Simulation` keeps its internals private; count layout inputs we own.
+    #[size_bytes(ignore)]
     simulation: Option<fj::Simulation>,
     pub request: LayoutRequest,
-}
-
-impl re_byte_size::SizeBytes for ForceLayoutProvider {
-    fn heap_size_bytes(&self) -> u64 {
-        // `fjadra::Simulation` keeps its internals private; count layout inputs we own.
-        self.request.heap_size_bytes()
-    }
 }
 
 fn considered_edges(request: &LayoutRequest) -> Vec<(usize, usize)> {

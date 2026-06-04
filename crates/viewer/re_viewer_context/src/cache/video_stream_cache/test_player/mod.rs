@@ -153,7 +153,7 @@ impl TestVideoPlayer {
         let received = self.sample_rx.try_iter().collect::<Vec<_>>();
         let expected = samples.into_iter().collect::<Vec<_>>();
 
-        if let Some((e, r)) = expected.iter().zip(received.iter()).find(|(a, b)| a != b) {
+        if let Some((e, r)) = std::iter::zip(&expected, &received).find(|(a, b)| a != b) {
             panic!(
                 "   Expected: {expected:?}\n   Received: {received:?}\nFirst Issue: expected {e}, got {r}"
             );
@@ -323,8 +323,11 @@ fn player_one_keyframe() {
     let count = 10;
     let dt = 0.1;
     let max_time = count as f64 * dt;
-    let video =
-        create_video(once(keyframe(0.0)).chain((1..count).map(|t| frame(t as f64 * dt)))).unwrap();
+    let video = create_video(std::iter::chain(
+        once(keyframe(0.0)),
+        (1..count).map(|t| frame(t as f64 * dt)),
+    ))
+    .unwrap();
 
     test_simple_video(video, count, dt, max_time);
 }

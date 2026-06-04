@@ -73,6 +73,21 @@ class ColumnDecoder(ABC):
         del field_path
         return None
 
+    @property
+    def fill_latest_at(self) -> bool:
+        """
+        Whether this column's prefetch read latest-at-fills empty grid slots.
+
+        `True` for stateless columns (images, scalars): each grid slot wants the
+        most recent value snapped from the real rows. Compressed video keeps it
+        `True` too (consecutive duplicates from a dense grid are dropped at
+        decode time), but a decoder reading frame-indexed data where the grid
+        lands 1:1 on real samples can override to `False` for exact, fill-free
+        packet reads. The read is partitioned by this flag so it stays a global
+        query argument per group rather than a per-column one.
+        """
+        return True
+
     def __repr__(self) -> str:
         return f"{type(self).__name__}()"
 
@@ -300,6 +315,13 @@ class VideoFrameDecoder(ColumnDecoder):
                 continue
             if self.codec == "h264" and not _is_annex_b(sample_bytes):
                 sample_bytes = _avcc_to_annex_b(sample_bytes)
+            # `fill_latest_at` repeats the previous frame's bytes for grid slots
+            # with no source frame, so the window can hold consecutive duplicate
+            # samples. Re-feeding a duplicate packet corrupts the decoder's
+            # reference state, so skip them.
+            # TODO(RR-4751): we should measure whether we can optimize this by doing precise queries when `VideoStream::is_keyframe` is present.
+            if samples and sample_bytes == samples[-1]:
+                continue
             samples.append(sample_bytes)
 
         # No bootstrap context: target precedes the first keyframe in the

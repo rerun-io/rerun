@@ -16,7 +16,7 @@ use crate::expanded_rows::ExpandedRowsCache;
 use crate::view_query;
 use crate::visualizer_system::EmptySystem;
 
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 struct DataframeViewState {
     /// Cache for the expanded rows.
     expanded_rows_cache: ExpandedRowsCache,
@@ -28,17 +28,6 @@ struct DataframeViewState {
     latest_time: Option<i64>,
 }
 
-impl re_byte_size::SizeBytes for DataframeViewState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            expanded_rows_cache,
-            view_columns,
-            latest_time: _,
-        } = self;
-        expanded_rows_cache.heap_size_bytes() + view_columns.heap_size_bytes()
-    }
-}
-
 impl ViewState for DataframeViewState {
     fn as_any(&self) -> &dyn Any {
         self
@@ -46,6 +35,10 @@ impl ViewState for DataframeViewState {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
     }
 }
 

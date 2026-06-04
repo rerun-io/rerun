@@ -148,34 +148,33 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
     // EXCLUDE COMPONENTS FROM THE PLACEHOLDER LIST HERE!
     //
 
-    let excluded_components = [
-        // TODO(#6661): these components still have special treatment via `DataUi` and
-        // `EntityDatatUi`. The hooks are registered by `re_data_ui::register_component_uis`, which
-        // is not available here. So basically no point testing them here.
-        re_sdk_types::components::AnnotationContext::name(),
-        re_sdk_types::components::Blob::name(),
-        re_sdk_types::components::ClassId::name(),
-        re_sdk_types::components::ImageBuffer::name(), // this one is not technically handled by `DataUi`, but should get a custom ui first (it's using default ui right now).
-        re_sdk_types::components::KeypointId::name(),
-        re_sdk_types::components::TensorData::name(),
-        //
-        // no need to clutter the tests with these internal blueprint types
-        re_sdk_types::blueprint::components::ActiveTab::name(),
-        re_sdk_types::blueprint::components::AutoLayout::name(),
-        re_sdk_types::blueprint::components::AutoViews::name(),
-        re_sdk_types::blueprint::components::ColumnShare::name(),
-        re_sdk_types::blueprint::components::IncludedContent::name(),
-        re_sdk_types::blueprint::components::PanelState::name(),
-        re_sdk_types::blueprint::components::RootContainer::name(),
-        re_sdk_types::blueprint::components::RowShare::name(),
-        re_sdk_types::blueprint::components::ViewMaximized::name(),
-        re_sdk_types::blueprint::components::ViewOrigin::name(),
-        re_sdk_types::blueprint::components::ViewerRecommendationHash::name(),
-        re_sdk_types::blueprint::components::VisualizerInstructionId::name(),
-    ]
-    .into_iter()
-    // Exclude components that have custom test cases.
-    .chain(
+    let excluded_components = std::iter::chain(
+        [
+            // TODO(#6661): these components still have special treatment via `DataUi` and
+            // `EntityDatatUi`. The hooks are registered by `re_data_ui::register_component_uis`, which
+            // is not available here. So basically no point testing them here.
+            re_sdk_types::components::AnnotationContext::name(),
+            re_sdk_types::components::Blob::name(),
+            re_sdk_types::components::ClassId::name(),
+            re_sdk_types::components::ImageBuffer::name(), // this one is not technically handled by `DataUi`, but should get a custom ui first (it's using default ui right now).
+            re_sdk_types::components::KeypointId::name(),
+            re_sdk_types::components::TensorData::name(),
+            //
+            // no need to clutter the tests with these internal blueprint types
+            re_sdk_types::blueprint::components::ActiveTab::name(),
+            re_sdk_types::blueprint::components::AutoLayout::name(),
+            re_sdk_types::blueprint::components::AutoViews::name(),
+            re_sdk_types::blueprint::components::ColumnShare::name(),
+            re_sdk_types::blueprint::components::IncludedContent::name(),
+            re_sdk_types::blueprint::components::PanelState::name(),
+            re_sdk_types::blueprint::components::RootContainer::name(),
+            re_sdk_types::blueprint::components::RowShare::name(),
+            re_sdk_types::blueprint::components::ViewMaximized::name(),
+            re_sdk_types::blueprint::components::ViewOrigin::name(),
+            re_sdk_types::blueprint::components::ViewerRecommendationHash::name(),
+            re_sdk_types::blueprint::components::VisualizerInstructionId::name(),
+        ],
+        // Exclude components that have custom test cases.
         custom_test_cases
             .iter()
             .map(|test_case| test_case.component_type),
@@ -199,8 +198,7 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
             }
         });
 
-    placeholder_test_cases
-        .chain(custom_test_cases)
+    std::iter::chain(placeholder_test_cases, custom_test_cases)
         .sorted_by(|left, right| {
             left.component_type
                 .short_name()
@@ -391,7 +389,7 @@ fn check_and_print_results(test_cases: &[TestCase], results: &[Result<(), Snapsh
         .max()
         .unwrap();
 
-    for (test_case, result) in test_cases.iter().zip(results.iter()) {
+    for (test_case, result) in std::iter::zip(test_cases, results) {
         match result {
             Ok(()) => println!(
                 "{:>component_type_width$}[{:label_width$}] OK",

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Stores a tuple of UTF-8 strings.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 pub struct Utf8Pair {
     /// The first string.
     pub first: crate::datatypes::Utf8,
@@ -166,11 +167,11 @@ impl ::re_types_core::Loggable for Utf8Pair {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let first = {
                     if !arrays_by_name.contains_key("first") {
                         return Err(DeserializationError::missing_struct_field(
@@ -296,17 +297,5 @@ impl ::re_types_core::Loggable for Utf8Pair {
                 .with_context("rerun.datatypes.Utf8Pair")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Utf8Pair {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.first.heap_size_bytes() + self.second.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod() && <crate::datatypes::Utf8>::is_pod()
     }
 }

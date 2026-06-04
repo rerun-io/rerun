@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     import datafusion
 
     from rerun.experimental import LazyStore
-    from rerun.recording import Recording  # ty:ignore[deprecated]
 
     from . import (
         CatalogClient,
@@ -370,6 +369,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.segment_url(segment_id, timeline, start, end)
 
+    @with_tracing("DatasetEntry.register")
     def register(
         self,
         # NOTE: this can't be Sequence[str], because `str` IS a `Sequence[str]`, and we would thus get no helpful typechecking
@@ -435,6 +435,68 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             self._internal.register(recording_uris, recording_layers=layer_names, on_duplicate=on_duplicate)
         )
 
+    @with_tracing("DatasetEntry._register_asset_layer")
+    def _register_asset_layer(
+        self,
+        *,
+        recording_uri: str,
+        layer_name: str,
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+    ) -> RegistrationHandle:
+        """
+        Register a single RRD as an asset layer shared across all segments in the dataset.
+
+        Unlike segment layers (one recording per segment), an asset layer is a single recording
+        shared by every segment in the dataset.
+        This is useful for common assets such as robot URDFs or environment meshes that would
+        otherwise be duplicated in every segment.
+
+        !!! warning "Experimental"
+            This API is experimental and may change or be removed in future versions without
+            going through the normal deprecation cycle.
+
+        Parameters
+        ----------
+        layer_name:
+            The name for this asset layer.
+
+        recording_uri:
+            The URI of the RRD to register as the asset.
+
+        on_duplicate:
+            How to handle the case where the layer already exists.
+            Defaults to `OnDuplicateSegmentLayer.ERROR`.
+
+        Returns
+        -------
+        RegistrationHandle
+            A handle to track and wait on the registration task.
+
+        Examples
+        --------
+        ```python
+        handle = dataset._register_asset_layer(layer_name="robot_urdf", recording_uri="s3://my-bucket/robot.rrd")
+        handle.wait()
+        ```
+
+        """
+        import warnings
+
+        # TODO(RR-4797): remove experimental status
+        warnings.warn(
+            "_register_asset_layer is experimental and may change or be removed in future versions.",
+            stacklevel=2,
+        )
+
+        from ._registration_handle import RegistrationHandle
+
+        return RegistrationHandle(
+            self._internal._register_asset_layer(
+                recording_uri=recording_uri, layer_name=layer_name, on_duplicate=on_duplicate
+            )
+        )
+
+    @with_tracing("DatasetEntry.unregister")
     def unregister(
         self,
         *,
@@ -522,15 +584,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             layer_name = "base"
 
         return RegistrationHandle(self._internal.register_prefix(recordings_prefix, layer_name, on_duplicate))
-
-    @deprecated(
-        "DatasetEntry.download_segment is deprecated since 0.32. Use DatasetEntry.segment_store instead.",
-    )
-    def download_segment(self, segment_id: str) -> Recording:  # ty:ignore[deprecated]
-        """Download a segment from the dataset."""
-        from rerun.recording import Recording  # ty:ignore[deprecated]
-
-        return Recording(self._internal.download_segment(segment_id))  # ty: ignore[deprecated]
 
     def segment_store(self, segment_id: str) -> LazyStore:
         """
@@ -684,9 +737,45 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         fill_latest_at
             Whether to fill null values with the latest valid data.
         using_index_values
-            If provided, specifies the exact index values to sample per segment.
-            Can be a numpy array (datetime64[ns] or int64), a pyarrow Array, or a sequence.
-            Use with `fill_latest_at=True` to populate rows with the most recent data.
+            Index values at which to **resample** data.
+
+            When specified, this argument changes the way rows are returned. Instead
+            of returning the rows that exist in the data, one row is returned per
+            `(segment, index_value)` pair you provide. If the segment has no row at
+            that index value, nulls are returned — or the latest prior value if
+            `fill_latest_at=True` (which is typically what you want for resampling).
+
+            Don't use this argument for plain index slicing — use a DataFusion filter
+            on the index column instead. For example:
+
+            ```python
+            from datafusion import col, lit
+
+            # All rows in a time window.
+            ds.reader(index="real_time").filter(
+                (col("real_time") >= lit(t0)) & (col("real_time") <= lit(t1))
+            )
+            ```
+
+            This argument accepts the following shapes:
+            - **plain array**: values are applied only to segments whose index
+              range covers them (segments outside the range are excluded).
+            - **dict**: keys are segment IDs, values are per-segment index values
+              to sample at.
+            - **DataFrame**: must have `rerun_segment_id` and index columns;
+              treated as a per-segment value list.
+
+            !!! warning
+                The plain array form requires a scan of the segment table to
+                map values to the segments whose index range covers them. On
+                datasets with many segments this can be expensive. Prefer the
+                dict or DataFrame form when the per-segment values are already
+                known on the client side.
+
+            !!! note
+                Unknown segment IDs are silently ignored — they contribute no
+                rows to the result. Validate client-side if you need to catch
+                unknown segment IDs.
 
         Returns
         -------
@@ -1020,13 +1109,45 @@ class DatasetView:
         include_tombstone_columns
             Whether to include tombstone columns.
         using_index_values
-            Index values at which to sample data.
-            If a plain array is provided, values are applied only to segments
-            whose index range covers them (segments outside the range are excluded).
-            If a dict is provided, keys are segment IDs and values are the index values
-            to sample for that segment (per-segment semantics).
-            If a DataFrame is provided, it must have 'rerun_segment_id' and index columns.
-            Use with `fill_latest_at=True` to populate rows with the most recent data.
+            Index values at which to **resample** data.
+
+            When specified, this argument changes the way rows are returned. Instead
+            of returning the rows that exist in the data, one row is returned per
+            `(segment, index_value)` pair you provide. If the segment has no row at
+            that index value, nulls are returned — or the latest prior value if
+            `fill_latest_at=True` (which is typically what you want for resampling).
+
+            Don't use this argument for plain index slicing — use a DataFusion filter
+            on the index column instead. For example:
+
+            ```python
+            from datafusion import col, lit
+
+            # All rows in a time window.
+            ds.reader(index="real_time").filter(
+                (col("real_time") >= lit(t0)) & (col("real_time") <= lit(t1))
+            )
+            ```
+
+            This argument accepts the following shapes:
+            - **plain array**: values are applied only to segments whose index
+              range covers them (segments outside the range are excluded).
+            - **dict**: keys are segment IDs, values are per-segment index values
+              to sample at.
+            - **DataFrame**: must have `rerun_segment_id` and index columns;
+              treated as a per-segment value list.
+
+            !!! warning
+                The plain array form requires a scan of the segment table to
+                map values to the segments whose index range covers them. On
+                datasets with many segments this can be expensive. Prefer the
+                dict or DataFrame form when the per-segment values are already
+                known on the client side.
+
+            !!! note
+                Unknown segment IDs are silently ignored — they contribute no
+                rows to the result. Validate client-side if you need to catch
+                unknown segment IDs.
         fill_latest_at
             Whether to fill null values with the latest valid data.
 
@@ -1035,11 +1156,7 @@ class DatasetView:
         A DataFusion DataFrame.
 
         """
-        import logging
-
         import datafusion as dfn
-
-        available_segments = set() if using_index_values is None else set(self._internal.segment_ids())
 
         index_values_dict = None
         match using_index_values:
@@ -1060,17 +1177,7 @@ class DatasetView:
                 index_values_dict = self._dataframe_to_index_values_dict(df, index)
 
         if index_values_dict is not None:
-            requested_segments = set(index_values_dict.keys())
-            missing_segments = requested_segments - available_segments
-
-            if missing_segments:
-                logging.warning(
-                    f"Index values for the following inexistent or filtered segments "
-                    f"were ignored: {', '.join(sorted(missing_segments))}"
-                )
-
-            valid_segments = requested_segments - missing_segments
-            view = self._internal.filter_segments([*valid_segments])
+            view = self._internal.filter_segments(list(index_values_dict.keys()))
         else:
             view = self._internal
 

@@ -9,7 +9,10 @@ use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder
 use re_sdk_types::Archetype as _;
 use re_sdk_types::ArrowString;
 use re_sdk_types::archetypes::Points3D;
-use re_sdk_types::components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels};
+use re_sdk_types::components::{
+    ClassId, Color, KeypointId, PointShading, Position3D, Radius, ShowLabels,
+};
+use re_sdk_types::reflection::Enum as _;
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
     Cache, IdentifiedViewSystem, QueryContext, ResolvedAnnotationInfos, ViewClass as _,
@@ -43,6 +46,7 @@ struct Points3DComponentData<'a> {
 
     // Non-repeated
     show_labels: Option<ShowLabels>,
+    point_shading: Option<PointShading>,
 }
 
 /// Processed/computed point cloud data ready for rendering.
@@ -266,6 +270,9 @@ impl Points3DVisualizer {
                     Points3DCpu::compute(ctx, entity_path, query, ent_context, &data)
                 })
             });
+            let point_shading = data.point_shading.unwrap_or_else(|| {
+                typed_fallback_for(ctx, Points3D::descriptor_point_shading().component)
+            });
 
             // TODO(grtlr): The following is a quick fix to get multiple instance poses to work
             // with point clouds: We sent the same point cloud multiple times to the GPU (bad
@@ -281,6 +288,7 @@ impl Points3DVisualizer {
 
                 let point_batch = point_builder
                     .batch(entity_path.to_string())
+                    .enable_shading(matches!(point_shading, PointShading::Gradient))
                     .world_from_obj(world_from_obj)
                     .outline_mask_ids(ent_context.highlight.overall)
                     .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
@@ -426,10 +434,12 @@ impl VisualizerSystem for Points3DVisualizer {
                     results.iter_optional(Points3D::descriptor_keypoint_ids().component);
                 let all_show_labels =
                     results.iter_optional(Points3D::descriptor_show_labels().component);
+                let all_point_shading =
+                    results.iter_optional(Points3D::descriptor_point_shading().component);
 
                 let query_result_hash = results.query_result_hash();
 
-                let results_iter = re_query::range_zip_1x6(
+                let results_iter = re_query::range_zip_1x7(
                     all_positions.slice::<[f32; 3]>(), // RowId 5
                     all_colors.slice::<u32>(),         // RowId 7
                     all_radii.slice::<f32>(),
@@ -437,6 +447,7 @@ impl VisualizerSystem for Points3DVisualizer {
                     all_class_ids.slice::<u16>(),
                     all_keypoint_ids.slice::<u16>(),
                     all_show_labels.slice::<bool>(),
+                    all_point_shading.slice::<u8>(),
                 )
                 .map(
                     |(
@@ -448,6 +459,7 @@ impl VisualizerSystem for Points3DVisualizer {
                         class_ids,
                         keypoint_ids,
                         show_labels,
+                        point_shading,
                     )| {
                         Points3DComponentData {
                             index,
@@ -463,6 +475,8 @@ impl VisualizerSystem for Points3DVisualizer {
                             show_labels: show_labels
                                 .map(|b| !b.is_empty() && b.value(0))
                                 .map(Into::into),
+                            point_shading: point_shading
+                                .and_then(|s| PointShading::from_integer_slice(s).next()?),
                         }
                     },
                 );

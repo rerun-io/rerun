@@ -6,10 +6,12 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use arrow::array::{RecordBatch, StringArray, UInt64Array};
+use arrow::array::{Array as _, BooleanArray, RecordBatch, StringArray, UInt64Array};
 use futures::StreamExt as _;
-use re_protos::common::v1alpha1::ext::SegmentId;
+use re_dataframe::TimelineName;
+use re_log_types::{EntityPath, TimeInt};
 use re_redap_client::{ApiError, ApiResult};
+use re_types_core::SegmentId;
 use tokio::sync::mpsc::Sender;
 use tracing::Instrument as _;
 
@@ -22,7 +24,8 @@ use crate::chunk_fetcher::{
 use crate::dataframe_query_common::{DataframeClientAPI, force_grpc};
 use crate::metrics_capture::QueryMetrics;
 use crate::pipeline_budget::PipelineBudget;
-use re_dataframe::external::re_chunk::Chunk;
+use crate::segment_chunk_manifest::SegmentChunkManifest;
+use re_dataframe::external::re_chunk::{Chunk, TimeColumn};
 
 use super::cpu_worker::CpuWorkerMsg;
 
@@ -37,6 +40,127 @@ const GRPC_BATCH_SIZE: usize = 12;
 /// Max batch-level futures in-flight at once in the IO pipeline.
 /// This bounds both concurrency and the reorder buffer size.
 const IO_PIPELINE_BUFFER: usize = 24;
+
+/// Build a [`SegmentChunkManifest`] per segment from the `:start` column
+/// the server attaches to each `chunk_info` row when the query has a
+/// temporal `filtered_index`.
+///
+/// Returns an empty map if `filtered_timeline` is `None` (static-only
+/// query — no horizon math is possible) or if **any** batch is missing
+/// the `:start` column (old server, or mixed-schema response). In both
+/// fallback cases the CPU worker falls back to "emit at completion"
+/// semantics for every segment, governed by
+/// [`CpuWorkerMsg::SegmentChunkCount`].
+///
+/// All-or-nothing across batches is load-bearing: if we built entries
+/// only from the batches that *do* carry `:start`, segments split
+/// across mixed batches would end up with partial entries; `lock()`
+/// would then commit a manifest that under-counts the segment, and
+/// every later `record_arrival` for a chunk that came from a
+/// no-`:start` batch would fire `debug_panic!` and pin `safe_horizon`
+/// at the laggard's `time_min` forever.
+///
+/// Static chunks (rows with `chunk_is_static = true`) and rows with a
+/// null `:start` value are deliberately skipped: they carry no time
+/// semantics on the filtered timeline, so they can never gate or
+/// advance the safe horizon.
+fn build_segment_manifests(
+    chunk_infos: &[RecordBatch],
+    filtered_timeline: Option<TimelineName>,
+) -> ApiResult<HashMap<SegmentId, SegmentChunkManifest>> {
+    let mut manifests: HashMap<SegmentId, SegmentChunkManifest> = HashMap::new();
+    let Some(timeline_name) = filtered_timeline else {
+        return Ok(manifests);
+    };
+    // `TimelineName: Display` renders its interned string, no extra allocation.
+    let start_col_name = format!("{timeline_name}:start");
+
+    // All-or-nothing pre-check: if any batch lacks `:start`, fall back
+    // to completion-only flush for the whole query. See doc comment for
+    // why partial-batch builds are unsafe.
+    if chunk_infos
+        .iter()
+        .any(|rb| rb.column_by_name(&start_col_name).is_none())
+    {
+        return Ok(manifests);
+    }
+
+    for rb in chunk_infos {
+        let start_col = rb
+            .column_by_name(&start_col_name)
+            .expect("pre-check above guarantees presence on every batch");
+        // `:start` carries the raw `i64` for the timeline's `time_min`. The OSS server emits
+        // `Int64`; other servers may emit `TimestampNanosecondArray` / `Time64NanosecondArray` /
+        // `DurationNanosecondArray` matching the timeline's native dtype. All four are i64 under
+        // the hood, so we go through `TimeColumn::read_nullable_array` rather than downcasting.
+        let (start_values, start_nulls) = TimeColumn::read_nullable_array(start_col.as_ref())
+            .map_err(|err| {
+                ApiError::internal(format!(
+                    "`{start_col_name}` column has unsupported type: {err}"
+                ))
+            })?;
+        let seg_arr = rb
+            .column_by_name(
+                re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID,
+            )
+            .ok_or_else(|| ApiError::internal("missing segment_id column in chunk_info batch"))?
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .ok_or_else(|| ApiError::internal("segment_id column is not a string array"))?;
+        let entity_arr = rb
+            .column_by_name(
+                re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_ENTITY_PATH,
+            )
+            .ok_or_else(|| ApiError::internal("missing entity_path column in chunk_info batch"))?
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .ok_or_else(|| ApiError::internal("entity_path column is not a string array"))?;
+        let static_arr = rb
+            .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_IS_STATIC)
+            .ok_or_else(|| ApiError::internal("missing is_static column in chunk_info batch"))?
+            .as_any()
+            .downcast_ref::<BooleanArray>()
+            .ok_or_else(|| ApiError::internal("is_static column is not a boolean array"))?;
+
+        for i in 0..rb.num_rows() {
+            if start_nulls.as_ref().is_some_and(|n| n.is_null(i)) {
+                continue;
+            }
+            if static_arr.value(i) {
+                continue;
+            }
+            let time_min = TimeInt::saturated_temporal_i64(start_values[i]);
+            // Defense-in-depth: `saturated_temporal_i64` currently can't
+            // produce `STATIC` because `NonMinI64` clamps to `MIN+1`, but
+            // the manifest's correctness depends on that invariant
+            // holding forever. `STATIC` sorts below every temporal value
+            // under the derived `Ord`, so a single leak would pin
+            // `safe_horizon` and stall the segment. Drop instead of
+            // letting `SegmentChunkManifest::expect_chunk` fire its
+            // `debug_panic!`.
+            if time_min.is_static() {
+                continue;
+            }
+            let seg = SegmentId::from(seg_arr.value(i));
+            let entity = EntityPath::from(entity_arr.value(i));
+            manifests
+                .entry(seg)
+                .or_default()
+                .expect_chunk(entity, time_min);
+        }
+    }
+
+    // Every manifest we built has now seen every announced chunk for
+    // its segment — lock so the worker can start consulting
+    // `safe_horizon`. Segments with NO temporal chunks (all static, or
+    // `:start` absent for them) won't appear here and the worker
+    // handles them via the count-based path.
+    for m in manifests.values_mut() {
+        m.lock();
+    }
+
+    Ok(manifests)
+}
 
 /// Count chunks per segment across the raw `chunk_info` batches.
 ///
@@ -393,6 +517,7 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
 pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     client: T,
     chunk_infos: Vec<RecordBatch>,
+    filtered_index_timeline: Option<TimelineName>,
     output_channel: Sender<ApiResult<CpuWorkerMsg>>,
     pending_analytics: crate::PendingQueryAnalytics,
     pipeline_budget: Arc<PipelineBudget>,
@@ -404,12 +529,9 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     let n_chunks: usize = chunk_infos.iter().map(|rb| rb.num_rows()).sum();
 
     // Announce the per-segment chunk count to the CPU worker before any
-    // fetch dispatches start, so the worker can fire each segment's flush
-    // as soon as it receives the last chunk rather than waiting for the
-    // channel to close. Counts come from the raw `chunk_info` rows
-    // (which is the server's authoritative chunk list); they are
-    // independent of how `create_request_batches` later groups the
-    // fetches.
+    // fetch dispatches start, so the worker can fire each segment's
+    // final drain as soon as it receives the last chunk rather than
+    // waiting for the channel to close.
     let segment_chunk_counts = count_chunks_per_segment(&chunk_infos)?;
     for (segment_id, count) in segment_chunk_counts {
         if output_channel
@@ -419,6 +541,26 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
         {
             // Consumer hung up before we even started fetching — no
             // point continuing.
+            return Ok(());
+        }
+    }
+
+    // When a temporal `filtered_index` is set, build per-segment
+    // manifests from the `{timeline}:start` columns and ship them down
+    // so the CPU worker can run horizon-driven incremental emit + GC.
+    // Empty result map = no temporal info available (static-only query,
+    // or old server without `:start`) → worker falls back to
+    // completion-only flush, governed by the chunk counts above.
+    let manifests = build_segment_manifests(&chunk_infos, filtered_index_timeline)?;
+    for (segment_id, manifest) in manifests {
+        if output_channel
+            .send(Ok(CpuWorkerMsg::SegmentManifest {
+                segment_id,
+                manifest: Box::new(manifest),
+            }))
+            .await
+            .is_err()
+        {
             return Ok(());
         }
     }
@@ -639,7 +781,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
 mod tests {
     use std::collections::HashMap;
 
-    use arrow::array::{Array as _, FixedSizeBinaryBuilder, RecordBatchOptions};
+    use arrow::array::{Array as _, FixedSizeBinaryBuilder, Int64Array, RecordBatchOptions};
     use arrow::datatypes::{Field, Schema};
 
     use super::*;
@@ -942,5 +1084,222 @@ mod tests {
             counts,
             vec![(SegmentId::from("segA"), 5), (SegmentId::from("segB"), 1),]
         );
+    }
+
+    // ----------------------------------------------------------------
+    // build_segment_manifests tests
+    // ----------------------------------------------------------------
+
+    /// One row per `(segment_id, entity_path, is_static, start)` tuple.
+    /// `start = None` produces a null entry in the `{timeline}:start`
+    /// column.
+    fn create_chunk_info_with_starts(
+        timeline_name: &str,
+        rows: &[(&str, &str, bool, Option<i64>)],
+    ) -> RecordBatch {
+        let num_rows = rows.len();
+        let segment_ids = StringArray::from(rows.iter().map(|r| r.0).collect::<Vec<_>>());
+        let entity_paths = StringArray::from(rows.iter().map(|r| r.1).collect::<Vec<_>>());
+        let is_static = BooleanArray::from(rows.iter().map(|r| r.2).collect::<Vec<_>>());
+        let starts = Int64Array::from(rows.iter().map(|r| r.3).collect::<Vec<_>>());
+
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![
+                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_segment_id()
+                    .as_ref()
+                    .clone(),
+                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_entity_path()
+                    .as_ref()
+                    .clone(),
+                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_is_static()
+                    .as_ref()
+                    .clone(),
+                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_timeline_start(
+                    timeline_name,
+                )
+                .as_ref()
+                .clone(),
+            ],
+            HashMap::default(),
+        ));
+
+        RecordBatch::try_new_with_options(
+            schema,
+            vec![
+                Arc::new(segment_ids),
+                Arc::new(entity_paths),
+                Arc::new(is_static),
+                Arc::new(starts),
+            ],
+            &RecordBatchOptions::new().with_row_count(Some(num_rows)),
+        )
+        .unwrap()
+    }
+
+    /// `filtered_timeline = None` (static-only query) → empty manifest
+    /// map, no error. Worker then falls back to completion-only flush.
+    #[test]
+    fn test_build_segment_manifests_no_timeline_yields_empty() {
+        let rb = create_chunk_info_with_starts("time", &[("seg1", "/a", false, Some(10))]);
+        let manifests = build_segment_manifests(&[rb], None).unwrap();
+        assert!(manifests.is_empty());
+    }
+
+    /// `:start` column absent on every batch (old server) → empty map.
+    #[test]
+    fn test_build_segment_manifests_missing_start_column_yields_empty() {
+        // Reuse the `create_test_chunk_info` helper, which produces a
+        // batch *without* a `{timeline}:start` column.
+        let rb = create_test_chunk_info("seg1", &[100]);
+        let manifests = build_segment_manifests(&[rb], Some(TimelineName::new("time"))).unwrap();
+        assert!(manifests.is_empty());
+    }
+
+    /// Mixed batches: one batch has `:start`, the other doesn't. Building
+    /// a partial manifest from only the `:start` batch and locking would
+    /// leave segments split across both with under-counted manifests →
+    /// `record_arrival` for chunks from the no-`:start` batch would
+    /// `debug_panic!` and pin `safe_horizon` at the laggard's `time_min`
+    /// forever. The all-or-nothing pre-check must reject the whole input
+    /// and yield an empty map.
+    #[test]
+    fn test_build_segment_manifests_mixed_batches_yields_empty() {
+        let with_start = create_chunk_info_with_starts("time", &[("seg1", "/a", false, Some(10))]);
+        let without_start = create_test_chunk_info("seg1", &[20]);
+        let manifests = build_segment_manifests(
+            &[with_start, without_start],
+            Some(TimelineName::new("time")),
+        )
+        .unwrap();
+        assert!(
+            manifests.is_empty(),
+            "any batch missing `:start` must trigger full fallback, even if other batches carry it",
+        );
+    }
+
+    /// Null `:start`, `is_static = true`, and the `i64::MIN` saturation
+    /// edge are all filtered correctly. Only the two ordinary temporal
+    /// rows reach the manifest.
+    #[test]
+    fn test_build_segment_manifests_filters_null_and_static() {
+        let rb = create_chunk_info_with_starts(
+            "time",
+            &[
+                ("seg1", "/a", false, None),           // null :start → skip
+                ("seg1", "/b", true, Some(10)),        // is_static → skip
+                ("seg1", "/c", false, Some(20)),       // keep
+                ("seg1", "/d", false, Some(i64::MIN)), // saturates to TimeInt::MIN, kept
+            ],
+        );
+        let manifests = build_segment_manifests(&[rb], Some(TimelineName::new("time"))).unwrap();
+        let m = manifests
+            .get(&SegmentId::from("seg1"))
+            .expect("seg1 has at least one temporal chunk");
+        assert_eq!(m.outstanding_count(), 2);
+        // Locked by `build_segment_manifests` itself.
+        assert!(m.is_locked());
+        // Laggard is `/d` at saturated MIN → horizon = MIN (saturating sub).
+        assert_eq!(m.safe_horizon(), Some(TimeInt::MIN));
+    }
+
+    /// `EntityPath` keys produced by `build_segment_manifests` must
+    /// match what `record_arrival` looks up. This is the regression
+    /// test for the `String → EntityPath` migration in PR 2 (commit
+    /// 28c54f498c): if the ingest path passed strings, this lookup
+    /// would silently miss and the worker would log divergence on
+    /// every chunk arrival.
+    #[test]
+    fn test_build_segment_manifests_entity_path_keys_roundtrip() {
+        let rb = create_chunk_info_with_starts("time", &[("seg1", "/foo/bar", false, Some(42))]);
+        let mut manifests =
+            build_segment_manifests(&[rb], Some(TimelineName::new("time"))).unwrap();
+        let m = manifests.get_mut(&SegmentId::from("seg1")).unwrap();
+        // Looking up via `EntityPath::from(&str)` must hit the entry.
+        assert!(m.record_arrival(
+            &EntityPath::from("/foo/bar"),
+            TimeInt::saturated_temporal_i64(42)
+        ));
+        assert!(m.is_complete());
+    }
+
+    /// A segment that has only static rows on the filtered timeline
+    /// produces no manifest entry at all. The worker handles such
+    /// segments via the count-based path.
+    #[test]
+    fn test_build_segment_manifests_all_static_segment_absent() {
+        let rb = create_chunk_info_with_starts(
+            "time",
+            &[
+                ("segA", "/a", true, Some(10)),
+                ("segA", "/b", true, Some(20)),
+                ("segB", "/c", false, Some(30)),
+            ],
+        );
+        let manifests = build_segment_manifests(&[rb], Some(TimelineName::new("time"))).unwrap();
+        assert!(!manifests.contains_key(&SegmentId::from("segA")));
+        let b = &manifests[&SegmentId::from("segB")];
+        assert_eq!(b.outstanding_count(), 1);
+    }
+
+    /// Non-OSS servers may emit `:start` as `TimestampNanosecondArray`
+    /// (or any other nanosecond-typed array) instead of `Int64`. Both
+    /// shapes are i64 under the hood and must be accepted.
+    #[test]
+    fn test_build_segment_manifests_accepts_timestamp_ns_start_column() {
+        use arrow::array::TimestampNanosecondArray;
+
+        let num_rows = 2;
+        let segment_ids = StringArray::from(vec!["seg1", "seg1"]);
+        let entity_paths = StringArray::from(vec!["/a", "/b"]);
+        let is_static = BooleanArray::from(vec![false, false]);
+        let starts = TimestampNanosecondArray::from(vec![Some(100_i64), Some(200_i64)]);
+
+        // The OSS schema contract nominally types `:start` as Int64, but the
+        // server sends a TimestampNanosecond column. Build the field as
+        // Timestamp here (`RecordBatch` requires field type == array type) to
+        // validate `TimeColumn::read_nullable_array` accepts i64-backed
+        // timestamp arrays.
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![
+                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_segment_id()
+                    .as_ref()
+                    .clone(),
+                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_entity_path()
+                    .as_ref()
+                    .clone(),
+                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_is_static()
+                    .as_ref()
+                    .clone(),
+                Field::new(
+                    "time:start",
+                    arrow::datatypes::DataType::Timestamp(
+                        arrow::datatypes::TimeUnit::Nanosecond,
+                        None,
+                    ),
+                    true,
+                ),
+            ],
+            HashMap::default(),
+        ));
+
+        let rb = RecordBatch::try_new_with_options(
+            schema,
+            vec![
+                Arc::new(segment_ids),
+                Arc::new(entity_paths),
+                Arc::new(is_static),
+                Arc::new(starts),
+            ],
+            &RecordBatchOptions::new().with_row_count(Some(num_rows)),
+        )
+        .unwrap();
+
+        let manifests = build_segment_manifests(&[rb], Some(TimelineName::new("time"))).unwrap();
+        let m = manifests
+            .get(&SegmentId::from("seg1"))
+            .expect("seg1 has temporal chunks");
+        assert_eq!(m.outstanding_count(), 2);
+        // safe_horizon = laggard.predecessor → 100 - 1 = 99.
+        assert_eq!(m.safe_horizon(), Some(TimeInt::new_temporal(99)));
     }
 }

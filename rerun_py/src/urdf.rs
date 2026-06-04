@@ -400,7 +400,7 @@ impl PyUrdfJoint {
         format!(
             "UrdfJoint(name={:?}, type={}, parent={:?}, child={:?})",
             self.joint.name,
-            &self.joint_type(),
+            self.joint_type(),
             self.joint.parent.link,
             self.joint.child.link
         )

@@ -256,8 +256,8 @@ impl TimePanel {
             state.is_expanded(),
             collapsed,
             expanded,
-            |ui: &mut egui::Ui, show_expanded: bool| {
-                if show_expanded {
+            |ui: &mut egui::Ui, how_expanded: f32| {
+                if how_expanded > 0.0 {
                     self.show_expanded_with_header(
                         viewer_ctx,
                         store_ctx,
@@ -604,12 +604,15 @@ impl TimePanel {
         let time_bg_area_painter = ui.painter().with_clip_rect(time_bg_area_rect);
         let time_area_painter = ui.painter().with_clip_rect(time_fg_area_rect);
 
-        if let Some(highlighted_range) = store_ctx.time_ctrl.highlighted_range {
+        if let Some(highlight) = store_ctx.time_ctrl.highlighted_range()
+            && highlight.timeline == *store_ctx.time_ctrl.timeline_name()
+        {
             paint_range_highlight(
-                highlighted_range,
+                highlight.range,
                 &self.time_ranges_ui,
                 ui.painter(),
                 time_fg_area_rect,
+                highlight.color,
             );
         }
 
@@ -1490,12 +1493,15 @@ impl TimePanel {
 
                 let painter = ui.painter_at(time_range_rect.expand(4.0));
 
-                if let Some(highlighted_range) = time_ctrl.highlighted_range {
+                if let Some(highlight) = time_ctrl.highlighted_range()
+                    && highlight.timeline == *time_ctrl.timeline_name()
+                {
                     paint_range_highlight(
-                        highlighted_range,
+                        highlight.range,
                         &self.time_ranges_ui,
                         &painter,
                         time_range_rect,
+                        highlight.color,
                     );
                 }
 
@@ -1660,14 +1666,14 @@ fn paint_range_highlight(
     time_ranges_ui: &TimeRangesUi,
     painter: &egui::Painter,
     rect: Rect,
+    color: Option<egui::Color32>,
 ) {
-    time_selection_ui::paint_timeline_range(
-        highlighted_range,
-        time_ranges_ui,
-        painter,
-        rect,
-        painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1),
-    );
+    // `Configuration` producers don't carry a color (no semantic color to surface),
+    // so fall back to the neutral theme tint. `Data` producers (e.g. a state phase
+    // hover) pass the phase color, which we honor verbatim to match what the data
+    // views are painting.
+    let fill = color.unwrap_or_else(|| painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1));
+    time_selection_ui::paint_timeline_range(highlighted_range, time_ranges_ui, painter, rect, fill);
 }
 
 fn help(os: egui::os::OperatingSystem) -> Help {

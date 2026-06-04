@@ -131,7 +131,7 @@ impl ResolvedClassDescription<'_> {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, re_byte_size::SizeBytes)]
 pub struct ResolvedAnnotationInfo {
     pub class_id: Option<ClassId>,
     pub annotation_info: Option<AnnotationInfo>,
@@ -179,37 +179,17 @@ impl ResolvedAnnotationInfo {
     }
 }
 
-impl re_byte_size::SizeBytes for ResolvedAnnotationInfo {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            class_id,
-            annotation_info,
-        } = self;
-        class_id.heap_size_bytes() + annotation_info.heap_size_bytes()
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 /// Many [`ResolvedAnnotationInfo`], with optimization
 /// for a common case where they are all the same.
+#[derive(re_byte_size::SizeBytes)]
 pub enum ResolvedAnnotationInfos {
     /// All the same
     Same(usize, ResolvedAnnotationInfo),
 
     /// All different
     Many(Vec<ResolvedAnnotationInfo>),
-}
-
-impl re_byte_size::SizeBytes for ResolvedAnnotationInfos {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::Same(_count, info) => info.heap_size_bytes(),
-            Self::Many(infos) => infos.heap_size_bytes(),
-        }
-    }
 }
 
 impl ResolvedAnnotationInfos {

@@ -1,4 +1,3 @@
-use re_byte_size::SizeBytes;
 use re_types_core::ComponentIdentifier;
 
 use crate::{EntityPath, Instance};
@@ -14,23 +13,11 @@ use crate::{EntityPath, Instance};
 /// * `points:Color`
 /// * `points[#42]`
 /// * `points[#42]:Color`
-#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
 pub struct DataPath {
     pub entity_path: EntityPath,
     pub instance: Option<Instance>,
     pub component: Option<ComponentIdentifier>,
-}
-
-impl SizeBytes for DataPath {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            entity_path,
-            instance: _,
-            component: _,
-        } = self;
-
-        entity_path.heap_size_bytes()
-    }
 }
 
 impl std::fmt::Display for DataPath {

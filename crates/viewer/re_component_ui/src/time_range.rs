@@ -7,7 +7,9 @@ use re_ui::{
     RelativeTimeRange, TimeDragValue, UiExt as _, relative_time_range_boundary_label_text,
     relative_time_range_label_text,
 };
-use re_viewer_context::{MaybeMutRef, StoreViewContext, TimeControlCommand};
+use re_viewer_context::{
+    MaybeMutRef, StoreViewContext, TimeControlCommand, TimeRangeHighlight, TimeRangeHighlightKind,
+};
 
 struct RecordingTimeContext {
     time_type: TimeType,
@@ -118,10 +120,17 @@ pub fn time_range_multiline_edit_or_view_ui(
         }
     };
 
-    if ui.rect_contains_pointer(response.rect) {
+    if ui.rect_contains_pointer(response.rect)
+        && let Some(time_ctrl) = ctx.active_time_ctrl()
+    {
         let absolute_range = AbsoluteTimeRange::from_relative_time_range(value, current_time);
         ctx.send_time_commands_to_active_recording([TimeControlCommand::HighlightRange(
-            absolute_range,
+            TimeRangeHighlight {
+                range: absolute_range,
+                timeline: *time_ctrl.timeline_name(),
+                kind: TimeRangeHighlightKind::TimeRangeConfiguration,
+                color: None,
+            },
         )]);
     }
 
@@ -155,10 +164,17 @@ pub fn time_range_singleline_view_ui(
         res = res.on_hover_text(on_hover);
     }
 
-    if res.hovered() {
+    if res.hovered()
+        && let Some(time_ctrl) = ctx.active_time_ctrl()
+    {
         let absolute_range = AbsoluteTimeRange::from_relative_time_range(value, current_time);
         ctx.send_time_commands_to_active_recording([TimeControlCommand::HighlightRange(
-            absolute_range,
+            TimeRangeHighlight {
+                range: absolute_range,
+                timeline: *time_ctrl.timeline_name(),
+                kind: TimeRangeHighlightKind::TimeRangeConfiguration,
+                color: None,
+            },
         )]);
     }
 
