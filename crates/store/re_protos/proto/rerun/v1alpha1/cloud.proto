@@ -344,6 +344,8 @@ message DataSource {
 
   // ⚠️ UNSTABLE: Is this an asset layer (shared across all segments) or a segment layer (one recording per segment)?
   // Defaults to LAYER_CLASS_SEGMENT if unspecified.
+  //
+  // TODO(RR-4797): remove unstable-warning
   LayerClass layer_class = 5;
 }
 
@@ -353,6 +355,8 @@ enum DataSourceKind {
 }
 
 // ⚠️ UNSTABLE: Describes the class of a dataset layer.
+//
+// TODO(RR-4797): remove unstable-warning.
 enum LayerClass {
   LAYER_CLASS_UNSPECIFIED = 0;
 

@@ -1023,6 +1023,9 @@ class DatasetEntryInternal:
     def register_prefix(
         self, recordings_prefix: str, layer_name: str, on_duplicate: str
     ) -> RegistrationHandleInternal: ...
+    def _register_asset_layer(
+        self, *, layer_name: str, recording_uri: str, on_duplicate: str
+    ) -> RegistrationHandleInternal: ...
     def unregister(
         self,
         *,

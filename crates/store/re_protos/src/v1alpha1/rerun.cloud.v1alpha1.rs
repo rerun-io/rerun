@@ -163,6 +163,8 @@ pub struct DataSource {
     pub typ: i32,
     /// ⚠️ UNSTABLE: Is this an asset layer (shared across all segments) or a segment layer (one recording per segment)?
     /// Defaults to LAYER_CLASS_SEGMENT if unspecified.
+    ///
+    /// TODO(RR-4797): remove unstable-warning
     #[prost(enumeration = "LayerClass", tag = "5")]
     pub layer_class: i32,
 }
@@ -2027,6 +2029,8 @@ impl DataSourceKind {
     }
 }
 /// ⚠️ UNSTABLE: Describes the class of a dataset layer.
+///
+/// TODO(RR-4797): remove unstable-warning.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum LayerClass {

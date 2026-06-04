@@ -8,6 +8,7 @@ async fn build() -> RerunCloudHandler {
 }
 
 re_redap_tests::generate_redap_tests!(build);
+re_redap_tests::generate_oss_only_redap_tests!(build);
 
 #[tokio::test(flavor = "multi_thread")]
 async fn version() {

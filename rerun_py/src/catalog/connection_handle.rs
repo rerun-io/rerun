@@ -379,6 +379,29 @@ impl ConnectionHandle {
         })
     }
 
+    /// Initiate registration of a single recording as an asset layer (shared across all segments)
+    /// and return the corresponding task descriptors.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn register_asset_layer(
+        &self,
+        py: Python<'_>,
+        dataset_id: EntryId,
+        recording_uri: String,
+        layer_name: LayerName,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> PyResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
+        let data_source =
+            DataSource::new_rrd_asset_layer(layer_name, recording_uri.parse().map_err(to_py_err)?);
+
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .register_with_dataset(dataset_id, vec![data_source], on_duplicate)
+                .await
+                .map_err(to_py_err)
+        })
+    }
+
     #[tracing::instrument(level = "info", skip_all)]
     #[expect(clippy::fn_params_excessive_bools)]
     pub fn do_maintenance(

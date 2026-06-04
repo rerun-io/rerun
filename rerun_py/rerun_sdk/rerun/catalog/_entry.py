@@ -369,6 +369,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.segment_url(segment_id, timeline, start, end)
 
+    @with_tracing("DatasetEntry.register")
     def register(
         self,
         # NOTE: this can't be Sequence[str], because `str` IS a `Sequence[str]`, and we would thus get no helpful typechecking
@@ -434,6 +435,68 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             self._internal.register(recording_uris, recording_layers=layer_names, on_duplicate=on_duplicate)
         )
 
+    @with_tracing("DatasetEntry._register_asset_layer")
+    def _register_asset_layer(
+        self,
+        *,
+        recording_uri: str,
+        layer_name: str,
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+    ) -> RegistrationHandle:
+        """
+        Register a single RRD as an asset layer shared across all segments in the dataset.
+
+        Unlike segment layers (one recording per segment), an asset layer is a single recording
+        shared by every segment in the dataset.
+        This is useful for common assets such as robot URDFs or environment meshes that would
+        otherwise be duplicated in every segment.
+
+        !!! warning "Experimental"
+            This API is experimental and may change or be removed in future versions without
+            going through the normal deprecation cycle.
+
+        Parameters
+        ----------
+        layer_name:
+            The name for this asset layer.
+
+        recording_uri:
+            The URI of the RRD to register as the asset.
+
+        on_duplicate:
+            How to handle the case where the layer already exists.
+            Defaults to `OnDuplicateSegmentLayer.ERROR`.
+
+        Returns
+        -------
+        RegistrationHandle
+            A handle to track and wait on the registration task.
+
+        Examples
+        --------
+        ```python
+        handle = dataset._register_asset_layer(layer_name="robot_urdf", recording_uri="s3://my-bucket/robot.rrd")
+        handle.wait()
+        ```
+
+        """
+        import warnings
+
+        # TODO(RR-4797): remove experimental status
+        warnings.warn(
+            "_register_asset_layer is experimental and may change or be removed in future versions.",
+            stacklevel=2,
+        )
+
+        from ._registration_handle import RegistrationHandle
+
+        return RegistrationHandle(
+            self._internal._register_asset_layer(
+                recording_uri=recording_uri, layer_name=layer_name, on_duplicate=on_duplicate
+            )
+        )
+
+    @with_tracing("DatasetEntry.unregister")
     def unregister(
         self,
         *,

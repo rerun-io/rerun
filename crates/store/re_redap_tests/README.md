@@ -36,3 +36,9 @@ perform these tests use the following command
 ```shell
 cargo test -p re_server --all-features
 ```
+
+## CI
+
+The test suite is run against both the OSS server (`re_server`) and the Rerun Hub, both in-process (not against a deployed binary).
+
+There are more e2e tests in [`e2e_redap_tests`](../../../rerun_py/tests/e2e_redap_tests/README.md), but in Python.

@@ -459,6 +459,57 @@ impl PyDatasetEntryInternal {
         ))
     }
 
+    /// Register a single RRD URI as an asset layer (shared across all segments in the dataset).
+    ///
+    /// Unlike segment layers (one recording per segment), an asset layer is a single recording
+    /// that is shared across all segments. This is useful for deduplicating common assets such
+    /// as robot URDFs or environment meshes.
+    ///
+    /// !!! warning
+    ///     This is an incomplete, experimental API and may change or be removed in future versions without
+    ///     going through the normal deprecation cycle.
+    ///
+    /// Parameters
+    /// ----------
+    /// layer_name: str
+    ///     The name of the asset layer.
+    ///
+    /// recording_uri: str
+    ///     The URI of the RRD recording to register as the asset.
+    ///
+    /// on_duplicate: str
+    ///     How to handle the case where the layer already exists. One of "error", "skip", or "replace".
+    #[pyo3(name = "_register_asset_layer")]
+    #[pyo3(signature = (*, layer_name, recording_uri, on_duplicate))]
+    #[pyo3(text_signature = "(self, /, *, layer_name, recording_uri, on_duplicate)")]
+    fn register_asset_layer(
+        self_: PyRef<'_, Self>,
+        layer_name: String,
+        recording_uri: String,
+        on_duplicate: &str,
+    ) -> PyResult<PyRegistrationHandleInternal> {
+        let py = self_.py();
+        let _span =
+            // TODO(RR-4797): remove experimental status
+            read_trace_context_from_python(py, "DatasetEntry._register_asset_layer").entered();
+        let connection = self_.client.borrow(py).connection().clone();
+        let on_duplicate = parse_on_duplicate(on_duplicate)?;
+
+        let (request_trace_id, results) = connection.register_asset_layer(
+            py,
+            self_.entry_details.id,
+            recording_uri,
+            LayerName::new(layer_name),
+            on_duplicate,
+        )?;
+
+        Ok(PyRegistrationHandleInternal::new(
+            self_.client.clone_ref(py),
+            results,
+            request_trace_id,
+        ))
+    }
+
     /// Open a remote segment as a [`LazyStore`][rerun.experimental.LazyStore].
     ///
     /// One round-trip on construction (the manifest); chunks are fetched on

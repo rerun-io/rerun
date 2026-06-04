@@ -2041,7 +2041,9 @@ impl UnregisterFromDatasetResponse {
 
 // --- ScanSegmentTableResponse --
 
+// One row per segment
 impl ScanSegmentTableResponse {
+    /// The unique identifier of the segment.
     pub const FIELD_SEGMENT_ID: &str = "rerun_segment_id";
 
     /// Layer names for this segment, one per layer.
@@ -2185,20 +2187,51 @@ impl ScanSegmentTableResponse {
 
 // --- ScanDatasetManifestResponse --
 
+/// Column constants and helpers for the dataset manifest.
+///
+/// Terminology:
+/// * A *layer* is a named slice of data that spans many segments (e.g. "base", "embeddings").
+///     * A *Segment Layer* has one source per segment it appears in (=every segment is different)
+///     * An *Asset Layer* consists of a single source shared by all segments of the dataset (e.g. "robot_urdf").
+/// * A *source* is a single `.rrd` (or, in the future, `.mcap` etc)
+/// * A single segment is the concatenation of all the sources of all the layers it has data in.
+///
+/// The dataset manifest has one row per (layer, segment) pair,
+/// i.e. a segment layer appears once per segment it has data in.
+/// An asset layer is also listed once per segment,
+/// even though all of those rows are backed by the same shared source.
+/// Corollary: an asset layer registered to a dataset without segments is invisible in the manifest.
+//
+// TODO(RR-4807): consider this choice, e.g. a single row per asset layer with a NULL segment id instead.
 impl ScanDatasetManifestResponse {
+    /// The name of the layer.
     pub const FIELD_LAYER_NAME: &str = "rerun_layer_name";
+
+    /// The segment this row belongs to.
     pub const FIELD_SEGMENT_ID: &str = "rerun_segment_id";
+
+    /// Where the data of this row's source is stored.
     pub const FIELD_STORAGE_URL: &str = "rerun_storage_url";
+
+    /// The kind of data source backing this row, e.g. `rrd` (see `DataSourceKind`).
     pub const FIELD_LAYER_TYPE: &str = "rerun_layer_type";
 
-    /// Time at which the layer was initially registered.
+    /// Time at which this row's source was initially registered.
     pub const FIELD_REGISTRATION_TIME: &str = "rerun_registration_time";
 
     /// When was this row of the manifest modified last?
     pub const FIELD_LAST_UPDATED_AT: &str = "rerun_last_updated_at";
+
+    /// Total number of chunks in this row's source.
     pub const FIELD_NUM_CHUNKS: &str = "rerun_num_chunks";
+
+    /// Total size in bytes of this row's source.
     pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
+
+    /// SHA-256 hash of the schema of this row's source.
     pub const FIELD_SCHEMA_SHA256: &str = "rerun_schema_sha256";
+
+    /// The registration status of this row's source (see [`LayerRegistrationStatus`]).
     pub const FIELD_REGISTRATION_STATUS: &str = "rerun_registration_status";
 
     pub fn field_layer_name() -> FieldRef {
@@ -2534,17 +2567,14 @@ impl DataSource {
         }
     }
 
-    pub fn new_rrd_asset_layer(
-        layer: impl AsRef<str>,
-        storage_url: impl AsRef<str>,
-    ) -> Result<Self, url::ParseError> {
-        Ok(Self {
-            storage_url: storage_url.as_ref().parse()?,
+    pub fn new_rrd_asset_layer(layer: impl AsRef<str>, storage_url: url::Url) -> Self {
+        Self {
+            storage_url,
             is_prefix: false,
             layer: LayerName::new(layer.as_ref()),
             kind: DataSourceKind::Rrd,
             layer_class: LayerClass::Asset,
-        })
+        }
     }
 }
 

@@ -84,9 +84,10 @@ fn validate_sources(
     dataset_id: EntryId,
     data_sources: Vec<ext::DataSource>,
 ) -> tonic::Result<(StoreKind, Vec<ValidatedSource>)> {
-    // `seen` tracks (segment_id, layer_name) → URLs to detect intra-request dups.
+    // `seen` tracks (layer_name, segment_id) → URLs to detect intra-request dups.
+    // Asset layers have no segment id (`None`).
     // The `on_duplicate` flag only applies to cross-request conflicts.
-    let mut seen: BTreeMap<(SegmentId, LayerName), Vec<url::Url>> = BTreeMap::new();
+    let mut seen: BTreeMap<(LayerName, Option<SegmentId>), Vec<url::Url>> = BTreeMap::new();
     let mut validated: Vec<ValidatedSource> = Vec::new();
 
     let store_kind = store.dataset(dataset_id)?.store_kind();
@@ -110,15 +111,6 @@ fn validate_sources(
 
         match kind {
             ext::DataSourceKind::Rrd => {}
-        }
-
-        match layer_class {
-            LayerClass::Asset => {
-                return Err(tonic::Status::unimplemented(
-                    "register_with_dataset: asset layers are not supported",
-                ));
-            }
-            LayerClass::Segment => {}
         }
 
         let layer_name = if layer.is_empty() {
@@ -160,7 +152,7 @@ fn validate_memory_source(
     expected_store_kind: StoreKind,
     storage_url: &url::Url,
     layer_info: Arc<LayerInfo>,
-    seen: &mut BTreeMap<(SegmentId, LayerName), Vec<url::Url>>,
+    seen: &mut BTreeMap<(LayerName, Option<SegmentId>), Vec<url::Url>>,
 ) -> tonic::Result<ValidatedSource> {
     let store_slot_id = parse_memory_url(storage_url)?;
     let resolved = store.resolve_store(&store_slot_id).ok_or_else(|| {
@@ -174,8 +166,14 @@ fn validate_memory_source(
         )));
     }
     let segment_id = SegmentId::new(store_id.recording_id().to_string());
-    let key = (segment_id.clone(), layer_info.name.clone());
-    seen.entry(key).or_default().push(storage_url.clone());
+    // Asset layers have no per-segment ID; use an empty key so duplicates are caught by layer name only.
+    let dedup_segment_id = match layer_info.layer_class {
+        LayerClass::Asset => None,
+        LayerClass::Segment => Some(segment_id.clone()),
+    };
+    seen.entry((layer_info.name.clone(), dedup_segment_id))
+        .or_default()
+        .push(storage_url.clone());
     Ok(ValidatedSource::Memory {
         store_slot_id,
         resolved,
@@ -189,7 +187,7 @@ fn validate_file_source(
     store_kind: StoreKind,
     storage_url: &url::Url,
     layer_info: Arc<LayerInfo>,
-    seen: &mut BTreeMap<(SegmentId, LayerName), Vec<url::Url>>,
+    seen: &mut BTreeMap<(LayerName, Option<SegmentId>), Vec<url::Url>>,
 ) -> tonic::Result<Option<ValidatedSource>> {
     let Ok(rrd_path) = storage_url.to_file_path() else {
         return if storage_url.scheme() == "file" && storage_url.host().is_some() {
@@ -225,11 +223,13 @@ fn validate_file_source(
             continue;
         }
         matched = true;
-        let key = (
-            SegmentId::from(store_id.recording_id()),
-            layer_info.name.clone(),
-        );
-        seen.entry(key).or_default().push(storage_url.clone());
+        let dedup_segment_id = match layer_info.layer_class {
+            LayerClass::Asset => None,
+            LayerClass::Segment => Some(SegmentId::from(store_id.recording_id())),
+        };
+        seen.entry((layer_info.name.clone(), dedup_segment_id))
+            .or_default()
+            .push(storage_url.clone());
     }
 
     if !matched {
@@ -244,7 +244,7 @@ fn validate_file_source(
 }
 
 fn check_intra_request_duplicates(
-    seen: &BTreeMap<(SegmentId, LayerName), Vec<url::Url>>,
+    seen: &BTreeMap<(LayerName, Option<SegmentId>), Vec<url::Url>>,
 ) -> tonic::Result<()> {
     let duplicates: Vec<_> = seen.iter().filter(|(_, urls)| urls.len() > 1).collect();
     if duplicates.is_empty() {
@@ -253,13 +253,17 @@ fn check_intra_request_duplicates(
 
     let details: Vec<String> = duplicates
         .iter()
-        .map(|((segment_id, layer), urls)| {
+        .map(|((layer, segment_id), urls)| {
             let uri_lines = urls
                 .iter()
                 .map(|u| format!("    {u}"))
                 .collect::<Vec<_>>()
                 .join("\n");
-            format!("  segment id: {segment_id}, layer name: {layer}\n{uri_lines}")
+            if let Some(segment_id) = segment_id {
+                format!("  segment id: {segment_id}, layer name: {layer}\n{uri_lines}")
+            } else {
+                format!("  layer name: {layer}\n{uri_lines}")
+            }
         })
         .collect();
 
@@ -338,15 +342,29 @@ async fn register_sources(
         let dataset = store.dataset_mut(dataset_id)?;
 
         for source in ready {
-            let add_result = dataset
-                .add_source(
-                    source.segment_id.clone(),
-                    source.layer_info.clone(),
-                    source.store_slot_id,
-                    source.resolved,
-                    on_duplicate,
-                )
-                .await;
+            let add_result = match source.layer_info.layer_class {
+                LayerClass::Asset => {
+                    dataset
+                        .add_asset_source(
+                            source.store_slot_id,
+                            source.resolved,
+                            source.layer_info.clone(),
+                            on_duplicate,
+                        )
+                        .await
+                }
+                LayerClass::Segment => {
+                    dataset
+                        .add_source(
+                            source.segment_id.clone(),
+                            source.layer_info.clone(),
+                            source.store_slot_id,
+                            source.resolved,
+                            on_duplicate,
+                        )
+                        .await
+                }
+            };
 
             match add_result {
                 Ok(()) => {

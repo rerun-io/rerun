@@ -19,7 +19,7 @@ use re_types_core::LayerName;
 
 use crate::store::{
     Error, LayerInfo, ResolvedStore, Segment, Source, SourceInsertOutcome, StoreSlotId, Tracked,
-    asset_layer::AssetLayer, store_pool::StorePool,
+    store_pool::StorePool,
 };
 
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
@@ -28,9 +28,14 @@ pub struct DatasetInner {
 
     details: DatasetDetails,
 
-    /// Copied into all [`Self::segments`] on registration of new segments/new [`AssetLayer`]s.
-    #[expect(unused)] // TODO(RR-4755): enable registration of asset layers
-    asset_layers: Vec<AssetLayer>,
+    /// Sources shared across all segments.
+    ///
+    /// Each asset layer consists of only one source,
+    /// that is also put in each [`Segment`].
+    ///
+    /// When a new asset source is registered, it is added to every existing segment.
+    /// When a new segment is registered, all existing asset sources are added to it.
+    asset_layers: Vec<Arc<Source>>,
 
     segments: HashMap<SegmentId, Segment>,
 
@@ -192,11 +197,19 @@ impl Dataset {
         }
     }
 
+    /// Iterate over all distinct sources of this dataset.
+    ///
+    /// Each asset source is yielded once (from `asset_layers`),
+    /// even though it is also copied into every segment.
     pub fn iter_sources(&self) -> impl Iterator<Item = &Source> {
-        self.inner
+        let asset_sources = self.inner.asset_layers.iter().map(|source| source.as_ref());
+        let segment_sources = self
+            .inner
             .segments
             .values()
             .flat_map(|segment| segment.iter_sources().map(|(_, source)| source))
+            .filter(|source| source.layer_info().layer_class != re_types_core::LayerClass::Asset);
+        std::iter::chain(asset_sources, segment_sources)
     }
 
     // TODO(ab): now that we systematically check the merged schema upon registration, we could
@@ -382,39 +395,16 @@ impl Dataset {
         segments_of_interest: &HashSet<&SegmentId>,
         layers_of_interest: &HashSet<&str>,
     ) -> Result<RecordBatch, Error> {
-        let row_count = self
-            .inner
-            .segments
-            .iter()
-            .filter(|(segment_id, _)| {
-                segments_of_interest.is_empty() || segments_of_interest.contains(segment_id)
-            })
-            .flat_map(|(segment_id, segment)| {
-                itertools::izip!(
-                    std::iter::repeat(segment_id),
-                    segment
-                        .sources()
-                        .keys()
-                        .filter(|layer_name| layers_of_interest.is_empty()
-                            || layers_of_interest.contains(layer_name.as_str()))
-                )
-            })
-            .count();
-
-        let mut layer_names = Vec::with_capacity(row_count);
-        let mut segment_ids = Vec::with_capacity(row_count);
-        let mut storage_urls = Vec::with_capacity(row_count);
-        let mut layer_types = Vec::with_capacity(row_count);
-        let mut registration_times = Vec::with_capacity(row_count);
-        let mut last_updated_at = Vec::with_capacity(row_count);
-        let mut num_chunks = Vec::with_capacity(row_count);
-        let mut size_bytes = Vec::with_capacity(row_count);
-        let mut schema_sha256s = Vec::with_capacity(row_count);
-        let mut registration_statuses = Vec::with_capacity(row_count);
-
-        let mut properties = Vec::with_capacity(row_count);
-
-        let layers = self
+        // The manifest is built from the per-segment sources, so an asset layer
+        // is listed once per segment (via its propagated per-segment copies, which
+        // all share the same underlying source).
+        // This is wasteful, but compatible with all existing code that assumes
+        // every manifest row has a non-empty segment id.
+        // Corollary: an asset layer registered to a dataset without segments is
+        // invisible in the manifest.
+        // TODO(RR-4807): consider this choice, e.g. a single row per asset layer
+        // with a NULL segment id instead.
+        let segment_rows = self
             .inner
             .segments
             .iter()
@@ -434,6 +424,22 @@ impl Dataset {
                 let segment_id = segment_id.to_string();
                 (layer_name, segment_id, source)
             });
+
+        let layers: Vec<(&LayerName, String, &Source)> = segment_rows.collect();
+        let row_count = layers.len();
+
+        let mut layer_names = Vec::with_capacity(row_count);
+        let mut segment_ids = Vec::with_capacity(row_count);
+        let mut storage_urls = Vec::with_capacity(row_count);
+        let mut layer_types = Vec::with_capacity(row_count);
+        let mut registration_times = Vec::with_capacity(row_count);
+        let mut last_updated_at = Vec::with_capacity(row_count);
+        let mut num_chunks = Vec::with_capacity(row_count);
+        let mut size_bytes = Vec::with_capacity(row_count);
+        let mut schema_sha256s = Vec::with_capacity(row_count);
+        let mut registration_statuses = Vec::with_capacity(row_count);
+
+        let mut properties = Vec::with_capacity(row_count);
 
         for (layer_name, segment_id, source) in layers {
             layer_names.push(layer_name.clone());
@@ -512,6 +518,17 @@ impl Dataset {
         let layer_name = &layer_info.name;
         re_log::debug!(?segment_id, ?layer_name, "add_layer");
 
+        // A segment layer may not share a name with an existing asset layer,
+        // regardless of `on_duplicate` — the layer classes differ.
+        if self
+            .inner
+            .asset_layers
+            .iter()
+            .any(|asset| asset.layer_info().name == *layer_name)
+        {
+            return Err(Error::LayerClassConflict(layer_name.clone()));
+        }
+
         // Validate schema compatibility before inserting.
         let current_schema = self.schema()?;
         let new_layer_schema = {
@@ -555,6 +572,37 @@ impl Dataset {
             .or_default()
             .insert_source(source.clone(), on_duplicate)?;
 
+        // If this created a new segment, seed it with all existing asset sources.
+        if outcome == SourceInsertOutcome::Inserted {
+            let is_new_segment = self
+                .inner
+                .segments
+                .get(&segment_id)
+                .map(|s| s.source_count() == 1)
+                .unwrap_or(false);
+
+            if is_new_segment {
+                // Put existing asset layers into the new segment.
+                // A name collision with the just-inserted layer is a hard error.
+                let asset_sources: Vec<Arc<Source>> = self.inner.asset_layers.clone();
+                for asset_source in asset_sources {
+                    let outcome = self
+                        .inner
+                        .modify()
+                        .segments
+                        .get_mut(&segment_id)
+                        .expect("segment exists")
+                        .insert_source(asset_source, IfDuplicateBehavior::Error)?;
+
+                    assert_eq!(
+                        outcome,
+                        SourceInsertOutcome::Inserted,
+                        "insert_source with IfDuplicateBehavior::Error can only insert"
+                    );
+                }
+            }
+        }
+
         // Refresh the schema cache after each successful add_source to avoid
         // the O(N²) recompute pattern when register_with_dataset adds many
         // layers in a single batch. `self.inner.modify()` always bumps
@@ -595,6 +643,109 @@ impl Dataset {
         Ok(())
     }
 
+    /// Register a source as an asset layer shared by all segments in this dataset.
+    ///
+    /// The source is:
+    /// - Added to `asset_layers` for future segments.
+    /// - Inserted into every existing segment immediately.
+    //
+    // we can't expect there are no async calls without the lance feature
+    #[allow(clippy::allow_attributes)]
+    #[allow(clippy::unused_async)]
+    pub async fn add_asset_source(
+        &mut self,
+        store_slot_id: StoreSlotId,
+        resolved: ResolvedStore,
+        layer_info: Arc<LayerInfo>,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<(), Error> {
+        let layer_name = &layer_info.name;
+        re_log::debug!(?layer_name, "add_asset_source");
+
+        // Validate schema compatibility against existing data.
+        let current_schema = self.schema()?;
+        let new_layer_schema = {
+            let fields = resolved.schema().chunk_column_descriptors().arrow_fields();
+            Schema::new_with_metadata(fields, HashMap::default())
+        };
+        for new_field in new_layer_schema.fields() {
+            if let Ok(current_field) = current_schema.field_with_name(new_field.name())
+                && current_field != new_field.as_ref()
+            {
+                re_arrow_util::reject_unsupported_widenings(new_field.data_type()).map_err(
+                    |err| {
+                        Error::SchemaConflict(format!(
+                            "schema incompatibility on asset layer '{layer_name}': {err}"
+                        ))
+                    },
+                )?;
+            }
+        }
+
+        // Handle duplicates among existing asset sources.
+        let existing_pos = self
+            .inner
+            .asset_layers
+            .iter()
+            .position(|s| &s.layer_info().name == layer_name);
+        match (existing_pos, on_duplicate) {
+            (Some(_), IfDuplicateBehavior::Error) => {
+                return Err(Error::LayerAlreadyExists(layer_name.clone()));
+            }
+            (Some(i), IfDuplicateBehavior::Overwrite) => {
+                self.inner.modify().asset_layers.remove(i);
+            }
+            (Some(_), IfDuplicateBehavior::Skip) => {
+                re_log::info!("Ignoring asset layer '{layer_name}': already exists in dataset");
+                return Ok(());
+            }
+            (None, _) => {
+                // A fresh asset layer may not share a name with an existing segment layer,
+                // regardless of `on_duplicate` — the layer classes differ.
+                // (When replacing an existing asset layer, the same-named per-segment
+                // sources are the copies of that asset layer, so this check only
+                // applies to fresh registrations.)
+                if self
+                    .inner
+                    .segments
+                    .values()
+                    .any(|segment| segment.source(layer_name).is_some())
+                {
+                    return Err(Error::LayerClassConflict(layer_name.clone()));
+                }
+            }
+        }
+
+        let source = Arc::new(Source::new(
+            store_slot_id,
+            resolved,
+            DataSourceKind::Rrd,
+            layer_info,
+        ));
+
+        self.inner.modify().asset_layers.push(source.clone());
+
+        // Propagate to all existing segments.
+        // The outcome is `Inserted` for fresh propagation, or `Overwritten` when
+        // re-registering an existing asset layer with `on_duplicate = Overwrite`.
+        let segment_ids: Vec<SegmentId> = self.inner.segments.keys().cloned().collect();
+        for segment_id in segment_ids {
+            let outcome = self
+                .inner
+                .modify()
+                .segments
+                .get_mut(&segment_id)
+                .expect("segment exists")
+                .insert_source(source.clone(), IfDuplicateBehavior::Overwrite)?;
+            debug_assert_ne!(outcome, SourceInsertOutcome::Skipped);
+        }
+
+        // Invalidate the schema cache — the new asset source may add new columns.
+        *self.cached_schema.lock() = None;
+
+        Ok(())
+    }
+
     /// Unregisters segments and layers from the dataset.
     ///
     /// This method acts as a *product* filter:
@@ -612,6 +763,15 @@ impl Dataset {
         layers_to_drop: &HashSet<&str>,
     ) -> Result<Vec<(SegmentId, LayerName)>, Error> {
         re_log::debug!(?segments_to_drop, ?layers_to_drop, "remove_layers");
+
+        // Asset layers are dataset-level, so they are only removed when no segment
+        // filter is given. Their per-segment copies are removed by the loop below.
+        if segments_to_drop.is_empty() {
+            self.inner.modify().asset_layers.retain(|source| {
+                let layer_name = &source.layer_info().name;
+                !(layers_to_drop.is_empty() || layers_to_drop.contains(layer_name.as_str()))
+            });
+        }
 
         let mut removed_layers = Vec::new();
         {

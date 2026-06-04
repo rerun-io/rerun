@@ -43,6 +43,9 @@ pub enum Error {
     #[error("Layer '{0}' already exists")]
     LayerAlreadyExists(LayerName),
 
+    #[error("Layer '{0}' already exists with a different layer class (asset vs segment)")]
+    LayerClassConflict(LayerName),
+
     #[error("Component path '{0}' not found")]
     ComponentPathNotFound(ComponentPath),
 
@@ -120,6 +123,7 @@ impl From<Error> for tonic::Status {
             Error::DuplicateEntryNameError(_)
             | Error::DuplicateEntryIdError(_)
             | Error::LayerAlreadyExists(_)
+            | Error::LayerClassConflict(_)
             | Error::IndexAlreadyExists(_)
             | Error::TableStorageAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
 
