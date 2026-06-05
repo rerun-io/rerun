@@ -207,7 +207,7 @@ impl VoxelGridMapVisualizer {
         }
 
         let cell_size = f32::from(cell_size.0);
-        if !(cell_size.is_finite() && cell_size > 0.0) {
+        if !cell_size.is_finite() || cell_size <= 0.0 {
             results.report_for_component(
                 VoxelGridMap::descriptor_cell_size().component,
                 VisualizerReportSeverity::Error,
