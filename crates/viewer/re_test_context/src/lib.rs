@@ -531,7 +531,7 @@ impl TestContext {
         edit_fn(&mut selection_state);
 
         // the selection state is double-buffered, so let's ensure it's updated
-        selection_state.on_frame_start(|_| true, None);
+        selection_state.on_frame_start(|item| Some(item.clone()), None);
     }
 
     /// Log an entity to the recording store.
@@ -713,7 +713,7 @@ impl TestContext {
 
         render_ctx.before_submit();
 
-        selection_state.on_frame_start(|_| true, None);
+        selection_state.on_frame_start(|item| Some(item.clone()), None);
         *focused_item = None;
     }
 

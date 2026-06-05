@@ -332,11 +332,27 @@ impl AppState {
                         if let Item::StoreId(store_id) = item
                             && store_id.is_empty_recording()
                         {
-                            return false;
+                            return None;
                         }
 
-                        item.is_compatible_with_route(route)
-                            && viewport_ui.blueprint.is_item_valid(storage_context, item)
+                        if !item.is_compatible_with_route(route) {
+                            return None;
+                        }
+
+                        if viewport_ui.blueprint.is_item_valid(storage_context, item) {
+                            return Some(item.clone());
+                        }
+
+                        // A data result whose view still exists but whose entity isn't actually
+                        // part of that view: fall back to selecting the entity itself rather than
+                        // dropping the selection entirely.
+                        if let Item::DataResult(data_result) = item
+                            && viewport_ui.blueprint.view(&data_result.view_id).is_some()
+                        {
+                            return Some(Item::InstancePath(data_result.instance_path.clone()));
+                        }
+
+                        None
                     },
                     route.item(),
                 );
