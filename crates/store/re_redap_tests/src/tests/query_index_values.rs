@@ -10,6 +10,7 @@ use itertools::Itertools as _;
 use re_chunk_store::IndexValue;
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, TimeInt, TimeType};
+use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_types_core::SegmentId;
@@ -116,7 +117,7 @@ pub async fn query_dataset_index_values(service: impl RerunCloudService) {
 async fn per_segment_chunk_id_set<T: RerunCloudService>(
     service: &T,
     dataset_name: &str,
-    request: re_protos::cloud::v1alpha1::ext::QueryDatasetRequest,
+    request: ext::QueryDatasetRequest,
 ) -> BTreeSet<re_chunk::ChunkId> {
     use arrow::array::{Array as _, AsArray as _};
     use re_protos::cloud::v1alpha1::QueryDatasetResponse;
@@ -240,8 +241,8 @@ pub async fn query_dataset_per_segment_values_wire_level(service: impl RerunClou
     let range_baseline_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            range: Some(re_protos::cloud::v1alpha1::ext::QueryRange {
+        query: Some(ext::Query {
+            range: Some(ext::QueryRange {
                 index: "frame_nr".into(),
                 index_range: re_log_types::AbsoluteTimeRange::EVERYTHING,
             }),
@@ -263,8 +264,8 @@ pub async fn query_dataset_per_segment_values_wire_level(service: impl RerunClou
     let latest_at_baseline_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::MAX,
                 per_segment_values: vec![],
@@ -285,8 +286,8 @@ pub async fn query_dataset_per_segment_values_wire_level(service: impl RerunClou
     let filtered_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 // `at` is the global fallback; servers prefer per_segment_values when set.
                 at: TimeInt::STATIC,
@@ -341,8 +342,8 @@ pub async fn query_dataset_per_segment_values_wire_level(service: impl RerunClou
     let static_only_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::STATIC,
                 per_segment_values: vec![vec![], vec![], vec![]],
@@ -408,8 +409,8 @@ pub async fn query_dataset_per_segment_values_multi_value_wire_level(
     let range_baseline_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            range: Some(re_protos::cloud::v1alpha1::ext::QueryRange {
+        query: Some(ext::Query {
+            range: Some(ext::QueryRange {
                 index: "frame_nr".into(),
                 index_range: re_log_types::AbsoluteTimeRange::EVERYTHING,
             }),
@@ -424,8 +425,8 @@ pub async fn query_dataset_per_segment_values_multi_value_wire_level(
     let filtered_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::STATIC,
                 per_segment_values: vec![
@@ -471,8 +472,8 @@ pub async fn query_dataset_per_segment_values_multi_value_wire_level(
     let single_value_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::STATIC,
                 per_segment_values: vec![vec![1010], vec![2020], vec![3010]],
@@ -611,8 +612,8 @@ pub async fn query_dataset_per_segment_values_with_chunk_ids_intersects(
     let baseline_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::STATIC,
                 per_segment_values: vec![vec![1010], vec![2010], vec![3010]],
@@ -640,8 +641,8 @@ pub async fn query_dataset_per_segment_values_with_chunk_ids_intersects(
         segment_ids: segment_ids.clone(),
         chunk_ids: vec![pinned_chunk_id],
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::STATIC,
                 per_segment_values: vec![vec![1010], vec![2010], vec![3010]],
@@ -746,8 +747,8 @@ pub async fn query_dataset_per_segment_values_empty_entity_paths_short_circuits(
         // Explicitly: no entity paths, no "all paths". Result must be empty.
         select_all_entity_paths: false,
         entity_paths: vec![],
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::STATIC,
                 per_segment_values: vec![vec![1010], vec![2010], vec![3010]],

@@ -9,6 +9,7 @@ use pyo3::{Bound, Py, PyAny, PyErr, PyRef, PyRefMut, PyResult, Python, pyclass, 
 use re_chunk_store::LazyStore;
 use re_datafusion::{DatasetManifestProvider, SearchResultsTableProvider, SegmentTableProvider};
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DatasetDetails, DatasetEntry, EntryDetails, IndexProperties,
 };
@@ -653,7 +654,7 @@ impl PyDatasetEntryInternal {
             metric: distance_metric,
         };
 
-        let config = re_protos::cloud::v1alpha1::ext::IndexConfig {
+        let config = cloud_ext::IndexConfig {
             time_index: time_selector.timeline,
             column: component_descriptor.0.clone().into(),
             properties: properties.clone(),
@@ -708,7 +709,7 @@ impl PyDatasetEntryInternal {
                 .indexes
                 .into_iter()
                 .map(|index| {
-                    let index = re_protos::cloud::v1alpha1::ext::IndexConfig::try_from(index)?;
+                    let index = cloud_ext::IndexConfig::try_from(index)?;
                     Ok(PyIndexConfig::from(index))
                 })
                 .collect();
@@ -757,7 +758,7 @@ impl PyDatasetEntryInternal {
                 .indexes
                 .into_iter()
                 .map(|index| {
-                    let index = re_protos::cloud::v1alpha1::ext::IndexConfig::try_from(index)?;
+                    let index = cloud_ext::IndexConfig::try_from(index)?;
                     Ok(PyIndexConfig::from(index))
                 })
                 .collect();

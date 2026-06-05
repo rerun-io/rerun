@@ -499,7 +499,7 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::DoBandwidthTestRequest>,
     ) -> tonic::Result<tonic::Response<Self::DoBandwidthTestStream>> {
         let re_protos::cloud::v1alpha1::DoBandwidthTestRequest { num_bytes } = request.into_inner();
-        let max = re_protos::cloud::v1alpha1::ext::MAX_BANDWIDTH_TEST_BYTES;
+        let max = ext::MAX_BANDWIDTH_TEST_BYTES;
         if num_bytes > max {
             return Err(Status::invalid_argument(format!(
                 "num_bytes ({num_bytes}) exceeds the maximum of {max}"
@@ -2109,7 +2109,5 @@ fn get_chunks_for_query_results(
 fn bandwidth_test_stream(
     num_bytes: u64,
 ) -> impl futures::Stream<Item = tonic::Result<DoBandwidthTestResponse>> + Send {
-    futures::stream::iter(
-        re_protos::cloud::v1alpha1::ext::BandwidthTestPayloadIter::new(num_bytes).map(Ok),
-    )
+    futures::stream::iter(ext::BandwidthTestPayloadIter::new(num_bytes).map(Ok))
 }

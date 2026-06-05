@@ -12,6 +12,7 @@ use re_chunk_store::{QueryExpression, SparseFillStrategy};
 use re_datafusion::query_from_query_expression;
 use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, DatasetDetails, DatasetEntry, EntryDetails, QueryDatasetRequest,
     RegisterWithDatasetTaskDescriptor, TableDetails, TableEntry, VersionResponse,
@@ -118,8 +119,8 @@ impl ConnectionHandle {
         &self,
         py: Python<'_>,
         entry_id: EntryId,
-        entry_details_update: re_protos::cloud::v1alpha1::ext::EntryDetailsUpdate,
-    ) -> PyResult<re_protos::cloud::v1alpha1::ext::EntryDetails> {
+        entry_details_update: cloud_ext::EntryDetailsUpdate,
+    ) -> PyResult<cloud_ext::EntryDetails> {
         wait_for_future(py, async {
             self.client()
                 .await?

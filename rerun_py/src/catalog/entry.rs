@@ -4,6 +4,7 @@ use pyo3::exceptions::PyTypeError;
 use pyo3::{Py, PyErr, PyResult, Python, pyclass, pymethods};
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::EntryKind;
+use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::ext::EntryDetails;
 
 use crate::catalog::PyCatalogClientInternal;
@@ -173,7 +174,7 @@ pub fn set_entry_name(
 
     let entry_name = re_protos::EntryName::new(name)
         .map_err(|err| pyo3::exceptions::PyValueError::new_err(err.to_string()))?;
-    let entry_details_update = re_protos::cloud::v1alpha1::ext::EntryDetailsUpdate {
+    let entry_details_update = ext::EntryDetailsUpdate {
         name: Some(entry_name),
     };
 

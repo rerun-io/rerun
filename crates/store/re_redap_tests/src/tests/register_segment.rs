@@ -11,6 +11,7 @@ use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::{EntityPath, TimeType};
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DatasetDetails, RegisterWithDatasetRequest, TableDetails, UpdateTableEntryRequest,
 };
@@ -18,7 +19,7 @@ use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CreateDatasetEntryRequest, GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest,
     ReadDatasetEntryRequest, ReadTableEntryRequest, ScanDatasetManifestRequest,
-    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse, ext,
+    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
 };
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -441,7 +442,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
 
     fe.register_with_dataset_name_blocking(
         dataset_name,
-        vec![ext::DataSource::new_rrd_prefix_url(root_url).into()],
+        vec![cloud_ext::DataSource::new_rrd_prefix_url(root_url).into()],
     )
     .await;
 
@@ -483,7 +484,7 @@ pub async fn register_bad_file_uri_should_error(service: impl RerunCloudService)
 
     for (test_name, bad_uri) in test_cases {
         let request = RegisterWithDatasetRequest {
-            data_sources: vec![ext::DataSource::new_rrd_url(
+            data_sources: vec![cloud_ext::DataSource::new_rrd_url(
                 url::Url::parse(bad_uri).unwrap(),
             )],
             on_duplicate: Default::default(),
@@ -609,7 +610,7 @@ pub async fn register_with_dataset_if_duplicate_behavior_error(service: impl Rer
         .await;
 
     // Second registration of same segment - should fail with AlreadyExists
-    let request = ext::RegisterWithDatasetRequest {
+    let request = cloud_ext::RegisterWithDatasetRequest {
         data_sources: data_sources_def.to_data_sources_ext(),
         on_duplicate: IfDuplicateBehavior::Error,
     };
@@ -801,7 +802,7 @@ pub async fn register_intra_request_duplicates(service: impl RerunCloudService) 
             ],
         );
 
-        let request = ext::RegisterWithDatasetRequest {
+        let request = cloud_ext::RegisterWithDatasetRequest {
             data_sources: data_source_def.to_data_sources_ext(),
             on_duplicate,
         };
@@ -855,7 +856,7 @@ pub async fn register_empty_request(service: impl RerunCloudService) {
     service.create_dataset_entry_with_name(dataset_name).await;
 
     // Register with empty data sources
-    let request = ext::RegisterWithDatasetRequest {
+    let request = cloud_ext::RegisterWithDatasetRequest {
         data_sources: vec![],
         on_duplicate: IfDuplicateBehavior::Error,
     };
@@ -904,7 +905,7 @@ pub async fn register_fully_skipped(service: impl RerunCloudService) {
         .await;
 
     // Second registration with same partition - should be fully skipped
-    let request = ext::RegisterWithDatasetRequest {
+    let request = cloud_ext::RegisterWithDatasetRequest {
         data_sources: data_sources_def.to_data_sources_ext(),
         on_duplicate: IfDuplicateBehavior::Skip,
     };

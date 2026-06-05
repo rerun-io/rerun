@@ -12,6 +12,7 @@ use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::EntryKind;
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DatasetDetails, EntryDetails, ProviderDetails, TableDetails, TableEntry,
 };
@@ -397,7 +398,7 @@ impl InMemoryStore {
         entry_name: EntryName,
         entry_id: EntryId,
         table: TableType,
-        provider_details: re_protos::cloud::v1alpha1::ext::LanceTable,
+        provider_details: cloud_ext::LanceTable,
     ) -> Result<(), Error> {
         let blueprint_dataset_id = self.create_blueprint_dataset_for_entry(entry_id)?;
 

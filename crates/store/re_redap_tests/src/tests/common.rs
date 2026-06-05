@@ -5,11 +5,12 @@ use arrow::datatypes::{DataType, Field, Schema};
 use futures::StreamExt as _;
 use itertools::Itertools as _;
 use re_log_types::{EntityPath, TimeType};
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CreateDatasetEntryRequest, DataSource, QueryTasksOnCompletionRequest, QueryTasksResponse,
-    RegisterWithDatasetRequest, RegisterWithDatasetResponse, ext,
+    RegisterWithDatasetRequest, RegisterWithDatasetResponse,
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
@@ -38,13 +39,14 @@ pub async fn create_table_entry_with_name(
     service: &impl RerunCloudService,
     table_name: &str,
     tmp_dir: &tempfile::TempDir,
-) -> ext::TableEntry {
+) -> cloud_ext::TableEntry {
     let schema = Schema::new(vec![Field::new("column_a", DataType::Utf8, false)]);
     let table_url =
         Url::from_directory_path(tmp_dir.path()).expect("create url from tmp directory");
-    let provider_details = ext::ProviderDetails::LanceTable(ext::LanceTable { table_url });
+    let provider_details =
+        cloud_ext::ProviderDetails::LanceTable(cloud_ext::LanceTable { table_url });
 
-    let request = ext::CreateTableEntryRequest {
+    let request = cloud_ext::CreateTableEntryRequest {
         name: entry_name(table_name),
         schema,
         provider_details: Some(provider_details),
@@ -52,7 +54,7 @@ pub async fn create_table_entry_with_name(
     .try_into()
     .expect("Unable to create table request");
 
-    let response: ext::CreateTableEntryResponse = service
+    let response: cloud_ext::CreateTableEntryResponse = service
         .create_table_entry(tonic::Request::new(request))
         .await
         .expect("create table entry")
@@ -148,7 +150,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         segments_to_drop: &[&str],
         layers_to_drop: &[&str],
     ) -> tonic::Result<RecordBatch> {
-        let request = re_protos::cloud::v1alpha1::ext::UnregisterFromDatasetRequest {
+        let request = cloud_ext::UnregisterFromDatasetRequest {
             segments_to_drop: segments_to_drop
                 .iter()
                 .map(|id| (*id).to_owned().into())
@@ -191,10 +193,9 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path) {
         let table_url =
             Url::from_directory_path(path).expect("Unable to create URL from directory path");
-        let provider_details = re_protos::cloud::v1alpha1::ext::ProviderDetails::LanceTable(
-            re_protos::cloud::v1alpha1::ext::LanceTable { table_url },
-        );
-        let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
+        let provider_details =
+            cloud_ext::ProviderDetails::LanceTable(cloud_ext::LanceTable { table_url });
+        let request = cloud_ext::RegisterTableRequest {
             name: entry_name(table_name),
             provider_details,
         };
@@ -658,14 +659,16 @@ impl DataSourcesDefinition {
         }
     }
 
-    pub fn to_data_sources_ext(&self) -> Vec<ext::DataSource> {
+    pub fn to_data_sources_ext(&self) -> Vec<cloud_ext::DataSource> {
         self.layers
             .iter()
             .map(|(layer_name, path)| {
                 let url = Url::from_file_path(path.as_path()).unwrap();
                 match layer_name {
-                    None => ext::DataSource::new_rrd_url(url),
-                    Some(layer) => ext::DataSource::new_rrd_layer(layer, url.as_str()).unwrap(),
+                    None => cloud_ext::DataSource::new_rrd_url(url),
+                    Some(layer) => {
+                        cloud_ext::DataSource::new_rrd_layer(layer, url.as_str()).unwrap()
+                    }
                 }
             })
             .collect()

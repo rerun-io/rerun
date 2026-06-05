@@ -12,6 +12,7 @@ use re_log_types::{
     BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
     StoreSource,
 };
+use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_types_core::SegmentId;
 use re_uri::Origin;
@@ -753,7 +754,7 @@ async fn stream_segment_from_server(
                 include_static_data: true,
                 include_temporal_data: true,
                 query: Some(
-                    re_protos::cloud::v1alpha1::ext::Query::latest_at_range(
+                    ext::Query::latest_at_range(
                         *time_selection.timeline.name(),
                         time_selection.range,
                     )

@@ -12,6 +12,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_format::{format_plural_s, format_uint};
 use re_log::error;
 use re_log_types::{EntryId, Timestamp};
+use re_protos::cloud::v1alpha1::ext;
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::menu::menu_style;
@@ -1083,7 +1084,7 @@ fn upsert_flag_changes(
                 .write_table(
                     futures::stream::once(async { upsert_batch }),
                     remote.entry_id,
-                    re_protos::cloud::v1alpha1::ext::TableInsertMode::Replace,
+                    ext::TableInsertMode::Replace,
                 )
                 .await
         }

@@ -10,6 +10,7 @@ use re_arrow_util::RecordBatchExt as _;
 use re_log_encoding::RawRrdManifest;
 use re_log_types::{EntryId, StoreId, StoreKind, TimeType};
 use re_protos::EntryName;
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{DataSourceKind, DatasetDetails, DatasetEntry, EntryDetails};
 use re_protos::cloud::v1alpha1::{
     EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
@@ -457,8 +458,7 @@ impl Dataset {
 
             // In re_server, only successful registrations exist (schema conflicts fail synchronously),
             // so all entries are always `Done`.
-            registration_statuses
-                .push(re_protos::cloud::v1alpha1::ext::LayerRegistrationStatus::Done.to_string());
+            registration_statuses.push(cloud_ext::LayerRegistrationStatus::Done.to_string());
 
             properties.push(source.compute_properties()?);
         }

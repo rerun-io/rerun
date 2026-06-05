@@ -5,6 +5,7 @@ use std::time::Duration;
 use futures::StreamExt as _;
 
 use re_protos::cloud::v1alpha1::QueryTasksResponse;
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, QueryTasksOnCompletionResponse, TableDetails, TableEntry,
 };
@@ -161,7 +162,7 @@ async fn register_rrds(
     let mut segment_ids = Vec::with_capacity(items.len());
     let mut task_ids = Vec::with_capacity(items.len());
     for item in items {
-        let re_protos::cloud::v1alpha1::ext::RegisterWithDatasetTaskDescriptor {
+        let cloud_ext::RegisterWithDatasetTaskDescriptor {
             segment_id,
             segment_type: _,
             storage_url: _,

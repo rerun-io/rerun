@@ -6,6 +6,7 @@ use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::{FromPyObject, PyErr, PyResult, pyclass, pymethods};
+use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::ext::IndexProperties;
 use re_sorbet::ComponentColumnSelector;
 
@@ -127,8 +128,8 @@ impl PyIndexConfig {
     }
 }
 
-impl From<re_protos::cloud::v1alpha1::ext::IndexConfig> for PyIndexConfig {
-    fn from(value: re_protos::cloud::v1alpha1::ext::IndexConfig) -> Self {
+impl From<ext::IndexConfig> for PyIndexConfig {
+    fn from(value: ext::IndexConfig) -> Self {
         Self {
             time_index: PyIndexColumnSelector(value.time_index.into()),
             column: PyComponentColumnSelector(ComponentColumnSelector::from_descriptor(

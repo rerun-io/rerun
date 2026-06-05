@@ -22,6 +22,7 @@ use crate::cloud::v1alpha1::{
     ScanDatasetManifestResponse, ScanSegmentTableResponse, UnregisterFromDatasetResponse,
     VectorDistanceMetric,
 };
+use crate::common::v1alpha1::ext as common_ext;
 use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
 use crate::v1alpha1::rerun_common_v1alpha1_ext::ScanParameters;
@@ -244,7 +245,7 @@ impl crate::cloud::v1alpha1::UnregisterFromDatasetRequest {
 
 #[derive(Debug, Clone)]
 pub struct QueryDatasetRequest {
-    pub segment_ids: Vec<crate::common::v1alpha1::ext::SegmentId>,
+    pub segment_ids: Vec<common_ext::SegmentId>,
     pub generate_direct_urls: bool,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
@@ -252,7 +253,7 @@ pub struct QueryDatasetRequest {
     pub fuzzy_descriptors: Vec<String>,
     pub exclude_static_data: bool,
     pub exclude_temporal_data: bool,
-    pub scan_parameters: Option<crate::common::v1alpha1::ext::ScanParameters>,
+    pub scan_parameters: Option<common_ext::ScanParameters>,
     pub query: Option<Query>,
 }
 

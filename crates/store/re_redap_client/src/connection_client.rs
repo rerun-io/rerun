@@ -5,6 +5,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::{RawRrdManifest, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::EntryName;
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
     DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
@@ -294,7 +295,7 @@ where
         num_bytes: u64,
         rtt: std::time::Duration,
     ) -> ApiResult<Option<f64>> {
-        let max = re_protos::cloud::v1alpha1::ext::MAX_BANDWIDTH_TEST_BYTES;
+        let max = cloud_ext::MAX_BANDWIDTH_TEST_BYTES;
         if num_bytes > max {
             return Err(ApiError::invalid_arguments(format!(
                 "num_bytes ({num_bytes}) exceeds the maximum of {max}"
@@ -1179,7 +1180,7 @@ where
         name: EntryName,
         url: url::Url,
     ) -> ApiResult<TableEntry> {
-        let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
+        let request = cloud_ext::RegisterTableRequest {
             name,
             provider_details: ProviderDetails::LanceTable(LanceTable { table_url: url }),
         };
@@ -1220,7 +1221,7 @@ where
         self.inner()
             .do_maintenance(
                 tonic::Request::new(
-                    re_protos::cloud::v1alpha1::ext::DoMaintenanceRequest {
+                    cloud_ext::DoMaintenanceRequest {
                         optimize_indexes,
                         retrain_indexes,
                         compact_fragments,
