@@ -69,6 +69,8 @@ mod gpu_data {
         pub picking_instance_id: [u32; 2],
     }
 
+    static_assertions::assert_eq_size!(InstanceData, [u8; 24]);
+
     impl InstanceData {
         pub fn vertex_buffer_layout() -> VertexBufferLayout {
             VertexBufferLayout {
@@ -234,11 +236,6 @@ impl VoxelGridDrawData {
             draw_outline_mask: options.outline_mask_ids.is_some(),
             position: options.draw_order_position,
         })
-    }
-
-    #[inline]
-    pub const fn vertices_per_voxel() -> u32 {
-        VERTICES_PER_VOXEL
     }
 
     #[inline]
