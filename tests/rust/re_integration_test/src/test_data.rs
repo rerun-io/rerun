@@ -5,7 +5,9 @@ use std::time::Duration;
 use futures::StreamExt as _;
 
 use re_protos::cloud::v1alpha1::QueryTasksResponse;
-use re_protos::cloud::v1alpha1::ext::{DataSource, QueryTasksOnCompletionResponse};
+use re_protos::cloud::v1alpha1::ext::{
+    DataSource, QueryTasksOnCompletionResponse, TableDetails, TableEntry,
+};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_redap_client::ConnectionClient;
@@ -169,7 +171,70 @@ async fn register_rrds(
         task_ids.push(task_id);
     }
 
-    // Wait for the registration tasks to complete:
+    wait_for_tasks(client, task_ids).await?;
+
+    Ok(segment_ids)
+}
+
+/// Register a `.rbl` blueprint file with `table`'s implicit blueprint dataset and set it as the
+/// table's default blueprint, mirroring `TableEntry.register_blueprint` in the Python SDK.
+///
+/// The viewer fetches this registered blueprint when the table entry is opened, which is what
+/// turns the preview column into inline 3D previews.
+pub async fn register_table_blueprint(
+    client: &mut ConnectionClient,
+    table: &TableEntry,
+    blueprint_rbl: &std::path::Path,
+) -> Result<SegmentId, Box<dyn Error>> {
+    let blueprint_dataset = table
+        .table_details
+        .blueprint_dataset
+        .ok_or("table is missing its implicit blueprint dataset")?;
+
+    let data_source = DataSource::new_rrd(format!(
+        "file://{}",
+        blueprint_rbl
+            .to_str()
+            .ok_or_else(|| "Failed to convert blueprint path to str".to_owned())?
+    ))?;
+
+    let items = client
+        .register_with_dataset(
+            blueprint_dataset,
+            vec![data_source],
+            IfDuplicateBehavior::Overwrite,
+        )
+        .await?
+        .1;
+
+    let mut segment_id = None;
+    let mut task_ids = Vec::with_capacity(items.len());
+    for item in items {
+        segment_id = Some(item.segment_id);
+        task_ids.push(item.task_id);
+    }
+    let segment_id = segment_id.ok_or("Blueprint registration returned no segment")?;
+
+    wait_for_tasks(client, task_ids).await?;
+
+    client
+        .update_table_entry(
+            table.details.id,
+            TableDetails {
+                blueprint_dataset: Some(blueprint_dataset),
+                default_blueprint_segment: Some(segment_id.clone()),
+            },
+        )
+        .await?;
+
+    Ok(segment_id)
+}
+
+/// Wait for the given registration tasks to complete, returning an error if any task failed.
+async fn wait_for_tasks(
+    client: &mut ConnectionClient,
+    task_ids: Vec<re_protos::common::v1alpha1::TaskId>,
+) -> Result<(), Box<dyn Error>> {
     let timeout = Duration::from_secs(10);
     let mut response_stream = client.query_tasks_on_completion(task_ids, timeout).await?;
 
@@ -198,5 +263,5 @@ async fn register_rrds(
         }
     }
 
-    Ok(segment_ids)
+    Ok(())
 }

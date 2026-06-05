@@ -6,26 +6,29 @@ include_in_manifest = false
 
 ## Table blueprints
 
-Creates tables with embedded blueprint metadata. Each row links to a recording segment URI;
-the viewer can load those recordings on demand and render row previews with the embedded blueprint views.
+Creates tables whose rows link to recording segment URIs.
+The viewer can load those recordings on demand and render row previews with a registered `.rbl` table blueprint.
 
-The example also adds a boolean `marker_flag` column and names it in the embedded table blueprint. That column is the per-row flag state: the Viewer renders it as a clickable flag on each grid card, updates the visible table immediately when toggled, and upserts the changed boolean value back to the server using the `rerun:is_table_index` column as the row key. The column is still regular table data, so its saved values are what you get back when you query the table later.
+The example also adds a boolean `marker_flag` column and names it in the table blueprint.
+That column is the per-row flag state: the Viewer renders it as a clickable flag on each grid card, updates the visible table immediately when toggled, and upserts the changed boolean value back to the server using the `rerun:is_table_index` column as the row key.
+The column is still regular table data, so its saved values are what you get back when you query the table later.
 
 <!-- TODO(#12746): this is still experimental -->
-Table cards and blueprints are experimental. Enable
-`Settings > Experimental > Table cards and blueprints` in the viewer.
+Table cards and blueprints are experimental.
+Enable `Settings > Experimental > Table cards and blueprints` in the viewer.
 
 ## Dataset-specific setup
 
-This sample contains a small `Dataset-specific customization` section near the top of `table_blueprints.py`. Please edit `extract_dataset_property_columns` and `make_dataset_blueprints` before using it with your own data: the defaults are geared towards RRDs from the DROID dataset and assume that segment-table schema, timeline, entity paths, coordinate frame, and card-title column.
+This sample contains a small `Dataset-specific customization` section near the top of `table_blueprints.py`.
+Please edit `extract_dataset_property_columns` and `make_dataset_blueprints` before using it with your own data: the defaults are geared towards RRDs from the DROID dataset and assume that segment-table schema, timeline, entity paths, coordinate frame, and card-title column.
 
 ## Run the code
 
-The sample has two run modes:
+The sample has two run modes.
 
 ### Local server mode
 
-Without `--url`, the script starts a temporary local Rerun server, serves a directory of `.rrd` files as a dataset named `local`, creates the demo tables in that local server, and keeps running until you press Enter.
+Without `--url`, the script starts a temporary local Rerun server, serves a directory of `.rrd` files as a dataset named `local`, creates the demo tables in that local server, writes one `.rbl` blueprint file per table, and registers those blueprints with `TableEntry.register_blueprint(...)`.
 
 Run without arguments to serve the checked-in sample files from `tests/assets/rrd/sample_5`:
 
@@ -54,8 +57,12 @@ pixi run py-build && pixi run uv run examples/python/table_blueprints/table_blue
 
 ### Remote client mode
 
-With `--url`, the script does not start a server. Instead, it connects as a client to an existing Rerun server or catalog, looks up the dataset by name, and creates the demo tables there.
+With `--url`, the script connects as a client to an existing Rerun server or catalog and looks up the dataset by name.
+The generated `.rbl` files must be visible to that server before registration.
+Use `--write-blueprints-only` to write them locally, upload them yourself, then rerun with `--blueprint-uri-base` pointing at the uploaded directory.
 
 ```bash
-table_blueprints <dataset-name> --url rerun+https://…
+table_blueprints --write-blueprints-only --blueprint-dir /tmp/table-blueprints
+# Upload /tmp/table-blueprints/*.rbl to a server-visible location, for example s3://my-bucket/table-blueprints/
+table_blueprints <dataset-name> --url rerun+https://… --blueprint-dir /tmp/table-blueprints --blueprint-uri-base s3://my-bucket/table-blueprints/
 ```

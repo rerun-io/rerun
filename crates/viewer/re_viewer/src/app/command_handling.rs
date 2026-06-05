@@ -222,8 +222,7 @@ impl App {
                     | LogSource::Sdk
                     | LogSource::RedapGrpcStream { .. }
                     | LogSource::MessageProxy { .. }
-                    | LogSource::Stdin
-                    | LogSource::EmbeddedTableBlueprint => true,
+                    | LogSource::Stdin => true,
                 });
             }
 
@@ -638,13 +637,6 @@ impl App {
                 // For now we do a focus switch but this isn't ideal since it breaks the flow of programmatic screenshot taking.
                 self.egui_ctx
                     .send_viewport_cmd(egui::ViewportCommand::Focus);
-            }
-
-            SystemCommand::RegisterTableBlueprint {
-                table_id,
-                blueprint,
-            } => {
-                store_hub.insert_table_blueprint(table_id, *blueprint);
             }
         }
     }
@@ -1461,8 +1453,7 @@ impl App {
                 | LogSource::JsChannel { .. }
                 | LogSource::Sdk
                 | LogSource::Stdin
-                | LogSource::MessageProxy(_)
-                | LogSource::EmbeddedTableBlueprint => false,
+                | LogSource::MessageProxy(_) => false,
             };
 
             if should_close {

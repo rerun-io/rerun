@@ -84,8 +84,7 @@ impl<'a> RecordingPanelData<'a> {
                 | LogSource::JsChannel { .. }
                 | LogSource::Sdk
                 | LogSource::Stdin
-                | LogSource::MessageProxy(_)
-                | LogSource::EmbeddedTableBlueprint => {}
+                | LogSource::MessageProxy(_) => {}
             }
         }
 

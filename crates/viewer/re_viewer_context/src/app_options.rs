@@ -194,7 +194,7 @@ pub struct VideoOptions {
 pub struct ExperimentalAppOptions {
     /// Enable table cards and blueprints.
     ///
-    /// This enables table blueprints embedded in Arrow schema metadata,
+    /// This enables registered table blueprints,
     /// plus the table/grid view toggle for card-based table layouts.
     pub table_cards_and_blueprints: bool,
 

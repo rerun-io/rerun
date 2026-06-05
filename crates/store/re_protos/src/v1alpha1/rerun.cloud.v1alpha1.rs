@@ -1728,6 +1728,41 @@ impl ::prost::Name for ReadTableEntryResponse {
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct UpdateTableEntryRequest {
+    /// The table to modify.
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The new values.
+    #[prost(message, optional, tag = "2")]
+    pub table_details: ::core::option::Option<TableDetails>,
+}
+impl ::prost::Name for UpdateTableEntryRequest {
+    const NAME: &'static str = "UpdateTableEntryRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.UpdateTableEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.UpdateTableEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct UpdateTableEntryResponse {
+    /// The updated table entry.
+    #[prost(message, optional, tag = "1")]
+    pub table: ::core::option::Option<TableEntry>,
+}
+impl ::prost::Name for UpdateTableEntryResponse {
+    const NAME: &'static str = "UpdateTableEntryResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.UpdateTableEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.UpdateTableEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EntryFilter {
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
@@ -1793,6 +1828,7 @@ impl ::prost::Name for EntryDetailsUpdate {
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DatasetDetails {
     /// The blueprint dataset associated with this dataset (if any).
+    /// This association is owned for lifecycle purposes: deleting this dataset also deletes the associated blueprint dataset.
     #[prost(message, optional, tag = "3")]
     pub blueprint_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The segment of the blueprint dataset corresponding to the default blueprint (if any).
@@ -1832,12 +1868,38 @@ impl ::prost::Name for DatasetEntry {
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TableDetails {
+    /// Blueprint dataset associated with this table.
+    /// This association is owned for lifecycle purposes: deleting this table also deletes the associated blueprint dataset.
+    ///
+    /// Like recording datasets, tables get an associated blueprint dataset automatically when they are created.
+    #[prost(message, optional, tag = "1")]
+    pub blueprint_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// Segment of the blueprint dataset corresponding to the default table blueprint.
+    #[prost(message, optional, tag = "2")]
+    pub default_blueprint_segment:
+        ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+}
+impl ::prost::Name for TableDetails {
+    const NAME: &'static str = "TableDetails";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.TableDetails".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.TableDetails".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TableEntry {
     #[prost(message, optional, tag = "1")]
     pub details: ::core::option::Option<EntryDetails>,
     /// Details specific to the table-provider
     #[prost(message, optional, tag = "3")]
     pub provider_details: ::core::option::Option<::prost_types::Any>,
+    /// Table-specific information, may be updated with `UpdateTableEntry`.
+    #[prost(message, optional, tag = "4")]
+    pub table_details: ::core::option::Option<TableDetails>,
 }
 impl ::prost::Name for TableEntry {
     const NAME: &'static str = "TableEntry";
@@ -2534,6 +2596,25 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn update_table_entry(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateTableEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateTableEntryResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/UpdateTableEntry",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "UpdateTableEntry",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// Register new segments with the Dataset.
         ///
         /// This endpoint requires the standard dataset headers.
@@ -3200,6 +3281,10 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::ReadTableEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::ReadTableEntryResponse>, tonic::Status>;
+        async fn update_table_entry(
+            &self,
+            request: tonic::Request<super::UpdateTableEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateTableEntryResponse>, tonic::Status>;
         /// Register new segments with the Dataset.
         ///
         /// This endpoint requires the standard dataset headers.
@@ -3985,6 +4070,48 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = ReadTableEntrySvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/UpdateTableEntry" => {
+                    #[allow(non_camel_case_types)]
+                    struct UpdateTableEntrySvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::UpdateTableEntryRequest>
+                        for UpdateTableEntrySvc<T>
+                    {
+                        type Response = super::UpdateTableEntryResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UpdateTableEntryRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::update_table_entry(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UpdateTableEntrySvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

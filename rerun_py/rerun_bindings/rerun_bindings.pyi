@@ -21,6 +21,8 @@ from .types import (
 # NOTE
 #
 # The pure Python wrapper/internal pyo3 object is documented in `rerun_py/ARCHITECTURE.md`.
+#
+# Refrain from adding doc strings for APIs that is wrapped on the Python side as they are unchecked and just add duplication.
 
 class IndexColumnDescriptor:
     """
@@ -1135,6 +1137,12 @@ class TableEntryInternal:
     def delete(self) -> None: ...
     def set_name(self, name: str) -> None: ...
     def entry_details(self) -> EntryDetailsInternal: ...
+
+    # ---
+
+    def blueprint_dataset(self) -> DatasetEntryInternal: ...
+    def default_blueprint_segment_id(self) -> str | None: ...
+    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
 
     # ---
 

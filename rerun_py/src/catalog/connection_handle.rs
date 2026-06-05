@@ -14,7 +14,7 @@ use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, DatasetDetails, DatasetEntry, EntryDetails, QueryDatasetRequest,
-    RegisterWithDatasetTaskDescriptor, TableEntry, VersionResponse,
+    RegisterWithDatasetTaskDescriptor, TableDetails, TableEntry, VersionResponse,
 };
 use re_protos::cloud::v1alpha1::{EntryFilter, QueryDatasetResponse, QueryTasksResponse};
 use re_protos::common::v1alpha1::TaskId;
@@ -227,6 +227,22 @@ impl ConnectionHandle {
             self.client()
                 .await?
                 .read_table_entry(entry_id)
+                .await
+                .map_err(to_py_err)
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn update_table(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        table_details: TableDetails,
+    ) -> PyResult<TableEntry> {
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .update_table_entry(entry_id, table_details)
                 .await
                 .map_err(to_py_err)
         })

@@ -30,7 +30,6 @@ use re_viewer::viewer_test_utils::{self, HarnessOptions};
 const DATASET_ID: &str = "187b552b95a5c2f73f37894708825ba5";
 const PREVIEW_COLUMN: &str = "recording_uri";
 const TITLE_COLUMN: &str = "name";
-const TABLE_BLUEPRINT_METADATA_KEY: &str = "rerun:table_blueprint";
 const SEGMENT_COUNT: usize = 4;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -61,8 +60,9 @@ pub async fn preview_table() {
         })
         .collect();
 
-    // Create a remote table with a recording-URI column and an embedded blueprint that renders
-    // each recording in a 3D preview. The `name` column gives grid-view cards stable titles.
+    // Create a remote table with a recording-URI column. A registered blueprint (set up below)
+    // renders each recording in a 3D preview. The `name` column gives grid-view cards stable
+    // titles.
     let schema = Arc::new(Schema::new_with_metadata(
         vec![
             Field::new("id", DataType::Int64, false)
@@ -70,11 +70,7 @@ pub async fn preview_table() {
             Field::new(TITLE_COLUMN, DataType::Utf8, false),
             Field::new(PREVIEW_COLUMN, DataType::Utf8, false),
         ],
-        [(
-            TABLE_BLUEPRINT_METADATA_KEY.to_owned(),
-            embedded_blueprint(PREVIEW_COLUMN, TITLE_COLUMN),
-        )]
-        .into(),
+        Default::default(),
     ));
 
     let mut client = server.client().await.expect("Failed to connect to server");
@@ -113,6 +109,12 @@ pub async fn preview_table() {
         )
         .await
         .expect("Failed to write table data");
+
+    // Register the table blueprint with the table's implicit blueprint dataset and set it as the default.
+    let blueprint_rbl = blueprint_rbl_file(PREVIEW_COLUMN, TITLE_COLUMN);
+    re_integration_test::register_table_blueprint(&mut client, &table, blueprint_rbl.path())
+        .await
+        .expect("Failed to register table blueprint");
 
     // Open the viewer directly at the table entry. Make the window tall enough that all rows
     // are on screen at once, so every preview loads.
@@ -237,15 +239,18 @@ fn mask_recording_uris(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) 
     }
 }
 
-/// Serialize a `Spatial3DView` over `/test_entity` plus a `TableBlueprint` archetype pointing
-/// segment previews at `preview_column` and grid-view card titles at `title_column`, into the
-/// `base64:`-prefixed value expected in table schema metadata.
-fn embedded_blueprint(preview_column: &str, title_column: &str) -> String {
-    use base64::Engine as _;
+/// Build a `.rbl` blueprint file holding a `Spatial3DView` over `/test_entity` plus a
+/// `TableBlueprint` archetype pointing segment previews at `preview_column` and grid-view card
+/// titles at `title_column`.
+fn blueprint_rbl_file(preview_column: &str, title_column: &str) -> tempfile::NamedTempFile {
+    let file = tempfile::Builder::new()
+        .suffix(".rbl")
+        .tempfile()
+        .expect("Failed to create blueprint temp file");
 
-    let (stream, storage) = RecordingStreamBuilder::new("rerun_example_table_blueprint")
+    let stream = RecordingStreamBuilder::new("rerun_example_table_blueprint")
         .blueprint()
-        .memory()
+        .save(file.path())
         .expect("Failed to create blueprint memory stream");
     stream.set_time_sequence("blueprint", 0);
 
@@ -291,15 +296,5 @@ fn embedded_blueprint(preview_column: &str, title_column: &str) -> String {
         )
         .expect("Failed to log table blueprint");
 
-    stream
-        .flush_blocking()
-        .expect("Failed to flush blueprint stream");
-    let bytes = storage
-        .drain_as_bytes()
-        .expect("Failed to encode blueprint to bytes");
-
-    format!(
-        "base64:{}",
-        base64::engine::general_purpose::STANDARD.encode(bytes)
-    )
+    file
 }

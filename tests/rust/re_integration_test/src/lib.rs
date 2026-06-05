@@ -11,6 +11,7 @@ use re_redap_client::{ApiResult, ConnectionClient, ConnectionRegistry};
 use re_sdk_types::SegmentId;
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
+pub use test_data::register_table_blueprint;
 // pub use viewer_section::GetSection;
 pub use viewer_section::ViewerSection;
 

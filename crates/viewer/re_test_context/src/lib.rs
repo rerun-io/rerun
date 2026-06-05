@@ -569,6 +569,7 @@ impl TestContext {
         active_recording.data_source = Some(re_log_channel::LogSource::RedapGrpcStream {
             uri: "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
             open_behavior: re_log_channel::RecordingOpenBehavior::OpenAndSelect,
+            table_blueprint: None,
         });
     }
 
@@ -933,7 +934,6 @@ impl TestContext {
                 | SystemCommand::Logout
                 | SystemCommand::SaveScreenshot { .. }
                 | SystemCommand::ShowNotification { .. }
-                | SystemCommand::RegisterTableBlueprint { .. }
                 | SystemCommand::ReadbackAndSaveTexture { .. } => handled = false,
 
                 #[cfg(debug_assertions)]

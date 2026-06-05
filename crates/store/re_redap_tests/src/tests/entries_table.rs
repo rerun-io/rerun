@@ -1,13 +1,16 @@
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use re_log_types::EntryId;
+use re_protos::EntryName;
+use re_protos::cloud::v1alpha1::ext::EntryDetails;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    DeleteEntryRequest, FindEntriesRequest, GetTableSchemaRequest, ScanTableRequest,
+    DeleteEntryRequest, FindEntriesRequest, GetTableSchemaRequest, ReadDatasetEntryRequest,
+    ReadTableEntryRequest, ScanTableRequest,
 };
-use re_protos::{EntryName, cloud::v1alpha1::ext::EntryDetails};
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
-use crate::tests::common::RerunCloudServiceExt as _;
+use crate::tests::common::{RerunCloudServiceExt as _, create_table_entry_with_name};
 use crate::{RecordBatchTestExt as _, SchemaTestExt as _};
 
 /// We want to make sure that the "__entries" table is present and has the expected schema and data.
@@ -61,6 +64,48 @@ pub async fn list_entries_table(service: impl RerunCloudService) {
     let batch = batch.project_columns(&["name", "entry_kind"]);
 
     insta::assert_snapshot!("entries_table_data", batch.format_snapshot(false));
+}
+
+pub async fn delete_table_deletes_attached_blueprint_dataset(service: impl RerunCloudService) {
+    let table_dir = tempfile::tempdir().expect("create temp dir");
+    let table_name = "table_with_attached_blueprint";
+    let table = create_table_entry_with_name(&service, table_name, &table_dir).await;
+    let table_id = table.details.id;
+    let blueprint_dataset = table
+        .table_details
+        .blueprint_dataset
+        .expect("tables should get an implicit blueprint dataset");
+
+    service
+        .delete_entry(tonic::Request::new(DeleteEntryRequest {
+            id: Some(table_id.into()),
+        }))
+        .await
+        .expect("Failed to delete table entry");
+
+    let table_status = service
+        .read_table_entry(tonic::Request::new(ReadTableEntryRequest {
+            id: Some(table_id.into()),
+        }))
+        .await
+        .unwrap_err();
+    assert_eq!(
+        table_status.code(),
+        tonic::Code::NotFound,
+        "unexpected status: {table_status:?}"
+    );
+
+    let blueprint_status = service
+        .read_dataset_entry(
+            tonic::Request::new(ReadDatasetEntryRequest {}).with_entry_id(blueprint_dataset),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        blueprint_status.code(),
+        tonic::Code::NotFound,
+        "unexpected status: {blueprint_status:?}"
+    );
 }
 
 pub async fn entries_table_with_empty_dataset(service: impl RerunCloudService) {

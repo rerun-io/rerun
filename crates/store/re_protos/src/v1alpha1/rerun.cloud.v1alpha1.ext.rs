@@ -1051,6 +1051,49 @@ impl From<DatasetDetails> for crate::cloud::v1alpha1::DatasetDetails {
     }
 }
 
+// --- TableDetails ---
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TableDetails {
+    pub blueprint_dataset: Option<EntryId>,
+    pub default_blueprint_segment: Option<SegmentId>,
+}
+
+impl TableDetails {
+    /// Returns the default blueprint for this table.
+    ///
+    /// Both `blueprint_dataset` and `default_blueprint_segment` must be set.
+    pub fn default_blueprint(&self) -> Option<(EntryId, SegmentId)> {
+        let blueprint = self.blueprint_dataset.as_ref()?;
+        self.default_blueprint_segment
+            .as_ref()
+            .map(|default| (blueprint.clone(), default.clone()))
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::TableDetails> for TableDetails {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::TableDetails) -> Result<Self, Self::Error> {
+        Ok(Self {
+            blueprint_dataset: value.blueprint_dataset.map(TryInto::try_into).transpose()?,
+            default_blueprint_segment: value
+                .default_blueprint_segment
+                .map(TryInto::try_into)
+                .transpose()?,
+        })
+    }
+}
+
+impl From<TableDetails> for crate::cloud::v1alpha1::TableDetails {
+    fn from(value: TableDetails) -> Self {
+        Self {
+            blueprint_dataset: value.blueprint_dataset.map(Into::into),
+            default_blueprint_segment: value.default_blueprint_segment.map(Into::into),
+        }
+    }
+}
+
 // --- DatasetEntry ---
 
 #[derive(Debug, Clone)]
@@ -1535,6 +1578,82 @@ impl TryFrom<crate::cloud::v1alpha1::ReadTableEntryResponse> for ReadTableEntryR
     }
 }
 
+// --- UpdateTableEntryRequest ---
+
+#[derive(Debug, Clone)]
+pub struct UpdateTableEntryRequest {
+    pub id: EntryId,
+    pub table_details: TableDetails,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::UpdateTableEntryRequest> for UpdateTableEntryRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::UpdateTableEntryRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: value
+                .id
+                .ok_or(missing_field!(
+                    crate::cloud::v1alpha1::UpdateTableEntryRequest,
+                    "id"
+                ))?
+                .try_into()?,
+            table_details: value
+                .table_details
+                .ok_or(missing_field!(
+                    crate::cloud::v1alpha1::UpdateTableEntryRequest,
+                    "table_details"
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
+impl From<UpdateTableEntryRequest> for crate::cloud::v1alpha1::UpdateTableEntryRequest {
+    fn from(value: UpdateTableEntryRequest) -> Self {
+        Self {
+            id: Some(value.id.into()),
+            table_details: Some(value.table_details.into()),
+        }
+    }
+}
+
+// --- UpdateTableEntryResponse ---
+
+#[derive(Debug, Clone)]
+pub struct UpdateTableEntryResponse {
+    pub table_entry: TableEntry,
+}
+
+impl TryFrom<UpdateTableEntryResponse> for crate::cloud::v1alpha1::UpdateTableEntryResponse {
+    type Error = TypeConversionError;
+    fn try_from(value: UpdateTableEntryResponse) -> Result<Self, Self::Error> {
+        Ok(Self {
+            table: Some(value.table_entry.try_into()?),
+        })
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::UpdateTableEntryResponse> for UpdateTableEntryResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::UpdateTableEntryResponse,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            table_entry: value
+                .table
+                .ok_or(missing_field!(
+                    crate::cloud::v1alpha1::UpdateTableEntryResponse,
+                    "table_entry"
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
 // --- RegisterTableRequest ---
 
 #[derive(Debug, Clone)]
@@ -1598,6 +1717,7 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterTableResponse> for RegisterTableRes
 pub struct TableEntry {
     pub details: EntryDetails,
     pub provider_details: ProviderDetails,
+    pub table_details: TableDetails,
 }
 
 impl TryFrom<TableEntry> for crate::cloud::v1alpha1::TableEntry {
@@ -1606,6 +1726,7 @@ impl TryFrom<TableEntry> for crate::cloud::v1alpha1::TableEntry {
         Ok(Self {
             details: Some(value.details.into()),
             provider_details: Some((&value.provider_details).try_into()?),
+            table_details: Some(value.table_details.into()),
         })
     }
 }
@@ -1627,6 +1748,11 @@ impl TryFrom<crate::cloud::v1alpha1::TableEntry> for TableEntry {
                     .provider_details
                     .ok_or(missing_field!(crate::cloud::v1alpha1::TableEntry, "handle"))?,
             )?,
+            table_details: value
+                .table_details
+                .map(TryInto::try_into)
+                .transpose()?
+                .unwrap_or_default(),
         })
     }
 }

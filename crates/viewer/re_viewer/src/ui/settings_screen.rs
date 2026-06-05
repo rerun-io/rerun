@@ -176,8 +176,8 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         ui.strong("Experimental");
         ui.re_checkbox(table_cards_and_blueprints, "Table cards and blueprints")
             .on_hover_text(
-                "Enable table blueprints embedded in Arrow schema metadata, plus grid view mode for server supplied tables.\n\n\
-                 When enabled, tables can carry inline view definitions for segment previews, and a list/grid toggle appears in the table title bar.",
+                "Enable registered table blueprints, plus grid view mode for server supplied tables.\n\n\
+                 When enabled, tables can use registered view definitions for segment previews, and a list/grid toggle appears in the table title bar.",
             );
         #[cfg(not(target_arch = "wasm32"))]
         {

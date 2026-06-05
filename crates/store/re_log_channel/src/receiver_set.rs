@@ -70,8 +70,7 @@ impl LogReceiverSet {
             | LogSource::Stdin
             | LogSource::Sdk
             | LogSource::RrdWebEvent
-            | LogSource::JsChannel { .. }
-            | LogSource::EmbeddedTableBlueprint => true,
+            | LogSource::JsChannel { .. } => true,
         });
     }
 

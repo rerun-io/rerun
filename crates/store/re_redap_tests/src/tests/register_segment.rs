@@ -11,12 +11,14 @@ use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::{EntityPath, TimeType};
-use re_protos::cloud::v1alpha1::ext::{DatasetDetails, RegisterWithDatasetRequest};
+use re_protos::cloud::v1alpha1::ext::{
+    DatasetDetails, RegisterWithDatasetRequest, TableDetails, UpdateTableEntryRequest,
+};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CreateDatasetEntryRequest, GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest,
-    ReadDatasetEntryRequest, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-    ScanSegmentTableRequest, ScanSegmentTableResponse, ext,
+    ReadDatasetEntryRequest, ReadTableEntryRequest, ScanDatasetManifestRequest,
+    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse, ext,
 };
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -26,10 +28,12 @@ use re_types_core::SegmentId;
 use url::Url;
 
 use super::common::{
-    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name, prop,
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _,
+    create_table_entry_with_name, entry_name, prop,
 };
 use crate::{
-    FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _, create_simple_recording_in,
+    FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _, TuidPrefix,
+    create_simple_recording_in,
 };
 
 pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
@@ -55,13 +59,75 @@ pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple").await;
 }
 
-/// Make sure that registering to blueprint dataset works as expected.
-pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService) {
-    let blueprint_data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
-        2,
-        [LayerDefinition::simple_blueprint("blueprint_segment_id")],
+/// Make sure that registering to blueprint dataset works as expected for tables
+pub async fn register_and_attach_table_blueprint_dataset(service: impl RerunCloudService) {
+    let blueprint_segment_name = "table_blueprint_segment_id";
+    let blueprint_segment = SegmentId::from(blueprint_segment_name);
+    let table_dir = tempfile::tempdir().expect("create temp dir");
+    let table =
+        create_table_entry_with_name(&service, "table_with_registered_blueprint", &table_dir).await;
+    let table_id = table.details.id;
+    let blueprint_dataset = table
+        .table_details
+        .blueprint_dataset
+        .expect("tables should get an implicit blueprint dataset");
+
+    let blueprint_dataset_name =
+        register_simple_blueprint_segment(&service, blueprint_dataset, blueprint_segment_name, 3)
+            .await;
+
+    let updated_table = service
+        .update_table_entry(tonic::Request::new(
+            UpdateTableEntryRequest {
+                id: table_id,
+                table_details: TableDetails {
+                    blueprint_dataset: Some(blueprint_dataset),
+                    default_blueprint_segment: Some(blueprint_segment.clone()),
+                },
+            }
+            .into(),
+        ))
+        .await
+        .expect("update table blueprint details")
+        .into_inner()
+        .table
+        .expect("table missing in update_table response")
+        .table_details
+        .expect("table details");
+    assert_eq!(
+        updated_table.blueprint_dataset,
+        Some(blueprint_dataset.into())
+    );
+    assert_eq!(
+        updated_table.default_blueprint_segment,
+        Some(blueprint_segment.clone().into())
     );
 
+    let read_back = service
+        .read_table_entry(tonic::Request::new(ReadTableEntryRequest {
+            id: Some(table_id.into()),
+        }))
+        .await
+        .expect("read table entry")
+        .into_inner()
+        .table
+        .expect("table missing in read_table response")
+        .table_details
+        .expect("table details");
+    assert_eq!(read_back.blueprint_dataset, Some(blueprint_dataset.into()));
+    assert_eq!(
+        read_back.default_blueprint_segment,
+        Some(blueprint_segment.clone().into())
+    );
+
+    let segment_table = scan_segment_table(&service, &blueprint_dataset_name).await;
+    assert_eq!(segment_table.num_rows(), 1);
+    let manifest = scan_dataset_manifest(&service, &blueprint_dataset_name).await;
+    assert_eq!(manifest.num_rows(), 1);
+}
+
+/// Make sure that registering to blueprint dataset works as expected.
+pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService) {
     let dataset_name = "my_dataset1";
     service.create_dataset_entry_with_name(dataset_name).await;
 
@@ -82,11 +148,32 @@ pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService
 
     assert!(dataset_details.blueprint_dataset.is_some());
 
-    // find the dataset name for the blueprint dataset
+    let blueprint_dataset_name = register_simple_blueprint_segment(
+        &service,
+        dataset_details.blueprint_dataset.unwrap(),
+        "blueprint_segment_id",
+        2,
+    )
+    .await;
+
+    scan_segment_table_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
+    scan_dataset_manifest_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
+}
+
+async fn register_simple_blueprint_segment(
+    service: &impl RerunCloudService,
+    blueprint_dataset: re_log_types::EntryId,
+    blueprint_segment_name: &'static str,
+    tuid_prefix: TuidPrefix,
+) -> String {
+    let blueprint_data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        tuid_prefix,
+        [LayerDefinition::simple_blueprint(blueprint_segment_name)],
+    );
+
     let blueprint_dataset_name = service
         .read_dataset_entry(
-            tonic::Request::new(ReadDatasetEntryRequest {})
-                .with_entry_id(dataset_details.blueprint_dataset.unwrap()),
+            tonic::Request::new(ReadDatasetEntryRequest {}).with_entry_id(blueprint_dataset),
         )
         .await
         .unwrap()
@@ -105,8 +192,7 @@ pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService
         )
         .await;
 
-    scan_segment_table_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
-    scan_dataset_manifest_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
+    blueprint_dataset_name
 }
 
 pub async fn register_and_scan_simple_dataset_with_properties(service: impl RerunCloudService) {

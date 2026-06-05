@@ -8,11 +8,13 @@ use pyo3::exceptions::PyRuntimeError;
 use pyo3::types::{PyAnyMethods as _, PyCapsule};
 use pyo3::{Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
 use re_datafusion::TableEntryTableProvider;
-use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry, TableInsertMode};
+use re_protos::cloud::v1alpha1::ext::{
+    EntryDetails, ProviderDetails, TableDetails, TableEntry, TableInsertMode,
+};
 
 use crate::catalog::entry::set_entry_name;
 use crate::catalog::table_provider_adapter::ffi_logical_codec_from_pycapsule;
-use crate::catalog::{PyCatalogClientInternal, PyEntryDetails, to_py_err};
+use crate::catalog::{PyCatalogClientInternal, PyDatasetEntryInternal, PyEntryDetails, to_py_err};
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
@@ -24,6 +26,7 @@ use crate::utils::{get_tokio_runtime, wait_for_future};
 pub struct PyTableEntryInternal {
     client: Py<PyCatalogClientInternal>,
     entry_details: EntryDetails,
+    table_details: TableDetails,
     lazy_provider: Option<Arc<dyn TableProvider + Send>>,
     url: Option<String>,
 }
@@ -57,6 +60,70 @@ impl PyTableEntryInternal {
     //
     // Table entry methods
     //
+
+    /// The associated blueprint dataset.
+    fn blueprint_dataset(
+        mut self_: PyRefMut<'_, Self>,
+        py: Python<'_>,
+    ) -> PyResult<Py<PyDatasetEntryInternal>> {
+        let _span = read_trace_context_from_python(py, "TableEntry.blueprint_dataset").entered();
+
+        let client = self_.client.clone_ref(py);
+        let connection = self_.client.borrow(py).connection().clone();
+
+        if self_.table_details.blueprint_dataset.is_none() {
+            let table_entry =
+                connection.update_table(py, self_.entry_details.id, self_.table_details.clone())?;
+            self_.table_details = table_entry.table_details;
+        }
+
+        let blueprint_dataset_entry_id = self_
+            .table_details
+            .blueprint_dataset
+            .ok_or_else(|| PyRuntimeError::new_err("missing table blueprint dataset"))?;
+        let dataset_entry = connection.read_dataset(py, blueprint_dataset_entry_id)?;
+
+        Py::new(py, PyDatasetEntryInternal::new(client, dataset_entry))
+    }
+
+    /// The default blueprint segment ID for this table, if any.
+    ///
+    /// ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+    /// TODO(#12746): Stabilize table blueprint APIs.
+    fn default_blueprint_segment_id(self_: PyRef<'_, Self>) -> Option<String> {
+        self_
+            .table_details
+            .default_blueprint_segment
+            .as_ref()
+            .map(ToString::to_string)
+    }
+
+    /// Set the default blueprint segment ID for this table.
+    ///
+    /// Pass `None` to clear the blueprint. This fails if the change cannot be made to the remote server.
+    ///
+    /// ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+    /// TODO(#12746): Stabilize table blueprint APIs.
+    #[pyo3(signature = (segment_id))]
+    fn set_default_blueprint_segment_id(
+        mut self_: PyRefMut<'_, Self>,
+        py: Python<'_>,
+        segment_id: Option<String>,
+    ) -> PyResult<()> {
+        let _span =
+            read_trace_context_from_python(py, "TableEntry.set_default_blueprint_segment_id")
+                .entered();
+        let connection = self_.client.borrow(py).connection().clone();
+
+        let mut table_details = self_.table_details.clone();
+        table_details.default_blueprint_segment = segment_id.map(Into::into);
+
+        let result = connection.update_table(py, self_.entry_details.id, table_details)?;
+
+        self_.table_details = result.table_details;
+
+        Ok(())
+    }
 
     /// Returns a DataFusion table provider capsule.
     fn __datafusion_table_provider__<'py>(
@@ -148,6 +215,7 @@ impl PyTableEntryInternal {
         Self {
             client,
             entry_details: table_entry.details,
+            table_details: table_entry.table_details,
             lazy_provider: None,
             url,
         }

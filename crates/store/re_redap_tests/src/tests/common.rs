@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use arrow::array::RecordBatch;
+use arrow::datatypes::{DataType, Field, Schema};
 use futures::StreamExt as _;
 use itertools::Itertools as _;
 use re_log_types::{EntityPath, TimeType};
@@ -14,11 +15,6 @@ use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{EntryName, common::v1alpha1::ext::SegmentId};
-
-/// Test helper: parse a string into an `EntryName`, panicking on invalid names.
-pub fn entry_name(name: &str) -> EntryName {
-    EntryName::new(name).unwrap()
-}
 use re_types_core::AsComponents;
 use tonic::async_trait;
 use url::Url;
@@ -32,6 +28,40 @@ use crate::{
     create_recording_with_scalars, create_recording_with_text, create_simple_recording,
     create_simple_recording_one_chunk_per_frame,
 };
+
+/// Test helper: parse a string into an `EntryName`, panicking on invalid names.
+pub fn entry_name(name: &str) -> EntryName {
+    EntryName::new(name).unwrap()
+}
+
+pub async fn create_table_entry_with_name(
+    service: &impl RerunCloudService,
+    table_name: &str,
+    tmp_dir: &tempfile::TempDir,
+) -> ext::TableEntry {
+    let schema = Schema::new(vec![Field::new("column_a", DataType::Utf8, false)]);
+    let table_url =
+        Url::from_directory_path(tmp_dir.path()).expect("create url from tmp directory");
+    let provider_details = ext::ProviderDetails::LanceTable(ext::LanceTable { table_url });
+
+    let request = ext::CreateTableEntryRequest {
+        name: entry_name(table_name),
+        schema,
+        provider_details: Some(provider_details),
+    }
+    .try_into()
+    .expect("Unable to create table request");
+
+    let response: ext::CreateTableEntryResponse = service
+        .create_table_entry(tonic::Request::new(request))
+        .await
+        .expect("create table entry")
+        .into_inner()
+        .try_into()
+        .expect("valid create table response");
+
+    response.table
+}
 
 /// Extension trait for the most common test setup tasks.
 #[async_trait]

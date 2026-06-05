@@ -12,7 +12,9 @@ use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::EntryKind;
-use re_protos::cloud::v1alpha1::ext::{DatasetDetails, EntryDetails, ProviderDetails, TableEntry};
+use re_protos::cloud::v1alpha1::ext::{
+    DatasetDetails, EntryDetails, ProviderDetails, TableDetails, TableEntry,
+};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, LayerName, Loggable as _};
@@ -397,6 +399,8 @@ impl InMemoryStore {
         table: TableType,
         provider_details: re_protos::cloud::v1alpha1::ext::LanceTable,
     ) -> Result<(), Error> {
+        let blueprint_dataset_id = self.create_blueprint_dataset_for_entry(entry_id)?;
+
         self.id_by_name.insert(entry_name.clone(), entry_id);
         self.tables.insert(
             entry_id,
@@ -406,13 +410,17 @@ impl InMemoryStore {
                 table,
                 None,
                 ProviderDetails::LanceTable(provider_details),
+                TableDetails {
+                    blueprint_dataset: Some(blueprint_dataset_id),
+                    default_blueprint_segment: None,
+                },
             ),
         );
 
         self.update_entries_table()
     }
 
-    /// Create a (regular) dataset with a matching blueprint dataset.
+    /// Create a recording dataset with a matching hidden blueprint dataset.
     ///
     /// The server is typically responsible for setting the dataset id, so use `Some` at your own
     /// risk for `dataset_id`.
@@ -421,9 +429,15 @@ impl InMemoryStore {
         dataset_name: EntryName,
         dataset_id: Option<EntryId>,
     ) -> Result<EntryId, Error> {
-        let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
+        self.create_dataset_with_kind(dataset_name, dataset_id, StoreKind::Recording)
+    }
+
+    pub(crate) fn create_blueprint_dataset_for_entry(
+        &mut self,
+        entry_id: EntryId,
+    ) -> Result<EntryId, Error> {
         let blueprint_dataset_id = EntryId::new();
-        let blueprint_dataset_name = EntryName::blueprint_for(dataset_id);
+        let blueprint_dataset_name = EntryName::blueprint_for(entry_id);
 
         self.create_dataset_impl(
             blueprint_dataset_name,
@@ -432,21 +446,45 @@ impl InMemoryStore {
             None,
         )?;
 
-        let dataset_details = DatasetDetails {
-            blueprint_dataset: Some(blueprint_dataset_id),
-            default_blueprint_segment: None,
-        };
+        Ok(blueprint_dataset_id)
+    }
 
-        self.create_dataset_impl(
-            dataset_name,
-            dataset_id,
-            StoreKind::Recording,
-            Some(dataset_details),
-        )
+    /// Create a dataset of the given kind.
+    ///
+    /// Recording datasets automatically get a matching hidden blueprint dataset.
+    /// Blueprint datasets are created standalone and do not get their own blueprint dataset.
+    pub fn create_dataset_with_kind(
+        &mut self,
+        dataset_name: EntryName,
+        dataset_id: Option<EntryId>,
+        store_kind: StoreKind,
+    ) -> Result<EntryId, Error> {
+        let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
+
+        match store_kind {
+            StoreKind::Recording => {
+                let blueprint_dataset_id = self.create_blueprint_dataset_for_entry(dataset_id)?;
+
+                let dataset_details = DatasetDetails {
+                    blueprint_dataset: Some(blueprint_dataset_id),
+                    default_blueprint_segment: None,
+                };
+
+                self.create_dataset_impl(
+                    dataset_name,
+                    dataset_id,
+                    StoreKind::Recording,
+                    Some(dataset_details),
+                )
+            }
+            StoreKind::Blueprint => {
+                self.create_dataset_impl(dataset_name, dataset_id, StoreKind::Blueprint, None)
+            }
+        }
     }
 
     /// Create a dataset of the given kind with the given details.
-    fn create_dataset_impl(
+    pub(crate) fn create_dataset_impl(
         &mut self,
         name: EntryName,
         entry_id: EntryId,
@@ -475,14 +513,20 @@ impl InMemoryStore {
 
     /// Delete the provided entry.
     ///
-    /// For dataset, the corresponding blueprint dataset will be deleted as well.
+    /// For dataset and table entries, the corresponding blueprint dataset will be deleted as well.
     pub fn delete_entry(&mut self, entry_id: EntryId) -> Result<(), Error> {
         re_log::debug!(?entry_id, "delete_entry");
 
         if let Some(table) = self.tables.remove(&entry_id) {
+            let blueprint_dataset = table.table_details().blueprint_dataset;
             self.id_by_name.remove(table.name());
             self.update_entries_table()?;
-            Ok(())
+
+            if let Some(blueprint_entry_id) = blueprint_dataset {
+                self.delete_entry(blueprint_entry_id)
+            } else {
+                Ok(())
+            }
         } else if let Some(dataset) = self.datasets.remove(&entry_id) {
             self.id_by_name.remove(dataset.name());
             self.update_entries_table()?;
@@ -530,6 +574,7 @@ impl InMemoryStore {
                 ProviderDetails::SystemTable(SystemTable {
                     kind: SystemTableKind::Entries,
                 }),
+                TableDetails::default(),
             ),
         );
 
@@ -602,8 +647,19 @@ impl InMemoryStore {
         }
 
         let entry_id = EntryId::new();
+        let blueprint_dataset_id = self.create_blueprint_dataset_for_entry(entry_id)?;
 
-        let table = Table::create_table_entry(entry_id, name.clone(), url, schema).await?;
+        let table = Table::create_table_entry(
+            entry_id,
+            name.clone(),
+            url,
+            schema,
+            TableDetails {
+                blueprint_dataset: Some(blueprint_dataset_id),
+                default_blueprint_segment: None,
+            },
+        )
+        .await?;
         let table_entry = table.as_table_entry();
 
         self.id_by_name.insert(name, entry_id);

@@ -1,12 +1,14 @@
-use arrow::datatypes::{DataType, Field, Schema};
+use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::ReadTableEntryRequest;
 use re_protos::cloud::v1alpha1::ext::{
-    CreateDatasetEntryRequest, CreateTableEntryRequest, CreateTableEntryResponse, DatasetEntry,
-    EntryDetailsUpdate, LanceTable, ProviderDetails, TableEntry, UpdateEntryRequest,
-    UpdateEntryResponse,
+    CreateDatasetEntryRequest, DatasetDetails, DatasetEntry, EntryDetailsUpdate, TableDetails,
+    TableEntry, UpdateDatasetEntryRequest, UpdateEntryRequest, UpdateEntryResponse,
+    UpdateTableEntryRequest,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::common::v1alpha1::ext::SegmentId;
 
-use super::common::entry_name;
+use super::common::{create_table_entry_with_name, entry_name};
 
 pub async fn update_entry_tests(service: impl RerunCloudService) {
     //
@@ -95,9 +97,7 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
     let table_dir = tempfile::tempdir().expect("create temp dir");
     let table_name = "table_1";
 
-    let table_entry = create_table_entry(&service, table_name, &table_dir)
-        .await
-        .unwrap();
+    let table_entry = create_table_entry_with_name(&service, table_name, &table_dir).await;
 
     assert_eq!(table_entry.details.name, entry_name(table_name));
     let table_id = table_entry.details.id;
@@ -150,9 +150,7 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
     let table2_name = "table_2";
     let table2_dir = tempfile::tempdir().expect("create temp dir");
 
-    let table2_entry = create_table_entry(&service, table2_name, &table2_dir)
-        .await
-        .unwrap();
+    let table2_entry = create_table_entry_with_name(&service, table2_name, &table2_dir).await;
     let table2_id = table2_entry.details.id;
 
     //
@@ -175,6 +173,210 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
         status.code(),
         tonic::Code::AlreadyExists,
         "unexpected status: {status:?}",
+    );
+}
+
+pub async fn update_table_entry_blueprint_details(service: impl RerunCloudService) {
+    let table_dir = tempfile::tempdir().expect("create temp dir");
+    let table_entry =
+        create_table_entry_with_name(&service, "table_with_blueprint", &table_dir).await;
+    let table_id = table_entry.details.id;
+    let blueprint_dataset = table_entry
+        .table_details
+        .blueprint_dataset
+        .expect("tables should get an implicit blueprint dataset");
+    let default_blueprint_segment = SegmentId::from("default_table_blueprint");
+
+    let updated = update_table_entry(
+        &service,
+        UpdateTableEntryRequest {
+            id: table_id,
+            table_details: TableDetails {
+                blueprint_dataset: Some(blueprint_dataset),
+                default_blueprint_segment: Some(default_blueprint_segment.clone()),
+            },
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        updated.table_details.blueprint_dataset,
+        Some(blueprint_dataset)
+    );
+    assert_eq!(
+        updated.table_details.default_blueprint_segment,
+        Some(default_blueprint_segment.clone())
+    );
+
+    let read_back = read_table_entry(&service, table_id).await.unwrap();
+    assert_eq!(
+        read_back.table_details.blueprint_dataset,
+        Some(blueprint_dataset)
+    );
+    assert_eq!(
+        read_back.table_details.default_blueprint_segment,
+        Some(default_blueprint_segment)
+    );
+}
+
+pub async fn update_table_entry_rejects_invalid_blueprint_details(service: impl RerunCloudService) {
+    let table_dir = tempfile::tempdir().expect("create temp dir");
+    let table_entry =
+        create_table_entry_with_name(&service, "table_with_invalid_blueprint", &table_dir).await;
+    let table_id = table_entry.details.id;
+    let implicit_blueprint = table_entry
+        .table_details
+        .blueprint_dataset
+        .expect("tables should get an implicit blueprint dataset");
+
+    let status = update_table_entry(
+        &service,
+        UpdateTableEntryRequest {
+            id: EntryId::new(),
+            table_details: TableDetails {
+                blueprint_dataset: Some(implicit_blueprint),
+                default_blueprint_segment: None,
+            },
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(
+        status.code(),
+        tonic::Code::NotFound,
+        "unexpected status: {status:?}"
+    );
+
+    let status = update_table_entry(
+        &service,
+        UpdateTableEntryRequest {
+            id: table_id,
+            table_details: TableDetails {
+                blueprint_dataset: Some(EntryId::new()),
+                default_blueprint_segment: None,
+            },
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(
+        status.code(),
+        tonic::Code::InvalidArgument,
+        "unexpected status: {status:?}"
+    );
+
+    let recording_dataset = create_dataset_entry(&service, "recording_is_not_table_blueprint")
+        .await
+        .unwrap();
+    let status = update_table_entry(
+        &service,
+        UpdateTableEntryRequest {
+            id: table_id,
+            table_details: TableDetails {
+                blueprint_dataset: Some(recording_dataset.details.id),
+                default_blueprint_segment: None,
+            },
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(
+        status.code(),
+        tonic::Code::InvalidArgument,
+        "unexpected status: {status:?}"
+    );
+}
+
+pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
+    service: impl RerunCloudService,
+) {
+    let dataset_entry = create_dataset_entry(&service, "dataset_with_blueprint_validation")
+        .await
+        .unwrap();
+    let dataset_id = dataset_entry.details.id;
+    let hidden_blueprint = dataset_entry
+        .dataset_details
+        .blueprint_dataset
+        .expect("recording datasets should get an implicit blueprint dataset");
+    let default_blueprint_segment = SegmentId::from("default_dataset_blueprint");
+
+    let updated = update_dataset_entry(
+        &service,
+        UpdateDatasetEntryRequest {
+            id: dataset_id,
+            dataset_details: DatasetDetails {
+                blueprint_dataset: Some(hidden_blueprint),
+                default_blueprint_segment: Some(default_blueprint_segment.clone()),
+            },
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        updated.dataset_details.blueprint_dataset,
+        Some(hidden_blueprint)
+    );
+    assert_eq!(
+        updated.dataset_details.default_blueprint_segment,
+        Some(default_blueprint_segment)
+    );
+
+    let status = update_dataset_entry(
+        &service,
+        UpdateDatasetEntryRequest {
+            id: dataset_id,
+            dataset_details: DatasetDetails {
+                blueprint_dataset: None,
+                default_blueprint_segment: Some(SegmentId::from("missing_blueprint_dataset")),
+            },
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(
+        status.code(),
+        tonic::Code::InvalidArgument,
+        "unexpected status: {status:?}"
+    );
+
+    let status = update_dataset_entry(
+        &service,
+        UpdateDatasetEntryRequest {
+            id: dataset_id,
+            dataset_details: DatasetDetails {
+                blueprint_dataset: Some(EntryId::new()),
+                default_blueprint_segment: None,
+            },
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(
+        status.code(),
+        tonic::Code::InvalidArgument,
+        "unexpected status: {status:?}"
+    );
+
+    let recording_dataset = create_dataset_entry(&service, "recording_is_not_dataset_blueprint")
+        .await
+        .unwrap();
+    let status = update_dataset_entry(
+        &service,
+        UpdateDatasetEntryRequest {
+            id: dataset_id,
+            dataset_details: DatasetDetails {
+                blueprint_dataset: Some(recording_dataset.details.id),
+                default_blueprint_segment: None,
+            },
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(
+        status.code(),
+        tonic::Code::InvalidArgument,
+        "unexpected status: {status:?}"
     );
 }
 
@@ -261,34 +463,6 @@ async fn create_dataset_entry(
         .map(|result| result.into_inner().dataset.unwrap().try_into().unwrap())
 }
 
-async fn create_table_entry(
-    service: &impl RerunCloudService,
-    table_name: &str,
-    tmp_dir: &tempfile::TempDir,
-) -> tonic::Result<TableEntry> {
-    let schema = Schema::new(vec![Field::new("column_a", DataType::Utf8, false)]);
-
-    let table_url =
-        url::Url::from_directory_path(tmp_dir.path()).expect("create url from tmp directory");
-    let provider_details = ProviderDetails::LanceTable(LanceTable { table_url });
-
-    service
-        .create_table_entry(tonic::Request::new(
-            CreateTableEntryRequest {
-                name: entry_name(table_name),
-                schema: schema.clone(),
-                provider_details: Some(provider_details),
-            }
-            .try_into()
-            .unwrap(),
-        ))
-        .await
-        .map(|result| {
-            let resp: CreateTableEntryResponse = result.into_inner().try_into().unwrap();
-            resp.table
-        })
-}
-
 async fn update_entry(
     service: &impl RerunCloudService,
     request: UpdateEntryRequest,
@@ -297,4 +471,36 @@ async fn update_entry(
         .update_entry(tonic::Request::new(request.into()))
         .await
         .map(|response| response.into_inner().try_into().unwrap())
+}
+
+async fn update_dataset_entry(
+    service: &impl RerunCloudService,
+    request: UpdateDatasetEntryRequest,
+) -> tonic::Result<DatasetEntry> {
+    service
+        .update_dataset_entry(tonic::Request::new(request.into()))
+        .await
+        .map(|response| response.into_inner().dataset.unwrap().try_into().unwrap())
+}
+
+async fn update_table_entry(
+    service: &impl RerunCloudService,
+    request: UpdateTableEntryRequest,
+) -> tonic::Result<TableEntry> {
+    service
+        .update_table_entry(tonic::Request::new(request.into()))
+        .await
+        .map(|response| response.into_inner().table.unwrap().try_into().unwrap())
+}
+
+async fn read_table_entry(
+    service: &impl RerunCloudService,
+    table_id: EntryId,
+) -> tonic::Result<TableEntry> {
+    service
+        .read_table_entry(tonic::Request::new(ReadTableEntryRequest {
+            id: Some(table_id.into()),
+        }))
+        .await
+        .map(|response| response.into_inner().table.unwrap().try_into().unwrap())
 }

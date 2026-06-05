@@ -129,6 +129,7 @@ impl App {
                 let new_source = LogSource::RedapGrpcStream {
                     uri: uri.clone(),
                     open_behavior: *open_behavior,
+                    table_blueprint: None,
                 };
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     // We're already receiving from the exact same data source!

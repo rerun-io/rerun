@@ -37,7 +37,7 @@ use re_protos::{
         CreateTableEntryResponse, DataSource, EntryDetailsUpdate, LanceTable, ProviderDetails,
         QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
         UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
-        UpdateEntryResponse,
+        UpdateEntryResponse, UpdateTableEntryRequest, UpdateTableEntryResponse,
     },
 };
 use re_tuid::Tuid;
@@ -424,6 +424,38 @@ impl RerunCloudHandler {
             .collect())
     }
 }
+
+fn validate_blueprint_details_update(
+    store: &InMemoryStore,
+    blueprint_dataset: Option<EntryId>,
+    has_default_blueprint: bool,
+    entry_kind: &str,
+) -> tonic::Result<()> {
+    if has_default_blueprint && blueprint_dataset.is_none() {
+        return Err(tonic::Status::invalid_argument(format!(
+            "default {entry_kind} blueprint requires a blueprint dataset"
+        )));
+    }
+
+    let Some(blueprint_dataset) = blueprint_dataset else {
+        return Ok(());
+    };
+
+    let blueprint_dataset = store.dataset(blueprint_dataset).map_err(|err| {
+        tonic::Status::invalid_argument(format!(
+            "{entry_kind} blueprint dataset does not exist: {err}"
+        ))
+    })?;
+
+    if blueprint_dataset.store_kind() != StoreKind::Blueprint {
+        return Err(tonic::Status::invalid_argument(format!(
+            "{entry_kind} blueprint dataset must be a blueprint dataset"
+        )));
+    }
+
+    Ok(())
+}
+
 #[tonic::async_trait]
 impl RerunCloudService for RerunCloudHandler {
     async fn version(
@@ -606,6 +638,13 @@ impl RerunCloudService for RerunCloudHandler {
         let request: UpdateDatasetEntryRequest = request.into_inner().try_into()?;
 
         let mut store = self.store.write().await;
+        validate_blueprint_details_update(
+            &store,
+            request.dataset_details.blueprint_dataset,
+            request.dataset_details.default_blueprint_segment.is_some(),
+            "dataset",
+        )?;
+
         let dataset = store.dataset_mut(request.id)?;
 
         dataset.set_dataset_details(request.dataset_details);
@@ -636,6 +675,55 @@ impl RerunCloudService for RerunCloudHandler {
 
         Ok(tonic::Response::new(
             ReadTableEntryResponse {
+                table_entry: table.as_table_entry(),
+            }
+            .try_into()?,
+        ))
+    }
+
+    async fn update_table_entry(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::UpdateTableEntryRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateTableEntryResponse>> {
+        let request: UpdateTableEntryRequest = request.into_inner().try_into()?;
+
+        let mut store = self.store.write().await;
+        store.table(request.id).ok_or_else(|| {
+            tonic::Status::not_found(format!("table with entry ID '{}' not found", request.id))
+        })?;
+
+        let mut table_details = request.table_details;
+        // Backwards compatibility: tables created before table blueprints had no associated
+        // blueprint dataset. If a client updates such a table without providing one, create the
+        // missing dataset on demand.
+        if table_details.blueprint_dataset.is_none()
+            && table_details.default_blueprint_segment.is_some()
+        {
+            table_details.blueprint_dataset = Some(
+                match store
+                    .table(request.id)
+                    .and_then(|table| table.table_details().blueprint_dataset)
+                {
+                    Some(blueprint_dataset) => blueprint_dataset,
+                    None => store.create_blueprint_dataset_for_entry(request.id)?,
+                },
+            );
+        }
+
+        validate_blueprint_details_update(
+            &store,
+            table_details.blueprint_dataset,
+            table_details.default_blueprint_segment.is_some(),
+            "table",
+        )?;
+
+        let table = store.table_mut(request.id).ok_or_else(|| {
+            tonic::Status::not_found(format!("table with entry ID '{}' not found", request.id))
+        })?;
+        table.set_table_details(table_details);
+
+        Ok(tonic::Response::new(
+            UpdateTableEntryResponse {
                 table_entry: table.as_table_entry(),
             }
             .try_into()?,

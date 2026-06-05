@@ -10,9 +10,10 @@ use re_protos::cloud::v1alpha1::ext::{
     DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
     QueryDatasetRequest, QueryTasksOnCompletionRequest, QueryTasksRequest,
     ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
-    RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableEntry, TableInsertMode,
-    UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
-    UpdateEntryRequest, UpdateEntryResponse, VersionResponse,
+    RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableDetails, TableEntry,
+    TableInsertMode, UnregisterFromDatasetRequest, UpdateDatasetEntryRequest,
+    UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest,
+    UpdateTableEntryResponse, VersionResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::cloud::v1alpha1::{
@@ -521,6 +522,36 @@ where
                 trace_id,
                 err,
                 "failed parsing /ReadTableEntry response",
+            )
+        })?;
+
+        Ok(response.table_entry)
+    }
+
+    /// Update the details of a table entry.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn update_table_entry(
+        &mut self,
+        entry_id: EntryId,
+        table_details: TableDetails,
+    ) -> ApiResult<TableEntry> {
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .update_table_entry(tonic::Request::new(
+                    UpdateTableEntryRequest {
+                        id: entry_id,
+                        table_details,
+                    }
+                    .into(),
+                ))
+                .await
+                .map_err(|err| ApiError::tonic(err, "/UpdateTableEntry failed"))?,
+        );
+        let response: UpdateTableEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /UpdateTableEntry response",
             )
         })?;
 

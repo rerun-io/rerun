@@ -495,18 +495,30 @@ impl StoreHub {
         self.table_stores.insert(id, store)
     }
 
-    /// Store a decoded table blueprint [`EntityDb`] for the given table.
-    ///
-    /// Any previously stored blueprint for this table is removed first.
-    pub fn insert_table_blueprint(&mut self, table_id: TableId, blueprint: EntityDb) {
-        // Remove any previous blueprint for this table.
-        if let Some(old_store_id) = self.table_blueprints.remove(&table_id) {
-            self.store_bundle.remove(&old_store_id);
+    /// Register a fully-loaded blueprint store as the blueprint for a table.
+    pub fn associate_table_blueprint(
+        &mut self,
+        table_id: TableId,
+        store_id: &StoreId,
+    ) -> anyhow::Result<()> {
+        let store = self
+            .store_bundle
+            .get(store_id)
+            .with_context(|| format!("missing table blueprint store: {store_id:?}"))?;
+
+        anyhow::ensure!(
+            store.store_kind() == StoreKind::Blueprint,
+            "table blueprint store must be a blueprint store, got {:?}",
+            store.store_kind()
+        );
+
+        if let Some(old_store_id) = self.table_blueprints.insert(table_id, store_id.clone())
+            && &old_store_id != store_id
+        {
+            self.remove_store(&old_store_id);
         }
 
-        let store_id = blueprint.store_id().clone();
-        self.store_bundle.insert(blueprint);
-        self.table_blueprints.insert(table_id, store_id);
+        Ok(())
     }
 
     /// Look up the decoded blueprint [`EntityDb`] for a table, if one was stored.

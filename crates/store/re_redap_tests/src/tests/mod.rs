@@ -103,6 +103,7 @@ define_redap_tests! {
     create_table::create_table_entry_failed_does_not_leak_name,
     dataset_schema::empty_dataset_schema,
     dataset_schema::simple_dataset_schema,
+    entries_table::delete_table_deletes_attached_blueprint_dataset,
     entries_table::entries_table_with_empty_dataset,
     entries_table::list_entries_table,
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
@@ -129,6 +130,7 @@ define_redap_tests! {
     query_index_values::query_dataset_per_segment_values_with_chunk_ids_intersects,
     query_index_values::query_dataset_per_segment_values_empty_entity_paths_short_circuits,
     query_index_values::version_advertises_per_segment_index_values_feature,
+    register_segment::register_and_attach_table_blueprint_dataset,
     register_segment::register_and_scan_blueprint_dataset,
     register_segment::register_and_scan_empty_dataset,
     register_segment::register_and_scan_simple_dataset,
@@ -160,8 +162,11 @@ define_redap_tests! {
     unregister_segment::unregister_products,
     unregister_segment::unregister_simple,
     unregister_segment::unregister_then_query,
+    update_entry::update_dataset_entry_rejects_invalid_blueprint_details,
     update_entry::update_entry_bumps_timestamp,
     update_entry::update_entry_tests,
+    update_entry::update_table_entry_blueprint_details,
+    update_entry::update_table_entry_rejects_invalid_blueprint_details,
     write_table::write_table,
     ; // Tests that return `anyhow::Result<()>`:
     ; // OSS-only tests (TODO(RR-4761): implement asset layers on the cloud server):

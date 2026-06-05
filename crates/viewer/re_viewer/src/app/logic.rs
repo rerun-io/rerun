@@ -111,6 +111,17 @@ impl App {
                         }
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
+                        if let LogSource::RedapGrpcStream {
+                            table_blueprint: Some(table_blueprint),
+                            ..
+                        } = channel_source.as_ref()
+                            && let Err(err) = store_hub.associate_table_blueprint(
+                                table_blueprint.table_id.clone(),
+                                &table_blueprint.blueprint_id,
+                            )
+                        {
+                            re_log::warn!("Failed to register table blueprint: {err}");
+                        }
                     }
                     continue;
                 }

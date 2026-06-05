@@ -4,19 +4,15 @@
 //! by constructing an ad-hoc [`ViewerContext`] with its own recording and blueprint stores.
 //! This gives the view the impression of running against a regular recording.
 
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::io::{BufReader, Cursor};
-
 use ahash::HashMap as AHashMap;
 use nohash_hasher::IntMap;
+use std::cell::RefCell;
 
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::{EntityDb, StoreBundle};
+use re_entity_db::EntityDb;
 use re_log_types::{StoreId, StoreKind};
 use re_ui::UiExt as _;
 
-use crate::RERUN_TABLE_BLUEPRINT;
 use re_viewer_context::{
     ActiveStoreContext, ApplicationSelectionState, Contents, MissingChunkReporter, StoreCache,
     SystemCommandSender as _, TimeControl, ViewClass, ViewContextSystemOncePerFrameResult, ViewId,
@@ -27,29 +23,6 @@ use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 /// Result of running all once-per-frame context systems for a given recording.
 type OncePerFrameResults = IntMap<ViewSystemIdentifier, ViewContextSystemOncePerFrameResult>;
-
-/// Decode an embedded table blueprint from Arrow schema metadata.
-///
-/// Looks for the `rerun:table_blueprint` key containing base64-encoded `.rbl` data.
-/// Returns the decoded [`EntityDb`] blueprint, or `None` if the key is missing
-/// or the data cannot be decoded.
-pub fn decode_table_blueprint(metadata: &HashMap<String, String>) -> Option<EntityDb> {
-    let encoded = metadata.get(RERUN_TABLE_BLUEPRINT)?;
-    let bytes = decode_blueprint_value(encoded)?;
-    let mut bundle = StoreBundle::from_rrd(
-        BufReader::new(Cursor::new(bytes)),
-        &re_entity_db::LogSource::EmbeddedTableBlueprint,
-    )
-    .map_err(|err| {
-        re_log::warn_once!("Failed to decode embedded blueprint: {err}");
-        err
-    })
-    .ok()?;
-
-    bundle
-        .drain_entity_dbs()
-        .find(|db| db.store_kind() == StoreKind::Blueprint)
-}
 
 // Only used to pass between logic.
 #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
@@ -467,19 +440,4 @@ fn preview_timeline(
             }
         }
     }
-}
-
-/// Decode a blueprint metadata value.
-///
-/// Expected format: `base64:<base64-encoded bytes>`.
-fn decode_blueprint_value(value: &str) -> Option<Vec<u8>> {
-    use base64::Engine as _;
-    let encoded = value.strip_prefix("base64:")?;
-    base64::engine::general_purpose::STANDARD
-        .decode(encoded)
-        .map_err(|err| {
-            re_log::warn_once!("Failed to base64-decode embedded blueprint: {err}");
-            err
-        })
-        .ok()
 }

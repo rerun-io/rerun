@@ -61,6 +61,8 @@ service RerunCloudService {
 
   rpc ReadTableEntry(ReadTableEntryRequest) returns (ReadTableEntryResponse) {}
 
+  rpc UpdateTableEntry(UpdateTableEntryRequest) returns (UpdateTableEntryResponse) {}
+
   // --- Manifest Registry ---
 
   /* Write data */
@@ -1160,6 +1162,21 @@ message ReadTableEntryResponse {
   TableEntry table = 1;
 }
 
+// UpdateTableEntry
+
+message UpdateTableEntryRequest {
+  // The table to modify.
+  rerun.common.v1alpha1.EntryId id = 1;
+
+  // The new values.
+  TableDetails table_details = 2;
+}
+
+message UpdateTableEntryResponse {
+  // The updated table entry.
+  TableEntry table = 1;
+}
+
 message EntryFilter {
   optional rerun.common.v1alpha1.EntryId id = 1;
   optional string name = 2;
@@ -1206,6 +1223,7 @@ message EntryDetailsUpdate {
 
 message DatasetDetails {
   // The blueprint dataset associated with this dataset (if any).
+  // This association is owned for lifecycle purposes: deleting this dataset also deletes the associated blueprint dataset.
   optional rerun.common.v1alpha1.EntryId blueprint_dataset = 3;
 
   // The segment of the blueprint dataset corresponding to the default blueprint (if any).
@@ -1228,11 +1246,25 @@ message DatasetEntry {
   rerun.common.v1alpha1.DatasetHandle dataset_handle = 2;
 }
 
+message TableDetails {
+  // Blueprint dataset associated with this table.
+  // This association is owned for lifecycle purposes: deleting this table also deletes the associated blueprint dataset.
+  //
+  // Like recording datasets, tables get an associated blueprint dataset automatically when they are created.
+  optional rerun.common.v1alpha1.EntryId blueprint_dataset = 1;
+
+  // Segment of the blueprint dataset corresponding to the default table blueprint.
+  optional rerun.common.v1alpha1.SegmentId default_blueprint_segment = 2;
+}
+
 message TableEntry {
   EntryDetails details = 1;
 
   // Details specific to the table-provider
   google.protobuf.Any provider_details = 3;
+
+  // Table-specific information, may be updated with `UpdateTableEntry`.
+  TableDetails table_details = 4;
 
   reserved 2;
   reserved "schema";

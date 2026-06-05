@@ -988,9 +988,7 @@ pub(crate) fn create_time_control_for<'cfgs>(
                 LogSource::File { follow, .. } | LogSource::HttpStream { follow, .. } => *follow,
 
                 // Not live data:
-                LogSource::RedapGrpcStream { .. }
-                | LogSource::RrdWebEvent
-                | LogSource::EmbeddedTableBlueprint => false,
+                LogSource::RedapGrpcStream { .. } | LogSource::RrdWebEvent => false,
 
                 // Live data:
                 LogSource::Sdk

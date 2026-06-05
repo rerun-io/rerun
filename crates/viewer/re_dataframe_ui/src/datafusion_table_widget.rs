@@ -171,6 +171,9 @@ pub struct DataFusionTableWidget<'a> {
     /// The blueprint used the first time the table is queried.
     initial_blueprint: TableBlueprint,
 
+    /// Registered table blueprint supplied by the caller.
+    registered_table_blueprint: Option<&'a re_entity_db::EntityDb>,
+
     /// Remote address of this table, needed for write-back operations (e.g. flag upsert).
     ///
     /// `None` for local/test tables where write-back is not supported.
@@ -220,6 +223,7 @@ impl<'a> DataFusionTableWidget<'a> {
             url: None,
             column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
             initial_blueprint: Default::default(),
+            registered_table_blueprint: None,
             remote_table: None,
         }
     }
@@ -262,6 +266,14 @@ impl<'a> DataFusionTableWidget<'a> {
 
     pub fn initial_blueprint(mut self, initial_blueprint: TableBlueprint) -> Self {
         self.initial_blueprint = initial_blueprint;
+        self
+    }
+
+    pub fn registered_table_blueprint(
+        mut self,
+        blueprint: Option<&'a re_entity_db::EntityDb>,
+    ) -> Self {
+        self.registered_table_blueprint = blueprint;
         self
     }
 
@@ -621,22 +633,15 @@ impl<'a> DataFusionTableWidget<'a> {
             .columns
             .arrow_fields(re_sorbet::BatchType::Dataframe);
 
-        let mut decoded_blueprint = None;
         let view_renderer = if table_cards_and_blueprints_enabled {
-            let blueprint_db = self
-                .table_id
-                .as_ref()
-                .and_then(|id| ctx.storage_context.hub.table_blueprint(id))
-                .or_else(|| {
-                    decoded_blueprint = crate::preview_renderer::decode_table_blueprint(
-                        &query_result.original_schema.metadata,
-                    );
-                    decoded_blueprint.as_ref()
-                });
+            let blueprint_db = self.registered_table_blueprint.or_else(|| {
+                let id = self.table_id.as_ref()?;
+                ctx.storage_context.hub.table_blueprint(id)
+            });
 
-            // Populate runtime blueprint fields from the embedded archetype.
+            // Populate runtime blueprint fields from the registered table blueprint.
             if let Some(db) = blueprint_db {
-                new_blueprint.populate_from_embedded_blueprint(db);
+                new_blueprint.populate_from_registered_blueprint(db);
             }
 
             blueprint_db.and_then(crate::preview_renderer::RecordingPreviewRenderer::from_blueprint)
@@ -740,19 +745,6 @@ impl<'a> DataFusionTableWidget<'a> {
                     flag_column_field.is_some(),
                 );
             }
-        }
-
-        // If we decoded a blueprint from metadata this frame, register it in the hub
-        // so subsequent frames can skip the decoding and it's accessible on store inspections.
-        // Note: the command is processed asynchronously, so the decode may happen for 1-2 extra
-        // frames until the hub has the blueprint cached. This is intentional and harmless.
-        if let (Some(blueprint), Some(table_id)) = (decoded_blueprint, self.table_id.as_ref()) {
-            ctx.command_sender.send_system(
-                re_viewer_context::SystemCommand::RegisterTableBlueprint {
-                    table_id: table_id.clone(),
-                    blueprint: Box::new(blueprint),
-                },
-            );
         }
 
         table_config.store(ui.ctx());
@@ -1126,7 +1118,7 @@ struct DataFusionTableDelegate<'a> {
     num_preview_views: Option<usize>,
 
     /// Renderer for the segment preview column (column 0 in the delegate's column space).
-    /// `None` when no table blueprint is embedded in the schema metadata.
+    /// `None` when no table blueprint is registered for this table.
     view_renderer: Option<crate::preview_renderer::RecordingPreviewRenderer<'a>>,
 
     /// Shared view states for segment preview views, persisted across frames.

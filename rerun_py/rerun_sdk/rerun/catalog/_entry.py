@@ -197,6 +197,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Register an existing .rbl visible to the server.
 
         By default, also set this blueprint as default.
+
+        The associated blueprint dataset is owned by this dataset for lifecycle purposes.
+        Deleting this dataset also deletes the associated blueprint dataset and its storage.
         """
 
         blueprint_dataset = self.blueprint_dataset()
@@ -231,7 +234,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         return self._internal.default_blueprint_segment_id()
 
     def blueprint_dataset(self) -> DatasetEntry | None:
-        """The associated blueprint dataset, if any."""
+        """
+        The associated blueprint dataset, if any.
+
+        The associated blueprint dataset is owned by this dataset for lifecycle purposes.
+        Deleting this dataset also deletes the associated blueprint dataset and its storage.
+        """
 
         ds = self._internal.blueprint_dataset()
         return None if ds is None else DatasetEntry(ds)
@@ -765,7 +773,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             - **DataFrame**: must have `rerun_segment_id` and index columns;
               treated as a per-segment value list.
 
-            !!! warning
+            !!! note
                 The plain array form requires a scan of the segment table to
                 map values to the segments whose index range covers them. On
                 datasets with many segments this can be expensive. Prefer the
@@ -1137,7 +1145,7 @@ class DatasetView:
             - **DataFrame**: must have `rerun_segment_id` and index columns;
               treated as a per-segment value list.
 
-            !!! warning
+            !!! note
                 The plain array form requires a scan of the segment table to
                 map values to the segments whose index range covers them. On
                 datasets with many segments this can be expensive. Prefer the
@@ -1403,6 +1411,79 @@ class TableEntry(Entry[TableEntryInternal]):
 
         return self.reader().schema()
 
+    def register_blueprint(self, uri: str, set_default: bool = True) -> None:
+        """
+        Register an existing .rbl visible to the server as this table's blueprint.
+
+        By default, also set this blueprint as default.
+
+        The associated blueprint dataset is owned by this table for lifecycle purposes.
+        Deleting this table also deletes the associated blueprint dataset and its storage.
+
+        !!! note
+            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+            TODO(#12746): Stabilize table blueprint APIs.
+        """
+
+        blueprint_dataset = self.blueprint_dataset()
+
+        segment_id = (
+            blueprint_dataset.register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+        )
+
+        if set_default:
+            self.set_default_blueprint(segment_id)
+
+    def blueprints(self) -> list[str]:
+        """
+        Lists all blueprints currently registered with this table.
+
+        !!! note
+            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+            TODO(#12746): Stabilize table blueprint APIs.
+        """
+
+        return self.blueprint_dataset().segment_ids()
+
+    def set_default_blueprint(self, blueprint_name: str | None) -> None:
+        """
+        Set an already-registered blueprint as default for this table.
+
+        !!! note
+            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+            TODO(#12746): Stabilize table blueprint APIs.
+        """
+
+        return self._internal.set_default_blueprint_segment_id(blueprint_name)
+
+    def default_blueprint(self) -> str | None:
+        """
+        Return the name currently set blueprint.
+
+        !!! note
+            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+            TODO(#12746): Stabilize table blueprint APIs.
+        """
+
+        return self._internal.default_blueprint_segment_id()
+
+    def blueprint_dataset(self) -> DatasetEntry:
+        """
+        The associated blueprint dataset.
+
+        Tables get a blueprint dataset automatically when they are created.
+        For tables created by older servers, this creates the missing blueprint dataset before returning.
+
+        The associated blueprint dataset is owned by this table for lifecycle purposes.
+        Deleting this table also deletes the associated blueprint dataset and its storage.
+
+        !!! note
+            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+            TODO(#12746): Stabilize table blueprint APIs.
+        """
+
+        return DatasetEntry(self._internal.blueprint_dataset())
+
     # ---
 
     def append(
@@ -1563,10 +1644,7 @@ def _python_objects_to_record_batch(schema: pa.Schema, named_params: dict[str, A
                 )
 
                 if pa.types.is_list(field.type) or pa.types.is_large_list(field.type):
-                    error += (
-                        f" Hint: For single-row list-typed columns, wrap your list in another list: "
-                        f"{name}=[[...]] instead of {name}=[...]"  # NOLINT
-                    )
+                    error += f" Hint: For single-row list-typed columns, wrap your list in another list: {name}=[[…]] instead of {name}=[…]"
 
                 raise ValueError(error)
 

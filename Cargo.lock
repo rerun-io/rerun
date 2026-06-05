@@ -8661,7 +8661,6 @@ dependencies = [
  "ahash",
  "arrow",
  "async-trait",
- "base64 0.22.1",
  "cfg-if",
  "crossbeam",
  "datafusion",
@@ -8960,7 +8959,6 @@ name = "re_integration_test"
 version = "0.34.0-alpha.1+dev"
 dependencies = [
  "arrow",
- "base64 0.22.1",
  "datafusion",
  "egui",
  "egui_kittest",

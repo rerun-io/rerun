@@ -397,15 +397,107 @@ impl std::fmt::Debug for StreamingOptions {
     }
 }
 
-/// Canonical way to ingest segment data from a catalog server, dealing with
-/// server-stored blueprints if any.
+async fn stream_blueprint_segment(
+    client: &mut ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    blueprint_store_id: StoreId,
+    blueprint_dataset: EntryId,
+    blueprint_segment: SegmentId,
+) -> Result<ControlFlow<()>, ApiError> {
+    let blueprint_store_info = StoreInfo {
+        store_id: blueprint_store_id,
+        cloned_from: None,
+        store_source: StoreSource::Unknown,
+        store_version: None,
+    };
+
+    // Blueprints are always fully downloaded regardless of recording streaming options.
+    if stream_segment_from_server(
+        client,
+        blueprint_store_info,
+        tx,
+        blueprint_dataset,
+        blueprint_segment,
+        re_uri::Fragment::default(),
+        &StreamingOptions::default(),
+    )
+    .await?
+    .is_break()
+    {
+        Ok(ControlFlow::Break(()))
+    } else {
+        Ok(ControlFlow::Continue(()))
+    }
+}
+
+/// Create a log channel for streaming a table blueprint from a catalog server.
+pub fn table_blueprint_log_channel(
+    origin: re_uri::Origin,
+    blueprint_dataset: EntryId,
+    blueprint_segment: &SegmentId,
+    table_id: re_log_types::TableId,
+    blueprint_store_id: StoreId,
+) -> (re_log_channel::LogSender, re_log_channel::LogReceiver) {
+    let source_uri = re_uri::DatasetSegmentUri {
+        origin,
+        dataset_id: blueprint_dataset.id,
+        segment_id: blueprint_segment.clone(),
+        fragment: re_uri::Fragment::default(),
+    };
+
+    re_log_channel::log_channel(re_log_channel::LogSource::RedapGrpcStream {
+        uri: source_uri,
+        open_behavior: re_log_channel::RecordingOpenBehavior::Background,
+        table_blueprint: Some(re_log_channel::TableBlueprintSource {
+            table_id,
+            blueprint_id: blueprint_store_id,
+        }),
+    })
+}
+
+/// Stream a registered `.rbl` blueprint segment into an existing log channel.
 ///
-/// The current strategy currently consists of _always_ downloading the blueprint first and setting
-/// it as the default blueprint. It does look bruteforce, but it is strictly equivalent to loading
-/// related RRDs which each contain a blueprint (e.g. because `rr.send_blueprint()` was called).
+/// This streams the blueprint data and then sends a successful quit marker on the same channel.
+/// The viewer uses the channel's [`re_log_channel::LogSource`] metadata to register the blueprint
+/// only after all blueprint messages have been processed.
+/// It does not emit a [`LogMsg::BlueprintActivationCommand`], so the blueprint is not activated as
+/// an application default blueprint.
+pub async fn stream_table_blueprint_segment_from_server(
+    mut client: ConnectionClient,
+    tx: re_log_channel::LogSender,
+    blueprint_store_id: StoreId,
+    blueprint_dataset: EntryId,
+    blueprint_segment: SegmentId,
+) -> ApiResult {
+    if stream_blueprint_segment(
+        &mut client,
+        &tx,
+        blueprint_store_id.clone(),
+        blueprint_dataset,
+        blueprint_segment,
+    )
+    .await?
+    .is_break()
+    {
+        return Ok(());
+    }
+
+    if tx.quit(None).is_err() {
+        re_log::debug!("Receiver disconnected");
+    }
+
+    Ok(())
+}
+
+/// Stream a recording segment from a catalog server, including its registered default blueprint.
 ///
-/// A key advantage of this approach is that it ensures that the default blueprint is always in sync
-/// with the server's version.
+/// If the dataset has a default blueprint, this first streams that `.rbl` segment and emits a
+/// [`LogMsg::BlueprintActivationCommand`] with `make_default = true` for the recording's
+/// application id.
+/// It then streams the requested recording segment.
+///
+/// Use [`stream_table_blueprint_segment_from_server`] instead when a registered blueprint should
+/// be streamed for a table without changing the active/default blueprint.
 pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
@@ -423,28 +515,16 @@ pub async fn stream_blueprint_and_segment_from_server(
     {
         re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
 
-        // For blueprint, we can use a random recording ID
         let blueprint_store_id = StoreId::random(
             StoreKind::Blueprint,
             recording_store_id.application_id().clone(),
         );
-
-        let blueprint_store_info = StoreInfo {
-            store_id: blueprint_store_id.clone(),
-            cloned_from: None,
-            store_source: StoreSource::Unknown,
-            store_version: None,
-        };
-
-        // Blueprints are always fully downloaded regardless of streaming options.
-        if stream_segment_from_server(
+        if stream_blueprint_segment(
             &mut client,
-            blueprint_store_info,
             &tx,
+            blueprint_store_id.clone(),
             blueprint_dataset,
             blueprint_segment,
-            re_uri::Fragment::default(),
-            &StreamingOptions::default(),
         )
         .await?
         .is_break()

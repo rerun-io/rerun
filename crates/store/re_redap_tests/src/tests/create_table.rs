@@ -41,12 +41,19 @@ pub async fn create_table_entry(service: impl RerunCloudService) {
         .await
         .expect("create table entry");
 
-    let response = response
+    let table = response
         .into_inner()
         .table
-        .expect("table missing in create_table response")
-        .details
-        .expect("table entry details missing");
+        .expect("table missing in create_table response");
+    assert!(
+        table
+            .table_details
+            .as_ref()
+            .and_then(|details| details.blueprint_dataset)
+            .is_some(),
+        "table blueprint dataset should be created implicitly"
+    );
+    let response = table.details.expect("table entry details missing");
     let entry: EntryDetails = response.try_into().expect("convert into entry details");
 
     assert_eq!(entry.name, entry_name(table_name));
