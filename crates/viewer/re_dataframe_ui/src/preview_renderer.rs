@@ -364,6 +364,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
 
         preview_timeline(
             app_ctx,
+            view_states,
             ui,
             row_nr,
             row_hovered,
@@ -379,6 +380,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
 /// This timeline can be interacted with to set the time of the preview.
 fn preview_timeline(
     app_ctx: &re_viewer_context::AppContext<'_>,
+    view_states: &ViewStates,
     ui: &egui::Ui,
     row_nr: u64,
     row_hovered: bool,
@@ -393,7 +395,8 @@ fn preview_timeline(
         last_response.hovered() || last_response.dragged() || last_response.clicked()
     });
 
-    if was_active || (views_rect != egui::Rect::NOTHING && row_hovered) {
+    let command_pressed = ui.input(|i| i.modifiers.command);
+    if command_pressed || was_active || (views_rect != egui::Rect::NOTHING && row_hovered) {
         let width = egui::lerp(4.0..=10.0, ui.animate_bool(id, was_active));
         let timeline_rect = views_rect.with_min_y(views_rect.max.y - width);
 
@@ -417,7 +420,8 @@ fn preview_timeline(
 
                 let p = p.clamp(0.0, 1.0);
 
-                let time = range.min.as_f64() + p as f64 * range.abs_length() as f64;
+                let time_offset = p as f64 * range.abs_length() as f64;
+                let time = range.min.as_f64() + time_offset;
 
                 app_ctx.command_sender.send_system(
                     re_viewer_context::SystemCommand::TimeControlCommands {
@@ -427,6 +431,33 @@ fn preview_timeline(
                         )],
                     },
                 );
+
+                if command_pressed && let Some(preview_state) = &view_states.preview_state {
+                    for (store_id, active_preview) in preview_state.iter_active_previews() {
+                        let Some(db) = app_ctx.store_bundle().get(store_id) else {
+                            continue;
+                        };
+
+                        let Some(range) =
+                            db.time_range_for(active_preview.time_control.timeline_name())
+                        else {
+                            continue;
+                        };
+
+                        let time = range.min.as_f64() + time_offset.min(range.abs_length() as f64);
+
+                        app_ctx.command_sender.send_system(
+                            re_viewer_context::SystemCommand::TimeControlCommands {
+                                store_id: store_id.clone(),
+                                time_commands: vec![
+                                    re_viewer_context::TimeControlCommand::SetTime(
+                                        re_log_types::TimeReal::from(time),
+                                    ),
+                                ],
+                            },
+                        );
+                    }
+                }
             }
 
             let p = (time.as_f64() - range.min.as_f64()) / range.abs_length() as f64;
