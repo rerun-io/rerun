@@ -298,7 +298,6 @@ impl VoxelGridMapVisualizer {
                 world_from_grid,
                 draw_order_position: world_bbox.center().into(),
                 cell_size,
-                opacity: 1.0,
                 picking_object_id: re_renderer::PickingLayerObjectId(entity_path.hash64()),
                 outline_mask_ids: spatial_ctx.highlight.overall,
                 depth_offset: spatial_ctx.depth_offset,

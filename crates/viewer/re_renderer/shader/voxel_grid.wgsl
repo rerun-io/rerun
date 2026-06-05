@@ -18,9 +18,9 @@ struct InstanceIn {
 struct UniformBuffer {
     world_from_grid: mat4x4f,
     cell_size: f32,
-    opacity: f32,
     depth_offset: f32,
     _padding0: f32,
+    _padding1: f32,
     picking_layer_object_id: vec2u,
     outline_mask: vec2u,
 };
@@ -76,7 +76,7 @@ const CULLED_POSITION: vec4f = vec4f(2.0, 2.0, 2.0, 1.0);
 
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32, in_instance: InstanceIn) -> VertexOut {
-    let alpha = in_instance.color_srgba.a * batch.opacity;
+    let alpha = in_instance.color_srgba.a;
 
     var out: VertexOut;
     out.color = vec4f(linear_from_srgb(in_instance.color_srgba.rgb), alpha);

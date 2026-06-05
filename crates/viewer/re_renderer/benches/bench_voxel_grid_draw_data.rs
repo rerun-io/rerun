@@ -186,7 +186,6 @@ fn bench_voxel_grid_draw_data(c: &mut Criterion) {
             world_from_grid: glam::Affine3A::IDENTITY,
             draw_order_position,
             cell_size: 1.0,
-            opacity: 1.0,
             picking_object_id: PickingLayerObjectId(1),
             outline_mask_ids: OutlineMaskPreference::NONE,
             depth_offset: 0,

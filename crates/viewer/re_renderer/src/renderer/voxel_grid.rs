@@ -43,9 +43,6 @@ pub struct VoxelGridOptions {
     /// Uniform voxel side length in local grid units.
     pub cell_size: f32,
 
-    /// Overall opacity multiplier.
-    pub opacity: f32,
-
     /// Picking-layer object id shared by all voxels.
     pub picking_object_id: PickingLayerObjectId,
 
@@ -94,7 +91,7 @@ mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
         pub world_from_grid: wgpu_buffer_types::Mat4,
-        pub cell_size_opacity_depth_offset: wgpu_buffer_types::Vec4,
+        pub cell_size_depth_offset_padding: wgpu_buffer_types::Vec4,
         pub picking_object_id: wgpu_buffer_types::UVec2,
         pub outline_mask_ids: wgpu_buffer_types::UVec2,
         pub end_padding: [wgpu_buffer_types::PaddingRow; 10],
@@ -142,18 +139,12 @@ impl VoxelGridDrawData {
         re_tracing::profile_function!();
 
         let renderer = ctx.renderer::<VoxelGridRenderer>();
-        let opacity = options.opacity.clamp(0.0, 1.0);
-        let voxel_count = if opacity == 0.0 {
-            0
+        let voxel_count = instances.len() as u32;
+        let draw_phase = if instances.iter().any(|instance| instance.color.a() < 255) {
+            DrawPhase::Transparent
         } else {
-            instances.len() as u32
+            DrawPhase::Opaque
         };
-        let draw_phase =
-            if opacity < 1.0 || instances.iter().any(|instance| instance.color.a() < 255) {
-                DrawPhase::Transparent
-            } else {
-                DrawPhase::Opaque
-            };
 
         let instance_buffer = if voxel_count == 0 {
             None
@@ -199,10 +190,10 @@ impl VoxelGridDrawData {
             "VoxelGridDrawData::uniform_buffer".into(),
             gpu_data::UniformBuffer {
                 world_from_grid: options.world_from_grid.into(),
-                cell_size_opacity_depth_offset: glam::Vec4::new(
+                cell_size_depth_offset_padding: glam::Vec4::new(
                     options.cell_size,
-                    opacity,
                     options.depth_offset as f32,
+                    0.0,
                     0.0,
                 )
                 .into(),
@@ -430,7 +421,6 @@ mod tests {
                 world_from_grid: glam::Affine3A::IDENTITY,
                 draw_order_position: glam::Vec3A::ZERO,
                 cell_size: 0.25,
-                opacity: 1.0,
                 picking_object_id: PickingLayerObjectId(42),
                 outline_mask_ids: OutlineMaskPreference::some(1, 2),
                 depth_offset: 0,
@@ -475,63 +465,20 @@ mod tests {
     }
 
     #[test]
-    fn zero_opacity_collects_no_drawables() {
+    fn transparent_color_collects_transparent_drawables() {
         let ctx = RenderContext::new_test();
         let draw_data = VoxelGridDrawData::new(
             &ctx,
             &[VoxelGridInstance {
                 index: glam::IVec3::ZERO,
-                color: Color32::RED,
+                #[expect(clippy::disallowed_methods)]
+                color: Color32::from_rgba_unmultiplied(255, 0, 0, 128),
                 picking_instance_id: PickingLayerInstanceId(7),
             }],
             VoxelGridOptions {
                 world_from_grid: glam::Affine3A::IDENTITY,
                 draw_order_position: glam::Vec3A::ZERO,
                 cell_size: 0.25,
-                opacity: 0.0,
-                picking_object_id: PickingLayerObjectId(42),
-                outline_mask_ids: OutlineMaskPreference::some(1, 2),
-                depth_offset: 0,
-            },
-        )
-        .unwrap();
-
-        assert_eq!(draw_data.voxel_count(), 0);
-
-        let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
-        draw_phase_manager.add_draw_data(
-            &ctx,
-            draw_data.into(),
-            &DrawableCollectionViewInfo {
-                camera_world_position: glam::Vec3A::ZERO,
-            },
-        );
-
-        for phase in [
-            DrawPhase::Opaque,
-            DrawPhase::PickingLayer,
-            DrawPhase::OutlineMask,
-            DrawPhase::Transparent,
-        ] {
-            assert!(draw_phase_manager.drawables_for_phase(phase).is_empty());
-        }
-    }
-
-    #[test]
-    fn transparent_opacity_collects_transparent_drawables() {
-        let ctx = RenderContext::new_test();
-        let draw_data = VoxelGridDrawData::new(
-            &ctx,
-            &[VoxelGridInstance {
-                index: glam::IVec3::ZERO,
-                color: Color32::RED,
-                picking_instance_id: PickingLayerInstanceId(7),
-            }],
-            VoxelGridOptions {
-                world_from_grid: glam::Affine3A::IDENTITY,
-                draw_order_position: glam::Vec3A::ZERO,
-                cell_size: 0.25,
-                opacity: 0.5,
                 picking_object_id: PickingLayerObjectId(42),
                 outline_mask_ids: OutlineMaskPreference::some(1, 2),
                 depth_offset: 0,
