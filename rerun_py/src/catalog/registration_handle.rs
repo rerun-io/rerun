@@ -5,10 +5,10 @@ use futures::StreamExt as _;
 use parking_lot::Mutex;
 use pyo3::exceptions::{PyStopIteration, PyValueError};
 use pyo3::{Py, PyErr, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
-use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 use re_protos::{
-    cloud::v1alpha1::QueryTasksResponse,
-    cloud::v1alpha1::ext::{QueryTasksOnCompletionResponse, RegisterWithDatasetTaskDescriptor},
+    cloud::v1alpha1::ext::{
+        QueryTasksDataframe, QueryTasksOnCompletionResponse, RegisterWithDatasetTaskDescriptor,
+    },
     common::v1alpha1::TaskId,
 };
 use re_redap_client::TraceId;
@@ -300,38 +300,22 @@ fn process_task_response(
 ) -> PyResult<Vec<RegistrationResult>> {
     let item = response.data;
 
-    let projected = item
-        .project_columns(
-            [
-                QueryTasksResponse::FIELD_TASK_ID,
-                QueryTasksResponse::FIELD_EXEC_STATUS,
-                QueryTasksResponse::FIELD_MSGS,
-            ]
-            .into_iter(),
-        )
-        .map_err(to_py_err)?;
-
-    let (task_ids_col, statuses, msgs) = (
-        projected
-            .column(0)
-            .try_downcast_array_ref::<arrow::array::StringArray>()
-            .map_err(to_py_err)?,
-        projected
-            .column(1)
-            .try_downcast_array_ref::<arrow::array::StringArray>()
-            .map_err(to_py_err)?,
-        projected
-            .column(2)
-            .try_downcast_array_ref::<arrow::array::StringArray>()
-            .map_err(to_py_err)?,
-    );
+    let on_err =
+        |err| PyValueError::new_err(format!("invalid QueryTasks response dataframe: {err}"));
+    let task_ids = QueryTasksDataframe::COLUMN_TASK_ID
+        .extract(&item)
+        .map_err(on_err)?;
+    let statuses = QueryTasksDataframe::COLUMN_EXEC_STATUS
+        .extract(&item)
+        .map_err(on_err)?;
+    let msgs = QueryTasksDataframe::COLUMN_MSGS
+        .extract(&item)
+        .map_err(on_err)?;
 
     let mut results = Vec::new();
 
-    for i in 0..projected.num_rows() {
-        let task_id = task_ids_col.value(i);
-        let status = statuses.value(i);
-        let msg = msgs.value(i);
+    for (task_id, status, msg) in itertools::izip!(&task_ids, &statuses, &msgs) {
+        let msg = msg.unwrap_or_default();
 
         if let Some(indices) = task_id_to_indices.get(task_id) {
             for &idx in indices {

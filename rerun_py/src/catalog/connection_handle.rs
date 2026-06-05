@@ -7,7 +7,6 @@ use arrow::pyarrow::PyArrowType;
 use itertools::Itertools as _;
 use pyo3::exceptions::PyValueError;
 use pyo3::{PyResult, Python};
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{QueryExpression, SparseFillStrategy};
 use re_datafusion::query_from_query_expression;
 use re_log::external::log::warn;
@@ -15,13 +14,14 @@ use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, DatasetDetails, DatasetEntry, EntryDetails, QueryDatasetRequest,
-    RegisterWithDatasetTaskDescriptor, TableDetails, TableEntry, VersionResponse,
+    QueryTasksDataframe, RegisterWithDatasetTaskDescriptor, TableDetails, TableEntry,
+    VersionResponse,
 };
 use re_protos::cloud::v1alpha1::{EntryFilter, QueryDatasetResponse, QueryTasksResponse};
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_protos::{invalid_schema, missing_field};
+use re_protos::missing_field;
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle, TraceId};
 use re_types_core::LayerName;
 
@@ -515,58 +515,26 @@ impl ConnectionHandle {
                     .try_into()
                     .map_err(to_py_err)?;
 
-                // TODO(andrea): all this column unwrapping is a bit hideous. Maybe the idea of returning a dataframe rather
-                // than a nicely typed object should be revisited.
-
-                let schema = item.schema();
-                if !schema.contains(&QueryTasksResponse::schema()) {
-                    let err = invalid_schema!(QueryTasksResponse);
-                    let err = ApiError::deserialization_with_source(
-                        trace_id,
-                        err,
-                        "failed waiting for tasks done: received item with invalid schema",
-                    );
-                    return Err(to_py_err(err));
-                }
-
-                let col_indices: Vec<_> = [
-                    QueryTasksResponse::FIELD_TASK_ID,
-                    QueryTasksResponse::FIELD_EXEC_STATUS,
-                    QueryTasksResponse::FIELD_MSGS,
-                ]
-                .iter()
-                .map(|name| schema.index_of(name))
-                .try_collect()
-                .map_err(|err| {
+                let on_err = |err| {
                     to_py_err(ApiError::deserialization_with_source(
                         trace_id,
                         err,
-                        "failed waiting for tasks done: missing column on item",
+                        "failed waiting for tasks done: received item with invalid schema",
                     ))
-                })?;
-
-                let projected = item.project(&col_indices).map_err(to_py_err)?;
-
-                let (task_ids, statuses, msgs) = {
-                    (
-                        projected
-                            .column(0)
-                            .try_downcast_array_ref::<arrow::array::StringArray>()
-                            .map_err(to_py_err)?,
-                        projected
-                            .column(1)
-                            .try_downcast_array_ref::<arrow::array::StringArray>()
-                            .map_err(to_py_err)?,
-                        projected
-                            .column(2)
-                            .try_downcast_array_ref::<arrow::array::StringArray>()
-                            .map_err(to_py_err)?,
-                    )
                 };
-                for i in 0..projected.num_rows() {
-                    if statuses.value(i) != "success" {
-                        let err = format!("task {}: {}", task_ids.value(i), msgs.value(i));
-                        errors.push(err);
+                let task_ids = QueryTasksDataframe::COLUMN_TASK_ID
+                    .extract(&item)
+                    .map_err(&on_err)?;
+                let statuses = QueryTasksDataframe::COLUMN_EXEC_STATUS
+                    .extract(&item)
+                    .map_err(&on_err)?;
+                let msgs = QueryTasksDataframe::COLUMN_MSGS
+                    .extract(&item)
+                    .map_err(&on_err)?;
+
+                for (task_id, status, msg) in itertools::izip!(&task_ids, &statuses, &msgs) {
+                    if status != "success" {
+                        errors.push(format!("task {task_id}: {}", msg.unwrap_or_default()));
                     }
                 }
             }

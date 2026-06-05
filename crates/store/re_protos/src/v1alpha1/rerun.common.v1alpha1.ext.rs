@@ -216,6 +216,10 @@ impl crate::common::v1alpha1::TaskId {
         Self::from_hashable(re_tuid::Tuid::new())
     }
 
+    pub fn into_string(self) -> String {
+        self.id
+    }
+
     pub fn from_hashable<H: std::hash::Hash>(hashable: H) -> Self {
         let mut hasher = std::hash::DefaultHasher::new();
         hashable.hash(&mut hasher);
@@ -226,6 +230,21 @@ impl crate::common::v1alpha1::TaskId {
         }
     }
 }
+
+impl From<String> for crate::common::v1alpha1::TaskId {
+    fn from(id: String) -> Self {
+        Self { id }
+    }
+}
+
+impl From<crate::common::v1alpha1::TaskId> for String {
+    fn from(task_id: crate::common::v1alpha1::TaskId) -> Self {
+        task_id.id
+    }
+}
+
+// Make `quiver::Column<TaskId>` work (backed by a `Utf8` column):
+quiver::newtype_datatype!(crate::common::v1alpha1::TaskId, String);
 
 // ---
 

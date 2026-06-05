@@ -17,6 +17,7 @@ use re_chunk_store::{
 };
 use re_log_encoding::ToTransport as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, TimelineName};
+use re_protos::cloud::v1alpha1::ext::QueryTasksDataframe;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, DoBandwidthTestResponse,
@@ -1801,7 +1802,7 @@ impl RerunCloudService for RerunCloudHandler {
                 .get(&task_id)
                 .unwrap_or_else(TaskResult::success);
 
-            ids.push(task_id.id);
+            ids.push(task_id);
             exec_statuses.push(result.exec_status);
             msgs.push(if result.msgs.is_empty() {
                 None
@@ -1811,19 +1812,20 @@ impl RerunCloudService for RerunCloudHandler {
         }
 
         let num_tasks = ids.len();
-        let rb = QueryTasksResponse::create_dataframe(
-            ids,
-            vec![None; num_tasks], // kind
-            vec![None; num_tasks], // data
-            exec_statuses,
-            msgs,
-            vec![None; num_tasks], // blob_len
-            vec![None; num_tasks], // lease_owner
-            vec![None; num_tasks], // lease_expiration
-            vec![1; num_tasks],    // attempts
-            vec![None; num_tasks], // creation_time
-            vec![None; num_tasks], // last_update_time
-        )
+        let rb = QueryTasksDataframe {
+            task_id: ids.into(),
+            kind: vec![None::<String>; num_tasks].into(),
+            data: vec![None::<String>; num_tasks].into(),
+            exec_status: exec_statuses.into(),
+            msgs: msgs.into(),
+            blob_len: vec![None::<u64>; num_tasks].into(),
+            lease_owner: vec![None::<String>; num_tasks].into(),
+            lease_expiration: vec![None::<i64>; num_tasks].into(),
+            attempts: vec![1_u8; num_tasks].into(),
+            creation_time: vec![None::<i64>; num_tasks].into(),
+            last_update_time: vec![None::<i64>; num_tasks].into(),
+        }
+        .into_record_batch()
         .map_err(|err| tonic::Status::internal(format!("Failed to create dataframe: {err:#}")))?;
 
         // All tasks finish immediately in the OSS server

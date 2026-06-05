@@ -1264,31 +1264,21 @@ pub async fn register_conflicting_schema_same_segment_filters_layer(
 
 /// Helper to assert that at least one task failed with a message containing the expected substring.
 fn assert_task_failed(task_results: &[RecordBatch], expected_message_substring: &str) {
-    use re_protos::cloud::v1alpha1::QueryTasksResponse;
-
     let mut found_failure = false;
     let mut failure_message = String::new();
 
     for batch in task_results {
-        let status_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_EXEC_STATUS)
-            .expect("exec_status column expected")
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("exec_status should be string array");
+        let statuses = cloud_ext::QueryTasksDataframe::COLUMN_EXEC_STATUS
+            .extract(batch)
+            .expect("valid exec_status column");
+        let msgs = cloud_ext::QueryTasksDataframe::COLUMN_MSGS
+            .extract(batch)
+            .expect("valid msgs column");
 
-        let msgs_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_MSGS)
-            .expect("msgs column expected")
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("msgs should be string array");
-
-        for i in 0..batch.num_rows() {
-            let status = status_col.value(i);
+        for (status, msg) in std::iter::zip(&statuses, &msgs) {
             if status != "success" {
                 found_failure = true;
-                failure_message = msgs_col.value(i).to_owned();
+                failure_message = msg.unwrap_or_default().to_owned();
                 break;
             }
         }
@@ -1359,9 +1349,7 @@ async fn register_and_wait_for_task_result(
     data_sources_def: DataSourcesDefinition,
 ) -> Vec<TaskResult> {
     use futures::StreamExt as _;
-    use re_protos::cloud::v1alpha1::{
-        QueryTasksOnCompletionRequest, QueryTasksResponse, RegisterWithDatasetResponse,
-    };
+    use re_protos::cloud::v1alpha1::{QueryTasksOnCompletionRequest, RegisterWithDatasetResponse};
     use re_protos::common::v1alpha1::TaskId;
     use std::collections::HashMap;
 
@@ -1451,31 +1439,20 @@ async fn register_and_wait_for_task_result(
     // Build TaskResult for each task
     let mut results = Vec::new();
     for batch in &query_results {
-        let task_id_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_TASK_ID)
-            .expect("task_id column expected")
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("task_id should be string array");
+        let task_ids = cloud_ext::QueryTasksDataframe::COLUMN_TASK_ID
+            .extract(batch)
+            .expect("valid task_id column");
+        let statuses = cloud_ext::QueryTasksDataframe::COLUMN_EXEC_STATUS
+            .extract(batch)
+            .expect("valid exec_status column");
+        let msgs = cloud_ext::QueryTasksDataframe::COLUMN_MSGS
+            .extract(batch)
+            .expect("valid msgs column");
 
-        let status_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_EXEC_STATUS)
-            .expect("exec_status column expected")
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("exec_status should be string array");
-
-        let msgs_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_MSGS)
-            .expect("msgs column expected")
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("msgs should be string array");
-
-        for i in 0..batch.num_rows() {
-            let task_id = task_id_col.value(i).to_owned();
-            let status = status_col.value(i).to_owned();
-            let message = msgs_col.value(i).to_owned();
+        for (task_id, status, message) in itertools::izip!(&task_ids, &statuses, &msgs) {
+            let task_id = task_id.to_owned();
+            let status = status.to_owned();
+            let message = message.unwrap_or_default().to_owned();
             let layers = task_layers.remove(&task_id).unwrap_or_default();
 
             results.push(TaskResult {

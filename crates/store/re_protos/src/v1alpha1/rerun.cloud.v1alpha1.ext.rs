@@ -3,7 +3,7 @@ use std::sync::Arc;
 use arrow::array::{
     Array, ArrayRef, BinaryArray, BooleanArray, DictionaryArray, FixedSizeBinaryBuilder,
     Int64Array, ListBuilder, PrimitiveDictionaryBuilder, RecordBatch, RecordBatchOptions,
-    StringArray, StringBuilder, TimestampNanosecondArray, UInt8Array, UInt64Array,
+    StringArray, StringBuilder, TimestampNanosecondArray, UInt64Array,
 };
 use arrow::datatypes::{DataType, Field, FieldRef, Int32Type, Int64Type, Schema, TimeUnit};
 use arrow::error::ArrowError;
@@ -829,89 +829,51 @@ impl Iterator for BandwidthTestPayloadIter {
 // --- Tasks ---
 
 impl QueryTasksResponse {
-    pub const FIELD_TASK_ID: &str = "task_id";
-    pub const FIELD_KIND: &str = "kind";
-    pub const FIELD_DATA: &str = "data";
-    pub const FIELD_EXEC_STATUS: &str = "exec_status";
-    pub const FIELD_MSGS: &str = "msgs";
-    pub const FIELD_BLOB_LEN: &str = "blob_len";
-    pub const FIELD_LEASE_OWNER: &str = "lease_owner";
-    pub const FIELD_LEASE_EXPIRATION: &str = "lease_expiration";
-    pub const FIELD_ATTEMPTS: &str = "attempts";
-    pub const FIELD_CREATION_TIME: &str = "creation_time";
-    pub const FIELD_LAST_UPDATE_TIME: &str = "last_update_time";
-
     pub fn dataframe_part(&self) -> Result<&DataframePart, TypeConversionError> {
         Ok(self
             .data
             .as_ref()
             .ok_or_else(|| missing_field!(QueryTasksResponse, "data"))?)
     }
+}
 
-    pub fn schema() -> arrow::datatypes::Schema {
-        Schema::new(vec![
-            Field::new(Self::FIELD_TASK_ID, DataType::Utf8, false),
-            Field::new(Self::FIELD_KIND, DataType::Utf8, true),
-            Field::new(Self::FIELD_DATA, DataType::Utf8, true),
-            Field::new(Self::FIELD_EXEC_STATUS, DataType::Utf8, false),
-            Field::new(Self::FIELD_MSGS, DataType::Utf8, true),
-            Field::new(Self::FIELD_BLOB_LEN, DataType::UInt64, true),
-            Field::new(Self::FIELD_LEASE_OWNER, DataType::Utf8, true),
-            Field::new(
-                Self::FIELD_LEASE_EXPIRATION,
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                true,
-            ),
-            Field::new(Self::FIELD_ATTEMPTS, DataType::UInt8, false),
-            Field::new(
-                Self::FIELD_CREATION_TIME,
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                true,
-            ),
-            Field::new(
-                Self::FIELD_LAST_UPDATE_TIME,
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                true,
-            ),
-        ])
-    }
+/// Strongly-typed view of the dataframe in [`QueryTasksResponse::data`].
+///
+/// One row per task. The field names are the column names.
+#[derive(Default, quiver::Quiver)]
+pub struct QueryTasksDataframe {
+    /// The unique id of the task.
+    pub task_id: quiver::Column<TaskId>,
 
-    pub fn create_dataframe(
-        task_ids: Vec<String>,
-        kind: Vec<Option<String>>,
-        data: Vec<Option<String>>,
-        exec_status: Vec<String>,
-        msgs: Vec<Option<String>>,
-        blob_len: Vec<Option<u64>>,
-        lease_owner: Vec<Option<String>>,
-        lease_expiration: Vec<Option<i64>>,
-        attempts: Vec<u8>,
-        creation_time: Vec<Option<i64>>,
-        last_update_time: Vec<Option<i64>>,
-    ) -> arrow::error::Result<RecordBatch> {
-        let row_count = task_ids.len();
-        let schema = Arc::new(Self::schema());
+    /// The kind of task, e.g. `create_partition_manifest`.
+    pub kind: quiver::Column<Option<String>>,
 
-        let columns: Vec<ArrayRef> = vec![
-            Arc::new(StringArray::from(task_ids)),
-            Arc::new(StringArray::from(kind)),
-            Arc::new(StringArray::from(data)),
-            Arc::new(StringArray::from(exec_status)),
-            Arc::new(StringArray::from(msgs)),
-            Arc::new(UInt64Array::from(blob_len)),
-            Arc::new(StringArray::from(lease_owner)),
-            Arc::new(TimestampNanosecondArray::from(lease_expiration)),
-            Arc::new(UInt8Array::from(attempts)),
-            Arc::new(TimestampNanosecondArray::from(creation_time)),
-            Arc::new(TimestampNanosecondArray::from(last_update_time)),
-        ];
+    /// Task-specific data.
+    pub data: quiver::Column<Option<String>>,
 
-        RecordBatch::try_new_with_options(
-            schema,
-            columns,
-            &RecordBatchOptions::default().with_row_count(Some(row_count)),
-        )
-    }
+    /// The execution status of the task, e.g. `pending`, `success`, or `error`.
+    pub exec_status: quiver::Column<String>,
+
+    /// Any messages produced by the task, e.g. the error message if it failed.
+    pub msgs: quiver::Column<Option<String>>,
+
+    /// The size of the task blob, in bytes.
+    pub blob_len: quiver::Column<Option<u64>>,
+
+    /// Who currently holds the lease on this task, if anyone.
+    pub lease_owner: quiver::Column<Option<String>>,
+
+    /// When the current lease expires, if any.
+    pub lease_expiration: quiver::Column<Option<quiver::TimestampNanosecond>>,
+
+    /// How many times this task has been attempted.
+    pub attempts: quiver::Column<u8>,
+
+    /// When the task was created.
+    pub creation_time: quiver::Column<Option<quiver::TimestampNanosecond>>,
+
+    /// When the task was last updated.
+    pub last_update_time: quiver::Column<Option<quiver::TimestampNanosecond>>,
 }
 
 // --- EntryFilter ---
@@ -3545,5 +3507,49 @@ mod tests {
             registration_status,
         )
         .unwrap();
+    }
+
+    /// Snapshot-friendly schema description, in declared column order.
+    fn format_schema(schema: &Schema) -> String {
+        use std::fmt::Write as _;
+        let mut out = String::new();
+        for field in schema.fields() {
+            let nullability = if field.is_nullable() {
+                "nullable"
+            } else {
+                "non-null"
+            };
+            write!(
+                &mut out,
+                "{}: {nullability} {}",
+                field.name(),
+                field.data_type()
+            )
+            .expect("infallible");
+            let metadata = field.metadata().iter().sorted().collect_vec();
+            if metadata.is_empty() {
+                out.push('\n');
+            } else {
+                out.push_str(" [\n");
+                for (key, value) in metadata {
+                    writeln!(&mut out, "    {key}: {value:?}").expect("infallible");
+                }
+                out.push_str("]\n");
+            }
+        }
+        out
+    }
+
+    /// Pin the wire schema of the `QueryTasks` response dataframe, including
+    /// column order, nullability, and field metadata.
+    ///
+    /// If this snapshot changes, you are changing the public wire format —
+    /// make sure all consumers can handle it.
+    #[test]
+    fn query_tasks_dataframe_schema_snapshot() {
+        insta::assert_snapshot!(
+            "query_tasks_dataframe_schema",
+            format_schema(&QueryTasksDataframe::max_schema())
+        );
     }
 }

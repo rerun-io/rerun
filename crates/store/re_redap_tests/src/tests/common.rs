@@ -9,7 +9,7 @@ use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    CreateDatasetEntryRequest, DataSource, QueryTasksOnCompletionRequest, QueryTasksResponse,
+    CreateDatasetEntryRequest, DataSource, QueryTasksOnCompletionRequest,
     RegisterWithDatasetRequest, RegisterWithDatasetResponse,
 };
 use re_protos::common::v1alpha1::TaskId;
@@ -274,15 +274,11 @@ async fn register_with_dataset_blocking(
 
     // Verify all tasks completed successfully
     for batch in &task_results {
-        let status_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_EXEC_STATUS)
-            .expect("exec_status column expected")
-            .as_any()
-            .downcast_ref::<arrow::array::StringArray>()
-            .expect("exec_status should be string array");
+        let statuses = cloud_ext::QueryTasksDataframe::COLUMN_EXEC_STATUS
+            .extract(batch)
+            .expect("valid exec_status column");
 
-        for i in 0..batch.num_rows() {
-            let status = status_col.value(i);
+        for status in &statuses {
             assert_eq!(
                 status, "success",
                 "Expected task to succeed, got status: {status}"

@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use futures::StreamExt as _;
 
-use re_protos::cloud::v1alpha1::QueryTasksResponse;
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, QueryTasksOnCompletionResponse, TableDetails, TableEntry,
@@ -242,23 +241,12 @@ async fn wait_for_tasks(
     while let Some(response) = response_stream.next().await {
         let response: QueryTasksOnCompletionResponse = response?.try_into()?;
         let batch = response.data;
-        let status_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_EXEC_STATUS)
-            .ok_or("missing exec_status column")?
-            .as_any()
-            .downcast_ref::<arrow::array::StringArray>()
-            .ok_or("exec_status should be a string array")?;
-        let msgs_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_MSGS)
-            .ok_or("missing msgs column")?
-            .as_any()
-            .downcast_ref::<arrow::array::StringArray>()
-            .ok_or("msgs should be a string array")?;
+        let statuses = cloud_ext::QueryTasksDataframe::COLUMN_EXEC_STATUS.extract(&batch)?;
+        let msgs = cloud_ext::QueryTasksDataframe::COLUMN_MSGS.extract(&batch)?;
 
-        for i in 0..batch.num_rows() {
-            let status = status_col.value(i);
+        for (status, msg) in std::iter::zip(&statuses, &msgs) {
             if status != "success" {
-                let msg = msgs_col.value(i);
+                let msg = msg.unwrap_or_default();
                 return Err(format!("Registration task failed with status {status}: {msg}").into());
             }
         }
