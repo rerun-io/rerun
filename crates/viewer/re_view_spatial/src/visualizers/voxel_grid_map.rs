@@ -86,10 +86,7 @@ impl VisualizerSystem for VoxelGridMapVisualizer {
                 }
 
                 let all_cell_sizes =
-                    results.iter_required(VoxelGridMap::descriptor_cell_size().component);
-                if all_cell_sizes.is_empty() {
-                    return Ok(());
-                }
+                    results.iter_optional(VoxelGridMap::descriptor_cell_size().component);
 
                 let all_values = results.iter_optional(VoxelGridMap::descriptor_values().component);
                 let all_colors = results.iter_optional(VoxelGridMap::descriptor_colors().component);
@@ -118,7 +115,7 @@ impl VisualizerSystem for VoxelGridMapVisualizer {
                     all_value_ranges.slice::<[f64; 2]>(),
                     all_colormaps.slice::<u8>(),
                 )
-                .filter_map(
+                .map(
                     |(
                         _index,
                         indices,
@@ -132,9 +129,17 @@ impl VisualizerSystem for VoxelGridMapVisualizer {
                         value_ranges,
                         colormaps,
                     )| {
-                        Some(VoxelGridMapComponentData {
+                        VoxelGridMapComponentData {
                             indices,
-                            cell_size: CellSize::from(*cell_sizes?.first()?),
+                            cell_size: cell_sizes
+                                .and_then(|cell_sizes| cell_sizes.first().copied())
+                                .map(CellSize::from)
+                                .unwrap_or_else(|| {
+                                    typed_fallback_for(
+                                        ctx,
+                                        VoxelGridMap::descriptor_cell_size().component,
+                                    )
+                                }),
                             values: values.unwrap_or(&[]),
                             colors: colors.unwrap_or(&[]),
                             translation: translations
@@ -149,7 +154,7 @@ impl VisualizerSystem for VoxelGridMapVisualizer {
                             colormap: colormaps
                                 .and_then(|c| c.first().copied())
                                 .and_then(Colormap::try_from_integer),
-                        })
+                        }
                     },
                 );
 
