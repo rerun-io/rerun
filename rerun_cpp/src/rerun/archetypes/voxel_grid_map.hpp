@@ -6,7 +6,6 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
-#include "../components/cell_size.hpp"
 #include "../components/color.hpp"
 #include "../components/colormap.hpp"
 #include "../components/opacity.hpp"
@@ -15,6 +14,7 @@
 #include "../components/translation3d.hpp"
 #include "../components/value_range.hpp"
 #include "../components/voxel_index.hpp"
+#include "../components/voxel_size.hpp"
 #include "../components/voxel_value.hpp"
 #include "../result.hpp"
 
@@ -24,15 +24,15 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: A sparse 3D voxel grid map with grid indices and a uniform cell size.
+    /// **Archetype**: A sparse 3D voxel grid map with grid indices and a uniform voxel size.
     ///
     /// This archetype is intended for 3D occupancy maps and other volumetric data
-    /// represented as a sparse, uniform grid of voxels.
+    /// represented as a sparse grid of voxels with a common size.
     ///
     /// The minimum corner of the voxel with `[0, 0, 0]` index is located at the origin of the entity's coordinate frame
     /// and can have an additional offset from there through the optional translation and rotation fields.
     ///
-    /// A voxel center is at `(index + 0.5) * cell_size` in local grid coordinates (i.e. relative to the minimum corner).
+    /// A voxel center is at `(index + 0.5) * voxel_size` in local grid coordinates (i.e. relative to the minimum corner).
     ///
     /// ## Example
     ///
@@ -68,7 +68,10 @@ namespace rerun::archetypes {
     ///
     ///     rec.log(
     ///         "world/voxels",
-    ///         rerun::archetypes::VoxelGridMap(voxel_indices, 0.25f)
+    ///         rerun::archetypes::VoxelGridMap(
+    ///             voxel_indices,
+    ///             std::array<float, 3>{0.25f, 0.25f, 0.25f}
+    ///         )
     ///             .with_values(values)
     ///             .with_value_range(
     ///                 rerun::components::ValueRange(std::array<double, 2>{0.0, 1.0})
@@ -85,11 +88,11 @@ namespace rerun::archetypes {
         /// Indices of the voxels within the grid volume.
         std::optional<ComponentBatch> voxel_indices;
 
-        /// The scene unit size of a single voxel cell.
+        /// The scene-unit dimensions of a single voxel cell.
         ///
-        /// This defines the side length of each voxel cube.
-        /// Anisotropic (non-cubic) voxels are currently not supported.
-        std::optional<ComponentBatch> cell_size;
+        /// This defines the voxel size along the local grid X/Y/Z axes.
+        /// Each dimension must be finite and positive.
+        std::optional<ComponentBatch> voxel_size;
 
         /// Optional scalar occupancy or value data for each voxel.
         ///
@@ -148,10 +151,10 @@ namespace rerun::archetypes {
             ArchetypeName, "VoxelGridMap:voxel_indices",
             Loggable<rerun::components::VoxelIndex>::ComponentType
         );
-        /// `ComponentDescriptor` for the `cell_size` field.
-        static constexpr auto Descriptor_cell_size = ComponentDescriptor(
-            ArchetypeName, "VoxelGridMap:cell_size",
-            Loggable<rerun::components::CellSize>::ComponentType
+        /// `ComponentDescriptor` for the `voxel_size` field.
+        static constexpr auto Descriptor_voxel_size = ComponentDescriptor(
+            ArchetypeName, "VoxelGridMap:voxel_size",
+            Loggable<rerun::components::VoxelSize>::ComponentType
         );
         /// `ComponentDescriptor` for the `values` field.
         static constexpr auto Descriptor_values = ComponentDescriptor(
@@ -202,14 +205,16 @@ namespace rerun::archetypes {
 
         explicit VoxelGridMap(
             Collection<rerun::components::VoxelIndex> _voxel_indices,
-            rerun::components::CellSize _cell_size
+            rerun::components::VoxelSize _voxel_size
         )
             : voxel_indices(
                   ComponentBatch::from_loggable(std::move(_voxel_indices), Descriptor_voxel_indices)
                       .value_or_throw()
               ),
-              cell_size(ComponentBatch::from_loggable(std::move(_cell_size), Descriptor_cell_size)
-                            .value_or_throw()) {}
+              voxel_size(
+                  ComponentBatch::from_loggable(std::move(_voxel_size), Descriptor_voxel_size)
+                      .value_or_throw()
+              ) {}
 
         /// Update only some specific fields of a `VoxelGridMap`.
         static VoxelGridMap update_fields() {
@@ -228,24 +233,25 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// The scene unit size of a single voxel cell.
+        /// The scene-unit dimensions of a single voxel cell.
         ///
-        /// This defines the side length of each voxel cube.
-        /// Anisotropic (non-cubic) voxels are currently not supported.
-        VoxelGridMap with_cell_size(const rerun::components::CellSize& _cell_size) && {
-            cell_size =
-                ComponentBatch::from_loggable(_cell_size, Descriptor_cell_size).value_or_throw();
+        /// This defines the voxel size along the local grid X/Y/Z axes.
+        /// Each dimension must be finite and positive.
+        VoxelGridMap with_voxel_size(const rerun::components::VoxelSize& _voxel_size) && {
+            voxel_size =
+                ComponentBatch::from_loggable(_voxel_size, Descriptor_voxel_size).value_or_throw();
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `cell_size` in a single component batch.
+        /// This method makes it possible to pack multiple `voxel_size` in a single component batch.
         ///
-        /// This only makes sense when used in conjunction with `columns`. `with_cell_size` should
+        /// This only makes sense when used in conjunction with `columns`. `with_voxel_size` should
         /// be used when logging a single row's worth of data.
-        VoxelGridMap with_many_cell_size(const Collection<rerun::components::CellSize>& _cell_size
+        VoxelGridMap with_many_voxel_size(
+            const Collection<rerun::components::VoxelSize>& _voxel_size
         ) && {
-            cell_size =
-                ComponentBatch::from_loggable(_cell_size, Descriptor_cell_size).value_or_throw();
+            voxel_size =
+                ComponentBatch::from_loggable(_voxel_size, Descriptor_voxel_size).value_or_throw();
             return std::move(*this);
         }
 

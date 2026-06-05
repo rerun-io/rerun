@@ -79,4 +79,5 @@ include "./components/video_timestamp.fbs";
 include "./components/view_coordinates.fbs";
 include "./components/visible.fbs";
 include "./components/voxel_index.fbs";
+include "./components/voxel_size.fbs";
 include "./components/voxel_value.fbs";

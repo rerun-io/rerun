@@ -83,4 +83,5 @@
 #include "components/view_coordinates.hpp"
 #include "components/visible.hpp"
 #include "components/voxel_index.hpp"
+#include "components/voxel_size.hpp"
 #include "components/voxel_value.hpp"

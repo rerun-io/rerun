@@ -23,7 +23,7 @@ rr.log(
     "world/voxels",
     rr.VoxelGridMap(
         voxel_indices,
-        0.25,
+        voxel_size=[0.25, 0.25, 0.25],
         values=values,
         value_range=[0.0, 1.0],
         colormap=rr.components.Colormap.Turbo,

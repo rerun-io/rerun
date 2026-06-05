@@ -9,8 +9,8 @@ fn roundtrip() {
             components::VoxelIndex::from([3, 4, 5]),
         ]
         .serialized(VoxelGridMap::descriptor_voxel_indices()),
-        cell_size: components::CellSize::from(0.25)
-            .serialized(VoxelGridMap::descriptor_cell_size()),
+        voxel_size: components::VoxelSize::from([0.25, 0.5, 0.75])
+            .serialized(VoxelGridMap::descriptor_voxel_size()),
         values: vec![
             components::VoxelValue::from(0.1),
             components::VoxelValue::from(0.9),
@@ -38,7 +38,7 @@ fn roundtrip() {
         colormap: components::Colormap::Turbo.serialized(VoxelGridMap::descriptor_colormap()),
     };
 
-    let arch = VoxelGridMap::new([(-1, 0, 2), (3, 4, 5)], 0.25)
+    let arch = VoxelGridMap::new([(-1, 0, 2), (3, 4, 5)], [0.25, 0.5, 0.75])
         .with_values([0.1, 0.9])
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_translation([1.0, 2.0, 3.0])

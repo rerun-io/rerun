@@ -5,7 +5,7 @@ use re_renderer::{Color32, PickingLayerInstanceId};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::VoxelGridMap;
 use re_sdk_types::components::{
-    CellSize, Colormap, Opacity, RotationAxisAngle, RotationQuat, Translation3D,
+    Colormap, Opacity, RotationAxisAngle, RotationQuat, Translation3D, VoxelSize,
 };
 use re_sdk_types::datatypes::Quaternion;
 use re_sdk_types::reflection::Enum as _;
@@ -28,7 +28,7 @@ pub struct VoxelGridMapVisualizer;
 #[derive(Clone, Copy)]
 struct VoxelGridMapComponentData<'a> {
     indices: &'a [[i32; 3]],
-    cell_size: CellSize,
+    voxel_size: VoxelSize,
     values: &'a [f32],
     colors: &'a [u32],
     translation: Option<Translation3D>,
@@ -85,8 +85,8 @@ impl VisualizerSystem for VoxelGridMapVisualizer {
                     return Ok(());
                 }
 
-                let all_cell_sizes =
-                    results.iter_optional(VoxelGridMap::descriptor_cell_size().component);
+                let all_voxel_sizes =
+                    results.iter_optional(VoxelGridMap::descriptor_voxel_size().component);
 
                 let all_values = results.iter_optional(VoxelGridMap::descriptor_values().component);
                 let all_colors = results.iter_optional(VoxelGridMap::descriptor_colors().component);
@@ -105,7 +105,7 @@ impl VisualizerSystem for VoxelGridMapVisualizer {
 
                 let voxel_maps = re_query::range_zip_1x9(
                     all_indices.slice::<[i32; 3]>(),
-                    all_cell_sizes.slice::<f32>(),
+                    all_voxel_sizes.slice::<[f32; 3]>(),
                     all_values.slice::<f32>(),
                     all_colors.slice::<u32>(),
                     all_translations.slice::<[f32; 3]>(),
@@ -119,7 +119,7 @@ impl VisualizerSystem for VoxelGridMapVisualizer {
                     |(
                         _index,
                         indices,
-                        cell_sizes,
+                        voxel_sizes,
                         values,
                         colors,
                         translations,
@@ -131,13 +131,13 @@ impl VisualizerSystem for VoxelGridMapVisualizer {
                     )| {
                         VoxelGridMapComponentData {
                             indices,
-                            cell_size: cell_sizes
-                                .and_then(|cell_sizes| cell_sizes.first().copied())
-                                .map(CellSize::from)
+                            voxel_size: voxel_sizes
+                                .and_then(|voxel_sizes| voxel_sizes.first().copied())
+                                .map(VoxelSize::from)
                                 .unwrap_or_else(|| {
                                     typed_fallback_for(
                                         ctx,
-                                        VoxelGridMap::descriptor_cell_size().component,
+                                        VoxelGridMap::descriptor_voxel_size().component,
                                     )
                                 }),
                             values: values.unwrap_or(&[]),
@@ -191,7 +191,7 @@ impl VoxelGridMapVisualizer {
         let entity_path = ctx.target_entity_path;
         let VoxelGridMapComponentData {
             indices,
-            cell_size,
+            voxel_size,
             values,
             colors,
             translation,
@@ -206,12 +206,12 @@ impl VoxelGridMapVisualizer {
             return Ok(None);
         }
 
-        let cell_size = f32::from(cell_size.0);
-        if !cell_size.is_finite() || cell_size <= 0.0 {
+        let voxel_size = glam::Vec3::from_array(voxel_size.0.0);
+        if !voxel_size.is_finite() || !voxel_size.cmpgt(glam::Vec3::ZERO).all() {
             results.report_for_component(
-                VoxelGridMap::descriptor_cell_size().component,
+                VoxelGridMap::descriptor_voxel_size().component,
                 VisualizerReportSeverity::Error,
-                "cell_size must be positive",
+                "voxel_size must be finite and positive",
             );
             return Ok(None);
         }
@@ -279,8 +279,8 @@ impl VoxelGridMapVisualizer {
                 picking_instance_id: PickingLayerInstanceId(instance_index as _),
             });
 
-            let min = index.as_vec3() * cell_size;
-            let max = (index + glam::IVec3::ONE).as_vec3() * cell_size;
+            let min = index.as_vec3() * voxel_size;
+            let max = (index + glam::IVec3::ONE).as_vec3() * voxel_size;
             local_bbox = local_bbox.union(macaw::BoundingBox::from_min_max(min, max));
         }
 
@@ -297,7 +297,7 @@ impl VoxelGridMapVisualizer {
             VoxelGridOptions {
                 world_from_grid,
                 draw_order_position: world_bbox.center().into(),
-                cell_size,
+                voxel_size,
                 picking_object_id: re_renderer::PickingLayerObjectId(entity_path.hash64()),
                 outline_mask_ids: spatial_ctx.highlight.overall,
                 depth_offset: spatial_ctx.depth_offset,

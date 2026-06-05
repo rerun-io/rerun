@@ -30,7 +30,10 @@ int main(int argc, char* argv[]) {
 
     rec.log(
         "world/voxels",
-        rerun::archetypes::VoxelGridMap(voxel_indices, 0.25f)
+        rerun::archetypes::VoxelGridMap(
+            voxel_indices,
+            std::array<float, 3>{0.25f, 0.25f, 0.25f}
+        )
             .with_values(values)
             .with_value_range(
                 rerun::components::ValueRange(std::array<double, 2>{0.0, 1.0})

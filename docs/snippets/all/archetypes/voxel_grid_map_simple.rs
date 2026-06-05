@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.log(
         "world/voxels",
-        &rerun::VoxelGridMap::new(voxel_indices, 0.25)
+        &rerun::VoxelGridMap::new(voxel_indices, [0.25, 0.25, 0.25])
             .with_values(values)
             .with_value_range([0.0, 1.0])
             .with_colormap(rerun::components::Colormap::Turbo)

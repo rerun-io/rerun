@@ -65,14 +65,14 @@ fn source_voxels(len: usize) -> Vec<SourceVoxel> {
 
 fn voxel_instances(
     source: &[SourceVoxel],
-    cell_size: f32,
+    voxel_size: glam::Vec3,
 ) -> (Vec<VoxelGridInstance>, glam::Vec3A) {
     let mut bbox = macaw::BoundingBox::nothing();
     let instances = source
         .iter()
         .map(|voxel| {
-            let min = voxel.index.as_vec3() * cell_size;
-            let max = (voxel.index + glam::IVec3::ONE).as_vec3() * cell_size;
+            let min = voxel.index.as_vec3() * voxel_size;
+            let max = (voxel.index + glam::IVec3::ONE).as_vec3() * voxel_size;
             bbox = bbox.union(macaw::BoundingBox::from_min_max(min, max));
 
             VoxelGridInstance {
@@ -180,12 +180,13 @@ fn bench_voxel_grid_draw_data(c: &mut Criterion) {
 
     for len in [10_000, 100_000] {
         let source = source_voxels(len);
+        let voxel_size = glam::Vec3::ONE;
         let mut voxel_ctx = render_context();
-        let (voxels, draw_order_position) = voxel_instances(&source, 1.0);
+        let (voxels, draw_order_position) = voxel_instances(&source, voxel_size);
         let voxel_options = VoxelGridOptions {
             world_from_grid: glam::Affine3A::IDENTITY,
             draw_order_position,
-            cell_size: 1.0,
+            voxel_size,
             picking_object_id: PickingLayerObjectId(1),
             outline_mask_ids: OutlineMaskPreference::NONE,
             depth_offset: 0,
@@ -201,7 +202,8 @@ fn bench_voxel_grid_draw_data(c: &mut Criterion) {
             b.iter_custom(|iters| {
                 let start = Instant::now();
                 for _ in 0..iters {
-                    let (voxels, draw_order_position) = voxel_instances(black_box(&source), 1.0);
+                    let (voxels, draw_order_position) =
+                        voxel_instances(black_box(&source), voxel_size);
                     let draw_data = VoxelGridDrawData::new(
                         &voxel_ctx,
                         &voxels,

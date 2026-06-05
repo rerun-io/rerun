@@ -22,15 +22,15 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: A sparse 3D voxel grid map with grid indices and a uniform cell size.
+/// **Archetype**: A sparse 3D voxel grid map with grid indices and a uniform voxel size.
 ///
 /// This archetype is intended for 3D occupancy maps and other volumetric data
-/// represented as a sparse, uniform grid of voxels.
+/// represented as a sparse grid of voxels with a common size.
 ///
 /// The minimum corner of the voxel with `[0, 0, 0]` index is located at the origin of the entity's coordinate frame
 /// and can have an additional offset from there through the optional translation and rotation fields.
 ///
-/// A voxel center is at `(index + 0.5) * cell_size` in local grid coordinates (i.e. relative to the minimum corner).
+/// A voxel center is at `(index + 0.5) * voxel_size` in local grid coordinates (i.e. relative to the minimum corner).
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 ///
@@ -56,7 +56,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     rec.log(
 ///         "world/voxels",
-///         &rerun::VoxelGridMap::new(voxel_indices, 0.25)
+///         &rerun::VoxelGridMap::new(voxel_indices, [0.25, 0.25, 0.25])
 ///             .with_values(values)
 ///             .with_value_range([0.0, 1.0])
 ///             .with_colormap(rerun::components::Colormap::Turbo)
@@ -71,11 +71,11 @@ pub struct VoxelGridMap {
     /// Indices of the voxels within the grid volume.
     pub voxel_indices: Option<SerializedComponentBatch>,
 
-    /// The scene unit size of a single voxel cell.
+    /// The scene-unit dimensions of a single voxel cell.
     ///
-    /// This defines the side length of each voxel cube.
-    /// Anisotropic (non-cubic) voxels are currently not supported.
-    pub cell_size: Option<SerializedComponentBatch>,
+    /// This defines the voxel size along the local grid X/Y/Z axes.
+    /// Each dimension must be finite and positive.
+    pub voxel_size: Option<SerializedComponentBatch>,
 
     /// Optional scalar occupancy or value data for each voxel.
     ///
@@ -139,15 +139,15 @@ impl VoxelGridMap {
         }
     }
 
-    /// Returns the [`ComponentDescriptor`] for [`Self::cell_size`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::voxel_size`].
     ///
-    /// The corresponding component is [`crate::components::CellSize`].
+    /// The corresponding component is [`crate::components::VoxelSize`].
     #[inline]
-    pub fn descriptor_cell_size() -> ComponentDescriptor {
+    pub fn descriptor_voxel_size() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.VoxelGridMap".into()),
-            component: "VoxelGridMap:cell_size".into(),
-            component_type: Some("rerun.components.CellSize".into()),
+            component: "VoxelGridMap:voxel_size".into(),
+            component_type: Some("rerun.components.VoxelSize".into()),
         }
     }
 
@@ -252,7 +252,7 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
     std::sync::LazyLock::new(|| {
         [
             VoxelGridMap::descriptor_voxel_indices(),
-            VoxelGridMap::descriptor_cell_size(),
+            VoxelGridMap::descriptor_voxel_size(),
         ]
     });
 
@@ -277,7 +277,7 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 10usize]> =
     std::sync::LazyLock::new(|| {
         [
             VoxelGridMap::descriptor_voxel_indices(),
-            VoxelGridMap::descriptor_cell_size(),
+            VoxelGridMap::descriptor_voxel_size(),
             VoxelGridMap::descriptor_values(),
             VoxelGridMap::descriptor_colors(),
             VoxelGridMap::descriptor_translation(),
@@ -337,10 +337,10 @@ impl ::re_types_core::Archetype for VoxelGridMap {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_voxel_indices())
             });
-        let cell_size = arrays_by_descr
-            .get(&Self::descriptor_cell_size())
+        let voxel_size = arrays_by_descr
+            .get(&Self::descriptor_voxel_size())
             .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_cell_size())
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_voxel_size())
             });
         let values = arrays_by_descr
             .get(&Self::descriptor_values())
@@ -376,7 +376,7 @@ impl ::re_types_core::Archetype for VoxelGridMap {
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_colormap()));
         Ok(Self {
             voxel_indices,
-            cell_size,
+            voxel_size,
             values,
             colors,
             translation,
@@ -395,7 +395,7 @@ impl ::re_types_core::AsComponents for VoxelGridMap {
         use ::re_types_core::Archetype as _;
         [
             self.voxel_indices.clone(),
-            self.cell_size.clone(),
+            self.voxel_size.clone(),
             self.values.clone(),
             self.colors.clone(),
             self.translation.clone(),
@@ -425,11 +425,11 @@ impl VoxelGridMap {
     #[inline]
     pub fn new(
         voxel_indices: impl IntoIterator<Item = impl Into<crate::components::VoxelIndex>>,
-        cell_size: impl Into<crate::components::CellSize>,
+        voxel_size: impl Into<crate::components::VoxelSize>,
     ) -> Self {
         Self {
             voxel_indices: try_serialize_field(Self::descriptor_voxel_indices(), voxel_indices),
-            cell_size: try_serialize_field(Self::descriptor_cell_size(), [cell_size]),
+            voxel_size: try_serialize_field(Self::descriptor_voxel_size(), [voxel_size]),
             values: None,
             colors: None,
             translation: None,
@@ -456,9 +456,9 @@ impl VoxelGridMap {
                 crate::components::VoxelIndex::arrow_empty(),
                 Self::descriptor_voxel_indices(),
             )),
-            cell_size: Some(SerializedComponentBatch::new(
-                crate::components::CellSize::arrow_empty(),
-                Self::descriptor_cell_size(),
+            voxel_size: Some(SerializedComponentBatch::new(
+                crate::components::VoxelSize::arrow_empty(),
+                Self::descriptor_voxel_size(),
             )),
             values: Some(SerializedComponentBatch::new(
                 crate::components::VoxelValue::arrow_empty(),
@@ -517,8 +517,8 @@ impl VoxelGridMap {
             self.voxel_indices
                 .map(|voxel_indices| voxel_indices.partitioned(_lengths.clone()))
                 .transpose()?,
-            self.cell_size
-                .map(|cell_size| cell_size.partitioned(_lengths.clone()))
+            self.voxel_size
+                .map(|voxel_size| voxel_size.partitioned(_lengths.clone()))
                 .transpose()?,
             self.values
                 .map(|values| values.partitioned(_lengths.clone()))
@@ -557,7 +557,7 @@ impl VoxelGridMap {
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_voxel_indices = self.voxel_indices.as_ref().map(|b| b.array.len());
-        let len_cell_size = self.cell_size.as_ref().map(|b| b.array.len());
+        let len_voxel_size = self.voxel_size.as_ref().map(|b| b.array.len());
         let len_values = self.values.as_ref().map(|b| b.array.len());
         let len_colors = self.colors.as_ref().map(|b| b.array.len());
         let len_translation = self.translation.as_ref().map(|b| b.array.len());
@@ -568,7 +568,7 @@ impl VoxelGridMap {
         let len_colormap = self.colormap.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_voxel_indices)
-            .or(len_cell_size)
+            .or(len_voxel_size)
             .or(len_values)
             .or(len_colors)
             .or(len_translation)
@@ -591,26 +591,26 @@ impl VoxelGridMap {
         self
     }
 
-    /// The scene unit size of a single voxel cell.
+    /// The scene-unit dimensions of a single voxel cell.
     ///
-    /// This defines the side length of each voxel cube.
-    /// Anisotropic (non-cubic) voxels are currently not supported.
+    /// This defines the voxel size along the local grid X/Y/Z axes.
+    /// Each dimension must be finite and positive.
     #[inline]
-    pub fn with_cell_size(mut self, cell_size: impl Into<crate::components::CellSize>) -> Self {
-        self.cell_size = try_serialize_field(Self::descriptor_cell_size(), [cell_size]);
+    pub fn with_voxel_size(mut self, voxel_size: impl Into<crate::components::VoxelSize>) -> Self {
+        self.voxel_size = try_serialize_field(Self::descriptor_voxel_size(), [voxel_size]);
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::components::CellSize`] in a single component batch.
+    /// This method makes it possible to pack multiple [`crate::components::VoxelSize`] in a single component batch.
     ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_cell_size`] should
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_voxel_size`] should
     /// be used when logging a single row's worth of data.
     #[inline]
-    pub fn with_many_cell_size(
+    pub fn with_many_voxel_size(
         mut self,
-        cell_size: impl IntoIterator<Item = impl Into<crate::components::CellSize>>,
+        voxel_size: impl IntoIterator<Item = impl Into<crate::components::VoxelSize>>,
     ) -> Self {
-        self.cell_size = try_serialize_field(Self::descriptor_cell_size(), cell_size);
+        self.voxel_size = try_serialize_field(Self::descriptor_voxel_size(), voxel_size);
         self
     }
 

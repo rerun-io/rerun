@@ -11,8 +11,8 @@ namespace rerun::archetypes {
         archetype.voxel_indices =
             ComponentBatch::empty<rerun::components::VoxelIndex>(Descriptor_voxel_indices)
                 .value_or_throw();
-        archetype.cell_size =
-            ComponentBatch::empty<rerun::components::CellSize>(Descriptor_cell_size)
+        archetype.voxel_size =
+            ComponentBatch::empty<rerun::components::VoxelSize>(Descriptor_voxel_size)
                 .value_or_throw();
         archetype.values = ComponentBatch::empty<rerun::components::VoxelValue>(Descriptor_values)
                                .value_or_throw();
@@ -44,8 +44,8 @@ namespace rerun::archetypes {
         if (voxel_indices.has_value()) {
             columns.push_back(voxel_indices.value().partitioned(lengths_).value_or_throw());
         }
-        if (cell_size.has_value()) {
-            columns.push_back(cell_size.value().partitioned(lengths_).value_or_throw());
+        if (voxel_size.has_value()) {
+            columns.push_back(voxel_size.value().partitioned(lengths_).value_or_throw());
         }
         if (values.has_value()) {
             columns.push_back(values.value().partitioned(lengths_).value_or_throw());
@@ -78,8 +78,8 @@ namespace rerun::archetypes {
         if (voxel_indices.has_value()) {
             return columns(std::vector<uint32_t>(voxel_indices.value().length(), 1));
         }
-        if (cell_size.has_value()) {
-            return columns(std::vector<uint32_t>(cell_size.value().length(), 1));
+        if (voxel_size.has_value()) {
+            return columns(std::vector<uint32_t>(voxel_size.value().length(), 1));
         }
         if (values.has_value()) {
             return columns(std::vector<uint32_t>(values.value().length(), 1));
@@ -121,8 +121,8 @@ namespace rerun {
         if (archetype.voxel_indices.has_value()) {
             cells.push_back(archetype.voxel_indices.value());
         }
-        if (archetype.cell_size.has_value()) {
-            cells.push_back(archetype.cell_size.value());
+        if (archetype.voxel_size.has_value()) {
+            cells.push_back(archetype.voxel_size.value());
         }
         if (archetype.values.has_value()) {
             cells.push_back(archetype.values.value());

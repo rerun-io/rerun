@@ -17,10 +17,8 @@ struct InstanceIn {
 
 struct UniformBuffer {
     world_from_grid: mat4x4f,
-    cell_size: f32,
+    voxel_size: vec3f,
     depth_offset: f32,
-    _padding0: f32,
-    _padding1: f32,
     picking_layer_object_id: vec2u,
     outline_mask: vec2u,
 };
@@ -89,7 +87,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32, in_instance: InstanceIn) -> V
     }
 
     let cube_vertex_idx = vertex_idx % 36u;
-    let grid_position = (vec3f(in_instance.index) + CUBE_VERTICES[cube_vertex_idx]) * batch.cell_size;
+    let grid_position = (vec3f(in_instance.index) + CUBE_VERTICES[cube_vertex_idx]) * batch.voxel_size;
     let world_position = batch.world_from_grid * vec4f(grid_position, 1.0);
     let normal_world_space = normalize((batch.world_from_grid * vec4f(CUBE_NORMALS[cube_vertex_idx / 6u], 0.0)).xyz);
 

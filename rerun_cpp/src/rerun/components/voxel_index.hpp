@@ -13,7 +13,7 @@
 namespace rerun::components {
     /// **Component**: Integer index of a voxel in a sparse 3D voxel grid.
     ///
-    /// The voxel center in local grid coordinates is `(index + 0.5) * cell_size`.
+    /// The voxel center in local grid coordinates is `(index + 0.5) * voxel_size`.
     struct VoxelIndex {
         rerun::datatypes::IVec3D index;
 

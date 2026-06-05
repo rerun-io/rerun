@@ -1517,12 +1517,23 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VoxelIndex as Component>::name(),
             ComponentReflection {
-                docstring_md: "Integer index of a voxel in a sparse 3D voxel grid.\n\nThe voxel center in local grid coordinates is `(index + 0.5) * cell_size`.",
+                docstring_md: "Integer index of a voxel in a sparse 3D voxel grid.\n\nThe voxel center in local grid coordinates is `(index + 0.5) * voxel_size`.",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: VoxelIndex::arrow_datatype(),
                 is_enum: false,
                 verify_arrow_array: VoxelIndex::verify_arrow_array,
+            },
+        ),
+        (
+            <VoxelSize as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The scene-unit dimensions of one voxel in a sparse 3D voxel grid.\n\nEach component is the size of a voxel along the corresponding local grid axis.\nAll components must be finite and positive.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: VoxelSize::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: VoxelSize::verify_arrow_array,
             },
         ),
         (
@@ -3866,10 +3877,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::REQUIRED,
                     },
                     ArchetypeFieldReflection {
-                        name: "cell_size",
-                        display_name: "Cell size",
-                        component_type: "rerun.components.CellSize".into(),
-                        docstring_md: "The scene unit size of a single voxel cell.\n\nThis defines the side length of each voxel cube.\nAnisotropic (non-cubic) voxels are currently not supported.",
+                        name: "voxel_size",
+                        display_name: "Voxel size",
+                        component_type: "rerun.components.VoxelSize".into(),
+                        docstring_md: "The scene-unit dimensions of a single voxel cell.\n\nThis defines the voxel size along the local grid X/Y/Z axes.\nEach dimension must be finite and positive.",
                         flags: ArchetypeFieldFlags::REQUIRED,
                     },
                     ArchetypeFieldReflection {

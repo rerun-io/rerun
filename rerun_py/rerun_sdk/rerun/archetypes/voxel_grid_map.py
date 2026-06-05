@@ -29,15 +29,15 @@ __all__ = ["VoxelGridMap"]
 @define(str=False, repr=False, init=False)
 class VoxelGridMap(Archetype, VisualizableArchetype):
     """
-    **Archetype**: A sparse 3D voxel grid map with grid indices and a uniform cell size.
+    **Archetype**: A sparse 3D voxel grid map with grid indices and a uniform voxel size.
 
     This archetype is intended for 3D occupancy maps and other volumetric data
-    represented as a sparse, uniform grid of voxels.
+    represented as a sparse grid of voxels with a common size.
 
     The minimum corner of the voxel with `[0, 0, 0]` index is located at the origin of the entity's coordinate frame
     and can have an additional offset from there through the optional translation and rotation fields.
 
-    A voxel center is at `(index + 0.5) * cell_size` in local grid coordinates (i.e. relative to the minimum corner).
+    A voxel center is at `(index + 0.5) * voxel_size` in local grid coordinates (i.e. relative to the minimum corner).
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 
@@ -68,7 +68,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         "world/voxels",
         rr.VoxelGridMap(
             voxel_indices,
-            0.25,
+            voxel_size=[0.25, 0.25, 0.25],
             values=values,
             value_range=[0.0, 1.0],
             colormap=rr.components.Colormap.Turbo,
@@ -84,7 +84,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
     def __init__(
         self: Any,
         voxel_indices: datatypes.IVec3DArrayLike,
-        cell_size: datatypes.Float32Like,
+        voxel_size: datatypes.Vec3DLike,
         *,
         values: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
@@ -102,11 +102,11 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         ----------
         voxel_indices:
             Indices of the voxels within the grid volume.
-        cell_size:
-            The scene unit size of a single voxel cell.
+        voxel_size:
+            The scene-unit dimensions of a single voxel cell.
 
-            This defines the side length of each voxel cube.
-            Anisotropic (non-cubic) voxels are currently not supported.
+            This defines the voxel size along the local grid X/Y/Z axes.
+            Each dimension must be finite and positive.
         values:
             Optional scalar occupancy or value data for each voxel.
 
@@ -154,7 +154,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
                 voxel_indices=voxel_indices,
-                cell_size=cell_size,
+                voxel_size=voxel_size,
                 values=values,
                 colors=colors,
                 translation=translation,
@@ -171,7 +171,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             voxel_indices=None,
-            cell_size=None,
+            voxel_size=None,
             values=None,
             colors=None,
             translation=None,
@@ -195,7 +195,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         *,
         clear_unset: bool = False,
         voxel_indices: datatypes.IVec3DArrayLike | None = None,
-        cell_size: datatypes.Float32Like | None = None,
+        voxel_size: datatypes.Vec3DLike | None = None,
         values: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         translation: datatypes.Vec3DLike | None = None,
@@ -214,11 +214,11 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
             If true, all unspecified fields will be explicitly cleared.
         voxel_indices:
             Indices of the voxels within the grid volume.
-        cell_size:
-            The scene unit size of a single voxel cell.
+        voxel_size:
+            The scene-unit dimensions of a single voxel cell.
 
-            This defines the side length of each voxel cube.
-            Anisotropic (non-cubic) voxels are currently not supported.
+            This defines the voxel size along the local grid X/Y/Z axes.
+            Each dimension must be finite and positive.
         values:
             Optional scalar occupancy or value data for each voxel.
 
@@ -266,7 +266,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
                 "voxel_indices": voxel_indices,
-                "cell_size": cell_size,
+                "voxel_size": voxel_size,
                 "values": values,
                 "colors": colors,
                 "translation": translation,
@@ -300,11 +300,11 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         )
 
     @staticmethod
-    def descriptor_cell_size() -> ComponentDescriptor:
+    def descriptor_voxel_size() -> ComponentDescriptor:
         return ComponentDescriptor(
-            "VoxelGridMap:cell_size",
+            "VoxelGridMap:voxel_size",
             archetype=VoxelGridMap.NAME,
-            component_type=components.CellSizeBatch._COMPONENT_TYPE,
+            component_type=components.VoxelSizeBatch._COMPONENT_TYPE,
         )
 
     @staticmethod
@@ -376,7 +376,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         cls,
         *,
         voxel_indices: datatypes.IVec3DArrayLike | None = None,
-        cell_size: datatypes.Float32ArrayLike | None = None,
+        voxel_size: datatypes.Vec3DArrayLike | None = None,
         values: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         translation: datatypes.Vec3DArrayLike | None = None,
@@ -398,11 +398,11 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         ----------
         voxel_indices:
             Indices of the voxels within the grid volume.
-        cell_size:
-            The scene unit size of a single voxel cell.
+        voxel_size:
+            The scene-unit dimensions of a single voxel cell.
 
-            This defines the side length of each voxel cube.
-            Anisotropic (non-cubic) voxels are currently not supported.
+            This defines the voxel size along the local grid X/Y/Z axes.
+            Each dimension must be finite and positive.
         values:
             Optional scalar occupancy or value data for each voxel.
 
@@ -450,7 +450,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         with catch_and_log_exceptions(context=cls.__name__):
             inst.__attrs_init__(
                 voxel_indices=voxel_indices,
-                cell_size=cell_size,
+                voxel_size=voxel_size,
                 values=values,
                 colors=colors,
                 translation=translation,
@@ -467,7 +467,7 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
 
         kwargs = {
             "VoxelGridMap:voxel_indices": voxel_indices,
-            "VoxelGridMap:cell_size": cell_size,
+            "VoxelGridMap:voxel_size": voxel_size,
             "VoxelGridMap:values": values,
             "VoxelGridMap:colors": colors,
             "VoxelGridMap:translation": translation,
@@ -519,15 +519,15 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    cell_size: components.CellSizeBatch | None = field(
+    voxel_size: components.VoxelSizeBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.CellSizeBatch._converter,  # type: ignore[misc]
+        converter=components.VoxelSizeBatch._converter,  # type: ignore[misc]
     )
-    # The scene unit size of a single voxel cell.
+    # The scene-unit dimensions of a single voxel cell.
     #
-    # This defines the side length of each voxel cube.
-    # Anisotropic (non-cubic) voxels are currently not supported.
+    # This defines the voxel size along the local grid X/Y/Z axes.
+    # Each dimension must be finite and positive.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

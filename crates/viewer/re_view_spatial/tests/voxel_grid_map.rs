@@ -32,7 +32,7 @@ fn test_voxel_grid_map_snapshot_and_instance_selection() {
                     (4, 0, 1),
                     (5, 0, 1),
                 ],
-                0.5,
+                [0.5, 0.35, 0.65],
             )
             .with_values([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
             .with_value_range([0.0, 1.0])
@@ -44,18 +44,21 @@ fn test_voxel_grid_map_snapshot_and_instance_selection() {
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &VoxelGridMap::new([(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0)], 0.6)
-                .with_translation([0.0, 2.2, 0.0])
-                .with_rotation_axis_angle(RotationAxisAngle::new(
-                    glam::Vec3::Z,
-                    std::f32::consts::FRAC_PI_4,
-                ))
-                .with_colors([
-                    0xFF0000FF, // red
-                    0x00FF00FF, // green
-                    0x0000FFFF, // blue
-                    0xFF00FF00, // alpha zero, should be skipped
-                ]),
+            &VoxelGridMap::new(
+                [(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0)],
+                [0.6, 0.45, 0.6],
+            )
+            .with_translation([0.0, 2.2, 0.0])
+            .with_rotation_axis_angle(RotationAxisAngle::new(
+                glam::Vec3::Z,
+                std::f32::consts::FRAC_PI_4,
+            ))
+            .with_colors([
+                0xFF0000FF, // red
+                0x00FF00FF, // green
+                0x0000FFFF, // blue
+                0xFF00FF00, // alpha zero, should be skipped
+            ]),
         )
     });
 
@@ -128,7 +131,7 @@ fn test_voxel_grid_map_transparent_opacity_snapshot() {
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &VoxelGridMap::new([(0, 0, 0)], 1.0)
+            &VoxelGridMap::new([(0, 0, 0)], [1.0, 1.0, 1.0])
                 .with_translation([0.0, 0.35, 0.0])
                 .with_colors([0x00FF00FF]),
         )
@@ -138,7 +141,7 @@ fn test_voxel_grid_map_transparent_opacity_snapshot() {
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &VoxelGridMap::new([(0, 0, 0)], 1.0)
+            &VoxelGridMap::new([(0, 0, 0)], [1.0, 1.0, 1.0])
                 .with_translation([0.0, -0.35, 0.0])
                 .with_colors([0xFF0000FF])
                 .with_opacity(0.35),

@@ -40,8 +40,8 @@ pub struct VoxelGridOptions {
     /// Representative world-space position used for draw ordering.
     pub draw_order_position: glam::Vec3A,
 
-    /// Uniform voxel side length in local grid units.
-    pub cell_size: f32,
+    /// Voxel dimensions in local grid units.
+    pub voxel_size: glam::Vec3,
 
     /// Picking-layer object id shared by all voxels.
     pub picking_object_id: PickingLayerObjectId,
@@ -91,7 +91,7 @@ mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
         pub world_from_grid: wgpu_buffer_types::Mat4,
-        pub cell_size_depth_offset_padding: wgpu_buffer_types::Vec4,
+        pub voxel_size_depth_offset: wgpu_buffer_types::Vec4,
         pub picking_object_id: wgpu_buffer_types::UVec2,
         pub outline_mask_ids: wgpu_buffer_types::UVec2,
         pub end_padding: [wgpu_buffer_types::PaddingRow; 10],
@@ -190,13 +190,10 @@ impl VoxelGridDrawData {
             "VoxelGridDrawData::uniform_buffer".into(),
             gpu_data::UniformBuffer {
                 world_from_grid: options.world_from_grid.into(),
-                cell_size_depth_offset_padding: glam::Vec4::new(
-                    options.cell_size,
-                    options.depth_offset as f32,
-                    0.0,
-                    0.0,
-                )
-                .into(),
+                voxel_size_depth_offset: options
+                    .voxel_size
+                    .extend(options.depth_offset as f32)
+                    .into(),
                 picking_object_id: glam::UVec2::new(
                     options.picking_object_id.0 as u32,
                     (options.picking_object_id.0 >> 32) as u32,
@@ -420,7 +417,7 @@ mod tests {
             VoxelGridOptions {
                 world_from_grid: glam::Affine3A::IDENTITY,
                 draw_order_position: glam::Vec3A::ZERO,
-                cell_size: 0.25,
+                voxel_size: glam::Vec3::splat(0.25),
                 picking_object_id: PickingLayerObjectId(42),
                 outline_mask_ids: OutlineMaskPreference::some(1, 2),
                 depth_offset: 0,
@@ -478,7 +475,7 @@ mod tests {
             VoxelGridOptions {
                 world_from_grid: glam::Affine3A::IDENTITY,
                 draw_order_position: glam::Vec3A::ZERO,
-                cell_size: 0.25,
+                voxel_size: glam::Vec3::splat(0.25),
                 picking_object_id: PickingLayerObjectId(42),
                 outline_mask_ids: OutlineMaskPreference::some(1, 2),
                 depth_offset: 0,

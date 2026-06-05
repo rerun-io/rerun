@@ -138,6 +138,7 @@ mod view_coordinates_ext;
 mod visible;
 mod visible_ext;
 mod voxel_index;
+mod voxel_size;
 mod voxel_value;
 
 pub use self::aggregation_policy::AggregationPolicy;
@@ -220,4 +221,5 @@ pub use self::video_timestamp::VideoTimestamp;
 pub use self::view_coordinates::ViewCoordinates;
 pub use self::visible::Visible;
 pub use self::voxel_index::VoxelIndex;
+pub use self::voxel_size::VoxelSize;
 pub use self::voxel_value::VoxelValue;

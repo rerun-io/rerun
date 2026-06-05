@@ -98,4 +98,5 @@ video_timestamp.hpp linguist-generated=true
 view_coordinates.hpp linguist-generated=true
 visible.hpp linguist-generated=true
 voxel_index.hpp linguist-generated=true
+voxel_size.hpp linguist-generated=true
 voxel_value.hpp linguist-generated=true

@@ -25,4 +25,3 @@ Float32
 ## Used by
 
 * [`GridMap`](../archetypes/grid_map.md)
-* [`VoxelGridMap`](../archetypes/voxel_grid_map.md)
