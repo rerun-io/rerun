@@ -9,7 +9,10 @@ pub struct EmptySystem {}
 
 impl IdentifiedViewSystem for EmptySystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Empty".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Empty"
+        )
     }
 }
 

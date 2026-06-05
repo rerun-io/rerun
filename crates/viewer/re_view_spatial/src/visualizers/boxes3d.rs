@@ -90,7 +90,10 @@ struct Boxes3DComponentData<'a> {
 
 impl IdentifiedViewSystem for Boxes3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Boxes3D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Boxes3D"
+        )
     }
 }
 

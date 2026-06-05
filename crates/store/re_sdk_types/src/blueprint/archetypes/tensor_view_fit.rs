@@ -37,11 +37,13 @@ impl TensorViewFit {
     /// The corresponding component is [`crate::blueprint::components::ViewFit`].
     #[inline]
     pub fn descriptor_scaling() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
-            component: "TensorViewFit:scaling".into(),
-            component_type: Some("rerun.blueprint.components.ViewFit".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
+                component: "TensorViewFit:scaling".into(),
+                component_type: Some("rerun.blueprint.components.ViewFit".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -65,7 +67,10 @@ impl TensorViewFit {
 impl ::re_types_core::Archetype for TensorViewFit {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TensorViewFit".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TensorViewFit"
+        )
     }
 
     #[inline]

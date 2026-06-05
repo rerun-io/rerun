@@ -40,11 +40,13 @@ impl Background {
     /// The corresponding component is [`crate::blueprint::components::BackgroundKind`].
     #[inline]
     pub fn descriptor_kind() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.Background".into()),
-            component: "Background:kind".into(),
-            component_type: Some("rerun.blueprint.components.BackgroundKind".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.Background".into()),
+                component: "Background:kind".into(),
+                component_type: Some("rerun.blueprint.components.BackgroundKind".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
@@ -52,11 +54,13 @@ impl Background {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.Background".into()),
-            component: "Background:color".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.Background".into()),
+                component: "Background:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -85,7 +89,10 @@ impl Background {
 impl ::re_types_core::Archetype for Background {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.Background".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.Background"
+        )
     }
 
     #[inline]

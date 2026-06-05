@@ -34,7 +34,10 @@ pub struct GeoPointsVisualizer;
 
 impl IdentifiedViewSystem for GeoPointsVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "GeoPoints".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "GeoPoints"
+        )
     }
 }
 

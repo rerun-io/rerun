@@ -47,11 +47,13 @@ impl ForceLink {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component: "ForceLink:enabled".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
+                component: "ForceLink:enabled".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::distance`].
@@ -59,11 +61,13 @@ impl ForceLink {
     /// The corresponding component is [`crate::blueprint::components::ForceDistance`].
     #[inline]
     pub fn descriptor_distance() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component: "ForceLink:distance".into(),
-            component_type: Some("rerun.blueprint.components.ForceDistance".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
+                component: "ForceLink:distance".into(),
+                component_type: Some("rerun.blueprint.components.ForceDistance".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::iterations`].
@@ -71,11 +75,13 @@ impl ForceLink {
     /// The corresponding component is [`crate::blueprint::components::ForceIterations`].
     #[inline]
     pub fn descriptor_iterations() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component: "ForceLink:iterations".into(),
-            component_type: Some("rerun.blueprint.components.ForceIterations".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
+                component: "ForceLink:iterations".into(),
+                component_type: Some("rerun.blueprint.components.ForceIterations".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -111,7 +117,10 @@ impl ForceLink {
 impl ::re_types_core::Archetype for ForceLink {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ForceLink".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ForceLink"
+        )
     }
 
     #[inline]

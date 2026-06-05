@@ -38,7 +38,10 @@ pub struct DataframeView {
 impl ::re_types_core::View for DataframeView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
-        "Dataframe".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ViewClassIdentifier,
+            "Dataframe"
+        )
     }
 }
 

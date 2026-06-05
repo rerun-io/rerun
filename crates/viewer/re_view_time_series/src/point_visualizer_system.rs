@@ -28,7 +28,10 @@ pub struct SeriesPointsSystem;
 
 impl IdentifiedViewSystem for SeriesPointsSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "SeriesPoints".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "SeriesPoints"
+        )
     }
 }
 

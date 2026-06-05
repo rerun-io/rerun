@@ -51,11 +51,13 @@ impl McapMessage {
     /// The corresponding component is [`crate::components::Blob`].
     #[inline]
     pub fn descriptor_data() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapMessage".into()),
-            component: "McapMessage:data".into(),
-            component_type: Some("rerun.components.Blob".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapMessage".into()),
+                component: "McapMessage:data".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -79,7 +81,10 @@ impl McapMessage {
 impl ::re_types_core::Archetype for McapMessage {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.McapMessage".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.McapMessage"
+        )
     }
 
     #[inline]

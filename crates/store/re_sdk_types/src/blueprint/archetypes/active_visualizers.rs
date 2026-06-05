@@ -44,11 +44,13 @@ impl ActiveVisualizers {
     /// The corresponding component is [`crate::blueprint::components::VisualizerInstructionId`].
     #[inline]
     pub fn descriptor_instruction_ids() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ActiveVisualizers".into()),
-            component: "ActiveVisualizers:instruction_ids".into(),
-            component_type: Some("rerun.blueprint.components.VisualizerInstructionId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ActiveVisualizers".into()),
+                component: "ActiveVisualizers:instruction_ids".into(),
+                component_type: Some("rerun.blueprint.components.VisualizerInstructionId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -72,7 +74,10 @@ impl ActiveVisualizers {
 impl ::re_types_core::Archetype for ActiveVisualizers {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ActiveVisualizers".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ActiveVisualizers"
+        )
     }
 
     #[inline]

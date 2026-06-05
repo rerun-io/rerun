@@ -76,11 +76,13 @@ impl ViewContents {
     /// The corresponding component is [`crate::blueprint::components::QueryExpression`].
     #[inline]
     pub fn descriptor_query() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewContents".into()),
-            component: "ViewContents:query".into(),
-            component_type: Some("rerun.blueprint.components.QueryExpression".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewContents".into()),
+                component: "ViewContents:query".into(),
+                component_type: Some("rerun.blueprint.components.QueryExpression".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -104,7 +106,10 @@ impl ViewContents {
 impl ::re_types_core::Archetype for ViewContents {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ViewContents".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ViewContents"
+        )
     }
 
     #[inline]

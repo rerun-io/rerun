@@ -34,7 +34,10 @@ pub struct TextDocumentView {
 impl ::re_types_core::View for TextDocumentView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
-        "TextDocument".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ViewClassIdentifier,
+            "TextDocument"
+        )
     }
 }
 

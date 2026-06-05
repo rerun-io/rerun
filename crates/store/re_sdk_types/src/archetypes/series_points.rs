@@ -118,11 +118,13 @@ impl SeriesPoints {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesPoints".into()),
-            component: "SeriesPoints:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::markers`].
@@ -130,11 +132,13 @@ impl SeriesPoints {
     /// The corresponding component is [`crate::components::MarkerShape`].
     #[inline]
     pub fn descriptor_markers() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesPoints".into()),
-            component: "SeriesPoints:markers".into(),
-            component_type: Some("rerun.components.MarkerShape".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:markers".into(),
+                component_type: Some("rerun.components.MarkerShape".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::names`].
@@ -142,11 +146,13 @@ impl SeriesPoints {
     /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_names() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesPoints".into()),
-            component: "SeriesPoints:names".into(),
-            component_type: Some("rerun.components.Name".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:names".into(),
+                component_type: Some("rerun.components.Name".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible_series`].
@@ -154,11 +160,13 @@ impl SeriesPoints {
     /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible_series() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesPoints".into()),
-            component: "SeriesPoints:visible_series".into(),
-            component_type: Some("rerun.components.Visible".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:visible_series".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::marker_sizes`].
@@ -166,11 +174,13 @@ impl SeriesPoints {
     /// The corresponding component is [`crate::components::MarkerSize`].
     #[inline]
     pub fn descriptor_marker_sizes() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesPoints".into()),
-            component: "SeriesPoints:marker_sizes".into(),
-            component_type: Some("rerun.components.MarkerSize".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:marker_sizes".into(),
+                component_type: Some("rerun.components.MarkerSize".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -209,7 +219,10 @@ impl SeriesPoints {
 impl ::re_types_core::Archetype for SeriesPoints {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.SeriesPoints".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.SeriesPoints"
+        )
     }
 
     #[inline]

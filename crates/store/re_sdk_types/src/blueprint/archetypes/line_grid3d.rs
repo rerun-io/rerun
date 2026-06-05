@@ -61,11 +61,13 @@ impl LineGrid3D {
     /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component: "LineGrid3D:visible".into(),
-            component_type: Some("rerun.components.Visible".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:visible".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::spacing`].
@@ -73,11 +75,13 @@ impl LineGrid3D {
     /// The corresponding component is [`crate::blueprint::components::GridSpacing`].
     #[inline]
     pub fn descriptor_spacing() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component: "LineGrid3D:spacing".into(),
-            component_type: Some("rerun.blueprint.components.GridSpacing".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:spacing".into(),
+                component_type: Some("rerun.blueprint.components.GridSpacing".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::plane`].
@@ -85,11 +89,13 @@ impl LineGrid3D {
     /// The corresponding component is [`crate::components::Plane3D`].
     #[inline]
     pub fn descriptor_plane() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component: "LineGrid3D:plane".into(),
-            component_type: Some("rerun.components.Plane3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:plane".into(),
+                component_type: Some("rerun.components.Plane3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::stroke_width`].
@@ -97,11 +103,13 @@ impl LineGrid3D {
     /// The corresponding component is [`crate::components::StrokeWidth`].
     #[inline]
     pub fn descriptor_stroke_width() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component: "LineGrid3D:stroke_width".into(),
-            component_type: Some("rerun.components.StrokeWidth".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:stroke_width".into(),
+                component_type: Some("rerun.components.StrokeWidth".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
@@ -109,11 +117,13 @@ impl LineGrid3D {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component: "LineGrid3D:color".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -153,7 +163,10 @@ impl LineGrid3D {
 impl ::re_types_core::Archetype for LineGrid3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.LineGrid3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.LineGrid3D"
+        )
     }
 
     #[inline]

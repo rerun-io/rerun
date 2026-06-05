@@ -47,11 +47,13 @@ impl ForceCollisionRadius {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component: "ForceCollisionRadius:enabled".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component: "ForceCollisionRadius:enabled".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
@@ -59,11 +61,13 @@ impl ForceCollisionRadius {
     /// The corresponding component is [`crate::blueprint::components::ForceStrength`].
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component: "ForceCollisionRadius:strength".into(),
-            component_type: Some("rerun.blueprint.components.ForceStrength".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component: "ForceCollisionRadius:strength".into(),
+                component_type: Some("rerun.blueprint.components.ForceStrength".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::iterations`].
@@ -71,11 +75,13 @@ impl ForceCollisionRadius {
     /// The corresponding component is [`crate::blueprint::components::ForceIterations`].
     #[inline]
     pub fn descriptor_iterations() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component: "ForceCollisionRadius:iterations".into(),
-            component_type: Some("rerun.blueprint.components.ForceIterations".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component: "ForceCollisionRadius:iterations".into(),
+                component_type: Some("rerun.blueprint.components.ForceIterations".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -111,7 +117,10 @@ impl ForceCollisionRadius {
 impl ::re_types_core::Archetype for ForceCollisionRadius {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ForceCollisionRadius".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ForceCollisionRadius"
+        )
     }
 
     #[inline]

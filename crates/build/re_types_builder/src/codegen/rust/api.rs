@@ -1056,11 +1056,14 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             #(#doc_attrs)*
             #[inline]
                 pub fn #fn_name() -> ComponentDescriptor {
-                    ComponentDescriptor {
-                        archetype: Some(#archetype_name.into()),
-                        component: #component.into(),
-                        component_type: Some(#component_type.into()),
-                    }
+                    static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> = std::sync::LazyLock::new(|| {
+                        ComponentDescriptor {
+                            archetype: Some(#archetype_name.into()),
+                            component: #component.into(),
+                            component_type: Some(#component_type.into()),
+                        }
+                    });
+                    (*DESCRIPTOR).clone()
                 }
             }
         })
@@ -1160,7 +1163,10 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         impl ::re_types_core::Archetype for #name {
             #[inline]
             fn name() -> ::re_types_core::ArchetypeName {
-                #fqname.into()
+                ::re_types_core::external::re_string_interner::intern_static!(
+                    ::re_types_core::ArchetypeName,
+                    #fqname
+                )
             }
 
             #[inline]
@@ -1237,7 +1243,10 @@ fn quote_trait_impls_for_view(reporter: &Reporter, obj: &Object) -> TokenStream 
         impl ::re_types_core::View for #name {
             #[inline]
             fn identifier() -> ::re_types_core::ViewClassIdentifier {
-                #identifier .into()
+                ::re_types_core::external::re_string_interner::intern_static!(
+                    ::re_types_core::ViewClassIdentifier,
+                    #identifier
+                )
             }
         }
     }

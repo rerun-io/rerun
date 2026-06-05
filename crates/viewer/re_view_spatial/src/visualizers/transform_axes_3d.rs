@@ -22,7 +22,10 @@ pub struct TransformAxes3DVisualizer;
 
 impl IdentifiedViewSystem for TransformAxes3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "TransformAxes3D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "TransformAxes3D"
+        )
     }
 }
 

@@ -50,7 +50,10 @@ struct GridMapComponentData {
 
 impl IdentifiedViewSystem for GridMapVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "GridMap".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "GridMap"
+        )
     }
 }
 

@@ -131,11 +131,13 @@ impl GridMap {
     /// The corresponding component is [`crate::components::ImageBuffer`].
     #[inline]
     pub fn descriptor_data() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GridMap".into()),
-            component: "GridMap:data".into(),
-            component_type: Some("rerun.components.ImageBuffer".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GridMap".into()),
+                component: "GridMap:data".into(),
+                component_type: Some("rerun.components.ImageBuffer".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::format`].
@@ -143,11 +145,13 @@ impl GridMap {
     /// The corresponding component is [`crate::components::ImageFormat`].
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GridMap".into()),
-            component: "GridMap:format".into(),
-            component_type: Some("rerun.components.ImageFormat".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GridMap".into()),
+                component: "GridMap:format".into(),
+                component_type: Some("rerun.components.ImageFormat".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::cell_size`].
@@ -155,11 +159,13 @@ impl GridMap {
     /// The corresponding component is [`crate::components::CellSize`].
     #[inline]
     pub fn descriptor_cell_size() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GridMap".into()),
-            component: "GridMap:cell_size".into(),
-            component_type: Some("rerun.components.CellSize".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GridMap".into()),
+                component: "GridMap:cell_size".into(),
+                component_type: Some("rerun.components.CellSize".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::translation`].
@@ -167,11 +173,13 @@ impl GridMap {
     /// The corresponding component is [`crate::components::Translation3D`].
     #[inline]
     pub fn descriptor_translation() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GridMap".into()),
-            component: "GridMap:translation".into(),
-            component_type: Some("rerun.components.Translation3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GridMap".into()),
+                component: "GridMap:translation".into(),
+                component_type: Some("rerun.components.Translation3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angle`].
@@ -179,11 +187,13 @@ impl GridMap {
     /// The corresponding component is [`crate::components::RotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angle() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GridMap".into()),
-            component: "GridMap:rotation_axis_angle".into(),
-            component_type: Some("rerun.components.RotationAxisAngle".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GridMap".into()),
+                component: "GridMap:rotation_axis_angle".into(),
+                component_type: Some("rerun.components.RotationAxisAngle".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternion`].
@@ -191,11 +201,13 @@ impl GridMap {
     /// The corresponding component is [`crate::components::RotationQuat`].
     #[inline]
     pub fn descriptor_quaternion() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GridMap".into()),
-            component: "GridMap:quaternion".into(),
-            component_type: Some("rerun.components.RotationQuat".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GridMap".into()),
+                component: "GridMap:quaternion".into(),
+                component_type: Some("rerun.components.RotationQuat".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
@@ -203,11 +215,13 @@ impl GridMap {
     /// The corresponding component is [`crate::components::Opacity`].
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GridMap".into()),
-            component: "GridMap:opacity".into(),
-            component_type: Some("rerun.components.Opacity".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GridMap".into()),
+                component: "GridMap:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
@@ -215,11 +229,13 @@ impl GridMap {
     /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GridMap".into()),
-            component: "GridMap:draw_order".into(),
-            component_type: Some("rerun.components.DrawOrder".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GridMap".into()),
+                component: "GridMap:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
@@ -227,11 +243,13 @@ impl GridMap {
     /// The corresponding component is [`crate::components::Colormap`].
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GridMap".into()),
-            component: "GridMap:colormap".into(),
-            component_type: Some("rerun.components.Colormap".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GridMap".into()),
+                component: "GridMap:colormap".into(),
+                component_type: Some("rerun.components.Colormap".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -282,7 +300,10 @@ impl GridMap {
 impl ::re_types_core::Archetype for GridMap {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.GridMap".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.GridMap"
+        )
     }
 
     #[inline]

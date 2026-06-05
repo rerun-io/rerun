@@ -76,11 +76,13 @@ impl StateChange {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_state() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.StateChange".into()),
-            component: "StateChange:state".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.StateChange".into()),
+                component: "StateChange:state".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -104,7 +106,10 @@ impl StateChange {
 impl ::re_types_core::Archetype for StateChange {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.StateChange".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.StateChange"
+        )
     }
 
     #[inline]

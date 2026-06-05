@@ -49,6 +49,9 @@ pub struct Spatial3DView {
 impl ::re_types_core::View for Spatial3DView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
-        "3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ViewClassIdentifier,
+            "3D"
+        )
     }
 }

@@ -73,11 +73,13 @@ impl McapSchema {
     /// The corresponding component is [`crate::components::SchemaId`].
     #[inline]
     pub fn descriptor_id() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapSchema".into()),
-            component: "McapSchema:id".into(),
-            component_type: Some("rerun.components.SchemaId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapSchema".into()),
+                component: "McapSchema:id".into(),
+                component_type: Some("rerun.components.SchemaId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::name`].
@@ -85,11 +87,13 @@ impl McapSchema {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_name() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapSchema".into()),
-            component: "McapSchema:name".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapSchema".into()),
+                component: "McapSchema:name".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::encoding`].
@@ -97,11 +101,13 @@ impl McapSchema {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_encoding() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapSchema".into()),
-            component: "McapSchema:encoding".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapSchema".into()),
+                component: "McapSchema:encoding".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::data`].
@@ -109,11 +115,13 @@ impl McapSchema {
     /// The corresponding component is [`crate::components::Blob`].
     #[inline]
     pub fn descriptor_data() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapSchema".into()),
-            component: "McapSchema:data".into(),
-            component_type: Some("rerun.components.Blob".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapSchema".into()),
+                component: "McapSchema:data".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -151,7 +159,10 @@ impl McapSchema {
 impl ::re_types_core::Archetype for McapSchema {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.McapSchema".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.McapSchema"
+        )
     }
 
     #[inline]

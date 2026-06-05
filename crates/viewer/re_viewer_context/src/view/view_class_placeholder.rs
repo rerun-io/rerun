@@ -14,7 +14,7 @@ pub struct ViewClassPlaceholder;
 
 impl ViewClass for ViewClassPlaceholder {
     fn identifier() -> ViewClassIdentifier {
-        "UnknownViewClass".into()
+        re_string_interner::intern_static!(ViewClassIdentifier, "UnknownViewClass")
     }
 
     fn display_name(&self) -> &'static str {

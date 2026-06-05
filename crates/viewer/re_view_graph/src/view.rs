@@ -28,7 +28,10 @@ impl ViewClass for GraphView {
     // State type as described above.
 
     fn identifier() -> ViewClassIdentifier {
-        "Graph".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            ViewClassIdentifier,
+            "Graph"
+        )
     }
 
     fn display_name(&self) -> &'static str {

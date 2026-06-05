@@ -99,7 +99,7 @@ pub mod macros {
 }
 
 pub mod external {
-    pub use {anyhow, arrow, re_tuid};
+    pub use {anyhow, arrow, re_string_interner, re_tuid};
 }
 
 /// Useful macro for statically asserting that a `struct` contains some specific fields.

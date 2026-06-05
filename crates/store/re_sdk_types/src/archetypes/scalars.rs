@@ -106,11 +106,13 @@ impl Scalars {
     /// The corresponding component is [`crate::components::Scalar`].
     #[inline]
     pub fn descriptor_scalars() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Scalars".into()),
-            component: "Scalars:scalars".into(),
-            component_type: Some("rerun.components.Scalar".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Scalars".into()),
+                component: "Scalars:scalars".into(),
+                component_type: Some("rerun.components.Scalar".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -134,7 +136,10 @@ impl Scalars {
 impl ::re_types_core::Archetype for Scalars {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Scalars".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Scalars"
+        )
     }
 
     #[inline]

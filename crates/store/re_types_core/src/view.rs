@@ -7,7 +7,7 @@ re_string_interner::declare_new_type!(
 
 impl ViewClassIdentifier {
     pub fn invalid() -> Self {
-        Self::from("invalid")
+        re_string_interner::intern_static!(ViewClassIdentifier, "invalid")
     }
 }
 

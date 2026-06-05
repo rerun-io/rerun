@@ -64,11 +64,13 @@ impl TableBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ColumnName`].
     #[inline]
     pub fn descriptor_segment_preview_column() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
-            component: "TableBlueprint:segment_preview_column".into(),
-            component_type: Some("rerun.blueprint.components.ColumnName".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
+                component: "TableBlueprint:segment_preview_column".into(),
+                component_type: Some("rerun.blueprint.components.ColumnName".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::flag_column`].
@@ -76,11 +78,13 @@ impl TableBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ColumnName`].
     #[inline]
     pub fn descriptor_flag_column() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
-            component: "TableBlueprint:flag_column".into(),
-            component_type: Some("rerun.blueprint.components.ColumnName".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
+                component: "TableBlueprint:flag_column".into(),
+                component_type: Some("rerun.blueprint.components.ColumnName".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::grid_view_card_title`].
@@ -88,11 +92,13 @@ impl TableBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ColumnName`].
     #[inline]
     pub fn descriptor_grid_view_card_title() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
-            component: "TableBlueprint:grid_view_card_title".into(),
-            component_type: Some("rerun.blueprint.components.ColumnName".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
+                component: "TableBlueprint:grid_view_card_title".into(),
+                component_type: Some("rerun.blueprint.components.ColumnName".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::url_column`].
@@ -100,11 +106,13 @@ impl TableBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ColumnName`].
     #[inline]
     pub fn descriptor_url_column() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
-            component: "TableBlueprint:url_column".into(),
-            component_type: Some("rerun.blueprint.components.ColumnName".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
+                component: "TableBlueprint:url_column".into(),
+                component_type: Some("rerun.blueprint.components.ColumnName".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -142,7 +150,10 @@ impl TableBlueprint {
 impl ::re_types_core::Archetype for TableBlueprint {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TableBlueprint".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TableBlueprint"
+        )
     }
 
     #[inline]

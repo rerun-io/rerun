@@ -80,11 +80,13 @@ impl ViewCoordinates {
     /// The corresponding component is [`crate::components::ViewCoordinates`].
     #[inline]
     pub fn descriptor_xyz() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.ViewCoordinates".into()),
-            component: "ViewCoordinates:xyz".into(),
-            component_type: Some("rerun.components.ViewCoordinates".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.ViewCoordinates".into()),
+                component: "ViewCoordinates:xyz".into(),
+                component_type: Some("rerun.components.ViewCoordinates".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -108,7 +110,10 @@ impl ViewCoordinates {
 impl ::re_types_core::Archetype for ViewCoordinates {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.ViewCoordinates".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.ViewCoordinates"
+        )
     }
 
     #[inline]

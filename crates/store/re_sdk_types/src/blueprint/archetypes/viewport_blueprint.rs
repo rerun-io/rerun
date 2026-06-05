@@ -61,11 +61,13 @@ impl ViewportBlueprint {
     /// The corresponding component is [`crate::blueprint::components::RootContainer`].
     #[inline]
     pub fn descriptor_root_container() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component: "ViewportBlueprint:root_container".into(),
-            component_type: Some("rerun.blueprint.components.RootContainer".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:root_container".into(),
+                component_type: Some("rerun.blueprint.components.RootContainer".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::maximized`].
@@ -73,11 +75,13 @@ impl ViewportBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ViewMaximized`].
     #[inline]
     pub fn descriptor_maximized() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component: "ViewportBlueprint:maximized".into(),
-            component_type: Some("rerun.blueprint.components.ViewMaximized".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:maximized".into(),
+                component_type: Some("rerun.blueprint.components.ViewMaximized".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::auto_layout`].
@@ -85,11 +89,13 @@ impl ViewportBlueprint {
     /// The corresponding component is [`crate::blueprint::components::AutoLayout`].
     #[inline]
     pub fn descriptor_auto_layout() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component: "ViewportBlueprint:auto_layout".into(),
-            component_type: Some("rerun.blueprint.components.AutoLayout".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:auto_layout".into(),
+                component_type: Some("rerun.blueprint.components.AutoLayout".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::auto_views`].
@@ -97,11 +103,13 @@ impl ViewportBlueprint {
     /// The corresponding component is [`crate::blueprint::components::AutoViews`].
     #[inline]
     pub fn descriptor_auto_views() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component: "ViewportBlueprint:auto_views".into(),
-            component_type: Some("rerun.blueprint.components.AutoViews".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:auto_views".into(),
+                component_type: Some("rerun.blueprint.components.AutoViews".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::past_viewer_recommendations`].
@@ -109,11 +117,13 @@ impl ViewportBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ViewerRecommendationHash`].
     #[inline]
     pub fn descriptor_past_viewer_recommendations() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component: "ViewportBlueprint:past_viewer_recommendations".into(),
-            component_type: Some("rerun.blueprint.components.ViewerRecommendationHash".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:past_viewer_recommendations".into(),
+                component_type: Some("rerun.blueprint.components.ViewerRecommendationHash".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -153,7 +163,10 @@ impl ViewportBlueprint {
 impl ::re_types_core::Archetype for ViewportBlueprint {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ViewportBlueprint".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ViewportBlueprint"
+        )
     }
 
     #[inline]

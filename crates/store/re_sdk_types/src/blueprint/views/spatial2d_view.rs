@@ -46,6 +46,9 @@ pub struct Spatial2DView {
 impl ::re_types_core::View for Spatial2DView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
-        "2D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ViewClassIdentifier,
+            "2D"
+        )
     }
 }

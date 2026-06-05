@@ -40,11 +40,13 @@ impl RecordingInfo {
     /// The corresponding component is [`crate::components::Timestamp`].
     #[inline]
     pub fn descriptor_start_time() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.RecordingInfo".into()),
-            component: "RecordingInfo:start_time".into(),
-            component_type: Some("rerun.components.Timestamp".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.RecordingInfo".into()),
+                component: "RecordingInfo:start_time".into(),
+                component_type: Some("rerun.components.Timestamp".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::name`].
@@ -52,11 +54,13 @@ impl RecordingInfo {
     /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_name() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.RecordingInfo".into()),
-            component: "RecordingInfo:name".into(),
-            component_type: Some("rerun.components.Name".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.RecordingInfo".into()),
+                component: "RecordingInfo:name".into(),
+                component_type: Some("rerun.components.Name".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -90,7 +94,10 @@ impl RecordingInfo {
 impl ::re_types_core::Archetype for RecordingInfo {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.RecordingInfo".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.RecordingInfo"
+        )
     }
 
     #[inline]
