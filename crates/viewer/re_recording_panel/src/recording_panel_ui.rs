@@ -311,6 +311,15 @@ fn server_section_ui(
                             EditRedapServerModalCommand::new(origin.clone()),
                         ));
                     }
+                    if icons::COPY
+                        .as_button_with_label(ui.tokens(), "Copy URL")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        let url = origin.to_string();
+                        re_log::info!("Copied {url:?} to clipboard");
+                        ui.copy_text(url);
+                    }
                     if icons::TRASH
                         .as_button_with_label(ui.tokens(), "Remove")
                         .ui(ui)
