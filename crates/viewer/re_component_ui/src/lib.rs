@@ -204,12 +204,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
             colormap_edit_or_view_ui_with_selection(ctx, ui, map, ColormapSelection::IncludeGridMap)
         },
     );
-    registry.add_singleline_edit_or_view_for_component::<components::Colormap>(
-        archetypes::VoxelGridMap::descriptor_colormap().component,
-        |ctx, ui, _component_descriptor, map| {
-            colormap_edit_or_view_ui_with_selection(ctx, ui, map, ColormapSelection::IncludeGridMap)
-        },
-    );
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
