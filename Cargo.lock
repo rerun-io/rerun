@@ -8960,6 +8960,7 @@ name = "re_integration_test"
 version = "0.34.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "base64 0.22.1",
  "datafusion",
  "egui",
  "egui_kittest",
@@ -8993,6 +8994,7 @@ dependencies = [
  "serde",
  "tempfile",
  "tokio",
+ "uuid",
 ]
 
 [[package]]

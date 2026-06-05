@@ -644,9 +644,8 @@ impl<'a> DataFusionTableWidget<'a> {
             None
         };
 
-        let show_segment_previews = view_renderer.is_some()
-            && new_blueprint.segment_preview_column.is_some()
-            && !ctx.is_test;
+        let show_segment_previews =
+            view_renderer.is_some() && new_blueprint.segment_preview_column.is_some();
 
         // Fill remaining unset fields via schema field metadata + structural heuristics.
         new_blueprint.apply_heuristics(

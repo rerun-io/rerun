@@ -69,6 +69,30 @@ impl TestServer {
         (self, segment_id)
     }
 
+    /// Register `count` recordings with time-invariant data in a fresh dataset, suitable for
+    /// stable segment-preview snapshots. Returns the segment ids in registration order.
+    pub async fn with_static_preview_data(
+        self,
+        dataset_name: &str,
+        dataset_id: &str,
+        recording_id_prefix: &str,
+        count: usize,
+    ) -> (Self, Vec<SegmentId>) {
+        let segment_ids = {
+            let mut client = self.client().await.expect("Failed to connect");
+            test_data::load_static_preview_data(
+                &mut client,
+                dataset_name,
+                dataset_id,
+                recording_id_prefix,
+                count,
+            )
+            .await
+            .expect("Failed to load static preview data")
+        };
+        (self, segment_ids)
+    }
+
     pub fn port(&self) -> u16 {
         self.port
     }
