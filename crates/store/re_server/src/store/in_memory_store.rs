@@ -12,6 +12,7 @@ use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::EntryKind;
+#[cfg(feature = "lance")] // only used by the `lance` feature
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DatasetDetails, EntryDetails, ProviderDetails, TableDetails, TableEntry,
