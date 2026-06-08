@@ -8974,6 +8974,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_mcap",
+ "re_mp4_reader",
  "re_parquet",
  "re_quota_channel",
  "re_sdk_types",
@@ -8981,6 +8982,7 @@ dependencies = [
  "re_video",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.18",
  "urdf-rs",
  "walkdir",
@@ -9245,6 +9247,19 @@ dependencies = [
  "num-rational",
  "serde",
  "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "re_mp4_reader"
+version = "0.34.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "re_chunk",
+ "re_log",
+ "re_log_types",
+ "re_sdk_types",
+ "re_tracing",
  "thiserror 2.0.18",
 ]
 

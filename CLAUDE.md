@@ -73,6 +73,8 @@ To add custom functionality to generated types, create `_ext` files:
 - validate various custom conventions via `pixi run lint-rerun <file>` (not passing any file will check everything)
 - Use `format!("{x}")` over `format!("{}, x)` (same in log calls etc)
 - Don't write trivial comments that add nothing new
+- In error and log messages, put the error first and any file path at the end (e.g. `Failed to import: {err}\nFile path: {path}`), never in the middle.
+  Paths can be long or sensitive, so trailing placement makes them easy to strip when copy-pasting.
 - Prose style (em vs en dash, sentence endings, casing) — see [`DESIGN.md`](DESIGN.md). In short: spaced em dash ` — `, never unspaced `word—word`, and don't use `–` as a sentence dash (it's for numeric ranges only) <!-- NOLINT -->
 - One sentence per line in markdown files.
   Markdown joins consecutive lines into a paragraph, so rendering is unchanged — but diffs become much easier to review.
@@ -90,6 +92,9 @@ crates/
 ```
 
 For more details about the architecture see `ARCHITECTURE.md`.
+
+**When adding, removing, or renaming a crate**, update `ARCHITECTURE.md`:
+add the crate to the appropriate crate table, and flag for the author that the crate-organization diagram (FigJam) needs a manual update — see the HTML comment next to the diagram in `ARCHITECTURE.md` for instructions.
 
 ### Type system hierarchy
 
