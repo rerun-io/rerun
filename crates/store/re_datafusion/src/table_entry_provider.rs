@@ -15,18 +15,20 @@ use datafusion::physical_expr::{EquivalenceProperties, Partitioning};
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use futures::Stream;
+use parking_lot::Mutex;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableInsertMode};
 use re_protos::cloud::v1alpha1::{
     EntryFilter, EntryKind, FindEntriesRequest, GetTableSchemaRequest, ScanTableRequest,
     ScanTableResponse,
 };
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{ApiError, ApiResult, ConnectionClient};
 use tokio::runtime::Handle;
 use tracing::instrument;
 
 use crate::IntoDfError as _;
-use crate::analytics::TableQueryInfo;
+use crate::analytics::{TableQueryInfo, expr_filter_signature};
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;
 use crate::{ConnectionAnalytics, PendingTableQueryAnalytics, TableKind, TableQueryCaller};
@@ -55,6 +57,13 @@ pub struct TableEntryTableProvider {
     /// Underlying provider variant for analytics. Defaults to `Unknown`; set via
     /// [`Self::with_table_kind`] when the caller already has the `ProviderDetails`.
     table_kind: TableKind,
+
+    /// Filter expressions offered by DataFusion at planning time, stored for
+    /// inclusion in the `cloud_scan_table` analytics span.
+    ///
+    /// `Arc` so that the value survives the clone that `GrpcStreamProvider::scan`
+    /// makes when constructing partition streams.
+    filter_capture: Arc<Mutex<Option<(u32, String)>>>,
 }
 
 impl std::fmt::Debug for TableEntryTableProvider {
@@ -81,6 +90,7 @@ impl TableEntryTableProvider {
             analytics: None,
             caller: TableQueryCaller::CatalogResolver,
             table_kind: TableKind::Unknown,
+            filter_capture: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -99,33 +109,7 @@ impl TableEntryTableProvider {
     ///
     /// Without this call no `cloud_scan_table` span will be emitted.
     pub fn with_analytics(mut self, origin: Origin) -> Self {
-        let analytics = ConnectionAnalytics::new(origin, &self.client);
-
-        // Lazy-fetch the server version so subsequent spans can be filtered by
-        // cloud build. Same pattern as `DataframeQueryTableProvider::new`.
-        let analytics_bg = analytics.clone();
-        let mut client_bg = self.client.clone();
-        let fetch_fut = async move {
-            match client_bg.version_info().await {
-                Ok(response) => {
-                    analytics_bg.set_server_version(Some(response.version));
-                }
-                Err(err) => {
-                    re_log::debug_once!("Failed to fetch server version for analytics: {err}");
-                    analytics_bg.set_server_version(None);
-                }
-            }
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        wasm_bindgen_futures::spawn_local(fetch_fut);
-
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            handle.spawn(fetch_fut);
-        }
-
-        self.analytics = Some(analytics);
+        self.analytics = Some(ConnectionAnalytics::new(origin, &self.client));
         self
     }
 
@@ -212,9 +196,11 @@ impl GrpcStreamToTable for TableEntryTableProvider {
 
     #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
-        let request = GetTableSchemaRequest {
-            table_id: Some(self.table_id().await?.into()),
-        };
+        let table_id = self.table_id().await?;
+        let request = tonic::Request::new(GetTableSchemaRequest {
+            table_id: Some(table_id.into()),
+        })
+        .with_entry_id(table_id);
 
         let mut client = self.client.clone();
 
@@ -253,9 +239,11 @@ impl GrpcStreamToTable for TableEntryTableProvider {
     async fn send_streaming_request(
         &mut self,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
-        let request = ScanTableRequest {
-            table_id: Some(self.table_id().await?.into()),
-        };
+        let table_id = self.table_id().await?;
+        let request = tonic::Request::new(ScanTableRequest {
+            table_id: Some(table_id.into()),
+        })
+        .with_entry_id(table_id);
 
         let mut client = self.client.clone();
 
@@ -290,6 +278,24 @@ impl GrpcStreamToTable for TableEntryTableProvider {
             })
     }
 
+    fn supports_filters_pushdown(
+        &self,
+        filters: &[&datafusion::prelude::Expr],
+    ) -> datafusion::error::Result<Vec<datafusion::logical_expr::TableProviderFilterPushDown>> {
+        let decisions =
+            vec![datafusion::logical_expr::TableProviderFilterPushDown::Unsupported; filters.len()];
+
+        let sigs: String = filters
+            .iter()
+            .map(|e| expr_filter_signature(e))
+            .collect::<Vec<_>>()
+            .join(";");
+
+        *self.filter_capture.lock() = Some((filters.len() as u32, sigs));
+
+        Ok(decisions)
+    }
+
     fn begin_scan_analytics(
         &self,
         schema: &SchemaRef,
@@ -311,6 +317,12 @@ impl GrpcStreamToTable for TableEntryTableProvider {
             .map(|p| p.len() as u32)
             .unwrap_or(schema_total_columns);
 
+        let (filters_total, filters_signatures) = self
+            .filter_capture
+            .lock()
+            .take()
+            .unwrap_or((0, String::new()));
+
         let info = TableQueryInfo {
             table_id,
             table_kind: self.table_kind,
@@ -320,6 +332,8 @@ impl GrpcStreamToTable for TableEntryTableProvider {
             has_limit: limit.is_some(),
             limit_value: limit.map(|v| v as u64),
             time_range: web_time::SystemTime::now()..web_time::SystemTime::now(),
+            filters_total,
+            filters_signatures,
         };
 
         Some(analytics.begin_table_query(info, web_time::Instant::now()))

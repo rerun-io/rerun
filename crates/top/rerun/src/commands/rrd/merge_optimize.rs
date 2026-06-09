@@ -174,6 +174,15 @@ pub struct OptimizeCommand {
     #[clap(long = "no-rebatch-videos", default_value_t = false)]
     no_rebatch_videos: bool,
 
+    /// Drop any user-supplied `VideoStream:is_keyframe` labels and re-derive
+    /// them from the encoded samples.
+    ///
+    /// By default, `rrd optimize` validates user-supplied keyframe labels against
+    /// the encoded samples and errors out if they disagree. Pass this flag to
+    /// ignore the existing labels and unconditionally re-derive them.
+    #[clap(long = "fix-keyframe", default_value_t = false)]
+    fix_keyframe: bool,
+
     /// If set, split chunks so no two archetype groups sharing a chunk differ in
     /// byte size by more than this factor. Values should be `>= 1`; at `1.0`,
     /// every archetype is forced into its own chunk.
@@ -200,6 +209,7 @@ impl OptimizeCommand {
             num_extra_passes,
             continue_on_error,
             no_rebatch_videos,
+            fix_keyframe,
             split_size_ratio,
         } = self;
 
@@ -244,6 +254,7 @@ impl OptimizeCommand {
             num_extra_passes: Some(num_extra_passes as usize),
             is_start_of_gop: gop_batching.then_some(is_start_of_gop),
             split_size_ratio,
+            fix_keyframe: *fix_keyframe,
         };
 
         // Directory mirror mode: if any input is a directory, recursively expand it
@@ -542,7 +553,7 @@ fn merge_and_compact(
         encoding_options,
         // NOTE: We want to make sure all blueprints come first, so that the viewer can immediately
         // set up the viewport correctly.
-        messages_rbl.chain(messages_rrd),
+        std::iter::chain(messages_rbl, messages_rrd),
         &mut rrd_out,
     )
     .context("couldn't encode messages")?;
@@ -639,16 +650,12 @@ fn log_chunk_size_stats(
     let avg_rows = total_rows / num_chunks;
     let unordered_pct = num_unordered as f64 / num_chunks as f64 * 100.0;
 
-    let rest_avg_bytes_str = if rest_num_chunks == 0 {
-        "N/A".to_owned()
-    } else {
-        re_format::format_bytes((rest_total_bytes / rest_num_chunks) as _)
-    };
-    let rest_avg_rows_str = if rest_num_chunks == 0 {
-        "N/A".to_owned()
-    } else {
-        re_format::format_uint(rest_total_rows / rest_num_chunks)
-    };
+    let rest_avg_bytes_str = rest_total_bytes
+        .checked_div(rest_num_chunks)
+        .map_or_else(|| "N/A".to_owned(), |x| re_format::format_bytes(x as _));
+    let rest_avg_rows_str = rest_total_rows
+        .checked_div(rest_num_chunks)
+        .map_or_else(|| "N/A".to_owned(), re_format::format_uint);
 
     re_log::info!(
         num_chunks,

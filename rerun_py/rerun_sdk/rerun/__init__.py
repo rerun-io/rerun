@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.33.0-alpha.1+dev"
-__version_info__ = (0, 33, 0, "alpha.1")
+__version__ = "0.34.0-alpha.1+dev"
+__version_info__ = (0, 34, 0, "alpha.1")
 
 if sys.version_info < (3, 10):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
@@ -27,7 +27,6 @@ from . import (
     blueprint as blueprint,
     catalog as catalog,
     experimental as experimental,
-    recording as recording,
     server as server,
     urdf as urdf,
 )
@@ -213,7 +212,6 @@ from .sinks import (
     disconnect as disconnect,
     save as save,
     send_blueprint as send_blueprint,
-    send_recording as send_recording,  # ty:ignore[deprecated]
     serve_grpc as serve_grpc,
     set_sinks as set_sinks,
     spawn as spawn,
@@ -222,6 +220,8 @@ from .sinks import (
 from .time import (
     disable_timeline as disable_timeline,
     reset_time as reset_time,
+    set_log_tick_enabled as set_log_tick_enabled,
+    set_log_time_enabled as set_log_time_enabled,
     set_time as set_time,
 )
 from .web import serve_web_viewer as serve_web_viewer

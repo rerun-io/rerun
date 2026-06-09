@@ -241,7 +241,7 @@ impl TimeRangesUi {
         if let Some(time) = time_ctrl.time() {
             let new_time = self.snap_time_to_segments(time);
             if new_time != time {
-                time_commands.push(TimeControlCommand::SetTime(new_time));
+                time_commands.push(TimeControlCommand::SetTimeClamped(new_time));
             }
         } else if let Some(selection) = time_ctrl.time_selection() {
             let snapped_min = self.snap_time_to_segments(selection.min);
@@ -255,7 +255,7 @@ impl TimeRangesUi {
             }
 
             // Keeping max works better when looping
-            time_commands.push(TimeControlCommand::SetTimeSelection(
+            time_commands.push(TimeControlCommand::SetTimeSelectionClamped(
                 AbsoluteTimeRangeF::new(snapped_max - selection.length(), snapped_max).to_int(),
             ));
         }

@@ -1,5 +1,5 @@
 use std::io;
-use std::io::{Cursor, SeekFrom};
+use std::io::Cursor;
 
 use scuffle_av1::seq::SequenceHeaderObu;
 use scuffle_av1::{ObuHeader, ObuType};
@@ -39,6 +39,7 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
             return Ok(GopStartDetection::NotStartOfGop);
         };
 
+        let payload_start = cursor.position();
         let obu_size = header.size.unwrap_or_default();
 
         match header.obu_type {
@@ -65,8 +66,6 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
                     chroma_subsampling: Some(chroma_mode_from_color_config(&seq.color_config)),
                     stsd: None,
                 });
-
-                continue;
             }
             ObuType::Frame | ObuType::FrameHeader
                 if is_keyframe(&mut cursor).map_err(DetectGopStartError::Av1ParserError)? =>
@@ -78,8 +77,16 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
             }
         }
 
-        // Skip the OBU payload
-        skip_obu(&mut cursor, obu_size).map_err(DetectGopStartError::Av1ParserError)?;
+        if header.size.is_some() {
+            // OBU has a known size: jump to the end of its payload.
+            cursor.set_position(payload_start + obu_size);
+        } else {
+            re_log::warn_once!(
+                "AV1 sample contains an OBU without a size field. Keyframe \
+                 detection may be incomplete."
+            );
+            break;
+        }
     }
 
     if keyframe_found && let Some(details) = video_encoding_details {
@@ -87,18 +94,6 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
     } else {
         Ok(GopStartDetection::NotStartOfGop)
     }
-}
-
-fn skip_obu<R: io::Read + io::Seek>(reader: &mut R, obu_size: u64) -> io::Result<()> {
-    let offset = i64::try_from(obu_size).map_err(|err| {
-        io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!("payload size exceeds seek limits: {err}"),
-        )
-    })?;
-
-    reader.seek(SeekFrom::Current(offset))?;
-    Ok(())
 }
 
 /// Determine if the frame is a keyframe based on the OBU type and its content.
@@ -194,6 +189,32 @@ mod test {
         let result = detect_av1_keyframe_start(invalid_data);
 
         assert!(matches!(result, Ok(GopStartDetection::NotStartOfGop)));
+    }
+
+    /// AV1 sample with three sequential Frame OBUs and no Sequence Header.
+    ///
+    /// Regression fixture for the OBU walker cursor-drift bug.
+    const AV1_MULTI_FRAME_DRIFT_REPRO: &[u8] = &[
+        0x32, 0x30, 0x28, 0x9C, 0xC2, 0x05, 0x69, 0x7B, 0x24, 0x6A, 0x04, 0x1C, 0x71, 0xC7, 0x03,
+        0x00, 0x01, 0x00, 0x20, 0x04, 0x80, 0x60, 0xC0, 0x00, 0x00, 0x62, 0x73, 0x15, 0x73, 0x05,
+        0x58, 0x72, 0x84, 0xD9, 0xD5, 0xF4, 0x6A, 0xBB, 0xF3, 0xB5, 0x5E, 0xF0, 0xF6, 0xC2, 0x6B,
+        0x38, 0x6B, 0x70, 0xD9, 0x4C, 0x32, 0x1B, 0x28, 0x94, 0x60, 0x05, 0x69, 0x7B, 0x24, 0x72,
+        0x04, 0x1E, 0x79, 0xE7, 0x83, 0x00, 0x01, 0x00, 0x20, 0x04, 0x80, 0x60, 0xC0, 0x00, 0x94,
+        0xB2, 0x5B, 0xEA, 0xFA, 0x32, 0x4B, 0x31, 0x26, 0x80, 0x0A, 0xD2, 0xF6, 0x48, 0xE4, 0x08,
+        0x3C, 0xF3, 0xCF, 0x06, 0x00, 0x02, 0x00, 0x40, 0x09, 0x00, 0xC1, 0x80, 0x00, 0x7B, 0x4D,
+        0x69, 0xD2, 0xD7, 0xC7, 0x6D, 0x2F, 0xB4, 0xF2, 0xDA, 0xD1, 0xDC, 0x5A, 0xD9, 0x45, 0x0F,
+        0xA2, 0xB7, 0x98, 0xD0, 0x19, 0xF6, 0x3C, 0x42, 0xBB, 0x5F, 0x5E, 0xE1, 0xF3, 0xEB, 0xF2,
+        0xCE, 0x63, 0x4D, 0xD7, 0xC5, 0xEA, 0x0A, 0xDE, 0xFA, 0x76, 0x15, 0xAC, 0xB8, 0x85, 0x88,
+        0x9C, 0x7D, 0x59, 0x63, 0x45, 0xA8,
+    ];
+
+    #[test]
+    fn test_detect_av1_multi_frame_does_not_drift() {
+        let result = detect_av1_keyframe_start(AV1_MULTI_FRAME_DRIFT_REPRO);
+        assert!(
+            matches!(result, Ok(GopStartDetection::NotStartOfGop)),
+            "expected NotStartOfGop, got {result:?}"
+        );
     }
 
     #[test]

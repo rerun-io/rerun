@@ -613,9 +613,7 @@ fn resolve_package_uri(uri: &str) -> anyhow::Result<PathBuf> {
     use std::env;
 
     let mut parts = uri.splitn(2, '/');
-    let (pkg, rel) = parts
-        .next()
-        .and_then(|pkg| parts.next().map(|rel| (pkg, rel)))
+    let (pkg, rel) = Option::zip(parts.next(), parts.next())
         .ok_or_else(|| anyhow::anyhow!("Invalid package URI: {uri}"))?;
 
     let rel = PathBuf::from(rel);

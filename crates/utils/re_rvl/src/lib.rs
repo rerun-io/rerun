@@ -79,7 +79,7 @@ impl RosRvlMetadata {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone)]
 pub enum RvlDecodeError {
     #[error("compressed depth payload missing RVL header")]
     MissingHeader,

@@ -64,20 +64,14 @@ async fn register_memory_url_cross_dataset() {
     // --- Step 2: Create dataset B, register using the memory:// URL ---
     let dataset_b = service.create_dataset_entry_with_name("dataset_b").await;
 
-    let memory_data_source: re_protos::cloud::v1alpha1::DataSource = ext::DataSource {
-        storage_url: url::Url::parse(&memory_url).unwrap(),
-        is_prefix: false,
-        layer: ext::DataSource::DEFAULT_LAYER.to_owned(),
-        kind: ext::DataSourceKind::Rrd,
-    }
-    .into();
+    let memory_data_source: re_protos::cloud::v1alpha1::DataSource =
+        ext::DataSource::new_rrd(&memory_url).unwrap().into();
 
     let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
         data_sources: vec![memory_data_source.clone()],
         on_duplicate: Default::default(),
     })
-    .with_entry_name(entry_name("dataset_b"))
-    .unwrap();
+    .with_entry_name(entry_name("dataset_b"));
 
     let task_results = register_and_wait(&service, request).await;
     assert!(
@@ -122,8 +116,7 @@ async fn register_memory_url_cross_dataset() {
         data_sources: vec![memory_data_source],
         on_duplicate: Default::default(),
     })
-    .with_entry_name(entry_name("dataset_c"))
-    .unwrap();
+    .with_entry_name(entry_name("dataset_c"));
 
     let result = service.register_with_dataset(request).await;
     assert!(
@@ -148,20 +141,14 @@ async fn register_memory_url_not_found() {
     let fake_tuid = re_tuid::Tuid::new();
     let fake_memory_url = format!("memory:///store/{fake_tuid}");
 
-    let memory_data_source: re_protos::cloud::v1alpha1::DataSource = ext::DataSource {
-        storage_url: url::Url::parse(&fake_memory_url).unwrap(),
-        is_prefix: false,
-        layer: ext::DataSource::DEFAULT_LAYER.to_owned(),
-        kind: ext::DataSourceKind::Rrd,
-    }
-    .into();
+    let memory_data_source: re_protos::cloud::v1alpha1::DataSource =
+        ext::DataSource::new_rrd(&fake_memory_url).unwrap().into();
 
     let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
         data_sources: vec![memory_data_source],
         on_duplicate: Default::default(),
     })
-    .with_entry_name(entry_name("dataset_nf"))
-    .unwrap();
+    .with_entry_name(entry_name("dataset_nf"));
 
     let result = service.register_with_dataset(request).await;
     assert!(
@@ -184,8 +171,7 @@ async fn scan_manifest(
     let responses: Vec<_> = service
         .scan_dataset_manifest(
             tonic::Request::new(ScanDatasetManifestRequest { columns: vec![] })
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()

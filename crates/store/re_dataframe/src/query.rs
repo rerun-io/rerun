@@ -1,5 +1,5 @@
-use std::collections::BTreeSet;
 use std::sync::OnceLock;
+use std::{collections::BTreeSet, iter::repeat_n};
 
 use arrow::array::{
     Array as _, ArrayData, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
@@ -75,6 +75,11 @@ pub struct NextNRowsOutput {
     pub columns: Vec<ArrowArrayRef>,
     pub num_rows: usize,
 }
+
+/// Minimum bulk-emit run length below which `_next_n_rows` falls through to the
+/// per-row streaming-join path. Avoids paying bulk-machinery overhead on very
+/// short eligible runs.
+const BULK_MIN_RUN: usize = 4;
 
 /// One step in the deferred-replay finalizer inside `_next_n_rows`.
 ///
@@ -183,6 +188,35 @@ impl SelectedEmitter {
     }
 }
 
+/// Per-view-column classification produced by [`QueryHandle::try_bulk_emit_run`].
+///
+/// At each `cur_row` the bulk path classifies how every non-empty view column
+/// can contribute to the upcoming run. The run length is the `min` of
+/// per-column lengths; if any column is not eligible the bulk attempt bails.
+#[derive(Clone, Copy, Debug)]
+enum ColumnRunClass {
+    /// Slice a contiguous run from this view column's active chunk:
+    /// the column emits `rows.len` rows from `chunks[chunk_idx]` starting
+    /// at `rows.start` (zero-copy Arrow slice).
+    Slice {
+        /// Index of the active chunk in
+        /// [`QueryHandleState::view_chunks`]`[view_idx]`.
+        chunk_idx: usize,
+
+        /// Row range to read from the active chunk.
+        /// `rows.start` always equals `cur_row - chunk.dense_uiv_span.start`
+        /// for bulk-eligible (dense + unique) chunks. `rows.len` is the
+        /// chunk's contribution to this run before exhaustion; the
+        /// global bulk run length is the `min` across all columns.
+        rows: Span<usize>,
+    },
+
+    /// The column has no chunk covering `cur_row`; emit `len` null rows
+    /// for it. `len` extends until the next chunk in this column (or
+    /// to the end of `unique_index_values` if there is no next chunk).
+    Null { len: usize },
+}
+
 // TODO(cmc): (no specific order) (should we make issues for these?)
 // * [x] basic thing working
 // * [x] custom selection
@@ -231,6 +265,21 @@ struct ChunkBundle {
     chunk: Chunk,
     time_min: i64,
     time_max: i64,
+
+    /// True if this chunk's `filtered_index` time range does not overlap any other
+    /// chunk's time range in the same view column. Filled in [`QueryHandle::init_`]
+    /// after view chunks are sorted by `time_min`.
+    is_disjoint_in_column: bool,
+
+    /// True if this chunk's `filtered_index` times are strictly increasing.
+    times_unique: bool,
+
+    /// `Some(span)` iff this chunk's rows map 1:1 to
+    /// `unique_index_values[span.range()]`. `None` when the chunk lacks the
+    /// `filtered_index` timeline, has duplicate timestamps that fold into
+    /// fewer `unique_index_values` entries, or has gaps where another column's
+    /// chunks add intervening index values.
+    dense_uiv_span: Option<Span<usize>>,
 }
 
 impl ChunkBundle {
@@ -245,6 +294,9 @@ impl ChunkBundle {
             chunk,
             time_min,
             time_max,
+            is_disjoint_in_column: false,
+            times_unique: false,
+            dense_uiv_span: None,
         }
     }
 }
@@ -277,6 +329,13 @@ struct IterState {
     /// exactly: `view_chunks[view_idx][chunk_idx]` corresponds to
     /// `state.view_chunks[view_idx][chunk_idx]`.
     view_chunks: Vec<Vec<ChunkIterCursor>>,
+
+    /// Total number of rows emitted via [`QueryHandle::try_bulk_emit_run`].
+    ///
+    /// Exposed for tests via `QueryHandle::bulk_emitted_rows` so they can assert
+    /// the bulk fast path was actually taken (a regression that silently disabled
+    /// it would otherwise still produce correct output via the per-row fallback).
+    bulk_emitted_rows: u64,
 }
 
 impl IterState {
@@ -288,6 +347,7 @@ impl IterState {
                 .iter()
                 .map(|chunks| vec![ChunkIterCursor::default(); chunks.len()])
                 .collect(),
+            bulk_emitted_rows: 0,
         }
     }
 }
@@ -363,6 +423,102 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 }
 
+/// Apply a user-supplied `selection` against a view-contents schema and
+/// return the resolved column list.
+///
+/// Each entry is `(idx, descr)` where `idx` is the column's position in
+/// `view_contents` if the selection hit a real column, or `usize::MAX` if
+/// the selector did not match (the corresponding entry will emit all-null
+/// values at query time).
+///
+/// Used by both [`QueryHandle::init_`] and [`crate::QueryEngine::selected_schema_for_query`].
+#[tracing::instrument(level = "trace", skip_all)]
+pub(crate) fn compute_user_selection(
+    view_contents: &[ColumnDescriptor],
+    selection: &[ColumnSelector],
+) -> Vec<(usize, ColumnDescriptor)> {
+    selection
+        .iter()
+        .map(|column| match column {
+            ColumnSelector::RowId => view_contents
+                .iter()
+                .enumerate()
+                .find_map(|(idx, view_column)| {
+                    if let ColumnDescriptor::RowId(descr) = view_column {
+                        Some((idx, ColumnDescriptor::RowId(descr.clone())))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| {
+                    (
+                        usize::MAX,
+                        ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
+                    )
+                }),
+
+            ColumnSelector::Time(selected_column) => {
+                let TimeColumnSelector {
+                    timeline: selected_timeline,
+                } = selected_column;
+
+                view_contents
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, view_column)| {
+                        if let ColumnDescriptor::Time(view_descr) = view_column {
+                            Some((idx, view_descr))
+                        } else {
+                            None
+                        }
+                    })
+                    .find(|(_idx, view_descr)| *view_descr.timeline().name() == *selected_timeline)
+                    .map_or_else(
+                        || {
+                            (
+                                usize::MAX,
+                                ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
+                                    *selected_timeline,
+                                )),
+                            )
+                        },
+                        |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
+                    )
+            }
+
+            ColumnSelector::Component(selected_column) => view_contents
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, view_column)| {
+                    if let ColumnDescriptor::Component(view_descr) = view_column {
+                        Some((idx, view_descr))
+                    } else {
+                        None
+                    }
+                })
+                .find(|(_idx, view_descr)| view_descr.matches(selected_column))
+                .map_or_else(
+                    || {
+                        (
+                            usize::MAX,
+                            ColumnDescriptor::Component(ComponentColumnDescriptor {
+                                entity_path: selected_column.entity_path.clone(),
+                                archetype: None,
+                                component: selected_column.component.as_str().into(),
+                                component_type: None,
+                                store_datatype: ArrowDataType::Null,
+                                is_static: false,
+                                is_tombstone: false,
+                                is_semantically_empty: false,
+                            }),
+                        )
+                    },
+                    |(idx, view_descr)| (idx, ColumnDescriptor::Component(view_descr.clone())),
+                ),
+        })
+        .collect_vec()
+}
+
 impl<E: StorageEngineLike> QueryHandle<E> {
     /// Lazily initialize internal private state.
     ///
@@ -393,9 +549,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 
     // NOTE: This is split in its own method otherwise it completely breaks `rustfmt`.
-    #[tracing::instrument(level = "trace", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     fn init_(query: &QueryExpression, store: &ChunkStore, cache: &QueryCache) -> QueryHandleState {
-        re_tracing::profile_scope!("init");
+        re_tracing::profile_scope!("QueryHandle::init");
 
         // The timeline doesn't matter if we're running in static-only mode.
         let filtered_index = query
@@ -411,7 +567,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // The caller might have selected columns that do not exist in the view: they should
         // still appear in the results.
         let selected_contents: Vec<(_, _)> = if let Some(selection) = query.selection.as_ref() {
-            Self::compute_user_selection(&view_contents, selection)
+            compute_user_selection(&view_contents, selection)
         } else {
             view_contents.clone().into_iter().enumerate().collect()
         };
@@ -432,9 +588,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             let index_range = if query.filtered_index.is_none() {
                 AbsoluteTimeRange::EMPTY // static-only
             } else if let Some(using_index_values) = query.using_index_values.as_ref() {
-                using_index_values
-                    .first()
-                    .and_then(|start| using_index_values.last().map(|end| (start, end)))
+                Option::zip(using_index_values.first(), using_index_values.last())
                     .map_or(AbsoluteTimeRange::EMPTY, |(start, end)| {
                         AbsoluteTimeRange::new(*start, *end)
                     })
@@ -556,6 +710,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 .collect_vec()
         };
 
+        // 6b. Fill per-chunk bulk-emit metadata, now that both `view_chunks` (sorted)
+        //     and `unique_index_values` are known.
+        Self::fill_bulk_metadata(&mut view_chunks, &unique_index_values, &filtered_index);
+
         let selected_static_values = {
             re_tracing::profile_scope!("static_values");
 
@@ -593,95 +751,77 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         }
     }
 
+    /// Fills [`ChunkBundle`] bulk-emit metadata for every view-column chunk.
+    ///
+    /// Must be called after the view's chunks are sorted by `time_min` (so neighbor
+    /// comparisons make sense) and after `unique_index_values` has been computed.
     #[tracing::instrument(level = "trace", skip_all)]
-    fn compute_user_selection(
-        view_contents: &[ColumnDescriptor],
-        selection: &[ColumnSelector],
-    ) -> Vec<(usize, ColumnDescriptor)> {
-        selection
-            .iter()
-            .map(|column| match column {
-                ColumnSelector::RowId => view_contents
-                    .iter()
-                    .enumerate()
-                    .find_map(|(idx, view_column)| {
-                        if let ColumnDescriptor::RowId(descr) = view_column {
-                            Some((idx, ColumnDescriptor::RowId(descr.clone())))
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or_else(|| {
-                        (
-                            usize::MAX,
-                            ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
-                        )
-                    }),
+    fn fill_bulk_metadata(
+        view_chunks: &mut [Vec<ChunkBundle>],
+        unique_index_values: &[IndexValue],
+        filtered_index: &Index,
+    ) {
+        re_tracing::profile_function!();
 
-                ColumnSelector::Time(selected_column) => {
-                    let TimeColumnSelector {
-                        timeline: selected_timeline,
-                    } = selected_column;
+        // Map each unique_index_value to its position via the assumption that
+        // `unique_index_values` is sorted ascending and dedup'd.
+        for chunks in view_chunks.iter_mut() {
+            // Step 1: per-chunk `is_disjoint_in_column`.
+            //
+            // Chunks are sorted by `time_min` ascending, but `time_max` can
+            // extend arbitrarily past the next chunk's `time_min` (e.g. a
+            // long-lived chunk early in the list overlapping every later
+            // chunk). Track the running max of `time_max` across all prior
+            // chunks to catch that case; the next-neighbor check is enough
+            // for the forward direction since chunks are sorted on `time_min`
+            // (if the next chunk's `time_min` is past current `time_max`,
+            // every later chunk's `time_min` is too).
+            let n = chunks.len();
+            let mut max_prev_time_max = i64::MIN;
+            for i in 0..n {
+                let lo = chunks[i].time_min;
+                let hi = chunks[i].time_max;
+                let prev_ok = max_prev_time_max < lo;
+                let next_ok = i + 1 == n || hi < chunks[i + 1].time_min;
+                chunks[i].is_disjoint_in_column = prev_ok && next_ok;
+                max_prev_time_max = max_prev_time_max.max(hi);
+            }
 
-                    view_contents
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(idx, view_column)| {
-                            if let ColumnDescriptor::Time(view_descr) = view_column {
-                                Some((idx, view_descr))
-                            } else {
-                                None
-                            }
-                        })
-                        .find(|(_idx, view_descr)| {
-                            *view_descr.timeline().name() == *selected_timeline
-                        })
-                        .map_or_else(
-                            || {
-                                (
-                                    usize::MAX,
-                                    ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
-                                        *selected_timeline,
-                                    )),
-                                )
-                            },
-                            |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
-                        )
+            // Step 2: per-chunk `times_unique` and `dense_uiv_span`.
+            for cc in chunks.iter_mut() {
+                let Some(time_column) = cc.chunk.timelines().get(filtered_index) else {
+                    // Chunk doesn't carry the filtered_index timeline.
+                    // Probably a static chunk.
+                    continue;
+                };
+                let times = time_column.times_raw();
+                if times.is_empty() {
+                    continue;
                 }
 
-                ColumnSelector::Component(selected_column) => view_contents
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(idx, view_column)| {
-                        if let ColumnDescriptor::Component(view_descr) = view_column {
-                            Some((idx, view_descr))
-                        } else {
-                            None
-                        }
-                    })
-                    .find(|(_idx, view_descr)| view_descr.matches(selected_column))
-                    .map_or_else(
-                        || {
-                            (
-                                usize::MAX,
-                                ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                    entity_path: selected_column.entity_path.clone(),
-                                    archetype: None,
-                                    component: selected_column.component.as_str().into(),
-                                    component_type: None,
-                                    store_datatype: ArrowDataType::Null,
-                                    is_static: false,
-                                    is_tombstone: false,
-                                    is_semantically_empty: false,
-                                }),
-                            )
-                        },
-                        |(idx, view_descr)| (idx, ColumnDescriptor::Component(view_descr.clone())),
-                    ),
-            })
-            .collect_vec()
+                cc.times_unique = times.windows(2).all(|w| w[0] < w[1]);
+
+                // Find the position of `times[0]` in `unique_index_values`,
+                // then verify that the chunk's rows align 1:1 with the next
+                // `times.len()` entries. If they do, record the span; if any
+                // hole exists (duplicate timestamps or another column's
+                // chunks adding extra index values inside the range), leave
+                // `dense_uiv_span = None`.
+                let start = unique_index_values.partition_point(|t| t.as_i64() < times[0]);
+                let span = Span::from_start_len(start, times.len());
+                if unique_index_values.len() < span.end() {
+                    continue;
+                }
+                let is_dense = std::iter::zip(&unique_index_values[span.range()], times)
+                    .all(|(uiv, t)| uiv.as_i64() == *t);
+                if is_dense {
+                    cc.dense_uiv_span = Some(span);
+                }
+            }
+        }
     }
 
+    #[tracing::instrument(level = "debug", skip_all)]
     fn fetch_view_chunks(
         query: &QueryExpression,
         store: &ChunkStore,
@@ -689,6 +829,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         range_query: &RangeQuery,
         view_contents: &[ColumnDescriptor],
     ) -> (Option<usize>, Vec<Vec<ChunkBundle>>) {
+        re_tracing::profile_function!();
         let mut view_pov_chunks_idx = query.filtered_is_not_null.as_ref().map(|_| usize::MAX);
 
         let view_chunks = view_contents
@@ -733,6 +874,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         range_query: &RangeQuery,
         view_contents: &[ColumnDescriptor],
     ) -> IntMap<EntityPath, Vec<Chunk>> {
+        re_tracing::profile_function!();
+
         /// Returns all the ancestors of an [`EntityPath`].
         ///
         /// Doesn't return `entity_path` itself.
@@ -814,11 +957,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         .filter_map(|chunk| chunk_filter_recursive_only(&chunk))
                     });
 
-                let chunks = flat_chunks
-                    .into_iter()
-                    .chain(recursive_chunks)
-                    // The component data is irrelevant.
-                    // We do not expose the actual tombstones to end-users, only their _effect_.
+                // The component data is irrelevant.
+                // We do not expose the actual tombstones to end-users, only their _effect_.
+                let chunks = std::iter::chain(flat_chunks, recursive_chunks)
                     .map(|chunk| chunk.components_removed())
                     .collect_vec();
 
@@ -827,6 +968,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .collect()
     }
 
+    #[tracing::instrument(level = "debug", skip_all)]
     fn fetch_chunks(
         query: &QueryExpression,
         _store: &ChunkStore,
@@ -835,6 +977,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         entity_path: &EntityPath,
         components: impl IntoIterator<Item = ComponentIdentifier>,
     ) -> Option<Vec<ChunkBundle>> {
+        re_tracing::profile_function!();
+
         // NOTE: Keep in mind that the range APIs natively make sure that we will
         // either get a bunch of relevant _static_ chunks, or a bunch of relevant
         // _temporal_ chunks, but never both.
@@ -967,12 +1111,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             return;
         }
 
-        for (state_chunks, iter_chunks) in state
-            .view_chunks
-            .iter()
-            .zip(iter_state.view_chunks.iter_mut())
+        for (state_chunks, iter_chunks) in
+            std::iter::zip(&state.view_chunks, &mut iter_state.view_chunks)
         {
-            for (bundle, cc) in state_chunks.iter().zip(iter_chunks.iter_mut()) {
+            for (bundle, cc) in std::iter::zip(state_chunks, iter_chunks) {
                 // NOTE: The chunk has been densified already: its global time range is the same as
                 // the time range for the specific component of interest.
                 let Some(time_column) = bundle.chunk.timelines().get(&state.filtered_index) else {
@@ -1192,13 +1334,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .selected_contents
             .iter()
             .map(|(view_idx, column)| match column {
-                ColumnDescriptor::RowId(_) => state
-                    .view_chunks
-                    .first()
-                    .and_then(|vec| vec.first()) // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
-                    .zip(iter_state.view_chunks.first().and_then(|vec| vec.first()))
-                    .map(|(cc, cs)| as_array_ref(cc.chunk.row_ids_array().slice(cs.cursor as _, 1)))
-                    .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
+                ColumnDescriptor::RowId(_) => Option::zip(
+                    state.view_chunks.first().and_then(|vec| vec.first()), // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
+                    iter_state.view_chunks.first().and_then(|vec| vec.first()),
+                )
+                .map(|(cc, cs)| as_array_ref(cc.chunk.row_ids_array().slice(cs.cursor as _, 1)))
+                .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
 
                 ColumnDescriptor::Time(descr) => resolved.get(descr.timeline().name()).map_or_else(
                     || arrow::array::new_null_array(&column.arrow_datatype(), 1),
@@ -1244,15 +1385,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         view_streaming_state.clear();
         view_streaming_state.resize_with(state.view_chunks.len(), || None);
         let cur_index_value_i64 = cur_index_value.as_i64();
-        for (view_column_idx, (view_chunks, iter_chunks)) in state
-            .view_chunks
-            .iter()
-            .zip(iter_state.view_chunks.iter_mut())
-            .enumerate()
+        for (view_column_idx, (view_chunks, iter_chunks)) in
+            std::iter::zip(&state.view_chunks, &mut iter_state.view_chunks).enumerate()
         {
             let mut entry: Option<StreamingJoinStateEntry<'state>> = None;
 
-            'overlaps: for (cc, cs) in view_chunks.iter().zip(iter_chunks.iter_mut()) {
+            'overlaps: for (cc, cs) in std::iter::zip(view_chunks, iter_chunks) {
                 // H1: skip chunks that already finished a prior row.
                 if cs.exhausted {
                     continue 'overlaps;
@@ -1491,6 +1629,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         Some(max_value_per_index)
     }
 
+    /// Total number of rows emitted via the bulk fast path so far (see
+    /// [`Self::try_bulk_emit_run`]). Exposed for tests / diagnostics.
+    #[cfg(test)]
+    pub(crate) fn bulk_emitted_rows(&self) -> u64 {
+        self.iter_state.as_ref().map_or(0, |s| s.bulk_emitted_rows)
+    }
+
     /// Append up to `max_rows` rows of data into freshly allocated per-column arrays.
     ///
     /// Throughput-oriented sibling of [`Self::next_row`]: shares the streaming-join machinery but
@@ -1634,6 +1779,20 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 break;
             }
 
+            if let Some(emitted) = Self::try_bulk_emit_run(
+                query,
+                state,
+                iter_state,
+                &mut emitters,
+                &mut total_bytes,
+                max_rows,
+                num_rows,
+            ) {
+                num_rows += emitted;
+                iter_state.bulk_emitted_rows += emitted as u64;
+                continue;
+            }
+
             let Some(resolved) =
                 Self::_resolve_one_row(query, state, iter_state, cache, &mut scratch)
             else {
@@ -1654,12 +1813,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             continue;
                         };
 
-                        if let Some((cc, cs)) = state
-                            .view_chunks
-                            .first()
-                            .and_then(|v| v.first())
-                            .zip(iter_state.view_chunks.first().and_then(|v| v.first()))
-                        {
+                        if let Some((cc, cs)) = Option::zip(
+                            state.view_chunks.first().and_then(|v| v.first()),
+                            iter_state.view_chunks.first().and_then(|v| v.first()),
+                        ) {
                             // TODO(#9922): verify that using the row:ids from the first chunk
                             // always makes sense.
                             let id = std::ptr::from_ref::<Chunk>(&cc.chunk);
@@ -1799,6 +1956,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             };
         }
 
+        re_tracing::profile_scope!("finalize");
+
         // Finalize each output column.
         let mut columns: Vec<ArrowArrayRef> = Vec::with_capacity(n_selected);
         for (selected_idx, emitter) in emitters.into_iter().enumerate() {
@@ -1815,19 +1974,41 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         columns.push(arrow::array::new_null_array(datatype, num_rows));
                         continue;
                     }
-                    let src_refs: Vec<&ArrayData> = sources.iter().collect();
-                    let mut mutable = MutableArrayData::new(src_refs, true, num_rows);
-                    for ext in &extends {
-                        match ext {
+
+                    if let [single] = extends.as_slice() {
+                        // Fast-path: a single extend means no copying/concatenation is needed.
+                        // We can either slice the source array directly or allocate a null array.
+                        // This is commonly taken when `try_bulk_emit_run` succeeded.
+                        re_tracing::profile_scope!("SelectedEmitter::Source fast-path");
+                        match *single {
                             ColumnExtend::Range { source_idx, rows } => {
-                                mutable.extend(*source_idx, rows.start, rows.end());
+                                let sliced = sources[source_idx].slice(rows.start, rows.len);
+                                columns.push(make_array(sliced));
                             }
-                            ColumnExtend::Nulls { len } => mutable.extend_nulls(*len),
+                            ColumnExtend::Nulls { len } => {
+                                columns.push(arrow::array::new_null_array(datatype, len));
+                            }
                         }
+                    } else {
+                        re_tracing::profile_scope!("SelectedEmitter::Source slow-path");
+                        let src_refs: Vec<&ArrayData> = sources.iter().collect();
+                        let mut mutable = MutableArrayData::new(src_refs, true, num_rows);
+
+                        for ext in &extends {
+                            match ext {
+                                ColumnExtend::Range { source_idx, rows } => {
+                                    mutable.extend(*source_idx, rows.start, rows.end());
+                                }
+                                ColumnExtend::Nulls { len } => mutable.extend_nulls(*len),
+                            }
+                        }
+
+                        columns.push(make_array(mutable.freeze()));
                     }
-                    columns.push(make_array(mutable.freeze()));
                 }
                 SelectedEmitter::Time { values, valid } => {
+                    re_tracing::profile_scope!("SelectedEmitter::Time");
+
                     // The schema field's datatype is the source of truth. An
                     // `IndexColumnDescriptor::new_null` produces `datatype = Null`
                     // even though `descr.timeline().typ()` returns the placeholder
@@ -1861,6 +2042,344 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         debug_assert_eq!(columns.len(), state.arrow_schema.fields.len());
 
         NextNRowsOutput { columns, num_rows }
+    }
+
+    /// Fast path for [`Self::_next_n_rows`]: bulk-emit a run of rows from
+    /// lonely+dense chunks without going through the per-row streaming join.
+    ///
+    /// For each non-empty view column at `cur_row`, classify the column's
+    /// contribution to the upcoming run as either [`ColumnRunClass::Slice`]
+    /// (`cur_row` sits inside a bulk-eligible chunk: `is_disjoint_in_column` +
+    /// `times_unique` + `dense_uiv_span.is_some()`) or [`ColumnRunClass::Null`]
+    /// (`cur_row` sits in a gap between chunks, or after every chunk).
+    ///
+    /// Any column that lands on a non-bulk-eligible chunk forces fall-through
+    /// to the per-row path. Run length = `min` over per-column lengths,
+    /// clamped to remaining `max_rows`. Gated by [`BULK_MIN_RUN`] to avoid
+    /// bulk-machinery overhead on tiny runs, and by query-shape preconditions
+    /// that would otherwise require per-row handling (sparse fill, pov filter,
+    /// sampler).
+    ///
+    /// Returns the number of rows emitted, or `None` if the bulk path bailed
+    /// (the caller must fall through to the per-row path).
+    fn try_bulk_emit_run(
+        query: &QueryExpression,
+        state: &QueryHandleState,
+        iter_state: &mut IterState,
+        emitters: &mut [SelectedEmitter],
+        total_bytes: &mut usize,
+        max_rows: usize,
+        num_rows: usize,
+    ) -> Option<usize> {
+        // No profiling scope until we've sure we're gonna do some actual work
+
+        if query.sparse_fill_strategy != SparseFillStrategy::None {
+            // Sparse fill performs `latest_at` lookups on null cells, mixing
+            // chunk-derived cells with retrofilled `UnitChunkShared` data per
+            // row. Bulk slicing cannot replicate that without per-row work.
+            return None;
+        }
+        if query.filtered_is_not_null.is_some() {
+            // The pov filter changes which rows enter `unique_index_values` and
+            // can drop rows mid-chunk; the dense-with-uiv invariant no longer
+            // holds, so bulk slicing would emit wrong rows.
+            return None;
+        }
+        if query.using_index_values.is_some() {
+            // `using_index_values` makes `unique_index_values` come from the
+            // user, not the chunks. Chunks may have rows at index values that
+            // are not requested (and vice versa), breaking dense-with-uiv.
+            return None;
+        }
+        if query.filtered_index_values.is_some() {
+            // `filtered_index_values` retains only the user-listed index
+            // values, again breaking the dense-with-uiv invariant chunks were
+            // classified against during `fill_bulk_metadata`.
+            return None;
+        }
+
+        let remaining_max_rows = max_rows.saturating_sub(num_rows);
+        if remaining_max_rows < BULK_MIN_RUN {
+            // Run too short to amortize bulk-machinery overhead; let the
+            // per-row path finish off the batch.
+            return None;
+        }
+
+        let cur_row = iter_state.cur_row as usize;
+        let uiv_total = state.unique_index_values.len();
+        if uiv_total <= cur_row {
+            // Query exhausted: no more rows to emit. The caller's outer loop
+            // will see `_resolve_one_row` return `None` and break the batch.
+            return None;
+        }
+
+        // re_tracing::profile_function!(); // even here we hit this too many times, with too much overhead
+
+        // Used to test non-dense chunks for whether they overlap `cur_row`
+        // along the timeline -- those chunks force the bulk path to bail.
+        let cur_index_value_i64 = state.unique_index_values[cur_row].as_i64();
+
+        // Per view-column classification. `None` for index columns
+        // (RowId / Time) which carry no chunks of their own.
+        let mut classes: Vec<Option<ColumnRunClass>> = Vec::with_capacity(state.view_chunks.len());
+        let mut min_len = remaining_max_rows;
+        let mut first_slice_view_idx: Option<usize> = None;
+        let mut slice_count = 0usize;
+
+        for (view_idx, chunks) in state.view_chunks.iter().enumerate() {
+            if chunks.is_empty() {
+                classes.push(None);
+                continue;
+            }
+
+            let cs_chunks = &mut iter_state.view_chunks[view_idx];
+            let mut found: Option<ColumnRunClass> = None;
+
+            for (chunk_idx, (cc, cs)) in std::iter::zip(chunks, cs_chunks).enumerate() {
+                if cs.exhausted {
+                    continue;
+                }
+                let Some(span) = cc.dense_uiv_span else {
+                    // Chunk lacks the `filtered_index` timeline, has duplicate
+                    // timestamps, or has rows that don't line up 1:1 with
+                    // `unique_index_values`. The bulk path can't slice it; if
+                    // it overlaps `cur_row` (or starts after it, blocking the
+                    // null-gap calculation), bail to per-row.
+                    if cc.time_max < cur_index_value_i64 {
+                        // Chunk strictly before cur_row -- mark exhausted so
+                        // a subsequent per-row fallback doesn't re-examine it
+                        // with a stale cursor.
+                        cs.exhausted = true;
+                        continue;
+                    }
+                    return None;
+                };
+                if span.end() <= cur_row {
+                    // Chunk strictly before cur_row -- mark exhausted so a
+                    // subsequent per-row fallback doesn't re-examine it with a
+                    // stale cursor.
+                    cs.exhausted = true;
+                    continue;
+                }
+                if cur_row < span.start {
+                    // Gap before this chunk -- column is null until it starts.
+                    found = Some(ColumnRunClass::Null {
+                        len: span.start - cur_row,
+                    });
+                    break;
+                }
+                // span.start <= cur_row < span.end: chunk covers cur_row.
+                if !cc.is_disjoint_in_column || !cc.times_unique {
+                    // Chunk overlaps another chunk in the column or has
+                    // duplicate timestamps -- a bulk slice would miss the
+                    // per-row dedup / max-rowid logic.
+                    return None;
+                }
+                let cursor = cs.cursor as usize;
+                if cursor != cur_row - span.start {
+                    // The cursor was advanced by a prior per-row pass in a way
+                    // that broke the dense+unique 1:1 row mapping (e.g. inline
+                    // dedupe-forward skipped rows). A bulk slice from `cursor`
+                    // would no longer line up with `cur_row`, so bail.
+                    return None;
+                }
+                found = Some(ColumnRunClass::Slice {
+                    chunk_idx,
+                    rows: Span::from_start_len(cursor, span.end() - cur_row),
+                });
+                break;
+            }
+
+            let class = found.unwrap_or(ColumnRunClass::Null {
+                len: uiv_total - cur_row,
+            });
+            let len = match class {
+                ColumnRunClass::Slice { rows, .. } => {
+                    if first_slice_view_idx.is_none() {
+                        first_slice_view_idx = Some(view_idx);
+                    }
+                    slice_count += 1;
+                    rows.len
+                }
+                ColumnRunClass::Null { len } => len,
+            };
+            min_len = min_len.min(len);
+            classes.push(Some(class));
+        }
+
+        // Need at least one column with real data in this run: a run of
+        // all-null rows has no chunk to draw RowId / other-timeline values
+        // from, and emitting it via the bulk path would require special-casing
+        // that the per-row path already handles.
+        let rowid_view_idx = first_slice_view_idx?;
+
+        if min_len < BULK_MIN_RUN {
+            // After taking the `min` across all columns, the run is too short
+            // to amortize bulk-machinery overhead; defer to the per-row path.
+            return None;
+        }
+
+        // For other-timeline outputs the per-row path computes a max across
+        // all contributing cells. Replicating that in bulk requires per-row
+        // comparison against multiple slices; bail out conservatively when
+        // both conditions hold simultaneously. Single-Slice runs (or runs
+        // without other-timeline outputs) are exact.
+        if 1 < slice_count {
+            let has_other_timeline_selected = state.selected_contents.iter().any(|(_, col)| {
+                if let ColumnDescriptor::Time(descr) = col {
+                    *descr.timeline().name() != state.filtered_index
+                } else {
+                    false
+                }
+            });
+            if has_other_timeline_selected {
+                // `_resolve_one_row` computes max-across-cells for every
+                // selected non-`filtered_index` timeline. With multiple Slice
+                // columns we'd have to do that comparison per row inside the
+                // bulk path; leave it to the per-row path until that's worth
+                // implementing.
+                return None;
+            }
+        }
+
+        re_tracing::profile_scope!("bulk_emit", format!("len={min_len} slices={slice_count}"));
+
+        // Source chunk used for RowId + non-filtered-index Time emission.
+        let Some(ColumnRunClass::Slice {
+            chunk_idx: rowid_chunk_idx,
+            rows: rowid_rows,
+        }) = classes[rowid_view_idx]
+        else {
+            unreachable!("rowid_view_idx came from a Slice classification")
+        };
+        let rowid_cursor = rowid_rows.start;
+        let rowid_chunk = &state.view_chunks[rowid_view_idx][rowid_chunk_idx].chunk;
+
+        // Emit `min_len` rows for every selected output column.
+        for (selected_idx, (view_idx, column)) in state.selected_contents.iter().enumerate() {
+            match column {
+                ColumnDescriptor::RowId(_) => {
+                    let SelectedEmitter::Source {
+                        sources,
+                        source_ids,
+                        source_bytes_per_row,
+                        extends,
+                    } = &mut emitters[selected_idx]
+                    else {
+                        debug_panic!("Source emitter expected for RowId column");
+                        continue;
+                    };
+
+                    let id = std::ptr::from_ref::<Chunk>(rowid_chunk);
+                    let source_idx = SelectedEmitter::ensure_source(
+                        sources,
+                        source_ids,
+                        source_bytes_per_row,
+                        id,
+                        || rowid_chunk.row_ids_array().to_data(),
+                    );
+                    SelectedEmitter::push_run(
+                        extends,
+                        source_idx,
+                        Span::from_start_len(rowid_cursor, min_len),
+                    );
+                    *total_bytes = total_bytes
+                        .saturating_add(source_bytes_per_row[source_idx].saturating_mul(min_len));
+                }
+
+                ColumnDescriptor::Time(descr) => {
+                    let SelectedEmitter::Time { values, valid } = &mut emitters[selected_idx]
+                    else {
+                        debug_panic!("Time emitter expected for Time column");
+                        continue;
+                    };
+
+                    if *descr.timeline().name() == state.filtered_index {
+                        values.extend(
+                            state.unique_index_values[cur_row..cur_row + min_len]
+                                .iter()
+                                .map(|t| t.as_i64()),
+                        );
+                        valid.extend(repeat_n(true, min_len));
+                    } else if let Some(tc) = rowid_chunk.timelines().get(descr.timeline().name()) {
+                        let times = tc.times_raw();
+                        values.extend_from_slice(&times[rowid_cursor..rowid_cursor + min_len]);
+                        valid.extend(repeat_n(true, min_len));
+                    } else {
+                        values.extend(repeat_n(0, min_len));
+                        valid.extend(repeat_n(false, min_len));
+                    }
+                    *total_bytes = total_bytes
+                        .saturating_add(std::mem::size_of::<i64>().saturating_mul(min_len));
+                }
+
+                ColumnDescriptor::Component(_) => {
+                    let SelectedEmitter::Source {
+                        sources,
+                        source_ids,
+                        source_bytes_per_row,
+                        extends,
+                    } = &mut emitters[selected_idx]
+                    else {
+                        debug_panic!("Source emitter expected for Component column");
+                        continue;
+                    };
+
+                    match classes.get(*view_idx).copied().flatten() {
+                        Some(ColumnRunClass::Slice { chunk_idx, rows }) => {
+                            let cc = &state.view_chunks[*view_idx][chunk_idx];
+                            let list_array_data = cc
+                                .chunk
+                                .components()
+                                .list_arrays()
+                                .next()
+                                .map(|la| la.to_data());
+                            if let Some(data) = list_array_data {
+                                let id = std::ptr::from_ref::<Chunk>(&cc.chunk);
+                                let source_idx = SelectedEmitter::ensure_source(
+                                    sources,
+                                    source_ids,
+                                    source_bytes_per_row,
+                                    id,
+                                    || data,
+                                );
+                                SelectedEmitter::push_run(
+                                    extends,
+                                    source_idx,
+                                    Span::from_start_len(rows.start, min_len),
+                                );
+                                *total_bytes = total_bytes.saturating_add(
+                                    source_bytes_per_row[source_idx].saturating_mul(min_len),
+                                );
+                            } else {
+                                SelectedEmitter::push_nulls(extends, min_len);
+                            }
+                        }
+                        Some(ColumnRunClass::Null { .. }) | None => {
+                            SelectedEmitter::push_nulls(extends, min_len);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Advance per-column cursors for every Slice column. Null columns
+        // have no cursor to advance -- their `cs.cursor` already points
+        // past the gap (or is 0 with nothing scanned yet) and will be
+        // reconsidered on the next iteration.
+        for (view_idx, class) in classes.iter().enumerate() {
+            if let Some(ColumnRunClass::Slice { chunk_idx, .. }) = class {
+                let chunk_total = state.view_chunks[view_idx][*chunk_idx].chunk.num_rows();
+                let cs = &mut iter_state.view_chunks[view_idx][*chunk_idx];
+                cs.cursor += min_len as u64;
+                if chunk_total <= cs.cursor as usize {
+                    cs.exhausted = true;
+                }
+            }
+        }
+        iter_state.cur_row += min_len as u64;
+
+        Some(min_len)
     }
 
     /// Calls [`Self::next_row`] and wraps the result in a [`ArrowRecordBatch`].
@@ -2130,11 +2649,11 @@ mod tests {
         let query = QueryExpression {
             filtered_index,
             filtered_index_values: Some(
-                [0, 30, 60, 90]
-                    .into_iter()
-                    .map(TimeInt::new_temporal)
-                    .chain(std::iter::once(TimeInt::STATIC))
-                    .collect(),
+                std::iter::chain(
+                    [0, 30, 60, 90].into_iter().map(TimeInt::new_temporal),
+                    std::iter::once(TimeInt::STATIC),
+                )
+                .collect(),
             ),
             ..Default::default()
         };
@@ -2171,11 +2690,13 @@ mod tests {
             let query = QueryExpression {
                 filtered_index,
                 using_index_values: Some(
-                    [0, 15, 30, 30, 45, 60, 75, 90]
-                        .into_iter()
-                        .map(TimeInt::new_temporal)
-                        .chain(std::iter::once(TimeInt::STATIC))
-                        .collect(),
+                    std::iter::chain(
+                        [0, 15, 30, 30, 45, 60, 75, 90]
+                            .into_iter()
+                            .map(TimeInt::new_temporal),
+                        std::iter::once(TimeInt::STATIC),
+                    )
+                    .collect(),
                 ),
                 ..Default::default()
             };
@@ -2199,11 +2720,13 @@ mod tests {
             let query = QueryExpression {
                 filtered_index,
                 using_index_values: Some(
-                    [0, 15, 30, 30, 45, 60, 75, 90]
-                        .into_iter()
-                        .map(TimeInt::new_temporal)
-                        .chain(std::iter::once(TimeInt::STATIC))
-                        .collect(),
+                    std::iter::chain(
+                        [0, 15, 30, 30, 45, 60, 75, 90]
+                            .into_iter()
+                            .map(TimeInt::new_temporal),
+                        std::iter::once(TimeInt::STATIC),
+                    )
+                    .collect(),
                 ),
                 sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
                 ..Default::default()
@@ -2810,11 +3333,13 @@ mod tests {
             let query = QueryExpression {
                 filtered_index,
                 using_index_values: Some(
-                    [0, 15, 30, 30, 45, 60, 75, 90]
-                        .into_iter()
-                        .map(TimeInt::new_temporal)
-                        .chain(std::iter::once(TimeInt::STATIC))
-                        .collect(),
+                    std::iter::chain(
+                        [0, 15, 30, 30, 45, 60, 75, 90]
+                            .into_iter()
+                            .map(TimeInt::new_temporal),
+                        std::iter::once(TimeInt::STATIC),
+                    )
+                    .collect(),
                 ),
                 ..Default::default()
             };
@@ -3175,6 +3700,207 @@ mod tests {
                     "column {col_idx} mismatch for query {query:?}",
                 );
             }
+        }
+
+        Ok(())
+    }
+
+    /// Exercises the lonely-chunk bulk-emit fast path in `_next_n_rows`.
+    ///
+    /// Constructs a single-entity, single-component store with multiple disjoint
+    /// chunks on the query timeline so that each chunk is `is_disjoint_in_column`,
+    /// `times_unique`, and `is_dense_with_uiv`. Verifies that bulk emission
+    /// produces the same dataframe as the per-row `next_row` reference path.
+    #[test]
+    fn next_n_rows_bulk_disjoint_single_column() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        use re_log_types::TimeCell;
+        use re_log_types::example_components::{MyPoint, MyPoints};
+
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+        let entity_path = EntityPath::from("/disjoint");
+        let timeline = TimelineName::new("frame");
+
+        // Three pairwise-disjoint chunks, each dense (10 rows step 1, strictly
+        // increasing) so all three should satisfy `is_bulk_eligible`.
+        let chunk_ranges: [(i64, i64); 3] = [(10, 19), (30, 39), (50, 59)];
+        for (lo, hi) in chunk_ranges {
+            let mut builder = Chunk::builder(entity_path.clone());
+            for t in lo..=hi {
+                #[expect(clippy::cast_sign_loss)]
+                let pt = MyPoint::from_iter((t as u32)..(t as u32 + 1));
+                builder = builder.with_archetype(
+                    RowId::new(),
+                    [(timeline, TimeCell::from_sequence(t))],
+                    &MyPoints::new(pt),
+                );
+            }
+            store.insert_chunk(&std::sync::Arc::new(builder.build()?))?;
+        }
+
+        let store_handle = ChunkStoreHandle::new(store);
+        let query_cache = QueryCache::new_handle(store_handle.clone());
+        let query_engine = QueryEngine::new(store_handle, query_cache);
+
+        let query = QueryExpression {
+            filtered_index: Some(timeline),
+            view_contents: Some(
+                [(
+                    entity_path.clone(),
+                    Some(
+                        [MyPoints::descriptor_points().component]
+                            .into_iter()
+                            .collect(),
+                    ),
+                )]
+                .into_iter()
+                .collect(),
+            ),
+            ..Default::default()
+        };
+
+        let reference: Vec<_> = query_engine.query(query.clone()).iter().collect();
+        let total_rows = reference.len();
+        assert_eq!(total_rows, 30, "3 chunks x 10 rows each");
+
+        let mut candidate_handle = query_engine.query(query);
+        let n_fields = candidate_handle.schema().fields.len();
+        let mut candidate_columns: Vec<Vec<ArrowArrayRef>> =
+            (0..n_fields).map(|_| Vec::new()).collect();
+        let mut candidate_rows = 0usize;
+        loop {
+            let out = candidate_handle.next_n_rows(64, usize::MAX);
+            if out.num_rows == 0 {
+                break;
+            }
+            candidate_rows += out.num_rows;
+            for (col_idx, arr) in out.columns.into_iter().enumerate() {
+                candidate_columns[col_idx].push(arr);
+            }
+        }
+        assert_eq!(candidate_rows, total_rows);
+
+        // Guard against regressions that silently disable the bulk fast path.
+        assert!(
+            candidate_handle.bulk_emitted_rows() > 0,
+            "bulk fast path was never taken; this test is no longer exercising it",
+        );
+
+        for (col_idx, parts) in candidate_columns.iter().enumerate() {
+            let ref_parts: Vec<&dyn arrow::array::Array> =
+                reference.iter().map(|row| row[col_idx].as_ref()).collect();
+            let cand_parts: Vec<&dyn arrow::array::Array> =
+                parts.iter().map(|a| a.as_ref()).collect();
+            let r = re_arrow_util::concat_arrays(&ref_parts).expect("ref concat");
+            let c = re_arrow_util::concat_arrays(&cand_parts).expect("cand concat");
+            assert_eq!(r.to_data(), c.to_data(), "column {col_idx} mismatch");
+        }
+
+        Ok(())
+    }
+
+    /// Multi-column variant of [`Self::next_n_rows_bulk_disjoint_single_column`].
+    ///
+    /// Inserts disjoint chunks each carrying *three* components on the same
+    /// entity. After per-component densification, each view column should still
+    /// be bulk-eligible (same time grid, no overlaps), so the multi-column bulk
+    /// path is exercised.
+    #[test]
+    fn next_n_rows_bulk_disjoint_multi_column() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        use re_log_types::TimeCell;
+        use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+        let entity_path = EntityPath::from("/multi");
+        let timeline = TimelineName::new("frame");
+
+        let chunk_ranges: [(i64, i64); 3] = [(10, 19), (30, 39), (50, 59)];
+        for (lo, hi) in chunk_ranges {
+            let mut builder = Chunk::builder(entity_path.clone());
+            for t in lo..=hi {
+                #[expect(clippy::cast_sign_loss)]
+                let n = t as u32;
+                let archetype = MyPoints::new(MyPoint::from_iter(n..n + 1))
+                    .with_colors([MyColor::from(0xFF000000_u32 | n)])
+                    .with_labels([MyLabel(format!("L{n}"))]);
+                builder = builder.with_archetype(
+                    RowId::new(),
+                    [(timeline, TimeCell::from_sequence(t))],
+                    &archetype,
+                );
+            }
+            store.insert_chunk(&std::sync::Arc::new(builder.build()?))?;
+        }
+
+        let store_handle = ChunkStoreHandle::new(store);
+        let query_cache = QueryCache::new_handle(store_handle.clone());
+        let query_engine = QueryEngine::new(store_handle, query_cache);
+
+        let query = QueryExpression {
+            filtered_index: Some(timeline),
+            view_contents: Some(
+                [(
+                    entity_path.clone(),
+                    Some(
+                        [
+                            MyPoints::descriptor_points().component,
+                            MyPoints::descriptor_colors().component,
+                            MyPoints::descriptor_labels().component,
+                        ]
+                        .into_iter()
+                        .collect(),
+                    ),
+                )]
+                .into_iter()
+                .collect(),
+            ),
+            ..Default::default()
+        };
+
+        let reference: Vec<_> = query_engine.query(query.clone()).iter().collect();
+        let total_rows = reference.len();
+        assert_eq!(total_rows, 30, "3 chunks x 10 rows each");
+
+        let mut candidate_handle = query_engine.query(query);
+        let n_fields = candidate_handle.schema().fields.len();
+        let mut candidate_columns: Vec<Vec<ArrowArrayRef>> =
+            (0..n_fields).map(|_| Vec::new()).collect();
+        let mut candidate_rows = 0usize;
+        loop {
+            let out = candidate_handle.next_n_rows(64, usize::MAX);
+            if out.num_rows == 0 {
+                break;
+            }
+            candidate_rows += out.num_rows;
+            for (col_idx, arr) in out.columns.into_iter().enumerate() {
+                candidate_columns[col_idx].push(arr);
+            }
+        }
+        assert_eq!(candidate_rows, total_rows);
+
+        // Guard against regressions that silently disable the bulk fast path.
+        assert!(
+            candidate_handle.bulk_emitted_rows() > 0,
+            "bulk fast path was never taken; this test is no longer exercising it",
+        );
+
+        for (col_idx, parts) in candidate_columns.iter().enumerate() {
+            let ref_parts: Vec<&dyn arrow::array::Array> =
+                reference.iter().map(|row| row[col_idx].as_ref()).collect();
+            let cand_parts: Vec<&dyn arrow::array::Array> =
+                parts.iter().map(|a| a.as_ref()).collect();
+            let r = re_arrow_util::concat_arrays(&ref_parts).expect("ref concat");
+            let c = re_arrow_util::concat_arrays(&cand_parts).expect("cand concat");
+            assert_eq!(r.to_data(), c.to_data(), "column {col_idx} mismatch");
         }
 
         Ok(())
@@ -3701,13 +4427,13 @@ mod tests {
                     other.len(),
                     "{label}: per-row count diverged vs {other_label}",
                 );
-                for (i, (a_row, b_row)) in rows_fwd.iter().zip(other).enumerate() {
+                for (i, (a_row, b_row)) in std::iter::zip(&rows_fwd, other).enumerate() {
                     assert_eq!(
                         a_row.len(),
                         b_row.len(),
                         "{label}: per-row column count diverged at row {i} vs {other_label}",
                     );
-                    for (col_idx, (a, b)) in a_row.iter().zip(b_row).enumerate() {
+                    for (col_idx, (a, b)) in std::iter::zip(a_row, b_row).enumerate() {
                         assert_eq!(
                             a.to_data(),
                             b.to_data(),

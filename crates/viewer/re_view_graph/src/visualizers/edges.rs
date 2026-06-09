@@ -31,7 +31,10 @@ pub struct EdgeData {
 
 impl IdentifiedViewSystem for EdgesVisualizer {
     fn identifier() -> ViewSystemIdentifier {
-        "GraphEdges".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "GraphEdges"
+        )
     }
 }
 

@@ -202,3 +202,51 @@ def reset_time(recording: RecordingStream | None = None) -> None:
     bindings.reset_time(
         recording=recording.to_native() if recording is not None else None,
     )
+
+
+def set_log_tick_enabled(enabled: bool, recording: RecordingStream | None = None) -> None:
+    """
+    Enable or disable automatic injection of the `log_tick` timeline into logged data.
+
+    `log_tick` is a per-recording counter that increments on every logging call.
+    It is **disabled** by default (it can also be controlled via the `RERUN_LOG_TICK` environment variable).
+
+    Parameters
+    ----------
+    enabled:
+        Whether to inject the `log_tick` timeline.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+
+    bindings.set_log_tick_enabled(
+        enabled,
+        recording=recording.to_native() if recording is not None else None,
+    )
+
+
+def set_log_time_enabled(enabled: bool, recording: RecordingStream | None = None) -> None:
+    """
+    Enable or disable automatic injection of the `log_time` timeline into logged data.
+
+    `log_time` is the wall-clock time at which data was logged.
+    It is **enabled** by default (it can also be controlled via the `RERUN_LOG_TIME` environment variable).
+
+    Parameters
+    ----------
+    enabled:
+        Whether to inject the `log_time` timeline.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+
+    bindings.set_log_time_enabled(
+        enabled,
+        recording=recording.to_native() if recording is not None else None,
+    )

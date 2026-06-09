@@ -32,18 +32,11 @@ pub struct TensorView;
 
 type ViewType = re_sdk_types::blueprint::views::TensorView;
 
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 pub struct ViewTensorState {
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
     tensor: Option<TensorVisualization>,
-}
-
-impl re_byte_size::SizeBytes for ViewTensorState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { tensor } = self;
-        tensor.heap_size_bytes()
-    }
 }
 
 impl ViewState for ViewTensorState {
@@ -53,6 +46,10 @@ impl ViewState for ViewTensorState {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
     }
 }
 
@@ -489,10 +486,11 @@ pub fn selected_tensor_slice<'a, T: Copy>(
         tensor.view()
     };
 
-    let axis = [dheight as usize, dwidth as usize]
-        .into_iter()
-        .chain(indices.iter().map(|s| s.dimension as usize))
-        .collect::<Vec<_>>();
+    let axis = std::iter::chain(
+        [dheight as usize, dwidth as usize],
+        indices.iter().map(|s| s.dimension as usize),
+    )
+    .collect::<Vec<_>>();
     let mut slice = view.permuted_axes(axis);
 
     for index_selection in indices {

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -134,7 +135,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct VideoFrameReference {
     /// References the closest video frame to this timestamp.
     ///
@@ -175,11 +176,13 @@ impl VideoFrameReference {
     /// The corresponding component is [`crate::components::VideoTimestamp`].
     #[inline]
     pub fn descriptor_timestamp() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
-            component: "VideoFrameReference:timestamp".into(),
-            component_type: Some("rerun.components.VideoTimestamp".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+                component: "VideoFrameReference:timestamp".into(),
+                component_type: Some("rerun.components.VideoTimestamp".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::video_reference`].
@@ -187,11 +190,13 @@ impl VideoFrameReference {
     /// The corresponding component is [`crate::components::EntityPath`].
     #[inline]
     pub fn descriptor_video_reference() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
-            component: "VideoFrameReference:video_reference".into(),
-            component_type: Some("rerun.components.EntityPath".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+                component: "VideoFrameReference:video_reference".into(),
+                component_type: Some("rerun.components.EntityPath".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
@@ -199,11 +204,13 @@ impl VideoFrameReference {
     /// The corresponding component is [`crate::components::Opacity`].
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
-            component: "VideoFrameReference:opacity".into(),
-            component_type: Some("rerun.components.Opacity".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+                component: "VideoFrameReference:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
@@ -211,11 +218,13 @@ impl VideoFrameReference {
     /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
-            component: "VideoFrameReference:draw_order".into(),
-            component_type: Some("rerun.components.DrawOrder".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+                component: "VideoFrameReference:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -252,7 +261,10 @@ impl VideoFrameReference {
 impl ::re_types_core::Archetype for VideoFrameReference {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.VideoFrameReference".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.VideoFrameReference"
+        )
     }
 
     #[inline]
@@ -543,15 +555,5 @@ impl VideoFrameReference {
     ) -> Self {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VideoFrameReference {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.timestamp.heap_size_bytes()
-            + self.video_reference.heap_size_bytes()
-            + self.opacity.heap_size_bytes()
-            + self.draw_order.heap_size_bytes()
     }
 }

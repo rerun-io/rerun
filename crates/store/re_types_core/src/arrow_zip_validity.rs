@@ -45,9 +45,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let value = self.values.next();
         let is_valid = self.validity.next();
-        is_valid
-            .zip(value)
-            .map(|(is_valid, value)| is_valid.then_some(value))
+        Option::zip(is_valid, value).map(|(is_valid, value)| is_valid.then_some(value))
     }
 
     #[inline]
@@ -59,9 +57,7 @@ where
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let value = self.values.nth(n);
         let is_valid = self.validity.nth(n);
-        is_valid
-            .zip(value)
-            .map(|(is_valid, value)| is_valid.then_some(value))
+        Option::zip(is_valid, value).map(|(is_valid, value)| is_valid.then_some(value))
     }
 }
 
@@ -74,9 +70,7 @@ where
     fn next_back(&mut self) -> Option<Self::Item> {
         let value = self.values.next_back();
         let is_valid = self.validity.next_back();
-        is_valid
-            .zip(value)
-            .map(|(is_valid, value)| is_valid.then_some(value))
+        Option::zip(is_valid, value).map(|(is_valid, value)| is_valid.then_some(value))
     }
 }
 

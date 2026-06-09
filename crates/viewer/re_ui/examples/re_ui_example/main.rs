@@ -14,7 +14,7 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{
     ComboItem, ComboItemHeader, CommandPalette, CommandPaletteAction, CommandPaletteUrl,
     ContextExt as _, DesignTokens, Help, IconText, OnResponseExt as _, UICommand, UICommandSender,
-    UiExt as _, icons, list_item,
+    UiExt as _, WindowFrameConfig, icons, list_item,
 };
 
 /// Sender that queues up the execution of a command.
@@ -50,16 +50,17 @@ fn main() -> eframe::Result {
     re_log::setup_logging();
 
     let fullsize_content = re_ui::fullsize_content(os::OperatingSystem::default());
+    let custom_decorations = re_ui::supports_custom_decorations(os::OperatingSystem::default());
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_app_id("re_ui_example")
-            .with_decorations(!re_ui::CUSTOM_WINDOW_DECORATIONS) // Maybe hide the OS-specific "chrome" around the window
+            .with_decorations(!custom_decorations) // Maybe hide the OS-specific "chrome" around the window
             .with_fullsize_content_view(fullsize_content)
             .with_inner_size([1200.0, 800.0])
             .with_title_shown(!fullsize_content)
-            .with_titlebar_buttons_shown(!re_ui::CUSTOM_WINDOW_DECORATIONS)
+            .with_titlebar_buttons_shown(!custom_decorations)
             .with_titlebar_shown(!fullsize_content)
-            .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
+            .with_transparent(custom_decorations), // To have rounded corners without decorations we need transparency
 
         ..Default::default()
     };
@@ -104,6 +105,8 @@ pub struct ExampleApp {
     pub command_sender: CommandSender,
     command_receiver: CommandReceiver,
     latest_cmd: String,
+
+    use_custom_decorations: bool,
 }
 
 impl ExampleApp {
@@ -136,6 +139,10 @@ impl ExampleApp {
             command_sender,
             command_receiver,
             latest_cmd: Default::default(),
+
+            use_custom_decorations: re_ui::supports_custom_decorations(
+                os::OperatingSystem::default(),
+            ),
         }
     }
 
@@ -149,7 +156,7 @@ impl ExampleApp {
 
 impl eframe::App for ExampleApp {
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+        if self.custom_window_frame() {
             [0.0; 4] // transparent
         } else {
             [1.0, 0.0, 1.0, 1.0] // Find any background color peaking through that shouldn't
@@ -163,8 +170,10 @@ impl eframe::App for ExampleApp {
 
         self.top_bar(frame, ui);
 
+        let window_frame = self.window_frame_config(ui.ctx());
+
         egui::Panel::bottom("bottom_panel")
-            .frame(ui.tokens().bottom_panel_frame())
+            .frame(ui.tokens().bottom_panel_frame(window_frame))
             .show_animated_inside(ui, self.show_bottom_panel, |ui| {
                 ui.strong("Bottom panel");
             });
@@ -425,15 +434,29 @@ fn parse_url(url: &str) -> Option<CommandPaletteUrl> {
 }
 
 impl ExampleApp {
+    fn custom_window_frame(&self) -> bool {
+        self.use_custom_decorations && !cfg!(target_os = "windows")
+    }
+
+    fn window_frame_config(&self, ctx: &egui::Context) -> WindowFrameConfig {
+        if self.custom_window_frame() {
+            WindowFrameConfig::custom(ctx)
+        } else {
+            WindowFrameConfig::Native
+        }
+    }
+
     fn top_bar(&mut self, frame: &eframe::Frame, ui: &mut egui::Ui) {
         let top_bar_style = ui.top_bar_style(frame, false);
 
+        let window_frame = self.window_frame_config(ui.ctx());
+
         egui::Panel::top("top_bar")
-            .frame(ui.tokens().top_panel_frame())
+            .frame(ui.tokens().top_panel_frame(window_frame))
             .exact_size(top_bar_style.height)
             .show_inside(ui, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
-                if !re_ui::native_window_bar(ui.os()) {
+                if !self.use_custom_decorations {
                     // Interact with background first, so that buttons in the top bar gets input priority
                     // (last added widget has priority for input).
                     let title_bar_response = ui.interact(
@@ -466,7 +489,7 @@ impl ExampleApp {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // From right-to-left:
 
-            if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            if self.use_custom_decorations {
                 ui.add_space(8.0);
                 ui.native_window_buttons_ui();
                 ui.separator();

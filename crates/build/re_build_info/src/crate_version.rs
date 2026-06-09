@@ -40,7 +40,7 @@ mod meta {
 /// - `11NNNNNN` -> `-alpha.N+dev`
 /// - `01NNNNNN` -> `-rc.N`
 /// - `00000000` -> none of the above
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub struct CrateVersion {
     pub major: u8,
     pub minor: u8,
@@ -127,8 +127,9 @@ impl CrateVersion {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, re_byte_size::SizeBytes, serde::Deserialize, serde::Serialize,
+)]
 pub enum Meta {
     Rc(u8),
     Alpha(u8),
@@ -513,18 +514,6 @@ impl std::fmt::Display for CrateVersion {
             write!(f, "{meta}")?;
         }
         Ok(())
-    }
-}
-
-impl re_byte_size::SizeBytes for CrateVersion {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
     }
 }
 

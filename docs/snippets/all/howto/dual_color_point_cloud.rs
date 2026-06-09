@@ -40,9 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let theta: Vec<f64> = (0..n).map(|_| rng.random_range(0.0..TAU)).collect(); // angle around ring
     let phi: Vec<f64> = (0..n).map(|_| rng.random_range(0.0..TAU)).collect(); // angle around tube
 
-    let positions: Vec<[f32; 3]> = theta
-        .iter()
-        .zip(&phi)
+    let positions: Vec<[f32; 3]> = std::iter::zip(&theta, &phi)
         .map(|(&t, &p)| {
             let r = 3.0 + p.cos();
             [(r * t.cos()) as f32, (r * t.sin()) as f32, p.sin() as f32]

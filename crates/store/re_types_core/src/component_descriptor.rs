@@ -7,8 +7,17 @@ use crate::{ArchetypeName, ComponentIdentifier, ComponentType};
 /// Every component at a given entity path is uniquely identified by the
 /// `component` field of the descriptor. The `archetype` and `component_type`
 /// fields provide additional information about the semantics of the data.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct ComponentDescriptor {
     /// Optional name of the `Archetype` associated with this data.
     ///
@@ -84,20 +93,6 @@ impl ComponentDescriptor {
     pub fn display_name(&self) -> &str {
         self.sanity_check();
         self.component.as_str()
-    }
-}
-
-impl re_byte_size::SizeBytes for ComponentDescriptor {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            archetype: archetype_name,
-            component,
-            component_type,
-        } = self;
-        archetype_name.heap_size_bytes()
-            + component_type.heap_size_bytes()
-            + component.heap_size_bytes()
     }
 }
 

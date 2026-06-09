@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -66,7 +67,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct EncodedDepthImage {
     /// The encoded depth payload.
     ///
@@ -112,11 +113,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::Blob`].
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:blob".into(),
-            component_type: Some("rerun.components.Blob".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:blob".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
@@ -124,11 +127,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::MediaType`].
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:media_type".into(),
-            component_type: Some("rerun.components.MediaType".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:media_type".into(),
+                component_type: Some("rerun.components.MediaType".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::meter`].
@@ -136,11 +141,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::DepthMeter`].
     #[inline]
     pub fn descriptor_meter() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:meter".into(),
-            component_type: Some("rerun.components.DepthMeter".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:meter".into(),
+                component_type: Some("rerun.components.DepthMeter".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
@@ -148,11 +155,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::Colormap`].
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:colormap".into(),
-            component_type: Some("rerun.components.Colormap".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:colormap".into(),
+                component_type: Some("rerun.components.Colormap".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::depth_range`].
@@ -160,11 +169,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::ValueRange`].
     #[inline]
     pub fn descriptor_depth_range() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:depth_range".into(),
-            component_type: Some("rerun.components.ValueRange".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:depth_range".into(),
+                component_type: Some("rerun.components.ValueRange".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::point_fill_ratio`].
@@ -172,11 +183,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::FillRatio`].
     #[inline]
     pub fn descriptor_point_fill_ratio() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:point_fill_ratio".into(),
-            component_type: Some("rerun.components.FillRatio".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:point_fill_ratio".into(),
+                component_type: Some("rerun.components.FillRatio".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
@@ -184,11 +197,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:draw_order".into(),
-            component_type: Some("rerun.components.DrawOrder".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::magnification_filter`].
@@ -196,11 +211,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::MagnificationFilter`].
     #[inline]
     pub fn descriptor_magnification_filter() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:magnification_filter".into(),
-            component_type: Some("rerun.components.MagnificationFilter".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:magnification_filter".into(),
+                component_type: Some("rerun.components.MagnificationFilter".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -248,7 +265,10 @@ impl EncodedDepthImage {
 impl ::re_types_core::Archetype for EncodedDepthImage {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.EncodedDepthImage".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.EncodedDepthImage"
+        )
     }
 
     #[inline]
@@ -690,19 +710,5 @@ impl EncodedDepthImage {
             magnification_filter,
         );
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for EncodedDepthImage {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.blob.heap_size_bytes()
-            + self.media_type.heap_size_bytes()
-            + self.meter.heap_size_bytes()
-            + self.colormap.heap_size_bytes()
-            + self.depth_range.heap_size_bytes()
-            + self.point_fill_ratio.heap_size_bytes()
-            + self.draw_order.heap_size_bytes()
-            + self.magnification_filter.heap_size_bytes()
     }
 }

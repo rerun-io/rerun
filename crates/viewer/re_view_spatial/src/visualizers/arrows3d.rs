@@ -159,7 +159,10 @@ struct Arrows3DComponentData<'a> {
 
 impl IdentifiedViewSystem for Arrows3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Arrows3D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Arrows3D"
+        )
     }
 }
 

@@ -65,9 +65,9 @@ Select timeline.
 
 Each piece of logged data is associated with one or more timelines.
 
-The logging SDK always creates two timelines for you:
-* `log_tick` - a sequence timeline with the sequence number of the log call
-* `log_time` - a temporal timeline with the time of the log call
+The logging SDK can create two timelines for you automatically:
+* `log_time` - a temporal timeline with the time of the log call (opt-out)
+* `log_tick` - a sequence timeline with the sequence number of the log call (opt-in)
 
 You can also define your own timelines, e.g. for sensor time or camera frame number.
 "

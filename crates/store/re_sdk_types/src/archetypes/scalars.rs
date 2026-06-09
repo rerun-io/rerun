@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -93,7 +94,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Scalars {
     /// The scalar values to log.
     pub scalars: Option<SerializedComponentBatch>,
@@ -105,11 +106,13 @@ impl Scalars {
     /// The corresponding component is [`crate::components::Scalar`].
     #[inline]
     pub fn descriptor_scalars() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Scalars".into()),
-            component: "Scalars:scalars".into(),
-            component_type: Some("rerun.components.Scalar".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Scalars".into()),
+                component: "Scalars:scalars".into(),
+                component_type: Some("rerun.components.Scalar".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -133,7 +136,10 @@ impl Scalars {
 impl ::re_types_core::Archetype for Scalars {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Scalars".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Scalars"
+        )
     }
 
     #[inline]
@@ -258,12 +264,5 @@ impl Scalars {
     ) -> Self {
         self.scalars = try_serialize_field(Self::descriptor_scalars(), scalars);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Scalars {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.scalars.heap_size_bytes()
     }
 }

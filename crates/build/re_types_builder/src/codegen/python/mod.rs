@@ -634,17 +634,18 @@ impl PythonCodeGenerator {
                 );
             }
 
-            let import_clauses: HashSet<_> = obj
-                .fields
-                .iter()
-                .filter_map(|field| quote_import_clauses_from_field(obj.scope().as_ref(), field))
-                .chain(obj.fields.iter().filter_map(|field| {
+            let import_clauses: HashSet<_> = std::iter::chain(
+                obj.fields.iter().filter_map(|field| {
+                    quote_import_clauses_from_field(obj.scope().as_ref(), field)
+                }),
+                obj.fields.iter().filter_map(|field| {
                     let fqname = field.typ.fqname()?;
                     objects[fqname].delegate_datatype(objects).map(|delegate| {
                         quote_import_clauses_from_fqname(obj.scope().as_ref(), &delegate.fqname)
                     })
-                }))
-                .collect();
+                }),
+            )
+            .collect();
             for clause in import_clauses {
                 code.push_indented(0, &clause, 1);
             }
@@ -935,10 +936,10 @@ fn code_for_struct(
         //  and appear at the end of the list, but it currently doesn't. This is unfortunate as
         //  the apparent field order is inconsistent with what the `xxxx_init()` override
         //  accepts.
-        let fields_in_order = fields
-            .iter()
-            .filter(|field| !field.is_nullable)
-            .chain(fields.iter().filter(|field| field.is_nullable));
+        let fields_in_order = std::iter::chain(
+            fields.iter().filter(|field| !field.is_nullable),
+            fields.iter().filter(|field| field.is_nullable),
+        );
         for field in fields_in_order {
             let ObjectField {
                 name, is_nullable, ..

@@ -1,0 +1,16 @@
+{
+  "transforms": [
+    {
+      "parent": "world",
+      "child": "left_base_link",
+      "translation": [-0.4575, -0.019, 0.02],
+      "quaternion_xyzw": [0.0, 0.0, 0.0, 1.0]
+    },
+    {
+      "parent": "world",
+      "child": "right_base_link",
+      "translation": [0.4575, -0.019, 0.02],
+      "quaternion_xyzw": [0.0, 0.0, -1.0, 0.0]
+    }
+  ]
+}

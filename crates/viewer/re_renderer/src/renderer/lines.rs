@@ -535,7 +535,8 @@ impl LineDrawData {
                 DrawPhase::Opaque
             };
             let mut start_vertex_for_next_batch = 0;
-            for (batch_info, uniform_buffer_binding) in batches.iter().zip(uniform_buffer_bindings)
+            for (batch_info, uniform_buffer_binding) in
+                std::iter::zip(&batches, uniform_buffer_bindings)
             {
                 let line_vertex_range_end = (start_vertex_for_next_batch
                     + batch_info.line_vertex_count)

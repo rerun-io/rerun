@@ -79,11 +79,10 @@ fn append_message_fields(
     struct_builder: &mut StructBuilder,
     grouped: &[GroupedField],
 ) -> Result<(), ProtobufError> {
-    for (field_builder, grouped_field) in struct_builder
-        .field_builders_mut()
-        .iter_mut()
-        .zip(grouped.iter())
-    {
+    for (field_builder, grouped_field) in std::iter::zip(
+        struct_builder.field_builders_mut().iter_mut(),
+        grouped.iter(),
+    ) {
         match grouped_field {
             GroupedField::Regular(field_desc) => {
                 if dynamic_message.has_field(field_desc) {
@@ -109,11 +108,10 @@ fn append_message_fields(
 
                 // Find which variant (if any) is set in this message.
                 let mut any_set = false;
-                for (variant_builder, variant_field) in oneof_builder
-                    .field_builders_mut()
-                    .iter_mut()
-                    .zip(oneof.fields())
-                {
+                for (variant_builder, variant_field) in std::iter::zip(
+                    oneof_builder.field_builders_mut().iter_mut(),
+                    oneof.fields(),
+                ) {
                     if dynamic_message.has_field(&variant_field) {
                         let val = dynamic_message.get_field(&variant_field);
                         append_value(variant_builder, &variant_field, &val)?;
@@ -564,10 +562,9 @@ impl MessageDecoder for McapProtobufDecoder {
 
     fn init(&mut self, summary: &mcap::Summary) -> Result<(), Error> {
         for channel in summary.channels.values() {
-            let schema = channel
-                .schema
-                .as_ref()
-                .ok_or(Error::NoSchema(channel.topic.clone()))?;
+            let Some(schema) = channel.schema.as_ref() else {
+                continue;
+            };
 
             if schema.encoding.as_str() != "protobuf" {
                 continue;

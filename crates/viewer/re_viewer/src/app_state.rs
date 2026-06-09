@@ -12,7 +12,7 @@ use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
 use re_sdk_types::blueprint::components::{PanelState, PlayState};
-use re_ui::{ContextExt as _, UiExt as _};
+use re_ui::{ContextExt as _, UiExt as _, WindowFrameConfig};
 use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, AppContext, AppOptions, ApplicationSelectionState,
@@ -99,7 +99,7 @@ pub struct AppState {
     /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
     /// such as [`ViewportUi`] and [`re_selection_panel::SelectionPanel`].
     #[serde(skip)]
-    view_states: ViewStates,
+    pub(crate) view_states: ViewStates,
 
     /// Selection & hovering state.
     ///
@@ -220,6 +220,7 @@ impl AppState {
         event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
         connection_registry: &ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
+        custom_window_frame: bool,
     ) {
         re_tracing::profile_function!();
 
@@ -331,11 +332,27 @@ impl AppState {
                         if let Item::StoreId(store_id) = item
                             && store_id.is_empty_recording()
                         {
-                            return false;
+                            return None;
                         }
 
-                        item.is_compatible_with_route(route)
-                            && viewport_ui.blueprint.is_item_valid(storage_context, item)
+                        if !item.is_compatible_with_route(route) {
+                            return None;
+                        }
+
+                        if viewport_ui.blueprint.is_item_valid(storage_context, item) {
+                            return Some(item.clone());
+                        }
+
+                        // A data result whose view still exists but whose entity isn't actually
+                        // part of that view: fall back to selecting the entity itself rather than
+                        // dropping the selection entirely.
+                        if let Item::DataResult(data_result) = item
+                            && viewport_ui.blueprint.view(&data_result.view_id).is_some()
+                        {
+                            return Some(Item::InstancePath(data_result.instance_path.clone()));
+                        }
+
+                        None
                     },
                     route.item(),
                 );
@@ -476,6 +493,12 @@ impl AppState {
                 // Update the viewport. May spawn new views and handle queued requests (like screenshots).
                 viewport_ui.on_frame_start(&ctx);
 
+                let window_frame = if custom_window_frame {
+                    WindowFrameConfig::custom(ui.ctx())
+                } else {
+                    WindowFrameConfig::Native
+                };
+
                 //
                 // Blueprint time panel
                 //
@@ -520,7 +543,7 @@ impl AppState {
                         PanelState::Expanded,
                         // Give the blueprint time panel a distinct color from the normal time panel:
                         ui.tokens()
-                            .bottom_panel_frame()
+                            .bottom_panel_frame(window_frame)
                             .fill(ui.tokens().blueprint_time_panel_bg_fill),
                     );
                 }
@@ -548,7 +571,7 @@ impl AppState {
                         &viewport_ui.blueprint,
                         ui,
                         app_blueprint.time_panel_state(),
-                        ui.tokens().bottom_panel_frame(),
+                        ui.tokens().bottom_panel_frame(window_frame),
                     );
                 }
 
@@ -761,7 +784,7 @@ impl AppState {
                             }
 
                             Route::Loading(source) => {
-                                let source = if let Ok(url) =
+                                let source_name = if let Ok(url) =
                                     ViewerOpenUrl::from_data_source(source)
                                 {
                                     Cow::Owned(ViewerOpenUrlDescription::from_url(&url).to_string())
@@ -769,7 +792,27 @@ impl AppState {
                                     // In practice this shouldn't happen.
                                     Cow::Borrowed("<unknown>")
                                 };
-                                ui.loading_screen("Loading data source:", &*source);
+
+                                if let Some(re_uri::RedapUri::DatasetData(uri)) = source.redap_uri()
+                                    && let Some(err) =
+                                        ctx.app_ctx.connection_registry.error_for_uri(uri)
+                                {
+                                    ui.center("loading error", |ui| {
+                                        ui.set_max_width(ui.available_width() * 0.75);
+                                        ui.vertical_centered(|ui| {
+                                            ui.error_label(format!(
+                                                "Failed to load {source_name}: {err}"
+                                            ));
+
+                                            if ui.button("Go Back").clicked() {
+                                                command_sender
+                                                    .send_system(SystemCommand::ResetRoute);
+                                            }
+                                        })
+                                    });
+                                } else {
+                                    ui.loading_screen("Loading data source:", &*source_name);
+                                }
                             }
 
                             Route::ChunkStoreBrowser { .. } | Route::Settings { .. } => {} // Handled above
@@ -860,9 +903,11 @@ impl AppState {
         store_hub: &StoreHub,
         stable_dt: f32,
     ) -> re_viewer_context::NeedsRepaint {
-        self.view_states
-            .preview
-            .tick(|id| store_hub.entity_db(id), stable_dt)
+        if let Some(preview_state) = &mut self.view_states.preview_state {
+            preview_state.tick(|id| store_hub.entity_db(id), stable_dt)
+        } else {
+            re_viewer_context::NeedsRepaint::No
+        }
     }
 
     /// Remove dangling state
@@ -875,9 +920,9 @@ impl AppState {
         self.blueprint_undo_state
             .retain(|store_id, _| store_hub.store_bundle().contains(store_id));
 
-        self.view_states
-            .preview
-            .cleanup_recordings(|id| store_hub.store_bundle().contains(id));
+        if let Some(preview_state) = &mut self.view_states.preview_state {
+            preview_state.cleanup_recordings(|id| store_hub.store_bundle().contains(id));
+        }
     }
 
     /// Returns the blueprint query that should be used for generating the current
@@ -959,9 +1004,7 @@ pub(crate) fn create_time_control_for<'cfgs>(
                 LogSource::File { follow, .. } | LogSource::HttpStream { follow, .. } => *follow,
 
                 // Not live data:
-                LogSource::RedapGrpcStream { .. }
-                | LogSource::RrdWebEvent
-                | LogSource::EmbeddedTableBlueprint => false,
+                LogSource::RedapGrpcStream { .. } | LogSource::RrdWebEvent => false,
 
                 // Live data:
                 LogSource::Sdk
@@ -980,11 +1023,14 @@ pub(crate) fn create_time_control_for<'cfgs>(
             PlayState::Playing
         };
 
-        let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
-
-        time_ctrl.set_play_state(Some(entity_db), play_state, Some(blueprint_ctx));
-
-        time_ctrl
+        // Apply the data-source-derived default only if the blueprint did not
+        // already specify a `play_state`. Otherwise we'd clobber the user's
+        // setting (and write the clobbered value back to the blueprint).
+        TimeControl::from_blueprint_with_fallback_play_state(
+            blueprint_ctx,
+            Some(entity_db),
+            play_state,
+        )
     }
 
     configs

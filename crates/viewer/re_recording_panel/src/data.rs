@@ -84,8 +84,7 @@ impl<'a> RecordingPanelData<'a> {
                 | LogSource::JsChannel { .. }
                 | LogSource::Sdk
                 | LogSource::Stdin
-                | LogSource::MessageProxy(_)
-                | LogSource::EmbeddedTableBlueprint => {}
+                | LogSource::MessageProxy(_) => {}
             }
         }
 
@@ -174,7 +173,7 @@ impl<'a> RecordingPanelData<'a> {
             }
         }
 
-        for local_app in self.local_apps.iter().chain(self.example_apps.iter()) {
+        for local_app in std::iter::chain(&self.local_apps, &self.example_apps) {
             let store_iter = local_app.iter_loaded_stores();
 
             if let Some(pos) = store_iter.clone().position(|db| db.store_id() == store_id) {

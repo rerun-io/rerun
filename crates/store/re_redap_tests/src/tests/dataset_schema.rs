@@ -46,8 +46,7 @@ async fn dataset_schema_snapshot(
     let schema = service
         .get_dataset_schema(
             tonic::Request::new(GetDatasetSchemaRequest {})
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()

@@ -23,6 +23,10 @@ def main() -> int:
     if "RERUN_CLI_PATH" in os.environ:
         print(f"Using overridden RERUN_CLI_PATH={os.environ['RERUN_CLI_PATH']}", file=sys.stderr)
         target_path = os.environ["RERUN_CLI_PATH"]
+    elif sys.platform == "darwin":
+        bundled = os.path.join(os.path.dirname(__file__), "Rerun.app", "Contents", "MacOS", "Rerun")
+        bare = os.path.join(os.path.dirname(__file__), "rerun")
+        target_path = bundled if os.path.exists(bundled) else bare
     else:
         target_path = os.path.join(os.path.dirname(__file__), "rerun")
 

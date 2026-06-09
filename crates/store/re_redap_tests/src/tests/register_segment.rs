@@ -11,25 +11,30 @@ use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::{EntityPath, TimeType};
-use re_protos::cloud::v1alpha1::ext::{DatasetDetails, RegisterWithDatasetRequest};
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
+use re_protos::cloud::v1alpha1::ext::{
+    DatasetDetails, RegisterWithDatasetRequest, TableDetails, UpdateTableEntryRequest,
+};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    CreateDatasetEntryRequest, DataSource, DataSourceKind, GetDatasetManifestSchemaRequest,
-    GetSegmentTableSchemaRequest, ReadDatasetEntryRequest, ScanDatasetManifestRequest,
-    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse, ext,
+    CreateDatasetEntryRequest, GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest,
+    ReadDatasetEntryRequest, ReadTableEntryRequest, ScanDatasetManifestRequest,
+    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
 };
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_protos::common::v1alpha1::ext::SegmentId;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk_types::AnyValues;
 use re_types_core::AsComponents;
+use re_types_core::SegmentId;
 use url::Url;
 
 use super::common::{
-    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name, prop,
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _,
+    create_table_entry_with_name, entry_name, prop,
 };
 use crate::{
-    FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _, create_simple_recording_in,
+    FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _, TuidPrefix,
+    create_simple_recording_in,
 };
 
 pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
@@ -55,21 +60,82 @@ pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple").await;
 }
 
-/// Make sure that registering to blueprint dataset works as expected.
-pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService) {
-    let blueprint_data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
-        2,
-        [LayerDefinition::simple_blueprint("blueprint_segment_id")],
+/// Make sure that registering to blueprint dataset works as expected for tables
+pub async fn register_and_attach_table_blueprint_dataset(service: impl RerunCloudService) {
+    let blueprint_segment_name = "table_blueprint_segment_id";
+    let blueprint_segment = SegmentId::from(blueprint_segment_name);
+    let table_dir = tempfile::tempdir().expect("create temp dir");
+    let table =
+        create_table_entry_with_name(&service, "table_with_registered_blueprint", &table_dir).await;
+    let table_id = table.details.id;
+    let blueprint_dataset = table
+        .table_details
+        .blueprint_dataset
+        .expect("tables should get an implicit blueprint dataset");
+
+    let blueprint_dataset_name =
+        register_simple_blueprint_segment(&service, blueprint_dataset, blueprint_segment_name, 3)
+            .await;
+
+    let updated_table = service
+        .update_table_entry(tonic::Request::new(
+            UpdateTableEntryRequest {
+                id: table_id,
+                table_details: TableDetails {
+                    blueprint_dataset: Some(blueprint_dataset),
+                    default_blueprint_segment: Some(blueprint_segment.clone()),
+                },
+            }
+            .into(),
+        ))
+        .await
+        .expect("update table blueprint details")
+        .into_inner()
+        .table
+        .expect("table missing in update_table response")
+        .table_details
+        .expect("table details");
+    assert_eq!(
+        updated_table.blueprint_dataset,
+        Some(blueprint_dataset.into())
+    );
+    assert_eq!(
+        updated_table.default_blueprint_segment,
+        Some(blueprint_segment.clone().into())
     );
 
+    let read_back = service
+        .read_table_entry(tonic::Request::new(ReadTableEntryRequest {
+            id: Some(table_id.into()),
+        }))
+        .await
+        .expect("read table entry")
+        .into_inner()
+        .table
+        .expect("table missing in read_table response")
+        .table_details
+        .expect("table details");
+    assert_eq!(read_back.blueprint_dataset, Some(blueprint_dataset.into()));
+    assert_eq!(
+        read_back.default_blueprint_segment,
+        Some(blueprint_segment.clone().into())
+    );
+
+    let segment_table = scan_segment_table(&service, &blueprint_dataset_name).await;
+    assert_eq!(segment_table.num_rows(), 1);
+    let manifest = scan_dataset_manifest(&service, &blueprint_dataset_name).await;
+    assert_eq!(manifest.num_rows(), 1);
+}
+
+/// Make sure that registering to blueprint dataset works as expected.
+pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService) {
     let dataset_name = "my_dataset1";
     service.create_dataset_entry_with_name(dataset_name).await;
 
     let dataset_details: DatasetDetails = service
         .read_dataset_entry(
             tonic::Request::new(ReadDatasetEntryRequest {})
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -83,12 +149,32 @@ pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService
 
     assert!(dataset_details.blueprint_dataset.is_some());
 
-    // find the dataset name for the blueprint dataset
+    let blueprint_dataset_name = register_simple_blueprint_segment(
+        &service,
+        dataset_details.blueprint_dataset.unwrap(),
+        "blueprint_segment_id",
+        2,
+    )
+    .await;
+
+    scan_segment_table_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
+    scan_dataset_manifest_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
+}
+
+async fn register_simple_blueprint_segment(
+    service: &impl RerunCloudService,
+    blueprint_dataset: re_log_types::EntryId,
+    blueprint_segment_name: &'static str,
+    tuid_prefix: TuidPrefix,
+) -> String {
+    let blueprint_data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        tuid_prefix,
+        [LayerDefinition::simple_blueprint(blueprint_segment_name)],
+    );
+
     let blueprint_dataset_name = service
         .read_dataset_entry(
-            tonic::Request::new(ReadDatasetEntryRequest {})
-                .with_entry_id(dataset_details.blueprint_dataset.unwrap())
-                .unwrap(),
+            tonic::Request::new(ReadDatasetEntryRequest {}).with_entry_id(blueprint_dataset),
         )
         .await
         .unwrap()
@@ -107,8 +193,7 @@ pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService
         )
         .await;
 
-    scan_segment_table_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
-    scan_dataset_manifest_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
+    blueprint_dataset_name
 }
 
 pub async fn register_and_scan_simple_dataset_with_properties(service: impl RerunCloudService) {
@@ -357,14 +442,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
 
     fe.register_with_dataset_name_blocking(
         dataset_name,
-        vec![
-            DataSource {
-                storage_url: Some(root_url.to_string()),
-                prefix: true,
-                layer: None,
-                typ: DataSourceKind::Rrd as i32,
-            }, //
-        ],
+        vec![cloud_ext::DataSource::new_rrd_prefix_url(root_url).into()],
     )
     .await;
 
@@ -406,20 +484,15 @@ pub async fn register_bad_file_uri_should_error(service: impl RerunCloudService)
 
     for (test_name, bad_uri) in test_cases {
         let request = RegisterWithDatasetRequest {
-            data_sources: vec![ext::DataSource {
-                storage_url: url::Url::parse(bad_uri).unwrap(),
-                layer: "base".to_owned(),
-                is_prefix: false,
-                kind: ext::DataSourceKind::Rrd,
-            }],
+            data_sources: vec![cloud_ext::DataSource::new_rrd_url(
+                url::Url::parse(bad_uri).unwrap(),
+            )],
             on_duplicate: Default::default(),
         };
 
         let result = service
             .register_with_dataset(
-                tonic::Request::new(request.into())
-                    .with_entry_name(entry_name(dataset_name))
-                    .unwrap(),
+                tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
             )
             .await;
 
@@ -443,8 +516,7 @@ pub async fn register_segment_bumps_timestamp(service: impl RerunCloudService) {
         service
             .read_dataset_entry(
                 tonic::Request::new(ReadDatasetEntryRequest {})
-                    .with_entry_name(entry_name(dataset_name))
-                    .unwrap(),
+                    .with_entry_name(entry_name(dataset_name)),
             )
             .await
             .unwrap()
@@ -538,16 +610,14 @@ pub async fn register_with_dataset_if_duplicate_behavior_error(service: impl Rer
         .await;
 
     // Second registration of same segment - should fail with AlreadyExists
-    let request = ext::RegisterWithDatasetRequest {
+    let request = cloud_ext::RegisterWithDatasetRequest {
         data_sources: data_sources_def.to_data_sources_ext(),
         on_duplicate: IfDuplicateBehavior::Error,
     };
 
     let result = service
         .register_with_dataset(
-            tonic::Request::new(request.into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+            tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
         )
         .await;
 
@@ -732,16 +802,14 @@ pub async fn register_intra_request_duplicates(service: impl RerunCloudService) 
             ],
         );
 
-        let request = ext::RegisterWithDatasetRequest {
+        let request = cloud_ext::RegisterWithDatasetRequest {
             data_sources: data_source_def.to_data_sources_ext(),
             on_duplicate,
         };
 
         let result = service
             .register_with_dataset(
-                tonic::Request::new(request.into())
-                    .with_entry_name(entry_name(&dataset_name))
-                    .unwrap(),
+                tonic::Request::new(request.into()).with_entry_name(entry_name(&dataset_name)),
             )
             .await;
 
@@ -788,16 +856,14 @@ pub async fn register_empty_request(service: impl RerunCloudService) {
     service.create_dataset_entry_with_name(dataset_name).await;
 
     // Register with empty data sources
-    let request = ext::RegisterWithDatasetRequest {
+    let request = cloud_ext::RegisterWithDatasetRequest {
         data_sources: vec![],
         on_duplicate: IfDuplicateBehavior::Error,
     };
 
     let result = service
         .register_with_dataset(
-            tonic::Request::new(request.into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+            tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
         )
         .await;
 
@@ -839,16 +905,14 @@ pub async fn register_fully_skipped(service: impl RerunCloudService) {
         .await;
 
     // Second registration with same partition - should be fully skipped
-    let request = ext::RegisterWithDatasetRequest {
+    let request = cloud_ext::RegisterWithDatasetRequest {
         data_sources: data_sources_def.to_data_sources_ext(),
         on_duplicate: IfDuplicateBehavior::Skip,
     };
 
     let result = service
         .register_with_dataset(
-            tonic::Request::new(request.into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+            tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
         )
         .await;
 
@@ -869,8 +933,7 @@ async fn scan_dataset_manifest(
             tonic::Request::new(ScanDatasetManifestRequest {
                 columns: vec![], // all of them
             })
-            .with_entry_name(entry_name(dataset_name))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1070,8 +1133,7 @@ pub async fn register_conflicting_schema_filters_segment_table(service: impl Rer
         data_sources: second_def.to_data_sources(),
         on_duplicate: IfDuplicateBehavior::Error as i32,
     })
-    .with_entry_name(entry_name(dataset_name))
-    .unwrap();
+    .with_entry_name(entry_name(dataset_name));
 
     // This registration should fail due to schema conflict
     let task_results = register_and_wait(&service, request).await;
@@ -1152,8 +1214,7 @@ pub async fn register_conflicting_schema_same_segment_filters_layer(
         data_sources: second_def.to_data_sources(),
         on_duplicate: IfDuplicateBehavior::Error as i32,
     })
-    .with_entry_name(entry_name(dataset_name))
-    .unwrap();
+    .with_entry_name(entry_name(dataset_name));
 
     // This registration should fail due to schema conflict
     let task_results = register_and_wait(&service, request).await;
@@ -1203,31 +1264,21 @@ pub async fn register_conflicting_schema_same_segment_filters_layer(
 
 /// Helper to assert that at least one task failed with a message containing the expected substring.
 fn assert_task_failed(task_results: &[RecordBatch], expected_message_substring: &str) {
-    use re_protos::cloud::v1alpha1::QueryTasksResponse;
-
     let mut found_failure = false;
     let mut failure_message = String::new();
 
     for batch in task_results {
-        let status_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_EXEC_STATUS)
-            .expect("exec_status column expected")
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("exec_status should be string array");
+        let statuses = cloud_ext::QueryTasksDataframe::COLUMN_EXEC_STATUS
+            .extract(batch)
+            .expect("valid exec_status column");
+        let msgs = cloud_ext::QueryTasksDataframe::COLUMN_MSGS
+            .extract(batch)
+            .expect("valid msgs column");
 
-        let msgs_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_MSGS)
-            .expect("msgs column expected")
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("msgs should be string array");
-
-        for i in 0..batch.num_rows() {
-            let status = status_col.value(i);
+        for (status, msg) in std::iter::zip(&statuses, &msgs) {
             if status != "success" {
                 found_failure = true;
-                failure_message = msgs_col.value(i).to_owned();
+                failure_message = msg.unwrap_or_default().to_owned();
                 break;
             }
         }
@@ -1255,8 +1306,7 @@ async fn scan_segment_table(service: &impl RerunCloudService, dataset_name: &str
             tonic::Request::new(ScanSegmentTableRequest {
                 columns: vec![], // all of them
             })
-            .with_entry_name(entry_name(dataset_name))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1299,9 +1349,7 @@ async fn register_and_wait_for_task_result(
     data_sources_def: DataSourcesDefinition,
 ) -> Vec<TaskResult> {
     use futures::StreamExt as _;
-    use re_protos::cloud::v1alpha1::{
-        QueryTasksOnCompletionRequest, QueryTasksResponse, RegisterWithDatasetResponse,
-    };
+    use re_protos::cloud::v1alpha1::{QueryTasksOnCompletionRequest, RegisterWithDatasetResponse};
     use re_protos::common::v1alpha1::TaskId;
     use std::collections::HashMap;
 
@@ -1311,8 +1359,7 @@ async fn register_and_wait_for_task_result(
         data_sources: data_sources_def.to_data_sources(),
         on_duplicate: IfDuplicateBehavior::Error as i32,
     })
-    .with_entry_name(entry_name(dataset_name))
-    .unwrap();
+    .with_entry_name(entry_name(dataset_name));
 
     let resp = service
         .register_with_dataset(request)
@@ -1392,31 +1439,20 @@ async fn register_and_wait_for_task_result(
     // Build TaskResult for each task
     let mut results = Vec::new();
     for batch in &query_results {
-        let task_id_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_TASK_ID)
-            .expect("task_id column expected")
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("task_id should be string array");
+        let task_ids = cloud_ext::QueryTasksDataframe::COLUMN_TASK_ID
+            .extract(batch)
+            .expect("valid task_id column");
+        let statuses = cloud_ext::QueryTasksDataframe::COLUMN_EXEC_STATUS
+            .extract(batch)
+            .expect("valid exec_status column");
+        let msgs = cloud_ext::QueryTasksDataframe::COLUMN_MSGS
+            .extract(batch)
+            .expect("valid msgs column");
 
-        let status_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_EXEC_STATUS)
-            .expect("exec_status column expected")
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("exec_status should be string array");
-
-        let msgs_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_MSGS)
-            .expect("msgs column expected")
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("msgs should be string array");
-
-        for i in 0..batch.num_rows() {
-            let task_id = task_id_col.value(i).to_owned();
-            let status = status_col.value(i).to_owned();
-            let message = msgs_col.value(i).to_owned();
+        for (task_id, status, message) in itertools::izip!(&task_ids, &statuses, &msgs) {
+            let task_id = task_id.to_owned();
+            let status = status.to_owned();
+            let message = message.unwrap_or_default().to_owned();
             let layers = task_layers.remove(&task_id).unwrap_or_default();
 
             results.push(TaskResult {
@@ -1443,8 +1479,7 @@ async fn scan_segment_table_and_snapshot(
             tonic::Request::new(ScanSegmentTableRequest {
                 columns: vec![], // all of them
             })
-            .with_entry_name(entry_name(dataset_name))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1471,8 +1506,7 @@ async fn scan_segment_table_and_snapshot(
     let alleged_schema: Schema = service
         .get_segment_table_schema(
             tonic::Request::new(GetSegmentTableSchemaRequest {})
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1533,8 +1567,7 @@ async fn scan_dataset_manifest_and_snapshot(
             tonic::Request::new(ScanDatasetManifestRequest {
                 columns: vec![], // all of them
             })
-            .with_entry_name(entry_name(dataset_name))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1561,8 +1594,7 @@ async fn scan_dataset_manifest_and_snapshot(
     let alleged_schema: Schema = service
         .get_dataset_manifest_schema(
             tonic::Request::new(GetDatasetManifestSchemaRequest {})
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()

@@ -3,15 +3,16 @@ use std::collections::BTreeMap;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_chunk_store::MissingChunkReporter;
-use re_log_types::EntityPath;
+use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::ViewClassIdentifier;
 use vec1::Vec1;
 
 use super::ViewContext;
 use crate::{
-    IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings, SystemExecutionOutput,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext, VisualizableReason,
+    DragAndDropFeedback, IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings,
+    SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext,
+    VisualizableReason,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
@@ -309,6 +310,25 @@ pub trait ViewClass: Send + Sync {
         Ok(())
     }
 
+    /// Handle components being dragged over a view of this class.
+    ///
+    /// This is the component-drop counterpart to the generic entity-drop handling done by the
+    /// viewport. The viewport calls this for every view tile hovered by a `Components` payload,
+    /// then uses the returned [`DragAndDropFeedback`] to drive the cursor and drop-target frame —
+    /// just like it does for entities. Implementors only decide acceptability and, when
+    /// `released` is `true`, perform the actual mutation.
+    ///
+    /// The default implementation ignores components (most views don't accept them).
+    fn handle_component_drop(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _view_id: ViewId,
+        _component_paths: &[ComponentPath],
+        _released: bool,
+    ) -> DragAndDropFeedback {
+        DragAndDropFeedback::Ignore
+    }
+
     /// Draws the ui for this view class and handles ui events.
     ///
     /// The passed state is kept frame-to-frame.
@@ -367,12 +387,23 @@ where
 /// For any state that should be persisted, use the Blueprint!
 /// This state is used for transient state, such as animation or uncommitted ui state like dragging a camera.
 /// (on mouse release, the camera would be committed to the blueprint).
-pub trait ViewState: std::any::Any + Sync + Send + re_byte_size::SizeBytes {
+pub trait ViewState: std::any::Any + Sync + Send {
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+
+    /// How many bytes this state uses on the heap.
+    fn heap_size_bytes(&self) -> u64;
+}
+
+/// Bridges `dyn ViewState` back to `SizeBytes`, so containers like `Box<dyn ViewState>` can be sized.
+impl re_byte_size::SizeBytes for dyn ViewState {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        ViewState::heap_size_bytes(self)
+    }
 }
 
 /// Implementation of an empty view state.
@@ -383,6 +414,10 @@ impl ViewState for () {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        0
     }
 }
 

@@ -220,6 +220,14 @@ pub fn build(
             "--output",
             wasm_path.as_str(),
             "--enable-reference-types",
+            // We compile with `-Ctarget-feature=+simd128,+bulk-memory,+nontrapping-fptoint,+multivalue`
+            // (see `.cargo/config.toml`). The JS loader feature-detects SIMD
+            // before loading the .wasm; every other feature here shipped strictly
+            // earlier in Chrome/Firefox/Safari, so the SIMD check covers them too.
+            "--enable-simd",
+            "--enable-bulk-memory",
+            "--enable-nontrapping-float-to-int",
+            "--enable-multivalue",
             "--vacuum",
         ];
         if debug_symbols {

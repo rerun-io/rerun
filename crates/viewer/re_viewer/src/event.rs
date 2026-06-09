@@ -13,6 +13,7 @@ use std::rc::Rc;
 use re_entity_db::EntityDb;
 use re_log_channel::LogSource;
 use re_log_types::{ApplicationId, RecordingId, TimeReal, Timeline, TimelineName};
+use re_sdk_types::SegmentId;
 use re_viewer_context::{ContainerId, Item, ItemCollection, ItemContext, ViewId};
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -26,7 +27,7 @@ pub struct ViewerEvent {
     #[serde(with = "serde::recording_id")]
     pub recording_id: RecordingId,
 
-    pub segment_id: Option<String>,
+    pub segment_id: Option<SegmentId>,
 
     #[serde(flatten)]
     pub kind: ViewerEventKind,

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configuration of the text log rows.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TextLogFormat {
     /// Whether to use a monospace font for the log message body.
     ///
@@ -38,11 +39,13 @@ impl TextLogFormat {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_monospace_body() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TextLogFormat".into()),
-            component: "TextLogFormat:monospace_body".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextLogFormat".into()),
+                component: "TextLogFormat:monospace_body".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -66,7 +69,10 @@ impl TextLogFormat {
 impl ::re_types_core::Archetype for TextLogFormat {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TextLogFormat".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TextLogFormat"
+        )
     }
 
     #[inline]
@@ -160,12 +166,5 @@ impl TextLogFormat {
         self.monospace_body =
             try_serialize_field(Self::descriptor_monospace_body(), [monospace_body]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TextLogFormat {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.monospace_body.heap_size_bytes()
     }
 }

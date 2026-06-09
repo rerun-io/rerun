@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: The description of a container.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct ContainerBlueprint {
     /// The class of the view.
     pub container_kind: Option<SerializedComponentBatch>,
@@ -73,11 +74,13 @@ impl ContainerBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ContainerKind`].
     #[inline]
     pub fn descriptor_container_kind() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component: "ContainerBlueprint:container_kind".into(),
-            component_type: Some("rerun.blueprint.components.ContainerKind".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:container_kind".into(),
+                component_type: Some("rerun.blueprint.components.ContainerKind".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::display_name`].
@@ -85,11 +88,13 @@ impl ContainerBlueprint {
     /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_display_name() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component: "ContainerBlueprint:display_name".into(),
-            component_type: Some("rerun.components.Name".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:display_name".into(),
+                component_type: Some("rerun.components.Name".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::contents`].
@@ -97,11 +102,13 @@ impl ContainerBlueprint {
     /// The corresponding component is [`crate::blueprint::components::IncludedContent`].
     #[inline]
     pub fn descriptor_contents() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component: "ContainerBlueprint:contents".into(),
-            component_type: Some("rerun.blueprint.components.IncludedContent".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:contents".into(),
+                component_type: Some("rerun.blueprint.components.IncludedContent".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::col_shares`].
@@ -109,11 +116,13 @@ impl ContainerBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ColumnShare`].
     #[inline]
     pub fn descriptor_col_shares() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component: "ContainerBlueprint:col_shares".into(),
-            component_type: Some("rerun.blueprint.components.ColumnShare".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:col_shares".into(),
+                component_type: Some("rerun.blueprint.components.ColumnShare".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::row_shares`].
@@ -121,11 +130,13 @@ impl ContainerBlueprint {
     /// The corresponding component is [`crate::blueprint::components::RowShare`].
     #[inline]
     pub fn descriptor_row_shares() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component: "ContainerBlueprint:row_shares".into(),
-            component_type: Some("rerun.blueprint.components.RowShare".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:row_shares".into(),
+                component_type: Some("rerun.blueprint.components.RowShare".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::active_tab`].
@@ -133,11 +144,13 @@ impl ContainerBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ActiveTab`].
     #[inline]
     pub fn descriptor_active_tab() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component: "ContainerBlueprint:active_tab".into(),
-            component_type: Some("rerun.blueprint.components.ActiveTab".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:active_tab".into(),
+                component_type: Some("rerun.blueprint.components.ActiveTab".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
@@ -145,11 +158,13 @@ impl ContainerBlueprint {
     /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component: "ContainerBlueprint:visible".into(),
-            component_type: Some("rerun.components.Visible".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:visible".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::grid_columns`].
@@ -157,11 +172,13 @@ impl ContainerBlueprint {
     /// The corresponding component is [`crate::blueprint::components::GridColumns`].
     #[inline]
     pub fn descriptor_grid_columns() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component: "ContainerBlueprint:grid_columns".into(),
-            component_type: Some("rerun.blueprint.components.GridColumns".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:grid_columns".into(),
+                component_type: Some("rerun.blueprint.components.GridColumns".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -206,7 +223,10 @@ impl ContainerBlueprint {
 impl ::re_types_core::Archetype for ContainerBlueprint {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ContainerBlueprint".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ContainerBlueprint"
+        )
     }
 
     #[inline]
@@ -466,19 +486,5 @@ impl ContainerBlueprint {
     ) -> Self {
         self.grid_columns = try_serialize_field(Self::descriptor_grid_columns(), [grid_columns]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ContainerBlueprint {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.container_kind.heap_size_bytes()
-            + self.display_name.heap_size_bytes()
-            + self.contents.heap_size_bytes()
-            + self.col_shares.heap_size_bytes()
-            + self.row_shares.heap_size_bytes()
-            + self.active_tab.heap_size_bytes()
-            + self.visible.heap_size_bytes()
-            + self.grid_columns.heap_size_bytes()
     }
 }

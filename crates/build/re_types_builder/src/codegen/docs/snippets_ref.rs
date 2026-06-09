@@ -221,7 +221,7 @@ impl SnippetsRefCodeGenerator {
         let component_opt_outs = &config.snippets_ref.components.opt_out;
 
         let snippets_table = |snippets: &BTreeMap<&Object, Vec<Snippet<'_>>>| {
-            let table = snippets
+            let rows: Vec<String> = snippets
                 .iter()
                 .flat_map(|(obj, snippets)| {
                     let mut snippets = snippets.clone();
@@ -262,13 +262,13 @@ impl SnippetsRefCodeGenerator {
                     true
                 })
                 .map(|(obj, snippet)| snippet_row(obj, &snippet))
-                .collect::<Result<Vec<_>, _>>()?
-                .join("\n");
+                .try_collect()?;
+            let table = rows.join("\n");
 
             Ok::<_, anyhow::Error>(table)
         };
 
-        let per_feature_table = snippets
+        let per_feature_rows: Vec<String> = snippets
             .per_feature
             .iter()
             .flat_map(|(feature, snippets)| {
@@ -305,8 +305,8 @@ impl SnippetsRefCodeGenerator {
 
                 Ok::<_, anyhow::Error>(row)
             })
-                .collect::<Result<Vec<_>, _>>()?
-            .join("\n");
+            .try_collect()?;
+        let per_feature_table = per_feature_rows.join("\n");
 
         let per_archetype_table = snippets_table(&snippets.per_archetype)?;
         let per_archetype_blueprint_table = snippets_table(&snippets.per_archetype_blueprint)?;

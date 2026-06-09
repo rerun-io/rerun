@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -142,7 +143,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Image {
     /// The raw image data.
     pub buffer: Option<SerializedComponentBatch>,
@@ -171,11 +172,13 @@ impl Image {
     /// The corresponding component is [`crate::components::ImageBuffer`].
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Image".into()),
-            component: "Image:buffer".into(),
-            component_type: Some("rerun.components.ImageBuffer".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Image".into()),
+                component: "Image:buffer".into(),
+                component_type: Some("rerun.components.ImageBuffer".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::format`].
@@ -183,11 +186,13 @@ impl Image {
     /// The corresponding component is [`crate::components::ImageFormat`].
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Image".into()),
-            component: "Image:format".into(),
-            component_type: Some("rerun.components.ImageFormat".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Image".into()),
+                component: "Image:format".into(),
+                component_type: Some("rerun.components.ImageFormat".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
@@ -195,11 +200,13 @@ impl Image {
     /// The corresponding component is [`crate::components::Opacity`].
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Image".into()),
-            component: "Image:opacity".into(),
-            component_type: Some("rerun.components.Opacity".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Image".into()),
+                component: "Image:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
@@ -207,11 +214,13 @@ impl Image {
     /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Image".into()),
-            component: "Image:draw_order".into(),
-            component_type: Some("rerun.components.DrawOrder".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Image".into()),
+                component: "Image:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::magnification_filter`].
@@ -219,11 +228,13 @@ impl Image {
     /// The corresponding component is [`crate::components::MagnificationFilter`].
     #[inline]
     pub fn descriptor_magnification_filter() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Image".into()),
-            component: "Image:magnification_filter".into(),
-            component_type: Some("rerun.components.MagnificationFilter".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Image".into()),
+                component: "Image:magnification_filter".into(),
+                component_type: Some("rerun.components.MagnificationFilter".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -261,7 +272,10 @@ impl Image {
 impl ::re_types_core::Archetype for Image {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Image".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Image"
+        )
     }
 
     #[inline]
@@ -579,16 +593,5 @@ impl Image {
             magnification_filter,
         );
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Image {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.buffer.heap_size_bytes()
-            + self.format.heap_size_bytes()
-            + self.opacity.heap_size_bytes()
-            + self.draw_order.heap_size_bytes()
-            + self.magnification_filter.heap_size_bytes()
     }
 }

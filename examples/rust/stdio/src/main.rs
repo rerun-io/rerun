@@ -6,13 +6,13 @@
 //! echo 'hello from stdin!' | cargo run | rerun -
 //! ```
 
+use itertools::Itertools as _;
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_stdio").stdout()?;
 
-    let input = std::io::stdin()
-        .lines()
-        .collect::<Result<Vec<_>, _>>()?
-        .join("\n");
+    let lines: Vec<String> = std::io::stdin().lines().try_collect()?;
+    let input = lines.join("\n");
 
     rec.log("stdin", &rerun::TextDocument::new(input))?;
 

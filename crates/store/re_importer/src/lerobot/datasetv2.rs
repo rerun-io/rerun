@@ -14,7 +14,7 @@ use ahash::HashMap;
 use anyhow::{Context as _, anyhow};
 use arrow::array::{Float64Array, Int64Array, RecordBatch};
 use crossbeam::channel::Sender;
-use itertools::Either;
+use itertools::{Either, Itertools as _};
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -330,7 +330,7 @@ where
         .map_err(|err| LeRobotError::io(err, filepath.as_ref()))?
         .lines()
         .map(|line| serde_json::from_str(line))
-        .collect::<Result<Vec<D>, _>>()?;
+        .try_collect()?;
 
     Ok(entries)
 }

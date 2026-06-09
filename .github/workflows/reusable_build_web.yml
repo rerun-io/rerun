@@ -50,7 +50,9 @@ jobs:
       - name: Status comment
         if: github.event_name == 'pull_request'
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.2
+        uses: mshick/add-pr-comment@v3.9.1
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         with:
           message-id: "web-viewer-build-status"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -106,7 +108,9 @@ jobs:
       - name: Status comment
         if: failure() && github.event_name == 'pull_request'
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.2
+        uses: mshick/add-pr-comment@v3.9.1
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         with:
           message-id: "web-viewer-build-status"
           repo-token: ${{ secrets.GITHUB_TOKEN }}

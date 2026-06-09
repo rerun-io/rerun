@@ -116,7 +116,11 @@ macro_rules! icon_from_path {
     };
 }
 
+/// The monochrome `rerun` wordmark
 pub const RERUN_WORDMARK: Icon = icon_from_path!("../data/icons/rerun_wordmark.svg");
+
+/// The square and colorful `RE`
+pub const RERUN_LOGO: Icon = icon_from_path!("../data/icons/rerun_logo.png");
 
 pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
 
@@ -157,6 +161,13 @@ pub const MORE: Icon = icon_from_path!("../data/icons/more.svg");
 
 pub const CLOSE: Icon = icon_from_path!("../data/icons/close.svg");
 pub const CLOSE_SMALL: Icon = icon_from_path!("../data/icons/close_small.svg");
+
+// Caption controls, matching the glyphs documented by Microsoft:
+// https://learn.microsoft.com/en-us/windows/apps/design/basics/titlebar-design#caption-controls-minimize-maximize-restore-close
+pub const CHROME_MINIMIZE: Icon = icon_from_path!("../data/icons/chrome_minimize.svg");
+pub const CHROME_MAXIMIZE: Icon = icon_from_path!("../data/icons/chrome_maximize.svg");
+pub const CHROME_RESTORE: Icon = icon_from_path!("../data/icons/chrome_restore.svg");
+pub const CHROME_CLOSE: Icon = icon_from_path!("../data/icons/chrome_close.svg");
 
 /// Used for HTTP URLs that lead out of the app.
 ///

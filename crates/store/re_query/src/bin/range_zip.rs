@@ -2,7 +2,7 @@
 
 #![expect(clippy::tuple_array_conversions)] // false positive
 
-use itertools::{Itertools as _, izip};
+use itertools::{Itertools as _, chain, izip};
 
 struct Params {
     num_required: usize,
@@ -151,31 +151,31 @@ fn generate_helper_func(params: &Params) -> String {
     let required_params = params.to_required_params().join(", ");
     let optional_params = params.to_optional_params().join(", ");
 
-    let ret_clause = params
-        .to_required_types()
-        .into_iter()
-        .map(|r| format!("I{r}::IntoIter, {r}"))
-        .chain(
-            params
-                .to_optional_types()
-                .into_iter()
-                .map(|o| format!("I{o}::IntoIter, {o}")),
-        )
-        .collect_vec()
-        .join(", ");
+    let ret_clause = chain!(
+        params
+            .to_required_types()
+            .into_iter()
+            .map(|r| format!("I{r}::IntoIter, {r}")),
+        params
+            .to_optional_types()
+            .into_iter()
+            .map(|o| format!("I{o}::IntoIter, {o}")),
+    )
+    .collect_vec()
+    .join(", ");
 
-    let ret = params
-        .to_required_names()
-        .into_iter()
-        .map(|r| format!("{r}: {r}.into_iter()"))
-        .chain(
-            params
-                .to_optional_names()
-                .into_iter()
-                .map(|o| format!("{o}: {o}.into_iter().peekable()")),
-        )
-        .collect_vec()
-        .join(",\n");
+    let ret = chain!(
+        params
+            .to_required_names()
+            .into_iter()
+            .map(|r| format!("{r}: {r}.into_iter()")),
+        params
+            .to_optional_names()
+            .into_iter()
+            .map(|o| format!("{o}: {o}.into_iter().peekable()")),
+    )
+    .collect_vec()
+    .join(",\n");
 
     let latest = params
         .to_optional_names()
@@ -390,17 +390,15 @@ fn generate_impl(params: &Params) -> String {
         .collect_vec()
         .join(", ");
 
-    let items = params
-        .to_required_types()
-        .into_iter()
-        .chain(
-            params
-                .to_optional_types()
-                .into_iter()
-                .map(|o| format!("Option<{o}>")),
-        )
-        .collect_vec()
-        .join(", ");
+    let items = chain!(
+        params.to_required_types().into_iter(),
+        params
+            .to_optional_types()
+            .into_iter()
+            .map(|o| format!("Option<{o}>")),
+    )
+    .collect_vec()
+    .join(", ");
 
     let next_required = params
         .to_required_names()

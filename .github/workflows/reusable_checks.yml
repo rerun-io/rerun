@@ -170,6 +170,39 @@ jobs:
         # uv-lock-check will independently validate the lockfile status.
         run: pixi run uv run --frozen python ./scripts/ci/thumbnails.py check
 
+  check-doc-order:
+    name: Check docs order
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - uses: prefix-dev/setup-pixi@v0.9.4
+        with:
+          pixi-version: v0.55.0
+
+      - name: Check docs order
+        run: pixi run uv run --frozen python ./scripts/ci/check_doc_order.py
+
+  check-no-d2-code-blocks:
+    name: Check for D2 code blocks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - uses: prefix-dev/setup-pixi@v0.9.4
+        with:
+          pixi-version: v0.55.0
+
+      - name: Check for D2 code blocks
+        # Use uv run --frozen python instead of uvpy.
+        # It's nice to get valid checks here even if the uv lockfile is out-of-date
+        # uv-lock-check will independently validate the lockfile status.
+        run: pixi run uv run --frozen python ./scripts/ci/check_d2_diagrams.py
+
   check-example-manifest-coverage:
     name: Check example manifest coverage
     runs-on: ubuntu-latest
@@ -256,6 +289,10 @@ jobs:
     runs-on: ubuntu-latest
     # do not fail entire workflow (e.g. nightly) if this is the only failing check
     continue-on-error: true
+    env:
+      # lychee uses this to avoid GitHub rate limiting when checking github.com links.
+      # See https://github.com/lycheeverse/lychee#github-token
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:

@@ -256,16 +256,8 @@ impl TimePanel {
             state.is_expanded(),
             collapsed,
             expanded,
-            |ui: &mut egui::Ui, expansion: f32| {
-                if expansion < 1.0 {
-                    // Collapsed or animating
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
-                        ui.visuals_mut().button_frame = true;
-                        self.collapsed_ui(store_ctx, viewer_ctx, ui, &mut time_commands);
-                    });
-                } else {
-                    // Expanded:
+            |ui: &mut egui::Ui, how_expanded: f32| {
+                if how_expanded > 0.0 {
                     self.show_expanded_with_header(
                         viewer_ctx,
                         store_ctx,
@@ -273,6 +265,12 @@ impl TimePanel {
                         ui,
                         &mut time_commands,
                     );
+                } else {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
+                        ui.visuals_mut().button_frame = true;
+                        self.collapsed_ui(store_ctx, viewer_ctx, ui, &mut time_commands);
+                    });
                 }
             },
         );
@@ -606,12 +604,15 @@ impl TimePanel {
         let time_bg_area_painter = ui.painter().with_clip_rect(time_bg_area_rect);
         let time_area_painter = ui.painter().with_clip_rect(time_fg_area_rect);
 
-        if let Some(highlighted_range) = store_ctx.time_ctrl.highlighted_range {
+        if let Some(highlight) = store_ctx.time_ctrl.highlighted_range()
+            && highlight.timeline == *store_ctx.time_ctrl.timeline_name()
+        {
             paint_range_highlight(
-                highlighted_range,
+                highlight.range,
                 &self.time_ranges_ui,
                 ui.painter(),
                 time_fg_area_rect,
+                highlight.color,
             );
         }
 
@@ -981,6 +982,7 @@ impl TimePanel {
                     .list_item()
                     .render_offscreen(false)
                     .selected(store_ctx.selection().contains_item(&item.to_item()))
+                    .draggable(true)
                     .force_hovered(
                         store_ctx
                             .selection_state()
@@ -1005,7 +1007,7 @@ impl TimePanel {
                     streams_tree_data,
                     item.to_item(),
                     &response,
-                    false,
+                    true,
                 );
 
                 let response_rect = response.rect;
@@ -1183,7 +1185,7 @@ impl TimePanel {
                 ctx.command_sender
                     .send_system(SystemCommand::SetSelection(item.to_item().into()));
 
-                time_commands.push(TimeControlCommand::SetTime(hovered_time.into()));
+                time_commands.push(TimeControlCommand::SetTimeClamped(hovered_time.into()));
             } else {
                 ctx.selection_state().set_hovered(item.to_item());
             }
@@ -1491,12 +1493,15 @@ impl TimePanel {
 
                 let painter = ui.painter_at(time_range_rect.expand(4.0));
 
-                if let Some(highlighted_range) = time_ctrl.highlighted_range {
+                if let Some(highlight) = time_ctrl.highlighted_range()
+                    && highlight.timeline == *time_ctrl.timeline_name()
+                {
                     paint_range_highlight(
-                        highlighted_range,
+                        highlight.range,
                         &self.time_ranges_ui,
                         &painter,
                         time_range_rect,
+                        highlight.color,
                     );
                 }
 
@@ -1588,7 +1593,7 @@ impl TimePanel {
                 if let Some(time_int) =
                     time_type.parse_time(&time_str, app_options.timestamp_format)
                 {
-                    time_commands.push(TimeControlCommand::SetTime(time_int.into()));
+                    time_commands.push(TimeControlCommand::SetTimeClamped(time_int.into()));
                 } else {
                     re_log::warn!("Failed to parse {time_str:?}");
                 }
@@ -1661,14 +1666,14 @@ fn paint_range_highlight(
     time_ranges_ui: &TimeRangesUi,
     painter: &egui::Painter,
     rect: Rect,
+    color: Option<egui::Color32>,
 ) {
-    time_selection_ui::paint_timeline_range(
-        highlighted_range,
-        time_ranges_ui,
-        painter,
-        rect,
-        painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1),
-    );
+    // `Configuration` producers don't carry a color (no semantic color to surface),
+    // so fall back to the neutral theme tint. `Data` producers (e.g. a state phase
+    // hover) pass the phase color, which we honor verbatim to match what the data
+    // views are painting.
+    let fill = color.unwrap_or_else(|| painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1));
+    time_selection_ui::paint_timeline_range(highlighted_range, time_ranges_ui, painter, rect, fill);
 }
 
 fn help(os: egui::os::OperatingSystem) -> Help {
@@ -2085,7 +2090,7 @@ impl TimePanel {
             && response.interact_pointer_pos().is_some()
             && let Some(time) = hovered_time
         {
-            time_commands.push(TimeControlCommand::SetTime(
+            time_commands.push(TimeControlCommand::SetTimeClamped(
                 time.clamp(timeline_range.min, timeline_range.max),
             ));
         }
@@ -2133,7 +2138,7 @@ impl TimePanel {
             // Use latest available time to avoid frame delay:
             let mut current_time = time_ctrl.time();
             for cmd in time_commands {
-                if let TimeControlCommand::SetTime(time) = cmd {
+                if let TimeControlCommand::SetTimeClamped(time) = cmd {
                     current_time = Some(*time);
                 }
             }

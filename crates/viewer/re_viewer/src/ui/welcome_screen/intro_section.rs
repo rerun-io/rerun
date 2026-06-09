@@ -43,17 +43,17 @@ impl IntroItem {
             Self::DocItem {
                 title: "Send data in",
                 url: "https://rerun.io/docs/getting-started/data-in",
-                body: "Send data to Rerun from your running applications or existing files.",
+                body: "Ingest multi-rate, multimodal data from robot logs, sensors, simulation, or video.",
             },
             Self::DocItem {
                 title: "Explore data",
                 url: "https://rerun.io/docs/getting-started/configure-the-viewer",
-                body: "Familiarize yourself with the basics of using the Rerun Viewer.",
+                body: "Visualize and explore multi-rate, multimodal data across every stage of the pipeline.",
             },
             Self::DocItem {
                 title: "Query data out",
                 url: "https://rerun.io/docs/getting-started/data-out",
-                body: "Perform analysis and send back the results to the original recording.",
+                body: "Query raw, intermediate, and derived data with dataframes or SQL, and stream to training.",
             },
         ];
         if login_enabled {
@@ -141,9 +141,9 @@ impl IntroItem {
 
                     ui.style_mut().text_styles.get_mut(&TextStyle::Body).expect("Should always have body text style").size = label_size;
                     ui.label(
-                        "Iterate faster on robotics learning with unified infrastructure. Interested? Read more "
+                        "The production backend for the Rerun data layer — turn your object stores into a queryable, streamable foundation. "
                     );
-                    link(ui, "here", "https://rerun.io/#rerun-data-platform");
+                    link(ui, "Learn more", "https://rerun.io/#rerun-data-platform");
                     ui.label(" or ");
                     link(ui, "book a demo", "https://calendly.com/d/ctht-4kp-qnt/rerun-demo-meeting");
                     ui.label(".");
@@ -188,7 +188,7 @@ impl IntroItem {
                             }
                             ui.spacing_mut().item_spacing.x = 0.0;
                             ui.weak("for address ");
-                            ui.strong(format!("{}", &origin.host));
+                            ui.strong(format!("{}", origin.host));
                         });
                     }
                     CloudState { has_server: Some(origin), login: LoginState::Auth { .. } } => {
@@ -209,7 +209,7 @@ pub fn intro_section(ui: &mut egui::Ui, ctx: &AppContext<'_>, cloud_state: &Clou
     ui.add_space(32.0);
 
     if let Some(auth) = ctx.auth_context {
-        ui.strong(RichText::new(format!("Hi, {}!", &auth.email)).size(15.0));
+        ui.strong(RichText::new(format!("Hi, {}!", auth.email)).size(15.0));
 
         if ui.add(Button::new("Log out").secondary().small()).clicked() {
             ctx.command_sender.send_system(SystemCommand::Logout);

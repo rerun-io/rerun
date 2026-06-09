@@ -10,6 +10,7 @@ mod stats;
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use itertools::Itertools as _;
 #[cfg(not(target_arch = "wasm32"))]
 use re_chunk::RowId;
 use re_chunk::external::nohash_hasher::IntMap;
@@ -302,7 +303,7 @@ impl TopicFilter {
         self.include = include
             .iter()
             .map(|pattern| regex_lite::Regex::new(pattern))
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
         Ok(self)
     }
 
@@ -310,7 +311,7 @@ impl TopicFilter {
         self.exclude = exclude
             .iter()
             .map(|pattern| regex_lite::Regex::new(pattern))
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
         Ok(self)
     }
 
@@ -330,7 +331,7 @@ impl TopicFilter {
 /// Registry fallback strategy.
 #[derive(Clone, Debug, Default)]
 pub enum Fallback {
-    /// No fallback – channels without a handler are simply unassigned.
+    /// No fallback — channels without a handler are simply unassigned.
     #[default]
     None,
 
@@ -658,9 +659,7 @@ impl DecoderRegistry {
 
     /// Returns all registered decoder identifiers (file + message) as strings.
     pub fn all_identifiers(&self) -> Vec<String> {
-        self.file_factories
-            .keys()
-            .chain(self.msg_factories.keys())
+        std::iter::chain(self.file_factories.keys(), self.msg_factories.keys())
             .map(|id| id.to_string())
             .collect()
     }
@@ -747,6 +746,14 @@ impl DecoderRegistry {
                 continue;
             }
 
+            if !topic_filter.matches(&channel.topic) {
+                re_log::debug!(
+                    "Skipping MCAP channel '{}' because it does not match the topic filter.",
+                    channel.topic,
+                );
+                continue;
+            }
+
             if channel.message_encoding.trim().is_empty() {
                 re_log::warn_once!(
                     "MCAP channel '{}' does not specify a message encoding.",
@@ -754,12 +761,11 @@ impl DecoderRegistry {
                 );
             }
 
-            if !topic_filter.matches(&channel.topic) {
-                re_log::debug!(
-                    "Skipping MCAP channel '{}' because it does not match the topic filter.",
+            if channel.schema.is_none() {
+                re_log::warn!(
+                    "MCAP channel '{}' does not specify a schema.",
                     channel.topic,
                 );
-                continue;
             }
 
             // explicit priority order
@@ -961,6 +967,71 @@ mod tests {
                 && chunk
                     .component_descriptors()
                     .any(|descr| descr.component == McapMessage::descriptor_data().component)
+        }));
+    }
+
+    /// Tests that an MCAP channel payload without schema is passed through as raw blob (with a warning).
+    #[test]
+    fn schema_less_channel_is_forwarded_as_raw_blob() {
+        let (summary, buffer) = {
+            let cursor = io::Cursor::new(Vec::new());
+            let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+
+            let channel_id = writer
+                .add_channel(0, "schema_less_topic", "raw", &Default::default())
+                .expect("failed to add channel");
+
+            writer
+                .write_to_known_channel(
+                    &mcap::records::MessageHeader {
+                        channel_id,
+                        sequence: 0,
+                        log_time: 1,
+                        publish_time: 2,
+                    },
+                    &[1, 2, 3],
+                )
+                .expect("failed to write message");
+
+            let summary = writer.finish().expect("failed to finish writer");
+            let buffer = writer.into_inner().into_inner();
+            (summary, buffer)
+        };
+
+        let plan = DecoderRegistry::all_with_raw_fallback()
+            .plan(&buffer, &summary, &TopicFilter::default())
+            .expect("failed to plan");
+
+        let assignment = plan
+            .assignments
+            .iter()
+            .find(|assignment| assignment.topic == "schema_less_topic")
+            .expect("missing assignment");
+        assert_eq!(assignment.schema_name, None);
+        assert_eq!(assignment.decoder.to_string(), "raw");
+
+        let test_emitter = TestEmitter::default();
+        plan.run(&buffer, &summary, TimeType::TimestampNs, &*test_emitter)
+            .expect("failed to run plan");
+
+        let chunks = test_emitter.finish();
+        assert!(chunks.iter().any(|chunk| {
+            chunk
+                .entity_path()
+                .to_string()
+                .ends_with("schema_less_topic")
+                && chunk.num_rows() == 1
+                && chunk
+                    .component_descriptors()
+                    .any(|descr| descr.component == McapMessage::descriptor_data().component)
+                && chunk
+                    .timelines()
+                    .values()
+                    .any(|timeline| timeline.name() == "message_log_time")
+                && chunk
+                    .timelines()
+                    .values()
+                    .any(|timeline| timeline.name() == "message_publish_time")
         }));
     }
 

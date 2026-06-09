@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 import stat
+import tarfile
 from pathlib import Path
 
 from google.cloud import storage
@@ -13,7 +14,9 @@ from google.cloud import storage
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--commit-sha", required=True, help="Which sha are we fetching artifacts for")
-    parser.add_argument("--artifact", choices=["rerun-cli"], help="Which artifact are we fetching")
+    parser.add_argument(
+        "--artifact", choices=["rerun-cli", "rerun-cli-macos-app"], help="Which artifact are we fetching"
+    )
     parser.add_argument(
         "--platform",
         choices=[
@@ -26,6 +29,24 @@ def main() -> None:
     parser.add_argument("--dest", required=True, help="Where to save the artifact to")
 
     args = parser.parse_args()
+
+    # rerun-cli-macos-app fetches the macOS .app bundle (tarball) and extracts it into --dest.
+    if args.artifact == "rerun-cli-macos-app":
+        if args.platform != "macos-arm64":
+            raise SystemExit("--artifact rerun-cli-macos-app is only valid with --platform macos-arm64")
+        bucket_path = f"commit/{args.commit_sha}/rerun-cli/{args.platform}/Rerun.app.tar.gz"
+        print(f"Fetching artifact from {bucket_path} to {args.dest}")
+        gcs = storage.Client()
+        bucket = gcs.bucket("rerun-builds")
+        artifact = bucket.blob(bucket_path)
+        os.makedirs(args.dest, exist_ok=True)
+        tarball = Path(args.dest) / "Rerun.app.tar.gz"
+        with open(tarball, "wb") as f:
+            artifact.download_to_file(f)
+        with tarfile.open(tarball, "r:gz") as tar:
+            tar.extractall(args.dest)
+        tarball.unlink()
+        return
 
     artifact_names: dict[tuple[str, str], str] = {}
     artifact_names["rerun-cli", "linux-arm64"] = "rerun"

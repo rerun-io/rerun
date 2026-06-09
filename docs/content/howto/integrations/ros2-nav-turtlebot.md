@@ -32,7 +32,7 @@ All of the code for this guide can be found on GitHub in
 
 Other relevant tutorials:
 
--   [Python SDK Tutorial](../../getting-started/data-in/python.md)
+-   [Log and Ingest Tutorial](../../getting-started/data-in.md)
 -   [Viewer Walkthrough](../../getting-started/configure-the-viewer/navigating-the-viewer.md)
 -   [Transforms & Coordinate Frames](../../concepts/logging-and-ingestion/transforms.md)
 -   [Loading URDF models](../../howto/logging-and-ingestion/urdf.md)

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct FlattenedScalar {
     pub value: f32,
 }
@@ -113,11 +114,11 @@ impl ::re_types_core::Loggable for FlattenedScalar {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let value = {
                     if !arrays_by_name.contains_key("value") {
                         return Err(DeserializationError::missing_struct_field(
@@ -169,17 +170,5 @@ impl From<FlattenedScalar> for f32 {
     #[inline]
     fn from(value: FlattenedScalar) -> Self {
         value.value
-    }
-}
-
-impl ::re_byte_size::SizeBytes for FlattenedScalar {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.value.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <f32>::is_pod()
     }
 }

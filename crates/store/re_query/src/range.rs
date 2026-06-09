@@ -171,6 +171,7 @@ impl RangeResults {
 // --- Cache implementation ---
 
 /// Caches the results of `Range` queries for a given [`QueryCacheKey`].
+#[derive(re_byte_size::SizeBytes)]
 pub struct RangeCache {
     /// For debugging purposes.
     pub cache_key: QueryCacheKey,
@@ -271,21 +272,6 @@ impl SizeBytes for RangeCachedChunk {
             // Consider it amortized.
             0
         }
-    }
-}
-
-impl SizeBytes for RangeCache {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            cache_key,
-            chunks,
-            pending_invalidations,
-        } = self;
-
-        cache_key.heap_size_bytes()
-            + chunks.heap_size_bytes()
-            + pending_invalidations.heap_size_bytes()
     }
 }
 
@@ -399,6 +385,7 @@ mod tests {
 
     use re_chunk::{Chunk, ChunkId, RowId};
     use re_chunk_store::{ChunkDeletionReason, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+    use re_log_encoding::RrdManifest;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
     use re_log_types::{EntityPath, TimePoint, Timeline};
@@ -409,10 +396,9 @@ mod tests {
     #[test]
     #[expect(clippy::bool_assert_comparison)] // I like it that way, sue me
     fn partial_data_basics() {
-        let store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
-            ChunkStoreConfig::ALL_DISABLED,
-        );
+        let store_id =
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app");
+        let store = ChunkStore::new(store_id.clone(), ChunkStoreConfig::ALL_DISABLED);
         let store = ChunkStoreHandle::new(store);
 
         let entity_path: EntityPath = "some_entity".into();
@@ -443,6 +429,15 @@ mod tests {
             let results = cache.range(&query, &entity_path, [component]);
             assert!(results.is_empty());
         }
+
+        // Back the chunks with an RRD manifest so they stay recoverable after removal, and keep
+        // being reported as missing (partial results) rather than vanishing from the virtual indices.
+        let rrd_manifest = RrdManifest::build_in_memory_from_chunks(
+            store_id,
+            [&chunk1, &chunk2, &chunk3].into_iter(),
+        )
+        .unwrap();
+        _ = store.write().insert_rrd_manifest(rrd_manifest);
 
         // Reminder: the store events are irrelevant here, since the range cache still always unconditionally
         // performs the underlying query regardless (only the sorting/slicing is cached).

@@ -185,6 +185,13 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
+* `--headless <HEADLESS>`
+> Run the viewer in headless mode (no OS window).
+>
+> The viewer is driven by an offscreen `egui_kittest` harness, while the gRPC server keeps running so SDK clients can still log data and request screenshots via `save_screenshot`.
+>
+> [Default: `false`]
+
 * `--window-size <WINDOW_SIZE>`
 > Set the screen resolution (in logical points), e.g. "1920x1080". Useful together with `--screenshot-to`.
 
@@ -494,6 +501,11 @@ This ignores the `log_time` timeline.
 >
 > [Default: `false`]
 
+* `--ignore-timeline <TIMELINE>`
+> Timelines to ignore entirely during comparison (their presence, absence, and values).
+>
+> Useful when comparing recordings produced with different default-timeline settings, e.g. `--ignore-timeline log_tick` (which is opt-in). Can be specified multiple times.
+
 ## rerun rrd filter
 
 Filters out data from .rrd/.rbl files/streams, and writes the result to standard output.
@@ -655,6 +667,13 @@ Examples:
 > By default, after compaction, video stream chunks are rebatched on GoP boundaries so that each chunk contains one or more complete GoPs. This flag disables that behavior.
 >
 > Note: GoP rebatching never splits a GoP across chunks, so streams with long keyframe intervals (e.g. 10+ seconds between I-frames) can produce chunks much larger than `--max-size`.
+>
+> [Default: `false`]
+
+* `--fix-keyframe <FIX_KEYFRAME>`
+> Drop any user-supplied `VideoStream:is_keyframe` labels and re-derive them from the encoded samples.
+>
+> By default, `rrd optimize` validates user-supplied keyframe labels against the encoded samples and errors out if they disagree. Pass this flag to ignore the existing labels and unconditionally re-derive them.
 >
 > [Default: `false`]
 

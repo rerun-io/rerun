@@ -11,7 +11,7 @@ use crate::{
 
 #[inline]
 pub fn blueprint_timeline() -> TimelineName {
-    TimelineName::new("blueprint")
+    re_string_interner::intern_static!(TimelineName, "blueprint")
 }
 
 /// The timepoint to use when writing an update to the blueprint.

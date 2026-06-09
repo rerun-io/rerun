@@ -5,7 +5,7 @@ use anyhow::Context as _;
 use egui::{Color32, Margin, Stroke, Theme, Vec2};
 
 use crate::color_table::{ColorTable, ColorToken, Hue, Scale};
-use crate::{CUSTOM_WINDOW_DECORATIONS, format_with_decimals_in_range};
+use crate::format_with_decimals_in_range;
 
 #[derive(Debug)]
 pub struct AlertVisuals {
@@ -27,6 +27,20 @@ impl AlertVisuals {
 
     fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
         Self::try_get(color_table, ron, name).expect("Failed to parse AlertVisuals")
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WindowFrameConfig {
+    Native,
+    Custom { is_maximized: bool },
+}
+
+impl WindowFrameConfig {
+    pub fn custom(ctx: &egui::Context) -> Self {
+        Self::Custom {
+            is_maximized: ctx.input(|input| input.viewport().maximized == Some(true)),
+        }
     }
 }
 
@@ -65,6 +79,7 @@ pub struct DesignTokens {
     pub shadow_gradient_dark_start: Color32,
     pub tab_bar_color: Color32,
     pub native_frame_stroke: Stroke,
+    pub windows_close_button_hover_color: Color32,
 
     /// Usually black or white
     pub strong_fg_color: Color32,
@@ -278,6 +293,12 @@ pub struct DesignTokens {
     pub bg_fill_inverse_hover: Color32,
     pub text_inverse: Color32,
     pub icon_inverse: Color32,
+
+    /// Background of the small timeline scrubber shown under preview thumbnails.
+    pub preview_timeline_track_color: Color32,
+
+    /// Elapsed-time fill of the small timeline scrubber shown under preview thumbnails.
+    pub preview_timeline_progress_color: Color32,
 }
 
 impl DesignTokens {
@@ -322,6 +343,7 @@ impl DesignTokens {
             shadow_gradient_dark_start: get_color("shadow_gradient_dark_start"),
             tab_bar_color: get_color("tab_bar_color"),
             native_frame_stroke: get_stroke("native_frame_stroke"),
+            windows_close_button_hover_color: get_color("windows_close_button_hover_color"),
             strong_fg_color: get_color("strong_fg_color"),
 
             info_log_text_color: get_color("info_log_text_color"),
@@ -484,6 +506,9 @@ impl DesignTokens {
             bg_fill_inverse_hover: get_color("bg_fill_inverse-hover"),
             text_inverse: get_color("text_inverse"),
             icon_inverse: get_color("icon_inverse"),
+
+            preview_timeline_track_color: get_color("preview_timeline_track_color"),
+            preview_timeline_progress_color: get_color("preview_timeline_progress_color"),
         })
     }
 
@@ -816,20 +841,29 @@ impl DesignTokens {
         10.0
     }
 
-    pub fn native_window_corner_radius(&self) -> u8 {
-        10
+    /// Native window corner used unless maximized.
+    pub fn native_window_corner_radius(&self, is_window_maximized: bool) -> u8 {
+        if is_window_maximized { 0 } else { 10 }
     }
 
-    pub fn top_panel_frame(&self) -> egui::Frame {
+    pub fn top_panel_frame(&self, window_frame: WindowFrameConfig) -> egui::Frame {
         let mut frame = egui::Frame {
             inner_margin: self.top_bar_margin(),
             fill: self.top_bar_color,
             ..Default::default()
         };
-        if CUSTOM_WINDOW_DECORATIONS {
-            frame.corner_radius.nw = self.native_window_corner_radius();
-            frame.corner_radius.ne = self.native_window_corner_radius();
+        match window_frame {
+            WindowFrameConfig::Custom { is_maximized } => {
+                let native_corner_radius = self.native_window_corner_radius(is_maximized);
+                frame.corner_radius.nw = native_corner_radius;
+                frame.corner_radius.ne = native_corner_radius;
+                frame.inner_margin.right = 0; // window control buttons are placed right most.
+            }
+            WindowFrameConfig::Native => {
+                frame.corner_radius = 0.0.into();
+            }
         }
+
         frame
     }
 
@@ -846,7 +880,7 @@ impl DesignTokens {
     }
 
     /// For the streams view (time panel)
-    pub fn bottom_panel_frame(&self) -> egui::Frame {
+    pub fn bottom_panel_frame(&self, window_frame: WindowFrameConfig) -> egui::Frame {
         // Show a stroke only on the top. To achieve this, we add a negative outer margin.
         // (on the inner margin we counteract this again)
         let margin_offset = (self.bottom_bar_stroke.width * 0.5) as i8;
@@ -867,9 +901,10 @@ impl DesignTokens {
             corner_radius: 0.0.into(),
             ..Default::default()
         };
-        if CUSTOM_WINDOW_DECORATIONS {
-            frame.corner_radius.sw = self.native_window_corner_radius();
-            frame.corner_radius.se = self.native_window_corner_radius();
+        if let WindowFrameConfig::Custom { is_maximized } = window_frame {
+            let native_corner_radius = self.native_window_corner_radius(is_maximized);
+            frame.corner_radius.sw = native_corner_radius;
+            frame.corner_radius.se = native_corner_radius;
         }
         frame
     }

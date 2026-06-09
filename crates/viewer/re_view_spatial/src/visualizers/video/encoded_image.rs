@@ -15,7 +15,10 @@ pub struct EncodedImageVisualizer;
 
 impl IdentifiedViewSystem for EncodedImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "EncodedImage".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "EncodedImage"
+        )
     }
 }
 

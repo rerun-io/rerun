@@ -87,9 +87,10 @@ pub mod gpu_data {
                 re_tracing::profile_scope_if!(10_000 < positions.len(), "extended-radius");
                 izip!(
                     positions.iter().copied(),
-                    radii.iter().copied().chain(std::iter::repeat(
-                        *radii.last().unwrap_or(&Size::ONE_UI_POINT)
-                    ))
+                    std::iter::chain(
+                        radii.iter().copied(),
+                        std::iter::repeat(*radii.last().unwrap_or(&Size::ONE_UI_POINT))
+                    )
                 )
                 .map(|(pos, radius)| Self { pos, radius })
                 .collect()
@@ -384,7 +385,8 @@ impl PointCloudDrawData {
                 .into_iter();
 
             let mut start_point_for_next_batch = 0;
-            for (batch_info, uniform_buffer_binding) in batches.iter().zip(uniform_buffer_bindings)
+            for (batch_info, uniform_buffer_binding) in
+                std::iter::zip(batches, uniform_buffer_bindings)
             {
                 let point_vertex_range_end = start_point_for_next_batch + batch_info.point_count;
                 let mut active_phases = enum_set![DrawPhase::Opaque | DrawPhase::PickingLayer];

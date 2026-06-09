@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A list of properties associated with a recording.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct RecordingInfo {
     /// When the recording started.
     ///
@@ -39,11 +40,13 @@ impl RecordingInfo {
     /// The corresponding component is [`crate::components::Timestamp`].
     #[inline]
     pub fn descriptor_start_time() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.RecordingInfo".into()),
-            component: "RecordingInfo:start_time".into(),
-            component_type: Some("rerun.components.Timestamp".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.RecordingInfo".into()),
+                component: "RecordingInfo:start_time".into(),
+                component_type: Some("rerun.components.Timestamp".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::name`].
@@ -51,11 +54,13 @@ impl RecordingInfo {
     /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_name() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.RecordingInfo".into()),
-            component: "RecordingInfo:name".into(),
-            component_type: Some("rerun.components.Name".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.RecordingInfo".into()),
+                component: "RecordingInfo:name".into(),
+                component_type: Some("rerun.components.Name".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -89,7 +94,10 @@ impl RecordingInfo {
 impl ::re_types_core::Archetype for RecordingInfo {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.RecordingInfo".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.RecordingInfo"
+        )
     }
 
     #[inline]
@@ -264,12 +272,5 @@ impl RecordingInfo {
     ) -> Self {
         self.name = try_serialize_field(Self::descriptor_name(), name);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for RecordingInfo {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.start_time.heap_size_bytes() + self.name.heap_size_bytes()
     }
 }

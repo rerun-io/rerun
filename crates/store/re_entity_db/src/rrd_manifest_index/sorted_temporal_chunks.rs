@@ -21,7 +21,7 @@ use re_chunk_store::EntityTree;
 use re_log_types::{AbsoluteTimeRange, EntityPathHash};
 
 /// Summary information about a chunk for display/query purposes.
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 pub struct ChunkCountInfo {
     /// The chunk this info is about.
     pub id: ChunkId,
@@ -38,25 +38,8 @@ pub struct ChunkCountInfo {
     pub num_rows: u64,
 }
 
-impl re_byte_size::SizeBytes for ChunkCountInfo {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            id: _,
-            time_range: _,
-            num_rows: _,
-        } = self;
-
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
 /// Sorted chunk information for a single entity on a single timeline.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, re_byte_size::SizeBytes)]
 pub(super) struct SortedEntityTemporalChunks {
     /// Chunks for this entity and all its children in the entity tree.
     ///
@@ -73,17 +56,6 @@ pub(super) struct SortedEntityTemporalChunks {
     ///
     /// This does NOT include data from child entities.
     per_component: IntMap<re_chunk::ComponentIdentifier, Vec<ChunkCountInfo>>,
-}
-
-impl re_byte_size::SizeBytes for SortedEntityTemporalChunks {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            per_entity,
-            per_component,
-        } = self;
-
-        per_entity.heap_size_bytes() + per_component.heap_size_bytes()
-    }
 }
 
 impl SortedEntityTemporalChunks {
@@ -108,17 +80,9 @@ impl SortedEntityTemporalChunks {
 /// Pre-sorted temporal chunk cache organized by timeline and entity.
 ///
 /// This cache is rebuilt whenever the manifest is updated via [`Self::update`].
-#[derive(Default, Clone)]
+#[derive(Default, Clone, re_byte_size::SizeBytes)]
 pub struct SortedTemporalChunks {
     per_timeline: BTreeMap<TimelineName, IntMap<EntityPathHash, SortedEntityTemporalChunks>>,
-}
-
-impl re_byte_size::SizeBytes for SortedTemporalChunks {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { per_timeline } = self;
-
-        per_timeline.heap_size_bytes()
-    }
 }
 
 impl SortedTemporalChunks {

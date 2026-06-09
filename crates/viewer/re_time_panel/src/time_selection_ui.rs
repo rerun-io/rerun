@@ -79,7 +79,9 @@ pub fn loop_selection_ui(
     if time_ctrl.time_selection().is_none() && time_ctrl.loop_mode() == LoopMode::Selection {
         // Helpfully select a time slice
         if let Some(selection) = initial_time_selection(time_ranges_ui, time_type) {
-            time_commands.push(TimeControlCommand::SetTimeSelection(selection.to_int()));
+            time_commands.push(TimeControlCommand::SetTimeSelectionClamped(
+                selection.to_int(),
+            ));
         }
     }
 
@@ -234,7 +236,7 @@ pub fn loop_selection_ui(
             time_commands.push(TimeControlCommand::RemoveTimeSelection);
         } else if Some(selected_range.to_int()) != time_ctrl.time_selection().map(|s| s.to_int()) {
             // Update it if it was modified:
-            time_commands.push(TimeControlCommand::SetTimeSelection(
+            time_commands.push(TimeControlCommand::SetTimeSelectionClamped(
                 selected_range.to_int(),
             ));
         }
@@ -267,7 +269,7 @@ pub fn loop_selection_ui(
 
         if timeline_response.dragged() && ui.input(|i| i.pointer.is_decidedly_dragging()) {
             // Start new selection
-            time_commands.push(TimeControlCommand::SetTimeSelection(
+            time_commands.push(TimeControlCommand::SetTimeSelectionClamped(
                 AbsoluteTimeRangeF::point(time).to_int(),
             ));
             time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
@@ -300,7 +302,7 @@ fn paint_loop_selection(
         .iter()
         .rev()
         .find_map(|c| {
-            if let TimeControlCommand::SetTimeSelection(range) = c {
+            if let TimeControlCommand::SetTimeSelectionClamped(range) = c {
                 Some(AbsoluteTimeRangeF::from(*range))
             } else {
                 None

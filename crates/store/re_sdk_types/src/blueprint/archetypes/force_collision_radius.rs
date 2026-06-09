@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Resolves collisions between the bounding circles, according to the radius of the nodes.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct ForceCollisionRadius {
     /// Whether the collision force is enabled.
     ///
@@ -46,11 +47,13 @@ impl ForceCollisionRadius {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component: "ForceCollisionRadius:enabled".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component: "ForceCollisionRadius:enabled".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
@@ -58,11 +61,13 @@ impl ForceCollisionRadius {
     /// The corresponding component is [`crate::blueprint::components::ForceStrength`].
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component: "ForceCollisionRadius:strength".into(),
-            component_type: Some("rerun.blueprint.components.ForceStrength".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component: "ForceCollisionRadius:strength".into(),
+                component_type: Some("rerun.blueprint.components.ForceStrength".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::iterations`].
@@ -70,11 +75,13 @@ impl ForceCollisionRadius {
     /// The corresponding component is [`crate::blueprint::components::ForceIterations`].
     #[inline]
     pub fn descriptor_iterations() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component: "ForceCollisionRadius:iterations".into(),
-            component_type: Some("rerun.blueprint.components.ForceIterations".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component: "ForceCollisionRadius:iterations".into(),
+                component_type: Some("rerun.blueprint.components.ForceIterations".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -110,7 +117,10 @@ impl ForceCollisionRadius {
 impl ::re_types_core::Archetype for ForceCollisionRadius {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ForceCollisionRadius".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ForceCollisionRadius"
+        )
     }
 
     #[inline]
@@ -250,14 +260,5 @@ impl ForceCollisionRadius {
     ) -> Self {
         self.iterations = try_serialize_field(Self::descriptor_iterations(), [iterations]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ForceCollisionRadius {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.enabled.heap_size_bytes()
-            + self.strength.heap_size_bytes()
-            + self.iterations.heap_size_bytes()
     }
 }

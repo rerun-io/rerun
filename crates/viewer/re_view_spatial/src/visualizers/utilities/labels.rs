@@ -157,7 +157,7 @@ pub fn process_labels<'a, P: 'a>(
 
     let labels = izip!(
         annotation_infos.iter(),
-        labels.iter().map(Some).chain(std::iter::repeat(None))
+        std::iter::chain(labels.iter().map(Some), std::iter::repeat(None))
     )
     .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
 

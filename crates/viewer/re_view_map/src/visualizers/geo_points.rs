@@ -34,7 +34,10 @@ pub struct GeoPointsVisualizer;
 
 impl IdentifiedViewSystem for GeoPointsVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "GeoPoints".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "GeoPoints"
+        )
     }
 }
 
@@ -117,8 +120,8 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 // iterate over all instances
                 for (instance_index, (position, color, radius)) in itertools::izip!(
                     positions,
-                    colors.iter(),
-                    radii.iter().chain(std::iter::repeat(&last_radii)),
+                    &colors,
+                    std::iter::chain(radii, std::iter::repeat(&last_radii)),
                 )
                 .enumerate()
                 {
@@ -163,16 +166,14 @@ impl GeoPointsOutput {
         // so boosting the outline radius would make it erreously large.
 
         for (entity_path, batch) in &self.batches {
-            let (positions, radii): (Vec<_>, Vec<_>) = batch
-                .positions
-                .iter()
-                .zip(&batch.radii)
-                .map(|(pos, radius)| {
-                    let size = super::radius_to_size(*radius, projector, *pos);
-                    let ui_position = projector.project(*pos);
-                    (glam::vec3(ui_position.x, ui_position.y, 0.0), size)
-                })
-                .unzip();
+            let (positions, radii): (Vec<_>, Vec<_>) =
+                std::iter::zip(&batch.positions, &batch.radii)
+                    .map(|(pos, radius)| {
+                        let size = super::radius_to_size(*radius, projector, *pos);
+                        let ui_position = projector.project(*pos);
+                        (glam::vec3(ui_position.x, ui_position.y, 0.0), size)
+                    })
+                    .unzip();
 
             let outline = highlight.entity_outline_mask(entity_path.hash());
 

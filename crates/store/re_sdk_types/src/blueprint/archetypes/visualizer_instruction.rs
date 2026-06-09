@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: A visualizer instruction for an entity.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct VisualizerInstruction {
     /// The type of the visualizer.
     pub visualizer_type: Option<SerializedComponentBatch>,
@@ -39,11 +40,13 @@ impl VisualizerInstruction {
     /// The corresponding component is [`crate::blueprint::components::VisualizerType`].
     #[inline]
     pub fn descriptor_visualizer_type() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.VisualizerInstruction".into()),
-            component: "VisualizerInstruction:visualizer_type".into(),
-            component_type: Some("rerun.blueprint.components.VisualizerType".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.VisualizerInstruction".into()),
+                component: "VisualizerInstruction:visualizer_type".into(),
+                component_type: Some("rerun.blueprint.components.VisualizerType".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::component_map`].
@@ -51,11 +54,15 @@ impl VisualizerInstruction {
     /// The corresponding component is [`crate::blueprint::components::VisualizerComponentMapping`].
     #[inline]
     pub fn descriptor_component_map() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.VisualizerInstruction".into()),
-            component: "VisualizerInstruction:component_map".into(),
-            component_type: Some("rerun.blueprint.components.VisualizerComponentMapping".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.VisualizerInstruction".into()),
+                component: "VisualizerInstruction:component_map".into(),
+                component_type: Some(
+                    "rerun.blueprint.components.VisualizerComponentMapping".into(),
+                ),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -84,7 +91,10 @@ impl VisualizerInstruction {
 impl ::re_types_core::Archetype for VisualizerInstruction {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.VisualizerInstruction".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.VisualizerInstruction"
+        )
     }
 
     #[inline]
@@ -205,12 +215,5 @@ impl VisualizerInstruction {
     ) -> Self {
         self.component_map = try_serialize_field(Self::descriptor_component_map(), component_map);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VisualizerInstruction {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.visualizer_type.heap_size_bytes() + self.component_map.heap_size_bytes()
     }
 }

@@ -11,12 +11,41 @@ use re_ui::UiExt as _;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{DataResultInteractionAddress, Item, MaybeMutRef};
 
+use crate::data::StateValueKind;
+use crate::visualizer::current_state_value_kind;
+
 /// One row in the state configuration editor.
 struct StateMapping {
     value: String,
     label: String,
     color: Rgba32,
     visible: bool,
+}
+
+/// Canonical value strings used to back boolean lanes — kept in sync with
+/// `StateLabel for bool` in the visualizer so the editor's lookups match what the renderer
+/// produces.
+const BOOL_VALUES: [&str; 2] = ["true", "false"];
+
+/// Which parts of the [`StateConfiguration`] the row UI has changed.
+///
+/// Tracked so we only persist the components the user actually touched — avoids locking in
+/// hash-derived default colors or empty labels when an unrelated field is edited.
+#[derive(Default, Clone, Copy)]
+struct ChangeFlags {
+    values: bool,
+    labels: bool,
+    colors: bool,
+    visible: bool,
+}
+
+impl ChangeFlags {
+    fn merge(&mut self, other: Self) {
+        self.values |= other.values;
+        self.labels |= other.labels;
+        self.colors |= other.colors;
+        self.visible |= other.visible;
+    }
 }
 
 /// Editable state configuration for a single visualizer instruction.
@@ -48,23 +77,6 @@ pub fn state_config_editor(
     let colors = extract_colors(&query_result, &StateConfiguration::descriptor_colors());
     let visible = extract_bools(&query_result, &StateConfiguration::descriptor_visible());
 
-    // Build the editable mapping list from whatever is already configured.
-    let mut mappings: Vec<StateMapping> = (0..values.len())
-        .map(|i| {
-            let value = values.get(i).cloned().unwrap_or_default();
-            let color = colors
-                .get(i)
-                .copied()
-                .unwrap_or_else(|| default_color(&value));
-            StateMapping {
-                value,
-                label: labels.get(i).cloned().unwrap_or_default(),
-                color,
-                visible: visible.get(i).copied().unwrap_or(true),
-            }
-        })
-        .collect();
-
     // Selection/hover item for this entity.
     let item = Item::DataResult(DataResultInteractionAddress {
         view_id: ctx.view_id,
@@ -74,95 +86,21 @@ pub fn state_config_editor(
 
     let id = ui.make_persistent_id(("state_config", entity_path));
 
-    // Track which components actually changed so we only persist what the user
-    // touched. That avoids locking in hash-derived default colors when the user
-    // edits an unrelated field.
-    let mut values_changed = false;
-    let mut labels_changed = false;
-    let mut colors_changed = false;
-    let mut visible_changed = false;
+    // For boolean lanes, the only meaningful values are `"true"` and `"false"`, so the editor
+    // renders a simplified two-row UI; everything else gets the freeform editor.
+    let kind = current_state_value_kind(ctx, data_result, instruction);
+    let is_bool_lane = kind == Some(StateValueKind::Bool);
 
-    {
-        // Mapping rows.
-        let mut remove_idx = None;
-        for (i, mapping) in mappings.iter_mut().enumerate() {
-            let row_id = ui.make_persistent_id(("state_row", entity_path, i));
-            ui.push_id(row_id, |ui| {
-                ui.horizontal(|ui| {
-                    // Visibility toggle.
-                    if ui.visibility_toggle_button(&mut mapping.visible).changed() {
-                        visible_changed = true;
-                    }
+    let (changes, mappings) = if is_bool_lane {
+        render_bool_mapping_rows(ui, entity_path, &values, &labels, &colors, &visible)
+    } else {
+        render_freeform_mapping_rows(ui, entity_path, &values, &labels, &colors, &visible)
+    };
 
-                    // Color swatch (editable).
-                    let mut color_ref = MaybeMutRef::MutRef(&mut mapping.color);
-                    if ui.add(ColorSwatch::new(&mut color_ref)).changed() {
-                        colors_changed = true;
-                    }
-
-                    // Value field.
-                    ui.add_space(4.0);
-                    let value_response = ui.add(
-                        egui::TextEdit::singleline(&mut mapping.value)
-                            .desired_width(60.0)
-                            .hint_text("value"),
-                    );
-                    if value_response.lost_focus() || value_response.changed() {
-                        values_changed = true;
-                    }
-
-                    // Arrow separator.
-                    ui.label("\u{2192}");
-
-                    // Label field.
-                    let label_response = ui.add(
-                        egui::TextEdit::singleline(&mut mapping.label)
-                            .desired_width(80.0)
-                            .hint_text("label"),
-                    );
-                    if label_response.lost_focus() || label_response.changed() {
-                        labels_changed = true;
-                    }
-
-                    // Remove button.
-                    if ui
-                        .small_icon_button(&re_ui::icons::REMOVE, "Remove mapping")
-                        .clicked()
-                    {
-                        remove_idx = Some(i);
-                    }
-                });
-                ui.add_space(6.0);
-            });
-        }
-
-        if let Some(idx) = remove_idx {
-            mappings.remove(idx);
-            // Every array shrinks, so every array needs to be rewritten.
-            values_changed = true;
-            labels_changed = true;
-            colors_changed = true;
-            visible_changed = true;
-        }
-
-        // Add button.
-        if ui
-            .small_icon_button(&re_ui::icons::ADD, "Add state mapping")
-            .clicked()
-        {
-            mappings.push(StateMapping {
-                value: String::new(),
-                label: String::new(),
-                color: default_color(""),
-                visible: true,
-            });
-            // New row: values (and labels, as an aligned empty) need to grow.
-            // Colors/visible fall back to their defaults at render time until
-            // the user explicitly sets them.
-            values_changed = true;
-            labels_changed = true;
-        }
-    }
+    let values_changed = changes.values;
+    let labels_changed = changes.labels;
+    let colors_changed = changes.colors;
+    let visible_changed = changes.visible;
 
     // Write only the components that actually changed.
     if values_changed {
@@ -212,6 +150,182 @@ pub fn state_config_editor(
     if response.hovered() {
         ctx.viewer_ctx.selection_state().set_hovered(item.clone());
     }
+}
+
+/// A single row of the value mapping UI.
+fn render_mapping_row_contents(
+    ui: &mut egui::Ui,
+    mapping: &mut StateMapping,
+    value_editable: bool,
+) -> ChangeFlags {
+    let mut changes = ChangeFlags::default();
+
+    let mut value_edit = egui::TextEdit::singleline(&mut mapping.value)
+        .desired_width(60.0)
+        .interactive(value_editable)
+        .hint_text("value");
+    if !value_editable {
+        // Tone down the locked-in value so it reads as informational rather than editable.
+        value_edit = value_edit.text_color(ui.tokens().text_subdued);
+    }
+    let value_response = ui.add(value_edit);
+    if value_editable && (value_response.lost_focus() || value_response.changed()) {
+        changes.values = true;
+    }
+
+    ui.label("\u{2192}");
+
+    if ui.visibility_toggle_button(&mut mapping.visible).changed() {
+        changes.visible = true;
+    }
+
+    let mut color_ref = MaybeMutRef::MutRef(&mut mapping.color);
+    if ui.add(ColorSwatch::new(&mut color_ref)).changed() {
+        changes.colors = true;
+    }
+
+    let label_response = ui.add(
+        egui::TextEdit::singleline(&mut mapping.label)
+            .desired_width(f32::INFINITY)
+            .hint_text("label"),
+    );
+    if label_response.lost_focus() || label_response.changed() {
+        changes.labels = true;
+    }
+
+    changes
+}
+
+/// Render the freeform mapping rows and a bottom "Add mapping" button.
+fn render_freeform_mapping_rows(
+    ui: &mut egui::Ui,
+    entity_path: &re_log_types::EntityPath,
+    values: &[String],
+    labels: &[String],
+    colors: &[Rgba32],
+    visible: &[bool],
+) -> (ChangeFlags, Vec<StateMapping>) {
+    let mut mappings: Vec<StateMapping> = (0..values.len())
+        .map(|i| {
+            let value = values.get(i).cloned().unwrap_or_default();
+            let color = colors
+                .get(i)
+                .copied()
+                .unwrap_or_else(|| default_color(&value));
+            StateMapping {
+                value,
+                label: labels.get(i).cloned().unwrap_or_default(),
+                color,
+                visible: visible.get(i).copied().unwrap_or(true),
+            }
+        })
+        .collect();
+
+    let mut changes = ChangeFlags::default();
+    let mut remove_idx = None;
+
+    for (i, mapping) in mappings.iter_mut().enumerate() {
+        let row_id = ui.make_persistent_id(("state_row", entity_path, i));
+        ui.push_id(row_id, |ui| {
+            let (row_changes, remove_clicked) = egui::Sides::new().shrink_left().show(
+                ui,
+                |ui| render_mapping_row_contents(ui, mapping, true),
+                |ui| {
+                    ui.small_icon_button(&re_ui::icons::REMOVE, "Remove mapping")
+                        .clicked()
+                },
+            );
+            changes.merge(row_changes);
+            if remove_clicked {
+                remove_idx = Some(i);
+            }
+            ui.add_space(6.0);
+        });
+    }
+
+    if let Some(idx) = remove_idx {
+        mappings.remove(idx);
+        // Every array shrinks, so every array needs to be rewritten.
+        changes.merge(ChangeFlags {
+            values: true,
+            labels: true,
+            colors: true,
+            visible: true,
+        });
+    }
+
+    if ui
+        .small_icon_button(&re_ui::icons::ADD, "Add state mapping")
+        .clicked()
+    {
+        mappings.push(StateMapping {
+            value: String::new(),
+            label: String::new(),
+            color: default_color(""),
+            visible: true,
+        });
+        // New row: values (and labels, as an aligned empty) need to grow. Colors/visible fall
+        // back to their defaults at render time until the user explicitly sets them.
+        changes.values = true;
+        changes.labels = true;
+    }
+
+    (changes, mappings)
+}
+
+/// Render the simplified two-row editor for boolean lanes.
+fn render_bool_mapping_rows(
+    ui: &mut egui::Ui,
+    entity_path: &re_log_types::EntityPath,
+    values: &[String],
+    labels: &[String],
+    colors: &[Rgba32],
+    visible: &[bool],
+) -> (ChangeFlags, Vec<StateMapping>) {
+    let mut mappings: Vec<StateMapping> = BOOL_VALUES
+        .iter()
+        .map(|v| {
+            let existing = values.iter().position(|stored| stored == *v);
+            let color = existing
+                .and_then(|i| colors.get(i).copied())
+                .unwrap_or_else(|| default_color(v));
+            StateMapping {
+                value: (*v).to_owned(),
+                label: existing
+                    .and_then(|i| labels.get(i).cloned())
+                    .unwrap_or_default(),
+                color,
+                visible: existing
+                    .and_then(|i| visible.get(i).copied())
+                    .unwrap_or(true),
+            }
+        })
+        .collect();
+
+    // Force-write the canonical bool values list if the stored values don't already match.
+    let bool_values_need_seeding = !(values.len() == BOOL_VALUES.len()
+        && std::iter::zip(values, BOOL_VALUES).all(|(stored, canonical)| stored == canonical));
+
+    let mut changes = ChangeFlags::default();
+
+    for (i, mapping) in mappings.iter_mut().enumerate() {
+        let row_id = ui.make_persistent_id(("state_row", entity_path, i));
+        ui.push_id(row_id, |ui| {
+            let (row_changes, ()) = egui::Sides::new().shrink_left().show(
+                ui,
+                |ui| render_mapping_row_contents(ui, mapping, false),
+                |_ui| {},
+            );
+            changes.merge(row_changes);
+            ui.add_space(6.0);
+        });
+    }
+
+    if bool_values_need_seeding && (changes.labels || changes.colors || changes.visible) {
+        changes.values = true;
+    }
+
+    (changes, mappings)
 }
 
 fn extract_texts(

@@ -1,8 +1,8 @@
+use std::collections::btree_map::Entry as BTreeMapEntry;
 use std::sync::Arc;
 use std::time::Duration;
 
 use ahash::HashSet;
-use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_format::format_bytes;
 use web_time::Instant;
@@ -14,6 +14,10 @@ use re_log_types::{AbsoluteTimeRange, TimeInt};
 use crate::{
     ChunkDeletionReason, ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffDeletion,
     ChunkStoreEvent, ChunkStoreStats,
+    store::{
+        ChunkIdSetPerTimePerComponentPerTimelinePerEntity, ChunkIdSetPerTimePerTimelinePerEntity,
+    },
+    writes::LineageDroppingCtx,
 };
 
 // Used all over in docstrings.
@@ -321,7 +325,7 @@ impl ChunkStore {
             .time_budget
             .saturating_sub(mark_start_time.elapsed().min(mark_time_budget));
 
-        {
+        let dels = {
             re_tracing::profile_scope!("sweep");
 
             // There is never a good reason not to deeply GC non-root level chunks: they cannot be
@@ -359,8 +363,19 @@ impl ChunkStore {
                 ChunkDeletionReason::GarbageCollection,
             );
 
-            dels1.into_iter().chain(dels2).map(Into::into).collect()
-        }
+            std::iter::chain(dels1, dels2).map(Into::into).collect()
+        };
+
+        self.chunks_lineage.shrink_to_fit();
+        self.leaky_compactions.shrink_to_fit();
+        self.split_on_ingest.shrink_to_fit();
+        self.dangling_splits.shrink_to_fit();
+        let mut queried_chunk_id_tracker = self.queried_chunk_id_tracker.write();
+
+        queried_chunk_id_tracker.used_physical.shrink_to_fit();
+        queried_chunk_id_tracker.missing_virtual.shrink_to_fit();
+
+        dels
     }
 
     #[must_use]
@@ -477,6 +492,117 @@ impl ChunkStore {
         chunks_to_be_removed
     }
 
+    /// Removes a single temporal chunk from the virtual indices, both the per-component ones and
+    /// the component-less ones.
+    ///
+    /// Returns `true` if the chunk was present in (and removed from) any of those indices.
+    fn remove_chunk_from_virtual_indices(
+        temporal_chunk_ids_per_entity_per_component: &mut ChunkIdSetPerTimePerComponentPerTimelinePerEntity,
+        temporal_chunk_ids_per_entity: &mut ChunkIdSetPerTimePerTimelinePerEntity,
+        chunk: &Arc<Chunk>,
+    ) -> bool {
+        let chunk_id = chunk.id();
+        let mut was_removed = false;
+
+        {
+            re_tracing::profile_scope!("removal (w/ component)");
+
+            if let Some(temporal_chunk_ids_per_timeline) =
+                temporal_chunk_ids_per_entity_per_component.get_mut(chunk.entity_path())
+            {
+                for (timeline, time_range_per_component) in chunk.time_range_per_component() {
+                    let Some(temporal_chunk_ids_per_component) =
+                        temporal_chunk_ids_per_timeline.get_mut(&timeline)
+                    else {
+                        continue;
+                    };
+
+                    for (component, time_range) in time_range_per_component {
+                        let Some(temporal_chunk_ids_per_time) =
+                            temporal_chunk_ids_per_component.get_mut(&component)
+                        else {
+                            continue;
+                        };
+
+                        // TODO(cmc): Technically, the optimal thing to do would be to recompute
+                        // `max_interval_length` per time here.
+                        // In practice, this adds a lot of complexity for likely very little
+                        // performance benefit, since we expect the chunks to have similar interval
+                        // lengths on the happy path.
+
+                        if let BTreeMapEntry::Occupied(mut entry) = temporal_chunk_ids_per_time
+                            .per_start_time
+                            .entry(time_range.min())
+                        {
+                            entry.get_mut().remove(&chunk_id);
+                            if entry.get().is_empty() {
+                                entry.remove();
+                            }
+                            was_removed = true;
+                        }
+                        if let BTreeMapEntry::Occupied(mut entry) = temporal_chunk_ids_per_time
+                            .per_end_time
+                            .entry(time_range.max())
+                        {
+                            entry.get_mut().remove(&chunk_id);
+                            if entry.get().is_empty() {
+                                entry.remove();
+                            }
+                            was_removed = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        {
+            re_tracing::profile_scope!("removal (w/o component)");
+
+            if let Some(temporal_chunk_ids_per_timeline) =
+                temporal_chunk_ids_per_entity.get_mut(chunk.entity_path())
+            {
+                for (timeline, time_column) in chunk.timelines() {
+                    let Some(temporal_chunk_ids_per_time) =
+                        temporal_chunk_ids_per_timeline.get_mut(timeline)
+                    else {
+                        continue;
+                    };
+
+                    let time_range = time_column.time_range();
+
+                    // TODO(cmc): Technically, the optimal thing to do would be to recompute
+                    // `max_interval_length` per time here.
+                    // In practice, this adds a lot of complexity for likely very little
+                    // performance benefit, since we expect the chunks to have similar interval
+                    // lengths on the happy path.
+
+                    if let BTreeMapEntry::Occupied(mut entry) = temporal_chunk_ids_per_time
+                        .per_start_time
+                        .entry(time_range.min())
+                    {
+                        entry.get_mut().remove(&chunk_id);
+                        if entry.get().is_empty() {
+                            entry.remove();
+                        }
+                        was_removed = true;
+                    }
+                    if let BTreeMapEntry::Occupied(mut entry) = temporal_chunk_ids_per_time
+                        .per_end_time
+                        .entry(time_range.max())
+                    {
+                        entry.get_mut().remove(&chunk_id);
+                        if entry.get().is_empty() {
+                            entry.remove();
+                        }
+                        was_removed = true;
+                    }
+                }
+            }
+        }
+
+        was_removed
+    }
+
     /// Surgically removes a set of _temporal_ [`ChunkId`]s from all *physical & virtual* indices.
     ///
     /// This only makes sense to use on chunks that resulted from the compaction of other chunks.
@@ -501,8 +627,14 @@ impl ChunkStore {
         // nothing, doesn't mean that a deep one won't.
         // The deep diff is always a superset of the shallow one (because you can remove physical
         // chunks while keeping virtual ones, but not vice-versa).
+        //
+        // We pass `None` instead of `time_budget` on purpose. The deep loop below clears the
+        // virtual indexes regardless of the budget, so the shallow pass has to clear the physical
+        // ones to completion as well. If shallow bailed early on the budget, every chunk past the
+        // cutoff would keep its physical data but lose its virtual entry, drifting the two indexes
+        // apart (a physical chunk without a virtual entry) on a later GC pass.
         let deletions_shallow =
-            self.remove_chunks_shallow(chunks_to_be_removed.clone(), time_budget, reason);
+            self.remove_chunks_shallow(chunks_to_be_removed.clone(), None, reason);
 
         let Self {
             id: _,
@@ -536,115 +668,27 @@ impl ChunkStore {
         let mut deletions = Vec::new();
 
         for chunk in chunks_to_be_removed {
-            let mut was_removed = false;
-            let chunk_id = chunk.id();
-
-            {
-                re_tracing::profile_scope!("removal (w/ component)");
-
-                if let Some(temporal_chunk_ids_per_timeline) =
-                    temporal_chunk_ids_per_entity_per_component.get_mut(chunk.entity_path())
-                {
-                    for (timeline, time_range_per_component) in chunk.time_range_per_component() {
-                        let Some(temporal_chunk_ids_per_component) =
-                            temporal_chunk_ids_per_timeline.get_mut(&timeline)
-                        else {
-                            continue;
-                        };
-
-                        for (component, time_range) in time_range_per_component {
-                            let Some(temporal_chunk_ids_per_time) =
-                                temporal_chunk_ids_per_component.get_mut(&component)
-                            else {
-                                continue;
-                            };
-
-                            // TODO(cmc): Technically, the optimal thing to do would be to recompute
-                            // `max_interval_length` per time here.
-                            // In practice, this adds a lot of complexity for likely very little
-                            // performance benefit, since we expect the chunks to have similar interval
-                            // lengths on the happy path.
-
-                            if let Some(set) = temporal_chunk_ids_per_time
-                                .per_start_time
-                                .get_mut(&time_range.min())
-                            {
-                                set.remove(&chunk_id);
-                                was_removed = true;
-                            }
-                            if let Some(set) = temporal_chunk_ids_per_time
-                                .per_end_time
-                                .get_mut(&time_range.max())
-                            {
-                                set.remove(&chunk_id);
-                                was_removed = true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            {
-                re_tracing::profile_scope!("insertion (w/o component)");
-
-                if let Some(temporal_chunk_ids_per_timeline) =
-                    temporal_chunk_ids_per_entity.get_mut(chunk.entity_path())
-                {
-                    for (timeline, time_column) in chunk.timelines() {
-                        let Some(temporal_chunk_ids_per_time) =
-                            temporal_chunk_ids_per_timeline.get_mut(timeline)
-                        else {
-                            continue;
-                        };
-
-                        let time_range = time_column.time_range();
-
-                        // TODO(cmc): Technically, the optimal thing to do would be to recompute
-                        // `max_interval_length` per time here.
-                        // In practice, this adds a lot of complexity for likely very little
-                        // performance benefit, since we expect the chunks to have similar interval
-                        // lengths on the happy path.
-
-                        if let Some(set) = temporal_chunk_ids_per_time
-                            .per_start_time
-                            .get_mut(&time_range.min())
-                        {
-                            set.remove(&chunk_id);
-                            was_removed = true;
-                        }
-                        if let Some(set) = temporal_chunk_ids_per_time
-                            .per_end_time
-                            .get_mut(&time_range.max())
-                        {
-                            set.remove(&chunk_id);
-                            was_removed = true;
-                        }
-                    }
-                }
-            }
-
-            if was_removed {
+            if Self::remove_chunk_from_virtual_indices(
+                temporal_chunk_ids_per_entity_per_component,
+                temporal_chunk_ids_per_entity,
+                &chunk,
+            ) {
                 deletions.push(ChunkStoreDiffDeletion { chunk, reason });
             }
         }
 
-        re_log::debug_assert!(
-            deletions.len() >= deletions_shallow.len() && {
-                let del_ids: ahash::HashSet<_> =
-                    deletions.iter().map(|del| del.chunk.id()).collect();
-                deletions_shallow
-                    .iter()
-                    .all(|del| del_ids.contains(&del.chunk.id()))
-            },
-            "deep del should always be a superset of the shallow del:\ndeep: [{}]\nshallow: [{}]",
-            deletions
-                .iter()
-                .map(|del| del.chunk.id().to_string())
-                .join(", "),
+        // Volatile (unrecoverable) chunks are fully reclaimed by the shallow pass above: it drops
+        // their physical data, reclaims their lineage, and -- since an unrecoverable chunk must
+        // never linger as a ghost virtual entry that a query would wrongly report as missing --
+        // purges them from the virtual indices as well. The loop above therefore no longer finds
+        // those, so fold the shallow deletions back in to keep the deep deletion set a superset of
+        // the shallow one.
+        let deep_ids: ahash::HashSet<ChunkId> =
+            deletions.iter().map(|del| del.chunk.id()).collect();
+        deletions.extend(
             deletions_shallow
-                .iter()
-                .map(|del| del.chunk.id().to_string())
-                .join(", "),
+                .into_iter()
+                .filter(|del| !deep_ids.contains(&del.chunk.id())),
         );
 
         deletions
@@ -700,6 +744,27 @@ impl ChunkStore {
             let Some(chunk) = physical_chunks_per_chunk_id.remove(&chunk.id()) else {
                 continue;
             };
+
+            Self::drop_lineage_reference(
+                &mut LineageDroppingCtx {
+                    chunks_lineage: &mut self.chunks_lineage,
+                    leaky_compactions: &mut self.leaky_compactions,
+                    split_on_ingest: &mut self.split_on_ingest,
+                    dangling_splits: &mut self.dangling_splits,
+                },
+                &chunk.id(),
+            );
+
+            // If dropping the physical reference reclaimed the lineage entirely, this chunk is
+            // unrecoverable: it must not linger as a ghost entry in the virtual indices, or queries
+            // would keep reporting it as a (re-fetchable) missing chunk forever.
+            if !self.chunks_lineage.contains_key(&chunk.id()) {
+                Self::remove_chunk_from_virtual_indices(
+                    &mut self.temporal_chunk_ids_per_entity_per_component,
+                    &mut self.temporal_chunk_ids_per_entity,
+                    &chunk,
+                );
+            }
 
             // TODO(cmc): Technically, the optimal thing to do would be to recompute
             // `max_interval_length` per time here.

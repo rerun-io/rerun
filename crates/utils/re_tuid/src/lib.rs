@@ -42,7 +42,7 @@
 /// The raw bytes of the `Tuid` sorts in time order as the `Tuid` itself,
 /// and the `Tuid` is byte-aligned so you can just transmute between `Tuid` and raw bytes.
 #[repr(C, align(1))]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd, re_byte_size::SizeBytes)]
 #[cfg_attr(
     feature = "bytemuck",
     derive(bytemuck::AnyBitPattern, bytemuck::NoUninit)
@@ -291,18 +291,6 @@ fn random_u64() -> u64 {
     u64::from_be_bytes(bytes)
 }
 
-impl re_byte_size::SizeBytes for Tuid {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
 #[test]
 fn test_tuid() {
     use std::collections::{BTreeSet, HashSet};
@@ -356,14 +344,12 @@ fn test_tuid_formatting() {
 // -------------------------------------------------------------------------------
 
 // For backwards compatibility with our MsgPack encoder/decoder
-#[cfg(feature = "serde")]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(serde::Deserialize, serde::Serialize)]
 struct LegacyTuid {
     time_nanos: u64,
     inc: u64,
 }
 
-#[cfg(feature = "serde")]
 impl serde::Serialize for Tuid {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -377,7 +363,6 @@ impl serde::Serialize for Tuid {
     }
 }
 
-#[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for Tuid {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

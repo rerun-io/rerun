@@ -28,7 +28,7 @@ const index_html = `<!DOCTYPE html>
   </script>
 </head>
 <body>
-  Redirecting to <a href="${main_package}/">${main_package}/</a>...
+  Redirecting to <a href="${main_package}/">${main_package}/</a>…
 </body>
 </html>`;
 

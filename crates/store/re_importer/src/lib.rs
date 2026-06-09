@@ -3,6 +3,7 @@
 use std::collections::BTreeSet;
 use std::sync::{Arc, LazyLock};
 
+use itertools::chain;
 use re_chunk::{Chunk, ChunkResult};
 use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint};
 
@@ -406,9 +407,11 @@ pub enum ImporterError {
     #[error(transparent)]
     Mcap(#[from] ::mcap::McapError),
 
-    #[error("Video file is too large ({} bytes). \
-             Maximum supported blob size is ~2 GiB due to Arrow i32 offset limits.", .0)]
-    VideoTooLarge(usize),
+    #[error("Failed to import mp4 video: {source}\nFile path: {path:?}")]
+    Mp4 {
+        path: std::path::PathBuf,
+        source: re_mp4_reader::Mp4Error,
+    },
 
     #[error("{}", re_error::format(.0))]
     Other(#[from] anyhow::Error),
@@ -502,10 +505,7 @@ static BUILTIN_IMPORTERS: LazyLock<Vec<Arc<dyn Importer>>> = LazyLock::new(|| {
 /// Iterator over all registered [`Importer`]s.
 #[inline]
 pub fn iter_importers() -> impl Iterator<Item = Arc<dyn Importer>> {
-    BUILTIN_IMPORTERS
-        .clone()
-        .into_iter()
-        .chain(CUSTOM_IMPORTERS.read().clone())
+    std::iter::chain(BUILTIN_IMPORTERS.clone(), CUSTOM_IMPORTERS.read().clone())
 }
 
 /// Keeps track of all custom [`Importer`]s.
@@ -564,17 +564,18 @@ pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
 
 /// All file extension supported by our builtin [`Importer`]s.
 pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
-    SUPPORTED_RERUN_EXTENSIONS
-        .iter()
-        .chain(SUPPORTED_THIRD_PARTY_FORMATS)
-        .chain(SUPPORTED_IMAGE_EXTENSIONS)
-        .chain(SUPPORTED_DEPTH_IMAGE_EXTENSIONS)
-        .chain(SUPPORTED_VIDEO_EXTENSIONS)
-        .chain(SUPPORTED_MESH_EXTENSIONS)
-        .chain(SUPPORTED_POINT_CLOUD_EXTENSIONS)
-        .chain(SUPPORTED_PARQUET_EXTENSIONS)
-        .chain(SUPPORTED_TEXT_EXTENSIONS)
-        .copied()
+    chain!(
+        SUPPORTED_RERUN_EXTENSIONS,
+        SUPPORTED_THIRD_PARTY_FORMATS,
+        SUPPORTED_IMAGE_EXTENSIONS,
+        SUPPORTED_DEPTH_IMAGE_EXTENSIONS,
+        SUPPORTED_VIDEO_EXTENSIONS,
+        SUPPORTED_MESH_EXTENSIONS,
+        SUPPORTED_POINT_CLOUD_EXTENSIONS,
+        SUPPORTED_PARQUET_EXTENSIONS,
+        SUPPORTED_TEXT_EXTENSIONS,
+    )
+    .copied()
 }
 
 /// Is this a supported file extension by any of our builtin [`Importer`]s?

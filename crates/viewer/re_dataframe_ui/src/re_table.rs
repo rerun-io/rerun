@@ -8,6 +8,7 @@ use egui::{
     UiBuilder, WidgetText,
 };
 use egui_table::{CellInfo, HeaderCellInfo, PrefetchInfo};
+use itertools::chain;
 use re_format::format_uint;
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::{TableStyle, UiExt as _};
@@ -129,19 +130,19 @@ impl<'a> ReTable<'a> {
             .id_salt(self.session_id)
             .num_sticky_cols(num_sticky_cols)
             .columns(
-                iter::once(
-                    egui_table::Column::new(row_number_cell_width)
-                        .resizable(false)
-                        .range(Rangef::new(row_number_cell_width, row_number_cell_width))
-                        .id(Id::new("row_number")),
-                )
-                .chain(self.num_preview_views.is_some().then(|| {
-                    egui_table::Column::new(preview_column_width)
-                        .resizable(false)
-                        .range(Rangef::new(preview_column_width, preview_column_width))
-                        .id(Id::new("segment_preview"))
-                }))
-                .chain(
+                chain!(
+                    iter::once(
+                        egui_table::Column::new(row_number_cell_width)
+                            .resizable(false)
+                            .range(Rangef::new(row_number_cell_width, row_number_cell_width))
+                            .id(Id::new("row_number")),
+                    ),
+                    self.num_preview_views.is_some().then(|| {
+                        egui_table::Column::new(preview_column_width)
+                            .resizable(false)
+                            .range(Rangef::new(preview_column_width, preview_column_width))
+                            .id(Id::new("segment_preview"))
+                    }),
                     self.config
                         .visible_column_ids()
                         .map(|id| egui_table::Column::new(200.0).resizable(true).id(id)),

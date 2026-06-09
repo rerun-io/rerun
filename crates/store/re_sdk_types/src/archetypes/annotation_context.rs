@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -76,7 +77,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/annotation_context_segmentation/6c9e88fc9d44a08031cadd444c2e58a985cc1208/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct AnnotationContext {
     /// List of class descriptions, mapping class indices to class names, colors etc.
     pub context: Option<SerializedComponentBatch>,
@@ -88,11 +89,13 @@ impl AnnotationContext {
     /// The corresponding component is [`crate::components::AnnotationContext`].
     #[inline]
     pub fn descriptor_context() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.AnnotationContext".into()),
-            component: "AnnotationContext:context".into(),
-            component_type: Some("rerun.components.AnnotationContext".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.AnnotationContext".into()),
+                component: "AnnotationContext:context".into(),
+                component_type: Some("rerun.components.AnnotationContext".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -116,7 +119,10 @@ impl AnnotationContext {
 impl ::re_types_core::Archetype for AnnotationContext {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.AnnotationContext".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.AnnotationContext"
+        )
     }
 
     #[inline]
@@ -254,12 +260,5 @@ impl AnnotationContext {
     ) -> Self {
         self.context = try_serialize_field(Self::descriptor_context(), context);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AnnotationContext {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.context.heap_size_bytes()
     }
 }

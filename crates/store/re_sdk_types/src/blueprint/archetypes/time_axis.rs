@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configuration for the time (X) axis of a plot.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TimeAxis {
     /// How should the horizontal/X/time axis be linked across multiple plots?
     ///
@@ -44,11 +45,13 @@ impl TimeAxis {
     /// The corresponding component is [`crate::blueprint::components::LinkAxis`].
     #[inline]
     pub fn descriptor_link() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
-            component: "TimeAxis:link".into(),
-            component_type: Some("rerun.blueprint.components.LinkAxis".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+                component: "TimeAxis:link".into(),
+                component_type: Some("rerun.blueprint.components.LinkAxis".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::view_range`].
@@ -56,11 +59,13 @@ impl TimeAxis {
     /// The corresponding component is [`crate::blueprint::components::TimeRange`].
     #[inline]
     pub fn descriptor_view_range() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
-            component: "TimeAxis:view_range".into(),
-            component_type: Some("rerun.blueprint.components.TimeRange".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+                component: "TimeAxis:view_range".into(),
+                component_type: Some("rerun.blueprint.components.TimeRange".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::zoom_lock`].
@@ -68,11 +73,13 @@ impl TimeAxis {
     /// The corresponding component is [`crate::blueprint::components::LockRangeDuringZoom`].
     #[inline]
     pub fn descriptor_zoom_lock() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
-            component: "TimeAxis:zoom_lock".into(),
-            component_type: Some("rerun.blueprint.components.LockRangeDuringZoom".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+                component: "TimeAxis:zoom_lock".into(),
+                component_type: Some("rerun.blueprint.components.LockRangeDuringZoom".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -108,7 +115,10 @@ impl TimeAxis {
 impl ::re_types_core::Archetype for TimeAxis {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TimeAxis".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TimeAxis"
+        )
     }
 
     #[inline]
@@ -245,14 +255,5 @@ impl TimeAxis {
     ) -> Self {
         self.zoom_lock = try_serialize_field(Self::descriptor_zoom_lock(), [zoom_lock]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TimeAxis {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.link.heap_size_bytes()
-            + self.view_range.heap_size_bytes()
-            + self.zoom_lock.heap_size_bytes()
     }
 }

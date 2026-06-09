@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configuration for the background map of the map view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct MapBackground {
     /// Map provider and style to use.
     ///
@@ -38,11 +39,13 @@ impl MapBackground {
     /// The corresponding component is [`crate::blueprint::components::MapProvider`].
     #[inline]
     pub fn descriptor_provider() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.MapBackground".into()),
-            component: "MapBackground:provider".into(),
-            component_type: Some("rerun.blueprint.components.MapProvider".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.MapBackground".into()),
+                component: "MapBackground:provider".into(),
+                component_type: Some("rerun.blueprint.components.MapProvider".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -66,7 +69,10 @@ impl MapBackground {
 impl ::re_types_core::Archetype for MapBackground {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.MapBackground".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.MapBackground"
+        )
     }
 
     #[inline]
@@ -155,12 +161,5 @@ impl MapBackground {
     ) -> Self {
         self.provider = try_serialize_field(Self::descriptor_provider(), [provider]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for MapBackground {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.provider.heap_size_bytes()
     }
 }

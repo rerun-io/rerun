@@ -12,7 +12,7 @@ use futures::StreamExt as _;
 use re_log_types::EntryId;
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::EntryKind;
-use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry};
+use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableDetails, TableEntry};
 
 #[derive(Clone)]
 pub enum TableType {
@@ -31,6 +31,7 @@ pub struct Table {
     updated_at: jiff::Timestamp,
 
     provider_details: ProviderDetails,
+    table_details: TableDetails,
 }
 
 impl Table {
@@ -40,6 +41,7 @@ impl Table {
         table: TableType,
         created_at: Option<jiff::Timestamp>,
         provider_details: ProviderDetails,
+        table_details: TableDetails,
     ) -> Self {
         Self {
             id,
@@ -48,6 +50,7 @@ impl Table {
             created_at: created_at.unwrap_or_else(jiff::Timestamp::now),
             updated_at: jiff::Timestamp::now(),
             provider_details,
+            table_details,
         }
     }
 
@@ -89,7 +92,17 @@ impl Table {
             },
 
             provider_details: self.provider_details.clone(),
+            table_details: self.table_details.clone(),
         }
+    }
+
+    pub fn table_details(&self) -> &TableDetails {
+        &self.table_details
+    }
+
+    pub fn set_table_details(&mut self, table_details: TableDetails) {
+        self.table_details = table_details;
+        self.updated_at = jiff::Timestamp::now();
     }
 
     pub fn schema(&self) -> SchemaRef {
@@ -236,6 +249,7 @@ impl Table {
         name: EntryName,
         url: &url::Url,
         schema: SchemaRef,
+        table_details: TableDetails,
     ) -> Result<Self, super::error::Error> {
         use re_protos::cloud::v1alpha1::ext::LanceTable;
 
@@ -260,6 +274,7 @@ impl Table {
             TableType::LanceDataset(ds),
             created_at,
             ProviderDetails::LanceTable(provider_details),
+            table_details,
         ))
     }
 
@@ -270,6 +285,7 @@ impl Table {
         _name: EntryName,
         _url: &url::Url,
         _schema: SchemaRef,
+        _table_details: TableDetails,
     ) -> Result<Self, super::error::Error> {
         Err(DataFusionError::NotImplemented(
             "Create table not implemented for bare DataFusion table".to_owned(),

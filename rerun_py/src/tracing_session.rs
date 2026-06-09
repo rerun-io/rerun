@@ -27,7 +27,7 @@ use pyo3::{Py, PyAny, PyResult, Python, pyfunction};
 pub fn is_telemetry_active() -> bool {
     #[cfg(feature = "perf_telemetry")]
     {
-        crate::python_bridge::telemetry_active()
+        re_perf_telemetry::is_telemetry_active()
     }
     #[cfg(not(feature = "perf_telemetry"))]
     {
@@ -46,13 +46,73 @@ pub fn is_telemetry_active() -> bool {
 pub fn get_tracing_session_var(py: Python<'_>) -> PyResult<Py<PyAny>> {
     #[cfg(feature = "perf_telemetry")]
     {
-        let context_var = re_perf_telemetry::get_rerun_session_var(py)?;
+        let context_var = get_rerun_session_var(py)?;
         Ok(context_var.unbind())
     }
     #[cfg(not(feature = "perf_telemetry"))]
     {
         Ok(py.None())
     }
+}
+
+// ---
+// Python `ContextVar` plumbing for the active `tracing_session()` id.
+//
+// All pyo3 use lives in this crate so `re_perf_telemetry` stays
+// language-agnostic. The boundary is the `SessionIdReader` closure
+// registered at telemetry init (see `python_bridge.rs::init_perf_telemetry`):
+// `re_perf_telemetry` invokes that closure to get an
+// `Option<RerunTracingSessionId>` without knowing how it was sourced.
+
+/// Name of the Python `ContextVar` carrying the active `tracing_session()` id.
+#[cfg(feature = "perf_telemetry")]
+const RERUN_SESSION_VAR_NAME: &str = "RERUN_SESSION_ID";
+
+/// Get the rerun session id `ContextVar` object.
+///
+/// Set by the Python `tracing_session()` context manager. The Rust-side
+/// [`re_perf_telemetry::current_rerun_session_id`] helper reads it on every
+/// outbound RPC to enrich the W3C `tracestate` with `rerun_session_id=<id>`.
+#[cfg(feature = "perf_telemetry")]
+fn get_rerun_session_var(py: Python<'_>) -> PyResult<pyo3::Bound<'_, PyAny>> {
+    use pyo3::prelude::*;
+
+    static CONTEXT_VAR: parking_lot::Mutex<Option<Py<PyAny>>> = parking_lot::Mutex::new(None);
+
+    let mut guard = CONTEXT_VAR.lock();
+
+    if let Some(var) = guard.as_ref() {
+        return Ok(var.bind(py).clone());
+    }
+
+    let module = py.import("contextvars")?;
+    let contextvar_class = module.getattr("ContextVar")?;
+    // Default to an explicit `None` so `.get()` never raises `LookupError`.
+    let kwargs = pyo3::types::PyDict::new(py);
+    kwargs.set_item("default", py.None())?;
+    let var = contextvar_class.call((RERUN_SESSION_VAR_NAME,), Some(&kwargs))?;
+    *guard = Some(var.clone().unbind());
+
+    Ok(var)
+}
+
+/// Read the current rerun session id from the Python `ContextVar`.
+///
+/// Returns `None` when no `tracing_session()` is active, the value is unset, or
+/// the value fails [`re_perf_telemetry::RerunTracingSessionId::parse`].
+#[cfg(feature = "perf_telemetry")]
+pub(crate) fn current_rerun_session_id_from_contextvar(
+    py: Python<'_>,
+) -> Option<re_perf_telemetry::RerunTracingSessionId> {
+    use pyo3::prelude::*;
+
+    let var = get_rerun_session_var(py).ok()?;
+    let value = var.call_method0("get").ok()?;
+    if value.is_none() {
+        return None;
+    }
+    let raw = value.extract::<String>().ok()?;
+    re_perf_telemetry::RerunTracingSessionId::parse(&raw)
 }
 
 /// Increment the process-wide active-tracing-session gate. Called by `tracing_session().__enter__`.

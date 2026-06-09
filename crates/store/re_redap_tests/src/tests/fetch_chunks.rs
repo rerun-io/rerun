@@ -45,8 +45,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
     let chunk_info = service
         .query_dataset(
             tonic::Request::new(QueryDatasetRequest::default().into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -63,7 +62,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
         .unwrap()
         .project_columns(&required_columns_ref);
 
-    let mut chunks = service
+    let mut chunks: Vec<_> = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {
             chunk_infos: vec![chunk_keys.into()],
         }))
@@ -75,7 +74,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
         .unwrap();
 
     // IMPORTANT: `FetchChunks` does not guarantee chunk ordering
@@ -149,8 +148,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
                 }
                 .into(),
             )
-            .with_entry_name(entry_name(dataset_name_1))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name_1)),
         )
         .await
         .unwrap()
@@ -178,8 +176,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
                 }
                 .into(),
             )
-            .with_entry_name(entry_name(dataset_name_1))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name_1)),
         )
         .await
         .unwrap()
@@ -196,7 +193,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     chunk_info_1.extend(chunk_info_2);
     let chunk_info = concat_record_batches(&chunk_info_1);
 
-    let chunks = service
+    let chunks: Vec<_> = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {
             chunk_infos: vec![chunk_info.clone().into()],
         }))
@@ -208,7 +205,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
         .unwrap();
 
     //

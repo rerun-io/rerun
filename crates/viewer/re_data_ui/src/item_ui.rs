@@ -634,7 +634,7 @@ pub fn entity_db_button_ui(
     {
         Some(recording_name.to_string())
     } else if let EntityDbClass::DatasetSegment(url) = entity_db.store_class() {
-        Some(url.segment_id.clone())
+        Some(url.segment_id.to_string())
     } else {
         entity_db
             .recording_info_property::<Timestamp>(RecordingInfo::descriptor_start_time().component)

@@ -55,10 +55,10 @@ def test_isolated_streams(tmp_path: Path) -> None:
 
     server = rr.server.Server(datasets={"test_dataset": tmp_path})
     ds = server.client().get_dataset("test_dataset")
-    assert ds.filter_segments("rec1").filter_contents("/data1").reader(index="log_tick").count() == 1
-    assert ds.filter_segments("rec2").filter_contents("/data2").reader(index="log_tick").count() == 1
+    assert ds.filter_segments("rec1").filter_contents("/data1").reader(index="log_time").count() == 1
+    assert ds.filter_segments("rec2").filter_contents("/data2").reader(index="log_time").count() == 1
     assert (
-        ds.filter_segments(["rec1", "rec2"]).filter_contents(["/data1", "/data2"]).reader(index="log_tick").count() == 2
+        ds.filter_segments(["rec1", "rec2"]).filter_contents(["/data1", "/data2"]).reader(index="log_time").count() == 2
     )
 
 

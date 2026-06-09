@@ -7,6 +7,7 @@ use std::str::FromStr as _;
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
+use itertools::Itertools as _;
 use re_log::ResultExt as _;
 use re_log_channel::{LogSender, RecordingOpenBehavior};
 use re_log_types::{TableId, TableMsg};
@@ -348,7 +349,7 @@ impl WebHandle {
                 }
             };
 
-            let mut batches = match stream_reader.collect::<Result<Vec<_>, _>>() {
+            let mut batches: Vec<_> = match stream_reader.try_collect() {
                 Ok(batches) => batches,
                 Err(err) => {
                     re_log::error_once!("Could not read from IPC stream: {err}");

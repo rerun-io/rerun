@@ -1053,7 +1053,7 @@ impl BlueprintTree {
         };
         if dragged_contents.iter().any(parent_contains_dragged_content) {
             ctx.drag_and_drop_manager()
-                .set_feedback(DragAndDropFeedback::Reject);
+                .set_feedback(DragAndDropFeedback::Reject(None));
             return;
         }
 
@@ -1066,7 +1066,7 @@ impl BlueprintTree {
         let Contents::Container(target_container_id) = drop_target.target_parent_id else {
             // this shouldn't happen
             ctx.drag_and_drop_manager()
-                .set_feedback(DragAndDropFeedback::Reject);
+                .set_feedback(DragAndDropFeedback::Reject(None));
             return;
         };
 
@@ -1219,13 +1219,15 @@ impl BlueprintTree {
             .is_some()
             && let Some(root_node) = result_tree.root_node()
         {
-            EntityPath::incremental_walk(Some(&root_node.data_result.entity_path), entity_path)
-                .chain(std::iter::once(root_node.data_result.entity_path.clone()))
-                .for_each(|entity_path| {
-                    self.collapse_scope()
-                        .data_result(*view_id, entity_path)
-                        .set_open(egui_ctx, true);
-                });
+            std::iter::chain(
+                EntityPath::incremental_walk(Some(&root_node.data_result.entity_path), entity_path),
+                std::iter::once(root_node.data_result.entity_path.clone()),
+            )
+            .for_each(|entity_path| {
+                self.collapse_scope()
+                    .data_result(*view_id, entity_path)
+                    .set_open(egui_ctx, true);
+            });
         }
     }
 }

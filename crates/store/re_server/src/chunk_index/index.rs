@@ -13,8 +13,8 @@ use lance_index::DatasetIndexExt as _;
 use re_chunk_store::Chunk;
 use re_log_types::{ComponentPath, EntityPath, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{IndexConfig, IndexProperties};
-use re_protos::common::v1alpha1::ext::SegmentId;
-use re_types_core::ComponentIdentifier;
+use re_types_core::SegmentId;
+use re_types_core::{ComponentIdentifier, LayerName};
 
 use crate::chunk_index::{
     ArcCell, FIELD_CHUNK_ID, FIELD_INSTANCE, FIELD_INSTANCE_ID, FIELD_RERUN_SEGMENT_ID,
@@ -49,7 +49,7 @@ impl super::Index {
     /// Store chunks in the index.
     pub async fn store_chunks(
         &self,
-        chunks: Vec<(SegmentId, String, Arc<Chunk>)>,
+        chunks: Vec<(SegmentId, LayerName, Arc<Chunk>)>,
         checkout_latest: bool,
     ) -> Result<(), StoreError> {
         let index_type: IndexType = (&self.config.properties).into();
@@ -102,7 +102,7 @@ impl super::Index {
     /// Remove layers from the index.
     pub async fn remove_layers(
         &self,
-        layers: &[(SegmentId, String)],
+        layers: &[(SegmentId, LayerName)],
         checkout_latest: bool,
     ) -> Result<(), StoreError> {
         let mut lance: lance::Dataset = self.lance_dataset.cloned();
@@ -138,8 +138,11 @@ impl super::Index {
             let predicates = layers
                 .iter()
                 .map(|(segment, layer)| {
-                    (cast(col(FIELD_RERUN_SEGMENT_ID), DataType::Utf8).eq(lit(&segment.id)))
-                        .and(cast(col(FIELD_RERUN_SEGMENT_LAYER), DataType::Utf8).eq(lit(layer)))
+                    (cast(col(FIELD_RERUN_SEGMENT_ID), DataType::Utf8).eq(lit(segment.as_str())))
+                        .and(
+                            cast(col(FIELD_RERUN_SEGMENT_LAYER), DataType::Utf8)
+                                .eq(lit(layer.as_str())),
+                        )
                 })
                 .collect();
 
@@ -161,7 +164,7 @@ impl super::Index {
                     format!(
                         "(CAST({} AS string) = '{}' AND CAST({} AS string) = '{}')",
                         FIELD_RERUN_SEGMENT_ID,
-                        segment.id.replace('\'', "''"),
+                        segment.as_str().replace('\'', "''"),
                         FIELD_RERUN_SEGMENT_LAYER,
                         layer.replace('\'', "''"),
                     )
@@ -193,7 +196,7 @@ impl super::Index {
     pub fn prepare_record_batch(
         index_type: IndexType,
         segment_id: &SegmentId,
-        layer: String,
+        layer: LayerName,
         timeline: TimelineName,
         component: ComponentIdentifier,
         chunk: &Arc<Chunk>,
@@ -233,7 +236,7 @@ impl super::Index {
         let dict_keys = UInt8Array::from_iter_values(std::iter::repeat_n(0, total_instances));
 
         let segment_id_array = {
-            let segment_id_values = StringArray::from_iter_values([segment_id.id.as_str()]);
+            let segment_id_values = StringArray::from_iter_values([segment_id.as_str()]);
             DictionaryArray::new(dict_keys.clone(), Arc::new(segment_id_values))
         };
 
@@ -491,8 +494,8 @@ fn find_datatypes(
     timeline_name: &TimelineName,
 ) -> Option<IndexDataTypes> {
     for segment in dataset.segments().values() {
-        for layer in segment.layers().values() {
-            let chunks: Vec<Arc<Chunk>> = match layer.resolved_store() {
+        for source in segment.sources().values() {
+            let chunks: Vec<Arc<Chunk>> = match source.resolved_store() {
                 crate::store::ResolvedStore::Eager(h) => {
                     h.read().iter_physical_chunks().cloned().collect()
                 }

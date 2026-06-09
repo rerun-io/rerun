@@ -21,10 +21,10 @@ use re_view::{
     BlueprintResolvedResultsExt as _, ChunksWithComponent, latest_at_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
-    BlueprintContext as _, DataResult, DatatypeMatch, TryShowEditUiResult, UiLayout, ViewContext,
-    ViewSystemIdentifier, VisualizableReason, VisualizerCollection, VisualizerComponentMappings,
-    VisualizerComponentSource, VisualizerInstruction, VisualizerQueryInfo,
-    VisualizerReportSeverity, VisualizerSystem, VisualizerViewReport,
+    BlueprintContext as _, DataResult, DatatypeMatch, RecommendedMappings, TryShowEditUiResult,
+    UiLayout, ViewContext, ViewSystemIdentifier, VisualizableReason, VisualizerCollection,
+    VisualizerComponentMappings, VisualizerComponentSource, VisualizerInstruction,
+    VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem, VisualizerViewReport,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -1242,11 +1242,11 @@ fn add_new_visualizer_button(
             component_mappings,
         );
         let active_visualizer_archetype = ActiveVisualizers::new(
-            active_visualizers
-                .iter()
-                .map(|v| &v.id)
-                .chain(std::iter::once(&new_instruction.id))
-                .map(|v| v.0),
+            std::iter::chain(
+                active_visualizers.iter().map(|v| &v.id),
+                std::iter::once(&new_instruction.id),
+            )
+            .map(|v| v.0),
         );
 
         // If this is the first time we log `ActiveVisualizers`, we have to write out the instructions for all
@@ -1275,18 +1275,6 @@ fn add_new_visualizer_button(
     }
 }
 
-/// Returns true if the proposed mapping is fully covered by an existing visualizer.
-fn is_mapping_already_in_use(
-    active_visualizers: &[VisualizerInstruction],
-    mapping: &VisualizerComponentMappings,
-) -> bool {
-    active_visualizers.iter().any(|active_visualizer| {
-        mapping.iter().all(|(mapping_src, mapping_target)| {
-            active_visualizer.component_mappings.get(mapping_src) == Some(mapping_target)
-        })
-    })
-}
-
 fn component_mappings_for_new_visualizer(
     ctx: &ViewContext<'_>,
     active_visualizers: &[VisualizerInstruction],
@@ -1312,33 +1300,37 @@ fn component_mappings_for_new_visualizer(
         .iter()
         .find(|(viz, _)| viz == visualizer_type)
         .map(|(_, reason)| *reason);
-    let all_mapping_candidates = component_mapping_recommendations
+    let all_mapping_candidates = std::iter::chain(
+        component_mapping_recommendations.into_iter().flatten(),
+        component_mappings_for_required_components_from_visualizability(
+            entity_path,
+            visualizer_type,
+            visualizable_reason,
+        )
         .into_iter()
-        .flatten()
-        .map(re_viewer_context::RecommendedMappings::into_mappings)
-        .chain(
-            component_mappings_for_required_components_from_visualizability(
-                entity_path,
-                visualizer_type,
-                visualizable_reason,
-            ),
-        );
+        .map(RecommendedMappings::from_mappings),
+    );
 
     // Now out of this list of all mappings, pick the best one!
     //
     // Reminder: Complex prioritization is already done for recommended visualizers, so we only should do very loose prioritization beyond that!
     all_mapping_candidates
-        .min_by_key(|mappings| {
-            let is_trivial_mapping = mappings.is_empty()
-                || mappings
+        .min_by_key(|recommended_mappings| {
+            let is_trivial_mapping = recommended_mappings.mappings().is_empty()
+                || recommended_mappings
+                    .mappings()
                     .iter()
                     .all(|(target, source)| source.is_identity_mapping(*target));
+            let is_already_in_use = active_visualizers.iter().any(|active_visualizer| {
+                recommended_mappings.is_covered_by(&active_visualizer.component_mappings)
+            });
 
             (
-                is_mapping_already_in_use(active_visualizers, mappings), // prefer mappings that haven't shown up yet
+                is_already_in_use,   // prefer mappings that haven't shown up yet
                 !is_trivial_mapping, // prefer mappings that are completely trivial (false sorts earlier)
             )
         })
+        .map(RecommendedMappings::into_mappings)
         .unwrap_or_default()
 }
 

@@ -1152,6 +1152,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <PointShading as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Defines how points are shaded.",
+                deprecation_summary: None,
+                custom_placeholder: Some(PointShading::default().to_arrow()?),
+                datatype: PointShading::arrow_datatype(),
+                is_enum: true,
+                verify_arrow_array: PointShading::verify_arrow_array,
+            },
+        ),
+        (
             <Position2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A position in 2D space.",
@@ -3303,6 +3314,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
+                        name: "point_shading",
+                        display_name: "Point shading",
+                        component_type: "rerun.components.PointShading".into(),
+                        docstring_md: "How points should be shaded.\n\nIf not set, points are rendered with [`components.PointShading#Gradient`](https://rerun.io/docs/reference/types/components/point_shading?speculative-link) by default.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
                         name: "class_ids",
                         display_name: "Class ids",
                         component_type: "rerun.components.ClassId".into(),
@@ -3509,7 +3527,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     name: "state",
                     display_name: "State",
                     component_type: "rerun.components.Text".into(),
-                    docstring_md: "The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.",
+                    docstring_md: "The new state value.\n\nA `null` state is ignored, it can be used to partially update a multi-instance state array.\nAn empty string is treated as state reset, and a gap is shown in the state timeline view.",
                     flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                 }],
             },

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -50,7 +51,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/geopoint_simple/b86ce83e5871837587bd33a0ad639358b96e9010/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct GeoPoints {
     /// The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
     pub positions: Option<SerializedComponentBatch>,
@@ -75,11 +76,13 @@ impl GeoPoints {
     /// The corresponding component is [`crate::components::LatLon`].
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GeoPoints".into()),
-            component: "GeoPoints:positions".into(),
-            component_type: Some("rerun.components.LatLon".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoPoints".into()),
+                component: "GeoPoints:positions".into(),
+                component_type: Some("rerun.components.LatLon".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
@@ -87,11 +90,13 @@ impl GeoPoints {
     /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GeoPoints".into()),
-            component: "GeoPoints:radii".into(),
-            component_type: Some("rerun.components.Radius".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoPoints".into()),
+                component: "GeoPoints:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
@@ -99,11 +104,13 @@ impl GeoPoints {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GeoPoints".into()),
-            component: "GeoPoints:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoPoints".into()),
+                component: "GeoPoints:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
@@ -111,11 +118,13 @@ impl GeoPoints {
     /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GeoPoints".into()),
-            component: "GeoPoints:class_ids".into(),
-            component_type: Some("rerun.components.ClassId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoPoints".into()),
+                component: "GeoPoints:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -151,7 +160,10 @@ impl GeoPoints {
 impl ::re_types_core::Archetype for GeoPoints {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.GeoPoints".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.GeoPoints"
+        )
     }
 
     #[inline]
@@ -378,15 +390,5 @@ impl GeoPoints {
     ) -> Self {
         self.class_ids = try_serialize_field(Self::descriptor_class_ids(), class_ids);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for GeoPoints {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.positions.heap_size_bytes()
-            + self.radii.heap_size_bytes()
-            + self.colors.heap_size_bytes()
-            + self.class_ids.heap_size_bytes()
     }
 }

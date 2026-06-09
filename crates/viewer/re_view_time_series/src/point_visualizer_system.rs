@@ -28,7 +28,10 @@ pub struct SeriesPointsSystem;
 
 impl IdentifiedViewSystem for SeriesPointsSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "SeriesPoints".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "SeriesPoints"
+        )
     }
 }
 
@@ -45,11 +48,12 @@ impl VisualizerSystem for SeriesPointsSystem {
             .with_additional_physical_types(util::series_supported_datatypes())
             .with_allow_static_data(false)
             .into(),
-            queried: archetypes::Scalars::all_components()
-                .iter()
-                .chain(archetypes::SeriesPoints::all_components().iter())
-                .cloned()
-                .collect(),
+            queried: std::iter::chain(
+                archetypes::Scalars::all_components().iter(),
+                archetypes::SeriesPoints::all_components().iter(),
+            )
+            .cloned()
+            .collect(),
         }
     }
 
@@ -213,8 +217,10 @@ impl SeriesPointsSystem {
             None,
             &query,
             data_result,
-            archetypes::Scalars::all_component_identifiers()
-                .chain(archetypes::SeriesPoints::all_component_identifiers()),
+            std::iter::chain(
+                archetypes::Scalars::all_component_identifiers(),
+                archetypes::SeriesPoints::all_component_identifiers(),
+            ),
             instruction,
         );
 
@@ -325,10 +331,10 @@ impl SeriesPointsSystem {
                         .iter_component::<MarkerShape>()
                         .next()
                     {
-                        for (points, marker_shape) in points_per_series
-                            .iter_mut()
-                            .zip(clamped_or_nothing(marker_shapes.as_slice(), num_series))
-                        {
+                        for (points, marker_shape) in std::iter::zip(
+                            points_per_series.iter_mut(),
+                            clamped_or_nothing(marker_shapes.as_slice(), num_series),
+                        ) {
                             for point in points {
                                 point.attrs.kind = PlotSeriesKind::Scatter(ScatterAttrs {
                                     marker: *marker_shape,
@@ -344,10 +350,10 @@ impl SeriesPointsSystem {
                         .component_fallback_registry()
                         .fallback_for(&SeriesPoints::descriptor_markers(), &query_ctx);
                     if let Ok(marker_array) = MarkerShape::from_arrow(&fallback_array) {
-                        for (points, marker) in points_per_series
-                            .iter_mut()
-                            .zip(clamped_or_nothing(&marker_array, num_series))
-                        {
+                        for (points, marker) in std::iter::zip(
+                            points_per_series.iter_mut(),
+                            clamped_or_nothing(&marker_array, num_series),
+                        ) {
                             for p in points {
                                 p.attrs.kind =
                                     PlotSeriesKind::Scatter(ScatterAttrs { marker: *marker });
@@ -391,10 +397,10 @@ impl SeriesPointsSystem {
                     } else {
                         all_frames.for_each(|(i, (_index, _scalars, marker_shapes))| {
                             if let Some(marker_shapes) = marker_shapes {
-                                for (points, marker) in points_per_series
-                                    .iter_mut()
-                                    .zip(clamped_or_nothing(&marker_shapes, num_series))
-                                {
+                                for (points, marker) in std::iter::zip(
+                                    points_per_series.iter_mut(),
+                                    clamped_or_nothing(&marker_shapes, num_series),
+                                ) {
                                     points[i].attrs.kind =
                                         PlotSeriesKind::Scatter(ScatterAttrs { marker: *marker });
                                 }
@@ -424,12 +430,8 @@ impl SeriesPointsSystem {
             series_names.len(),
             points_per_series.len()
         );
-        for (instance, (points, label, visible)) in itertools::izip!(
-            points_per_series.into_iter(),
-            series_names.into_iter(),
-            series_visibility.into_iter()
-        )
-        .enumerate()
+        for (instance, (points, label, visible)) in
+            itertools::izip!(points_per_series, series_names, series_visibility).enumerate()
         {
             let instance_path = if num_series == 1 {
                 InstancePath::entity_all(data_result.entity_path.clone())

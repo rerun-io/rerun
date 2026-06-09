@@ -28,7 +28,7 @@ pub enum ColumnError {
 /// * [`RowIdColumnDescriptor`]
 /// * [`IndexColumnDescriptor`]
 /// * [`ComponentColumnDescriptor`]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub enum ColumnDescriptor {
     /// The primary row id column.
     ///
@@ -139,17 +139,6 @@ impl ColumnDescriptor {
         match self {
             Self::Component(component) => component.archetype,
             _ => None,
-        }
-    }
-}
-
-impl re_byte_size::SizeBytes for ColumnDescriptor {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::RowId(_descr) => 0,
-            Self::Time(descr) => descr.heap_size_bytes(),
-            Self::Component(descr) => descr.heap_size_bytes(),
         }
     }
 }

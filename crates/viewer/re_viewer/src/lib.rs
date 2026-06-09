@@ -35,6 +35,7 @@ mod default_views;
 mod docker_detection;
 pub mod env_vars;
 pub mod event;
+mod external_memory;
 mod history;
 mod latency_tracker;
 mod navigation;
@@ -66,13 +67,15 @@ pub mod blueprint;
 pub use app::App;
 pub(crate) use app_state::AppState;
 pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
+pub use external_memory::ExternalMemoryUser;
 pub use re_capabilities::MainThreadToken;
 pub use re_viewer_context::{
     AsyncRuntimeHandle, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
     command_channel,
 };
 pub use startup_options::{LoginOptions, StartupOptions};
-pub(crate) use ui::memory_panel;
+pub use ui::about_rerun_ui;
+pub(crate) use ui::dev_panel;
 
 pub mod external {
     pub use re_chunk::external::*;
@@ -93,6 +96,11 @@ pub mod external {
 pub mod native;
 #[cfg(not(target_arch = "wasm32"))]
 pub use native::run_native_app;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod headless;
+#[cfg(not(target_arch = "wasm32"))]
+pub use headless::run_headless_app;
 
 // ----------------------------------------------------------------------------
 // When compiling for web:
@@ -229,6 +237,11 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
 
             ..egui_wgpu::WgpuSetupCreateNew::without_display_handle()
         }),
+
+        // Explicitly stick with wgpu's latency default which is more optimized for high throughput than
+        // what egui may have in mind.
+        desired_maximum_frame_latency: None,
+
         ..Default::default()
     }
 }

@@ -85,7 +85,7 @@ def log(
         Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         any temporal data of the same type.
 
-        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
@@ -170,7 +170,7 @@ def _log_components(
         Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         any temporal data of the same type.
 
-        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
@@ -250,7 +250,7 @@ def log_file_from_path(
         Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         any temporal data of the same type.
 
-        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
@@ -304,7 +304,7 @@ def log_file_from_contents(
         Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         any temporal data of the same type.
 
-        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:

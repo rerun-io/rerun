@@ -24,6 +24,9 @@
       "color": "{Gray.750}",
       "width": 1
     },
+    "windows_close_button_hover_color": {
+      "color": "#C42B1C"
+    },
     "top_bar_color": {
       "color": "{Gray.800}"
     },
@@ -415,6 +418,14 @@
     },
     "icon_inverse": {
       "color": "{Gray.1000}"
+    },
+
+    "preview_timeline_track_color": {
+      "color": "{Gray.0}",
+      "alpha": 100
+    },
+    "preview_timeline_progress_color": {
+      "color": "#FF0000"
     },
   },
 

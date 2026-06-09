@@ -1,4 +1,4 @@
-use re_video::{Frame, FrameContent};
+use re_video::{DecodedFrameContent, Frame, FrameContent};
 
 use super::{VideoPlayerError, VideoTexture};
 use crate::RenderContext;
@@ -57,25 +57,34 @@ pub fn update_video_texture_with_frame(
 }
 
 /// Picks the GPU texture format for the allocated video frame texture.
-///
-/// Native decoders can produce single-channel frames (`L8`/`L16`); web decoders always
-/// feed us via `CopyExternalImageSourceInfo`, which targets `Rgba8Unorm`.
-#[cfg(not(target_arch = "wasm32"))]
 fn gpu_texture_format_for_frame_content(content: &FrameContent) -> wgpu::TextureFormat {
+    #[cfg(target_arch = "wasm32")]
+    {
+        match content {
+            FrameContent::WebVideoFrame(_) => wgpu::TextureFormat::Rgba8Unorm,
+            FrameContent::Decoded(content) => gpu_texture_format_for_decoded_frame_content(content),
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        gpu_texture_format_for_decoded_frame_content(content)
+    }
+}
+
+fn gpu_texture_format_for_decoded_frame_content(
+    content: &DecodedFrameContent,
+) -> wgpu::TextureFormat {
     match content.format {
         re_video::PixelFormat::L8 => wgpu::TextureFormat::R8Unorm,
         // `R16Unorm` would require the `TEXTURE_FORMAT_16BIT_NORM` feature, which isn't
         // implemented in wgpu's OpenGL backend.
         re_video::PixelFormat::L16 => wgpu::TextureFormat::R16Uint,
+        re_video::PixelFormat::R32Float => wgpu::TextureFormat::R32Float,
         re_video::PixelFormat::Rgb8Unorm
         | re_video::PixelFormat::Rgba8Unorm
         | re_video::PixelFormat::Yuv { .. } => wgpu::TextureFormat::Rgba8Unorm,
     }
-}
-
-#[cfg(target_arch = "wasm32")]
-fn gpu_texture_format_for_frame_content(_content: &FrameContent) -> wgpu::TextureFormat {
-    wgpu::TextureFormat::Rgba8Unorm
 }
 
 fn alloc_video_frame_texture(
@@ -124,11 +133,18 @@ pub fn copy_frame_to_texture(
 ) -> Result<SourceImageDataFormat, VideoPlayerError> {
     #[cfg(target_arch = "wasm32")]
     {
-        copy_web_video_frame_to_texture(ctx, frame, target_texture)
+        match frame {
+            FrameContent::WebVideoFrame(frame) => {
+                copy_web_video_frame_to_texture(ctx, frame, target_texture)
+            }
+            FrameContent::Decoded(frame) => {
+                copy_decoded_video_frame_to_texture(ctx, frame, target_texture)
+            }
+        }
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        copy_native_video_frame_to_texture(ctx, frame, target_texture)
+        copy_decoded_video_frame_to_texture(ctx, frame, target_texture)
     }
 }
 
@@ -136,7 +152,7 @@ pub fn copy_frame_to_texture(
 #[expect(clippy::unnecessary_wraps)]
 fn copy_web_video_frame_to_texture(
     ctx: &RenderContext,
-    frame: &FrameContent,
+    frame: &web_sys::VideoFrame,
     target_texture: &GpuTexture,
 ) -> Result<SourceImageDataFormat, VideoPlayerError> {
     let size = wgpu::Extent3d {
@@ -144,7 +160,6 @@ fn copy_web_video_frame_to_texture(
         height: frame.display_height(),
         depth_or_array_layers: 1,
     };
-    let frame: &web_sys::VideoFrame = frame;
     let source = wgpu::CopyExternalImageSourceInfo {
         // Careful: `web_sys::VideoFrame` has a custom `clone` method:
         // https://developer.mozilla.org/en-US/docs/Web/API/VideoFrame/clone
@@ -170,14 +185,13 @@ fn copy_web_video_frame_to_texture(
     ))
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn copy_native_video_frame_to_texture(
+fn copy_decoded_video_frame_to_texture(
     ctx: &RenderContext,
-    frame: &FrameContent,
+    frame: &DecodedFrameContent,
     target_texture: &GpuTexture,
 ) -> Result<SourceImageDataFormat, VideoPlayerError> {
     use crate::resource_managers::{
-        ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+        ImageDataDesc, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
         transfer_image_data_to_texture,
     };
 
@@ -185,12 +199,13 @@ fn copy_native_video_frame_to_texture(
     match frame.format {
         re_video::PixelFormat::Rgb8Unorm => {
             // TODO(andreas): `ImageDataDesc` should have RGB handling!
-            return copy_native_video_frame_to_texture(
+            return copy_decoded_video_frame_to_texture(
                 ctx,
-                &FrameContent {
+                &DecodedFrameContent {
                     data: crate::pad_rgb_to_rgba(&frame.data, 255_u8),
+                    width: frame.width,
+                    height: frame.height,
                     format: re_video::PixelFormat::Rgba8Unorm,
-                    ..*frame
                 },
                 target_texture,
             );
@@ -198,7 +213,8 @@ fn copy_native_video_frame_to_texture(
         re_video::PixelFormat::Rgba8Unorm
         | re_video::PixelFormat::Yuv { .. }
         | re_video::PixelFormat::L8
-        | re_video::PixelFormat::L16 => {}
+        | re_video::PixelFormat::L16
+        | re_video::PixelFormat::R32Float => {}
     }
 
     re_tracing::profile_function!();
@@ -240,6 +256,10 @@ fn copy_native_video_frame_to_texture(
 
         re_video::PixelFormat::L16 => {
             SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::R16Uint)
+        }
+
+        re_video::PixelFormat::R32Float => {
+            SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::R32Float)
         }
     };
 

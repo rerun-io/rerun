@@ -1,11 +1,11 @@
-use re_chunk_store::external::re_chunk::ChunkBuilder;
-use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_chunk::{Chunk, ChunkBuilder};
+use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_sdk_types::blueprint::{archetypes::PlotLegend, components::Corner2D};
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents, ViewProperty};
 
 fn color_gradient0(step: i64) -> re_sdk_types::components::Color {
@@ -599,4 +599,58 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool, snapshot_results: &mu
         egui::vec2(300.0, 300.0),
         None,
     ));
+}
+
+#[test]
+fn temporal_anchor_between_sequence_steps() {
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+
+    let timeline = Timeline::log_tick();
+
+    let chunks = &mut time_series_chunks(timeline);
+
+    // Add the first two (ticks 0 and 10). A single point would trip
+    // `line_visualizer_system.rs`'s debug-assert via util's single-point
+    // Scatter fallback, so we need at least two.
+    test_context.add_chunks(chunks.take(2));
+    test_context.set_active_timeline(*timeline.name());
+
+    // Pin the cursor at 100 — like a `#when` URL anchor would.
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetTime(
+            TimeInt::new_temporal(100).into(),
+        )],
+    );
+    test_context.handle_system_commands(&egui::Context::default());
+
+    let view_id = setup_blueprint(&mut test_context);
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "time_series_temporal_anchor_between_steps_first_chunk",
+        egui::vec2(300.0, 300.0),
+        None,
+    ));
+
+    // Add the rest
+    test_context.add_chunks(chunks);
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "time_series_temporal_anchor_between_steps_rest",
+        egui::vec2(300.0, 300.0),
+        None,
+    ));
+}
+
+fn time_series_chunks(timeline: Timeline) -> impl Iterator<Item = Chunk> {
+    (0_i64..=200).step_by(10).map(move |tick| {
+        Chunk::builder("scalars")
+            .with_archetype_auto_row(
+                [(timeline, tick)],
+                &re_sdk_types::archetypes::Scalars::single((tick as f64 / 30.0).sin()),
+            )
+            .build()
+            .expect("failed to build chunk")
+    })
 }

@@ -49,7 +49,10 @@ namespace rerun::archetypes {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct StateChange {
-        /// The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.
+        /// The new state value.
+        ///
+        /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
+        /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
         std::optional<ComponentBatch> state;
 
       public:
@@ -76,7 +79,10 @@ namespace rerun::archetypes {
         /// Clear all the fields of a `StateChange`.
         static StateChange clear_fields();
 
-        /// The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.
+        /// The new state value.
+        ///
+        /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
+        /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
         StateChange with_state(const rerun::components::Text& _state) && {
             state = ComponentBatch::from_loggable(_state, Descriptor_state).value_or_throw();
             return std::move(*this);

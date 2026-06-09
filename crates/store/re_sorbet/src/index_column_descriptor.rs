@@ -10,7 +10,7 @@ pub struct UnsupportedTimeType {
 }
 
 /// Describes a time column, such as `log_time`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct IndexColumnDescriptor {
     /// The timeline this column is associated with.
     pub timeline: Timeline,
@@ -22,17 +22,6 @@ pub struct IndexColumnDescriptor {
     ///
     /// `false` means either "unsorted" or "unknown".
     pub is_sorted: bool,
-}
-
-impl re_byte_size::SizeBytes for IndexColumnDescriptor {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            timeline,
-            datatype,
-            is_sorted: _,
-        } = self;
-        timeline.heap_size_bytes() + datatype.heap_size_bytes()
-    }
 }
 
 impl PartialOrd for IndexColumnDescriptor {

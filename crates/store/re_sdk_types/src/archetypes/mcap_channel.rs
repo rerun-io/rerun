@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -32,7 +33,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// [MCAP specification](https://mcap.dev/) for complete format details.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct McapChannel {
     /// Unique identifier for this channel within the MCAP file.
     ///
@@ -69,11 +70,13 @@ impl McapChannel {
     /// The corresponding component is [`crate::components::ChannelId`].
     #[inline]
     pub fn descriptor_id() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapChannel".into()),
-            component: "McapChannel:id".into(),
-            component_type: Some("rerun.components.ChannelId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapChannel".into()),
+                component: "McapChannel:id".into(),
+                component_type: Some("rerun.components.ChannelId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::topic`].
@@ -81,11 +84,13 @@ impl McapChannel {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_topic() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapChannel".into()),
-            component: "McapChannel:topic".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapChannel".into()),
+                component: "McapChannel:topic".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::message_encoding`].
@@ -93,11 +98,13 @@ impl McapChannel {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_message_encoding() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapChannel".into()),
-            component: "McapChannel:message_encoding".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapChannel".into()),
+                component: "McapChannel:message_encoding".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::metadata`].
@@ -105,11 +112,13 @@ impl McapChannel {
     /// The corresponding component is [`crate::components::KeyValuePairs`].
     #[inline]
     pub fn descriptor_metadata() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapChannel".into()),
-            component: "McapChannel:metadata".into(),
-            component_type: Some("rerun.components.KeyValuePairs".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapChannel".into()),
+                component: "McapChannel:metadata".into(),
+                component_type: Some("rerun.components.KeyValuePairs".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -146,7 +155,10 @@ impl McapChannel {
 impl ::re_types_core::Archetype for McapChannel {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.McapChannel".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.McapChannel"
+        )
     }
 
     #[inline]
@@ -426,15 +438,5 @@ impl McapChannel {
     ) -> Self {
         self.metadata = try_serialize_field(Self::descriptor_metadata(), metadata);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for McapChannel {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.id.heap_size_bytes()
-            + self.topic.heap_size_bytes()
-            + self.message_encoding.heap_size_bytes()
-            + self.metadata.heap_size_bytes()
     }
 }

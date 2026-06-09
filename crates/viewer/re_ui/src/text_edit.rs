@@ -60,7 +60,7 @@ pub fn autocomplete_text_edit(
             previous_index
         } else {
             // (prev + n + delta) % n handles both directions correctly.
-            let base = previous_index.map_or(if index_delta > 0 { usize::MAX } else { 0 }, |i| i);
+            let base = previous_index.unwrap_or(if index_delta > 0 { usize::MAX } else { 0 });
             Some(
                 (base
                     .wrapping_add(num_suggestions)

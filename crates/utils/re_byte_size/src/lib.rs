@@ -2,6 +2,8 @@
 
 mod arrow_sizes;
 mod bookkeeping_btreemap;
+#[cfg(feature = "egui")]
+mod egui_sizes;
 mod mem_usage_tree;
 mod parking_lot_sizes;
 mod primitive_sizes;
@@ -16,13 +18,17 @@ pub use self::mem_usage_tree::{
     MemUsageNode, MemUsageTree, MemUsageTreeCapture, NamedMemUsageTree,
 };
 
+/// Derive macro for the `SizeBytes` trait.
+pub use re_byte_size_derive::SizeBytes;
+
 // ---
 
 /// Approximations of stack and heap size for both internal and external types.
 ///
-/// Motly used for statistics and triggering events such as garbage collection.
-// TODO(#8630): Derive macro for this trait.
+/// Mostly used for statistics and triggering events such as garbage collection.
 pub trait SizeBytes {
+    const IS_POD: bool = false;
+
     /// Returns the total size of `self` in bytes, accounting for both stack and heap space.
     #[inline]
     fn total_size_bytes(&self) -> u64 {
@@ -45,15 +51,4 @@ pub trait SizeBytes {
     /// If we however are the sole owner of the memory (e.g. a `Vec`), then we return
     /// the heap size of all children plus the capacity of the buffer.
     fn heap_size_bytes(&self) -> u64;
-
-    /// Is `Self` just plain old data?
-    ///
-    /// If `true`, this will make most blanket implementations of `SizeBytes` much faster (e.g. `Vec<T>`).
-    #[inline]
-    fn is_pod() -> bool
-    where
-        Self: Sized,
-    {
-        false
-    }
 }

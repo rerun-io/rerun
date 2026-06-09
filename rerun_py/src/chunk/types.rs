@@ -1,9 +1,6 @@
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
 
 use pyo3::exceptions::PyRuntimeError;
-use pyo3::exceptions::PyStopIteration;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -11,10 +8,7 @@ use pyo3::types::PyDict;
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use arrow::pyarrow::{PyArrowType, ToPyArrow as _};
 use re_chunk::Chunk;
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
-use re_log_types::{EntityPath, StoreId, StoreInfo, StoreSource};
-
-use crate::recording::PyRecordingInternal;
+use re_log_types::EntityPath;
 
 /// A single chunk of data from a recording.
 #[pyclass(
@@ -207,71 +201,4 @@ impl PyChunkInternal {
     fn __len__(&self) -> usize {
         self.chunk.num_rows()
     }
-}
-
-/// An iterator over chunks in a recording.
-// TODO(RR-4126): currently, the stores we can iterate from are fully loaded in memory, so the
-// `Vec<Arc<_>>` is an acceptable shortcut. In the future, this iterator should be streaming and
-// only load chunks (from file/remote segment) to pipeline over larger-than-ram data.
-#[pyclass(name = "ChunkIterator", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq]
-pub struct PyChunkIterator {
-    chunks: Vec<Arc<Chunk>>,
-    index: AtomicUsize,
-}
-
-impl PyChunkIterator {
-    pub fn new(chunks: Vec<Arc<Chunk>>) -> Self {
-        Self {
-            chunks,
-            index: AtomicUsize::new(0),
-        }
-    }
-}
-
-#[pymethods] // NOLINT: ignore[py-mthd-str]
-impl PyChunkIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-
-    fn __next__(&self) -> PyResult<PyChunkInternal> {
-        let idx = self.index.fetch_add(1, Ordering::Relaxed);
-        if idx < self.chunks.len() {
-            Ok(PyChunkInternal::new(self.chunks[idx].clone()))
-        } else {
-            Err(PyStopIteration::new_err(""))
-        }
-    }
-}
-
-/// Create a new recording from an iterable of chunks.
-#[pyfunction]
-#[expect(clippy::needless_pass_by_value)]
-pub fn recording_from_chunks(
-    py: Python<'_>,
-    chunks: &Bound<'_, PyAny>,
-    application_id: String,
-    recording_id: String,
-) -> PyResult<PyRecordingInternal> {
-    let store_id = StoreId::recording(application_id.as_str(), recording_id.as_str());
-
-    let mut store = ChunkStore::new(store_id.clone(), ChunkStoreConfig::DEFAULT);
-
-    let iter = chunks.try_iter()?;
-    for item in iter {
-        let item: Bound<'_, PyAny> = item?;
-        let chunk_internal: PyRef<'_, PyChunkInternal> = item.extract()?;
-        store
-            .insert_chunk(chunk_internal.inner())
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-    }
-
-    let info = StoreInfo::new(store_id, StoreSource::Other("rerun-sdk-python".into()));
-
-    let _ = py;
-
-    Ok(PyRecordingInternal {
-        store: ChunkStoreHandle::new(store),
-        store_info: Some(info),
-    })
 }

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, ::re_byte_size::SizeBytes)]
 pub enum AffixFuzzer4 {
     SingleRequired(crate::testing::datatypes::AffixFuzzer3),
     ManyRequired(Vec<crate::testing::datatypes::AffixFuzzer3>),
@@ -354,22 +355,5 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer4")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer4 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        #![allow(clippy::match_same_arms)]
-        match self {
-            Self::SingleRequired(v) => v.heap_size_bytes(),
-            Self::ManyRequired(v) => v.heap_size_bytes(),
-        }
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::testing::datatypes::AffixFuzzer3>::is_pod()
-            && <Vec<crate::testing::datatypes::AffixFuzzer3>>::is_pod()
     }
 }

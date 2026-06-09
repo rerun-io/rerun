@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use arrow::array::{ArrayRef, Int32Array, Int32Builder, ListBuilder};
+use itertools::Itertools as _;
 use re_chunk::{Chunk, ChunkId, TimeColumn, TimelineName};
 use re_lenses_core::combinators::Error;
 use re_lenses_core::{DynExpr, Lens, LensRuntimeError, Lenses, OutputMode, Selector};
@@ -113,7 +114,7 @@ fn forward_unmatched_merges_same_entity_outputs() {
         .add_lens(lens_alpha)
         .add_lens(lens_beta);
 
-    let results: Vec<_> = lenses.apply(&chunk).collect::<Result<_, _>>().unwrap();
+    let results: Vec<_> = lenses.apply(&chunk).try_collect().unwrap();
     assert_eq!(results.len(), 1);
     assert_ne!(results[0].id(), chunk.id());
     assert_eq!(results[0].row_ids_slice(), original_row_ids);
@@ -167,7 +168,7 @@ fn forward_unmatched_no_prefix_when_all_consumed() {
         .add_lens(make_lens("beta", "beta_out"))
         .add_lens(make_lens("gamma", "gamma_out"));
 
-    let results: Vec<_> = lenses.apply(&chunk).collect::<Result<_, _>>().unwrap();
+    let results: Vec<_> = lenses.apply(&chunk).try_collect().unwrap();
     assert_eq!(results.len(), 3);
     for result in &results {
         assert_ne!(result.id(), chunk.id());
@@ -251,7 +252,7 @@ fn mutate_only_modifies_prefix() {
     let lens = Lens::mutate("alpha", example_selector()).build();
 
     let lenses = Lenses::new(OutputMode::ForwardUnmatched).add_lens(lens);
-    let results: Vec<_> = lenses.apply(&chunk).collect::<Result<_, _>>().unwrap();
+    let results: Vec<_> = lenses.apply(&chunk).try_collect().unwrap();
 
     // Single chunk: the prefix with alpha modified in-place + beta + gamma.
     assert_eq!(results.len(), 1);
@@ -293,7 +294,7 @@ fn mutate_keep_row_ids_preserves_row_ids() {
         .build();
 
     let lenses = Lenses::new(OutputMode::ForwardUnmatched).add_lens(lens);
-    let results: Vec<_> = lenses.apply(&chunk).collect::<Result<_, _>>().unwrap();
+    let results: Vec<_> = lenses.apply(&chunk).try_collect().unwrap();
 
     assert_eq!(results.len(), 1);
     assert_ne!(results[0].id(), chunk.id());
@@ -332,7 +333,7 @@ fn mutate_without_keep_generates_new_row_ids() {
     let lens = Lens::mutate("alpha", example_selector()).build();
 
     let lenses = Lenses::new(OutputMode::ForwardUnmatched).add_lens(lens);
-    let results: Vec<_> = lenses.apply(&chunk).collect::<Result<_, _>>().unwrap();
+    let results: Vec<_> = lenses.apply(&chunk).try_collect().unwrap();
 
     assert_eq!(results.len(), 1);
     assert_ne!(results[0].id(), chunk.id());
@@ -562,7 +563,7 @@ fn derive_and_mutate_on_same_input() {
     let lenses = Lenses::new(OutputMode::ForwardUnmatched)
         .add_lens(mutate)
         .add_lens(derive);
-    let results: Vec<_> = lenses.apply(&chunk).collect::<Result<_, _>>().unwrap();
+    let results: Vec<_> = lenses.apply(&chunk).try_collect().unwrap();
 
     // Single merged chunk: alpha modified in-place (*42), alpha_out derived (*42),
     // beta and gamma forwarded unchanged.

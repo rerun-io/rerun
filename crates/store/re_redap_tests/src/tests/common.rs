@@ -1,24 +1,21 @@
 use std::collections::BTreeMap;
 
 use arrow::array::RecordBatch;
+use arrow::datatypes::{DataType, Field, Schema};
 use futures::StreamExt as _;
 use itertools::Itertools as _;
 use re_log_types::{EntityPath, TimeType};
-use re_protos::EntryName;
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    CreateDatasetEntryRequest, DataSource, QueryTasksOnCompletionRequest, QueryTasksResponse,
-    RegisterWithDatasetRequest, RegisterWithDatasetResponse, ext,
+    CreateDatasetEntryRequest, DataSource, QueryTasksOnCompletionRequest,
+    RegisterWithDatasetRequest, RegisterWithDatasetResponse,
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-
-/// Test helper: parse a string into an `EntryName`, panicking on invalid names.
-pub fn entry_name(name: &str) -> EntryName {
-    EntryName::new(name).unwrap()
-}
+use re_protos::{EntryName, common::v1alpha1::ext::SegmentId};
 use re_types_core::AsComponents;
 use tonic::async_trait;
 use url::Url;
@@ -32,6 +29,41 @@ use crate::{
     create_recording_with_scalars, create_recording_with_text, create_simple_recording,
     create_simple_recording_one_chunk_per_frame,
 };
+
+/// Test helper: parse a string into an `EntryName`, panicking on invalid names.
+pub fn entry_name(name: &str) -> EntryName {
+    EntryName::new(name).unwrap()
+}
+
+pub async fn create_table_entry_with_name(
+    service: &impl RerunCloudService,
+    table_name: &str,
+    tmp_dir: &tempfile::TempDir,
+) -> cloud_ext::TableEntry {
+    let schema = Schema::new(vec![Field::new("column_a", DataType::Utf8, false)]);
+    let table_url =
+        Url::from_directory_path(tmp_dir.path()).expect("create url from tmp directory");
+    let provider_details =
+        cloud_ext::ProviderDetails::LanceTable(cloud_ext::LanceTable { table_url });
+
+    let request = cloud_ext::CreateTableEntryRequest {
+        name: entry_name(table_name),
+        schema,
+        provider_details: Some(provider_details),
+    }
+    .try_into()
+    .expect("Unable to create table request");
+
+    let response: cloud_ext::CreateTableEntryResponse = service
+        .create_table_entry(tonic::Request::new(request))
+        .await
+        .expect("create table entry")
+        .into_inner()
+        .try_into()
+        .expect("valid create table response");
+
+    response.table
+}
 
 /// Extension trait for the most common test setup tasks.
 #[async_trait]
@@ -101,8 +133,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
             on_duplicate: re_protos::common::v1alpha1::IfDuplicateBehavior::from(on_duplicate)
                 as i32,
         })
-        .with_entry_name(entry_name(dataset_name))
-        .expect("Failed to create a request");
+        .with_entry_name(entry_name(dataset_name));
 
         register_with_dataset_blocking(self, request).await;
     }
@@ -119,18 +150,16 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         segments_to_drop: &[&str],
         layers_to_drop: &[&str],
     ) -> tonic::Result<RecordBatch> {
-        let request = re_protos::cloud::v1alpha1::ext::UnregisterFromDatasetRequest {
+        let request = cloud_ext::UnregisterFromDatasetRequest {
             segments_to_drop: segments_to_drop
                 .iter()
                 .map(|id| (*id).to_owned().into())
                 .collect(),
-            layers_to_drop: layers_to_drop.iter().map(|s| (*s).to_owned()).collect(),
+            layers_to_drop: layers_to_drop.iter().copied().map(Into::into).collect(),
             force: false,
         };
 
-        let request = tonic::Request::new(request.into())
-            .with_entry_name(entry_name(dataset_name))
-            .expect("Failed to create a request");
+        let request = tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name));
 
         use futures::TryStreamExt as _;
         let responses: Vec<_> = self
@@ -164,10 +193,9 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path) {
         let table_url =
             Url::from_directory_path(path).expect("Unable to create URL from directory path");
-        let provider_details = re_protos::cloud::v1alpha1::ext::ProviderDetails::LanceTable(
-            re_protos::cloud::v1alpha1::ext::LanceTable { table_url },
-        );
-        let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
+        let provider_details =
+            cloud_ext::ProviderDetails::LanceTable(cloud_ext::LanceTable { table_url });
+        let request = cloud_ext::RegisterTableRequest {
             name: entry_name(table_name),
             provider_details,
         };
@@ -246,15 +274,11 @@ async fn register_with_dataset_blocking(
 
     // Verify all tasks completed successfully
     for batch in &task_results {
-        let status_col = batch
-            .column_by_name(QueryTasksResponse::FIELD_EXEC_STATUS)
-            .expect("exec_status column expected")
-            .as_any()
-            .downcast_ref::<arrow::array::StringArray>()
-            .expect("exec_status should be string array");
+        let statuses = cloud_ext::QueryTasksDataframe::COLUMN_EXEC_STATUS
+            .extract(batch)
+            .expect("valid exec_status column");
 
-        for i in 0..batch.num_rows() {
-            let status = status_col.value(i);
+        for status in &statuses {
             assert_eq!(
                 status, "success",
                 "Expected task to succeed, got status: {status}"
@@ -384,7 +408,12 @@ impl LayerType {
         Self::SimpleBlueprint
     }
 
-    fn into_recording(self, tuid_prefix: TuidPrefix, segment_id: &str) -> anyhow::Result<TempPath> {
+    fn into_recording(
+        self,
+        tuid_prefix: TuidPrefix,
+        segment_id: &SegmentId,
+    ) -> anyhow::Result<TempPath> {
+        let segment_id = segment_id.as_ref();
         match self {
             Self::Simple {
                 entities,
@@ -617,7 +646,7 @@ impl DataSourcesDefinition {
                             .layer_type
                             .into_recording(
                                 tuid_prefix.saturating_add(tuid_prefix_increment as _),
-                                layer.segment_id,
+                                &SegmentId::from(layer.segment_id),
                             )
                             .unwrap(),
                     )
@@ -626,16 +655,17 @@ impl DataSourcesDefinition {
         }
     }
 
-    pub fn to_data_sources_ext(&self) -> Vec<ext::DataSource> {
+    pub fn to_data_sources_ext(&self) -> Vec<cloud_ext::DataSource> {
         self.layers
             .iter()
-            .map(|(layer_name, path)| ext::DataSource {
-                storage_url: Url::from_file_path(path.as_path()).unwrap(),
-                layer: layer_name
-                    .clone()
-                    .unwrap_or_else(|| ext::DataSource::DEFAULT_LAYER.to_owned()),
-                is_prefix: false,
-                kind: ext::DataSourceKind::Rrd,
+            .map(|(layer_name, path)| {
+                let url = Url::from_file_path(path.as_path()).unwrap();
+                match layer_name {
+                    None => cloud_ext::DataSource::new_rrd_url(url),
+                    Some(layer) => {
+                        cloud_ext::DataSource::new_rrd_layer(layer, url.as_str()).unwrap()
+                    }
+                }
             })
             .collect()
     }

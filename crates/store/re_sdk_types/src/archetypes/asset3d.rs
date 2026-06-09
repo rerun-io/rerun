@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -58,7 +59,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Asset3D {
     /// The asset's bytes.
     pub blob: Option<SerializedComponentBatch>,
@@ -88,11 +89,13 @@ impl Asset3D {
     /// The corresponding component is [`crate::components::Blob`].
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Asset3D".into()),
-            component: "Asset3D:blob".into(),
-            component_type: Some("rerun.components.Blob".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Asset3D".into()),
+                component: "Asset3D:blob".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
@@ -100,11 +103,13 @@ impl Asset3D {
     /// The corresponding component is [`crate::components::MediaType`].
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Asset3D".into()),
-            component: "Asset3D:media_type".into(),
-            component_type: Some("rerun.components.MediaType".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Asset3D".into()),
+                component: "Asset3D:media_type".into(),
+                component_type: Some("rerun.components.MediaType".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_factor`].
@@ -112,11 +117,13 @@ impl Asset3D {
     /// The corresponding component is [`crate::components::AlbedoFactor`].
     #[inline]
     pub fn descriptor_albedo_factor() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Asset3D".into()),
-            component: "Asset3D:albedo_factor".into(),
-            component_type: Some("rerun.components.AlbedoFactor".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Asset3D".into()),
+                component: "Asset3D:albedo_factor".into(),
+                component_type: Some("rerun.components.AlbedoFactor".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -146,7 +153,10 @@ impl Asset3D {
 impl ::re_types_core::Archetype for Asset3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Asset3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Asset3D"
+        )
     }
 
     #[inline]
@@ -387,14 +397,5 @@ impl Asset3D {
     ) -> Self {
         self.albedo_factor = try_serialize_field(Self::descriptor_albedo_factor(), albedo_factor);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Asset3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.blob.heap_size_bytes()
-            + self.media_type.heap_size_bytes()
-            + self.albedo_factor.heap_size_bytes()
     }
 }

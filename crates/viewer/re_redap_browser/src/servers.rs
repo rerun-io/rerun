@@ -6,7 +6,7 @@ use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
-use re_log_types::{EntityPathPart, EntryId};
+use re_log_types::{EntityPathPart, EntryId, TableId};
 use re_protos::cloud::v1alpha1::{EntryKind, ScanSegmentTableResponse};
 use re_quota_channel::send_crossbeam;
 use re_redap_client::{
@@ -17,7 +17,8 @@ use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 use re_uri::DATASET_HIERARCHY_SEPARATOR;
 use re_viewer_context::{
-    AppContext, AsyncRuntimeHandle, EditRedapServerModalCommand, StoreViewContext, ViewStates,
+    AppContext, AsyncRuntimeHandle, CommandSender as ViewerCommandSender,
+    EditRedapServerModalCommand, StoreViewContext, ViewStates,
 };
 
 use crate::context::Context;
@@ -41,6 +42,7 @@ impl Server {
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
+        viewer_command_sender: ViewerCommandSender,
     ) -> Self {
         let tables_session_ctx = Self::session_context();
 
@@ -50,6 +52,7 @@ impl Server {
             egui_ctx,
             origin.clone(),
             tables_session_ctx.clone(),
+            viewer_command_sender,
         );
 
         Self {
@@ -72,7 +75,12 @@ impl Server {
         Arc::new(session_ctx)
     }
 
-    fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
+    fn refresh_entries(
+        &mut self,
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        viewer_command_sender: ViewerCommandSender,
+    ) {
         // Note: this also drops the DataFusionTableWidget caches
         self.tables_session_ctx = Self::session_context();
 
@@ -82,6 +90,7 @@ impl Server {
             egui_ctx,
             self.origin.clone(),
             self.tables_session_ctx.clone(),
+            viewer_command_sender,
         );
     }
 
@@ -265,6 +274,7 @@ impl Server {
             self.tables_session_ctx.clone(),
             TableReference::bare(dataset.name().to_string()),
         )
+        .table_id(TableId::new(dataset.id().to_string()))
         .title(dataset.name().to_string())
         .url(re_uri::EntryUri::new(dataset.origin.clone(), dataset.id()).to_string())
         .column_blueprint(|desc| {
@@ -326,6 +336,7 @@ impl Server {
             self.tables_session_ctx.clone(),
             TableReference::bare(table.name().to_string()),
         )
+        .table_id(TableId::new(table.id().to_string()))
         .title(table.name().to_string())
         .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
         .remote_table(re_uri::EntryUri::new(table.origin.clone(), table.id()))
@@ -736,6 +747,7 @@ impl RedapServers {
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         login_enabled: bool,
+        viewer_command_sender: &ViewerCommandSender,
     ) {
         self.pending_servers.drain(..).for_each(|origin| {
             send_crossbeam(
@@ -755,6 +767,7 @@ impl RedapServers {
                 egui_ctx,
                 command,
                 login_enabled,
+                viewer_command_sender,
             );
         }
 
@@ -787,6 +800,7 @@ impl RedapServers {
         egui_ctx: &egui::Context,
         command: Command,
         login_enabled: bool,
+        viewer_command_sender: &ViewerCommandSender,
     ) {
         match command {
             Command::OpenAddServerModal => {
@@ -825,6 +839,7 @@ impl RedapServers {
                             runtime.clone(),
                             egui_ctx,
                             origin.clone(),
+                            viewer_command_sender.clone(),
                         ),
                     );
                 }
@@ -835,7 +850,7 @@ impl RedapServers {
 
             Command::RefreshCollection(origin) => {
                 self.servers.entry(origin).and_modify(|server| {
-                    server.refresh_entries(runtime, egui_ctx);
+                    server.refresh_entries(runtime, egui_ctx, viewer_command_sender.clone());
                 });
             }
 

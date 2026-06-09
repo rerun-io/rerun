@@ -124,6 +124,7 @@ examples = [
   "plots",
   "raw_mesh",
   "rgbd",
+  "robot_data_preprocessing",
   "rrt_star",
   "segment_anything_model",
   "server_tables",
@@ -149,8 +150,7 @@ docs = [
   "mkdocs-material-extensions==1.3",
   "mkdocstrings>=0.28.2,<0.29",
   "mkdocstrings-python>=1.16.2,<2",
-  # pygments 2.20.0 breaks pymdownx.highlight (passes None to html.escape via filename option)
-  "pygments<2.20",
+  "pygments",
   "setuptools>75",
   "sphobjinv==2.3.1",
 ]
@@ -208,6 +208,7 @@ openstreetmap_data = { workspace = true }
 plots = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
+robot_data_preprocessing = { workspace = true }
 rrt_star = { workspace = true }
 segment_anything_model = { workspace = true }
 server_tables = { workspace = true }
@@ -265,6 +266,7 @@ members = [
   "examples/python/plots",
   "examples/python/raw_mesh",
   "examples/python/rgbd",
+  "examples/python/robot_data_preprocessing",
   "examples/python/rrt_star",
   "examples/python/segment_anything_model",
   "examples/python/server_tables",

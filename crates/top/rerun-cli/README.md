@@ -1,6 +1,6 @@
 <h1 align="center">
   <a href="https://www.rerun.io/">
-    <img alt="banner" src="https://user-images.githubusercontent.com/1148717/218142418-1d320929-6b7a-486e-8277-fbeef2432529.png">
+    <img width="1000" height="200" alt="Banner with Rerun logo" src="https://static.rerun.io/d0f5443d4803cac65c73fcc064936c09f5e7f208_rerun_banner.png" />
   </a>
 </h1>
 

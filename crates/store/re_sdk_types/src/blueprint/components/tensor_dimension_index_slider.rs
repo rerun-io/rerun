@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Show a slider for the index of some dimension of a slider.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct TensorDimensionIndexSlider(pub crate::blueprint::datatypes::TensorDimensionIndexSlider);
 
@@ -74,17 +75,5 @@ impl std::ops::DerefMut for TensorDimensionIndexSlider {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::TensorDimensionIndexSlider {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TensorDimensionIndexSlider {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::datatypes::TensorDimensionIndexSlider>::is_pod()
     }
 }

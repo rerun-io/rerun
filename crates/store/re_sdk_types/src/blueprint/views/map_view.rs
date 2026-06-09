@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **View**: A 2D map view to display geospatial primitives.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, ::re_byte_size::SizeBytes)]
 pub struct MapView {
     /// Configures the zoom level of the map view.
     pub zoom: crate::blueprint::archetypes::MapZoom,
@@ -36,19 +37,9 @@ pub struct MapView {
 impl ::re_types_core::View for MapView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
-        "Map".into()
-    }
-}
-
-impl ::re_byte_size::SizeBytes for MapView {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.zoom.heap_size_bytes() + self.background.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::archetypes::MapZoom>::is_pod()
-            && <crate::blueprint::archetypes::MapBackground>::is_pod()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ViewClassIdentifier,
+            "Map"
+        )
     }
 }

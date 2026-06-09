@@ -1,6 +1,7 @@
 /// How to display a [`crate::Timestamp`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize,
+)]
 pub enum TimestampFormatKind {
     /// Convert to the local timezone and display as such explicitly (e.g. with "+01" for CET).
     LocalTimezone,
@@ -19,8 +20,9 @@ pub enum TimestampFormatKind {
 }
 
 /// Controls whether the date part of a timestamp is shown.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize,
+)]
 pub enum DateVisibility {
     /// Always show the date.
     ShowDate,
@@ -34,8 +36,9 @@ pub enum DateVisibility {
 }
 
 /// How to display a [`crate::Timestamp`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize,
+)]
 pub struct TimestampFormat {
     /// What kind of format to use.
     format_kind: TimestampFormatKind,

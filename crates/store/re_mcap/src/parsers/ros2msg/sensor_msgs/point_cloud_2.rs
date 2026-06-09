@@ -215,6 +215,17 @@ fn add_field_value(
     is_big_endian: bool,
     data: &[u8],
 ) -> anyhow::Result<()> {
+    // TODO(michael): consider supporting extra fields with length greater than 1.
+    // (if this is a thing anyone uses?)
+    // We currently only extract the first value in such a case.
+    if field.count != 1 {
+        re_log::warn_once!(
+            "PointCloud2 field `{}` has count {}. This is currently not supported.",
+            field.name,
+            field.count
+        );
+    }
+
     let mut rdr = Cursor::new(data);
     match field.datatype {
         PointFieldDatatype::Int8 => {
@@ -393,10 +404,19 @@ impl MessageParser for PointCloud2MessageParser {
         if point_cloud.point_step != 0 {
             for point in point_cloud.data.chunks(point_cloud.point_step as usize) {
                 for (field, (_name, builder)) in
-                    point_cloud.fields.iter().zip(extracted_fields.iter_mut())
+                    std::iter::zip(&point_cloud.fields, extracted_fields.iter_mut())
                 {
                     let field_builder = builder.values();
-                    add_field_value(field_builder, field, point_cloud.is_bigendian, point)?;
+                    // ROS field offsets are relative to the start of each point record.
+                    let field_data = point
+                        .get((field.offset as usize)..point.len())
+                        .with_context(|| {
+                            format!(
+                                "field `{}` offset {} exceeds point step {}",
+                                field.name, field.offset, point_cloud.point_step
+                            )
+                        })?;
+                    add_field_value(field_builder, field, point_cloud.is_bigendian, field_data)?;
                 }
             }
         }
@@ -530,68 +550,69 @@ impl MessageParser for PointCloud2MessageParser {
             ChunkId::new(),
             entity_path.clone(),
             timelines,
-            [
-                (
-                    ComponentDescriptor::partial("height")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    height.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("width")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    width.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("fields")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    fields.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("is_bigendian")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    is_bigendian.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("point_step")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    point_step.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("row_step")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    row_step.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("data")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME)
-                        .with_component_type(components::Blob::name()),
-                    data.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("is_dense")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    is_dense.finish().into(),
-                ),
-            ]
-            .into_iter()
-            .chain(points.into_iter().filter_map(|(name, mut builder)| {
-                // We only extract additional fields when we have a `Points3d`
-                // archetype to attach them to. In that case we're not interested
-                // in the other components.
-                // TODO(grtlr): It would be nice to never initialize the unnecessary builders
-                // in the first place. But, we'll soon move the semantic extraction of `Points3d`
-                // into a different layer anyways, making that optimization obsolete.
-                points_3ds.as_ref()?;
-                if ["x", "y", "z"].contains(&name.as_str()) {
-                    None
-                } else {
-                    Some((
-                        ComponentDescriptor::partial(name.clone())
-                            .with_builtin_archetype(archetypes::Points3D::name()),
-                        builder.finish(),
-                    ))
-                }
-            }))
+            std::iter::chain(
+                [
+                    (
+                        ComponentDescriptor::partial("height")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        height.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("width")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        width.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("fields")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        fields.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("is_bigendian")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        is_bigendian.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("point_step")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        point_step.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("row_step")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        row_step.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("data")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME)
+                            .with_component_type(components::Blob::name()),
+                        data.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("is_dense")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        is_dense.finish().into(),
+                    ),
+                ],
+                points.into_iter().filter_map(|(name, mut builder)| {
+                    // We only extract additional fields when we have a `Points3d`
+                    // archetype to attach them to. In that case we're not interested
+                    // in the other components.
+                    // TODO(grtlr): It would be nice to never initialize the unnecessary builders
+                    // in the first place. But, we'll soon move the semantic extraction of `Points3d`
+                    // into a different layer anyways, making that optimization obsolete.
+                    points_3ds.as_ref()?;
+                    if ["x", "y", "z"].contains(&name.as_str()) {
+                        None
+                    } else {
+                        Some((
+                            ComponentDescriptor::partial(name.clone())
+                                .with_builtin_archetype(archetypes::Points3D::name()),
+                            builder.finish(),
+                        ))
+                    }
+                }),
+            )
             .collect(),
         )?;
 
@@ -605,6 +626,7 @@ impl MessageParser for PointCloud2MessageParser {
 mod tests {
     use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
 
+    use arrow::array::{Array as _, Float32Array};
     use byteorder::LittleEndian;
     use cdr_encoding::to_vec;
     use mcap::{Channel, Message};
@@ -725,5 +747,86 @@ mod tests {
                 .component_descriptors()
                 .any(|descriptor| descriptor == &intensity_descriptor)
         );
+    }
+
+    /// Tests that additional point fields are read correctly using their declared offset.
+    #[test]
+    fn extracts_additional_fields_from_their_offsets() {
+        let mut parser = PointCloud2MessageParser::new(1);
+        let mut ctx = ParserContext::new(
+            EntityPath::from("/some_cloud"),
+            "/some_cloud",
+            TimeType::TimestampNs,
+        );
+
+        let point_cloud = sensor_msgs::PointCloud2 {
+            header: std_msgs::Header {
+                stamp: builtin_interfaces::Time { sec: 1, nanosec: 0 },
+                frame_id: "map".to_owned(),
+            },
+            height: 1,
+            width: 1,
+            fields: vec![
+                PointField {
+                    name: "x".to_owned(),
+                    offset: 0,
+                    datatype: PointFieldDatatype::Float32,
+                    count: 1,
+                },
+                PointField {
+                    name: "y".to_owned(),
+                    offset: 4,
+                    datatype: PointFieldDatatype::Float32,
+                    count: 1,
+                },
+                PointField {
+                    name: "z".to_owned(),
+                    offset: 8,
+                    datatype: PointFieldDatatype::Float32,
+                    count: 1,
+                },
+                PointField {
+                    name: "intensity".to_owned(),
+                    offset: 12,
+                    datatype: PointFieldDatatype::Float32,
+                    count: 1,
+                },
+            ],
+            is_bigendian: false,
+            point_step: 16,
+            row_step: 16,
+            data: [1.0_f32, 2.0, 3.0, 42.123]
+                .into_iter()
+                .flat_map(f32::to_le_bytes)
+                .collect(),
+            is_dense: true,
+        };
+
+        parser.append(&mut ctx, &cdr_message(&point_cloud)).unwrap();
+
+        let chunks = Box::new(parser).finalize(ctx).unwrap();
+        let intensity_descriptor = ComponentDescriptor::partial("intensity")
+            .with_builtin_archetype(archetypes::Points3D::name());
+        let data_chunk = chunks
+            .iter()
+            .find(|chunk| {
+                chunk
+                    .components()
+                    .contains_component(intensity_descriptor.component)
+            })
+            .unwrap();
+        let intensity = data_chunk
+            .components()
+            .get_array(intensity_descriptor.component)
+            .unwrap();
+        let values = intensity
+            .values()
+            .as_any()
+            .downcast_ref::<Float32Array>()
+            .unwrap();
+
+        assert_eq!(intensity.len(), 1);
+        assert_eq!(values.len(), 1);
+        assert_eq!(values.value(0), 42.123);
     }
 }

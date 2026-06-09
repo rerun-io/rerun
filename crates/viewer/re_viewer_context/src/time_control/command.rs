@@ -1,4 +1,5 @@
 use re_chunk::TimelineName;
+use re_entity_db::EntityDb;
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal, TimeType};
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 
@@ -6,7 +7,7 @@ use crate::NeedsRepaint;
 use crate::blueprint_helpers::BlueprintContext;
 
 use super::blueprint_ext::TimeBlueprintExt as _;
-use super::{TimeControl, TimeControlDb, TimeControlResponse, TimeState, TimeView};
+use super::{TimeControl, TimeControlResponse, TimeRangeHighlight, TimeState, TimeView};
 
 /// Direction for time movement commands.
 #[derive(Debug, Clone, Copy)]
@@ -27,8 +28,14 @@ pub enum MoveSpeed {
 /// Can be sent using [`crate::SystemCommand::TimeControlCommands`].
 #[derive(Debug)]
 pub enum TimeControlCommand {
-    HighlightRange(AbsoluteTimeRange),
-    ClearHighlightedRange,
+    /// Highlight a time range for this frame.
+    ///
+    /// Stored in `TimeControl::highlighted_range_next_frame` by the command
+    /// handler; becomes readable via [`TimeControl::highlighted_range`] on the
+    /// next `TimeControl::update`. Last-write-wins within a frame. Producers
+    /// must re-publish each frame they want the highlight to remain visible
+    /// (typically from a hover handler).
+    HighlightRange(TimeRangeHighlight),
 
     /// Reset the active timeline to instead be automatically assigned.
     ResetActiveTimeline,
@@ -59,16 +66,35 @@ pub enum TimeControlCommand {
     /// Set playback fps.
     SetFps(f32),
 
-    /// Set the current time selection without enabling looping.
+    /// Set the current time selection exactly as given, without enabling looping.
+    ///
+    /// The range is honored as-is — no intersection with currently-loaded data.
+    /// Use for blueprint/URL/programmatic selections that must apply independent
+    /// of chunk arrival order.
     SetTimeSelection(AbsoluteTimeRange),
+
+    /// Like [`Self::SetTimeSelection`], but intersected with the currently-loaded
+    /// data range; an empty intersection turns the selection off.
+    ///
+    /// Use for interactive UI scrub/drag where clamping to visible data is the
+    /// expected behavior.
+    SetTimeSelectionClamped(AbsoluteTimeRange),
 
     /// Remove the current time selection.
     ///
     /// If the current loop mode is selection, turns off looping.
     RemoveTimeSelection,
 
-    /// Sets the current time cursor.
+    /// Set the current time cursor exactly as given, without any clamping.
+    ///
+    /// Use for blueprint/URL/JS/undo-driven seeks that must apply independent
+    /// of chunk arrival order.
     SetTime(TimeReal),
+
+    /// Like [`Self::SetTime`], but clamped to the currently-loaded data range.
+    ///
+    /// Use for interactive UI scrub/drag against the visible timeline.
+    SetTimeClamped(TimeReal),
 
     /// Set the range of time we are currently zoomed in on.
     SetTimeView(TimeView),
@@ -80,11 +106,35 @@ pub enum TimeControlCommand {
     ResetTimeView,
 }
 
+impl TimeControlCommand {
+    /// Convert the temporal parts of a URL fragment into time-control commands.
+    ///
+    /// A temporal `when=…` anchor represents a fixed time cursor, so applying it
+    /// must always pause playback before seeking.
+    pub fn from_url_fragment(fragment: &re_uri::Fragment) -> Vec<Self> {
+        let mut time_commands = Vec::new();
+
+        if let Some(time_selection) = &fragment.time_selection {
+            time_commands.push(Self::SetActiveTimeline(*time_selection.timeline.name()));
+            time_commands.push(Self::SetTimeSelection(time_selection.range));
+            time_commands.push(Self::SetLoopMode(LoopMode::Selection));
+        }
+
+        if let Some((timeline, timecell)) = &fragment.when {
+            time_commands.push(Self::SetActiveTimeline(*timeline));
+            time_commands.push(Self::SetPlayState(PlayState::Paused));
+            time_commands.push(Self::SetTime(timecell.value.into()));
+        }
+
+        time_commands
+    }
+}
+
 impl TimeControl {
     pub fn handle_time_commands(
         &mut self,
         blueprint_ctx: Option<&impl BlueprintContext>,
-        db: &dyn TimeControlDb,
+        db: &EntityDb,
         commands: &[TimeControlCommand],
     ) -> TimeControlResponse {
         let mut response = TimeControlResponse {
@@ -122,26 +172,17 @@ impl TimeControl {
     fn handle_time_command(
         &mut self,
         blueprint_ctx: Option<&impl BlueprintContext>,
-        db: &dyn TimeControlDb,
+        db: &EntityDb,
         command: &TimeControlCommand,
     ) -> NeedsRepaint {
         match command {
-            // TODO(isse): Changing the highlighted range should technically cause a repaint. But this causes issues
-            // because right now the selection panel wants to clear the range if it's some each frame, and maybe set
-            // it again at later point.
-            //
-            // This is (right now) always caused by hovering on something, so the mouse movement will cause repaints
-            // in all current cases.
-            //
-            // A better fix for this would be to collect all time commands before handling them, and for highlight
-            // ranges only keep the last one. And requesting a repaint here again.
-            TimeControlCommand::HighlightRange(range) => {
-                self.highlighted_range = Some(*range);
-                NeedsRepaint::No
-            }
-            TimeControlCommand::ClearHighlightedRange => {
-                self.highlighted_range = None;
-                NeedsRepaint::No
+            TimeControlCommand::HighlightRange(highlight) => {
+                self.highlighted_range_next_frame = Some(highlight.clone());
+                if self.highlighted_range_next_frame != self.highlighted_range {
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
             }
             TimeControlCommand::ResetActiveTimeline => {
                 if let Some(blueprint_ctx) = blueprint_ctx {
@@ -155,6 +196,8 @@ impl TimeControl {
                     self.timeline = super::ActiveTimeline::Auto(timeline);
                 }
                 self.select_valid_timeline(db);
+
+                self.just_interacted = true;
 
                 NeedsRepaint::Yes
             }
@@ -178,9 +221,15 @@ impl TimeControl {
                         }
                     }
                 } else if let Some(full_range) = db.time_range_for(timeline_name) {
+                    // Hazard: inserts a fresh `TimeState` with `time = range.min`.
+                    // Any caller that wants to seed a non-default cursor for this
+                    // timeline (e.g. blueprint cursor restore) must run *after*
+                    // `SetActiveTimeline`, or this branch will overwrite it.
                     self.states
                         .insert(*timeline_name, TimeState::new(full_range.min));
                 }
+
+                self.just_interacted = true;
 
                 NeedsRepaint::Yes
             }
@@ -255,6 +304,8 @@ impl TimeControl {
                         .or_insert_with(|| TimeState::new(full_range.min))
                         .time = full_range.min.into();
 
+                    self.just_interacted = true;
+
                     NeedsRepaint::Yes
                 } else {
                     NeedsRepaint::No
@@ -266,6 +317,9 @@ impl TimeControl {
                         .entry(*self.timeline_name())
                         .or_insert_with(|| TimeState::new(full_range.max))
                         .time = full_range.max.into();
+
+                    self.just_interacted = true;
+
                     NeedsRepaint::Yes
                 } else {
                     NeedsRepaint::No
@@ -278,6 +332,8 @@ impl TimeControl {
                     if let Some(state) = self.states.get_mut(self.timeline.name()) {
                         state.time = full_range.min.into();
                     }
+
+                    self.just_interacted = true;
 
                     NeedsRepaint::Yes
                 } else {
@@ -313,6 +369,26 @@ impl TimeControl {
                 }
             }
             TimeControlCommand::SetTimeSelection(time_range) => {
+                if let Some(blueprint_ctx) = blueprint_ctx {
+                    blueprint_ctx.set_time_selection(*time_range);
+                }
+
+                let state = self
+                    .states
+                    .entry(*self.timeline_name())
+                    .or_insert_with(|| TimeState::new(time_range.min));
+
+                let repaint = state.time_selection.map(|r| r.to_int()) != Some(*time_range);
+
+                state.time_selection = Some((*time_range).into());
+
+                if repaint {
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::SetTimeSelectionClamped(time_range) => {
                 let timeline_range = db
                     .time_range_for(self.timeline_name())
                     .unwrap_or(AbsoluteTimeRange::EVERYTHING);
@@ -363,7 +439,7 @@ impl TimeControl {
                     NeedsRepaint::No
                 }
             }
-            TimeControlCommand::SetTime(time) => {
+            TimeControlCommand::SetTimeClamped(time) => {
                 let timeline_range = db
                     .time_range_for(self.timeline_name())
                     .unwrap_or(AbsoluteTimeRange::EVERYTHING);
@@ -388,6 +464,33 @@ impl TimeControl {
 
                 self.exit_follow_mode(db, blueprint_ctx);
                 self.start_buffering();
+                self.just_interacted = true;
+
+                if repaint {
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::SetTime(time) => {
+                let time_int = time.floor();
+
+                let repaint = self.time_int() != Some(time_int);
+
+                // Exit follow mode first — `set_play_state(Playing)` may reset
+                // `state.time` to `range.min` when the cursor sits past the
+                // current data range, which is exactly the case we're trying
+                // to preserve. Set the time *after* that runs.
+                self.exit_follow_mode(db, blueprint_ctx);
+                self.start_buffering();
+
+                let state = self
+                    .states
+                    .entry(*self.timeline_name())
+                    .or_insert_with(|| TimeState::new(*time));
+                state.time = *time;
+
+                self.just_interacted = true;
 
                 if repaint {
                     NeedsRepaint::Yes
@@ -416,27 +519,19 @@ impl TimeControl {
         }
     }
 
-    fn step_time_back(
-        &mut self,
-        db: &dyn TimeControlDb,
-        blueprint_ctx: Option<&impl BlueprintContext>,
-    ) {
+    fn step_time_back(&mut self, db: &EntityDb, blueprint_ctx: Option<&impl BlueprintContext>) {
         re_tracing::profile_function!();
         self.pause(blueprint_ctx);
         self.step_time_back_no_pause(db);
     }
 
-    fn step_time_fwd(
-        &mut self,
-        db: &dyn TimeControlDb,
-        blueprint_ctx: Option<&impl BlueprintContext>,
-    ) {
+    fn step_time_fwd(&mut self, db: &EntityDb, blueprint_ctx: Option<&impl BlueprintContext>) {
         re_tracing::profile_function!();
         self.pause(blueprint_ctx);
         self.step_time_fwd_no_pause(db);
     }
 
-    fn step_time_back_no_pause(&mut self, db: &dyn TimeControlDb) {
+    fn step_time_back_no_pause(&mut self, db: &EntityDb) {
         if let Some(time) = self.time() {
             let timeline = self.timeline_name();
             let prev = db.prev_time_on_timeline(timeline, time.ceil());
@@ -473,7 +568,7 @@ impl TimeControl {
         }
     }
 
-    fn step_time_fwd_no_pause(&mut self, db: &dyn TimeControlDb) {
+    fn step_time_fwd_no_pause(&mut self, db: &EntityDb) {
         if let Some(time) = self.time() {
             let timeline = self.timeline_name();
             let next = db.next_time_on_timeline(timeline, time.floor());
@@ -513,7 +608,7 @@ impl TimeControl {
     /// Move time by arrow keys. Preserves play/pause state, but exits follow mode.
     fn move_time(
         &mut self,
-        db: &dyn TimeControlDb,
+        db: &EntityDb,
         blueprint_ctx: Option<&impl BlueprintContext>,
         direction: MoveDirection,
         speed: MoveSpeed,
@@ -550,7 +645,7 @@ impl TimeControl {
         }
     }
 
-    fn move_by_seconds_temporal(&mut self, db: &dyn TimeControlDb, seconds: f64) {
+    fn move_by_seconds_temporal(&mut self, db: &EntityDb, seconds: f64) {
         if let Some(time) = self.time() {
             let mut new_time = time + TimeReal::from_secs(seconds);
 
@@ -580,21 +675,13 @@ impl TimeControl {
     }
 
     /// If following, switch to playing. Otherwise keep the current play state.
-    fn exit_follow_mode(
-        &mut self,
-        db: &dyn TimeControlDb,
-        blueprint_ctx: Option<&impl BlueprintContext>,
-    ) {
+    fn exit_follow_mode(&mut self, db: &EntityDb, blueprint_ctx: Option<&impl BlueprintContext>) {
         if self.following {
             self.set_play_state(Some(db), PlayState::Playing, blueprint_ctx);
         }
     }
 
-    fn toggle_play_pause(
-        &mut self,
-        db: &dyn TimeControlDb,
-        blueprint_ctx: Option<&impl BlueprintContext>,
-    ) {
+    fn toggle_play_pause(&mut self, db: &EntityDb, blueprint_ctx: Option<&impl BlueprintContext>) {
         if self.playing {
             self.pause(blueprint_ctx);
         } else {

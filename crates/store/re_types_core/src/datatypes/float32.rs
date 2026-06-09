@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,17 @@ use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A single-precision 32-bit IEEE 754 floating point number.
-#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct Float32(pub f32);
 
@@ -134,17 +145,5 @@ impl From<Float32> for f32 {
     #[inline]
     fn from(value: Float32) -> Self {
         value.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Float32 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <f32>::is_pod()
     }
 }

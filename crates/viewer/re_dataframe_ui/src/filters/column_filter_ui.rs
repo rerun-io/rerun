@@ -560,7 +560,7 @@ mod tests {
     }
 
     /// This test runs through a full edit cycle of a timestamp filter, and assess that the
-    /// timestamp string is normalized after commit—that is, the timestamp string is set to the
+    /// timestamp string is normalized after commit — that is, the timestamp string is set to the
     /// canonical representation of the previously entered timestamp.
     #[test]
     fn test_timestamp_filter_on_commit() {

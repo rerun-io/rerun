@@ -25,6 +25,7 @@ pub use self::connection_registry::{
 pub use self::grpc::{
     ChunksWithSegment, RedapClient, RedapClientInner, StreamingOptions, channel,
     fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
+    stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
 };
 
 /// Re-export of [`opentelemetry::TraceId`] for callers constructing

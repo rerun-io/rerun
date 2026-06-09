@@ -352,14 +352,7 @@ impl ViewerOpenUrl {
                 "Can't share links to recordings streamed from stdin."
             )),
 
-            LogSource::EmbeddedTableBlueprint => Err(anyhow::anyhow!(
-                "Can't share links to embedded table blueprints."
-            )),
-
-            LogSource::RedapGrpcStream {
-                uri,
-                open_behavior: _,
-            } => Ok(Self::RedapDatasetSegment(uri.clone())),
+            LogSource::RedapGrpcStream { uri, .. } => Ok(Self::RedapDatasetSegment(uri.clone())),
 
             LogSource::MessageProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri.clone())),
         }
@@ -561,6 +554,7 @@ impl ViewerOpenUrl {
             Self::RedapDatasetSegment(uri) => Some(LogSource::RedapGrpcStream {
                 uri: uri.clone(),
                 open_behavior: RecordingOpenBehavior::Background,
+                table_blueprint: None,
             }),
             Self::RedapProxy(uri) => Some(LogSource::MessageProxy(uri.clone())),
             Self::WebEventListener => Some(LogSource::RrdWebEvent),
@@ -1222,6 +1216,7 @@ mod tests {
             Some(LogSource::RedapGrpcStream {
                 uri: uri.parse().unwrap(),
                 open_behavior: RecordingOpenBehavior::Background,
+                table_blueprint: None,
             }),
         );
 
@@ -1408,9 +1403,7 @@ mod tests {
             )
             .sharable_url(base_url_param)
             .unwrap(),
-            format!(
-                "https://foo.com/test?url=rerun%3A%2F%2F127.0.0.1%3A1234%2Fdataset%2F1830B33B45B963E7774455beb91701ae%3Fsegment_id%3Dpid"
-            )
+            "https://foo.com/test?url=rerun%3A%2F%2F127.0.0.1%3A1234%2Fdataset%2F1830B33B45B963E7774455beb91701ae%3Fsegment_id%3Dpid".to_owned()
         );
 
         assert_eq!(
@@ -1483,7 +1476,7 @@ mod tests {
                 ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".into(),
                     fragment: Default::default(),
                 }),
             ),
@@ -1492,7 +1485,7 @@ mod tests {
                 ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".into(),
                     fragment: re_uri::Fragment {
                         time_selection: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
                         ..Default::default()
@@ -1504,7 +1497,7 @@ mod tests {
                 ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".into(),
                     fragment: re_uri::Fragment {
                         when: Some((
                             "stable_time".into(),

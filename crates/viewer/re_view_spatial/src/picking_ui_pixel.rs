@@ -643,15 +643,14 @@ fn readback_pixel_from_gpu_texture(
         } else {
             const MAX_FRAMES_WITHOUT_GPU_READBACK: u64 = 3;
 
-            let cached: PreviousReadbackResult = egui_ctx.memory(|m| m.data.get_temp(memory_id))?;
+            let cached: Option<PreviousReadbackResult> =
+                egui_ctx.memory(|m| m.data.get_temp(memory_id));
 
-            if cached.interaction_id == interaction_id
-                && cached.frame_nr + MAX_FRAMES_WITHOUT_GPU_READBACK >= frame_nr
-            {
-                Some(cached.pixel_bytes)
-            } else {
-                None
-            }
+            cached.and_then(|cached| {
+                (cached.interaction_id == interaction_id
+                    && cached.frame_nr + MAX_FRAMES_WITHOUT_GPU_READBACK >= frame_nr)
+                    .then_some(cached.pixel_bytes)
+            })
         }
     };
 
@@ -750,6 +749,16 @@ fn pixel_value_string_from_gpu_texture(
             let elements = [TensorElement::U16(value)];
             format_pixel_value(ImageKind::Depth, ColorModel::L, &elements)
         }
+        wgpu::TextureFormat::R32Float => {
+            let value = f32::from_le_bytes([
+                pixel_bytes[0],
+                pixel_bytes[1],
+                pixel_bytes[2],
+                pixel_bytes[3],
+            ]);
+            let elements = [TensorElement::F32(value)];
+            format_pixel_value(ImageKind::Depth, ColorModel::L, &elements)
+        }
         _ => None,
     }
 }
@@ -772,6 +781,12 @@ pub fn depth_value_from_gpu_texture(
         wgpu::TextureFormat::R16Uint => {
             Some(u16::from_le_bytes([pixel_bytes[0], pixel_bytes[1]]) as f64)
         }
+        wgpu::TextureFormat::R32Float => Some(f32::from_le_bytes([
+            pixel_bytes[0],
+            pixel_bytes[1],
+            pixel_bytes[2],
+            pixel_bytes[3],
+        ]) as f64),
         _ => None,
     }
 }

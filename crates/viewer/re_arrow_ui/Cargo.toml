@@ -22,6 +22,7 @@ re_tracing.workspace = true
 re_ui.workspace = true
 
 arrow.workspace = true
+itertools.workspace = true
 jiff.workspace = true
 egui.workspace = true
 

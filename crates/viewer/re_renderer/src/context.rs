@@ -96,6 +96,7 @@ pub struct RenderContext {
     pub queue: wgpu::Queue,
 
     device_caps: DeviceCaps,
+    adapter_info: wgpu::AdapterInfo,
     config: RenderConfig,
     output_format_color: wgpu::TextureFormat,
 
@@ -301,6 +302,7 @@ impl RenderContext {
         }
 
         let device_caps = DeviceCaps::from_adapter(adapter)?;
+        let adapter_info = adapter.get_info();
         let config = config_provider(&device_caps);
 
         let frame_index_for_uncaptured_errors = Arc::new(AtomicU64::new(STARTUP_FRAME_IDX));
@@ -322,7 +324,7 @@ impl RenderContext {
             err_tracker
         };
 
-        log_adapter_info(&adapter.get_info());
+        log_adapter_info(&adapter_info);
 
         let mut gpu_resources = WgpuResourcePools::default();
         let global_bindings = GlobalBindings::new(&gpu_resources, &device);
@@ -362,6 +364,7 @@ impl RenderContext {
             device,
             queue,
             device_caps,
+            adapter_info,
             config,
             output_format_color,
             global_bindings,
@@ -572,6 +575,10 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     /// Returns the device's capabilities.
     pub fn device_caps(&self) -> &DeviceCaps {
         &self.device_caps
+    }
+
+    pub fn adapter_info(&self) -> &wgpu::AdapterInfo {
+        &self.adapter_info
     }
 
     /// Returns the active render config.

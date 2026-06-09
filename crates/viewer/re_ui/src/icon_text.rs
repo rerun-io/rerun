@@ -75,7 +75,7 @@ impl IconText {
             let mut vec: Vec<_> = text
                 .split('+')
                 // We want each + to be an extra item so the spacing looks nicer
-                .flat_map(|item| once(item).chain(once("+")))
+                .flat_map(|item| std::iter::chain(once(item), once("+")))
                 .collect();
             vec.pop(); // Remove the last "+"
 

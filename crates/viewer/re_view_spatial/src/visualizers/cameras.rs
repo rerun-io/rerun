@@ -27,7 +27,10 @@ pub struct CamerasVisualizer;
 
 impl IdentifiedViewSystem for CamerasVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Cameras".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Cameras"
+        )
     }
 }
 

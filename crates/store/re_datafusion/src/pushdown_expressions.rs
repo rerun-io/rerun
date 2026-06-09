@@ -1,10 +1,11 @@
 use arrow::datatypes::SchemaRef;
 use datafusion::common::{DataFusionError, ScalarValue, exec_err};
 use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPushDown};
+use itertools::Itertools as _;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
-use re_protos::common::v1alpha1::ext::SegmentId;
 use re_sorbet::metadata::RERUN_KIND;
+use re_types_core::SegmentId;
 use std::ops::Not as _;
 
 fn arrange_binary_expr_as_col_on_left(expr: &BinaryExpr) -> BinaryExpr {
@@ -69,9 +70,14 @@ pub(crate) fn filter_expr_is_supported(
     filter_expr: &Expr,
     query_dataset_request: &QueryDatasetRequest,
     schema: &SchemaRef,
+    synthesize_latest_at: bool,
 ) -> Result<TableProviderFilterPushDown, DataFusionError> {
-    let returned_queries =
-        apply_filter_expr_to_queries(vec![query_dataset_request.clone()], filter_expr, schema)?;
+    let returned_queries = apply_filter_expr_to_queries(
+        vec![query_dataset_request.clone()],
+        filter_expr,
+        schema,
+        synthesize_latest_at,
+    )?;
 
     if returned_queries.is_some() {
         Ok(TableProviderFilterPushDown::Inexact)
@@ -81,6 +87,14 @@ pub(crate) fn filter_expr_is_supported(
 }
 
 /// Apply a filter expression to a dataset query.
+///
+/// `synthesize_latest_at` controls whether time-index pushdown pairs each
+/// `range` with a synthesized `latest_at`. Pass `true` when the caller wants
+/// sparse-fill semantics ([`re_dataframe::SparseFillStrategy::LatestAtGlobal`]); pass
+/// `false` (the common case, [`re_dataframe::SparseFillStrategy::None`]) to skip the
+/// synthesis — it would otherwise force the server into an expensive
+/// latest-at fan-out for no observable result.
+///
 /// This function will return Ok(None) if we cannot push down this filter into our request.
 /// It will return an error if the expression pushes down to return no results. This can
 /// occur if you have two mutually exclusive expressions that cannot overlap, such as
@@ -89,11 +103,15 @@ pub(crate) fn apply_filter_expr_to_queries(
     queries: Vec<QueryDatasetRequest>,
     expr: &Expr,
     schema: &SchemaRef,
+    synthesize_latest_at: bool,
 ) -> Result<Option<Vec<QueryDatasetRequest>>, DataFusionError> {
     Ok(match expr {
-        Expr::Alias(alias_expr) => {
-            apply_filter_expr_to_queries(queries, alias_expr.expr.as_ref(), schema)?
-        }
+        Expr::Alias(alias_expr) => apply_filter_expr_to_queries(
+            queries,
+            alias_expr.expr.as_ref(),
+            schema,
+            synthesize_latest_at,
+        )?,
         Expr::BinaryExpr(expr) => {
             let BinaryExpr { left, op, right } = arrange_binary_expr_as_col_on_left(expr);
 
@@ -105,8 +123,18 @@ pub(crate) fn apply_filter_expr_to_queries(
                     // consider the combinatorial for the final output.
 
                     match (
-                        apply_filter_expr_to_queries(queries.clone(), &left, schema)?,
-                        apply_filter_expr_to_queries(queries, &right, schema)?,
+                        apply_filter_expr_to_queries(
+                            queries.clone(),
+                            &left,
+                            schema,
+                            synthesize_latest_at,
+                        )?,
+                        apply_filter_expr_to_queries(
+                            queries,
+                            &right,
+                            schema,
+                            synthesize_latest_at,
+                        )?,
                     ) {
                         (None, None) => None,
                         (Some(queries), None) | (None, Some(queries)) => Some(queries),
@@ -114,24 +142,32 @@ pub(crate) fn apply_filter_expr_to_queries(
                             let final_exprs = left_queries
                                 .iter()
                                 .flat_map(|left| {
-                                    right_queries
-                                        .iter()
-                                        .map(|right| merge_queries_and(left, right))
+                                    right_queries.iter().map(|right| {
+                                        merge_queries_and(left, right, synthesize_latest_at)
+                                    })
                                 })
-                                .collect::<Result<Vec<_>, _>>()?;
+                                .try_collect()?;
 
                             Some(final_exprs)
                         }
                     }
                 }
                 Operator::Or => {
-                    let Some(mut left_queries) =
-                        apply_filter_expr_to_queries(queries.clone(), &left, schema)?
+                    let Some(mut left_queries) = apply_filter_expr_to_queries(
+                        queries.clone(),
+                        &left,
+                        schema,
+                        synthesize_latest_at,
+                    )?
                     else {
                         return Ok(Some(queries));
                     };
-                    let Some(right_queries) =
-                        apply_filter_expr_to_queries(queries.clone(), &right, schema)?
+                    let Some(right_queries) = apply_filter_expr_to_queries(
+                        queries.clone(),
+                        &right,
+                        schema,
+                        synthesize_latest_at,
+                    )?
                     else {
                         return Ok(Some(queries));
                     };
@@ -144,8 +180,16 @@ pub(crate) fn apply_filter_expr_to_queries(
                         KnownFilterColumn::Index(index_name, time) => Some(
                             queries
                                 .into_iter()
-                                .map(|query| replace_time_in_query(&query, &index_name, time, op))
-                                .collect::<Result<Vec<_>, _>>()?,
+                                .map(|query| {
+                                    replace_time_in_query(
+                                        &query,
+                                        &index_name,
+                                        time,
+                                        op,
+                                        synthesize_latest_at,
+                                    )
+                                })
+                                .try_collect()?,
                         ),
                         KnownFilterColumn::SegmentId(segment_id) => {
                             if op == Operator::Eq {
@@ -189,7 +233,7 @@ pub(crate) fn apply_filter_expr_to_queries(
                 expr = expr.not();
             }
 
-            apply_filter_expr_to_queries(queries, &expr, schema)?
+            apply_filter_expr_to_queries(queries, &expr, schema, synthesize_latest_at)?
         }
         Expr::InList(list_expr) => {
             let mut iter = list_expr.list.iter();
@@ -198,7 +242,7 @@ pub(crate) fn apply_filter_expr_to_queries(
                     list_expr.expr.as_ref().clone().eq(first.clone()),
                     |acc, item| acc.or(list_expr.expr.as_ref().clone().eq(item.clone())),
                 );
-                apply_filter_expr_to_queries(queries, &expr, schema)?
+                apply_filter_expr_to_queries(queries, &expr, schema, synthesize_latest_at)?
             } else {
                 return exec_err!(
                     "Attempting to perform InList statement that would return no results due to empty list"
@@ -293,6 +337,7 @@ fn known_filter_column(
 fn merge_queries_and(
     left: &QueryDatasetRequest,
     right: &QueryDatasetRequest,
+    synthesize_latest_at: bool,
 ) -> Result<QueryDatasetRequest, DataFusionError> {
     let mut merged = left.clone();
     if !right.segment_ids.is_empty() {
@@ -320,7 +365,10 @@ fn merge_queries_and(
             ) {
                 (_, Some(left_range), _, Some(right_range)) => {
                     let new_range = compute_range_overlap(left_range, right_range)?;
-                    left_query.latest_at = Some(latest_at_from_range(&new_range));
+                    // Only re-derive `latest_at` from the merged range when
+                    // the caller actually wants sparse-fill semantics.
+                    left_query.latest_at =
+                        synthesize_latest_at.then(|| latest_at_from_range(&new_range));
                     left_query.range = Some(new_range);
                 }
                 (_, Some(left_range), Some(right_la), None) => {
@@ -376,10 +424,16 @@ fn replace_time_in_query(
     index: &str,
     time: TimeInt,
     op: Operator,
+    synthesize_latest_at: bool,
 ) -> Result<QueryDatasetRequest, DataFusionError> {
     let mut query_clone = dataset_query.clone();
     let timeline: TimelineName = index.into();
-    let latest_at = Some(QueryLatestAt::global(Some(timeline), time));
+    // `latest_at` is only meaningful to the server when the caller requested
+    // sparse-fill semantics. When `synthesize_latest_at` is false, the caller
+    // has opted out of fill and any `latest_at` we paired with the range
+    // would be dead weight (and an expensive fan-out on the server).
+    let synthesized_latest_at =
+        synthesize_latest_at.then(|| QueryLatestAt::global(Some(timeline), time));
 
     let (latest_at, range) = match op {
         Operator::Eq => {
@@ -390,7 +444,7 @@ fn replace_time_in_query(
                     max: time,
                 },
             };
-            (latest_at, Some(range))
+            (synthesized_latest_at, Some(range))
         }
         Operator::Gt | Operator::GtEq => {
             let range = QueryRange {
@@ -400,7 +454,7 @@ fn replace_time_in_query(
                     max: TimeInt::MAX,
                 },
             };
-            (latest_at, Some(range))
+            (synthesized_latest_at, Some(range))
         }
         Operator::Lt | Operator::LtEq => {
             let range = QueryRange {
@@ -431,7 +485,7 @@ fn replace_time_in_query(
         });
     }
 
-    merge_queries_and(dataset_query, &query_clone)
+    merge_queries_and(dataset_query, &query_clone, synthesize_latest_at)
 }
 
 fn latest_at_from_range(range: &QueryRange) -> QueryLatestAt {
@@ -487,9 +541,9 @@ mod tests {
         QueryDatasetRequest::default()
     }
 
-    fn make_query_with_segment(segment_id: &str) -> QueryDatasetRequest {
+    fn make_query_with_segment(segment_id: &SegmentId) -> QueryDatasetRequest {
         QueryDatasetRequest {
-            segment_ids: vec![segment_id.into()],
+            segment_ids: vec![segment_id.clone()],
             ..Default::default()
         }
     }
@@ -502,7 +556,7 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("rerun_segment_id").eq(lit("segment_a"));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -518,7 +572,7 @@ mod tests {
 
         // Greater than on segment_id is not supported
         let expr = col("rerun_segment_id").gt(lit("segment_a"));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_none());
     }
@@ -531,7 +585,7 @@ mod tests {
         let expr = col("rerun_segment_id")
             .eq(lit("segment_a"))
             .or(col("rerun_segment_id").eq(lit("segment_b")));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -574,7 +628,7 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("frame_nr").eq(lit(100i64));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -594,7 +648,7 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("frame_nr").gt(lit(100i64));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -612,7 +666,7 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("frame_nr").lt(lit(100i64));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -633,7 +687,7 @@ mod tests {
         let expr = col("frame_nr")
             .gt_eq(lit(50i64))
             .and(col("frame_nr").lt_eq(lit(150i64)));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -652,7 +706,7 @@ mod tests {
 
         // 100 < frame_nr should be rearranged to frame_nr > 100
         let expr = lit(100i64).lt(col("frame_nr"));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -674,7 +728,7 @@ mod tests {
         let expr = col("rerun_segment_id")
             .eq(lit("segment_a"))
             .and(col("frame_nr").gt(lit(100i64)));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -698,7 +752,7 @@ mod tests {
                 .eq(lit("segment_b"))
                 .and(col("frame_nr").lt(lit(50i64))));
 
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -766,7 +820,7 @@ mod tests {
             low: Box::new(lit(50i64)),
             high: Box::new(lit(150i64)),
         });
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -790,7 +844,7 @@ mod tests {
             list: vec![lit("segment_a"), lit("segment_b"), lit("segment_c")],
             negated: false,
         });
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         // InList is converted to OR of equality checks
         assert!(result.is_some());
@@ -826,7 +880,7 @@ mod tests {
             list: vec![lit(100i64), lit(200i64)],
             negated: false,
         });
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         // InList on time values produces OR of equality checks
         assert!(result.is_some());
@@ -865,7 +919,7 @@ mod tests {
             list: vec![],
             negated: false,
         });
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema);
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true);
 
         // Empty list produces zero results
         assert!(result.is_err());
@@ -881,7 +935,7 @@ mod tests {
             list: vec![lit("only_segment")],
             negated: false,
         });
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -898,7 +952,7 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("unknown_column").eq(lit(100i64));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_none());
     }
@@ -917,7 +971,7 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("some_column").eq(lit(100i64));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_none());
     }
@@ -927,18 +981,19 @@ mod tests {
     #[test]
     fn test_conflicting_segment_ids_error() {
         let schema = make_schema_with_index("frame_nr");
-        let query = make_query_with_segment("segment_a");
+        let query = make_query_with_segment(&SegmentId::from("segment_a"));
 
         // Try to AND with a different segment
         let expr = col("rerun_segment_id").eq(lit("segment_b"));
-        let result = apply_filter_expr_to_queries(vec![query.clone()], &expr, &schema).unwrap();
+        let result =
+            apply_filter_expr_to_queries(vec![query.clone()], &expr, &schema, true).unwrap();
 
         // First apply creates query with segment_b
         assert!(result.is_some());
         let queries = result.unwrap();
 
         // Now try to merge with conflicting segment
-        let merge_result = merge_queries_and(&query, &queries[0]);
+        let merge_result = merge_queries_and(&query, &queries[0], true);
         assert!(merge_result.is_err());
     }
 
@@ -995,7 +1050,7 @@ mod tests {
             ScalarValue::TimestampNanosecond(Some(1_000_000_000), None),
             None,
         ));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -1012,7 +1067,7 @@ mod tests {
             ScalarValue::TimestampMillisecond(Some(1000), None),
             None,
         ));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -1030,7 +1085,7 @@ mod tests {
             ScalarValue::TimestampSecond(Some(1), None),
             None,
         ));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -1047,7 +1102,7 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("frame_nr").eq(lit(100i64));
-        let result = filter_expr_is_supported(&expr, &query, &schema).unwrap();
+        let result = filter_expr_is_supported(&expr, &query, &schema, true).unwrap();
 
         assert_eq!(result, TableProviderFilterPushDown::Inexact);
     }
@@ -1058,7 +1113,7 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("unknown_column").eq(lit(100i64));
-        let result = filter_expr_is_supported(&expr, &query, &schema).unwrap();
+        let result = filter_expr_is_supported(&expr, &query, &schema, true).unwrap();
 
         assert_eq!(result, TableProviderFilterPushDown::Unsupported);
     }
@@ -1071,7 +1126,7 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("frame_nr").eq(lit(100i64)).alias("my_filter");
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
 
         assert!(result.is_some());
         let queries = result.unwrap();

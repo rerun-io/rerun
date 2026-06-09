@@ -117,6 +117,9 @@ pub struct Notification {
 
     /// Whether this notification has been read.
     is_unread: bool,
+
+    /// A unique id that just this notification has.
+    unique_id: u64,
 }
 
 impl Notification {
@@ -130,6 +133,8 @@ impl Notification {
             created_at: Timestamp::now(),
             toast_ttl: base_ttl(),
             is_unread: true,
+            // Filled in later when added to the notification ui.
+            unique_id: 0,
         }
     }
 
@@ -201,6 +206,8 @@ pub struct NotificationUi {
 
     /// Toasts that show up for a short time.
     toasts: Toasts,
+
+    next_id: u64,
 }
 
 impl NotificationUi {
@@ -211,6 +218,7 @@ impl NotificationUi {
             unread_notification_level: None,
             was_open_last_frame: false,
             toasts: Toasts::new(),
+            next_id: 0,
         }
     }
 
@@ -248,7 +256,7 @@ impl NotificationUi {
         self.add(Notification::new(NotificationLevel::Success, text.into()));
     }
 
-    pub fn add(&mut self, notification: Notification) {
+    pub fn add(&mut self, mut notification: Notification) {
         if notification.is_perma_dismissed(&self.ctx) {
             return;
         }
@@ -256,6 +264,10 @@ impl NotificationUi {
         if Some(notification.level) > self.unread_notification_level {
             self.unread_notification_level = Some(notification.level);
         }
+
+        notification.unique_id = self.next_id;
+        self.next_id += 1;
+
         self.notifications.push(notification);
     }
 
@@ -476,74 +488,78 @@ fn show_notification(
         created_at,
         toast_ttl: _,
         is_unread,
+        unique_id,
     } = notification;
 
-    let background_color = if mode == DisplayMode::Toast || *is_unread {
-        ui.tokens().notification_background_color
-    } else {
-        ui.tokens().notification_panel_background_color
-    };
+    ui.push_id(unique_id, |ui| {
+        let background_color = if mode == DisplayMode::Toast || *is_unread {
+            ui.tokens().notification_background_color
+        } else {
+            ui.tokens().notification_panel_background_color
+        };
 
-    let mut reaction = None;
+        let mut reaction = None;
 
-    let response = egui::Frame::window(ui.style())
-        .corner_radius(4)
-        .inner_margin(10.0)
-        .fill(background_color)
-        .shadow(egui::Shadow::NONE)
-        .show(ui, |ui| {
-            ui.vertical_centered(|ui| {
-                ui.horizontal_top(|ui| {
-                    ui.add(level.image(ui));
+        let response = egui::Frame::window(ui.style())
+            .corner_radius(4)
+            .inner_margin(10.0)
+            .fill(background_color)
+            .shadow(egui::Shadow::NONE)
+            .show(ui, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.horizontal_top(|ui| {
+                        ui.add(level.image(ui));
 
-                    ui.vertical(|ui| {
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                        ui.set_width(270.0);
-                        ui.label(text);
+                        ui.vertical(|ui| {
+                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                            ui.set_width(270.0);
+                            ui.label(text);
 
-                        if let Some(details) = details {
-                            ui.collapsing_header("Details", false, |ui| ui.label(details));
+                            if let Some(details) = details {
+                                ui.collapsing_header("Details", false, |ui| ui.label(details));
+                            }
+                        });
+
+                        ui.add_space(4.0);
+                        if mode == DisplayMode::Panel {
+                            notification_age_label(ui, *created_at);
                         }
                     });
 
-                    ui.add_space(4.0);
-                    if mode == DisplayMode::Panel {
-                        notification_age_label(ui, *created_at);
-                    }
-                });
+                    let show_dismiss = mode == DisplayMode::Panel;
+                    let show_bottom_bar = show_dismiss || link.is_some();
 
-                let show_dismiss = mode == DisplayMode::Panel;
-                let show_bottom_bar = show_dismiss || link.is_some();
-
-                if show_bottom_bar {
-                    egui::Sides::new().show(
-                        ui,
-                        |ui| {
-                            if let Some(link) = link {
-                                link.ui(ui);
-                            }
-                        },
-                        |ui| {
-                            if show_dismiss {
-                                if permanent_dismiss_id.is_some() {
-                                    if ui.button("Don't show again").clicked() {
-                                        reaction = Some(NotificationReaction::NeverShowAgain);
-                                    }
-                                } else {
-                                    //
-                                    if ui.button("Dismiss").clicked() {
-                                        reaction = Some(NotificationReaction::Dismissed);
+                    if show_bottom_bar {
+                        egui::Sides::new().show(
+                            ui,
+                            |ui| {
+                                if let Some(link) = link {
+                                    link.ui(ui);
+                                }
+                            },
+                            |ui| {
+                                if show_dismiss {
+                                    if permanent_dismiss_id.is_some() {
+                                        if ui.button("Don't show again").clicked() {
+                                            reaction = Some(NotificationReaction::NeverShowAgain);
+                                        }
+                                    } else {
+                                        //
+                                        if ui.button("Dismiss").clicked() {
+                                            reaction = Some(NotificationReaction::Dismissed);
+                                        }
                                     }
                                 }
-                            }
-                        },
-                    );
-                }
+                            },
+                        );
+                    }
+                })
             })
-        })
-        .response;
+            .response;
 
-    (reaction, response)
+        (reaction, response)
+    })
+    .inner
 }
 
 fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {

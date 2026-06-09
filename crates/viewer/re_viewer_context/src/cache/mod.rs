@@ -5,6 +5,7 @@
 
 mod cache_trait;
 mod image_decode_cache;
+mod image_histogram_cache;
 mod image_stats_cache;
 mod memoizers;
 mod store_cache;
@@ -21,6 +22,7 @@ pub use store_cache::StoreCache;
 // The reason this happens it that various viewer crates wants to access these, mostly for ui purposes.
 // Ideally, they would only depend on the ones needed.
 pub use image_decode_cache::ImageDecodeCache;
+pub use image_histogram_cache::{ImageHistogramCache, Rgb8Histogram};
 pub use image_stats_cache::ImageStatsCache;
 pub use tensor_stats_cache::{TensorStatsAccessor, TensorStatsCache};
 pub use transform_database_store::TransformDatabaseStoreCache;

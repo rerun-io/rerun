@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -32,7 +33,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// row 2 | flat_columns[2]  flat_columns[6]  flat_columns[10] flat_columns[14]
 /// row 3 | flat_columns[3]  flat_columns[7]  flat_columns[11] flat_columns[15]
 /// ```
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, ::re_byte_size::SizeBytes)]
 pub struct Mat4x4(
     /// Flat list of matrix coefficients in column-major order.
     pub [f32; 16usize],
@@ -126,9 +127,10 @@ impl ::re_types_core::Loggable for Mat4x4 {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let offsets = (0..)
-                    .step_by(16usize)
-                    .zip((16usize..).step_by(16usize).take(arrow_data.len()));
+                let offsets = ::std::iter::zip(
+                    (0..).step_by(16usize),
+                    (16usize..).step_by(16usize).take(arrow_data.len()),
+                );
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner
@@ -232,17 +234,5 @@ impl From<Mat4x4> for [f32; 16usize] {
     #[inline]
     fn from(value: Mat4x4) -> Self {
         value.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Mat4x4 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[f32; 16usize]>::is_pod()
     }
 }

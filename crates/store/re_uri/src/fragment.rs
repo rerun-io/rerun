@@ -17,7 +17,7 @@ use crate::TimeSelection;
 /// #     assert!(test.parse::<Fragment>().unwrap() != Fragment::default());
 /// # }
 /// ```
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default, re_byte_size::SizeBytes)]
 pub struct Fragment {
     pub selection: Option<DataPath>,
 

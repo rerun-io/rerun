@@ -15,6 +15,7 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+re_byte_size.workspace = true
 re_log_types.workspace = true
 re_test_context.workspace = true
 re_sdk_types.workspace = true
@@ -28,5 +29,10 @@ ahash.workspace = true
 egui.workspace = true
 
 [dev-dependencies]
+# These context-menu tests live here instead of in `re_context_menu` because
+# dev-dependencies are included in the publishable-crate dependency DAG check.
+# If `re_context_menu` depended on this crate for tests, it would create the
+# cycle `re_context_menu -> re_test_viewport -> re_viewport -> re_context_menu`.
+re_context_menu.workspace = true
 re_chunk.workspace = true
 re_entity_db.workspace = true

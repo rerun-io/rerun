@@ -13,6 +13,7 @@ use arrow::array::{Int64Array, RecordBatch, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
 use egui_kittest::kittest::Queryable as _;
 use re_integration_test::TestServer;
+use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::ext::TableInsertMode;
 use re_sdk::external::re_log_types;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
@@ -121,7 +122,7 @@ async fn create_table(
     client: &mut re_redap_client::ConnectionClient,
     name: &str,
     schema: &Arc<Schema>,
-) -> re_protos::cloud::v1alpha1::ext::TableEntry {
+) -> ext::TableEntry {
     let batch = RecordBatch::try_new_with_options(
         schema.clone(),
         vec![

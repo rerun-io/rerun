@@ -79,7 +79,10 @@ class StateChange(Archetype, VisualizableArchetype):
         Parameters
         ----------
         state:
-            The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.
+            The new state value.
+
+            A `null` state is ignored, it can be used to partially update a multi-instance state array.
+            An empty string is treated as state reset, and a gap is shown in the state timeline view.
 
         """
 
@@ -117,7 +120,10 @@ class StateChange(Archetype, VisualizableArchetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         state:
-            The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.
+            The new state value.
+
+            A `null` state is ignored, it can be used to partially update a multi-instance state array.
+            An empty string is treated as state reset, and a gap is shown in the state timeline view.
 
         """
 
@@ -166,7 +172,10 @@ class StateChange(Archetype, VisualizableArchetype):
         Parameters
         ----------
         state:
-            The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.
+            The new state value.
+
+            A `null` state is ignored, it can be used to partially update a multi-instance state array.
+            An empty string is treated as state reset, and a gap is shown in the state timeline view.
 
         """
 
@@ -219,7 +228,10 @@ class StateChange(Archetype, VisualizableArchetype):
         default=None,
         converter=components.TextBatch._converter,  # type: ignore[misc]
     )
-    # The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.
+    # The new state value.
+    #
+    # A `null` state is ignored, it can be used to partially update a multi-instance state array.
+    # An empty string is treated as state reset, and a gap is shown in the state timeline view.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

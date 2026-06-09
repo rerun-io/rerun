@@ -45,7 +45,7 @@ pip install rerun-sdk[notebook] pyarrow pandas numpy
 from rerun.experimental import ViewerClient
 
 # Connect to a running Rerun Viewer
-client = ViewerClient(addr="rerun+http://0.0.0.0:9876/proxy")
+client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
 ```
 
 ### Sending a simple table
@@ -109,7 +109,7 @@ You can also use the native viewer instead of the inline viewer:
 os.environ["RERUN_NOTEBOOK_ASSET"] = "serve-local"
 
 # Connect to a running Rerun Viewer
-client = ViewerClient(addr="rerun+http://0.0.0.0:9876/proxy")
+client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
 ```
 
 ## Current limitations

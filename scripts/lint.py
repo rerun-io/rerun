@@ -239,6 +239,17 @@ def lint_line(
         if re.search(r"\b3d\b", line_without_link_targets):
             return "we prefer '3D' over '3d'"
 
+    # Em dash should be spaced (` — `, not `word—word`). See DESIGN.md.
+    # The UI placeholder literal `"—"` (em dash inside quotes) is naturally exempt
+    # since the regex requires word/paren/asterisk characters on both sides.
+    if re.search(r"[\w\)\*]—[\w\(\*]", line):
+        return "Use a spaced em dash (' — '), not 'word—word'. See DESIGN.md."
+
+    # En dash (`–`) is for numeric ranges only; as a sentence dash, use an em dash (` — `).
+    # Detection: en dash with spaces, flanked by letters (digit-flanked allows `100 – 200`).
+    if re.search(r"[A-Za-z\"'\)]\s–\s[A-Za-z]", line):
+        return "Use an em dash (' — '), not an en dash, as a sentence dash. See DESIGN.md."
+
     if (
         "recording=rec" in line
         and "rr." not in line
@@ -402,6 +413,15 @@ def lint_line(
         return """Functions should never take `&dyn std::any::Any` as argument since `&Box<std::any::Any>`
  itself implements `Any`, making it easy to accidentally pass the wrong object. Expect purpose defined traits instead."""
 
+    if file_extension == "rs":
+        if re.search(r"\.zip\(", line):
+            return (
+                "Prefer `std::iter::zip(a, b)` (iterators), `itertools::izip!(a, b, …)` (3+ iterators), "
+                "or `Option::zip(a, b)` (options) over `a.zip(b)`"
+            )
+        if re.search(r"\.chain\(", line):
+            return "Prefer `std::iter::chain(a, b)` or `itertools::chain!(a, b, …)` over `a.chain(b)`"
+
     return None
 
 
@@ -527,6 +547,25 @@ def test_lint_line() -> None:
         '#[error("Failed to open {path}: {err}")]',
         '#[error("Something went wrong: {0}")]',  # single unnamed is fine
         '#[error("Simple error message")]',
+        # Spaced em dash is the convention.
+        "Use a spaced em dash (` — `) for parenthetical breaks.",
+        "foo — bar — baz",
+        # En dash is fine in numeric/character ranges (no spaces, or digit-flanked).
+        "Range: 2020–2025",
+        "pp. 10–15",
+        "100 KB–10 MB",
+        "Chunks 100 – 200",  # digit on right side — allowed range with spaces
+        "A–Z and a–z and 0–9",
+        # Em dash as a UI placeholder literal in a string (not prose).
+        '"—".to_owned()',
+        'return sha[:8] if sha else "—"',
+        # Mathematical/UI display with en dash, no spaces.
+        'ui.button("–∞")',
+        # Preferred zip/chain alternatives.
+        "let it = std::iter::zip(a, b);",
+        "let it = std::iter::chain(a, b);",
+        "for (x, y, z) in izip!(a, b, c) {",
+        "for x in itertools::chain!(a, b, c) {",
     ]
 
     should_error = [
@@ -627,6 +666,18 @@ def test_lint_line() -> None:
         # thiserror with multiple unnamed fields (bad)
         '#[error("Failed to do {0}: {1}")]',
         '#[error("{0} failed with {1} at {2}")]',
+        # Unspaced em dash (should be spaced).
+        "the layout—are computed",
+        "components—the viewer no longer",
+        "*data blueprints*—the entity",
+        "(SN)—and the storage node",
+        # En dash used as a sentence dash (should be em dash).
+        "Foo – the description",
+        "[Python](./install-rerun/python.md) – the Python SDK",
+        "done – next step",
+        # Method `.zip(` / `.chain(` — prefer `std::iter::*` or `itertools::izip!/chain!`.
+        "let it = a.iter().zip(b.iter());",
+        "let it = a.iter().chain(b.iter());",
     ]
 
     for test in should_pass:
@@ -1209,6 +1260,7 @@ force_capitalized = [
     "UIs",
     "UX",
     "Wasm",
+    "Windows",
     # "Arrow",   # Would be nice to capitalize in the right context, but it's a too common word.
     # "Windows", # Consider "multiple plot windows"
 ]
@@ -1611,6 +1663,14 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error("Prefer using tonic::Result<>", line_nr=line_nr))
             num_errors += 1
 
+    if filepath.endswith(".proto"):
+        for line_nr, line in enumerate(source.lines):
+            if source.should_ignore(line_nr):
+                continue
+            if "/// " in line:
+                print(source.error("Use `//` not `///` for comments in .proto files", line_nr=line_nr))
+                num_errors += 1
+
     if filepath.endswith((".rs", ".fbs")):
         errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
@@ -1756,10 +1816,13 @@ def main() -> None:
         "html",
         "js",
         "md",
+        "mjs",
+        "proto",
         "py",
         "rs",
         "sh",
         "toml",
+        "ts",
         "txt",
         "wgsl",
         "yaml",
@@ -1800,6 +1863,7 @@ def main() -> None:
         rerun("crates/store/re_protos/proto/schema_snapshot.yaml"),  # auto-generated
         rerun("crates/store/re_protos/src/v0"),  # auto-generated
         rerun("crates/store/re_protos/src/v1alpha1"),  # auto-generated
+        rerun("crates/viewer/re_ui/data/Inter-README.txt"),  # third-party font readme (Inter)
         rerun("crates/viewer/re_web_viewer_server/web_viewer/re_viewer.js"),  # auto-generated by wasm_bindgen
         rerun("docs/content/concepts/app-model.md"),  # this really needs custom letter casing
         rerun("docs/content/reference/cli.md"),  # auto-generated

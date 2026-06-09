@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Visible time range bounds for a specific timeline.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct VisibleTimeRange {
     /// Name of the timeline this applies to.
     pub timeline: crate::datatypes::Utf8,
@@ -166,11 +167,11 @@ impl crate::Loggable for VisibleTimeRange {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let timeline = {
                     if !arrays_by_name.contains_key("timeline") {
                         return Err(DeserializationError::missing_struct_field(
@@ -255,17 +256,5 @@ impl crate::Loggable for VisibleTimeRange {
                 .with_context("rerun.datatypes.VisibleTimeRange")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VisibleTimeRange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.timeline.heap_size_bytes() + self.range.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod() && <crate::datatypes::TimeRange>::is_pod()
     }
 }

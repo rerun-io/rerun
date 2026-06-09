@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -58,7 +59,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct GraphEdges {
     /// A list of node tuples.
     pub edges: Option<SerializedComponentBatch>,
@@ -75,11 +76,13 @@ impl GraphEdges {
     /// The corresponding component is [`crate::components::GraphEdge`].
     #[inline]
     pub fn descriptor_edges() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GraphEdges".into()),
-            component: "GraphEdges:edges".into(),
-            component_type: Some("rerun.components.GraphEdge".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GraphEdges".into()),
+                component: "GraphEdges:edges".into(),
+                component_type: Some("rerun.components.GraphEdge".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::graph_type`].
@@ -87,11 +90,13 @@ impl GraphEdges {
     /// The corresponding component is [`crate::components::GraphType`].
     #[inline]
     pub fn descriptor_graph_type() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GraphEdges".into()),
-            component: "GraphEdges:graph_type".into(),
-            component_type: Some("rerun.components.GraphType".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GraphEdges".into()),
+                component: "GraphEdges:graph_type".into(),
+                component_type: Some("rerun.components.GraphType".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -120,7 +125,10 @@ impl GraphEdges {
 impl ::re_types_core::Archetype for GraphEdges {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.GraphEdges".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.GraphEdges"
+        )
     }
 
     #[inline]
@@ -292,12 +300,5 @@ impl GraphEdges {
     ) -> Self {
         self.graph_type = try_serialize_field(Self::descriptor_graph_type(), graph_type);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for GraphEdges {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.edges.heap_size_bytes() + self.graph_type.heap_size_bytes()
     }
 }

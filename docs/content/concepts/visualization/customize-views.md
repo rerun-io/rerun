@@ -27,7 +27,7 @@ Views rely on visualizers to display each of their entities.
 For example, [3D views](../../reference/types/views/spatial3d_view.md) use the `Points3D` visualizer to display 3D point clouds,
 and [time series views](../../reference/types/views/time_series_view.md) use the `SeriesLines` visualizer to display time series line plots.
 Which visualizers are available is highly dependent on the specific kind of view.
-For example, the `SeriesLines` visualizer only exists for time series views—not, e.g., for 3D views.
+For example, the `SeriesLines` visualizer only exists for time series views — not, e.g., for 3D views.
 
 For a given view, each entity's components determine which visualizers are available.
 By default, visualizers are selected for entities logged with a corresponding [archetype](../../reference/types/archetypes.md).

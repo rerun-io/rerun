@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use arrow::array::{Array as _, BinaryArray, RecordBatch};
 use arrow::datatypes::Field;
-use itertools::Itertools as _;
+use itertools::{Itertools as _, chain};
 use re_arrow_util::RecordBatchTestExt as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
 use re_log_encoding::{
@@ -106,11 +106,11 @@ fn footer_roundtrip() {
     let msgs_expected_blueprint = generate_blueprint(generate_blueprint_chunks(2)).collect_vec();
 
     let msgs_encoded = Encoder::encode(
-        msgs_expected_recording
-            .clone()
-            .into_iter()
-            .map(Ok)
-            .chain(msgs_expected_blueprint.clone().into_iter().map(Ok)),
+        std::iter::chain(
+            msgs_expected_recording.clone(),
+            msgs_expected_blueprint.clone(),
+        )
+        .map(Ok),
     )
     .unwrap();
 
@@ -380,21 +380,19 @@ fn footer_interleaved_stores_without_set_store_info() {
     // A single `SetStoreInfo` (for the recording), followed by recording chunks, followed by
     // blueprint chunks — with NO `SetStoreInfo` for the blueprint. This is what the Python SDK
     // produces today when a `RecordingStream` writes both data and a blueprint to one file sink.
-    let msgs = std::iter::once(LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
-        row_id: *RowId::ZERO,
-        info: re_log_types::StoreInfo {
-            store_id: store_id_recording.clone(),
-            cloned_from: None,
-            store_source: re_log_types::StoreSource::Unknown,
-            store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
-        },
-    }))
-    .chain(
+    let msgs = chain!(
+        std::iter::once(LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+            row_id: *RowId::ZERO,
+            info: re_log_types::StoreInfo {
+                store_id: store_id_recording.clone(),
+                cloned_from: None,
+                store_source: re_log_types::StoreSource::Unknown,
+                store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
+            },
+        })),
         recording_chunks
             .into_iter()
             .map(|c| LogMsg::ArrowMsg(store_id_recording.clone(), c)),
-    )
-    .chain(
         blueprint_chunks
             .into_iter()
             .map(|c| LogMsg::ArrowMsg(store_id_blueprint.clone(), c)),
@@ -529,16 +527,18 @@ fn generate_recording(
 ) -> impl Iterator<Item = LogMsg> {
     let store_id = generate_recording_store_id();
 
-    std::iter::once(LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
-        row_id: *RowId::ZERO,
-        info: re_log_types::StoreInfo {
-            store_id: store_id.clone(),
-            cloned_from: None,
-            store_source: re_log_types::StoreSource::Unknown,
-            store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
-        },
-    }))
-    .chain(chunks.map(move |chunk| LogMsg::ArrowMsg(store_id.clone(), chunk)))
+    std::iter::chain(
+        std::iter::once(LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+            row_id: *RowId::ZERO,
+            info: re_log_types::StoreInfo {
+                store_id: store_id.clone(),
+                cloned_from: None,
+                store_source: re_log_types::StoreSource::Unknown,
+                store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
+            },
+        })),
+        chunks.map(move |chunk| LogMsg::ArrowMsg(store_id.clone(), chunk)),
+    )
 }
 
 fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_types::ArrowMsg> {
@@ -665,16 +665,18 @@ fn generate_blueprint(
 ) -> impl Iterator<Item = LogMsg> {
     let store_id = generate_blueprint_store_id();
 
-    std::iter::once(LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
-        row_id: *RowId::ZERO,
-        info: re_log_types::StoreInfo {
-            store_id: store_id.clone(),
-            cloned_from: None,
-            store_source: re_log_types::StoreSource::Unknown,
-            store_version: Some(re_build_info::CrateVersion::new(4, 5, 6)),
-        },
-    }))
-    .chain(chunks.map(move |chunk| LogMsg::ArrowMsg(store_id.clone(), chunk)))
+    std::iter::chain(
+        std::iter::once(LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+            row_id: *RowId::ZERO,
+            info: re_log_types::StoreInfo {
+                store_id: store_id.clone(),
+                cloned_from: None,
+                store_source: re_log_types::StoreSource::Unknown,
+                store_version: Some(re_build_info::CrateVersion::new(4, 5, 6)),
+            },
+        })),
+        chunks.map(move |chunk| LogMsg::ArrowMsg(store_id.clone(), chunk)),
+    )
 }
 
 fn generate_blueprint_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_types::ArrowMsg> {

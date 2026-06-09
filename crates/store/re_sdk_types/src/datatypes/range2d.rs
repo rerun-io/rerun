@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,16 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Copy,
+    PartialEq,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(C)]
 pub struct Range2D {
     /// The range of the X-axis (usually left and right bounds).
@@ -197,11 +207,11 @@ impl ::re_types_core::Loggable for Range2D {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let x_range = {
                     if !arrays_by_name.contains_key("x_range") {
                         return Err(DeserializationError::missing_struct_field(
@@ -231,9 +241,10 @@ impl ::re_types_core::Loggable for Range2D {
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let offsets = (0..)
-                                .step_by(2usize)
-                                .zip((2usize..).step_by(2usize).take(arrow_data.len()));
+                            let offsets = ::std::iter::zip(
+                                (0..).step_by(2usize),
+                                (2usize..).step_by(2usize).take(arrow_data.len()),
+                            );
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
@@ -309,9 +320,10 @@ impl ::re_types_core::Loggable for Range2D {
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let offsets = (0..)
-                                .step_by(2usize)
-                                .zip((2usize..).step_by(2usize).take(arrow_data.len()));
+                            let offsets = ::std::iter::zip(
+                                (0..).step_by(2usize),
+                                (2usize..).step_by(2usize).take(arrow_data.len()),
+                            );
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
@@ -379,17 +391,5 @@ impl ::re_types_core::Loggable for Range2D {
                 .with_context("rerun.datatypes.Range2D")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Range2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.x_range.heap_size_bytes() + self.y_range.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Range1D>::is_pod() && <crate::datatypes::Range1D>::is_pod()
     }
 }

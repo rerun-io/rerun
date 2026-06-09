@@ -1,4 +1,5 @@
 use arrow::datatypes::{Field as ArrowField, Fields as ArrowFields};
+use itertools::chain;
 use re_log_types::EntityPath;
 
 use crate::{
@@ -74,14 +75,14 @@ impl ChunkColumnDescriptors {
     }
 
     pub fn arrow_fields(&self) -> Vec<ArrowField> {
-        std::iter::once(self.row_id.to_arrow_field())
-            .chain(self.indices.iter().map(|c| c.to_arrow_field()))
-            .chain(
-                self.components
-                    .iter()
-                    .map(|c| c.to_arrow_field(BatchType::Dataframe)),
-            )
-            .collect()
+        chain!(
+            std::iter::once(self.row_id.to_arrow_field()),
+            self.indices.iter().map(|c| c.to_arrow_field()),
+            self.components
+                .iter()
+                .map(|c| c.to_arrow_field(BatchType::Dataframe)),
+        )
+        .collect()
     }
 }
 

@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 ///
 /// Note: each view should store its own cache. Using a [`re_viewer_context::ViewState`] is a
 /// good way to do this.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub(crate) struct ExpandedRowsCache {
     /// Maps "table row number" to "additional lines".
     ///
@@ -14,16 +14,6 @@ pub(crate) struct ExpandedRowsCache {
 
     /// ID used to invalidate the cache.
     valid_for: egui::Id,
-}
-
-impl re_byte_size::SizeBytes for ExpandedRowsCache {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            expanded_rows,
-            valid_for: _,
-        } = self;
-        expanded_rows.heap_size_bytes()
-    }
 }
 
 impl Default for ExpandedRowsCache {

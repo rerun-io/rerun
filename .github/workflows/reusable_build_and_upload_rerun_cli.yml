@@ -174,10 +174,34 @@ jobs:
           full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha) }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
+      # Wrap the macOS binary in a Rerun.app bundle so macOS uses "Rerun" as the
+      # dock label / "About" name instead of falling back to the binary filename.
+      - name: Bundle Rerun.app (macOS)
+        if: inputs.PLATFORM == 'macos-arm64'
+        run: |
+          version=$(pixi run python scripts/ci/crates.py get-version)
+          mkdir -p bundle-out
+          pixi run python scripts/ci/bundle_macos_app.py \
+            --binary "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}" \
+            --icon crates/viewer/re_viewer/data/app_icon_mac.png \
+            --info-plist scripts/ci/macos/Info.plist \
+            --version "$version" \
+            --output-dir bundle-out
+          tar -czf bundle-out/Rerun.app.tar.gz -C bundle-out Rerun.app
+
       - name: "Upload rerun-cli (commit)"
         uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun-cli/${{ inputs.PLATFORM }}"
+          parent: false
+          process_gcloudignore: false
+
+      - name: "Upload Rerun.app (commit, macOS)"
+        if: inputs.PLATFORM == 'macos-arm64'
+        uses: google-github-actions/upload-cloud-storage@v3
+        with:
+          path: "bundle-out/Rerun.app.tar.gz"
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false
@@ -187,6 +211,15 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
+          parent: false
+          process_gcloudignore: false
+
+      - name: "Upload Rerun.app (adhoc, macOS)"
+        if: ${{ inputs.ADHOC_NAME != '' && inputs.PLATFORM == 'macos-arm64' }}
+        uses: google-github-actions/upload-cloud-storage@v3
+        with:
+          path: "bundle-out/Rerun.app.tar.gz"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false

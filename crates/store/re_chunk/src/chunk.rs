@@ -340,8 +340,20 @@ impl Chunk {
     ///
     /// Useful for tests.
     pub fn ensure_similar(lhs: &Self, rhs: &Self) -> anyhow::Result<()> {
+        Self::ensure_similar_ignoring_timelines(lhs, rhs, &[])
+    }
+
+    /// Like [`Self::ensure_similar`], but the given timelines are ignored entirely:
+    /// their presence, absence, and values are not compared.
+    ///
+    /// Useful when comparing recordings produced with different default-timeline settings,
+    /// e.g. `log_tick`, which is opt-in.
+    pub fn ensure_similar_ignoring_timelines(
+        lhs: &Self,
+        rhs: &Self,
+        ignored_timelines: &[TimelineName],
+    ) -> anyhow::Result<()> {
         anyhow::ensure!(lhs.num_rows() == rhs.num_rows());
-        anyhow::ensure!(lhs.num_columns() == rhs.num_columns());
 
         let Self {
             id: _,
@@ -353,11 +365,40 @@ impl Chunk {
             components,
         } = lhs;
 
+        let is_ignored = |timeline: &TimelineName| ignored_timelines.contains(timeline);
+
         anyhow::ensure!(*entity_path == rhs.entity_path);
 
-        anyhow::ensure!(timelines.keys().collect_vec() == rhs.timelines.keys().collect_vec());
+        // Compare the set of timelines, disregarding any ignored timelines on either side.
+        // Compared as a sorted set, since the timeline iteration order is not meaningful.
+        let lhs_timelines = timelines
+            .keys()
+            .filter(|t| !is_ignored(t))
+            .sorted()
+            .collect_vec();
+        let rhs_timelines = rhs
+            .timelines
+            .keys()
+            .filter(|t| !is_ignored(t))
+            .sorted()
+            .collect_vec();
+        anyhow::ensure!(
+            lhs_timelines == rhs_timelines,
+            "Timelines differ: {lhs_timelines:?} vs {rhs_timelines:?}"
+        );
+
+        // Number of components must match (timelines are already checked above).
+        anyhow::ensure!(
+            components.len() == rhs.components.len(),
+            "Number of components differs: {} vs {}",
+            components.len(),
+            rhs.components.len()
+        );
 
         for (timeline, left_time_col) in timelines {
+            if is_ignored(timeline) {
+                continue;
+            }
             let right_time_col = rhs
                 .timelines
                 .get(timeline)
@@ -750,7 +791,7 @@ impl Chunk {
                 .list_arrays()
                 .fold(HashMap::default(), |acc, list_array| {
                     if let Some(validity) = list_array.nulls() {
-                        time_column.times().zip(validity.iter()).fold(
+                        std::iter::zip(time_column.times(), validity.iter()).fold(
                             acc,
                             |mut acc, (time, is_valid)| {
                                 *acc.entry(time).or_default() += is_valid as u64;
@@ -847,7 +888,7 @@ impl Chunk {
 
 // ---
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub struct TimeColumn {
     pub(crate) timeline: Timeline,
 
@@ -1706,23 +1747,6 @@ impl re_byte_size::SizeBytes for Chunk {
         }
 
         size_bytes
-    }
-}
-
-impl re_byte_size::SizeBytes for TimeColumn {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            timeline,
-            times,
-            is_sorted,
-            time_range,
-        } = self;
-
-        timeline.heap_size_bytes()
-            + times.heap_size_bytes()
-            + is_sorted.heap_size_bytes()
-            + time_range.heap_size_bytes()
     }
 }
 

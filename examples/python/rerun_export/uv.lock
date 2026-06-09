@@ -621,11 +621,11 @@ hf-transfer = [
 
 [[package]]
 name = "idna"
-version = "3.12"
+version = "3.17"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/22/12/2948fbe5513d062169bd91f7d7b1cd97bc8894f32946b71fa39f6e63ca0c/idna-3.12.tar.gz", hash = "sha256:724e9952cc9e2bd7550ea784adb098d837ab5267ef67a1ab9cf7846bdbdd8254", size = 194350, upload-time = "2026-04-21T13:32:48.916Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b9/28/99c51f664567218d824af024c0251650fb27e4ca066df188dab0769c5b91/idna-3.17.tar.gz", hash = "sha256:5eb0cb53bc467c12eadcf6de83163ad8527cec9416f44b9b61b19caedad2b87f", size = 196048, upload-time = "2026-05-28T14:32:38.55Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/53/b2/acc33950394b3becb2b664741a0c0889c7ef9f9ffbfa8d47eddb53a50abd/idna-3.12-py3-none-any.whl", hash = "sha256:60ffaa1858fac94c9c124728c24fcde8160f3fb4a7f79aa8cdd33a9d1af60a67", size = 68634, upload-time = "2026-04-21T13:32:47.403Z" },
+    { url = "https://files.pythonhosted.org/packages/de/a7/f76514cc40ad6234098ecdebda08732d75964776c51a42845b7da10649e2/idna-3.17-py3-none-any.whl", hash = "sha256:466e48829084efe2548012b855df21540b96f2e20e51bd124c851536556a592c", size = 65316, upload-time = "2026-05-28T14:32:37.035Z" },
 ]
 
 [[package]]
@@ -1920,17 +1920,6 @@ wheels = [
 ]
 
 [[package]]
-name = "rerun-dev-fixup"
-version = "0.1.0"
-source = { directory = "../../../rerun_py/rerun_dev_fixup" }
-dependencies = [
-    { name = "sitecustomize-entrypoints" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "sitecustomize-entrypoints" }]
-
-[[package]]
 name = "rerun-export"
 version = "0.1.0"
 source = { editable = "." }
@@ -1954,7 +1943,6 @@ dependencies = [
 dev = [
     { name = "mypy" },
     { name = "pandas-stubs" },
-    { name = "rerun-dev-fixup" },
     { name = "types-tqdm" },
 ]
 
@@ -1976,7 +1964,6 @@ requires-dist = [
 dev = [
     { name = "mypy", specifier = "==1.19.1" },
     { name = "pandas-stubs", specifier = "==2.3.3.251201" },
-    { name = "rerun-dev-fixup", directory = "../../../rerun_py/rerun_dev_fixup" },
     { name = "types-tqdm", specifier = "==4.67.0.20250809" },
 ]
 
@@ -1999,6 +1986,7 @@ requires-dist = [
     { name = "av", marker = "extra == 'dataloader'" },
     { name = "av", marker = "extra == 'tests'", specifier = ">=14.2.0" },
     { name = "datafusion", marker = "extra == 'all'", specifier = "==52.3.0" },
+    { name = "datafusion", marker = "extra == 'catalog'", specifier = "==52.3.0" },
     { name = "datafusion", marker = "extra == 'datafusion'", specifier = "==52.3.0" },
     { name = "datafusion", marker = "extra == 'dataplatform'", specifier = "==52.3.0" },
     { name = "datafusion", marker = "extra == 'tests'", specifier = "==52.3.0" },
@@ -2009,6 +1997,7 @@ requires-dist = [
     { name = "opentelemetry-exporter-otlp-proto-grpc", marker = "extra == 'tracing'" },
     { name = "opentelemetry-sdk", marker = "extra == 'tracing'" },
     { name = "pandas", marker = "extra == 'all'", specifier = ">=2" },
+    { name = "pandas", marker = "extra == 'catalog'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'datafusion'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'dataplatform'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'tests'", specifier = ">=2" },
@@ -2029,7 +2018,7 @@ requires-dist = [
     { name = "torchvision", marker = "extra == 'tests'" },
     { name = "typing-extensions", specifier = ">=4.5" },
 ]
-provides-extras = ["all", "datafusion", "dataloader", "dataplatform", "notebook", "tests", "tracing"]
+provides-extras = ["all", "catalog", "datafusion", "dataloader", "dataplatform", "notebook", "tests", "tracing"]
 
 [[package]]
 name = "safetensors"
@@ -2166,15 +2155,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/76/95/faf61eb8363f26aa7e1d762267a8d602a1b26d4f3a1e758e92cb3cb8b054/setuptools-80.10.2.tar.gz", hash = "sha256:8b0e9d10c784bf7d262c4e5ec5d4ec94127ce206e8738f29a437945fbc219b70", size = 1200343, upload-time = "2026-01-25T22:38:17.252Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/94/b8/f1f62a5e3c0ad2ff1d189590bfa4c46b4f3b6e49cef6f26c6ee4e575394d/setuptools-80.10.2-py3-none-any.whl", hash = "sha256:95b30ddfb717250edb492926c92b5221f7ef3fbcc2b07579bcd4a27da21d0173", size = 1064234, upload-time = "2026-01-25T22:38:15.216Z" },
-]
-
-[[package]]
-name = "sitecustomize-entrypoints"
-version = "1.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/25/88/c135ebdef2af797042a55fba89c79ca05b601f4dc36157a67a224d8090ca/sitecustomize-entrypoints-1.1.0.tar.gz", hash = "sha256:8bf9c9f3572e1709331f435a9bffd465320be77d65adda0f82b504594dc507b4", size = 24445, upload-time = "2023-04-10T16:59:55.551Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/11/412160ea4a304ee65babef67254833408d0ac7145334406bb1a8bff6f3cb/sitecustomize_entrypoints-1.1.0-py3-none-any.whl", hash = "sha256:ca80648c58d9ebcad31de46a4726213ae322fe829b285a0105da0eae3f74cb53", size = 25279, upload-time = "2023-04-10T16:59:56.824Z" },
 ]
 
 [[package]]

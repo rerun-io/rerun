@@ -4,22 +4,19 @@
 //! by constructing an ad-hoc [`ViewerContext`] with its own recording and blueprint stores.
 //! This gives the view the impression of running against a regular recording.
 
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::io::{BufReader, Cursor};
-
 use ahash::HashMap as AHashMap;
 use nohash_hasher::IntMap;
+use std::cell::RefCell;
 
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::{EntityDb, StoreBundle};
+use re_entity_db::EntityDb;
 use re_log_types::{StoreId, StoreKind};
+use re_ui::UiExt as _;
 
-use crate::RERUN_TABLE_BLUEPRINT;
 use re_viewer_context::{
     ActiveStoreContext, ApplicationSelectionState, Contents, MissingChunkReporter, StoreCache,
-    TimeControl, ViewClass, ViewContextSystemOncePerFrameResult, ViewId, ViewStates,
-    ViewSystemIdentifier, ViewerContext, VisitorControlFlow, blueprint_timeline,
+    SystemCommandSender as _, TimeControl, ViewClass, ViewContextSystemOncePerFrameResult, ViewId,
+    ViewStates, ViewSystemIdentifier, ViewerContext, VisitorControlFlow, blueprint_timeline,
 };
 use re_viewport::execute_systems_for_view;
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
@@ -27,27 +24,11 @@ use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 /// Result of running all once-per-frame context systems for a given recording.
 type OncePerFrameResults = IntMap<ViewSystemIdentifier, ViewContextSystemOncePerFrameResult>;
 
-/// Decode an embedded table blueprint from Arrow schema metadata.
-///
-/// Looks for the `rerun:table_blueprint` key containing base64-encoded `.rbl` data.
-/// Returns the decoded [`EntityDb`] blueprint, or `None` if the key is missing
-/// or the data cannot be decoded.
-pub fn decode_table_blueprint(metadata: &HashMap<String, String>) -> Option<EntityDb> {
-    let encoded = metadata.get(RERUN_TABLE_BLUEPRINT)?;
-    let bytes = decode_blueprint_value(encoded)?;
-    let mut bundle = StoreBundle::from_rrd(
-        BufReader::new(Cursor::new(bytes)),
-        &re_entity_db::LogSource::EmbeddedTableBlueprint,
-    )
-    .map_err(|err| {
-        re_log::warn_once!("Failed to decode embedded blueprint: {err}");
-        err
-    })
-    .ok()?;
-
-    bundle
-        .drain_entity_dbs()
-        .find(|db| db.store_kind() == StoreKind::Blueprint)
+// Only used to pass between logic.
+#[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
+pub(crate) enum PreviewRecording<'a> {
+    Resolved(&'a EntityDb),
+    Unresolved(re_uri::DatasetSegmentUri),
 }
 
 /// Renders views from a blueprint [`EntityDb`], independent of the main viewport.
@@ -122,12 +103,15 @@ impl<'a> RecordingPreviewRenderer<'a> {
     ///
     /// If `recording` is `Some`, the view will render data from that recording.
     /// Otherwise an empty recording is used as a placeholder.
+    ///
+    /// This also renders a timeline at the bottom of hovered preview columns.
     pub fn show_preview(
         &self,
         app_ctx: &re_viewer_context::AppContext<'_>,
         ui: &mut egui::Ui,
         row_nr: u64,
-        recording: Option<&EntityDb>,
+        row_hovered: bool,
+        recording: Option<PreviewRecording<'_>>,
         view_states: &mut ViewStates,
     ) {
         if self.view_ids.is_empty() {
@@ -137,40 +121,63 @@ impl<'a> RecordingPreviewRenderer<'a> {
         re_tracing::profile_function!();
 
         let view_class_registry = app_ctx.view_class_registry;
+        let preview_state = view_states.preview_state.get_or_insert_default();
 
         // Use the provided recording or fall back to an empty placeholder.
         // We do this so we see at least a view background until the recording is actually loaded.
         let owned_recording;
         let owned_caches;
-        let (recording, caches) = if let Some(rec) = recording {
-            // Use the store cache from the hub — it's created automatically when recordings are loaded.
-            let hub = app_ctx.storage_context;
-            let store_cache = hub.hub.store_caches(rec.store_id());
-            let Some(caches) = store_cache else {
-                // Recording just arrived or hasn't been seen by the hub yet. Try again later.
+        let (recording, caches) = match recording {
+            Some(PreviewRecording::Resolved(rec)) => {
+                // Use the store cache from the hub — it's created automatically when recordings are loaded.
+                let hub = app_ctx.storage_context;
+                let store_cache = hub.hub.store_caches(rec.store_id());
+                let Some(caches) = store_cache else {
+                    // Recording just arrived or hasn't been seen by the hub yet. Try again later.
+                    ui.request_repaint();
+                    return;
+                };
+
+                // Register this recording so the shared preview `TimeControl` knows about it
+                // and can advance its loop bounds based on the longest registered clip.
+                preview_state.register_recording(rec.store_id(), hub.bundle);
+
+                // Request redraw whenever a new preview is registered to start advancing time for it.
                 ui.request_repaint();
-                return;
-            };
 
-            // Register this recording so the shared preview `TimeControl` knows about it
-            // and can advance its loop bounds based on the longest registered clip.
-            view_states.preview.register_recording(rec.store_id());
+                (rec, caches)
+            }
+            Some(PreviewRecording::Unresolved(uri)) => {
+                if let Some(err) = app_ctx.connection_registry.error_for_uri(uri) {
+                    ui.centered_and_justified(|ui| {
+                        ui.error_label(err);
+                    });
+                    return;
+                } else {
+                    // We don't have a recording yet
+                    let recording_store_id = StoreId::new(
+                        StoreKind::Recording,
+                        "___preview_renderer___",
+                        "empty_placeholder",
+                    );
+                    owned_recording = EntityDb::new(recording_store_id);
+                    owned_caches = StoreCache::new(view_class_registry, &owned_recording);
 
-            // Request redraw whenever a new preview is registered to start advancing time for it.
-            ui.request_repaint();
+                    (&owned_recording, &owned_caches)
+                }
+            }
+            None => {
+                // We don't have a recording yet
+                let recording_store_id = StoreId::new(
+                    StoreKind::Recording,
+                    "___preview_renderer___",
+                    "empty_placeholder",
+                );
+                owned_recording = EntityDb::new(recording_store_id);
+                owned_caches = StoreCache::new(view_class_registry, &owned_recording);
 
-            (rec, caches)
-        } else {
-            // We don't have a recording yet
-            let recording_store_id = StoreId::new(
-                StoreKind::Recording,
-                "___preview_renderer___",
-                "empty_placeholder",
-            );
-            owned_recording = EntityDb::new(recording_store_id);
-            owned_caches = StoreCache::new(view_class_registry, &owned_recording);
-
-            (&owned_recording, &owned_caches)
+                (&owned_recording, &owned_caches)
+            }
         };
 
         let store_context = ActiveStoreContext {
@@ -186,13 +193,13 @@ impl<'a> RecordingPreviewRenderer<'a> {
             caches.visualizable_entities_for_visualizer_systems();
         let indicated_entities_per_visualizer = caches.indicated_entities_per_visualizer();
 
-        // Derive this recording's `TimeControl` from the shared preview clock. The
-        // shared clock is advanced each frame by `update_preview_time_controls`,
-        // and the derived clone maps the shared offset onto this recording's own
-        // data range so each clip tracks together.
-        let time_ctrl = view_states.preview.derive_recording_time_ctrl(recording);
-        let active_timeline = time_ctrl.timeline();
         let store_id = recording.store_id();
+        let time_ctrl = preview_state
+            .recording_time_control(store_id)
+            .cloned()
+            .unwrap_or_else(TimeControl::preview_time_control);
+
+        let active_timeline = time_ctrl.timeline();
 
         // Resolve each view's blueprint + class once. Views that fail to resolve are kept as
         // `None` so they still occupy a column slot (rendered as a placeholder rectangle).
@@ -279,10 +286,12 @@ impl<'a> RecordingPreviewRenderer<'a> {
                 )
             });
 
+        let mut views_rect = egui::Rect::NOTHING;
+
         // Split the available width equally across the views, left-to-right, with no gap.
         ui.spacing_mut().item_spacing.x = 0.0;
         ui.columns(resolved.len(), |cols| {
-            for (col_ui, resolved) in cols.iter_mut().zip(resolved.into_iter()) {
+            for (col_ui, resolved) in std::iter::zip(cols, resolved) {
                 let Some(Resolved {
                     view_id,
                     view_blueprint,
@@ -309,6 +318,10 @@ impl<'a> RecordingPreviewRenderer<'a> {
                     MissingChunkReporter::new(system_execution_output.any_missing_chunks());
 
                 let view_state = view_states.get_mut_or_create(store_id, view_id, view_class);
+
+                let view_rect = col_ui.available_rect_before_wrap();
+
+                views_rect = views_rect.union(view_rect);
 
                 // Suppress all inputs while rendering previews: they are meant to be passive.
                 let input_before = col_ui.input_mut(|input| {
@@ -338,22 +351,124 @@ impl<'a> RecordingPreviewRenderer<'a> {
                 col_ui.input_mut(|input| {
                     *input = input_before;
                 });
+
+                re_viewport::paint_view_loading_indicator(
+                    col_ui,
+                    (row_nr, view_id),
+                    view_rect,
+                    missing_chunk_reporter.any_missing(),
+                    recording,
+                );
             }
         });
+
+        preview_timeline(
+            app_ctx,
+            view_states,
+            ui,
+            row_nr,
+            row_hovered,
+            recording,
+            &time_ctrl,
+            views_rect,
+        );
     }
 }
 
-/// Decode a blueprint metadata value.
+/// Shows a preview timeline when the grid card/row is hovered.
 ///
-/// Expected format: `base64:<base64-encoded bytes>`.
-fn decode_blueprint_value(value: &str) -> Option<Vec<u8>> {
-    use base64::Engine as _;
-    let encoded = value.strip_prefix("base64:")?;
-    base64::engine::general_purpose::STANDARD
-        .decode(encoded)
-        .map_err(|err| {
-            re_log::warn_once!("Failed to base64-decode embedded blueprint: {err}");
-            err
-        })
-        .ok()
+/// This timeline can be interacted with to set the time of the preview.
+fn preview_timeline(
+    app_ctx: &re_viewer_context::AppContext<'_>,
+    view_states: &ViewStates,
+    ui: &egui::Ui,
+    row_nr: u64,
+    row_hovered: bool,
+    recording: &EntityDb,
+    time_ctrl: &TimeControl,
+    views_rect: egui::Rect,
+) {
+    let id = ui.id().with(("timeline", row_nr));
+
+    // Do this outside the if to keep showing the timeline when dragged.
+    let was_active = ui.read_response(id).is_some_and(|last_response| {
+        last_response.hovered() || last_response.dragged() || last_response.clicked()
+    });
+
+    let command_pressed = ui.input(|i| i.modifiers.command);
+    if command_pressed || was_active || (views_rect != egui::Rect::NOTHING && row_hovered) {
+        let width = egui::lerp(4.0..=10.0, ui.animate_bool(id, was_active));
+        let timeline_rect = views_rect.with_min_y(views_rect.max.y - width);
+
+        ui.painter()
+            .rect_filled(timeline_rect, 0.0, ui.tokens().preview_timeline_track_color);
+
+        if let Some(time) = time_ctrl.time()
+            && let Some(range) = recording.time_range_for(time_ctrl.timeline_name())
+        {
+            let response = ui.interact(
+                timeline_rect.expand2(egui::vec2(0.0, 4.0)),
+                id,
+                egui::Sense::click_and_drag(),
+            );
+
+            // Set time to where we clicked/dragged.
+            if (response.clicked() || response.dragged())
+                && let Some(pos) = ui.input(|i| i.pointer.interact_pos())
+            {
+                let p = (pos.x - timeline_rect.min.x) / timeline_rect.width();
+
+                let p = p.clamp(0.0, 1.0);
+
+                let time_offset = p as f64 * range.abs_length() as f64;
+                let time = range.min.as_f64() + time_offset;
+
+                app_ctx.command_sender.send_system(
+                    re_viewer_context::SystemCommand::TimeControlCommands {
+                        store_id: recording.store_id().clone(),
+                        time_commands: vec![re_viewer_context::TimeControlCommand::SetTime(
+                            re_log_types::TimeReal::from(time),
+                        )],
+                    },
+                );
+
+                if command_pressed && let Some(preview_state) = &view_states.preview_state {
+                    for (store_id, active_preview) in preview_state.iter_active_previews() {
+                        let Some(db) = app_ctx.store_bundle().get(store_id) else {
+                            continue;
+                        };
+
+                        let Some(range) =
+                            db.time_range_for(active_preview.time_control.timeline_name())
+                        else {
+                            continue;
+                        };
+
+                        let time = range.min.as_f64() + time_offset.min(range.abs_length() as f64);
+
+                        app_ctx.command_sender.send_system(
+                            re_viewer_context::SystemCommand::TimeControlCommands {
+                                store_id: store_id.clone(),
+                                time_commands: vec![
+                                    re_viewer_context::TimeControlCommand::SetTime(
+                                        re_log_types::TimeReal::from(time),
+                                    ),
+                                ],
+                            },
+                        );
+                    }
+                }
+            }
+
+            let p = (time.as_f64() - range.min.as_f64()) / range.abs_length() as f64;
+            if p > 0.0 {
+                ui.painter().rect_filled(
+                    timeline_rect
+                        .with_max_x(timeline_rect.min.x + timeline_rect.width() * p as f32),
+                    0.0,
+                    ui.tokens().preview_timeline_progress_color,
+                );
+            }
+        }
+    }
 }

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Associates components of an entity to components of a visualizer.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct VisualizerComponentMapping(
     /// The component mapping pairs.
     pub crate::blueprint::datatypes::VisualizerComponentMapping,
@@ -76,17 +77,5 @@ impl std::ops::DerefMut for VisualizerComponentMapping {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::VisualizerComponentMapping {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VisualizerComponentMapping {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::datatypes::VisualizerComponentMapping>::is_pod()
     }
 }

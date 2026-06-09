@@ -1,20 +1,25 @@
-use crate::RecordBatchTestExt as _;
-use crate::tests::common::{
-    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches, prop,
-};
-use crate::utils::client::TestClient;
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
+
 use arrow::array::RecordBatch;
 use datafusion::datasource::TableProvider as _;
 use datafusion::physical_plan::ExecutionPlanProperties as _;
 use datafusion::prelude::SessionContext;
 use futures::{StreamExt as _, TryStreamExt as _};
+use itertools::Itertools as _;
 use re_chunk_store::IndexValue;
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, TimeInt, TimeType};
+use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
+use re_types_core::SegmentId;
+
+use crate::RecordBatchTestExt as _;
+use crate::tests::common::{
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches, prop,
+};
+use crate::utils::client::TestClient;
 
 pub async fn query_dataset_index_values_by_time_type<T: RerunCloudService>(
     service: Arc<T>,
@@ -112,7 +117,7 @@ pub async fn query_dataset_index_values(service: impl RerunCloudService) {
 async fn per_segment_chunk_id_set<T: RerunCloudService>(
     service: &T,
     dataset_name: &str,
-    request: re_protos::cloud::v1alpha1::ext::QueryDatasetRequest,
+    request: ext::QueryDatasetRequest,
 ) -> BTreeSet<re_chunk::ChunkId> {
     use arrow::array::{Array as _, AsArray as _};
     use re_protos::cloud::v1alpha1::QueryDatasetResponse;
@@ -121,8 +126,7 @@ async fn per_segment_chunk_id_set<T: RerunCloudService>(
     let stream = service
         .query_dataset(
             tonic::Request::new(request.into())
-                .with_entry_name(crate::tests::common::entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(crate::tests::common::entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -197,7 +201,7 @@ async fn register_per_segment_dataset(
     data_sources_def
 }
 
-fn per_segment_segment_ids() -> Vec<re_protos::common::v1alpha1::ext::SegmentId> {
+fn per_segment_segment_ids() -> Vec<re_types_core::SegmentId> {
     vec![
         "rr4355_seg1".into(),
         "rr4355_seg2".into(),
@@ -237,8 +241,8 @@ pub async fn query_dataset_per_segment_values_wire_level(service: impl RerunClou
     let range_baseline_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            range: Some(re_protos::cloud::v1alpha1::ext::QueryRange {
+        query: Some(ext::Query {
+            range: Some(ext::QueryRange {
                 index: "frame_nr".into(),
                 index_range: re_log_types::AbsoluteTimeRange::EVERYTHING,
             }),
@@ -260,8 +264,8 @@ pub async fn query_dataset_per_segment_values_wire_level(service: impl RerunClou
     let latest_at_baseline_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::MAX,
                 per_segment_values: vec![],
@@ -282,8 +286,8 @@ pub async fn query_dataset_per_segment_values_wire_level(service: impl RerunClou
     let filtered_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 // `at` is the global fallback; servers prefer per_segment_values when set.
                 at: TimeInt::STATIC,
@@ -338,8 +342,8 @@ pub async fn query_dataset_per_segment_values_wire_level(service: impl RerunClou
     let static_only_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::STATIC,
                 per_segment_values: vec![vec![], vec![], vec![]],
@@ -405,8 +409,8 @@ pub async fn query_dataset_per_segment_values_multi_value_wire_level(
     let range_baseline_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            range: Some(re_protos::cloud::v1alpha1::ext::QueryRange {
+        query: Some(ext::Query {
+            range: Some(ext::QueryRange {
                 index: "frame_nr".into(),
                 index_range: re_log_types::AbsoluteTimeRange::EVERYTHING,
             }),
@@ -421,8 +425,8 @@ pub async fn query_dataset_per_segment_values_multi_value_wire_level(
     let filtered_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::STATIC,
                 per_segment_values: vec![
@@ -468,8 +472,8 @@ pub async fn query_dataset_per_segment_values_multi_value_wire_level(
     let single_value_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::STATIC,
                 per_segment_values: vec![vec![1010], vec![2020], vec![3010]],
@@ -551,8 +555,7 @@ pub async fn query_dataset_per_segment_values_validation_rejected(service: impl 
     let result = service
         .query_dataset(
             tonic::Request::new(request)
-                .with_entry_name(crate::tests::common::entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(crate::tests::common::entry_name(dataset_name)),
         )
         .await;
 
@@ -609,8 +612,8 @@ pub async fn query_dataset_per_segment_values_with_chunk_ids_intersects(
     let baseline_request = QueryDatasetRequest {
         segment_ids: segment_ids.clone(),
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::STATIC,
                 per_segment_values: vec![vec![1010], vec![2010], vec![3010]],
@@ -638,8 +641,8 @@ pub async fn query_dataset_per_segment_values_with_chunk_ids_intersects(
         segment_ids: segment_ids.clone(),
         chunk_ids: vec![pinned_chunk_id],
         select_all_entity_paths: true,
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::STATIC,
                 per_segment_values: vec![vec![1010], vec![2010], vec![3010]],
@@ -656,8 +659,7 @@ pub async fn query_dataset_per_segment_values_with_chunk_ids_intersects(
     let response = service
         .query_dataset(
             tonic::Request::new(request_wire)
-                .with_entry_name(crate::tests::common::entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(crate::tests::common::entry_name(dataset_name)),
         )
         .await;
 
@@ -745,8 +747,8 @@ pub async fn query_dataset_per_segment_values_empty_entity_paths_short_circuits(
         // Explicitly: no entity paths, no "all paths". Result must be empty.
         select_all_entity_paths: false,
         entity_paths: vec![],
-        query: Some(re_protos::cloud::v1alpha1::ext::Query {
-            latest_at: Some(re_protos::cloud::v1alpha1::ext::QueryLatestAt {
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
                 index: Some("frame_nr".into()),
                 at: TimeInt::STATIC,
                 per_segment_values: vec![vec![1010], vec![2010], vec![3010]],
@@ -776,11 +778,11 @@ async fn query_dataset_snapshot<T: RerunCloudService>(
     time_type: TimeType,
     check_schema: bool,
 ) {
-    let index_values: BTreeMap<String, BTreeSet<IndexValue>> = index_values
+    let index_values: BTreeMap<SegmentId, BTreeSet<IndexValue>> = index_values
         .into_iter()
         .map(|(idx, values)| {
             (
-                idx.to_owned(),
+                SegmentId::from(idx),
                 values.into_iter().map(TimeInt::new_temporal).collect(),
             )
         })
@@ -819,9 +821,9 @@ async fn query_dataset_snapshot<T: RerunCloudService>(
     let schema = plan.schema();
 
     let num_partitions = plan.output_partitioning().partition_count();
-    let results = (0..num_partitions)
+    let results: Vec<_> = (0..num_partitions)
         .map(|partition| plan.execute(partition, ctx.task_ctx()))
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
         .unwrap();
 
     let stream = futures::stream::iter(results);

@@ -17,6 +17,7 @@
 [snippets_ref.snippets.opt_out]
 # Migration snippets rarely make sense as part of the snippet index.
 "migration/log_line" = ["cpp", "rust", "py"]
+"migration/log_tick_enabled" = ["cpp", "rust", "py"]
 "migration/transactional_transforms" = ["cpp", "rust", "py"]
 
 # These archetypes will ignore the associated snippets in the snippet index.
@@ -147,6 +148,7 @@ backwards_check = [
   "howto/convert_mcap_protobuf_send_column",
   "concepts/chunk_processing", # Python-only experimental API; output rrd may shift across versions
   "concepts/chunk_processing_intro", # Python-only experimental API; output rrd may shift across versions
+  "concepts/rrd_format", # Python-only experimental API; output rrd may shift across versions
   "howto/optimize_chunks", # Compacts a video-bearing MCAP; chunk layout may shift across optimizer versions
   # Catalog server examples don't generate rrds
   "concepts/query-and-transform/dataframe_query_example",
@@ -154,6 +156,7 @@ backwards_check = [
   "howto/dataframe_operations",
   "howto/dataframe_performance",
   "howto/dataloader",
+  "tutorials/getting_started",
   "howto/dataset_resampling",
   "howto/layers",
   "howto/lerobot_export",
@@ -191,6 +194,10 @@ backwards_check = [
   "rust",
 ]
 "concepts/chunk_processing_intro" = [ # `rerun.experimental` is Python-only
+  "cpp",
+  "rust",
+]
+"concepts/rrd_format" = [ # `rerun.experimental` is Python-only
   "cpp",
   "rust",
 ]
@@ -404,6 +411,11 @@ backwards_check = [
   "rust",
   "py",
 ]
+"migration/log_tick_enabled" = [ # Not a complete example -- just a couple of method calls
+  "cpp",
+  "rust",
+  "py",
+]
 "migration/transactional_transforms" = [ # Not a complete example -- just a couple of log lines
   "cpp",
   "rust",
@@ -460,7 +472,6 @@ backwards_check = [
   "py",
 ]
 "tutorials/getting_started" = [
-  "py", # Requires a separately-running catalog server
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
@@ -611,6 +622,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "concepts/chunk_processing_intro" = [ # Python-only; nothing to compare across languages
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/rrd_format" = [ # Python-only; nothing to compare across languages
   "cpp",
   "py",
   "rust",

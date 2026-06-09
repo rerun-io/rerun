@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -268,7 +269,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Transform3D {
     /// Translation vector.
     ///
@@ -331,11 +332,13 @@ impl Transform3D {
     /// The corresponding component is [`crate::components::Translation3D`].
     #[inline]
     pub fn descriptor_translation() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Transform3D".into()),
-            component: "Transform3D:translation".into(),
-            component_type: Some("rerun.components.Translation3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:translation".into(),
+                component_type: Some("rerun.components.Translation3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angle`].
@@ -343,11 +346,13 @@ impl Transform3D {
     /// The corresponding component is [`crate::components::RotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angle() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Transform3D".into()),
-            component: "Transform3D:rotation_axis_angle".into(),
-            component_type: Some("rerun.components.RotationAxisAngle".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:rotation_axis_angle".into(),
+                component_type: Some("rerun.components.RotationAxisAngle".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternion`].
@@ -355,11 +360,13 @@ impl Transform3D {
     /// The corresponding component is [`crate::components::RotationQuat`].
     #[inline]
     pub fn descriptor_quaternion() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Transform3D".into()),
-            component: "Transform3D:quaternion".into(),
-            component_type: Some("rerun.components.RotationQuat".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:quaternion".into(),
+                component_type: Some("rerun.components.RotationQuat".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::scale`].
@@ -367,11 +374,13 @@ impl Transform3D {
     /// The corresponding component is [`crate::components::Scale3D`].
     #[inline]
     pub fn descriptor_scale() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Transform3D".into()),
-            component: "Transform3D:scale".into(),
-            component_type: Some("rerun.components.Scale3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:scale".into(),
+                component_type: Some("rerun.components.Scale3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::mat3x3`].
@@ -379,11 +388,13 @@ impl Transform3D {
     /// The corresponding component is [`crate::components::TransformMat3x3`].
     #[inline]
     pub fn descriptor_mat3x3() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Transform3D".into()),
-            component: "Transform3D:mat3x3".into(),
-            component_type: Some("rerun.components.TransformMat3x3".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:mat3x3".into(),
+                component_type: Some("rerun.components.TransformMat3x3".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::relation`].
@@ -391,11 +402,13 @@ impl Transform3D {
     /// The corresponding component is [`crate::components::TransformRelation`].
     #[inline]
     pub fn descriptor_relation() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Transform3D".into()),
-            component: "Transform3D:relation".into(),
-            component_type: Some("rerun.components.TransformRelation".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:relation".into(),
+                component_type: Some("rerun.components.TransformRelation".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::child_frame`].
@@ -403,11 +416,13 @@ impl Transform3D {
     /// The corresponding component is [`crate::components::TransformFrameId`].
     #[inline]
     pub fn descriptor_child_frame() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Transform3D".into()),
-            component: "Transform3D:child_frame".into(),
-            component_type: Some("rerun.components.TransformFrameId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:child_frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::parent_frame`].
@@ -415,11 +430,13 @@ impl Transform3D {
     /// The corresponding component is [`crate::components::TransformFrameId`].
     #[inline]
     pub fn descriptor_parent_frame() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Transform3D".into()),
-            component: "Transform3D:parent_frame".into(),
-            component_type: Some("rerun.components.TransformFrameId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:parent_frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -465,7 +482,10 @@ impl Transform3D {
 impl ::re_types_core::Archetype for Transform3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Transform3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Transform3D"
+        )
     }
 
     #[inline]
@@ -917,19 +937,5 @@ impl Transform3D {
     ) -> Self {
         self.parent_frame = try_serialize_field(Self::descriptor_parent_frame(), parent_frame);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Transform3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.translation.heap_size_bytes()
-            + self.rotation_axis_angle.heap_size_bytes()
-            + self.quaternion.heap_size_bytes()
-            + self.scale.heap_size_bytes()
-            + self.mat3x3.heap_size_bytes()
-            + self.relation.heap_size_bytes()
-            + self.child_frame.heap_size_bytes()
-            + self.parent_frame.heap_size_bytes()
     }
 }

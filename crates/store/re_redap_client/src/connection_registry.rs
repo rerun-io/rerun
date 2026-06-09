@@ -49,6 +49,9 @@ pub struct ConnectionRegistry {
     /// Clients are much cheaper to clone than create (since the latter involves establishing an
     /// actual TCP connection), so we keep them around once created.
     clients: HashMap<re_uri::Origin, ConnectionClient>,
+
+    /// Latest errors received for specific redap URIs.
+    uri_errors: HashMap<re_uri::DatasetSegmentUri, String>,
 }
 
 impl ConnectionRegistry {
@@ -63,6 +66,7 @@ impl ConnectionRegistry {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
                 clients: HashMap::new(),
+                uri_errors: Default::default(),
             })),
             use_stored_credentials: true,
         }
@@ -79,9 +83,29 @@ impl ConnectionRegistry {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
                 clients: HashMap::new(),
+                uri_errors: Default::default(),
             })),
             use_stored_credentials: false,
         }
+    }
+
+    // URI errors
+
+    /// Clear the latest error for this URI.
+    pub fn clear_uri_error(&mut self, uri: re_uri::DatasetSegmentUri) {
+        self.uri_errors.remove(&uri.without_fragment());
+    }
+
+    /// Set the latest error for this URI.
+    pub fn set_uri_error(&mut self, uri: re_uri::DatasetSegmentUri, error: String) {
+        self.uri_errors.insert(uri.without_fragment(), error);
+    }
+
+    /// Get the latest error for this URI.
+    pub fn error_for_uri(&self, uri: re_uri::DatasetSegmentUri) -> Option<&str> {
+        self.uri_errors
+            .get(&uri.without_fragment())
+            .map(|s| s.as_str())
     }
 }
 
@@ -204,6 +228,30 @@ impl ConnectionRegistryHandle {
 
     pub fn should_use_stored_credentials(&self) -> bool {
         self.use_stored_credentials
+    }
+
+    /// Clear the latest error for this URI.
+    pub fn clear_uri_error(&self, uri: re_uri::DatasetSegmentUri) {
+        wrap_blocking_lock(|| {
+            self.inner.blocking_write().clear_uri_error(uri);
+        });
+    }
+
+    /// Set the latest error for this URI.
+    pub fn set_uri_error(&self, uri: re_uri::DatasetSegmentUri, error: String) {
+        wrap_blocking_lock(|| {
+            self.inner.blocking_write().set_uri_error(uri, error);
+        });
+    }
+
+    /// Get the latest error for this URI.
+    pub fn error_for_uri(&self, uri: re_uri::DatasetSegmentUri) -> Option<String> {
+        wrap_blocking_lock(|| {
+            self.inner
+                .blocking_read()
+                .error_for_uri(uri)
+                .map(str::to_owned)
+        })
     }
 
     /// Get a client for the given origin, creating one if it doesn't exist yet.

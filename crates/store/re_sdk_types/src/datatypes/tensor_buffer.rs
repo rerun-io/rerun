@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: The underlying storage for [`archetypes::Tensor`][crate::archetypes::Tensor].
 ///
 /// Tensor elements are stored in a contiguous buffer of a single type.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, ::re_byte_size::SizeBytes)]
 pub enum TensorBuffer {
     /// 8bit unsigned integer.
     U8(::arrow::buffer::ScalarBuffer<u8>),
@@ -414,14 +415,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let second = iter.next();
                             match (first, second) {
                                 (Some(single), None) => single.clone(),
-                                (Some(first_buf), Some(second_buf)) => {
-                                    std::iter::once(first_buf.as_ref() as &[_])
-                                        .chain(std::iter::once(second_buf.as_ref() as &[_]))
-                                        .chain(iter.map(|b| b.as_ref() as &[_]))
-                                        .collect::<Vec<_>>()
-                                        .concat()
-                                        .into()
-                                }
+                                (Some(first_buf), Some(second_buf)) => ::itertools::chain!(
+                                    ::std::iter::once(first_buf.as_ref() as &[_]),
+                                    ::std::iter::once(second_buf.as_ref() as &[_]),
+                                    iter.map(|b| b.as_ref() as &[_]),
+                                )
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into(),
                                 _ => Vec::new().into(),
                             }
                         };
@@ -1600,40 +1601,5 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .with_context("rerun.datatypes.TensorBuffer")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TensorBuffer {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        #![allow(clippy::match_same_arms)]
-        match self {
-            Self::U8(v) => v.heap_size_bytes(),
-            Self::U16(v) => v.heap_size_bytes(),
-            Self::U32(v) => v.heap_size_bytes(),
-            Self::U64(v) => v.heap_size_bytes(),
-            Self::I8(v) => v.heap_size_bytes(),
-            Self::I16(v) => v.heap_size_bytes(),
-            Self::I32(v) => v.heap_size_bytes(),
-            Self::I64(v) => v.heap_size_bytes(),
-            Self::F16(v) => v.heap_size_bytes(),
-            Self::F32(v) => v.heap_size_bytes(),
-            Self::F64(v) => v.heap_size_bytes(),
-        }
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <::arrow::buffer::ScalarBuffer<u8>>::is_pod()
-            && <::arrow::buffer::ScalarBuffer<u16>>::is_pod()
-            && <::arrow::buffer::ScalarBuffer<u32>>::is_pod()
-            && <::arrow::buffer::ScalarBuffer<u64>>::is_pod()
-            && <::arrow::buffer::ScalarBuffer<i8>>::is_pod()
-            && <::arrow::buffer::ScalarBuffer<i16>>::is_pod()
-            && <::arrow::buffer::ScalarBuffer<i32>>::is_pod()
-            && <::arrow::buffer::ScalarBuffer<i64>>::is_pod()
-            && <::arrow::buffer::ScalarBuffer<half::f16>>::is_pod()
-            && <::arrow::buffer::ScalarBuffer<f32>>::is_pod()
-            && <::arrow::buffer::ScalarBuffer<f64>>::is_pod()
     }
 }

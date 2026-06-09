@@ -178,6 +178,15 @@ impl LogDataSource {
                 })
                 .ok()?;
 
+            // `data:` and `blob:` URLs are only fetchable through the browser's `fetch`.
+            #[cfg(target_arch = "wasm32")]
+            if url.scheme() == "data" || url.scheme() == "blob" {
+                return Some(Self::HttpUrl {
+                    url,
+                    follow: options.follow,
+                });
+            }
+
             // We can only load http/s urls, so don't try to load any other schemes
             if url.scheme() != "http" && url.scheme() != "https" {
                 return None;
@@ -335,6 +344,7 @@ impl LogDataSource {
                     re_log_channel::log_channel(re_log_channel::LogSource::RedapGrpcStream {
                         uri: uri.clone(),
                         open_behavior,
+                        table_blueprint: None,
                     });
 
                 let connection_registry = connection_registry.clone();
@@ -555,6 +565,12 @@ mod tests {
             // be parsed as an http url.
             "example.com/some-file",
             "aaaa",
+            // `data:`/`blob:` URLs are only fetchable on the web (browser `fetch`); on native
+            // they're rejected rather than attempted as real HTTP requests. See the wasm-only
+            // branch in `from_uri`.
+            "data:application/octet-stream;base64,UlJEMAo=",
+            "data:,inline-text",
+            "blob:https://example.com/550e8400-e29b-41d4-a716-446655440000",
         ];
 
         let file_source = FileSource::DragAndDrop {
@@ -653,7 +669,7 @@ mod tests {
                 uri: re_uri::DatasetSegmentUri {
                     origin: "api.customer.cloud.rerun.io:443".parse().unwrap(),
                     dataset_id: "18A23D2FAC59F8572563b312ef21f53b".parse().unwrap(),
-                    segment_id: "the_segment_name".to_owned(),
+                    segment_id: "the_segment_name".into(),
                     fragment: Default::default(),
                 },
                 open_behavior: RecordingOpenBehavior::OpenAndSelect,

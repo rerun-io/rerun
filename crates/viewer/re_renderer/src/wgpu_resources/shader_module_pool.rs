@@ -70,10 +70,10 @@ impl ShaderModuleDesc {
             .map_err(|err| re_log::error!(err=%re_error::format(err)))
             .unwrap_or_default();
 
-        for (from, to) in shader_text_workaround_replacements
-            .iter()
-            .chain(self.extra_workaround_replacements.iter())
-        {
+        for (from, to) in std::iter::chain(
+            shader_text_workaround_replacements,
+            &self.extra_workaround_replacements,
+        ) {
             source_interpolated.contents = source_interpolated.contents.replace(from, to);
         }
 

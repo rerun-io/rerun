@@ -140,15 +140,15 @@ impl RecordBatchTestExt for arrow::array::RecordBatch {
     }
 
     fn sort_rows_by(&self, columns: &[&str]) -> Result<Self, DataFusionError> {
-        let sort_exprs = columns
+        let sort_exprs: Vec<_> = columns
             .iter()
-            .map(|column| {
+            .map(|column| -> Result<_, DataFusionError> {
                 Ok(PhysicalSortExpr::new(
                     col(column, self.schema_ref())?,
                     SortOptions::default(),
                 ))
             })
-            .collect::<Result<Vec<_>, DataFusionError>>()?;
+            .try_collect()?;
 
         let Some(ordering) = LexOrdering::new(sort_exprs) else {
             return Ok(self.clone());
@@ -158,17 +158,17 @@ impl RecordBatchTestExt for arrow::array::RecordBatch {
     }
 
     fn auto_sort_rows(&self) -> Result<Self, DataFusionError> {
-        let sort_exprs = self
+        let sort_exprs: Vec<_> = self
             .schema()
             .fields()
             .iter()
-            .map(|column| {
+            .map(|column| -> Result<_, DataFusionError> {
                 Ok(PhysicalSortExpr::new(
                     col(column.name(), self.schema_ref())?,
                     SortOptions::default(),
                 ))
             })
-            .collect::<Result<Vec<_>, DataFusionError>>()?;
+            .try_collect()?;
 
         let Some(ordering) = LexOrdering::new(sort_exprs) else {
             return Ok(self.clone());
@@ -409,7 +409,7 @@ impl SchemaTestExt for arrow::datatypes::Schema {
             }
         });
 
-        metadata.into_iter().chain(fields).join("\n")
+        std::iter::chain(metadata, fields).join("\n")
     }
 }
 

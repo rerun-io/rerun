@@ -205,7 +205,7 @@ pub fn test_various_entity_kinds_in_time_panel() {
                 test_context.active_store_id(),
                 [
                     TimeControlCommand::SetActiveTimeline(timeline.into()),
-                    TimeControlCommand::SetTime(time.into()),
+                    TimeControlCommand::SetTimeClamped(time.into()),
                     TimeControlCommand::SetTimeView(TimeView {
                         min: 0.into(),
                         time_spanned: 10.0,

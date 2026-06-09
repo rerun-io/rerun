@@ -101,7 +101,10 @@ impl Asset3DVisualizer {
 
 impl IdentifiedViewSystem for Asset3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Asset3D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Asset3D"
+        )
     }
 }
 

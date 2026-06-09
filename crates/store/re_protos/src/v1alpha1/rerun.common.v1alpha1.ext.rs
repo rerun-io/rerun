@@ -2,6 +2,7 @@ use std::hash::Hasher as _;
 
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::error::ArrowError;
+use itertools::Itertools as _;
 
 use re_log_types::external::re_types_core::ComponentDescriptor;
 use re_log_types::{RecordingId, StoreKind, TableId};
@@ -119,59 +120,24 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
 
 // --- SegmentId ---
 
-#[derive(
-    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
-)]
-pub struct SegmentId {
-    pub id: String,
-}
-
-impl SegmentId {
-    #[inline]
-    pub fn new(id: String) -> Self {
-        Self { id }
-    }
-}
-
-impl From<String> for SegmentId {
-    fn from(id: String) -> Self {
-        Self { id }
-    }
-}
-
-impl From<&str> for SegmentId {
-    fn from(id: &str) -> Self {
-        Self { id: id.to_owned() }
-    }
-}
-
-impl std::fmt::Display for SegmentId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.id.fmt(f)
-    }
-}
+pub use re_types_core::SegmentId;
 
 impl TryFrom<crate::common::v1alpha1::SegmentId> for SegmentId {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::SegmentId) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: value
-                .id
-                .ok_or(missing_field!(crate::common::v1alpha1::SegmentId, "id"))?,
-        })
+        Ok(Self::from(value.id.ok_or(missing_field!(
+            crate::common::v1alpha1::SegmentId,
+            "id"
+        ))?))
     }
 }
 
 impl From<SegmentId> for crate::common::v1alpha1::SegmentId {
     fn from(value: SegmentId) -> Self {
-        Self { id: Some(value.id) }
-    }
-}
-
-impl AsRef<str> for SegmentId {
-    fn as_ref(&self) -> &str {
-        self.id.as_str()
+        Self {
+            id: Some(value.into()),
+        }
     }
 }
 
@@ -250,6 +216,10 @@ impl crate::common::v1alpha1::TaskId {
         Self::from_hashable(re_tuid::Tuid::new())
     }
 
+    pub fn into_string(self) -> String {
+        self.id
+    }
+
     pub fn from_hashable<H: std::hash::Hash>(hashable: H) -> Self {
         let mut hasher = std::hash::DefaultHasher::new();
         hashable.hash(&mut hasher);
@@ -260,6 +230,21 @@ impl crate::common::v1alpha1::TaskId {
         }
     }
 }
+
+impl From<String> for crate::common::v1alpha1::TaskId {
+    fn from(id: String) -> Self {
+        Self { id }
+    }
+}
+
+impl From<crate::common::v1alpha1::TaskId> for String {
+    fn from(task_id: crate::common::v1alpha1::TaskId) -> Self {
+        task_id.id
+    }
+}
+
+// Make `quiver::Column<TaskId>` work (backed by a `Utf8` column):
+quiver::newtype_datatype!(crate::common::v1alpha1::TaskId, String);
 
 // ---
 
@@ -534,7 +519,7 @@ impl TryFrom<crate::common::v1alpha1::ScanParameters> for ScanParameters {
                 .order_by
                 .into_iter()
                 .map(|ob| ob.try_into())
-                .collect::<Result<Vec<_>, _>>()?,
+                .try_collect()?,
             explain_plan: value.explain_plan,
             explain_filter: value.explain_filter,
         })

@@ -22,23 +22,10 @@ use std::collections::VecDeque;
 /// v.pop_front();
 /// assert_eq!(v.get(1), Some(&1));
 /// ```
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, re_byte_size::SizeBytes)]
 pub struct StableIndexDeque<T> {
     vec: VecDeque<T>,
     index_offset: usize,
-}
-
-impl<T> re_byte_size::SizeBytes for StableIndexDeque<T>
-where
-    T: re_byte_size::SizeBytes,
-{
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            vec,
-            index_offset: _,
-        } = self;
-        vec.heap_size_bytes()
-    }
 }
 
 impl<T> StableIndexDeque<T> {
@@ -368,9 +355,12 @@ impl<T> StableIndexDeque<T> {
         &'a self,
         range: &std::ops::Range<usize>,
     ) -> impl DoubleEndedIterator<Item = (usize, &'a T)> + ExactSizeIterator + use<'a, T> {
-        let range_start = range.start.saturating_sub(self.index_offset);
-        let num_elements = range.end - range.start;
-        self.iter_indexed().skip(range_start).take(num_elements)
+        let shifted_range = range.start.saturating_sub(self.index_offset)
+            ..range.end.saturating_sub(self.index_offset);
+        let num_elements = shifted_range.end - shifted_range.start;
+        self.iter_indexed()
+            .skip(shifted_range.start)
+            .take(num_elements)
     }
 
     /// Mutably iterates over an index range which is truncated to a valid range in

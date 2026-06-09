@@ -57,6 +57,15 @@ class LazyStore:
 
         return LazyChunkStream(self._internal.stream())
 
+    @property
+    def _chunks_loaded(self) -> int:
+        """
+        Monotonic count of chunks physically loaded from this store since it was opened.
+
+        For test purposes.
+        """
+        return self._internal._chunks_loaded
+
     def write_rrd(
         self,
         path: str | Path,

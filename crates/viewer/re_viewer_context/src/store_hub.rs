@@ -176,7 +176,7 @@ pub struct BlueprintPersistence {
     pub deleter: Option<Box<BlueprintDeleter>>,
 }
 
-/// Convenient information used for `MemoryPanel`.
+/// Convenient information used for `DevPanel`.
 ///
 /// This is per [`StoreId`], which could be either a recording or a blueprint.
 pub struct StoreStats {
@@ -190,7 +190,7 @@ pub struct StoreStats {
     pub cache_vram_usage: MemUsageTree,
 }
 
-/// Convenient information used for `MemoryPanel`
+/// Convenient information used for `DevPanel`
 #[derive(Default)]
 pub struct StoreHubStats {
     pub store_stats: BTreeMap<StoreId, StoreStats>,
@@ -431,25 +431,23 @@ impl StoreHub {
 
     /// Called once a frame to make sure the data source order is correct.
     pub fn update_data_source_order(&mut self, loading_sources: &[Arc<LogSource>]) {
-        let keep: HashSet<&LogSource> = loading_sources
-            .iter()
-            .map(|source| &**source)
-            .chain(
-                self.store_bundle
-                    .recordings()
-                    .filter_map(|db| db.data_source.as_ref()),
-            )
-            .collect();
+        let keep: HashSet<&LogSource> = std::iter::chain(
+            loading_sources.iter().map(|source| &**source),
+            self.store_bundle
+                .recordings()
+                .filter_map(|db| db.data_source.as_ref()),
+        )
+        .collect();
         self.data_source_order
             .ordering
             .retain(|source, _| keep.contains(source));
 
-        for source in self
-            .store_bundle
-            .recordings()
-            .filter_map(|db| db.data_source.as_ref())
-            .chain(loading_sources.iter().map(|s| &**s))
-        {
+        for source in std::iter::chain(
+            self.store_bundle
+                .recordings()
+                .filter_map(|db| db.data_source.as_ref()),
+            loading_sources.iter().map(|s| &**s),
+        ) {
             self.data_source_order.add(source);
         }
     }
@@ -497,18 +495,30 @@ impl StoreHub {
         self.table_stores.insert(id, store)
     }
 
-    /// Store a decoded table blueprint [`EntityDb`] for the given table.
-    ///
-    /// Any previously stored blueprint for this table is removed first.
-    pub fn insert_table_blueprint(&mut self, table_id: TableId, blueprint: EntityDb) {
-        // Remove any previous blueprint for this table.
-        if let Some(old_store_id) = self.table_blueprints.remove(&table_id) {
-            self.store_bundle.remove(&old_store_id);
+    /// Register a fully-loaded blueprint store as the blueprint for a table.
+    pub fn associate_table_blueprint(
+        &mut self,
+        table_id: TableId,
+        store_id: &StoreId,
+    ) -> anyhow::Result<()> {
+        let store = self
+            .store_bundle
+            .get(store_id)
+            .with_context(|| format!("missing table blueprint store: {store_id:?}"))?;
+
+        anyhow::ensure!(
+            store.store_kind() == StoreKind::Blueprint,
+            "table blueprint store must be a blueprint store, got {:?}",
+            store.store_kind()
+        );
+
+        if let Some(old_store_id) = self.table_blueprints.insert(table_id, store_id.clone())
+            && &old_store_id != store_id
+        {
+            self.remove_store(&old_store_id);
         }
 
-        let store_id = blueprint.store_id().clone();
-        self.store_bundle.insert(blueprint);
-        self.table_blueprints.insert(table_id, store_id);
+        Ok(())
     }
 
     /// Look up the decoded blueprint [`EntityDb`] for a table, if one was stored.
@@ -766,8 +776,27 @@ impl StoreHub {
             blueprint_id.application_id(),
             blueprint_id
         );
+        let app_id = blueprint_id.application_id().clone();
         self.default_blueprint_by_app_id
-            .insert(blueprint_id.application_id().clone(), blueprint_id.clone());
+            .insert(app_id.clone(), blueprint_id.clone());
+
+        // If the active blueprint for this app was auto-created as empty (i.e. no
+        // chunks have ever been written to it), the user hasn't touched it yet,
+        // so it's safe to replace it with a clone of the newly-registered default.
+        // This handles the race where the user opens a recording (which creates
+        // an empty active blueprint via `ensure_active_blueprint_for_app`) before
+        // the dataset's default blueprint has finished streaming.
+        if let Some(active_id) = self.active_blueprint_by_app_id.get(&app_id)
+            && let Some(active_blueprint) = self.store_bundle.get(active_id)
+            && active_blueprint.latest_row_id().is_none()
+        {
+            let blueprint_id = blueprint_id.clone();
+            if let Err(err) = self.set_cloned_blueprint_active_for_app(&blueprint_id) {
+                re_log::warn!(
+                    "Failed to promote new default blueprint to active for '{app_id}': {err}"
+                );
+            }
+        }
 
         Ok(())
     }
@@ -842,6 +871,8 @@ impl StoreHub {
     /// Make blueprint active for a given [`ApplicationId`]
     ///
     /// We never activate a blueprint directly. Instead, we clone it and activate the clone.
+    /// Any previously-active blueprint for this app is dropped from the store bundle
+    /// so it doesn't linger as an orphan.
     //TODO(jleibs): In the future this can probably be handled with snapshots instead.
     pub fn set_cloned_blueprint_active_for_app(
         &mut self,
@@ -868,9 +899,20 @@ impl StoreHub {
 
         let new_blueprint = blueprint.clone_with_new_id(new_id.clone())?;
 
+        let previous_active_id = self.active_blueprint_by_app_id.get(&app_id).cloned();
+
         self.store_bundle.insert(new_blueprint);
 
         self.active_blueprint_by_app_id.insert(app_id, new_id);
+
+        // Drop the previous active store now that nothing references it. Skip if it
+        // happens to be the source we just cloned from (i.e. caller passed the
+        // already-active id), since `remove_store` would otherwise discard it.
+        if let Some(prev_id) = previous_active_id
+            && &prev_id != blueprint_id
+        {
+            self.remove_store(&prev_id);
+        }
 
         Ok(())
     }
@@ -1018,7 +1060,7 @@ impl StoreHub {
 
         let target = GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _);
 
-        for store_id in preview_recordings.iter().chain(&active_recordings) {
+        for store_id in std::iter::chain(&preview_recordings, &active_recordings) {
             let time_cursor = time_cursor_for(store_id);
             num_bytes_freed += self.gc_store(target, store_id, time_cursor);
         }
@@ -1125,11 +1167,10 @@ impl StoreHub {
     pub fn gc_blueprints(&mut self, undo_state: &HashMap<StoreId, BlueprintUndoState>) {
         re_tracing::profile_function!();
 
-        for blueprint_id in self
-            .active_blueprint_by_app_id
-            .values()
-            .chain(self.default_blueprint_by_app_id.values())
-        {
+        for blueprint_id in std::iter::chain(
+            self.active_blueprint_by_app_id.values(),
+            self.default_blueprint_by_app_id.values(),
+        ) {
             if let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) {
                 if self.blueprint_last_gc.get(blueprint_id) == Some(&blueprint.generation()) {
                     continue; // no change since last gc
@@ -1420,5 +1461,115 @@ impl MemUsageTreeCapture for StoreHub {
         node.add("TableStores", table_stores_node.into_tree());
 
         node.into_tree()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use re_chunk::Chunk;
+    use re_log_types::TimePoint;
+    use re_sdk_types::archetypes::Points2D;
+
+    fn dummy_chunk() -> Arc<Chunk> {
+        Arc::new(
+            Chunk::builder("foo")
+                .with_archetype(
+                    re_chunk::RowId::new(),
+                    TimePoint::STATIC,
+                    &Points2D::new([(0.0_f32, 0.0_f32)]),
+                )
+                .build()
+                .expect("chunk should build"),
+        )
+    }
+
+    /// When the active blueprint for an app is auto-created empty and then a
+    /// default blueprint is registered, the active should be replaced by a clone
+    /// of the default. (Regression for the OSS server / `segment_table` flow,
+    /// rerun#12773.)
+    #[test]
+    fn registering_default_replaces_empty_active_blueprint() {
+        let mut hub = StoreHub::test_hub();
+        let app_id = ApplicationId::from("test_app");
+
+        // Simulate the race: the user opens the route before the dataset
+        // blueprint has landed, so an empty active blueprint is created first.
+        hub.ensure_active_blueprint_for_app(&app_id);
+        let original_active_id = hub
+            .active_blueprint_id_for_app(&app_id)
+            .expect("active blueprint should exist")
+            .clone();
+        assert!(
+            hub.store_bundle
+                .get(&original_active_id)
+                .unwrap()
+                .latest_row_id()
+                .is_none(),
+            "active blueprint should be empty"
+        );
+
+        // Now the dataset's default blueprint finishes streaming and registers.
+        let default_id = StoreId::random(StoreKind::Blueprint, app_id.clone());
+        hub.store_bundle.blueprint_entry(&default_id);
+        hub.add_chunk_for_tests(&default_id, &dummy_chunk())
+            .unwrap();
+        hub.set_default_blueprint_for_app(&default_id).unwrap();
+
+        let new_active_id = hub
+            .active_blueprint_id_for_app(&app_id)
+            .expect("active blueprint should still exist")
+            .clone();
+        assert_ne!(
+            new_active_id, original_active_id,
+            "empty active blueprint should have been replaced"
+        );
+        assert_eq!(
+            hub.store_bundle.get(&new_active_id).unwrap().cloned_from(),
+            Some(&default_id),
+            "new active should be a clone of the newly-registered default"
+        );
+        assert!(
+            hub.store_bundle.get(&original_active_id).is_none(),
+            "previous empty active blueprint should be dropped from the bundle"
+        );
+    }
+
+    /// If the active blueprint has any user-written content, registering a new
+    /// default must not clobber it.
+    #[test]
+    fn registering_default_preserves_modified_active_blueprint() {
+        let mut hub = StoreHub::test_hub();
+        let app_id = ApplicationId::from("test_app");
+
+        hub.ensure_active_blueprint_for_app(&app_id);
+        let active_id = hub
+            .active_blueprint_id_for_app(&app_id)
+            .expect("active blueprint should exist")
+            .clone();
+
+        // User has touched the active blueprint.
+        hub.add_chunk_for_tests(&active_id, &dummy_chunk()).unwrap();
+        assert!(
+            hub.store_bundle
+                .get(&active_id)
+                .unwrap()
+                .latest_row_id()
+                .is_some()
+        );
+
+        // A default blueprint arrives.
+        let default_id = StoreId::random(StoreKind::Blueprint, app_id.clone());
+        hub.store_bundle.blueprint_entry(&default_id);
+        hub.add_chunk_for_tests(&default_id, &dummy_chunk())
+            .unwrap();
+        hub.set_default_blueprint_for_app(&default_id).unwrap();
+
+        assert_eq!(
+            hub.active_blueprint_id_for_app(&app_id),
+            Some(&active_id),
+            "modified active blueprint should NOT be replaced"
+        );
     }
 }

@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
+use itertools::Itertools as _;
 use re_chunk::{Chunk, EntityPath};
 use re_log_types::TimeType;
 use re_parquet::{
@@ -61,7 +62,7 @@ fn load_chunks(path: &std::path::Path, config: &ParquetConfig) -> Vec<Chunk> {
     let prefix = EntityPath::from("/");
     re_parquet::load_parquet(path, config, &prefix)
         .unwrap()
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
         .unwrap()
 }
 

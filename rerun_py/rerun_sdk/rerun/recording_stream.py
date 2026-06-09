@@ -8,9 +8,8 @@ import uuid
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 
-from typing_extensions import Self, deprecated
+from typing_extensions import Self
 
-import rerun as rr
 from rerun import bindings
 from rerun_bindings import ChunkBatcherConfig as ChunkBatcherConfig  # noqa: TC001
 
@@ -725,27 +724,6 @@ class RecordingStream:
 
         send_blueprint(blueprint=blueprint, make_active=make_active, make_default=make_default, recording=self)
 
-    @deprecated(
-        "RecordingStream.send_recording is deprecated since 0.32. Use RecordingStream.send_chunks instead.",
-    )
-    def send_recording(self, recording: rr.recording.Recording) -> None:  # ty:ignore[deprecated]
-        """
-        Send a `Recording` loaded from a `.rrd` to the `RecordingStream`.
-
-        !!! Warning
-            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-
-        Parameters
-        ----------
-        recording:
-            A `Recording` loaded from a `.rrd`.
-
-        """
-
-        from .sinks import send_recording  # ty:ignore[deprecated]
-
-        send_recording(rrd=recording, recording=self)  # ty:ignore[deprecated]
-
     def spawn(
         self,
         *,
@@ -988,6 +966,38 @@ class RecordingStream:
 
         bindings.reset_time(recording=self.to_native())
 
+    def set_log_tick_enabled(self, enabled: bool) -> None:
+        """
+        Enable or disable automatic injection of the `log_tick` timeline into logged data.
+
+        `log_tick` is a per-recording counter that increments on every logging call.
+        It is **disabled** by default (it can also be controlled via the `RERUN_LOG_TICK` environment variable).
+
+        Parameters
+        ----------
+        enabled:
+            Whether to inject the `log_tick` timeline.
+
+        """
+
+        bindings.set_log_tick_enabled(enabled, recording=self.to_native())
+
+    def set_log_time_enabled(self, enabled: bool) -> None:
+        """
+        Enable or disable automatic injection of the `log_time` timeline into logged data.
+
+        `log_time` is the wall-clock time at which data was logged.
+        It is **enabled** by default (it can also be controlled via the `RERUN_LOG_TIME` environment variable).
+
+        Parameters
+        ----------
+        enabled:
+            Whether to inject the `log_time` timeline.
+
+        """
+
+        bindings.set_log_time_enabled(enabled, recording=self.to_native())
+
     def log(
         self,
         entity_path: str | list[object],
@@ -1054,7 +1064,7 @@ class RecordingStream:
             Static data has no time associated with it, exists on all timelines, and unconditionally shadows
             any temporal data of the same type.
 
-            Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+            Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
             Additional timelines set by [`rerun.RecordingStream.set_time`][] will also be included.
 
         strict:
@@ -1103,7 +1113,7 @@ class RecordingStream:
             Static data has no time associated with it, exists on all timelines, and unconditionally shadows
             any temporal data of the same type.
 
-            Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+            Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
             Additional timelines set by [`rerun.RecordingStream.set_time`][] will also be included.
 
         """
@@ -1149,7 +1159,7 @@ class RecordingStream:
             Static data has no time associated with it, exists on all timelines, and unconditionally shadows
             any temporal data of the same type.
 
-            Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+            Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
             Additional timelines set by [`rerun.RecordingStream.set_time`][] will also be included.
 
         """

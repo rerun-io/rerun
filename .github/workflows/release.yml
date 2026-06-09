@@ -274,6 +274,7 @@ jobs:
       PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
       CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
       JS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
+      MARKDOWN_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
       RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
       RELEASE_VERSION: ${{ needs.version.outputs.final }}
       UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
@@ -425,6 +426,8 @@ jobs:
 
       - name: Create comment
         if: inputs.release-type == 'rc' || inputs.release-type == 'final'
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
@@ -531,6 +534,8 @@ jobs:
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
       - name: Create comment
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |

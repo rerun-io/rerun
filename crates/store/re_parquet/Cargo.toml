@@ -27,3 +27,4 @@ parquet = { workspace = true, features = ["arrow", "snap", "zstd"] }
 thiserror.workspace = true
 
 [dev-dependencies]
+itertools.workspace = true

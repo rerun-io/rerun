@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct AffixFuzzer3 {
     pub fuzz2001: Option<SerializedComponentBatch>,
     pub fuzz2002: Option<SerializedComponentBatch>,
@@ -49,11 +50,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer1`].
     #[inline]
     pub fn descriptor_fuzz2001() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2001".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer1".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2001".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer1".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2002`].
@@ -61,11 +64,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer2`].
     #[inline]
     pub fn descriptor_fuzz2002() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2002".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer2".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2002".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer2".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2003`].
@@ -73,11 +78,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer3`].
     #[inline]
     pub fn descriptor_fuzz2003() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2003".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer3".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2003".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer3".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2004`].
@@ -85,11 +92,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer4`].
     #[inline]
     pub fn descriptor_fuzz2004() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2004".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer4".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2004".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer4".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2005`].
@@ -97,11 +106,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer5`].
     #[inline]
     pub fn descriptor_fuzz2005() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2005".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer5".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2005".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer5".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2006`].
@@ -109,11 +120,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer6`].
     #[inline]
     pub fn descriptor_fuzz2006() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2006".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer6".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2006".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer6".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2007`].
@@ -121,11 +134,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer7`].
     #[inline]
     pub fn descriptor_fuzz2007() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2007".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer7".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2007".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer7".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2008`].
@@ -133,11 +148,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer8`].
     #[inline]
     pub fn descriptor_fuzz2008() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2008".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer8".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2008".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer8".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2009`].
@@ -145,11 +162,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer9`].
     #[inline]
     pub fn descriptor_fuzz2009() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2009".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer9".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2009".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer9".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2010`].
@@ -157,11 +176,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer10`].
     #[inline]
     pub fn descriptor_fuzz2010() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2010".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer10".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2010".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer10".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2011`].
@@ -169,11 +190,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer11`].
     #[inline]
     pub fn descriptor_fuzz2011() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2011".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer11".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2011".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer11".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2012`].
@@ -181,11 +204,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer12`].
     #[inline]
     pub fn descriptor_fuzz2012() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2012".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer12".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2012".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer12".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2013`].
@@ -193,11 +218,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer13`].
     #[inline]
     pub fn descriptor_fuzz2013() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2013".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer13".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2013".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer13".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2014`].
@@ -205,11 +232,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer14`].
     #[inline]
     pub fn descriptor_fuzz2014() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2014".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer14".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2014".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer14".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2015`].
@@ -217,11 +246,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer15`].
     #[inline]
     pub fn descriptor_fuzz2015() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2015".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer15".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2015".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer15".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2016`].
@@ -229,11 +260,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer16`].
     #[inline]
     pub fn descriptor_fuzz2016() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2016".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer16".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2016".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer16".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2017`].
@@ -241,11 +274,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer17`].
     #[inline]
     pub fn descriptor_fuzz2017() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2017".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer17".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2017".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer17".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2018`].
@@ -253,11 +288,13 @@ impl AffixFuzzer3 {
     /// The corresponding component is [`crate::testing::components::AffixFuzzer18`].
     #[inline]
     pub fn descriptor_fuzz2018() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component: "AffixFuzzer3:fuzz2018".into(),
-            component_type: Some("rerun.testing.components.AffixFuzzer18".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+                component: "AffixFuzzer3:fuzz2018".into(),
+                component_type: Some("rerun.testing.components.AffixFuzzer18".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -323,7 +360,10 @@ impl AffixFuzzer3 {
 impl ::re_types_core::Archetype for AffixFuzzer3 {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.testing.archetypes.AffixFuzzer3".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.testing.archetypes.AffixFuzzer3"
+        )
     }
 
     #[inline]
@@ -1099,29 +1139,5 @@ impl AffixFuzzer3 {
     ) -> Self {
         self.fuzz2018 = try_serialize_field(Self::descriptor_fuzz2018(), fuzz2018);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer3 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.fuzz2001.heap_size_bytes()
-            + self.fuzz2002.heap_size_bytes()
-            + self.fuzz2003.heap_size_bytes()
-            + self.fuzz2004.heap_size_bytes()
-            + self.fuzz2005.heap_size_bytes()
-            + self.fuzz2006.heap_size_bytes()
-            + self.fuzz2007.heap_size_bytes()
-            + self.fuzz2008.heap_size_bytes()
-            + self.fuzz2009.heap_size_bytes()
-            + self.fuzz2010.heap_size_bytes()
-            + self.fuzz2011.heap_size_bytes()
-            + self.fuzz2012.heap_size_bytes()
-            + self.fuzz2013.heap_size_bytes()
-            + self.fuzz2014.heap_size_bytes()
-            + self.fuzz2015.heap_size_bytes()
-            + self.fuzz2016.heap_size_bytes()
-            + self.fuzz2017.heap_size_bytes()
-            + self.fuzz2018.heap_size_bytes()
     }
 }

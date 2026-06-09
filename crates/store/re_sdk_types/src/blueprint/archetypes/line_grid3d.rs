@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configuration for the 3D line grid.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct LineGrid3D {
     /// Whether the grid is visible.
     ///
@@ -60,11 +61,13 @@ impl LineGrid3D {
     /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component: "LineGrid3D:visible".into(),
-            component_type: Some("rerun.components.Visible".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:visible".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::spacing`].
@@ -72,11 +75,13 @@ impl LineGrid3D {
     /// The corresponding component is [`crate::blueprint::components::GridSpacing`].
     #[inline]
     pub fn descriptor_spacing() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component: "LineGrid3D:spacing".into(),
-            component_type: Some("rerun.blueprint.components.GridSpacing".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:spacing".into(),
+                component_type: Some("rerun.blueprint.components.GridSpacing".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::plane`].
@@ -84,11 +89,13 @@ impl LineGrid3D {
     /// The corresponding component is [`crate::components::Plane3D`].
     #[inline]
     pub fn descriptor_plane() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component: "LineGrid3D:plane".into(),
-            component_type: Some("rerun.components.Plane3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:plane".into(),
+                component_type: Some("rerun.components.Plane3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::stroke_width`].
@@ -96,11 +103,13 @@ impl LineGrid3D {
     /// The corresponding component is [`crate::components::StrokeWidth`].
     #[inline]
     pub fn descriptor_stroke_width() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component: "LineGrid3D:stroke_width".into(),
-            component_type: Some("rerun.components.StrokeWidth".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:stroke_width".into(),
+                component_type: Some("rerun.components.StrokeWidth".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
@@ -108,11 +117,13 @@ impl LineGrid3D {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component: "LineGrid3D:color".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -152,7 +163,10 @@ impl LineGrid3D {
 impl ::re_types_core::Archetype for LineGrid3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.LineGrid3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.LineGrid3D"
+        )
     }
 
     #[inline]
@@ -331,16 +345,5 @@ impl LineGrid3D {
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = try_serialize_field(Self::descriptor_color(), [color]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for LineGrid3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.visible.heap_size_bytes()
-            + self.spacing.heap_size_bytes()
-            + self.plane.heap_size_bytes()
-            + self.stroke_width.heap_size_bytes()
-            + self.color.heap_size_bytes()
     }
 }

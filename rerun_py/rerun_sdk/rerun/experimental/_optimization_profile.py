@@ -69,6 +69,12 @@ class OptimizationProfile:
     performed.
     """
 
+    fix_keyframe: bool = False
+    """
+    If `True`, any user-supplied `VideoStream:is_keyframe` data is dropped and
+    re-derived from the encoded samples during video rebatching.
+    """
+
 
 OptimizationProfile.LIVE = OptimizationProfile(
     max_bytes=12 * 8 * 4096,
@@ -77,6 +83,7 @@ OptimizationProfile.LIVE = OptimizationProfile(
     extra_passes=50,
     gop_batching=True,
     split_size_ratio=None,
+    fix_keyframe=False,
 )
 
 OptimizationProfile.OBJECT_STORE = OptimizationProfile(
@@ -86,4 +93,5 @@ OptimizationProfile.OBJECT_STORE = OptimizationProfile(
     extra_passes=50,
     gop_batching=True,
     split_size_ratio=None,
+    fix_keyframe=False,
 )

@@ -1,5 +1,6 @@
 use ahash::HashMap;
 use egui::NumExt as _;
+use itertools::izip;
 use re_log_types::{EntityPath, EntityPathHash};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend};
 use re_sdk_types::blueprint::components::{Corner2D, Enabled};
@@ -261,11 +262,8 @@ impl ViewClass for BarChartView {
                 };
 
                 let egui_color: egui::Color32 = color.0.into();
-                let bars: Vec<(f64, f64, f64)> = arg
-                    .iter()
-                    .zip(widths.iter())
-                    .zip(data.iter())
-                    .map(|((index, width), value)| {
+                let bars: Vec<(f64, f64, f64)> = izip!(&arg, widths, &data)
+                    .map(|(index, width, value)| {
                         let center_x = index + (0.5 * *width as f64);
                         (center_x, *width as f64, *value)
                     })

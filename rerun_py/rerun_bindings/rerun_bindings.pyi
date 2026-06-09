@@ -21,6 +21,8 @@ from .types import (
 # NOTE
 #
 # The pure Python wrapper/internal pyo3 object is documented in `rerun_py/ARCHITECTURE.md`.
+#
+# Refrain from adding doc strings for APIs that is wrapped on the Python side as they are unchecked and just add duplication.
 
 class IndexColumnDescriptor:
     """
@@ -189,17 +191,6 @@ class SchemaInternal:
     ) -> ComponentColumnDescriptor: ...
     def __arrow_c_schema__(self) -> Any: ...
 
-class RecordingInternal:
-    def schema(self) -> SchemaInternal: ...
-    def recording_id(self) -> str: ...
-    def application_id(self) -> str: ...
-    def chunks(self) -> ChunkIterator: ...
-    def save(self, path: str) -> None: ...
-
-class RRDArchiveInternal:
-    def num_recordings(self) -> int: ...
-    def all_recordings(self) -> list[RecordingInternal]: ...
-
 class ChunkInternal:
     @property
     def id(self) -> str: ...
@@ -230,28 +221,6 @@ class ChunkInternal:
     def apply_selector(self, source: str, selector: SelectorInternal) -> ChunkInternal: ...
     def __repr__(self) -> str: ...
     def __len__(self) -> int: ...
-
-class ChunkIterator:
-    """An iterator over chunks in a recording."""
-
-    def __iter__(self) -> ChunkIterator:
-        """Implement iter(self)."""
-
-    def __next__(self) -> ChunkInternal:
-        """Implement next(self)."""
-
-def recording_from_chunks(
-    chunks: Any,
-    application_id: str,
-    recording_id: str,
-) -> RecordingInternal:
-    """Create a new recording from an iterable of chunks."""
-
-def load_recording(path_to_rrd: str | os.PathLike[str]) -> RecordingInternal:
-    """Load a single recording from an RRD file."""
-
-def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchiveInternal:
-    """Load a rerun archive from an RRD file."""
 
 def _optimization_profile_values(name: str) -> dict[str, object]:
     """
@@ -503,7 +472,8 @@ def spawn(
     executable_path: str | None = None,
     extra_args: list[str] = ...,
     extra_env: list[tuple[str, str]] = ...,
-) -> None:
+    headless: bool = False,
+) -> int | None:
     """Spawn a new viewer."""
 
 #
@@ -854,6 +824,12 @@ def disable_timeline(
 def reset_time(recording: PyRecordingStream | None = None) -> None:
     """Clear all timeline information on this thread."""
 
+def set_log_tick_enabled(enabled: bool, recording: PyRecordingStream | None = None) -> None:
+    """Enable or disable automatic injection of the `log_tick` timeline (disabled by default)."""
+
+def set_log_time_enabled(enabled: bool, recording: PyRecordingStream | None = None) -> None:
+    """Enable or disable automatic injection of the `log_time` timeline (enabled by default)."""
+
 #
 # log any
 #
@@ -920,14 +896,6 @@ def send_blueprint(
     recording: PyRecordingStream | None = None,
 ) -> None:
     """Send a blueprint to the given recording stream."""
-
-def send_recording(rrd: RecordingInternal, recording: PyRecordingStream | None = None) -> None:
-    """
-    Send all chunks from a [`PyRecording`] to the given recording stream.
-
-    !!! Warning
-        ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-    """
 
 #
 # misc
@@ -1040,8 +1008,8 @@ class DatasetEntryInternal:
         self,
         segment_id: str,
         timeline: str | None = None,
-        start: datetime | int | None = None,
-        end: datetime | int | None = None,
+        start: datetime | timedelta | int | None = None,
+        end: datetime | timedelta | int | None = None,
     ) -> str: ...
 
     # ---
@@ -1057,6 +1025,9 @@ class DatasetEntryInternal:
     def register_prefix(
         self, recordings_prefix: str, layer_name: str, on_duplicate: str
     ) -> RegistrationHandleInternal: ...
+    def _register_asset_layer(
+        self, *, layer_name: str, recording_uri: str, on_duplicate: str
+    ) -> RegistrationHandleInternal: ...
     def unregister(
         self,
         *,
@@ -1067,7 +1038,6 @@ class DatasetEntryInternal:
 
     # ---
 
-    def download_segment(self, segment_id: str) -> RecordingInternal: ...
     def segment_store(self, segment_id: str) -> LazyStoreInternal: ...
 
     # ---
@@ -1167,6 +1137,12 @@ class TableEntryInternal:
     def delete(self) -> None: ...
     def set_name(self, name: str) -> None: ...
     def entry_details(self) -> EntryDetailsInternal: ...
+
+    # ---
+
+    def blueprint_dataset(self) -> DatasetEntryInternal: ...
+    def default_blueprint_segment_id(self) -> str | None: ...
+    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
 
     # ---
 
@@ -1301,6 +1277,11 @@ class _IndexValuesLikeInternal:
     def __init__(self, values: IndexValuesLike) -> None: ...
     def to_index_values(self) -> npt.NDArray[np.int64]: ...
     def len(self) -> int: ...
+
+class TableProviderAdapterInternal:
+    """Internal opaque adapter exposing a Rust DataFusion `TableProvider` to Python via the FFI capsule protocol."""
+
+    def __datafusion_table_provider__(self, session: Any) -> Any: ...
 
 class IndexProperties:
     """The properties and configuration of a user-defined index."""
@@ -1611,6 +1592,16 @@ class ChunkStoreInternal:
     def num_chunks(self) -> int: ...
     def summary(self) -> str: ...
     def stream(self) -> LazyChunkStreamInternal: ...
+    def reader(
+        self,
+        *,
+        index: str | None,
+        contents: list[str] | None,
+        include_semantically_empty_columns: bool,
+        include_tombstone_columns: bool,
+        fill_latest_at: bool,
+        using_index_values: IndexValuesLike | None,
+    ) -> TableProviderAdapterInternal: ...
 
 class LazyStoreInternal:
     """Internal implementation. Use LazyStore from rerun.experimental instead."""
@@ -1619,6 +1610,8 @@ class LazyStoreInternal:
     def num_chunks(self) -> int: ...
     def summary(self) -> str: ...
     def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def _chunks_loaded(self) -> int: ...
 
 class StoreEntryInternal:
     """Internal implementation. Use StoreEntry from rerun.experimental instead."""
@@ -1724,8 +1717,17 @@ class LazyChunkStreamInternal:
         extra_passes: int = 0,
         gop_batching: bool = False,
         split_size_ratio: float | None = None,
+        fix_keyframe: bool = False,
     ) -> ChunkStoreInternal:
-        """Consume the stream and materialize all chunks into a ChunkStore."""
+        """
+        Run the pipeline and materialize all chunks into a ChunkStore.
+
+        The defaults (`extra_passes=0`, `gop_batching=False`) produce a store that
+        has only received the single-pass compaction that happens naturally during
+        chunk insertion. The Python wrapper `LazyChunkStream.collect(optimize=...)`
+        is the intended entry point.
+        """
+
     def to_chunks(self) -> list[ChunkInternal]: ...
     def __iter__(self) -> LazyChunkStreamIterator: ...
     @staticmethod

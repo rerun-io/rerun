@@ -23,7 +23,16 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+impl re_byte_size::SizeBytes for ImageTypes {
+    const IS_POD: bool = true;
+
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
+#[derive(Debug, Clone, Default, re_byte_size::SizeBytes)]
 pub struct MaxDimensions {
     pub width: u32,
     pub height: u32,
@@ -64,18 +73,6 @@ impl MaxImageDimensionsStoreSubscriber {
     pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
         static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
         *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
-    }
-}
-
-impl re_byte_size::SizeBytes for MaxDimensions {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
     }
 }
 
@@ -207,10 +204,10 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                     });
                     for (blob, media_type) in itertools::izip!(
                         blobs,
-                        media_types
-                            .into_iter()
-                            .map(Some)
-                            .chain(std::iter::repeat(None))
+                        std::iter::chain(
+                            media_types.into_iter().map(Some),
+                            std::iter::repeat(None)
+                        )
                     ) {
                         let Some(blob) = blob.first() else {
                             continue;

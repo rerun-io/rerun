@@ -10,3 +10,4 @@ For a deeper understanding of how your logging data can be organized and visuali
 -   [Visualization](./concepts/visualization.md) - how data is displayed in the Viewer
 -   [Query and transform](./concepts/query-and-transform.md) - how to query and transform data
 -   [Lenses](./concepts/query-and-transform/lenses.md) - extract, reshape, and reroute component data
+-   [Train](./concepts/train.md) - how to use Rerun data for training

@@ -124,8 +124,7 @@ async fn test_column_projections<T>(
             tonic::Request::new(ScanSegmentTableRequest {
                 columns: vec!["unknown_column".to_owned()],
             })
-            .with_entry_name(entry_name(dataset_name))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await;
 
@@ -150,8 +149,7 @@ async fn test_column_projections<T>(
                     ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned(),
                 ],
             })
-            .with_entry_name(entry_name(dataset_name))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await;
 
@@ -178,8 +176,7 @@ async fn projected_segment_table_batch(
             tonic::Request::new(ScanSegmentTableRequest {
                 columns: column_projection,
             })
-            .with_entry_name(entry_name(dataset_name))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -220,8 +217,7 @@ async fn projected_dataset_manifest_batch(
             tonic::Request::new(ScanDatasetManifestRequest {
                 columns: column_projection,
             })
-            .with_entry_name(entry_name(dataset_name))
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct AffixFuzzer21 {
     pub single_half: half::f16,
     pub many_halves: ::arrow::buffer::ScalarBuffer<half::f16>,
@@ -172,11 +173,11 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let single_half = {
                     if !arrays_by_name.contains_key("single_half") {
                         return Err(DeserializationError::missing_struct_field(
@@ -286,17 +287,5 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                 .with_context("rerun.testing.datatypes.AffixFuzzer21")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer21 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.single_half.heap_size_bytes() + self.many_halves.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <half::f16>::is_pod() && <::arrow::buffer::ScalarBuffer<half::f16>>::is_pod()
     }
 }

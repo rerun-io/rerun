@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use ahash::HashSet;
 use arrow::array::{Array as _, BooleanArray};
 use arrow::datatypes::Field;
 use datafusion::prelude::SessionContext;
@@ -13,6 +12,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_format::{format_plural_s, format_uint};
 use re_log::error;
 use re_log_types::{EntryId, Timestamp};
+use re_protos::cloud::v1alpha1::ext;
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::menu::menu_style;
@@ -27,6 +27,7 @@ use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
 use crate::grid_view::FlagChangeEvent;
 use crate::header_tooltip::column_header_tooltip_ui;
+use crate::preview_renderer::PreviewRecording;
 use crate::re_table::ReTable;
 use crate::re_table_utils::{ColumnConfig, TableConfig};
 use crate::table_blueprint::{
@@ -171,6 +172,9 @@ pub struct DataFusionTableWidget<'a> {
     /// The blueprint used the first time the table is queried.
     initial_blueprint: TableBlueprint,
 
+    /// Registered table blueprint supplied by the caller.
+    registered_table_blueprint: Option<&'a re_entity_db::EntityDb>,
+
     /// Remote address of this table, needed for write-back operations (e.g. flag upsert).
     ///
     /// `None` for local/test tables where write-back is not supported.
@@ -220,6 +224,7 @@ impl<'a> DataFusionTableWidget<'a> {
             url: None,
             column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
             initial_blueprint: Default::default(),
+            registered_table_blueprint: None,
             remote_table: None,
         }
     }
@@ -262,6 +267,14 @@ impl<'a> DataFusionTableWidget<'a> {
 
     pub fn initial_blueprint(mut self, initial_blueprint: TableBlueprint) -> Self {
         self.initial_blueprint = initial_blueprint;
+        self
+    }
+
+    pub fn registered_table_blueprint(
+        mut self,
+        blueprint: Option<&'a re_entity_db::EntityDb>,
+    ) -> Self {
+        self.registered_table_blueprint = blueprint;
         self
     }
 
@@ -533,7 +546,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let columns = Columns::from(&query_result.sorbet_schema, &self.column_blueprint_fn);
 
-        let display_record_batches = query_result
+        let display_record_batches: Result<Vec<_>, _> = query_result
             .sorbet_batches
             .iter()
             .map(|record_batch| {
@@ -543,7 +556,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     record_batch.columns().iter().map(Arc::clone)
                 ))
             })
-            .collect::<Result<Vec<_>, _>>();
+            .try_collect();
 
         let display_record_batches = match display_record_batches {
             Ok(display_record_batches) => display_record_batches,
@@ -621,22 +634,15 @@ impl<'a> DataFusionTableWidget<'a> {
             .columns
             .arrow_fields(re_sorbet::BatchType::Dataframe);
 
-        let mut decoded_blueprint = None;
         let view_renderer = if table_cards_and_blueprints_enabled {
-            let blueprint_db = self
-                .table_id
-                .as_ref()
-                .and_then(|id| ctx.storage_context.hub.table_blueprint(id))
-                .or_else(|| {
-                    decoded_blueprint = crate::preview_renderer::decode_table_blueprint(
-                        &query_result.original_schema.metadata,
-                    );
-                    decoded_blueprint.as_ref()
-                });
+            let blueprint_db = self.registered_table_blueprint.or_else(|| {
+                let id = self.table_id.as_ref()?;
+                ctx.storage_context.hub.table_blueprint(id)
+            });
 
-            // Populate runtime blueprint fields from the embedded archetype.
+            // Populate runtime blueprint fields from the registered table blueprint.
             if let Some(db) = blueprint_db {
-                new_blueprint.populate_from_embedded_blueprint(db);
+                new_blueprint.populate_from_registered_blueprint(db);
             }
 
             blueprint_db.and_then(crate::preview_renderer::RecordingPreviewRenderer::from_blueprint)
@@ -644,9 +650,8 @@ impl<'a> DataFusionTableWidget<'a> {
             None
         };
 
-        let show_segment_previews = view_renderer.is_some()
-            && new_blueprint.segment_preview_column.is_some()
-            && !ctx.is_test;
+        let show_segment_previews =
+            view_renderer.is_some() && new_blueprint.segment_preview_column.is_some();
 
         // Fill remaining unset fields via schema field metadata + structural heuristics.
         new_blueprint.apply_heuristics(
@@ -715,7 +720,6 @@ impl<'a> DataFusionTableWidget<'a> {
                     num_preview_views,
                     view_renderer,
                     view_states,
-                    requested_uris: HashSet::default(),
                 };
 
                 ReTable::new(
@@ -742,19 +746,6 @@ impl<'a> DataFusionTableWidget<'a> {
                     flag_column_field.is_some(),
                 );
             }
-        }
-
-        // If we decoded a blueprint from metadata this frame, register it in the hub
-        // so subsequent frames can skip the decoding and it's accessible on store inspections.
-        // Note: the command is processed asynchronously, so the decode may happen for 1-2 extra
-        // frames until the hub has the blueprint cached. This is intentional and harmless.
-        if let (Some(blueprint), Some(table_id)) = (decoded_blueprint, self.table_id.as_ref()) {
-            ctx.command_sender.send_system(
-                re_viewer_context::SystemCommand::RegisterTableBlueprint {
-                    table_id: table_id.clone(),
-                    blueprint: Box::new(blueprint),
-                },
-            );
         }
 
         table_config.store(ui.ctx());
@@ -979,13 +970,14 @@ pub fn resolve_recording_for_row<'a>(
     display_record_batches: &[DisplayRecordBatch],
     row_idx: u64,
     already_requested_uris: &mut ahash::HashSet<re_uri::DatasetSegmentUri>,
-) -> Option<&'a re_entity_db::EntityDb> {
+) -> Option<PreviewRecording<'a>> {
     let uri_str = string_value_at(
         columns,
         display_record_batches,
         row_idx,
         segment_preview_column,
     )?;
+
     let uri = uri_str.parse::<re_uri::DatasetSegmentUri>().ok()?;
 
     if let Some(recording) = ctx.storage_context.hub.find_recording_by_uri(&uri) {
@@ -993,21 +985,23 @@ pub fn resolve_recording_for_row<'a>(
         // Without this, the recording sits in the hub with no active query pressure
         // and the chunk prioritizer never schedules it for download.
         ctx.storage_context.hub.mark_preview(recording.store_id());
-        return Some(recording);
+        return Some(PreviewRecording::Resolved(recording));
     }
 
-    // Not loaded yet — request loading if we haven't already this frame.
+    let uri = uri.without_fragment();
+
+    // Not loaded yet — request loading if we haven't already.
     if already_requested_uris.insert(uri.clone()) {
         ctx.command_sender
             .send_system(SystemCommand::LoadDataSource(
                 re_data_source::LogDataSource::RedapDatasetSegment {
-                    uri: uri.without_fragment(),
+                    uri: uri.clone(),
                     open_behavior: re_data_source::RecordingOpenBehavior::Background,
                 },
             ));
     }
 
-    None
+    Some(PreviewRecording::Unresolved(uri))
 }
 
 fn table_index_column_index(schema: &arrow::datatypes::Schema) -> Option<usize> {
@@ -1090,7 +1084,7 @@ fn upsert_flag_changes(
                 .write_table(
                     futures::stream::once(async { upsert_batch }),
                     remote.entry_id,
-                    re_protos::cloud::v1alpha1::ext::TableInsertMode::Replace,
+                    ext::TableInsertMode::Replace,
                 )
                 .await
         }
@@ -1125,14 +1119,11 @@ struct DataFusionTableDelegate<'a> {
     num_preview_views: Option<usize>,
 
     /// Renderer for the segment preview column (column 0 in the delegate's column space).
-    /// `None` when no table blueprint is embedded in the schema metadata.
+    /// `None` when no table blueprint is registered for this table.
     view_renderer: Option<crate::preview_renderer::RecordingPreviewRenderer<'a>>,
 
     /// Shared view states for segment preview views, persisted across frames.
     view_states: &'a mut re_viewer_context::ViewStates,
-
-    /// URIs that have already been requested this frame.
-    requested_uris: HashSet<re_uri::DatasetSegmentUri>,
 }
 
 impl DataFusionTableDelegate<'_> {
@@ -1296,19 +1287,24 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             && let Some(renderer) = &self.view_renderer
             && let Some(segment_preview_column) = &self.blueprint.segment_preview_column
         {
+            let preview_state = self.view_states.preview_state.get_or_insert_default();
             let recording = resolve_recording_for_row(
                 self.ctx,
                 segment_preview_column,
                 self.columns,
                 self.display_record_batches,
                 cell.row_nr,
-                &mut self.requested_uris,
+                &mut preview_state.requested_uris,
             );
+
+            let row_hovered = TableSelectionState::load(ui.ctx(), self.session_id).hovered_row
+                == Some(cell.row_nr);
 
             renderer.show_preview(
                 self.ctx.app_ctx,
                 ui,
                 cell.row_nr,
+                row_hovered,
                 recording,
                 self.view_states,
             );

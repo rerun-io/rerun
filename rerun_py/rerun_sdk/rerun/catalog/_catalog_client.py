@@ -421,7 +421,8 @@ class CatalogClient:
         url
             The URL of the directory for where to store the Lance table. If provided, the table will be stored in a
             globally unique subdirectory. If not provided, the server will use an automatically generated URL based on
-            its configured writable storage.
+            its configured writable storage. On Rerun Hub, custom table URLs are currently not supported: the request
+            will be rejected unless this parameter is None.
 
         """
         from . import TableEntry

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct AffixFuzzer15(pub Option<crate::testing::datatypes::AffixFuzzer3>);
 
 impl ::re_types_core::Component for AffixFuzzer15 {
@@ -144,17 +145,5 @@ impl std::ops::DerefMut for AffixFuzzer15 {
     #[inline]
     fn deref_mut(&mut self) -> &mut Option<crate::testing::datatypes::AffixFuzzer3> {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer15 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::testing::datatypes::AffixFuzzer3>>::is_pod()
     }
 }

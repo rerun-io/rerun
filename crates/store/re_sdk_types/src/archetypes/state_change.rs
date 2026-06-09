@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -60,9 +61,12 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/state_change/6654a13e984702b96547750469c368ce6e900c0f/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct StateChange {
-    /// The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.
+    /// The new state value.
+    ///
+    /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
+    /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
     pub state: Option<SerializedComponentBatch>,
 }
 
@@ -72,11 +76,13 @@ impl StateChange {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_state() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.StateChange".into()),
-            component: "StateChange:state".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.StateChange".into()),
+                component: "StateChange:state".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -100,7 +106,10 @@ impl StateChange {
 impl ::re_types_core::Archetype for StateChange {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.StateChange".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.StateChange"
+        )
     }
 
     #[inline]
@@ -222,7 +231,10 @@ impl StateChange {
         self.columns(std::iter::repeat_n(1, len))
     }
 
-    /// The new state value. A `null` state is ignored, it can be used to partially update a multi-instance state array.
+    /// The new state value.
+    ///
+    /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
+    /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
     #[inline]
     pub fn with_state(mut self, state: impl Into<crate::components::Text>) -> Self {
         self.state = try_serialize_field(Self::descriptor_state(), [state]);
@@ -240,12 +252,5 @@ impl StateChange {
     ) -> Self {
         self.state = try_serialize_field(Self::descriptor_state(), state);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for StateChange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.state.heap_size_bytes()
     }
 }

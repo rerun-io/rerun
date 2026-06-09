@@ -5,14 +5,16 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::{RawRrdManifest, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::EntryName;
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
     DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
     QueryDatasetRequest, QueryTasksOnCompletionRequest, QueryTasksRequest,
     ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
-    RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableEntry, TableInsertMode,
-    UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
-    UpdateEntryRequest, UpdateEntryResponse, VersionResponse,
+    RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableDetails, TableEntry,
+    TableInsertMode, UnregisterFromDatasetRequest, UpdateDatasetEntryRequest,
+    UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest,
+    UpdateTableEntryResponse, VersionResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::cloud::v1alpha1::{
@@ -29,6 +31,7 @@ use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
+use re_types_core::LayerName;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
 use tokio_stream::{Stream, StreamExt as _};
@@ -36,7 +39,7 @@ use tonic::IntoStreamingRequest as _;
 use tonic::codegen::{Body, StdError};
 use url::Url;
 
-use crate::{ApiError, ApiResponseStream, ApiResult, extract_trace_id};
+use crate::{ApiError, ApiResponseStream, ApiResult, TraceId, extract_trace_id};
 
 /// Extension trait for [`tonic::Response`] that extracts both the inner value
 /// and the server's trace-id in one step.
@@ -292,7 +295,7 @@ where
         num_bytes: u64,
         rtt: std::time::Duration,
     ) -> ApiResult<Option<f64>> {
-        let max = re_protos::cloud::v1alpha1::ext::MAX_BANDWIDTH_TEST_BYTES;
+        let max = cloud_ext::MAX_BANDWIDTH_TEST_BYTES;
         if num_bytes > max {
             return Err(ApiError::invalid_arguments(format!(
                 "num_bytes ({num_bytes}) exceeds the maximum of {max}"
@@ -340,7 +343,7 @@ where
             .entries
             .into_iter()
             .map(TryInto::try_into)
-            .collect::<Result<Vec<EntryDetails>, _>>()
+            .try_collect()
             .map_err(|err| {
                 ApiError::deserialization_with_source(
                     trace_id,
@@ -354,9 +357,12 @@ where
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn delete_entry(&mut self, entry_id: EntryId) -> ApiResult {
         self.inner()
-            .delete_entry(DeleteEntryRequest {
-                id: Some(entry_id.into()),
-            })
+            .delete_entry(
+                tonic::Request::new(DeleteEntryRequest {
+                    id: Some(entry_id.into()),
+                })
+                .with_entry_id(entry_id),
+            )
             .await
             .map_err(|err| ApiError::tonic(err, "/DeleteEntry failed"))?;
 
@@ -372,13 +378,16 @@ where
     ) -> ApiResult<EntryDetails> {
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
-                .update_entry(tonic::Request::new(
-                    UpdateEntryRequest {
-                        id: entry_id,
-                        entry_details_update,
-                    }
-                    .into(),
-                ))
+                .update_entry(
+                    tonic::Request::new(
+                        UpdateEntryRequest {
+                            id: entry_id,
+                            entry_details_update,
+                        }
+                        .into(),
+                    )
+                    .with_entry_id(entry_id),
+                )
                 .await
                 .map_err(|err| ApiError::tonic(err, "/UpdateEntry failed"))?,
         );
@@ -399,11 +408,7 @@ where
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
                 .get_dataset_schema(
-                    tonic::Request::new(GetDatasetSchemaRequest {})
-                        .with_entry_id(entry_id)
-                        .map_err(|err| {
-                            ApiError::tonic(err, "failed building /GetDatasetSchema request")
-                        })?,
+                    tonic::Request::new(GetDatasetSchemaRequest {}).with_entry_id(entry_id),
                 )
                 .await
                 .map_err(|err| ApiError::tonic(err, "/GetDatasetSchema failed"))?,
@@ -450,11 +455,7 @@ where
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
                 .read_dataset_entry(
-                    tonic::Request::new(ReadDatasetEntryRequest {})
-                        .with_entry_id(entry_id)
-                        .map_err(|err| {
-                            ApiError::tonic(err, "failed building /ReadDatasetEntry request")
-                        })?,
+                    tonic::Request::new(ReadDatasetEntryRequest {}).with_entry_id(entry_id),
                 )
                 .await
                 .map_err(|err| ApiError::tonic(err, "/ReadDatasetEntry failed"))?,
@@ -479,13 +480,16 @@ where
     ) -> ApiResult<DatasetEntry> {
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
-                .update_dataset_entry(tonic::Request::new(
-                    UpdateDatasetEntryRequest {
-                        id: entry_id,
-                        dataset_details,
-                    }
-                    .into(),
-                ))
+                .update_dataset_entry(
+                    tonic::Request::new(
+                        UpdateDatasetEntryRequest {
+                            id: entry_id,
+                            dataset_details,
+                        }
+                        .into(),
+                    )
+                    .with_entry_id(entry_id),
+                )
                 .await
                 .map_err(|err| ApiError::tonic(err, "/UpdateDatasetEntry failed"))?,
         );
@@ -505,9 +509,12 @@ where
     pub async fn read_table_entry(&mut self, entry_id: EntryId) -> ApiResult<TableEntry> {
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
-                .read_table_entry(ReadTableEntryRequest {
-                    id: Some(entry_id.into()),
-                })
+                .read_table_entry(
+                    tonic::Request::new(ReadTableEntryRequest {
+                        id: Some(entry_id.into()),
+                    })
+                    .with_entry_id(entry_id),
+                )
                 .await
                 .map_err(|err| ApiError::tonic(err, "/ReadTableEntry failed"))?,
         );
@@ -522,17 +529,43 @@ where
         Ok(response.table_entry)
     }
 
+    /// Update the details of a table entry.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn update_table_entry(
+        &mut self,
+        entry_id: EntryId,
+        table_details: TableDetails,
+    ) -> ApiResult<TableEntry> {
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .update_table_entry(tonic::Request::new(
+                    UpdateTableEntryRequest {
+                        id: entry_id,
+                        table_details,
+                    }
+                    .into(),
+                ))
+                .await
+                .map_err(|err| ApiError::tonic(err, "/UpdateTableEntry failed"))?,
+        );
+        let response: UpdateTableEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /UpdateTableEntry response",
+            )
+        })?;
+
+        Ok(response.table_entry)
+    }
+
     //TODO(ab): accept entry name
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_segment_table_schema(&mut self, entry_id: EntryId) -> ApiResult<ArrowSchema> {
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
                 .get_segment_table_schema(
-                    tonic::Request::new(GetSegmentTableSchemaRequest {})
-                        .with_entry_id(entry_id)
-                        .map_err(|err| {
-                            ApiError::tonic(err, "failed building /GetSegmentTableSchema request")
-                        })?,
+                    tonic::Request::new(GetSegmentTableSchemaRequest {}).with_entry_id(entry_id),
                 )
                 .await
                 .map_err(|err| ApiError::tonic(err, "GetSegmentTableSchema failed"))?,
@@ -558,7 +591,7 @@ where
     }
 
     /// Get a list of segment IDs for the given dataset entry ID.
-    //TODO(ab): is there a way—and a reason—to not collect and instead return a stream?
+    //TODO(ab): is there a way — and a reason — to not collect and instead return a stream?
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_dataset_segment_ids(
         &mut self,
@@ -572,8 +605,7 @@ where
                 tonic::Request::new(ScanSegmentTableRequest {
                     columns: vec![COLUMN_NAME.to_owned()],
                 })
-                .with_entry_id(entry_id)
-                .map_err(|err| ApiError::tonic(err, "failed building /ScanSegmentTable request"))?,
+                .with_entry_id(entry_id),
             )
             .await
             .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))?;
@@ -640,14 +672,7 @@ where
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
                 .get_dataset_manifest_schema(
-                    tonic::Request::new(GetDatasetManifestSchemaRequest {})
-                        .with_entry_id(entry_id)
-                        .map_err(|err| {
-                            ApiError::tonic(
-                                err,
-                                "failed building /GetDatasetManifestSchema request",
-                            )
-                        })?,
+                    tonic::Request::new(GetDatasetManifestSchemaRequest {}).with_entry_id(entry_id),
                 )
                 .await
                 .map_err(|err| ApiError::tonic(err, "/GetDatasetManifestSchema failed"))?,
@@ -688,8 +713,7 @@ where
                 tonic::Request::new(re_protos::cloud::v1alpha1::GetRrdManifestRequest {
                     segment_id: Some(segment_id.clone().into()),
                 })
-                .with_entry_id(dataset_id)
-                .map_err(|err| ApiError::tonic(err, "failed building /GetRrdManifest request"))?,
+                .with_entry_id(dataset_id),
             )
             .await
             .map_err(|err| ApiError::tonic(err, "/GetRrdManifest failed"))?;
@@ -795,11 +819,7 @@ where
 
         let response = self
             .inner()
-            .query_dataset(
-                tonic::Request::new(query_request.into())
-                    .with_entry_id(dataset_id)
-                    .map_err(|err| ApiError::tonic(err, "failed building /QueryDataset request"))?,
-            )
+            .query_dataset(tonic::Request::new(query_request.into()).with_entry_id(dataset_id))
             .await
             .map_err(|err| ApiError::tonic(err, "/QueryDataset failed"))?;
 
@@ -822,11 +842,8 @@ where
     ) -> ApiResult<Vec<RecordBatch>> {
         let stream = self.query_dataset_raw(params).await?;
         let trace_id = stream.trace_id();
-        stream
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()?
+        let responses: Vec<_> = stream.collect::<Vec<_>>().await.into_iter().try_collect()?;
+        responses
             .into_iter()
             .map(|resp| {
                 resp.data.ok_or_else(|| {
@@ -885,11 +902,8 @@ where
     ) -> ApiResult<FetchChunksResponseStream> {
         let stream = self.query_dataset_raw(params).await?;
         let query_trace_id = stream.trace_id();
-        let chunk_info_batches = stream
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()?
+        let responses: Vec<_> = stream.collect::<Vec<_>>().await.into_iter().try_collect()?;
+        let chunk_info_batches: Vec<_> = responses
             .into_iter()
             .map(|resp| {
                 resp.data.ok_or_else(|| {
@@ -901,7 +915,7 @@ where
                     )
                 })
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
 
         if chunk_info_batches.is_empty() {
             return Ok(ApiResponseStream::new(
@@ -939,13 +953,12 @@ where
         dataset_id: EntryId,
         data_sources: Vec<DataSource>,
         on_duplicate: IfDuplicateBehavior,
-    ) -> ApiResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+    ) -> ApiResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
         let req = tonic::Request::new(RegisterWithDatasetRequest {
             data_sources,
             on_duplicate,
         })
-        .with_entry_id(dataset_id)
-        .map_err(|err| ApiError::tonic(err, "failed building /RegisterWithDataset request"))?;
+        .with_entry_id(dataset_id);
 
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
@@ -1031,7 +1044,7 @@ where
         let storage_url_column = get_string_array(RegisterWithDatasetResponse::FIELD_STORAGE_URL)?;
         let task_id_column = get_string_array(RegisterWithDatasetResponse::FIELD_TASK_ID)?;
 
-        itertools::izip!(
+        let descriptors = itertools::izip!(
             segment_id_column,
             segment_type_column,
             storage_url_column,
@@ -1081,7 +1094,9 @@ where
                 },
             })
         })
-        .collect()
+        .try_collect()?;
+
+        Ok((trace_id, descriptors))
     }
 
     /// Unregisters segments and layers from the dataset.
@@ -1106,20 +1121,19 @@ where
     pub async fn unregister_from_dataset(
         &mut self,
         dataset_id: EntryId,
-        segments_to_drop: Vec<String>,
-        layers_to_drop: Vec<String>,
+        segments_to_drop: Vec<SegmentId>,
+        layers_to_drop: Vec<LayerName>,
         force: bool,
     ) -> ApiResult<Vec<RecordBatch>> {
         let req = tonic::Request::new(
             UnregisterFromDatasetRequest {
-                segments_to_drop: segments_to_drop.into_iter().map(Into::into).collect(),
+                segments_to_drop,
                 layers_to_drop,
                 force,
             }
             .into(),
         )
-        .with_entry_id(dataset_id)
-        .map_err(|err| ApiError::tonic(err, "failed building /UnregisterFromDataset request"))?;
+        .with_entry_id(dataset_id);
 
         use futures::TryStreamExt as _;
         let response = self
@@ -1166,7 +1180,7 @@ where
         name: EntryName,
         url: url::Url,
     ) -> ApiResult<TableEntry> {
-        let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
+        let request = cloud_ext::RegisterTableRequest {
             name,
             provider_details: ProviderDetails::LanceTable(LanceTable { table_url: url }),
         };
@@ -1207,7 +1221,7 @@ where
         self.inner()
             .do_maintenance(
                 tonic::Request::new(
-                    re_protos::cloud::v1alpha1::ext::DoMaintenanceRequest {
+                    cloud_ext::DoMaintenanceRequest {
                         optimize_indexes,
                         retrain_indexes,
                         compact_fragments,
@@ -1216,8 +1230,7 @@ where
                     }
                     .into(),
                 )
-                .with_entry_id(dataset_id)
-                .map_err(|err| ApiError::tonic(err, "failed building /DoMaintenance request"))?,
+                .with_entry_id(dataset_id),
             )
             .await
             .map_err(|err| ApiError::tonic(err, "/DoMaintenance failed"))?;
@@ -1342,8 +1355,7 @@ where
                 insert_mode,
             })
             .into_streaming_request()
-            .with_entry_id(table_id)
-            .map_err(|err| ApiError::tonic(err, "/WriteTable failed"))?;
+            .with_entry_id(table_id);
 
         self.inner()
             .write_table(stream)

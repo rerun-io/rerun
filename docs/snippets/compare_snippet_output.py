@@ -261,7 +261,9 @@ def main() -> None:
             # They should be the same!
             try:
                 if backwards_path.exists():
-                    run_comparison(backwards_path, baseline_path, args.full_dump)
+                    # Older backward-compatibility assets were recorded back when `log_tick` was
+                    # injected by default. It is now opt-in, so ignore it in the comparison.
+                    run_comparison(backwards_path, baseline_path, args.full_dump, ignore_timelines=["log_tick"])
                 elif args.write_missing_backward_assets:
                     print(f"Writing new backwards-compatibility file to {backwards_path}…")
                     backwards_path.parent.mkdir(parents=True, exist_ok=True)

@@ -210,6 +210,11 @@ impl ETag {
         &self.0
     }
 
+    /// `true` if no value (after trim).
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// `true` if this is a strong `ETag` (no `W/` prefix).
     ///
     /// RFC 7232 §3.1 mandates strong comparison for `If-Match`; sending a

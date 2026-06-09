@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -71,7 +72,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     Ok(())
 /// }
 /// ```
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Ellipses2D {
     /// All half-extents (semi-axes) that make up the batch of ellipses.
     pub half_sizes: Option<SerializedComponentBatch>,
@@ -115,11 +116,13 @@ impl Ellipses2D {
     /// The corresponding component is [`crate::components::HalfSize2D`].
     #[inline]
     pub fn descriptor_half_sizes() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Ellipses2D".into()),
-            component: "Ellipses2D:half_sizes".into(),
-            component_type: Some("rerun.components.HalfSize2D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipses2D".into()),
+                component: "Ellipses2D:half_sizes".into(),
+                component_type: Some("rerun.components.HalfSize2D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::centers`].
@@ -127,11 +130,13 @@ impl Ellipses2D {
     /// The corresponding component is [`crate::components::Position2D`].
     #[inline]
     pub fn descriptor_centers() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Ellipses2D".into()),
-            component: "Ellipses2D:centers".into(),
-            component_type: Some("rerun.components.Position2D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipses2D".into()),
+                component: "Ellipses2D:centers".into(),
+                component_type: Some("rerun.components.Position2D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
@@ -139,11 +144,13 @@ impl Ellipses2D {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Ellipses2D".into()),
-            component: "Ellipses2D:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipses2D".into()),
+                component: "Ellipses2D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::line_radii`].
@@ -151,11 +158,13 @@ impl Ellipses2D {
     /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_line_radii() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Ellipses2D".into()),
-            component: "Ellipses2D:line_radii".into(),
-            component_type: Some("rerun.components.Radius".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipses2D".into()),
+                component: "Ellipses2D:line_radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
@@ -163,11 +172,13 @@ impl Ellipses2D {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Ellipses2D".into()),
-            component: "Ellipses2D:labels".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipses2D".into()),
+                component: "Ellipses2D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
@@ -175,11 +186,13 @@ impl Ellipses2D {
     /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Ellipses2D".into()),
-            component: "Ellipses2D:show_labels".into(),
-            component_type: Some("rerun.components.ShowLabels".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipses2D".into()),
+                component: "Ellipses2D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
@@ -187,11 +200,13 @@ impl Ellipses2D {
     /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Ellipses2D".into()),
-            component: "Ellipses2D:draw_order".into(),
-            component_type: Some("rerun.components.DrawOrder".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipses2D".into()),
+                component: "Ellipses2D:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
@@ -199,11 +214,13 @@ impl Ellipses2D {
     /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Ellipses2D".into()),
-            component: "Ellipses2D:class_ids".into(),
-            component_type: Some("rerun.components.ClassId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipses2D".into()),
+                component: "Ellipses2D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -251,7 +268,10 @@ impl Ellipses2D {
 impl ::re_types_core::Archetype for Ellipses2D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Ellipses2D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Ellipses2D"
+        )
     }
 
     #[inline]
@@ -614,19 +634,5 @@ impl Ellipses2D {
     ) -> Self {
         self.class_ids = try_serialize_field(Self::descriptor_class_ids(), class_ids);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Ellipses2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.half_sizes.heap_size_bytes()
-            + self.centers.heap_size_bytes()
-            + self.colors.heap_size_bytes()
-            + self.line_radii.heap_size_bytes()
-            + self.labels.heap_size_bytes()
-            + self.show_labels.heap_size_bytes()
-            + self.draw_order.heap_size_bytes()
-            + self.class_ids.heap_size_bytes()
     }
 }

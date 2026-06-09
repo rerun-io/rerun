@@ -45,6 +45,7 @@ re_video.workspace = true
 ahash.workspace = true
 arrow = { workspace = true, features = ["ffi"] }
 infer.workspace = true
+itertools.workspace = true
 parking_lot.workspace = true
 
 [build-dependencies]

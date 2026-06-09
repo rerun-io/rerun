@@ -5,7 +5,7 @@ use re_types_core::{Loggable as _, RowId};
 use crate::MetadataExt as _;
 
 /// Describes the schema of the primary [`RowId`] column.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub struct RowIdColumnDescriptor {
     /// Are the values in this column sorted?
     ///

@@ -236,6 +236,14 @@ namespace rerun {
         rr_recording_stream_reset_time(_id);
     }
 
+    void RecordingStream::set_log_tick_enabled(bool enabled) const {
+        rr_recording_stream_set_log_tick_enabled(_id, enabled);
+    }
+
+    void RecordingStream::set_log_time_enabled(bool enabled) const {
+        rr_recording_stream_set_log_time_enabled(_id, enabled);
+    }
+
     Error RecordingStream::try_log_serialized_batches(
         std::string_view entity_path, bool static_, std::vector<ComponentBatch> batches
     ) const {
