@@ -53,7 +53,7 @@ impl StatsCommand {
         let mut ipc_schema_size_bytes_uncompressed = Vec::with_capacity(num_chunks as _);
         let mut ipc_data_size_bytes_uncompressed = Vec::with_capacity(num_chunks as _);
 
-        let (rx_raw, _) = read_raw_rrd_streams_from_file_or_stdin(path_to_input_rrds);
+        let (rx_raw, rx_footers) = read_raw_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
         // Each message is accompanied by the original compressed payload size (in bytes).
         // For uncompressed messages, this equals the payload size.
@@ -369,8 +369,106 @@ impl StatsCommand {
             }
         }
 
+        // The footer is parsed straight from the raw bytes, so these stats are available even with
+        // `--no-decode`.
+        println!();
+        println!("Footers");
+        println!("-------");
+        match rx_footers.recv() {
+            Ok((_size_bytes, footers)) => print_footer_stats(footers, *continue_on_error)?,
+            Err(_) => println!("(none — the input stream produced no footer metadata)"),
+        }
+
         Ok(())
     }
+}
+
+/// Prints statistics about the RRD footer(s), i.e. the `RrdManifest`s carried by the trailing
+/// `::End` message(s) of the stream.
+///
+/// Each manifest catalogs every chunk in a single recording without requiring any of that chunk
+/// data to be decoded, so all of these stats are derived purely from the footer.
+fn print_footer_stats(
+    footers: Vec<(
+        crate::commands::InputSource,
+        anyhow::Result<re_log_encoding::RawRrdManifest>,
+    )>,
+    continue_on_error: bool,
+) -> anyhow::Result<()> {
+    if footers.is_empty() {
+        println!("(none — no RRD footer was found)");
+        return Ok(());
+    }
+
+    let num_manifests = footers.iter().filter(|(_, res)| res.is_ok()).count();
+    println!(
+        "num_manifests = {} (one per recording)",
+        re_format::format_uint(num_manifests)
+    );
+
+    for (source, res) in footers {
+        let manifest = match res {
+            Ok(manifest) => manifest,
+            Err(err) => {
+                re_log::error_once!(
+                    "failed to parse footer from {source}: {}",
+                    re_error::format(err)
+                );
+                if !continue_on_error {
+                    anyhow::bail!(
+                        "one or more corrupt RRD footers in the input stream (check logs)"
+                    )
+                }
+                continue;
+            }
+        };
+
+        let num_chunks = manifest.data.num_rows() as u64;
+        let num_static_chunks = manifest.col_chunk_is_static()?.filter(|s| *s).count() as u64;
+        let num_entity_paths = manifest.col_chunk_entity_path()?.unique().count();
+        let byte_size_total: u64 = manifest.col_chunk_byte_size()?.sum();
+        let byte_size_uncompressed_total: u64 = manifest.col_chunk_byte_size_uncompressed()?.sum();
+
+        let sha256 = manifest
+            .sorbet_schema_sha256
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>();
+
+        println!();
+        println!("Footer manifest for {:?}", manifest.store_id);
+        println!(
+            "  num_chunks_indexed = {}",
+            re_format::format_uint(num_chunks)
+        );
+        println!(
+            "  num_static_chunks = {}",
+            re_format::format_uint(num_static_chunks)
+        );
+        println!(
+            "  num_entity_paths = {}",
+            re_format::format_uint(num_entity_paths)
+        );
+        println!(
+            "  manifest_num_columns = {}",
+            re_format::format_uint(manifest.data.num_columns())
+        );
+        println!(
+            "  sorbet_schema_num_fields = {}",
+            re_format::format_uint(manifest.sorbet_schema.fields.len())
+        );
+        println!("  sorbet_schema_sha256 = {sha256}");
+        println!(
+            "  chunk_byte_size_total (native) = {}",
+            re_format::format_bytes(byte_size_total as f64)
+        );
+        println!(
+            "  chunk_byte_size_uncompressed_total = {}",
+            re_format::format_bytes(byte_size_uncompressed_total as f64)
+        );
+    }
+
+    Ok(())
 }
 
 #[derive(Clone, Debug)]
