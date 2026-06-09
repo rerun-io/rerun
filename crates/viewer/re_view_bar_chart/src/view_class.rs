@@ -170,7 +170,7 @@ impl ViewClass for BarChartView {
         let view_id = query.view_id;
 
         let charts = system_output
-            .visualizer_data::<std::collections::BTreeMap<EntityPath, BarChartData>>(
+            .visualizer_data_or_default::<std::collections::BTreeMap<EntityPath, BarChartData>>(
                 BarChartVisualizerSystem::identifier(),
             )?;
 
@@ -231,7 +231,7 @@ impl ViewClass for BarChartView {
                     color,
                     widths,
                 },
-            ) in charts
+            ) in charts.iter()
             {
                 let arg: ::arrow::buffer::ScalarBuffer<f64> = match &abscissa.buffer {
                     TensorBuffer::U8(data) => data.iter().map(|v| *v as f64).collect(),

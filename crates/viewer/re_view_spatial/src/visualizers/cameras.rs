@@ -18,6 +18,7 @@ use crate::view_kind::SpatialViewKind;
 use crate::visualizers::process_radius;
 use crate::visualizers::utilities::spatial_view_kind_from_view_class;
 
+#[derive(Default, Clone)]
 pub struct CamerasVisualizerOutput {
     pub pinhole_cameras: Vec<PinholeWrapper>,
 }

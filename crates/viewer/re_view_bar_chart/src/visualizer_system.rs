@@ -16,7 +16,7 @@ use re_viewer_context::{
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct BarChartData {
     pub abscissa: datatypes::TensorData,
     pub widths: Vec<f32>,

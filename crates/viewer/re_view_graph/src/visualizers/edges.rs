@@ -15,6 +15,7 @@ use crate::graph::NodeId;
 #[derive(Default)]
 pub struct EdgesVisualizer;
 
+#[derive(Clone)]
 pub struct EdgeInstance {
     // We will need this in the future, when we want to select individual edges.
     pub instance: Instance,
@@ -24,6 +25,7 @@ pub struct EdgeInstance {
     pub target_index: NodeId,
 }
 
+#[derive(Clone)]
 pub struct EdgeData {
     pub graph_type: components::GraphType,
     pub edges: Vec<EdgeInstance>,

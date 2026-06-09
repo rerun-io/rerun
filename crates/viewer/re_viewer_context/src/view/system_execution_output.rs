@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{borrow::Cow, collections::BTreeMap};
 
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use vec1::Vec1;
@@ -46,18 +46,35 @@ impl SystemExecutionOutput {
     }
 
     /// Get typed output data from a specific visualizer's execution result.
+    ///
+    /// Returns `None` when the visualizer was skipped because it had no active instructions in
+    /// the view. Consumers that want a present-but-empty value in that case should use
+    /// [`Self::visualizer_data_or_default`].
     pub fn visualizer_data<T: 'static>(
         &self,
         id: ViewSystemIdentifier,
-    ) -> Result<&T, ViewSystemExecutionError> {
-        self.visualizer_execution_output
+    ) -> Result<Option<&T>, ViewSystemExecutionError> {
+        Ok(self
+            .visualizer_execution_output
             .per_visualizer
             .get(&id)
             .ok_or_else(|| ViewSystemExecutionError::VisualizerSystemNotFound(id.as_str()))?
             .as_ref()
             .map_err(|err| err.clone())?
-            .get_visualizer_data::<T>()
-            .ok_or_else(|| ViewSystemExecutionError::MissingOutputData(id))
+            .get_visualizer_data::<T>())
+    }
+
+    /// Like [`Self::visualizer_data`], but substitutes `T::default()` when the visualizer was
+    /// skipped for having no active instructions, rather than returning an error.
+    pub fn visualizer_data_or_default<T: Default + Clone + 'static>(
+        &self,
+        id: ViewSystemIdentifier,
+    ) -> Result<Cow<'_, T>, ViewSystemExecutionError> {
+        match self.visualizer_data(id) {
+            Ok(Some(t)) => Ok(Cow::Borrowed(t)),
+            Ok(None) => Ok(Cow::Owned(T::default())),
+            Err(err) => Err(err),
+        }
     }
 
     /// Iterate over all visualizer output data that can be downcast to the given type.

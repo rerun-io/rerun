@@ -14,7 +14,7 @@ use re_viewer_context::{
     typed_fallback_for,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct GeoPointBatch {
     pub positions: Vec<walkers::Position>,
     pub radii: Vec<Radius>,
@@ -23,7 +23,7 @@ pub struct GeoPointBatch {
 }
 
 /// Output data from [`GeoPointsVisualizer`].
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct GeoPointsOutput {
     pub batches: Vec<(EntityPath, GeoPointBatch)>,
 }

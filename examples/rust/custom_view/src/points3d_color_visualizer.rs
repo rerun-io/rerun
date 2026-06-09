@@ -12,6 +12,7 @@ use rerun::external::re_viewer_context::{
 #[derive(Default)]
 pub struct Points3DColorVisualizer;
 
+#[derive(Clone)]
 pub struct ColorWithInstance {
     pub color: egui::Color32,
     pub instance: Instance,

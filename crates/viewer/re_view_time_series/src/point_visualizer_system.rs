@@ -18,6 +18,7 @@ use crate::series_query::{
 use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, util};
 
 /// Output data from [`SeriesPointsSystem`].
+#[derive(Default, Clone)]
 pub struct SeriesPointsOutput {
     pub all_series: Vec<PlotSeries>,
 }

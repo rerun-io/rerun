@@ -45,6 +45,7 @@ pub struct NodeInstance {
     pub label: Label,
 }
 
+#[derive(Clone)]
 pub struct NodeData {
     pub visualizer_instruction_id: VisualizerInstructionId,
     pub nodes: Vec<NodeInstance>,

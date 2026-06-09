@@ -432,10 +432,10 @@ impl ViewClass for TimeSeriesView {
         // borrow conflict with view_systems which is borrowed via all_plot_series).
         let re_renderer_draw_data: Vec<_> = system_output.drain_draw_data().collect();
 
-        let line_series =
-            system_output.visualizer_data::<SeriesLinesOutput>(SeriesLinesSystem::identifier())?;
-        let point_series =
-            system_output.visualizer_data::<SeriesPointsOutput>(SeriesPointsSystem::identifier())?;
+        let line_series = system_output
+            .visualizer_data_or_default::<SeriesLinesOutput>(SeriesLinesSystem::identifier())?;
+        let point_series = system_output
+            .visualizer_data_or_default::<SeriesPointsOutput>(SeriesPointsSystem::identifier())?;
 
         let all_plot_series: Vec<_> =
             chain!(&line_series.all_series, &point_series.all_series).collect();
