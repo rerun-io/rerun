@@ -61,6 +61,11 @@ pub struct DevPanel {
     include_rss_in_flamegraph: bool,
 }
 
+#[derive(Default)]
+pub struct DevPanelResponse {
+    pub close_requested: bool,
+}
+
 impl DevPanel {
     /// Call once per frame
     pub fn update(
@@ -95,7 +100,7 @@ impl DevPanel {
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
         storage_context: &StorageContext<'_>,
-    ) {
+    ) -> DevPanelResponse {
         re_tracing::profile_function!();
 
         // We show realtime stats, so keep showing the latest!
@@ -104,12 +109,19 @@ impl DevPanel {
         ui.add_space(4.0);
 
         // Tab selector at the top
-        ui.horizontal_wrapped(|ui| {
-            use strum::IntoEnumIterator as _;
-            for tab in DevPanelTab::iter() {
-                ui.selectable_value(&mut self.selected_tab, tab, tab.label());
-            }
-        });
+        let ((), close_clicked) = egui::Sides::new().shrink_left().show(
+            ui,
+            |ui| {
+                use strum::IntoEnumIterator as _;
+                for tab in DevPanelTab::iter() {
+                    ui.selectable_value(&mut self.selected_tab, tab, tab.label());
+                }
+            },
+            |ui| {
+                ui.small_icon_button(&re_ui::icons::CLOSE, "Close dev panel")
+                    .clicked()
+            },
+        );
 
         ui.separator();
 
@@ -154,6 +166,10 @@ impl DevPanel {
                         Self::gpu_stats(ui, gpu_resource_stats);
                     });
             }
+        }
+
+        DevPanelResponse {
+            close_requested: close_clicked,
         }
     }
 

@@ -195,7 +195,7 @@ impl App {
             .resizable(true)
             .frame(frame)
             .show_animated_inside(ui, self.dev_panel_open, |ui| {
-                self.dev_panel.ui(
+                let response = self.dev_panel.ui(
                     ui,
                     &self.state.app_options().memory_limit,
                     mem_usage_tree,
@@ -204,6 +204,9 @@ impl App {
                     store_stats,
                     storage_context,
                 );
+                if response.close_requested {
+                    self.dev_panel_open = false;
+                }
             });
     }
 
