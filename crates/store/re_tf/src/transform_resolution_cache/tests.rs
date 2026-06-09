@@ -1677,19 +1677,19 @@ fn test_error_on_changing_associated_path(time: TimeInt) -> Result<(), Box<dyn s
 
     assert_eq!(error.level, re_log::Level::ERROR);
     assert!(
-        error.msg.contains("entity_a"),
+        error.message.contains("entity_a"),
         "Expected to mention previous entity, but msg was {}",
-        error.msg
+        error.message
     );
     assert!(
-        error.msg.contains("entity_b"),
+        error.message.contains("entity_b"),
         "Expected to mention new entity, but msg was {}",
-        error.msg
+        error.message
     );
     assert!(
-        error.msg.contains("my_frame"),
+        error.message.contains("my_frame"),
         "Expected to mention target, but msg was {}",
-        error.msg
+        error.message
     );
 
     Ok(())

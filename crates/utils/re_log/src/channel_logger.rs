@@ -4,6 +4,8 @@ use std::sync::LazyLock;
 
 pub use crossbeam::channel::{Receiver, Sender};
 
+use crate::event_visitor::FieldValue;
+
 /// A tracing layer that pipes log messages to registered channels.
 #[derive(Default)]
 pub struct ChannelLayer {
@@ -19,7 +21,11 @@ pub struct LogMsg {
     pub target: String,
 
     /// The contents of the log message.
-    pub msg: String,
+    pub message: String,
+
+    /// Custom key-value fields captured from structured logging,
+    /// e.g. `re_log::info!(?name, id = user_id(), "A person logged out")`.
+    pub fields: Vec<(&'static str, FieldValue)>,
 }
 
 struct Channel {
@@ -65,7 +71,7 @@ where
 
         let mut visitor = crate::event_visitor::EventVisitor::default();
         event.record(&mut visitor);
-        let msg = visitor.finish();
+        let (message, fields) = visitor.into_message_and_fields();
 
         channels.retain(|channel| {
             if crate::is_log_enabled(channel.filter, metadata) {
@@ -77,7 +83,8 @@ where
                     .send(LogMsg {
                         level: *metadata.level(),
                         target: metadata.target().to_owned(),
-                        msg: msg.clone(),
+                        message: message.clone(),
+                        fields: fields.clone(),
                     })
                     .is_ok()
             } else {
