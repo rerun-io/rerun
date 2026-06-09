@@ -5,7 +5,6 @@ mod create_table;
 mod dataset_schema;
 mod entries_table;
 mod fetch_chunks;
-mod indexes;
 mod query_dataset;
 mod query_filter;
 mod query_index_values;
@@ -108,10 +107,6 @@ define_redap_tests! {
     entries_table::list_entries_table,
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,
-    indexes::column_doesnt_exist,
-    indexes::dataset_doesnt_exist,
-    indexes::index_incremental,
-    indexes::index_lifecycle,
     query_dataset::query_dataset_should_fail,
     query_dataset::query_dataset_unknown_segment_id_returns_empty,
     query_dataset::query_dataset_consistent_schema_across_timelines,

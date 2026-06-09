@@ -39,9 +39,6 @@ pub struct DatasetInner {
     asset_layers: Vec<Arc<Source>>,
 
     segments: HashMap<SegmentId, Segment>,
-
-    #[cfg(feature = "lance")]
-    indexes: crate::chunk_index::DatasetChunkIndexes,
 }
 
 pub struct Dataset {
@@ -71,8 +68,6 @@ impl Dataset {
                 details,
                 asset_layers: Default::default(),
                 segments: Default::default(),
-                #[cfg(feature = "lance")]
-                indexes: crate::chunk_index::DatasetChunkIndexes::new(id),
             }),
             cached_schema: Mutex::new(None),
         }
@@ -110,11 +105,6 @@ impl Dataset {
     #[inline]
     pub fn updated_at(&self) -> jiff::Timestamp {
         self.inner.updated_at()
-    }
-
-    #[cfg(feature = "lance")]
-    pub fn indexes(&self) -> &crate::chunk_index::DatasetChunkIndexes {
-        &self.inner.indexes
     }
 
     pub fn segments(&self) -> &HashMap<SegmentId, Segment> {
@@ -627,18 +617,6 @@ impl Dataset {
             };
         }
 
-        #[cfg(feature = "lance")]
-        self.indexes()
-            .on_source_added(
-                segment_id,
-                &source,
-                outcome == SourceInsertOutcome::Overwritten,
-            )
-            .await?;
-
-        #[cfg(not(feature = "lance"))]
-        let _ = outcome;
-
         Ok(())
     }
 
@@ -794,9 +772,6 @@ impl Dataset {
                 }
             });
         }
-
-        #[cfg(feature = "lance")]
-        self.indexes().on_layers_removed(&removed_layers).await?;
 
         Ok(removed_layers)
     }

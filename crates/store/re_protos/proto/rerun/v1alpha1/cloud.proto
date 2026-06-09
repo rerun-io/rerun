@@ -144,27 +144,10 @@ service RerunCloudService {
 
   /* Indexing */
 
-  // Creates a custom index for a specific column (vector search, full-text search, etc).
-  //
-  // This endpoint requires the standard dataset headers.
-  rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
-
-  // List all user-defined indexes in this dataset.
-  //
-  // This endpoint requires the standard dataset headers.
-  rpc ListIndexes(ListIndexesRequest) returns (ListIndexesResponse) {}
-
-  // Delete a custom index for a specific column.
-  //
-  // This endpoint requires the standard dataset headers.
-  rpc DeleteIndexes(DeleteIndexesRequest) returns (DeleteIndexesResponse) {}
+  // Reserved (removed): the custom-index / vector-search subsystem was removed.
+  // Do not reuse these RPC names: CreateIndex, ListIndexes, DeleteIndexes, SearchDataset.
 
   /* Queries */
-
-  // Search a previously created index.
-  //
-  // This endpoint requires the standard dataset headers.
-  rpc SearchDataset(SearchDatasetRequest) returns (stream SearchDatasetResponse) {}
 
   // Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
   // as information that can be sent back to the catalog server to fetch the actual chunks as part
@@ -489,197 +472,14 @@ message GetRrdManifestResponse {
 
 /* Indexing */
 
-message CreateIndexRequest {
-  IndexConfig config = 3;
-
-  reserved 1;
-  reserved "dataset_id";
-
-  reserved 2;
-  reserved "partition_ids";
-
-  reserved 4;
-  reserved "on_duplicate";
-
-  reserved 5;
-  reserved "partition_layers";
-}
-
-message CreateIndexResponse {
-  reserved 1;
-  reserved "data";
-
-  // The properties/configuration of the newly created index.
-  IndexConfig index = 3;
-
-  // Backend-specific statistics about the index.
-  //
-  // This is guaranteed to be valid JSON.
-  bytes statistics_json = 4;
-
-  // Optional debug information about the index-creation task
-  DebugInfo debug_info = 2;
-}
-
-message ListIndexesRequest {}
-
-message ListIndexesResponse {
-  // The respective properties/configuration of the indexes.
-  repeated IndexConfig indexes = 1;
-
-  // Backend-specific statistics about the indexes.
-  //
-  // This is guaranteed to be valid JSON.
-  //
-  // If non-empty, this is the same length as `indexes`, and in the same order.
-  repeated bytes statistics_json = 2;
-}
-
-message DeleteIndexesRequest {
-  // Which column to delete the indexes for.
-  IndexColumn column = 1;
-}
-
-message DeleteIndexesResponse {
-  // Which indexes were actually deleted.
-  //
-  // Can be empty if no matching indexes were found.
-  repeated IndexConfig indexes = 1;
-}
-
-message IndexConfig {
-  // what kind of index do we want to create and what are its index specific properties.
-  IndexProperties properties = 1;
-
-  // Component / column we want to index.
-  IndexColumn column = 2;
-
-  // What is the filter index i.e. timeline for which we will query the timepoints.
-  //
-  // TODO(zehiko) this might go away and we might just index across all the timelines
-  rerun.common.v1alpha1.IndexColumnSelector time_index = 3;
-}
-
-// used to define which column we want to index
-message IndexColumn {
-  // The path of the entity.
-  rerun.common.v1alpha1.EntityPath entity_path = 1;
-
-  // Component details
-  rerun.common.v1alpha1.ComponentDescriptor component = 2;
-}
-
-message IndexProperties {
-  oneof props {
-    InvertedIndex inverted = 1;
-    VectorIvfPqIndex vector = 2;
-    BTreeIndex btree = 3;
-  }
-}
-
-message InvertedIndex {
-  optional bool store_position = 1;
-  optional string base_tokenizer = 2;
-  // TODO(zehiko) add other properties as needed
-}
-
-message VectorIvfPqIndex {
-  optional uint32 num_sub_vectors = 2;
-
-  VectorDistanceMetric distance_metrics = 3;
-
-  // Target size of the IVF partition in rows.
-  // NOTE: "partition" here refers to Lance's IVF (Inverted File Index) partitions,
-  // not Rerun segments.
-  //
-  // This maps to lance's underlying `target_partition_size` property
-  // and it indirectly determines how many inverted indices (partitions)
-  // to build (the larger this value, the fewer partitions will be built):
-  // num_partitions = total_vectors / target_partition_num_rows
-  //
-  // A smaller number here will lead to more partitions, which can improve
-  // search recall at the cost of higher training time and memory usage.
-  //
-  // If missing, we let Lance will pick a default value, which, today, is
-  // 8192 rows per partition.
-  //
-  // Note that Lance will cap the maximum `num_partitions` to 4096:
-  // `num_partitions = min(4096, total_vectors / target_partition_num_rows)`
-  // So this means that setting this value too low will have no effect for
-  // large enough datasets.
-  //
-  // References:
-  // - [https://github.com/rerun-io/lance/blob/547bf3e288ff0bc13e96f29c7af46155fbd9f5c2/rust/lance/src/index/vector.rs#L336]
-  // - [https://github.com/rerun-io/lance/blob/a55c3afe250bcbe4d338c108ebe4a03d8a92697b/rust/lance-index/src/vector/ivf/builder.rs#L123]
-  // - [https://github.com/rerun-io/lance/blob/a55c3afe250bcbe4d338c108ebe4a03d8a92697b/rust/lance-index/src/lib.rs#L280]
-  optional uint32 target_partition_num_rows = 4;
-
-  // num_partitions is deprecated starting from rerun-cloud v0.7.0
-  // Use target_partition_num_rows instead
-  // See: RR-2798
-  reserved 1;
-  reserved "num_partitions";
-}
-
-enum VectorDistanceMetric {
-  VECTOR_DISTANCE_METRIC_UNSPECIFIED = 0;
-  VECTOR_DISTANCE_METRIC_L2 = 1;
-  VECTOR_DISTANCE_METRIC_COSINE = 2;
-  VECTOR_DISTANCE_METRIC_DOT = 3;
-  VECTOR_DISTANCE_METRIC_HAMMING = 4;
-}
-
-message BTreeIndex {
-  // TODO(zehiko) add properties as needed
-}
+// Reserved (removed): the custom-index / vector-search subsystem was removed.
+// The following message and enum names were deleted and must not be reused:
+// CreateIndexRequest, CreateIndexResponse, ListIndexesRequest, ListIndexesResponse,
+// DeleteIndexesRequest, DeleteIndexesResponse, IndexConfig, IndexColumn, IndexProperties,
+// InvertedIndex, VectorIvfPqIndex, VectorDistanceMetric, BTreeIndex, SearchDatasetRequest,
+// SearchDatasetResponse, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery, BTreeIndexQuery.
 
 /* Queries */
-
-message SearchDatasetRequest {
-  // Index column that is queried
-  IndexColumn column = 2;
-
-  // Query data - type of data is index specific. Caller must ensure
-  // to provide the right type. For vector search this should
-  // be a vector of appropriate size, for inverted index this should be a string.
-  // Query data is represented as a unit (single row) RecordBatch with 1 column.
-  rerun.common.v1alpha1.DataframePart query = 3;
-
-  // Index type specific properties
-  IndexQueryProperties properties = 4;
-
-  // Scan parameters
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
-
-  reserved 1;
-  reserved "dataset_id";
-}
-
-message SearchDatasetResponse {
-  // Chunks as arrow RecordBatch
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-message IndexQueryProperties {
-  // specific index query properties based on the index type
-  oneof props {
-    InvertedIndexQuery inverted = 1;
-    VectorIndexQuery vector = 2;
-    BTreeIndexQuery btree = 3;
-  }
-}
-
-message InvertedIndexQuery {
-  // TODO(zehiko) add properties as needed
-}
-
-message VectorIndexQuery {
-  optional uint32 top_k = 1;
-}
-
-message BTreeIndexQuery {
-  // TODO(zehiko) add properties as needed
-}
 
 message QueryDatasetRequest {
   // Client can specify what segments are queried. If left unspecified (empty list),
@@ -918,15 +718,15 @@ message WriteTableResponse {}
 // --- Maintenance ---
 
 message DoMaintenanceRequest {
-  // Optimize all builtin and user-defined indexes on this dataset.
+  // Optimize all builtin indexes on this dataset.
   //
   // This merges all individual index deltas back in the main index, improving runtime performance
   // of all indexes.
   bool optimize_indexes = 2;
 
-  // Retrain all user-defined indexes on this dataset from scratch.
+  // Retrain all builtin indexes on this dataset from scratch.
   //
-  // This retrains all user-defined indexes from scratch for optimal runtime performance.
+  // This retrains all builtin indexes from scratch for optimal runtime performance.
   // This is faster than re-creating the indexes, and automatically keeps track of their configurations.
   //
   // This implies `optimize_indexes`.

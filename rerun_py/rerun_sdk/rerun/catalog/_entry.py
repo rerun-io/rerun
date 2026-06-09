@@ -34,16 +34,10 @@ if TYPE_CHECKING:
 
     from . import (
         CatalogClient,
-        ComponentColumnDescriptor,
-        ComponentColumnSelector,
         EntryKind,
-        IndexColumnSelector,
-        IndexConfig,
-        IndexingResult,
         IndexValuesLike,
         RegistrationHandle,
         Schema,
-        VectorDistanceMetric,
     )
 
 
@@ -799,135 +793,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             fill_latest_at=fill_latest_at,
             using_index_values=using_index_values,
         )
-
-    @deprecated(
-        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def create_fts_search_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        store_position: bool = False,
-        base_tokenizer: str = "simple",
-    ) -> None:
-        """Create a full-text search index on the given column."""
-
-        try:
-            return self._internal.create_fts_search_index(  # ty: ignore[deprecated]
-                column=column,
-                time_index=time_index,
-                store_position=store_position,
-                base_tokenizer=base_tokenizer,
-            )
-        except Exception as err:
-            raise NotImplementedError(
-                "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-            ) from err
-
-    @deprecated(
-        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def create_vector_search_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        target_partition_num_rows: int | None = None,
-        num_sub_vectors: int = 16,
-        distance_metric: VectorDistanceMetric | str = "Cosine",
-    ) -> IndexingResult:
-        """
-        Create a vector index on the given column.
-
-        This will enable indexing and build the vector index over all existing values
-        in the specified component column.
-
-        Results can be retrieved using the `search_vector` API, which will include
-        the time-point on the indexed timeline.
-
-        Only one index can be created per component column -- executing this a second
-        time for the same component column will replace the existing index.
-
-        Parameters
-        ----------
-        column
-            The component column to create the index on.
-        time_index
-            Which timeline this index will map to.
-        target_partition_num_rows
-            The target size (in number of rows) for each partition.
-            The underlying indexer (lance) will pick a default when no value
-            is specified - today this is 8192. It will also cap the
-            maximum number of partitions independently of this setting - currently
-            4096.
-        num_sub_vectors
-            The number of sub-vectors to use when building the index.
-        distance_metric
-            The distance metric to use for the index. ("L2", "Cosine", "Dot", "Hamming")
-
-        """
-
-        try:
-            return self._internal.create_vector_search_index(  # ty: ignore[deprecated]
-                column=column,
-                time_index=time_index,
-                target_partition_num_rows=target_partition_num_rows,
-                num_sub_vectors=num_sub_vectors,
-                distance_metric=distance_metric,
-            )
-        except Exception as err:
-            raise NotImplementedError(
-                "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-            ) from err
-
-    def list_search_indexes(self) -> list[IndexingResult]:
-        """List all user-defined indexes in this dataset."""
-
-        return self._internal.list_search_indexes()
-
-    def delete_search_indexes(
-        self,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> list[IndexConfig]:
-        """Deletes all user-defined indexes for the specified column."""
-
-        return self._internal.delete_search_indexes(column)
-
-    @deprecated(
-        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def search_fts(
-        self,
-        query: str,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> datafusion.DataFrame:
-        """Search the dataset using a full-text search query."""
-
-        try:
-            return self._internal.search_fts(query, column)  # ty: ignore[deprecated]
-        except Exception as err:
-            raise NotImplementedError(
-                "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-            ) from err
-
-    @deprecated(
-        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def search_vector(
-        self,
-        query: Any,  # VectorLike
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        top_k: int,
-    ) -> datafusion.DataFrame:
-        """Search the dataset using a vector search query."""
-
-        try:
-            return self._internal.search_vector(query, column, top_k)  # ty: ignore[deprecated]
-        except Exception as err:
-            raise NotImplementedError(
-                "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-            ) from err
 
     def do_maintenance(  # noqa: PLR0917
         self,

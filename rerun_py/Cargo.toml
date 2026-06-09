@@ -87,7 +87,6 @@ re_server = { workspace = true, features = ["lance"] }
 
 anyhow.workspace = true
 arrow = { workspace = true, features = ["pyarrow"] }
-bytes.workspace = true
 chrono.workspace = true #TODO(#9317): migrate to jiff
 comfy-table.workspace = true
 crossbeam.workspace = true

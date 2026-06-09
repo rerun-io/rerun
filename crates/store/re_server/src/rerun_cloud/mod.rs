@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use arrow::array::BinaryArray;
 use arrow::record_batch::RecordBatch;
-use cfg_if::cfg_if;
 use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::{IntMap, IntSet};
@@ -325,7 +324,6 @@ decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionRe
 decl_stream!(ScanDatasetManifestResponseStream<manifest:ScanDatasetManifestResponse>);
 decl_stream!(ScanSegmentTableResponseStream<manifest:ScanSegmentTableResponse>);
 decl_stream!(ScanTableResponseStream<rerun_cloud:ScanTableResponse>);
-decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
 decl_stream!(UnregisterFromDatasetResponseStream<manifest:UnregisterFromDatasetResponse>);
 
 impl RerunCloudHandler {
@@ -1175,88 +1173,7 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
-    /* Indexing */
-
-    async fn create_index(
-        &self,
-        request: tonic::Request<re_protos::cloud::v1alpha1::CreateIndexRequest>,
-    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::CreateIndexResponse>> {
-        cfg_if! {
-            if #[cfg(feature = "lance")] {
-                let store = self.store.read().await;
-                let entry_id = get_entry_id_from_headers(&store, &request)?;
-                let dataset = store.dataset(entry_id)?;
-
-                dataset.indexes().create_index(dataset, request.into_inner().try_into()?).await
-            } else {
-                let _ = request;
-                Err(tonic::Status::unimplemented("create_index requires the `lance` feature"))
-            }
-        }
-    }
-
-    async fn list_indexes(
-        &self,
-        request: tonic::Request<re_protos::cloud::v1alpha1::ListIndexesRequest>,
-    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ListIndexesResponse>> {
-        cfg_if! {
-            if #[cfg(feature = "lance")] {
-                let store = self.store.read().await;
-                let entry_id = get_entry_id_from_headers(&store, &request)?;
-                let dataset = store.dataset(entry_id)?;
-
-                dataset.indexes().list_indexes(request.into_inner()).await
-            } else {
-                let _ = request;
-                Err(tonic::Status::unimplemented("list_indexes requires the `lance` feature"))
-            }
-        }
-    }
-
-    async fn delete_indexes(
-        &self,
-        request: tonic::Request<re_protos::cloud::v1alpha1::DeleteIndexesRequest>,
-    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::DeleteIndexesResponse>> {
-        cfg_if! {
-            if #[cfg(feature = "lance")] {
-                let store = self.store.read().await;
-                let entry_id = get_entry_id_from_headers(&store, &request)?;
-                let dataset = store.dataset(entry_id)?;
-
-                let request = request.into_inner();
-                let column = request.column.ok_or_else(|| {
-                    missing_field!(re_protos::cloud::v1alpha1::DeleteIndexesRequest, "column")
-                })?;
-
-                dataset.indexes().delete_indexes(column.try_into()?).await
-            } else {
-                let _ = request;
-                Err(tonic::Status::unimplemented("delete_indexes requires the `lance` feature"))
-            }
-        }
-    }
-
     /* Queries */
-
-    type SearchDatasetStream = SearchDatasetResponseStream;
-
-    async fn search_dataset(
-        &self,
-        request: tonic::Request<re_protos::cloud::v1alpha1::SearchDatasetRequest>,
-    ) -> tonic::Result<tonic::Response<Self::SearchDatasetStream>> {
-        cfg_if! {
-            if #[cfg(feature = "lance")] {
-                let store = self.store.read().await;
-                let entry_id = get_entry_id_from_headers(&store, &request)?;
-                let dataset = store.dataset(entry_id)?;
-
-                Ok(crate::chunk_index::DatasetChunkIndexes::search_dataset(dataset, request.into_inner().try_into()?).await?)
-            } else {
-                let _ = request;
-                Err(tonic::Status::unimplemented("search_dataset requires the `lance` feature"))
-            }
-        }
-    }
 
     type QueryDatasetStream = QueryDatasetResponseStream;
 

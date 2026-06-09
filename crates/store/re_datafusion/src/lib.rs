@@ -19,7 +19,6 @@ mod metrics_capture;
 #[cfg(not(target_arch = "wasm32"))]
 mod pipeline_budget;
 pub(crate) mod pushdown_expressions;
-mod search_provider;
 #[cfg(not(target_arch = "wasm32"))]
 mod segment_chunk_manifest;
 mod segment_table;
@@ -43,7 +42,6 @@ pub use dataset_manifest::DatasetManifestProvider;
 #[cfg(not(target_arch = "wasm32"))]
 pub use local_chunk_store_provider::LocalChunkStoreTableProvider;
 pub use metrics_capture::{MetricsCollector, QuerySnapshot};
-pub use search_provider::SearchResultsTableProvider;
 pub use segment_table::SegmentTableProvider;
 pub use table_entry_provider::TableEntryTableProvider;
 

@@ -1,8 +1,5 @@
 //! A Rerun server implementation backed by an in-memory store.
 
-#[cfg(feature = "lance")]
-mod chunk_index;
-
 mod bandwidth_layer;
 mod entrypoint;
 mod error_layer;

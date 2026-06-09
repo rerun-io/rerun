@@ -49,9 +49,6 @@ pub enum Error {
     #[error("Component path '{0}' not found")]
     ComponentPathNotFound(ComponentPath),
 
-    #[error("Index '{0}' already exists")]
-    IndexAlreadyExists(String),
-
     #[error(transparent)]
     DataFusionError(#[from] datafusion::error::DataFusionError),
 
@@ -61,9 +58,6 @@ pub enum Error {
     #[cfg(feature = "lance")]
     #[error(transparent)]
     LanceError(#[from] lance::Error),
-
-    #[error("Indexing error: {0}")]
-    IndexingError(String),
 
     #[error("Error loading RRD: {0}")]
     RrdLoadingError(anyhow::Error),
@@ -124,10 +118,7 @@ impl From<Error> for tonic::Status {
             | Error::DuplicateEntryIdError(_)
             | Error::LayerAlreadyExists(_)
             | Error::LayerClassConflict(_)
-            | Error::IndexAlreadyExists(_)
             | Error::TableStorageAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
-
-            Error::IndexingError(_) => Self::internal(format!("Indexing error: {err:#}")),
 
             Error::SchemaConflict(_) => Self::invalid_argument(format!("{err:#}")),
         }

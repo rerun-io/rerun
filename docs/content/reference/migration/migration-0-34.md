@@ -38,3 +38,10 @@ Tables without a registered blueprint fall back to Arrow field metadata and view
 > [!NOTE]
 > As of this release table blueprints alongside dataset preview are still regarded as an
 > experimental feature which means that the table & APIs for table blueprints may change significantly.
+
+## Remove previously deprecated SDK methods for custom indices
+
+The `DatasetEntry` methods `create_fts_search_index`,  `create_vector_search_index`, `delete_search_indexes`, `search_fts`, and `search_vector` have been removed, having been deprecated in 0.31.
+
+This change does not impact your ability to search through your dataset via [dataframe queries](https://rerun.io/docs/concepts/query-and-transform/dataframe-queries).
+

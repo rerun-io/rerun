@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime, timedelta
-from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
 
@@ -11,11 +10,9 @@ import datafusion as dfn
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from typing_extensions import deprecated
 
 from .types import (
     IndexValuesLike as IndexValuesLike,
-    VectorDistanceMetricLike as VectorDistanceMetricLike,
 )
 
 # NOTE
@@ -173,14 +170,6 @@ class ComponentColumnSelector:
 
         This property is read-only.
         """
-
-class VectorDistanceMetric(Enum):  # type: ignore[misc]
-    """Which distance metric for use for vector index."""
-
-    L2: VectorDistanceMetric
-    COSINE: VectorDistanceMetric
-    DOT: VectorDistanceMetric
-    HAMMING: VectorDistanceMetric
 
 class SchemaInternal:
     def index_columns(self) -> list[IndexColumnDescriptor]: ...
@@ -1042,54 +1031,6 @@ class DatasetEntryInternal:
 
     # ---
 
-    @deprecated(
-        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def create_fts_search_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        store_position: bool = False,
-        base_tokenizer: str = "simple",
-    ) -> None: ...
-    @deprecated(
-        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def create_vector_search_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        target_partition_num_rows: int | None = None,
-        num_sub_vectors: int = 16,
-        distance_metric: VectorDistanceMetric | str = ...,
-    ) -> IndexingResult: ...
-    def list_search_indexes(self) -> list[IndexingResult]: ...
-    def delete_search_indexes(
-        self,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> list[IndexConfig]: ...
-    @deprecated(
-        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def search_fts(
-        self,
-        query: str,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> dfn.DataFrame: ...
-    @deprecated(
-        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def search_vector(
-        self,
-        query: Any,  # VectorLike
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        top_k: int,
-    ) -> dfn.DataFrame: ...
-
-    # ---
-
     def do_maintenance(
         self,
         optimize_indexes: bool = False,
@@ -1282,53 +1223,6 @@ class TableProviderAdapterInternal:
     """Internal opaque adapter exposing a Rust DataFusion `TableProvider` to Python via the FFI capsule protocol."""
 
     def __datafusion_table_provider__(self, session: Any) -> Any: ...
-
-class IndexProperties:
-    """The properties and configuration of a user-defined index."""
-
-class IndexConfig:
-    """The complete description of a user-defined index."""
-
-    @property
-    def time_column(self) -> IndexColumnSelector:
-        """Returns the time column that this index applies to."""
-
-    @property
-    def component_column(self) -> ComponentColumnSelector:
-        """Returns the component column that this index applies to."""
-
-    @property
-    def properties(self) -> IndexProperties:
-        """Returns the properties/configuration of the index."""
-
-class IndexingResult:
-    """Indexing operation status result."""
-
-    @property
-    def properties(self) -> IndexConfig:
-        """Returns configuration information and properties about the newly created index."""
-
-    @property
-    def column(self) -> ComponentColumnSelector:
-        """Returns the component column that this index was created on."""
-
-    @property
-    def statistics(self) -> str:
-        """Returns best-effort backend-specific statistics about the newly created index."""
-
-    def debug_info(self) -> dict[str, Any] | None:
-        """
-        Get debug information about the indexing operation.
-
-        The exact contents of debug information may vary depending on the indexing operation performed
-        and the server implementation.
-
-        Returns
-        -------
-        Optional[dict]
-            A dictionary containing debug information, or `None` if no debug information is available
-
-        """
 
 class CatalogClientInternal:
     def __init__(self, url: str, token: str | None = None) -> None: ...

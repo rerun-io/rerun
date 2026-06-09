@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from rerun import catalog as _catalog
-from typing_extensions import deprecated
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -255,82 +254,6 @@ class DatasetEntry(Entry):
         view = self.filter_contents(["/**"])
         return view.get_index_ranges()
 
-    @deprecated(
-        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def create_fts_search_index(
-        self,
-        *,
-        column: Any,
-        time_index: Any,
-        store_position: bool = False,
-        base_tokenizer: str = "simple",
-    ) -> None:
-        try:
-            return self._inner.create_fts_search_index(  # ty: ignore[deprecated]
-                column=column,
-                time_index=time_index,
-                store_position=store_position,
-                base_tokenizer=base_tokenizer,
-            )
-        except Exception as err:
-            raise NotImplementedError(
-                "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-            ) from err
-
-    @deprecated(
-        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def create_vector_search_index(
-        self,
-        *,
-        column: Any,
-        time_index: Any,
-        target_partition_num_rows: int | None = None,
-        num_sub_vectors: int = 16,
-        distance_metric: Any = ...,
-    ) -> Any:
-        try:
-            return self._inner.create_vector_search_index(  # ty: ignore[deprecated]
-                column=column,
-                time_index=time_index,
-                target_partition_num_rows=target_partition_num_rows,
-                num_sub_vectors=num_sub_vectors,
-                distance_metric=distance_metric,
-            )
-        except Exception as err:
-            raise NotImplementedError(
-                "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-            ) from err
-
-    def list_search_indexes(self) -> list:
-        return self._inner.list_search_indexes()
-
-    def delete_search_indexes(self, column: Any) -> list[Any]:
-        return self._inner.delete_search_indexes(column)
-
-    @deprecated(
-        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def search_fts(self, query: str, column: Any) -> datafusion.DataFrame:
-        try:
-            return self._inner.search_fts(query, column)  # ty: ignore[deprecated]
-        except Exception as err:
-            raise NotImplementedError(
-                "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-            ) from err
-
-    @deprecated(
-        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def search_vector(self, query: Any, column: Any, top_k: int) -> datafusion.DataFrame:
-        try:
-            return self._inner.search_vector(query, column, top_k)  # ty: ignore[deprecated]
-        except Exception as err:
-            raise NotImplementedError(
-                "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-            ) from err
-
     def do_maintenance(
         self,
         optimize_indexes: bool = False,
@@ -510,4 +433,3 @@ AlreadyExistsError = _catalog.AlreadyExistsError
 EntryId = _catalog.EntryId
 EntryKind = _catalog.EntryKind
 NotFoundError = _catalog.NotFoundError
-VectorDistanceMetric = _catalog.VectorDistanceMetric
