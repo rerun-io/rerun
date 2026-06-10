@@ -568,4 +568,19 @@ mod tests {
         eager_ids.sort();
         assert_eq!(lazy_ids, eager_ids, "Same set of chunks");
     }
+
+    #[cfg(feature = "_bench")]
+    #[bench]
+    fn evaluate(bencher: &mut test::Bencher) {
+        use test::black_box;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test.rrd");
+        let _ = create_test_rrd(&path, 2, 3);
+        bencher.iter(|| {
+            black_box({
+                let _ =
+                    ChunkStore::from_rrd_filepath(&ChunkStoreConfig::ALL_DISABLED, &path).unwrap();
+            })
+        });
+    }
 }

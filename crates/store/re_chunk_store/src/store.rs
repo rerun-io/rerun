@@ -6,6 +6,7 @@ use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
+use rayon::prelude::*;
 use re_log::debug_assert;
 
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
@@ -1048,40 +1049,47 @@ impl ChunkStore {
         re_tracing::profile_function!(path_to_rrd.to_string_lossy());
 
         use anyhow::Context as _;
+        use re_log_types::{BlueprintActivationCommand, LogMsg};
 
         let mut stores = BTreeMap::new();
 
         let rrd_file = std::fs::File::open(path_to_rrd)
             .with_context(|| format!("couldn't open {path_to_rrd:?}"))?;
 
-        let decoder = re_log_encoding::Decoder::decode_eager(std::io::BufReader::new(rrd_file))
-            .with_context(|| format!("couldn't decode {path_to_rrd:?}"))?;
+        let res = re_log_encoding::Decoder::decode_eager(std::io::BufReader::new(rrd_file))
+            .with_context(|| format!("couldn't decode {path_to_rrd:?}"))?
+            .par_bridge()
+            .reduce(
+                || {
+                    Ok(LogMsg::BlueprintActivationCommand(
+                        BlueprintActivationCommand {
+                            blueprint_id: StoreId::empty_recording(),
+                            make_active: false,
+                            make_default: false,
+                        },
+                    ))
+                },
+                |lhs, rhs| rhs.and(lhs),
+            );
 
-        // TODO(cmc): offload the decoding to a background thread.
-        for res in decoder {
-            let msg = res.with_context(|| format!("couldn't decode message {path_to_rrd:?}"))?;
-            match msg {
-                re_log_types::LogMsg::SetStoreInfo(info) => {
-                    stores.entry(info.info.store_id.clone()).or_insert_with(|| {
-                        Self::new(info.info.store_id.clone(), store_config.clone())
-                    });
-                }
-
-                re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
-                    let Some(store) = stores.get_mut(&store_id) else {
-                        anyhow::bail!("unknown store ID: {store_id:?}");
-                    };
-
-                    let chunk = Chunk::from_arrow_msg(&msg)
-                        .with_context(|| format!("couldn't decode chunk {path_to_rrd:?}"))?;
-
-                    store
-                        .insert_chunk(&Arc::new(chunk))
-                        .with_context(|| format!("couldn't insert chunk {path_to_rrd:?}"))?;
-                }
-
-                re_log_types::LogMsg::BlueprintActivationCommand(_) => {}
+        let msg = res.with_context(|| format!("couldn't decode message {path_to_rrd:?}"))?;
+        match msg {
+            re_log_types::LogMsg::SetStoreInfo(info) => {
+                stores
+                    .entry(info.info.store_id.clone())
+                    .or_insert_with(|| Self::new(info.info.store_id.clone(), store_config.clone()));
             }
+            re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
+                let Some(store) = stores.get_mut(&store_id) else {
+                    anyhow::bail!("unknown store ID: {store_id:?}");
+                };
+                let chunk = Chunk::from_arrow_msg(&msg)
+                    .with_context(|| format!("couldn't decode chunk {path_to_rrd:?}"))?;
+                store
+                    .insert_chunk(&Arc::new(chunk))
+                    .with_context(|| format!("couldn't insert chunk {path_to_rrd:?}"))?;
+            }
+            re_log_types::LogMsg::BlueprintActivationCommand(_) => {}
         }
 
         Ok(stores)

@@ -8492,6 +8492,7 @@ dependencies = [
  "nohash-hasher",
  "parking_lot",
  "rand 0.9.3",
+ "rayon",
  "re_arrow_util",
  "re_byte_size",
  "re_chunk",

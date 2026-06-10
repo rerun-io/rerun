@@ -14,6 +14,11 @@
 #![doc = document_features::document_features!()]
 //!
 
+#![cfg_attr(all(feature = "_bench", test), feature(test))]
+
+#[cfg(all(feature = "_bench", test))]
+extern crate test;
+
 mod compact;
 mod dataframe;
 
