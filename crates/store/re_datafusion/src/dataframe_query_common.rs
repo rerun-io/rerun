@@ -466,6 +466,18 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 }
             }
 
+            // Now that filter pushdown has settled each query's `segment_ids`, bound each query's chunk fetch
+            // to its sampled index values.
+            // Done here rather than at construction so the per-segment value lists stay aligned with `segment_ids` after a
+            // `rerun_segment_id` predicate narrows or splits them.
+            for query in &mut dataset_queries {
+                apply_per_segment_pushdown(
+                    query,
+                    &self.index_values,
+                    self.query_expression.filtered_index,
+                );
+            }
+
             // Entity path projection pushdown: narrow the server request to only
             // fetch chunks for entity paths that are actually needed by the projection
             // and filters. Skip when fill_latest_at is enabled, because timestamps
@@ -1120,6 +1132,70 @@ pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAgg
     }
 }
 
+/// Bound a single settled query's server-side chunk scan to the chunks covering
+/// its sampled index values, by setting them as `QueryLatestAt.per_segment_values`
+/// (aligned to the query's own `segment_ids`).
+///
+/// Runs in [`DataframeQueryTableProvider::scan`] *after* filter pushdown has
+/// narrowed or split `segment_ids`, so the per-segment value lists always line up
+/// with the segment ids the server validates against. Without it the server
+/// fetches every segment's entire chunk set; it narrows only what is fetched, not
+/// the rows produced.
+fn apply_per_segment_pushdown(
+    query_request: &mut QueryDatasetRequest,
+    index_values: &IndexValuesMap,
+    timeline: Option<Index>,
+) {
+    let Some(index_values) = index_values.as_ref() else {
+        return; // no `using_index_values`, nothing to push
+    };
+    let Some(timeline) = timeline else {
+        return; // static-only query, no index to bound
+    };
+    // The contract requires non-empty, positionally-matched segment ids. An
+    // unscoped reader (no `filter_segments`) sends none, so there is nothing to
+    // align against.
+    if query_request.segment_ids.is_empty() {
+        return;
+    }
+    let per_segment_values = per_segment_values_aligned(&query_request.segment_ids, index_values);
+
+    let Some(query) = query_request.query.as_mut() else {
+        return;
+    };
+    query.latest_at = Some(QueryLatestAt {
+        index: Some(timeline),
+        at: IndexValue::STATIC,
+        per_segment_values,
+    });
+    query.range = None;
+}
+
+/// Build `QueryLatestAt.per_segment_values` for `segment_ids`, looking each up in `index_values`.
+///
+/// One list per segment, in order, since the server matches them positionally against `QueryDatasetRequest.segment_ids`.
+/// Segments absent from the map get an empty list and `STATIC` values are skipped.
+fn per_segment_values_aligned(
+    segment_ids: &[SegmentId],
+    index_values: &BTreeMap<SegmentId, BTreeSet<IndexValue>>,
+) -> Vec<Vec<i64>> {
+    segment_ids
+        .iter()
+        .map(|segment_id| {
+            index_values
+                .get(segment_id)
+                .map(|values| {
+                    values
+                        .iter()
+                        .filter(|value| !value.is_static())
+                        .map(|value| value.as_i64())
+                        .collect()
+                })
+                .unwrap_or_default()
+        })
+        .collect()
+}
+
 /// Build a server-side [`Query`] from a [`QueryExpression`].
 ///
 /// `synthesize_latest_at` controls whether a non-static query carries a
@@ -1217,6 +1293,183 @@ mod tests {
     use arrow::array::{Array as _, FixedSizeBinaryArray, FixedSizeBinaryBuilder};
 
     use super::*;
+
+    #[test]
+    fn per_segment_values_align_to_segment_ids_order() {
+        let seg = |s: &str| SegmentId::from(s);
+        let at = IndexValue::new_temporal;
+
+        let index_values: BTreeMap<SegmentId, BTreeSet<IndexValue>> = [
+            (seg("a"), BTreeSet::from([at(30), at(10), at(20)])),
+            (seg("b"), BTreeSet::from([at(5)])),
+        ]
+        .into_iter()
+        .collect();
+
+        // Output is positionally matched to `segment_ids`
+        // "b" comes first here, and "c" (absent from the map) yields an empty list rather than being skipped.
+        let segment_ids = [seg("b"), seg("a"), seg("c")];
+        let values = per_segment_values_aligned(&segment_ids, &index_values);
+
+        assert_eq!(values, vec![vec![5], vec![10, 20, 30], vec![]]);
+    }
+
+    #[test]
+    fn per_segment_values_skip_static() {
+        let index_values: BTreeMap<SegmentId, BTreeSet<IndexValue>> = std::iter::once((
+            SegmentId::from("a"),
+            BTreeSet::from([IndexValue::STATIC, IndexValue::new_temporal(7)]),
+        ))
+        .collect();
+
+        let values = per_segment_values_aligned(&[SegmentId::from("a")], &index_values);
+
+        assert_eq!(values, vec![vec![7]]);
+    }
+
+    /// Per-segment pushdown stays aligned with `segment_ids` when a
+    /// `rerun_segment_id` predicate narrows them, and rewrites the survivor into
+    /// the bounded encoding: sorted `per_segment_values`, `range` dropped, and `at`
+    /// parked at STATIC against the query's index.
+    #[test]
+    fn segment_id_filter_keeps_per_segment_values_aligned() {
+        use datafusion::logical_expr::{col, lit};
+
+        let seg = |s: &str| SegmentId::from(s);
+        let at = IndexValue::new_temporal;
+        let timeline = Index::new("my_index");
+
+        // Three scoped segments, each sampled at specific index values, as set by
+        // `filter_segments([…]).reader(using_index_values={…})`.
+        let segment_ids = vec![seg("a"), seg("b"), seg("c")];
+        // "b" carries two values so the survivor exercises sorted multi-value emission.
+        let map: BTreeMap<SegmentId, BTreeSet<IndexValue>> = [
+            (seg("a"), BTreeSet::from([at(10), at(20)])),
+            (seg("b"), BTreeSet::from([at(15), at(5)])),
+            (seg("c"), BTreeSet::from([at(7), at(8)])),
+        ]
+        .into_iter()
+        .collect();
+        let index_values: IndexValuesMap = Some(Arc::new(map));
+
+        // Baseline request as built before any pushdown: a temporal `range`, and
+        // no `per_segment_values` yet (the pushdown is deferred to `scan`).
+        let request = QueryDatasetRequest {
+            segment_ids: segment_ids.clone(),
+            query: Some(Query {
+                latest_at: None,
+                range: Some(QueryRange {
+                    index: timeline,
+                    index_range: re_log_types::AbsoluteTimeRange::new(at(0), at(100)),
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // 1. A `WHERE rerun_segment_id = 'b'` predicate is pushed down, narrowing
+        //    `segment_ids` exactly as `scan`'s filter loop does. (The index field's
+        //    `rerun:kind=index` metadata is irrelevant to a segment-id predicate,
+        //    but mirrors a real query schema.)
+        let schema = {
+            let mut index_meta = HashMap::new();
+            index_meta.insert(
+                re_sorbet::metadata::RERUN_KIND.to_owned(),
+                "index".to_owned(),
+            );
+            Arc::new(Schema::new_with_metadata(
+                vec![
+                    Field::new("my_index", DataType::Int64, false).with_metadata(index_meta),
+                    Field::new("rerun_segment_id", DataType::Utf8, false),
+                ],
+                HashMap::default(),
+            ))
+        };
+        let expr = col("rerun_segment_id").eq(lit("b"));
+        let mut narrowed = apply_filter_expr_to_queries(vec![request], &expr, &schema, false)
+            .unwrap()
+            .expect("segment-id predicate is pushed down");
+        assert_eq!(narrowed.len(), 1);
+
+        // 2. Per-segment pushdown runs after narrowing and aligns to the survivor.
+        apply_per_segment_pushdown(&mut narrowed[0], &index_values, Some(timeline));
+
+        let narrowed = &narrowed[0];
+        assert_eq!(narrowed.segment_ids, vec![seg("b")]);
+
+        // `per_segment_values` is aligned to the surviving segment "b" → `[[5, 15]]`
+        // (sorted), not the stale full `[[10, 20], [5, 15], [7, 8]]`. `range` is
+        // cleared and `at` parked at STATIC against the query's index — the encoding
+        // required alongside `per_segment_values`.
+        let query = narrowed.query.as_ref().unwrap();
+        let la = query.latest_at.as_ref().unwrap();
+        assert_eq!(
+            la.per_segment_values,
+            vec![vec![5, 15]],
+            "per_segment_values must align to the surviving segment_ids, sorted"
+        );
+        assert_eq!(la.index, Some(timeline));
+        assert_eq!(la.at, IndexValue::STATIC);
+        assert!(query.range.is_none());
+
+        let wire: re_protos::cloud::v1alpha1::QueryDatasetRequest = narrowed.clone().into();
+        re_protos::cloud::v1alpha1::ext::QueryDatasetRequest::try_from(wire)
+            .expect("server must accept the request after segment-id narrowing");
+    }
+
+    /// `apply_per_segment_pushdown` only fires for a scoped temporal query with
+    /// sampled values. Every other case leaves the request untouched, so the
+    /// server falls back to its normal full per-segment scan.
+    #[test]
+    fn pushdown_is_noop_unless_scoped_temporal() {
+        let seg = |s: &str| SegmentId::from(s);
+        let timeline = Index::new("my_index");
+        let values: IndexValuesMap = Some(Arc::new(
+            once((seg("a"), BTreeSet::from([IndexValue::new_temporal(10)]))).collect(),
+        ));
+
+        let baseline = || QueryDatasetRequest {
+            segment_ids: vec![seg("a")],
+            query: Some(Query {
+                latest_at: None,
+                range: Some(QueryRange {
+                    index: timeline,
+                    index_range: re_log_types::AbsoluteTimeRange::new(
+                        IndexValue::new_temporal(0),
+                        IndexValue::new_temporal(100),
+                    ),
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let assert_untouched = |request: &QueryDatasetRequest| {
+            let query = request.query.as_ref().unwrap();
+            assert!(query.range.is_some(), "range must survive a no-op");
+            assert!(
+                query.latest_at.is_none(),
+                "no `per_segment_values` must be pushed on a no-op"
+            );
+        };
+
+        // No `using_index_values`.
+        let no_values: IndexValuesMap = None;
+        let mut req = baseline();
+        apply_per_segment_pushdown(&mut req, &no_values, Some(timeline));
+        assert_untouched(&req);
+
+        // Static-only query: no index to bound against.
+        let mut req = baseline();
+        apply_per_segment_pushdown(&mut req, &values, None);
+        assert_untouched(&req);
+
+        // Unscoped reader: no `segment_ids` to align values to.
+        let mut req = baseline();
+        req.segment_ids.clear();
+        apply_per_segment_pushdown(&mut req, &values, Some(timeline));
+        assert_untouched(&req);
+    }
 
     #[test]
     fn test_batches_grouping() {

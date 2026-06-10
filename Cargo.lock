@@ -9554,6 +9554,7 @@ dependencies = [
  "insta",
  "itertools 0.14.0",
  "lance",
+ "parking_lot",
  "prost-types",
  "re_arrow_util",
  "re_chunk",
