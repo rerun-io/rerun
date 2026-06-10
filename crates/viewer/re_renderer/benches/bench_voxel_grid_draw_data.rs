@@ -33,11 +33,11 @@ fn render_context() -> RenderContext {
 }
 
 fn voxel_index(i: usize) -> glam::IVec3 {
-    glam::IVec3::new(
-        (i % 100) as i32,
-        ((i / 100) % 100) as i32,
-        (i / 10_000) as i32,
-    )
+    let x = i32::try_from(i % 100).expect("benchmark x coordinate is in 0..100");
+    let y = i32::try_from((i / 100) % 100).expect("benchmark y coordinate is in 0..100");
+    let z = i32::try_from(i / 10_000).expect("benchmark z coordinate fits in i32");
+
+    glam::IVec3::new(x, y, z)
 }
 
 #[derive(Clone, Copy)]
