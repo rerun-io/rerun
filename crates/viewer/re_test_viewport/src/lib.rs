@@ -1,5 +1,7 @@
 //! Extends the `re_test_context` with viewport-related features.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod test_view;
 
 use ahash::HashMap;

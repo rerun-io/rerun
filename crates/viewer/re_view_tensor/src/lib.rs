@@ -2,6 +2,8 @@
 //!
 //! A view dedicated to visualizing tensors with arbitrary dimensionality.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod dimension_mapping;
 mod tensor_dimension_mapper;
 mod tensor_slice_to_gpu;
