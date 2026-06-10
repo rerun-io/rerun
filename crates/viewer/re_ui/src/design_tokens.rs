@@ -304,10 +304,23 @@ pub struct DesignTokens {
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.ron`.
     pub fn load(theme: Theme, tokens_ron: &str) -> anyhow::Result<Self> {
+        Self::load_with_color_table(theme, tokens_ron, include_str!("../data/color_table.ron"))
+    }
+
+    /// Load design tokens, supplying a custom color-table RON instead of the embedded one.
+    ///
+    /// Useful for downstream crates that want to ship their own color palette without forking
+    /// `re_ui`. The provided `color_table_ron` must have the same shape as the bundled
+    /// `data/color_table.ron`.
+    pub fn load_with_color_table(
+        theme: Theme,
+        tokens_ron: &str,
+        color_table_ron: &str,
+    ) -> anyhow::Result<Self> {
         anyhow::ensure!(!tokens_ron.trim().is_empty(), "Empty theme file");
 
-        let color_table_ron: ron::Value = ron::from_str(include_str!("../data/color_table.ron"))
-            .expect("Failed to parse data/color_table.ron");
+        let color_table_ron: ron::Value =
+            ron::from_str(color_table_ron).context("Failed to parse color-table .ron")?;
         let colors = load_color_table(&color_table_ron);
 
         let theme_json: ron::Value = ron::from_str(tokens_ron)
