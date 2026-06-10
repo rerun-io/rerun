@@ -454,7 +454,7 @@ impl SeriesLinesSystem {
         let mut points_per_series =
             allocate_plot_points(&query, &default_point, all_scalar_chunks, num_series);
 
-        collect_scalars(all_scalar_chunks, &mut points_per_series);
+        collect_scalars(all_scalar_chunks, &results, &mut points_per_series);
 
         collect_colors(
             &query,
