@@ -244,7 +244,7 @@ impl From<crate::common::v1alpha1::TaskId> for String {
 }
 
 // Make `quiver::Column<TaskId>` work (backed by a `Utf8` column):
-quiver::newtype_datatype!(crate::common::v1alpha1::TaskId, String);
+quiver::newtype_datatype!(crate::common::v1alpha1::TaskId, quiver::Utf8);
 
 // ---
 

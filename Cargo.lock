@@ -1654,7 +1654,7 @@ checksum = "af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.1.14",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -3086,7 +3086,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3608,7 +3608,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5069,7 +5069,7 @@ dependencies = [
  "portable-atomic-util",
  "serde_core",
  "wasm-bindgen",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7976,9 +7976,9 @@ dependencies = [
 
 [[package]]
 name = "quiver"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30d7fff2221b86f0744342de9cf6f8f064c9cdd1a5fcdeda78a3f9c440b42603"
+checksum = "d3733e3e2c5f6af8f5ae9a16e5ca7401938cec58f8473a70b6494414caa691ec"
 dependencies = [
  "quiver_derive",
  "quiver_types",
@@ -7986,9 +7986,9 @@ dependencies = [
 
 [[package]]
 name = "quiver_derive"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54fe92d914c96f96edd2f59310fdf11c7c5e849d0ce7f62e7a050d30486fd4ee"
+checksum = "5664664fa9e403ee83c23b09e894baf7a79826989b4097ddaf18ea6ce056773d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7997,9 +7997,9 @@ dependencies = [
 
 [[package]]
 name = "quiver_types"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b08ab41a319654d7e04377f7637f1eb08ed19cfd8cae3e8e9f0083240119bbe1"
+checksum = "7b47a1ff2ab808a656f4b8cb7e3eb839b8b7fdbc4e37ecefa94cded774a071ae"
 dependencies = [
  "arrow",
  "half",
@@ -11257,7 +11257,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -12120,7 +12120,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -13776,7 +13776,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

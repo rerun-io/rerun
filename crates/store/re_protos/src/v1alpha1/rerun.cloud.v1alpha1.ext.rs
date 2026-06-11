@@ -821,22 +821,22 @@ pub struct QueryTasksDataframe {
     pub task_id: quiver::Column<TaskId>,
 
     /// The kind of task, e.g. `create_partition_manifest`.
-    pub kind: quiver::Column<Option<String>>,
+    pub kind: quiver::Column<Option<quiver::Utf8>>,
 
     /// Task-specific data.
-    pub data: quiver::Column<Option<String>>,
+    pub data: quiver::Column<Option<quiver::Utf8>>,
 
     /// The execution status of the task, e.g. `pending`, `success`, or `error`.
-    pub exec_status: quiver::Column<String>,
+    pub exec_status: quiver::Column<quiver::Utf8>,
 
     /// Any messages produced by the task, e.g. the error message if it failed.
-    pub msgs: quiver::Column<Option<String>>,
+    pub msgs: quiver::Column<Option<quiver::Utf8>>,
 
     /// The size of the task blob, in bytes.
     pub blob_len: quiver::Column<Option<u64>>,
 
     /// Who currently holds the lease on this task, if anyone.
-    pub lease_owner: quiver::Column<Option<String>>,
+    pub lease_owner: quiver::Column<Option<quiver::Utf8>>,
 
     /// When the current lease expires, if any.
     pub lease_expiration: quiver::Column<Option<quiver::TimestampNanosecond>>,
