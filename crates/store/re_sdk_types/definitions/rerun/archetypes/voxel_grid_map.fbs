@@ -2,10 +2,10 @@ namespace rerun.archetypes;
 
 // ---
 
-/// A sparse 3D voxel grid map with grid indices and a uniform voxel size.
+/// A sparse 3D voxel grid map with grid indices and voxel dimensions.
 ///
 /// This archetype is intended for 3D occupancy maps and other volumetric data
-/// represented as a sparse grid of voxels with a common size.
+/// represented as a sparse grid of voxels with scene-unit dimensions along the local X/Y/Z axes.
 ///
 /// The minimum corner of the voxel with `[0, 0, 0]` index is located at the origin of the entity's coordinate frame
 /// and can have an additional offset from there through the optional translation and rotation fields.

@@ -66,7 +66,7 @@ This page lists all built-in archetypes.
 * [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
 * [`Mesh3D`](archetypes/mesh3d.md): A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 * [`Points3D`](archetypes/points3d.md): A 3D point cloud with positions and optional colors, radii, labels, etc.
-* [`VoxelGridMap`](archetypes/voxel_grid_map.md): A sparse 3D voxel grid map with grid indices and a uniform voxel size.
+* [`VoxelGridMap`](archetypes/voxel_grid_map.md): A sparse 3D voxel grid map with grid indices and voxel dimensions.
 
 ## Text
 
