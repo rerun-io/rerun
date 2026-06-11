@@ -17,6 +17,12 @@ namespace rerun::components {
     struct VoxelIndex {
         rerun::datatypes::IVec3D index;
 
+      public: // START of extensions from voxel_index_ext.cpp:
+        /// Construct VoxelIndex from x/y/z values.
+        VoxelIndex(int32_t x, int32_t y, int32_t z) : index{x, y, z} {}
+
+        // END of extensions from voxel_index_ext.cpp, start of generated code:
+
       public:
         VoxelIndex() = default;
 
