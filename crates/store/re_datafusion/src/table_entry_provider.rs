@@ -375,7 +375,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
 #[derive(Debug, Clone)]
 struct TableEntryWriterExec {
     client: ConnectionClient,
-    props: PlanProperties,
+    props: Arc<PlanProperties>,
     child: Arc<dyn ExecutionPlan>,
     runtime: Handle,
     table_id: EntryId,
@@ -404,7 +404,8 @@ impl TableEntryWriterExec {
                 Partitioning::UnknownPartitioning(default_partitioning),
                 EmissionType::Incremental,
                 Boundedness::Bounded,
-            ),
+            )
+            .into(),
             child,
             runtime,
             table_id,
@@ -422,7 +423,7 @@ impl ExecutionPlan for TableEntryWriterExec {
         self
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.props
     }
 

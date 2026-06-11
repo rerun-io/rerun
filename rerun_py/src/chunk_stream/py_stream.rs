@@ -133,7 +133,8 @@ impl PyLazyChunkStreamInternal {
     #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned Vec
     fn lenses(
         &self,
-        lenses: Vec<crate::lenses::PyLens<'_>>,
+        py: Python<'_>,
+        lenses: Vec<crate::lenses::PyLens>,
         output_mode: &str,
         content: Option<Vec<String>>,
     ) -> PyResult<Self> {
@@ -141,7 +142,7 @@ impl PyLazyChunkStreamInternal {
         let mode = crate::lenses::parse_output_mode(output_mode)?;
         let mut collection = re_lenses_core::Lenses::new(mode);
         for py_lens in &lenses {
-            collection = collection.add_lens(py_lens.build()?);
+            collection = collection.add_lens(py_lens.build(py)?);
         }
         let content = content.map(|exprs| {
             let rules = exprs.join(" ");

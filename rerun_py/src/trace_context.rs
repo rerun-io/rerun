@@ -134,7 +134,7 @@ pub(crate) fn extract_trace_context_from_contextvar(
 
         match context_var.call_method0("get") {
             Ok(trace_data) => {
-                if let Ok(dict) = trace_data.downcast::<PyDict>() {
+                if let Ok(dict) = trace_data.cast::<PyDict>() {
                     let traceparent = dict
                         .get_item(TraceHeaders::TRACEPARENT_KEY)?
                         .and_then(|v| v.extract::<String>().ok())

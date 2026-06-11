@@ -1014,10 +1014,13 @@ fn table_index_column_index(schema: &arrow::datatypes::Schema) -> Option<usize> 
     })
 }
 
-/// Asynchronously upsert flag changes to the remote server.
+/// Asynchronously write flag changes back to the remote server.
 ///
 /// Constructs a minimal `RecordBatch` with the table index column + flag column for each
-/// changed row and sends it via `WriteTable` with `Replace` (upsert) semantics.
+/// changed row and sends it via `WriteTable` with `Update` semantics: rows are matched on
+/// the table index and only their flag column is updated. Because every changed row already
+/// exists in the table, the subset schema (index + flag) and `Update`'s drop-unmatched
+/// behavior are exactly what we want — we never want to insert new rows here.
 ///
 /// This is fire-and-forget: errors are logged but don't block the UI.
 fn upsert_flag_changes(
@@ -1084,7 +1087,10 @@ fn upsert_flag_changes(
                 .write_table(
                     futures::stream::once(async { upsert_batch }),
                     remote.entry_id,
-                    ext::TableInsertMode::Replace,
+                    // `Update`: match existing rows on the table index and update only the
+                    // flag column. Unmatched source rows are dropped, which is correct here
+                    // since we only ever edit flags on rows that already exist.
+                    ext::TableInsertMode::Update,
                 )
                 .await
         }

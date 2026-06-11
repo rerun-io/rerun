@@ -10,7 +10,12 @@ use re_protos::cloud::v1alpha1::ext::EntryDetails;
 use crate::catalog::PyCatalogClientInternal;
 
 /// A unique identifier for an entry in the catalog.
-#[pyclass(eq, name = "EntryId", module = "rerun_bindings.rerun_bindings")]
+#[pyclass(
+    eq,
+    from_py_object,
+    name = "EntryId",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone, PartialEq, Eq)]
 pub struct PyEntryId {
     pub id: EntryId,
@@ -51,6 +56,7 @@ impl From<EntryId> for PyEntryId {
 /// The kinds of entries that can be stored in the catalog.
 #[pyclass(
     name = "EntryKind",
+    from_py_object,
     eq,
     eq_int,
     module = "rerun_bindings.rerun_bindings"

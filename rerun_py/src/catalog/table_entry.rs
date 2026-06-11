@@ -256,6 +256,7 @@ impl PyTableEntryInternal {
 
 #[pyclass(
     name = "TableInsertModeInternal",
+    from_py_object,
     eq,
     eq_int,
     module = "rerun_bindings.rerun_bindings"

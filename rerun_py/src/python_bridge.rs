@@ -459,6 +459,7 @@ impl DurationLike {
 /// Defines the different batching thresholds used within the RecordingStream.
 #[pyclass(
     eq,
+    from_py_object,
     name = "ChunkBatcherConfig",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -777,7 +778,7 @@ fn shutdown(py: Python<'_>) {
 
 // --- Recordings ---
 
-#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(frozen, from_py_object, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 #[derive(Clone)]
 pub(crate) struct PyRecordingStream(RecordingStream);
 
@@ -1153,11 +1154,11 @@ fn set_sinks<'py>(
 
     let mut resolved_sinks: Vec<Box<dyn re_sdk::sink::LogSink>> = Vec::new();
     for sink in sinks {
-        if let Ok(sink) = sink.downcast::<PyGrpcSink>() {
+        if let Ok(sink) = sink.cast::<PyGrpcSink>() {
             let sink = sink.get();
             let sink = re_sdk::sink::GrpcSink::new(sink.uri.clone());
             resolved_sinks.push(Box::new(sink));
-        } else if let Ok(sink) = sink.downcast::<PyFileSink>() {
+        } else if let Ok(sink) = sink.cast::<PyFileSink>() {
             let sink = sink.get();
             let sink = re_sdk::sink::FileSink::with_options(
                 sink.path.clone(),
@@ -1167,15 +1168,15 @@ fn set_sinks<'py>(
             )
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             resolved_sinks.push(Box::new(sink));
-        } else if let Ok(storage) = sink.downcast::<PyBinarySinkStorage>() {
+        } else if let Ok(storage) = sink.cast::<PyBinarySinkStorage>() {
             // Direct PyBinarySinkStorage
             let binary_sink =
                 re_sdk::sink::BinaryStreamSink::with_shared_storage(&storage.get().inner);
             resolved_sinks.push(Box::new(binary_sink));
-        } else if let Ok(storage) = sink.getattr("storage").and_then(|attr| {
-            attr.downcast_into::<PyBinarySinkStorage>()
-                .map_err(Into::into)
-        }) {
+        } else if let Ok(storage) = sink
+            .getattr("storage")
+            .and_then(|attr| attr.cast_into::<PyBinarySinkStorage>().map_err(Into::into))
+        {
             // Python BinaryStream wrapper — extract .storage
             let binary_sink =
                 re_sdk::sink::BinaryStreamSink::with_shared_storage(&storage.get().inner);
@@ -1906,6 +1907,7 @@ fn flush(py: Python<'_>, timeout_sec: f32, recording: Option<&PyRecordingStream>
 /// fields provide additional information about the semantics of the data.
 #[pyclass(
     eq,
+    from_py_object,
     name = "ComponentDescriptor",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -2181,7 +2183,7 @@ fn send_chunks(
     };
 
     // Single Chunk — fast path
-    if let Ok(chunk_obj) = chunks.downcast::<PyChunkInternal>() {
+    if let Ok(chunk_obj) = chunks.cast::<PyChunkInternal>() {
         let chunk = re_chunk::Chunk::clone(chunk_obj.borrow().inner());
         py.detach(|| {
             recording.send_chunk(chunk);
@@ -2526,7 +2528,7 @@ authkey = multiprocessing.current_process().authkey
     })
     .and_then(|authkey| {
         authkey
-            .downcast()
+            .cast()
             .cloned()
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     })

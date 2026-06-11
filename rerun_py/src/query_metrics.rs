@@ -28,6 +28,7 @@ use re_datafusion::{MetricsCollector, QuerySnapshot};
 /// One per query that ran inside a `query_metrics()` scope.
 #[pyclass(
     frozen,
+    from_py_object,
     eq,
     name = "_QueryMetrics",
     module = "rerun_bindings.rerun_bindings"
@@ -349,7 +350,7 @@ pub fn active_metrics_collectors(py: Python<'_>) -> Vec<MetricsCollector> {
         let module = py.import("rerun.experimental._query_metrics")?;
         let ctxvar = module.getattr("_active_collectors")?;
         let current = ctxvar.call_method0("get")?;
-        let tuple = current.downcast::<PyTuple>()?;
+        let tuple = current.cast::<PyTuple>()?;
         let mut out = Vec::with_capacity(tuple.len());
         for item in tuple {
             let handle: PyRef<'_, PyMetricsCollectorHandle> = item.extract()?;

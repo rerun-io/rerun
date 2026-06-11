@@ -1768,6 +1768,11 @@ pub enum TableInsertMode {
     Overwrite = 2,
     /// Overwrite rows based on the rerun_table_index fields.
     Replace = 3,
+    /// Update existing rows matched by rerun_table_index fields. Source rows that
+    /// do not match any existing row are dropped. The source schema may be a
+    /// subset of the table schema (only the key columns plus the columns to
+    /// update). Maps to SQL `UPDATE`.
+    Update = 4,
 }
 impl TableInsertMode {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1780,6 +1785,7 @@ impl TableInsertMode {
             Self::Append => "TABLE_INSERT_MODE_APPEND",
             Self::Overwrite => "TABLE_INSERT_MODE_OVERWRITE",
             Self::Replace => "TABLE_INSERT_MODE_REPLACE",
+            Self::Update => "TABLE_INSERT_MODE_UPDATE",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1789,6 +1795,7 @@ impl TableInsertMode {
             "TABLE_INSERT_MODE_APPEND" => Some(Self::Append),
             "TABLE_INSERT_MODE_OVERWRITE" => Some(Self::Overwrite),
             "TABLE_INSERT_MODE_REPLACE" => Some(Self::Replace),
+            "TABLE_INSERT_MODE_UPDATE" => Some(Self::Update),
             _ => None,
         }
     }

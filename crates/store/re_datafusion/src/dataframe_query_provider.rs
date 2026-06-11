@@ -68,7 +68,7 @@ pub(crate) fn attach_trace_context(
 
 #[derive(Debug)]
 pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
-    props: PlanProperties,
+    props: Arc<PlanProperties>,
     index_values: IndexValuesMap,
 
     /// Describes the chunks per partition, derived from `chunk_info_batches`.
@@ -532,7 +532,8 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             output_partitioning,
             EmissionType::Incremental,
             Boundedness::Bounded,
-        );
+        )
+        .into();
 
         // Compute total uncompressed size for adaptive budget before consuming the batches.
         let total_uncompressed: usize = chunk_info_batches
@@ -589,7 +590,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         self
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.props
     }
 
@@ -780,13 +781,19 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             snapshot_sent: Arc::clone(&self.snapshot_sent),
         };
 
-        plan.props.partitioning = match plan.props.partitioning {
+        let partitioning = match &plan.props.as_ref().partitioning {
             Partitioning::RoundRobinBatch(_) => Partitioning::RoundRobinBatch(target_partitions),
             Partitioning::UnknownPartitioning(_) => {
                 Partitioning::UnknownPartitioning(target_partitions)
             }
-            Partitioning::Hash(expr, _) => Partitioning::Hash(expr, target_partitions),
+            Partitioning::Hash(expr, _) => Partitioning::Hash(expr.clone(), target_partitions),
         };
+        plan.props = self
+            .props
+            .as_ref()
+            .clone()
+            .with_partitioning(partitioning)
+            .into();
 
         Ok(Some(Arc::new(plan) as Arc<dyn ExecutionPlan>))
     }

@@ -56,7 +56,8 @@ fn arrange_binary_expr_as_col_on_left(expr: &BinaryExpr) -> BinaryExpr {
         | Operator::AtQuestion
         | Operator::Question
         | Operator::QuestionAnd
-        | Operator::QuestionPipe => expr.op,
+        | Operator::QuestionPipe
+        | Operator::Colon => expr.op,
     };
 
     BinaryExpr {

@@ -2807,6 +2807,7 @@ pub enum TableInsertMode {
     Append,
     Overwrite,
     Replace,
+    Update,
 }
 
 impl Default for TableInsertMode {
@@ -2831,6 +2832,7 @@ impl From<crate::cloud::v1alpha1::TableInsertMode> for TableInsertMode {
             cloud::TableInsertMode::Unspecified | cloud::TableInsertMode::Append => Self::Append,
             cloud::TableInsertMode::Overwrite => Self::Overwrite,
             cloud::TableInsertMode::Replace => Self::Replace,
+            cloud::TableInsertMode::Update => Self::Update,
         }
     }
 }
@@ -2841,6 +2843,7 @@ impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
             TableInsertMode::Append => Self::Append,
             TableInsertMode::Overwrite => Self::Overwrite,
             TableInsertMode::Replace => Self::Replace,
+            TableInsertMode::Update => Self::Update,
         }
     }
 }

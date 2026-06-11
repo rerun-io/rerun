@@ -27,6 +27,7 @@ use crate::chunk::PyChunkInternal;
 /// straight to [`LazyChunkStream::from_factory`] -- no intermediate wrapper.
 #[pyclass(
     frozen,
+    from_py_object,
     name = "ChunkStoreInternal",
     module = "rerun_bindings.rerun_bindings"
 )]

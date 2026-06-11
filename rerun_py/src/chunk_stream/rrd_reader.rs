@@ -18,6 +18,7 @@ use super::{ChunkStream, ChunkStreamFactory};
 /// Describes a single store found in an RRD file.
 #[pyclass(
     frozen,
+    from_py_object,
     name = "StoreEntryInternal",
     module = "rerun_bindings.rerun_bindings"
 )]

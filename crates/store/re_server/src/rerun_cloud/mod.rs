@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use arrow::array::BinaryArray;
 use arrow::record_batch::RecordBatch;
-use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::{IntMap, IntSet};
 use tokio_stream::StreamExt as _;
@@ -976,13 +975,8 @@ impl RerunCloudService for RerunCloudHandler {
             let Some(table) = store.table_mut(entry_id) else {
                 return Err(tonic::Status::not_found("table not found"));
             };
-            let insert_op = match TableInsertMode::try_from(write_msg.insert_mode)
-                .map_err(|err| Status::invalid_argument(err.to_string()))?
-            {
-                TableInsertMode::Append => InsertOp::Append,
-                TableInsertMode::Overwrite => InsertOp::Overwrite,
-                TableInsertMode::Replace => InsertOp::Replace,
-            };
+            let insert_op = TableInsertMode::try_from(write_msg.insert_mode)
+                .map_err(|err| Status::invalid_argument(err.to_string()))?;
 
             table.write_table(rb, insert_op).await.map_err(|err| {
                 tonic::Status::internal(format!("error writing to table: {err:#}"))

@@ -61,9 +61,16 @@ pub(crate) fn ffi_logical_codec_from_pycapsule(
         obj.to_owned()
     };
 
-    let capsule = capsule.downcast::<PyCapsule>()?;
-    // Safety: If we cannot downcast this then there is something very wrong with datafusion-python
-    let codec = unsafe { capsule.reference::<FFI_LogicalExtensionCodec>() };
+    let capsule = capsule.cast::<PyCapsule>()?;
+    let codec_ptr = capsule
+        .pointer_checked(Some(c"datafusion_logical_extension_codec"))?
+        .cast::<FFI_LogicalExtensionCodec>();
+    // Safety: `pointer_checked` has verified the capsule name matches
+    // `datafusion_logical_extension_codec` and that the pointer is non-null. We trust
+    // datafusion-python to have stored a valid, initialized `FFI_LogicalExtensionCodec`
+    // behind a capsule of that name; if it hasn't, something is very wrong with
+    // datafusion-python.
+    let codec = unsafe { codec_ptr.as_ref() };
 
     Ok(codec.clone())
 }

@@ -120,12 +120,12 @@ impl TableProvider for LocalChunkStoreTableProvider {
         // `RecordBatch::project` after we align each batch to `full_schema`.
         let projection_indices: Option<Vec<usize>> = projection.cloned();
 
-        let props = PlanProperties::new(
+        let props = Arc::new(PlanProperties::new(
             EquivalenceProperties::new(Arc::clone(&projected_schema)),
             Partitioning::UnknownPartitioning(1),
             EmissionType::Incremental,
             Boundedness::Bounded,
-        );
+        ));
 
         Ok(Arc::new(LocalChunkStoreExec {
             engine: self.engine.clone(),
@@ -152,7 +152,7 @@ struct LocalChunkStoreExec {
 
     /// `None` means "no projection" — emit the unprojected batch as-is.
     projection_indices: Option<Vec<usize>>,
-    props: PlanProperties,
+    props: Arc<PlanProperties>,
     limit: Option<usize>,
 }
 
@@ -186,7 +186,7 @@ impl ExecutionPlan for LocalChunkStoreExec {
         self
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.props
     }
 

@@ -70,7 +70,7 @@ dev = [
   "huggingface-hub<1.0",
   # Typed packages for dataframe/arrow operations (needed for linting examples/tests)
   "polars>=1.0",
-  "datafusion>=50.0",
+  "datafusion>=53.0",
   "jupyter>=1.0",
   "types-protobuf", # Needed by mcap-protobuf-support
   # Needed for pretty-printing tables in `fetch_patch_candidates.py`

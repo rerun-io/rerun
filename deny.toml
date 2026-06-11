@@ -64,6 +64,7 @@ skip = [
   { name = "console" }, # smallish
   { name = "core-foundation" }, # Currently, e.g. `webbrowser` and `winit` use different versions.
   { name = "downcast-rs" }, # eco-system is transitioning from 1 to 2
+  { name = "getrandom" }, # ring uses 0.2, ahash/arrow/datafusion use 0.3
   { name = "float-cmp" },
   { name = "gimli" }, # wasm-bindgen
   { name = "hashbrown" }, # Old version used by polar-rs
@@ -88,6 +89,7 @@ skip = [
   { name = "zip" }, # duplicated by `protoc-prebuilt`, which uses an ancient version.
 ]
 skip-tree = [
+  { name = "darling" }, # enumset_derive uses 0.21, serde_with_macros (via lance-namespace) uses 0.23
   { name = "petgraph" }, # b/c lance
   { name = "phf" }, # b/c mime_guess2
   { name = "rand_distr" }, # from ndarray-rand

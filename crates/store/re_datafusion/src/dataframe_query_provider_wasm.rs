@@ -41,7 +41,7 @@ use tonic::IntoRequest as _;
 
 #[derive(Debug)]
 pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
-    props: PlanProperties,
+    props: Arc<PlanProperties>,
 
     /// Describes the chunks per segment, derived from `chunk_info_batches`.
     /// We keep both around so that we only have to process once, but we may
@@ -342,7 +342,8 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             output_partitioning,
             EmissionType::Incremental,
             Boundedness::Bounded,
-        );
+        )
+        .into();
 
         let chunk_info = group_chunk_infos_by_segment_id(chunk_info_batches.as_slice())?;
         drop(chunk_info_batches);
@@ -432,7 +433,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         self
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.props
     }
 
@@ -474,13 +475,19 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             snapshot_sent: Arc::clone(&self.snapshot_sent),
         };
 
-        plan.props.partitioning = match plan.props.partitioning {
+        let partitioning = match &plan.props.as_ref().partitioning {
             Partitioning::RoundRobinBatch(_) => Partitioning::RoundRobinBatch(target_partitions),
             Partitioning::UnknownPartitioning(_) => {
                 Partitioning::UnknownPartitioning(target_partitions)
             }
-            Partitioning::Hash(expr, _) => Partitioning::Hash(expr, target_partitions),
+            Partitioning::Hash(expr, _) => Partitioning::Hash(expr.clone(), target_partitions),
         };
+        plan.props = self
+            .props
+            .as_ref()
+            .clone()
+            .with_partitioning(partitioning)
+            .into();
 
         Ok(Some(Arc::new(plan) as Arc<dyn ExecutionPlan>))
     }

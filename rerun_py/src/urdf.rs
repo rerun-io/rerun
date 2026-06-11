@@ -193,7 +193,11 @@ impl PyUrdfTree {
 }
 
 /// Wrapper around a URDF joint.
-#[pyclass(name = "_UrdfJointInternal", module = "rerun_bindings.rerun_bindings")]
+#[pyclass(
+    name = "_UrdfJointInternal",
+    from_py_object,
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone)]
 pub struct PyUrdfJoint {
     pub joint: Joint,
@@ -417,7 +421,11 @@ impl PyUrdfJoint {
 }
 
 /// URDF `<mimic>` tag: this joint's value is derived from a driver joint.
-#[pyclass(name = "_UrdfMimicInternal", module = "rerun_bindings.rerun_bindings")]
+#[pyclass(
+    name = "_UrdfMimicInternal",
+    from_py_object,
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone)]
 pub struct PyUrdfMimic(pub Mimic);
 
@@ -456,7 +464,11 @@ impl PyUrdfMimic {
 }
 
 /// URDF link
-#[pyclass(name = "_UrdfLinkInternal", module = "rerun_bindings.rerun_bindings")]
+#[pyclass(
+    name = "_UrdfLinkInternal",
+    from_py_object,
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone)]
 pub struct PyUrdfLink(pub Link);
 
