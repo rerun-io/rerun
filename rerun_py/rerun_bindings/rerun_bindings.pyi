@@ -1545,6 +1545,25 @@ class McapReaderInternal:
     @staticmethod
     def available_decoders() -> list[str]: ...
 
+class Mp4ReaderInternal:
+    """Internal implementation. Use Mp4Reader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: str,
+        mode: Literal["asset", "stream"] = "stream",
+        chunk_by_gop: bool = True,
+        timeline_name: str = "video",
+        timeline_type: Literal["duration", "timestamp"] = "duration",
+        allow_b_frames: bool = False,
+        entity_path: str | None = None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> Path: ...
+    @property
+    def entity_path(self) -> str: ...
+
 class ParquetReaderInternal:
     """Internal implementation. Use ParquetReader from rerun.experimental instead."""
 

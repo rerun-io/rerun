@@ -9255,11 +9255,13 @@ name = "re_mp4_reader"
 version = "0.34.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "itertools 0.14.0",
  "re_chunk",
  "re_log",
  "re_log_types",
  "re_sdk_types",
  "re_tracing",
+ "re_video",
  "thiserror 2.0.18",
 ]
 
@@ -11109,6 +11111,7 @@ dependencies = [
  "re_log_types",
  "re_mcap",
  "re_memory",
+ "re_mp4_reader",
  "re_parquet",
  "re_perf_telemetry",
  "re_protos",

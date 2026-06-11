@@ -277,15 +277,15 @@ fn load_video(
     let config = re_mp4_reader::Mp4Config {
         mode: re_mp4_reader::Mode::Asset { timepoint },
         timeline_name: "video".into(),
+        timeline_type: re_log_types::TimeType::DurationNs,
     };
 
     // An up-front failure (e.g. the asset being too large) aborts the import.
-    let chunks =
-        re_mp4_reader::load_mp4_from_bytes(contents, &config, entity_path).map_err(|err| {
-            ImporterError::Mp4 {
-                path: filepath.to_path_buf(),
-                source: err,
-            }
+    let debug_name = filepath.display().to_string();
+    let chunks = re_mp4_reader::load_mp4_from_bytes(contents, &config, entity_path, &debug_name)
+        .map_err(|err| ImporterError::Mp4 {
+            path: filepath.to_path_buf(),
+            source: err,
         })?;
 
     // The returned iterator is lazy — chunks are constructed one at a time as

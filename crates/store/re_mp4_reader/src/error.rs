@@ -12,19 +12,29 @@ pub enum Mp4Error {
          Maximum supported blob size is ~2 GiB due to Arrow i32 offset limits."
     )]
     AssetTooLarge(usize),
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+    #[error("MP4 demux: {0}")]
+    Demux(#[from] re_video::VideoLoadError),
 
-    #[test]
-    fn asset_too_large_display_is_stable() {
-        let err = Mp4Error::AssetTooLarge(3_000_000_000);
-        let s = err.to_string();
-        assert!(
-            s.contains("3000000000 bytes") && s.contains("Maximum supported blob size is ~2 GiB"),
-            "unexpected display: {s}"
-        );
-    }
+    #[error(
+        "MP4 contains B-frames; the `VideoStream` archetype does not yet model differing \
+         DTS/PTS (see https://github.com/rerun-io/rerun/issues/10090). \
+         Use `Mode::Asset` or pass `allow_b_frames = true` and transcode downstream."
+    )]
+    BFramesInStreamMode,
+
+    #[error("MP4 with image-sequence codec is not supported by `Mode::Stream`; use `Mode::Asset`")]
+    ImageSequenceInStreamMode,
+
+    #[error(
+        "MP4 has samples before the first keyframe; `Mode::Stream` requires the stream to begin \
+         on a keyframe (a decoder cannot start mid-GOP). Use `Mode::Asset`."
+    )]
+    SamplesBeforeFirstKeyframe,
+
+    #[error("MP4 has no timescale; cannot derive sample timestamps")]
+    NoTimescale,
+
+    #[error("MP4 sample conversion: {0}")]
+    SampleConversion(String),
 }

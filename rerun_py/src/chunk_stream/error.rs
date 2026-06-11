@@ -63,6 +63,9 @@ pub enum ChunkPipelineError {
     #[error("MCAP error: {reason}")]
     Mcap { reason: String },
 
+    #[error("MP4 error: {reason}")]
+    Mp4 { reason: String },
+
     #[error("Parquet error: {reason}")]
     Parquet { reason: String },
 
@@ -101,6 +104,7 @@ impl From<ChunkPipelineError> for pyo3::PyErr {
             | ChunkPipelineError::RrdRead { .. }
             | ChunkPipelineError::RrdNoManifest { .. }
             | ChunkPipelineError::Mcap { .. }
+            | ChunkPipelineError::Mp4 { .. }
             | ChunkPipelineError::Parquet { .. }
             | ChunkPipelineError::Urdf { .. }
             | ChunkPipelineError::ChunkStoreInsert { .. }

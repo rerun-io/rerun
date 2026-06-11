@@ -172,6 +172,12 @@ impl PyParquetReaderInternal {
     }
 }
 
+// TODO(RR-4850): this spawn-thread + bounded-channel block is hand-copied across
+// mp4/mcap/parquet. Factor it into a shared `spawn_threaded_stream` adapter and
+// benchmark. Note parquet's iterator is `!Send` (see below), so the threaded
+// adapter must bound only the `produce` closure as `Send` — not `I` itself, since
+// the iterator is created and consumed entirely on the worker thread. This reader
+// therefore cannot use the synchronous `IterStream` variant.
 impl ChunkStreamFactory for PyParquetReaderInternal {
     fn create(&self) -> Result<Box<dyn ChunkStream>, ChunkPipelineError> {
         let (tx, rx) = crossbeam::channel::bounded::<Result<Arc<Chunk>, ChunkPipelineError>>(

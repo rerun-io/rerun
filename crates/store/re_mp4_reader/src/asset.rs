@@ -1,7 +1,7 @@
 //! Asset-mode chunk emission: lift of `re_importer::importer_archetype::load_video`.
 
 use re_chunk::{Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimePoint};
-use re_log_types::{Timeline, TimelineName};
+use re_log_types::{TimeType, Timeline, TimelineName};
 use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_sdk_types::components::VideoTimestamp;
 
@@ -38,12 +38,16 @@ enum State {
 
 impl AssetChunkIter {
     /// `timepoint` is placed on the [`AssetVideo`] blob chunk. `timeline_name`
-    /// is the name of the duration-typed timeline used for the
-    /// [`VideoFrameReference`] index chunk.
+    /// and `timeline_type` name and type the timeline used for the
+    /// [`VideoFrameReference`] index chunk. The emitted frame timestamps are PTS
+    /// (durations since the start of the video) regardless of `timeline_type`;
+    /// passing [`TimeType::TimestampNs`] only changes the declared timeline type
+    /// and is meant to be paired with a downstream retag step.
     pub(crate) fn new(
         bytes: Vec<u8>,
         entity_path: &EntityPath,
         timeline_name: TimelineName,
+        timeline_type: TimeType,
         timepoint: TimePoint,
     ) -> Result<Self, Mp4Error> {
         // TODO(#10929): remove this once the limit got fixed.
@@ -53,7 +57,7 @@ impl AssetChunkIter {
 
         Ok(Self {
             entity_path: entity_path.clone(),
-            timeline: Timeline::new_duration(timeline_name),
+            timeline: Timeline::new(timeline_name, timeline_type),
             state: State::Asset { bytes, timepoint },
         })
     }
