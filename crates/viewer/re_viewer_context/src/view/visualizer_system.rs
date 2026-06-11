@@ -146,6 +146,12 @@ impl VisualizerQueryInfo {
 /// Sorts from least concern to highest.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
 pub enum VisualizerReportSeverity {
+    /// A purely informational report for a component.
+    ///
+    /// For example if a component is not supported in some situations, but that's expected
+    /// (e.g. a colormap component that has no effect with non-grayscale image data).
+    Info,
+
     /// Something went wrong on an optional component.
     ///
     /// We can often still show something using the default.

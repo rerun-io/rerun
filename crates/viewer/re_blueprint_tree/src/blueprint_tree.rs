@@ -560,6 +560,7 @@ impl BlueprintTree {
                         | VisualizerReportSeverity::OverallVisualizerError,
                     ) => Some(ui.visuals().error_fg_color),
                     Some(VisualizerReportSeverity::Warning) => Some(ui.visuals().warn_fg_color),
+                    Some(VisualizerReportSeverity::Info) => None,
                     None => is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color),
                 };
 

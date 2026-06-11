@@ -41,7 +41,8 @@ fn test_grid_map_texel_accuracy() {
                 pixels.clone(),
                 ImageFormat::from_color_model([width, height], ColorModel::L, ChannelDatatype::U8),
                 cell_size,
-            ),
+            )
+            .with_colormap(Colormap::Grayscale),
         )
     });
 
@@ -55,6 +56,7 @@ fn test_grid_map_texel_accuracy() {
                 ImageFormat::from_color_model([width, height], ColorModel::L, ChannelDatatype::U8),
                 cell_size,
             )
+            .with_colormap(Colormap::Grayscale)
             .with_translation([5.0, 5.0, 0.0])
             .with_rotation_axis_angle(RotationAxisAngle::new(
                 glam::Vec3::Z,
