@@ -20,7 +20,7 @@ use super::SpatialViewVisualizerData;
 use super::entity_iterator::process_archetype;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 
-const NUM_VOXEL_LIMIT_PER_BATCH: usize = 100_000;
+const NUM_VOXEL_LIMIT_PER_BATCH: usize = 5_000_000;
 
 #[derive(Default)]
 pub struct VoxelGridMapVisualizer;
