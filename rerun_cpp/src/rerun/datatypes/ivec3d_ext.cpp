@@ -1,4 +1,4 @@
-#include "i_vec3d.hpp"
+#include "ivec3d.hpp"
 
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION

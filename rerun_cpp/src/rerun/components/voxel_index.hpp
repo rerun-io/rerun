@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/i_vec3d.hpp"
+#include "../datatypes/ivec3d.hpp"
 #include "../result.hpp"
 
 #include <array>

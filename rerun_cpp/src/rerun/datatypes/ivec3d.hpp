@@ -20,7 +20,7 @@ namespace rerun::datatypes {
     struct IVec3D {
         std::array<int32_t, 3> xyz;
 
-      public: // START of extensions from i_vec3d_ext.cpp:
+      public: // START of extensions from ivec3d_ext.cpp:
         /// Construct IVec3D from x/y/z values.
         IVec3D(int32_t x, int32_t y, int32_t z) : xyz{x, y, z} {}
 
@@ -39,7 +39,7 @@ namespace rerun::datatypes {
             return xyz[2];
         }
 
-        // END of extensions from i_vec3d_ext.cpp, start of generated code:
+        // END of extensions from ivec3d_ext.cpp, start of generated code:
 
       public:
         IVec3D() = default;
