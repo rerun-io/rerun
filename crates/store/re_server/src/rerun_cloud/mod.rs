@@ -15,7 +15,7 @@ use re_chunk_store::{
 };
 use re_log_encoding::ToTransport as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, TimelineName};
-use re_protos::cloud::v1alpha1::ext::QueryTasksDataframe;
+use re_protos::cloud::v1alpha1::ext::{QueryTasksDataframe, RegisterWithDatasetDataframe};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, DoBandwidthTestResponse,
@@ -23,8 +23,8 @@ use re_protos::cloud::v1alpha1::{
     GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse, GetRrdManifestResponse,
     GetSegmentTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
     QueryTasksOnCompletionResponse, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
-    RegisterTableResponse, RegisterWithDatasetResponse, ScanDatasetManifestRequest,
-    ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse,
+    RegisterTableResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
+    ScanSegmentTableResponse, ScanTableResponse,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_protos::headers::RerunHeadersExtractorExt as _;
@@ -787,13 +787,14 @@ impl RerunCloudService for RerunCloudHandler {
             task_ids,
         } = do_register_with_dataset(&mut store, dataset_id, data_sources, on_duplicate).await?;
 
-        let record_batch = RegisterWithDatasetResponse::create_dataframe(
-            segment_ids,
-            segment_layers,
-            segment_types,
-            storage_urls,
-            task_ids,
-        )
+        let record_batch = RegisterWithDatasetDataframe {
+            rerun_segment_id: segment_ids.into(),
+            rerun_segment_layer: segment_layers.into(),
+            rerun_segment_type: segment_types.into(),
+            rerun_storage_url: storage_urls.into(),
+            rerun_task_id: task_ids.into(),
+        }
+        .into_record_batch()
         .map_err(|err| tonic::Status::internal(format!("Failed to create dataframe: {err:#}")))?;
         Ok(tonic::Response::new(
             re_protos::cloud::v1alpha1::RegisterWithDatasetResponse {

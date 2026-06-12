@@ -11,10 +11,10 @@ use re_protos::cloud::v1alpha1::ext::{
     DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
     QueryDatasetRequest, QueryTasksOnCompletionRequest, QueryTasksRequest,
     ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
-    RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableDetails, TableEntry,
-    TableInsertMode, UnregisterFromDatasetRequest, UpdateDatasetEntryRequest,
-    UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest,
-    UpdateTableEntryResponse, VersionResponse,
+    RegisterWithDatasetDataframe, RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor,
+    TableDetails, TableEntry, TableInsertMode, UnregisterFromDatasetRequest,
+    UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
+    UpdateTableEntryRequest, UpdateTableEntryResponse, VersionResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::cloud::v1alpha1::{
@@ -30,7 +30,7 @@ use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, Segm
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
+use re_protos::{TypeConversionError, missing_column, missing_field};
 use re_types_core::LayerName;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
@@ -985,113 +985,48 @@ where
                 )
             })?;
 
-        // TODO(andrea): why is the schema completely off?
-        #[expect(clippy::overly_complex_bool_expr)]
-        if false
-            && !response
-                .schema()
-                .contains(&RegisterWithDatasetResponse::schema())
-        {
-            let err = invalid_schema!(RegisterWithDatasetResponse);
-            return Err(ApiError::deserialization_with_source(
-                trace_id,
-                err,
-                "invalid schema in /RegisterWithDataset response",
-            ));
-        }
-
-        let get_string_array = |column_name: &'static str| {
-            response
-                .column_by_name(column_name)
-                .and_then(|column| {
-                    column
-                        .try_downcast_array_ref::<arrow::array::StringArray>()
-                        .ok()
-                })
-                .ok_or_else(|| {
-                    let err = missing_column!(RegisterWithDatasetResponse, column_name);
-                    ApiError::deserialization_with_source(
-                        trace_id,
-                        err,
-                        "missing column in /RegisterWithDataset response",
-                    )
-                })
-        };
-
-        let segment_id_column = get_string_array(RegisterWithDatasetResponse::FIELD_SEGMENT_ID)?;
-        let segment_type_column = DataSourceKind::many_from_arrow(
-            response
-                .column_by_name(RegisterWithDatasetResponse::FIELD_SEGMENT_TYPE)
-                .ok_or_else(|| {
-                    let err = missing_column!(
-                        RegisterWithDatasetResponse,
-                        RegisterWithDatasetResponse::FIELD_SEGMENT_TYPE
-                    );
-                    ApiError::deserialization_with_source(
-                        trace_id,
-                        err,
-                        "missing column in /RegisterWithDataset response",
-                    )
-                })?,
-        )
-        .map_err(|err| {
+        // Validates the columns (existence, datatype, no nulls):
+        let RegisterWithDatasetDataframe {
+            rerun_segment_id,
+            rerun_segment_layer: _, // TODO(emilk): return this too
+            rerun_segment_type,
+            rerun_storage_url,
+            rerun_task_id,
+        } = RegisterWithDatasetDataframe::try_from(response).map_err(|err| {
             ApiError::deserialization_with_source(
                 trace_id,
                 err,
-                "failed parsing /RegisterWithDataset response",
+                "invalid dataframe in /RegisterWithDataset response",
             )
         })?;
-        let storage_url_column = get_string_array(RegisterWithDatasetResponse::FIELD_STORAGE_URL)?;
-        let task_id_column = get_string_array(RegisterWithDatasetResponse::FIELD_TASK_ID)?;
+
+        let segment_types = DataSourceKind::many_from_arrow(rerun_segment_type.as_arrow().as_ref())
+            .map_err(|err| {
+                ApiError::deserialization_with_source(
+                    trace_id,
+                    err,
+                    "failed parsing /RegisterWithDataset response",
+                )
+            })?;
 
         let descriptors = itertools::izip!(
-            segment_id_column,
-            segment_type_column,
-            storage_url_column,
-            task_id_column,
+            rerun_segment_id,
+            segment_types,
+            rerun_storage_url,
+            rerun_task_id
         )
         .map(|(segment_id, segment_type, storage_url, task_id)| {
             Ok(RegisterWithDatasetTaskDescriptor {
-                segment_id: SegmentId::new(
-                    segment_id
-                        .ok_or_else(|| {
-                            let err = missing_field!(RegisterWithDatasetResponse, "segment_id");
-                            ApiError::deserialization_with_source(
-                                trace_id,
-                                err,
-                                "missing field in /RegisterWithDataset response",
-                            )
-                        })?
-                        .to_owned(),
-                ),
+                segment_id,
                 segment_type,
-                storage_url: url::Url::parse(storage_url.ok_or_else(|| {
-                    let err = missing_field!(RegisterWithDatasetResponse, "storage_url");
-                    ApiError::deserialization_with_source(
-                        trace_id,
-                        err,
-                        "missing field in /RegisterWithDataset response",
-                    )
-                })?)
-                .map_err(|err| {
+                storage_url: url::Url::parse(&storage_url).map_err(|err| {
                     ApiError::deserialization_with_source(
                         trace_id,
                         TypeConversionError::UrlParseError(err),
                         "failed to parse /RegisterWithDataset response",
                     )
                 })?,
-                task_id: TaskId {
-                    id: task_id
-                        .ok_or_else(|| {
-                            let err = missing_field!(RegisterWithDatasetResponse, "task_id");
-                            ApiError::deserialization_with_source(
-                                trace_id,
-                                err,
-                                "missing field in /RegisterWithDataset response",
-                            )
-                        })?
-                        .to_owned(),
-                },
+                task_id,
             })
         })
         .try_collect()?;

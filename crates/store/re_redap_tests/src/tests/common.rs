@@ -10,7 +10,7 @@ use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CreateDatasetEntryRequest, DataSource, QueryTasksOnCompletionRequest,
-    RegisterWithDatasetRequest, RegisterWithDatasetResponse,
+    RegisterWithDatasetRequest, ext,
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
@@ -224,16 +224,11 @@ pub async fn register_and_wait(
         .try_into()
         .expect("record batch expected");
 
-    // extract task ids from the response record batch
-    let task_ids: Vec<TaskId> = resp
-        .column_by_name(RegisterWithDatasetResponse::FIELD_TASK_ID)
-        .expect("task_id column expected")
-        .as_any()
-        .downcast_ref::<arrow::array::StringArray>()
-        .expect("task_id column should be a string array")
-        .iter()
-        .flatten()
-        .map(|s| TaskId { id: s.to_owned() })
+    // extract task ids from the response
+    let task_ids: Vec<TaskId> = ext::RegisterWithDatasetDataframe::COLUMN_RERUN_TASK_ID
+        .extract(&resp)
+        .expect("valid task id column")
+        .into_iter()
         .unique() // dups are possible because of batching partitions per task
         .collect();
 

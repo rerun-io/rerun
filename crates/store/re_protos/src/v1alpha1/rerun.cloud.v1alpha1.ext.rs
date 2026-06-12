@@ -17,8 +17,8 @@ use re_types_core::{LayerClass, LayerName};
 
 use crate::cloud::v1alpha1::{
     DoBandwidthTestResponse, EntryKind, FetchChunksRequest, GetDatasetSchemaResponse,
-    QueryDatasetResponse, QueryTasksResponse, RegisterWithDatasetResponse,
-    ScanDatasetManifestResponse, ScanSegmentTableResponse, UnregisterFromDatasetResponse,
+    QueryDatasetResponse, QueryTasksResponse, ScanDatasetManifestResponse,
+    ScanSegmentTableResponse, UnregisterFromDatasetResponse,
 };
 use crate::common::v1alpha1::ext as common_ext;
 use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
@@ -2099,52 +2099,25 @@ impl GetDatasetSchemaResponse {
 
 // --- RegisterWithDatasetResponse ---
 
-impl RegisterWithDatasetResponse {
-    pub const FIELD_SEGMENT_ID: &str = "rerun_segment_id";
-    pub const FIELD_SEGMENT_LAYER: &str = "rerun_segment_layer";
-    pub const FIELD_SEGMENT_TYPE: &str = "rerun_segment_type";
-    pub const FIELD_STORAGE_URL: &str = "rerun_storage_url";
-    pub const FIELD_TASK_ID: &str = "rerun_task_id";
+/// Strongly-typed view of the dataframe in [`crate::cloud::v1alpha1::RegisterWithDatasetResponse::data`].
+///
+/// One row per registered data source. The field names are the column names.
+#[derive(Default, quiver::Quiver)]
+pub struct RegisterWithDatasetDataframe {
+    /// The id of the segment the data source was registered to.
+    pub rerun_segment_id: quiver::Column<SegmentId>,
 
-    /// The Arrow schema of the dataframe in [`Self::data`].
-    pub fn schema() -> Schema {
-        Schema::new(vec![
-            Field::new(Self::FIELD_SEGMENT_ID, DataType::Utf8, false),
-            Field::new(Self::FIELD_SEGMENT_LAYER, DataType::Utf8, false),
-            Field::new(Self::FIELD_SEGMENT_TYPE, DataType::Utf8, false),
-            Field::new(Self::FIELD_STORAGE_URL, DataType::Utf8, false),
-            Field::new(Self::FIELD_TASK_ID, DataType::Utf8, false),
-        ])
-    }
+    /// The layer the data source was registered as.
+    pub rerun_segment_layer: quiver::Column<LayerName>,
 
-    /// Helper to simplify instantiation of the dataframe in [`Self::data`].
-    pub fn create_dataframe(
-        segment_ids: Vec<String>,
-        segment_layers: Vec<LayerName>,
-        segment_types: Vec<String>,
-        storage_urls: Vec<String>,
-        task_ids: Vec<String>,
-    ) -> arrow::error::Result<RecordBatch> {
-        let row_count = segment_ids.len();
-        let schema = Arc::new(Self::schema());
-        let segment_layers: Vec<String> = segment_layers
-            .into_iter()
-            .map(LayerName::into_string)
-            .collect();
-        let columns: Vec<ArrayRef> = vec![
-            Arc::new(StringArray::from(segment_ids)),
-            Arc::new(StringArray::from(segment_layers)),
-            Arc::new(StringArray::from(segment_types)),
-            Arc::new(StringArray::from(storage_urls)),
-            Arc::new(StringArray::from(task_ids)),
-        ];
+    /// The kind of data source, e.g. `rrd`.
+    pub rerun_segment_type: quiver::Column<quiver::Utf8>,
 
-        RecordBatch::try_new_with_options(
-            schema,
-            columns,
-            &RecordBatchOptions::default().with_row_count(Some(row_count)),
-        )
-    }
+    /// Where the data source's data is stored.
+    pub rerun_storage_url: quiver::Column<quiver::Utf8>,
+
+    /// The id of the registration task, or the sentinel for synchronous success.
+    pub rerun_task_id: quiver::Column<TaskId>,
 }
 
 //TODO(ab): this should be an actual grpc message, returned by `RegisterWithDataset` instead of a dataframe
@@ -3233,16 +3206,20 @@ mod tests {
         out
     }
 
-    /// Pin the wire schema of the `QueryTasks` response dataframe, including
+    /// Pin the wire schemas of the response dataframes, including
     /// column order, nullability, and field metadata.
     ///
-    /// If this snapshot changes, you are changing the public wire format —
-    /// make sure all consumers can handle it.
+    /// If one of these snapshots changes, you are changing the public wire
+    /// format — make sure all consumers can handle it.
     #[test]
-    fn query_tasks_dataframe_schema_snapshot() {
+    fn dataframe_schema_snapshots() {
         insta::assert_snapshot!(
             "query_tasks_dataframe_schema",
             format_schema(&QueryTasksDataframe::max_schema())
+        );
+        insta::assert_snapshot!(
+            "register_with_dataset_dataframe_schema",
+            format_schema(&RegisterWithDatasetDataframe::max_schema())
         );
     }
 }

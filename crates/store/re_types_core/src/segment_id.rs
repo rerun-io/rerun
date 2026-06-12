@@ -50,6 +50,9 @@ impl From<String> for SegmentId {
     }
 }
 
+// Make `quiver::Column<SegmentId>` work (backed by a `Utf8` column):
+quiver::newtype_datatype!(SegmentId, quiver::Utf8);
+
 impl From<&str> for SegmentId {
     fn from(id: &str) -> Self {
         Self { id: id.to_owned() }

@@ -19,7 +19,7 @@ use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CreateDatasetEntryRequest, GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest,
     ReadDatasetEntryRequest, ReadTableEntryRequest, ScanDatasetManifestRequest,
-    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
+    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse, ext,
 };
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -1349,7 +1349,7 @@ async fn register_and_wait_for_task_result(
     data_sources_def: DataSourcesDefinition,
 ) -> Vec<TaskResult> {
     use futures::StreamExt as _;
-    use re_protos::cloud::v1alpha1::{QueryTasksOnCompletionRequest, RegisterWithDatasetResponse};
+    use re_protos::cloud::v1alpha1::QueryTasksOnCompletionRequest;
     use re_protos::common::v1alpha1::TaskId;
     use std::collections::HashMap;
 
@@ -1374,33 +1374,24 @@ async fn register_and_wait_for_task_result(
         .expect("record batch expected");
 
     // Extract task IDs and group segments by task
-    let task_id_col = batch
-        .column_by_name(RegisterWithDatasetResponse::FIELD_TASK_ID)
-        .expect("task_id column expected")
-        .as_any()
-        .downcast_ref::<StringArray>()
-        .expect("task_id column should be a string array");
-
-    let segment_id_col = batch
-        .column_by_name(RegisterWithDatasetResponse::FIELD_SEGMENT_ID)
-        .expect("segment_id column expected")
-        .as_any()
-        .downcast_ref::<StringArray>()
-        .expect("segment_id column should be a string array");
-
-    let layer_col = batch
-        .column_by_name(RegisterWithDatasetResponse::FIELD_SEGMENT_LAYER)
-        .expect("layer column expected")
-        .as_any()
-        .downcast_ref::<StringArray>()
-        .expect("layer column should be a string array");
+    let task_id_col = ext::RegisterWithDatasetDataframe::COLUMN_RERUN_TASK_ID
+        .extract(&batch)
+        .expect("valid task_id column");
+    let segment_id_col = ext::RegisterWithDatasetDataframe::COLUMN_RERUN_SEGMENT_ID
+        .extract(&batch)
+        .expect("valid segment_id column");
+    let layer_col = ext::RegisterWithDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER
+        .extract(&batch)
+        .expect("valid layer column");
 
     // Group (segment_id, layer) by task_id
     let mut task_layers: HashMap<String, Vec<(SegmentId, String)>> = HashMap::default();
-    for i in 0..batch.num_rows() {
-        let task_id = task_id_col.value(i).to_owned();
-        let segment_id = SegmentId::from(segment_id_col.value(i));
-        let layer_name = layer_col.value(i).to_owned();
+    for (task_id, segment_id, layer_name) in
+        itertools::izip!(&task_id_col, &segment_id_col, &layer_col)
+    {
+        let task_id = task_id.to_owned();
+        let segment_id = SegmentId::from(segment_id);
+        let layer_name = layer_name.to_owned();
         task_layers
             .entry(task_id)
             .or_default()

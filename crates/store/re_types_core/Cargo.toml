@@ -43,6 +43,7 @@ document-features.workspace = true
 half.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+quiver.workspace = true
 serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 

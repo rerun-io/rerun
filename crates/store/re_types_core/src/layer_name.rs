@@ -73,6 +73,9 @@ impl From<LayerName> for String {
     }
 }
 
+// Make `quiver::Column<LayerName>` work (backed by a `Utf8` column):
+quiver::newtype_datatype!(LayerName, quiver::Utf8);
+
 impl AsRef<str> for LayerName {
     #[inline]
     fn as_ref(&self) -> &str {
