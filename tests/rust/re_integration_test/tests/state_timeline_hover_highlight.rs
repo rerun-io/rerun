@@ -48,8 +48,10 @@ pub async fn test_state_phase_hover_propagates_to_time_series() {
     }
 
     // Make the active timeline match the data we logged so both views query "frame".
-    harness.run_with_viewer_context(move |viewer_context| {
-        viewer_context.send_time_commands([TimeControlCommand::SetActiveTimeline(timeline_name)]);
+    harness.run_with_app_context(move |app_context| {
+        app_context.send_time_commands_to_active_recording([
+            TimeControlCommand::SetActiveTimeline(timeline_name),
+        ]);
     });
     harness.run();
 
@@ -86,9 +88,10 @@ pub async fn test_state_phase_hover_propagates_to_time_series() {
     harness.hover_at(hover_pos);
     harness.run();
 
-    let highlight = harness.run_with_viewer_context(move |viewer_context| {
-        viewer_context
-            .time_ctrl
+    let highlight = harness.run_with_app_context(move |app_context| {
+        app_context
+            .active_time_ctrl()
+            .expect("active recording route should have a time control")
             .highlighted_range()
             .filter(|h| {
                 h.timeline == timeline_name

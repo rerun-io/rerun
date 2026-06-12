@@ -13,7 +13,7 @@ use re_log_types::{
 use re_ui::{ContextExt as _, text_edit::autocomplete_text_edit};
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::external::re_entity_db::EntityDb;
-use re_viewer_context::{ActiveStoreContext, StorageContext};
+use re_viewer_context::{ActiveStoreContext, RedapEntryKind, Route, StorageContext};
 
 use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
 use crate::chunk_ui::ChunkUi;
@@ -115,8 +115,8 @@ impl ChunkListColumn {
 pub struct DatastoreUi {
     store_kind: StoreKind,
     selected_recording_id: Option<StoreId>,
-    last_route_recording_id: Option<StoreId>,
     selected_blueprint_id: Option<StoreId>,
+
     focused_chunk: Option<ChunkUi>,
     show_details_panels: bool,
 
@@ -136,7 +136,6 @@ impl Default for DatastoreUi {
         Self {
             store_kind: StoreKind::Recording,
             selected_recording_id: None,
-            last_route_recording_id: None,
             selected_blueprint_id: None,
             focused_chunk: None,
             show_details_panels: false,
@@ -157,7 +156,7 @@ pub struct DatastoreUiResult {
     ///
     /// This may differ from the route's input recording because the chunk browser
     /// can switch recordings locally via its recording selector.
-    pub recording_id: StoreId,
+    pub recording_id: Option<StoreId>,
 
     pub selected_chunk: Option<ChunkId>,
 }
@@ -166,7 +165,6 @@ impl DatastoreUi {
     fn reset_ui_state(&mut self) {
         self.store_kind = StoreKind::Recording;
         self.selected_recording_id = None;
-        self.last_route_recording_id = None;
         self.focused_chunk = None;
         self.show_details_panels = false;
         self.chunk_list_mode = ChunkListMode::default();
@@ -204,43 +202,67 @@ impl DatastoreUi {
     /// or `true` if the datastore UI should remain open.
     pub fn ui(
         &mut self,
-        ctx: &ActiveStoreContext<'_>,
+        ctx: Option<&ActiveStoreContext<'_>>,
         storage_context: &StorageContext<'_>,
         ui: &mut egui::Ui,
         timestamp_format: TimestampFormat,
         selected_chunk: Option<ChunkId>,
+        previous_route: &Route,
     ) -> DatastoreUiResult {
         let mut datastore_ui_active = true;
-        let route_recording_id = ctx.recording.store_id().clone();
+        let route_recording_id = ctx.map(|ctx| ctx.recording.store_id().clone());
 
-        // Keep the local recording override in sync with navigation changes such as
-        // back/forward actions that replace the chunk browser route from the outside.
-        if self.last_route_recording_id.as_ref() != Some(&route_recording_id)
-            && self.selected_recording_id.as_ref() != Some(&route_recording_id)
-        {
-            self.selected_recording_id = None;
+        // If we just came from a displayed store, show it!
+        let previous_recording_id = match previous_route {
+            Route::LocalRecording { recording_id } => Some(recording_id),
+            Route::RedapEntry {
+                origin,
+                kind: RedapEntryKind::Entry(entry_id),
+            } => storage_context
+                .bundle
+                .recordings()
+                .find(|db| {
+                    db.redap_uri()
+                        .is_some_and(|uri| &uri.origin == origin && uri.dataset_id == entry_id.id)
+                })
+                .map(|db| db.store_id()),
+            _ => None,
+        };
+        if let Some(rec_id) = previous_recording_id {
+            self.selected_blueprint_id = Some(rec_id.clone());
+            self.store_kind = StoreKind::Recording;
         }
-        self.last_route_recording_id = Some(route_recording_id);
 
-        // Resolve the recording to display: use the selected one if valid, otherwise
-        // fall back to the active recording.
-        let recording = self
-            .selected_recording_id
-            .as_ref()
-            .and_then(|id| storage_context.bundle.get(id))
-            .unwrap_or(ctx.recording);
+        let selected_store_id = match self.store_kind {
+            StoreKind::Recording => self.selected_recording_id.clone(),
+            StoreKind::Blueprint => self.selected_blueprint_id.clone(),
+        };
 
-        // Resolve the blueprint to display: use the selected one if valid, otherwise
-        // fall back to the active blueprint.
-        let blueprint = self
-            .selected_blueprint_id
-            .as_ref()
-            .and_then(|id| storage_context.bundle.get(id))
-            .unwrap_or(ctx.blueprint);
+        let Some(selected_store_id) = selected_store_id else {
+            ui.label("No recording selected");
+            return DatastoreUiResult {
+                keep_open: true,
+                recording_id: None,
+                selected_chunk: None,
+            };
+        };
 
-        let storage_engine = match self.store_kind {
-            StoreKind::Recording => recording.storage_engine(),
-            StoreKind::Blueprint => blueprint.storage_engine(),
+        let Some(storage_engine) = storage_context
+            .bundle
+            .get(&selected_store_id)
+            .map(|rec| rec.storage_engine())
+        else {
+            re_log::debug_warn_once!(
+                "Selected recording not found in storage context: {selected_store_id:?}. \
+                    This can happen if the recording was removed from the storage context, or if the chunk browser state got out of sync with the navigation route. \
+                    Route recording ID: {:?}",
+                route_recording_id,
+            );
+            return DatastoreUiResult {
+                keep_open: true,
+                recording_id: None,
+                selected_chunk: None,
+            };
         };
         let chunk_store = storage_engine.store();
 
@@ -289,7 +311,7 @@ impl DatastoreUi {
 
         DatastoreUiResult {
             keep_open: datastore_ui_active,
-            recording_id: recording.store_id().clone(),
+            recording_id: Some(selected_store_id),
             selected_chunk,
         }
     }

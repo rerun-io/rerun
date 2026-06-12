@@ -671,7 +671,7 @@ impl TestContext {
                 connection_registry: &self.connection_registry,
 
                 storage_context: &storage_context,
-                active_store_context: Some(&store_context), // TODO(RR-3033): should sometimes be `None`
+                active_store_context: Some(&store_context),
 
                 component_ui_registry: &self.component_ui_registry,
                 view_class_registry: &self.view_class_registry,

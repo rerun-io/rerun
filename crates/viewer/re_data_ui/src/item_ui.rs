@@ -751,7 +751,7 @@ pub fn entity_db_button_ui(
 }
 
 pub fn table_id_button_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     table_id: &TableId,
     ui_layout: UiLayout,

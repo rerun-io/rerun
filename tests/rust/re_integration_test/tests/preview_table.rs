@@ -139,10 +139,9 @@ pub async fn preview_table() {
         &mut harness,
         |harness| {
             let uris = preview_uris.clone();
-            harness.run_with_viewer_context(move |viewer_context| {
+            harness.run_with_app_context(move |app_context| {
                 uris.iter().all(|uri| {
-                    viewer_context
-                        .app_ctx
+                    app_context
                         .storage_context
                         .hub
                         .find_recording_by_uri(uri)
@@ -193,15 +192,13 @@ pub async fn preview_table() {
         &mut harness,
         |harness| {
             let uri = opened_segment.clone();
-            harness.run_with_viewer_context(move |viewer_context| {
-                let expected = viewer_context
-                    .app_ctx
+            harness.run_with_app_context(move |app_context| {
+                let expected = app_context
                     .storage_context
                     .hub
                     .find_recording_by_uri(&uri)
                     .map(|db| db.store_id().clone());
-                expected.is_some()
-                    && viewer_context.app_ctx.route.recording_id().cloned() == expected
+                expected.is_some() && app_context.route.recording_id().cloned() == expected
             })
         },
         Duration::from_millis(100),

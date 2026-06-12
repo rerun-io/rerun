@@ -10,7 +10,7 @@ pub enum Route {
     /// The settings dialog for application-wide configuration.
     Settings {
         /// What to return to when exiting this mode.
-        previous: Box<Self>,
+        previous: Box<Self>, // TODO(andreas): use history instead
     },
 
     // TODO(isse): It would be nice to only switch to newly loaded items if we
@@ -19,6 +19,8 @@ pub enum Route {
     Loading(Box<re_log_channel::LogSource>),
 
     /// Regular view of the local recordings, including the current recording's viewport.
+    ///
+    /// This includes recordings we're streaming from a Redap server.
     LocalRecording {
         recording_id: StoreId,
         // TODO(RR-3033): add blueprint id
@@ -46,7 +48,7 @@ pub enum Route {
         selected_chunk: Option<ChunkId>,
 
         /// What to return to when exiting this mode.
-        previous: Box<Self>,
+        previous: Box<Self>, // TODO(andreas): use history instead
     },
 }
 

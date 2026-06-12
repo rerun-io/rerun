@@ -20,7 +20,7 @@ impl App {
         frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_context: Option<&ActiveStoreContext<'_>>,
+        active_store_context: Option<&ActiveStoreContext<'_>>,
         storage_context: &StorageContext<'_>,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
@@ -79,7 +79,7 @@ impl App {
                     frame,
                     self,
                     app_blueprint,
-                    store_context,
+                    active_store_context,
                     storage_context.hub,
                     gpu_resource_stats,
                     ui,
@@ -127,10 +127,6 @@ impl App {
                         &self.command_sender,
                         &mut self.notifications,
                     );
-
-                    // TODO(RR-3033): `AppState::show` still expects a non-optional `ActiveStoreContext`; fall back to a sentinel empty context for no-store routes.
-                    let empty_store_context = ActiveStoreContext::empty();
-                    let active_store_context = store_context.unwrap_or(&empty_store_context);
 
                     self.state.show(
                         &self.app_env,

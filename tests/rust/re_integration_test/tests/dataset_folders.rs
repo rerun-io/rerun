@@ -20,7 +20,7 @@ fn assert_route_and_selection(harness: &mut Harness<'static, App>, expected_rout
     assert_eq!(&actual_route, expected_route, "unexpected route");
 
     let actual_selection =
-        harness.run_with_viewer_context(|ctx| ctx.selection().single_item().cloned());
+        harness.run_with_app_context(|ctx| ctx.selection().single_item().cloned());
     assert_eq!(
         actual_selection,
         expected_route.item(),

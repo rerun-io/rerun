@@ -12,7 +12,7 @@ fn empty_context_test() {
     let servers = re_redap_browser::RedapServers::default();
 
     test_context.run_once_in_egui_central_panel(|ctx, _| {
-        let data = RecordingPanelData::new(ctx, &servers, false);
+        let data = RecordingPanelData::new(&ctx.app_ctx, &servers, false);
 
         insta::assert_yaml_snapshot!(data);
     });
@@ -59,7 +59,7 @@ fn fake_local_and_example_recordings_test() {
     drop(store_hub);
 
     test_context.run_once_in_egui_central_panel(|ctx, _| {
-        let data = RecordingPanelData::new(ctx, &servers, false);
+        let data = RecordingPanelData::new(&ctx.app_ctx, &servers, false);
 
         insta::assert_yaml_snapshot!(data);
     });

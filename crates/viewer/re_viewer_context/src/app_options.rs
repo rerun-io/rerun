@@ -6,7 +6,7 @@ use re_video::{DecodeHardwareAcceleration, DecodeSettings};
 const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
 
 /// Global options for the viewer.
-#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(default)]
 pub struct AppOptions {
     /// Experimental feature flags.
@@ -166,7 +166,7 @@ impl AppOptions {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(default)]
 pub struct VideoOptions {
     /// Preferred method for video decoding on web.
@@ -189,7 +189,7 @@ pub struct VideoOptions {
     pub ffmpeg_path: String,
 }
 
-#[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(default)]
 pub struct ExperimentalAppOptions {
     /// Enable table cards and blueprints.
