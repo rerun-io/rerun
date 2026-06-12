@@ -393,7 +393,18 @@ impl App {
         store_hub: &mut StoreHub,
     ) {
         match channel_source.open_behavior() {
-            RecordingOpenBehavior::Background => {}
+            RecordingOpenBehavior::Background => {
+                // Background streams (previews) skip the blueprint download.
+                if store_id.kind() == StoreKind::Recording {
+                    store_hub.set_blueprint_pending(store_id, true);
+
+                    // The user may have already opened the segment while this preview stream was
+                    // still in flight.
+                    if store_hub.is_opened(store_id) {
+                        self.fetch_pending_blueprint(store_hub, store_id);
+                    }
+                }
+            }
 
             RecordingOpenBehavior::Open => {
                 if store_id.kind() == StoreKind::Recording {
@@ -616,6 +627,8 @@ impl App {
 
         store_hub.set_opened(store_id, true);
         store_hub.load_blueprint_and_caches(store_id, &self.view_class_registry);
+        // If this recording was streamed as a preview, fetch the blueprint we skipped back then.
+        self.fetch_pending_blueprint(store_hub, store_id);
         self.state.navigation.replace(Route::LocalRecording {
             recording_id: store_id.clone(),
         });

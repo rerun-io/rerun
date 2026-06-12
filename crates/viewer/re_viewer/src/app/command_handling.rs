@@ -252,6 +252,9 @@ impl App {
                 if let Some(recording_id) = new_route.recording_id() {
                     store_hub.set_opened(recording_id, true);
                     store_hub.load_blueprint_and_caches(recording_id, &self.view_class_registry);
+                    // If we're navigating to a recording that was only ever a preview, fetch the
+                    // blueprint we skipped while previewing it.
+                    self.fetch_pending_blueprint(store_hub, recording_id);
                 }
 
                 if matches!(new_route, Route::Loading(_)) {

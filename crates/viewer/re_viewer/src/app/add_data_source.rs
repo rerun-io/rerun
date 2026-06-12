@@ -1,6 +1,7 @@
 use re_data_source::LogDataSource;
 use re_entity_db::LogSource;
 use re_log_channel::{LogReceiver, RecordingOpenBehavior};
+use re_log_types::StoreId;
 use re_sdk_types::blueprint::components::PlayState;
 use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _, TimeControlCommand};
 
@@ -144,6 +145,8 @@ impl App {
                             // First make the recording itself active.
                             // `go_to_dataset_data` may override the selection again, but this is important regardless,
                             // since `go_to_dataset_data` does not change the active recording.
+                            // `make_store_active_and_highlight` also fetches the blueprint we skipped
+                            // while this was a preview.
                             self.make_store_active_and_highlight(
                                 store_hub,
                                 egui_ctx,
@@ -171,9 +174,21 @@ impl App {
         }
 
         let sender = self.command_sender.clone();
-        let stream = data_source
-            .clone()
-            .stream(Self::auth_error_handler(sender), &self.connection_registry);
+        let stream = data_source.clone().stream_with_options(
+            Self::auth_error_handler(sender),
+            &self.connection_registry,
+            if let LogDataSource::RedapDatasetSegment { open_behavior, .. } = &data_source
+                && matches!(open_behavior, RecordingOpenBehavior::Background)
+            {
+                // Previews skip the blueprint; we fetch it later if the user opens the recording for real.
+                re_redap_client::StreamingOptions {
+                    download: re_redap_client::SegmentDownload::SEGMENT,
+                    ..Default::default()
+                }
+            } else {
+                Default::default()
+            },
+        );
 
         #[cfg(feature = "analytics")]
         if let Some(analytics) = re_analytics::Analytics::global_or_init() {
@@ -190,6 +205,43 @@ impl App {
             Ok(rx) => self.add_log_receiver(rx),
             Err(err) => {
                 re_log::error!("Failed to open data source: {}", re_error::format(err));
+            }
+        }
+    }
+
+    /// Fetch the server blueprint for a recording that was streamed as a preview, which skips it.
+    ///
+    /// Does nothing unless the recording hasn't fetched its blueprint.
+    pub(super) fn fetch_pending_blueprint(&mut self, store_hub: &mut StoreHub, store_id: &StoreId) {
+        if !store_hub.is_blueprint_pending(store_id) {
+            return;
+        }
+
+        let Some(LogSource::RedapGrpcStream { uri, .. }) = store_hub
+            .entity_db(store_id)
+            .and_then(|db| db.data_source.clone())
+        else {
+            return;
+        };
+        let data_source = LogDataSource::RedapDatasetSegment {
+            uri: uri.without_fragment(),
+            open_behavior: RecordingOpenBehavior::Background,
+        };
+        let sender = self.command_sender.clone();
+        match data_source.stream_with_options(
+            Self::auth_error_handler(sender),
+            &self.connection_registry,
+            re_redap_client::StreamingOptions {
+                download: re_redap_client::SegmentDownload::BLUEPRINT,
+                ..Default::default()
+            },
+        ) {
+            Ok(rx) => {
+                store_hub.set_blueprint_pending(store_id, false);
+                self.add_log_receiver(rx);
+            }
+            Err(err) => {
+                re_log::error!("Failed to fetch blueprint: {}", re_error::format(err));
             }
         }
     }

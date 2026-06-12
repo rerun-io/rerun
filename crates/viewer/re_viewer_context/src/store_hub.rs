@@ -26,10 +26,12 @@ use crate::{
 
 /// Per-frame usage tracking for an [`EntityDb`].
 ///
-/// Tracks two states giving context to how it's used:
+/// Tracks a few states giving context to how it's used:
 /// - `was_preview`: If the entity db was used the render a preview last frame.
 /// - `opened`: If the entity db was explicitly opened by the user and should be
 ///   shown in the recording list. This is not tracked per frame.
+/// - `blueprint_pending`: If the recording was streamed without its server blueprint
+///   (as previews are), and we still owe a blueprint fetch should it be opened for real.
 pub struct EntityDbUsages {
     /// Whether this store was rendered as a preview cell in the previous frame.
     prev_preview: bool,
@@ -42,6 +44,13 @@ pub struct EntityDbUsages {
     /// Unlike the frame-based preview flag, this persists across frames
     /// and is not reset by [`Self::update`].
     pub opened: bool,
+
+    /// True if this recording was streamed without its server blueprint, and we
+    /// haven't fetched that blueprint since.
+    ///
+    /// Previews skip the blueprint download, so a recording that was only ever a
+    /// preview carries this debt until it is opened for real.
+    pub blueprint_pending: bool,
 }
 
 impl Clone for EntityDbUsages {
@@ -50,6 +59,7 @@ impl Clone for EntityDbUsages {
             prev_preview: self.prev_preview,
             new_preview: std::sync::atomic::AtomicBool::new(false),
             opened: self.opened,
+            blueprint_pending: self.blueprint_pending,
         }
     }
 }
@@ -60,6 +70,7 @@ impl EntityDbUsages {
             prev_preview: false,
             new_preview: std::sync::atomic::AtomicBool::new(false),
             opened: false,
+            blueprint_pending: false,
         }
     }
 
@@ -180,6 +191,7 @@ pub struct BlueprintPersistence {
 ///
 /// This is per [`StoreId`], which could be either a recording or a blueprint.
 pub struct StoreStats {
+    pub store_source: Option<LogSource>,
     pub store_config: ChunkStoreConfig,
     pub store_stats: ChunkStoreStats,
 
@@ -312,6 +324,21 @@ impl StoreHub {
     /// Whether the user has explicitly opened this store.
     pub fn is_opened(&self, store_id: &StoreId) -> bool {
         self.store_usages.get(store_id).is_some_and(|u| u.opened)
+    }
+
+    /// Set or clear the [`EntityDbUsages::blueprint_pending`] flag for a store.
+    pub fn set_blueprint_pending(&mut self, store_id: &StoreId, pending: bool) {
+        self.store_usages
+            .entry(store_id.clone())
+            .or_insert_with(EntityDbUsages::new)
+            .blueprint_pending = pending;
+    }
+
+    /// Whether this recording was streamed without its server blueprint and still owes a fetch.
+    pub fn is_blueprint_pending(&self, store_id: &StoreId) -> bool {
+        self.store_usages
+            .get(store_id)
+            .is_some_and(|u| u.blueprint_pending)
     }
 
     // ---------------------
@@ -1373,9 +1400,11 @@ impl StoreHub {
                 .get(store_id)
                 .map(|cache| cache.vram_usage())
                 .unwrap_or_default();
+
             store_stats.insert(
                 store_id.clone(),
                 StoreStats {
+                    store_source: store.data_source.clone(),
                     store_config: engine.store().config().clone(),
                     store_stats: engine.store().stats(),
                     query_cache_stats: engine.cache().stats(),

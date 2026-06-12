@@ -53,6 +53,7 @@ re_uri.workspace = true
 
 ahash.workspace = true
 arrow.workspace = true
+bitflags.workspace = true
 ehttp.workspace = true
 futures.workspace = true
 itertools.workspace = true

@@ -178,6 +178,11 @@ impl DevPanel {
             for (store_id, store_stats) in &store_stats.store_stats {
                 let title = format!("{} {}", store_id.kind(), store_id.recording_id());
                 ui.collapsing_header(&title, false, |ui| {
+                    if let Some(data_source) = &store_stats.store_source {
+                        ui.weak(format!("Source: {data_source}"));
+
+                        ui.separator();
+                    }
                     ui.collapsing("Datastore Resources", |ui| {
                         Self::chunk_store_stats(
                             ui,

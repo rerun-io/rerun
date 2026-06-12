@@ -376,6 +376,26 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
 /// `total_bytes_expected` may be `None` if the total size is not known.
 pub type ProgressCallback = std::sync::Arc<dyn Fn(u64, Option<u64>) + Send + Sync>;
 
+bitflags::bitflags! {
+    /// Which parts of a segment to stream from the server.
+    ///
+    /// A segment on the server may have an associated default blueprint.
+    /// This controls whether we download that blueprint, the segment data, or both.
+    ///
+    /// Defaults to downloading all parts.
+    #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+    pub struct SegmentDownload: u8 {
+        const SEGMENT = 0b1;
+        const BLUEPRINT = 0b10;
+    }
+}
+
+impl Default for SegmentDownload {
+    fn default() -> Self {
+        Self::all()
+    }
+}
+
 /// Options that control how segment data is streamed from the server.
 #[derive(Clone, Default)]
 pub struct StreamingOptions {
@@ -385,6 +405,9 @@ pub struct StreamingOptions {
     /// This is useful for downloading a full recording to disk.
     pub force_full_download: bool,
 
+    /// Which parts of the segment to download.
+    pub download: SegmentDownload,
+
     /// Optional callback invoked as chunks are downloaded.
     pub on_progress: Option<ProgressCallback>,
 }
@@ -393,6 +416,7 @@ impl std::fmt::Debug for StreamingOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("StreamingOptions")
             .field("force_full_download", &self.force_full_download)
+            .field("download", &self.download)
             .field("on_progress", &self.on_progress.as_ref().map(|_| "…"))
             .finish()
     }
@@ -507,48 +531,52 @@ pub async fn stream_blueprint_and_segment_from_server(
 ) -> ApiResult {
     re_log::debug!("Loading {uri}…");
 
-    let dataset_entry = client.read_dataset_entry(uri.dataset_id.into()).await?;
-
     let recording_store_id = uri.store_id();
 
-    if let Some((blueprint_dataset, blueprint_segment)) =
-        dataset_entry.dataset_details.default_blueprint()
-    {
-        re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
+    if options.download.contains(SegmentDownload::BLUEPRINT) {
+        let dataset_entry = client.read_dataset_entry(uri.dataset_id.into()).await?;
 
-        let blueprint_store_id = StoreId::random(
-            StoreKind::Blueprint,
-            recording_store_id.application_id().clone(),
-        );
-        if stream_blueprint_segment(
-            &mut client,
-            &tx,
-            blueprint_store_id.clone(),
-            blueprint_dataset,
-            blueprint_segment,
-        )
-        .await?
-        .is_break()
+        if let Some((blueprint_dataset, blueprint_segment)) =
+            dataset_entry.dataset_details.default_blueprint()
         {
-            return Ok(());
-        }
+            re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
 
-        if tx
-            .send(
-                LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
-                    blueprint_id: blueprint_store_id,
-                    make_active: false,
-                    make_default: true,
-                })
-                .into(),
+            // For blueprint, we can use a random recording ID
+            let blueprint_store_id = StoreId::random(
+                StoreKind::Blueprint,
+                recording_store_id.application_id().clone(),
+            );
+
+            if stream_blueprint_segment(
+                &mut client,
+                &tx,
+                blueprint_store_id.clone(),
+                blueprint_dataset,
+                blueprint_segment,
             )
-            .is_err()
-        {
-            re_log::debug!("Receiver disconnected");
-            return Ok(());
+            .await?
+            .is_break()
+            {
+                return Ok(());
+            }
+
+            if tx
+                .send(
+                    LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
+                        blueprint_id: blueprint_store_id,
+                        make_active: false,
+                        make_default: true,
+                    })
+                    .into(),
+                )
+                .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
+                return Ok(());
+            }
+        } else {
+            re_log::debug!("No blueprint dataset found for {uri}");
         }
-    } else {
-        re_log::debug!("No blueprint dataset found for {uri}");
     }
 
     let re_uri::DatasetSegmentUri {
@@ -558,26 +586,28 @@ pub async fn stream_blueprint_and_segment_from_server(
         fragment,
     } = uri;
 
-    let store_info = StoreInfo {
-        store_id: recording_store_id,
-        cloned_from: None,
-        store_source: StoreSource::Unknown,
-        store_version: None,
-    };
+    if options.download.contains(SegmentDownload::SEGMENT) {
+        let store_info = StoreInfo {
+            store_id: recording_store_id,
+            cloned_from: None,
+            store_source: StoreSource::Unknown,
+            store_version: None,
+        };
 
-    if stream_segment_from_server(
-        &mut client,
-        store_info,
-        &tx,
-        dataset_id.into(),
-        segment_id,
-        fragment,
-        &options,
-    )
-    .await?
-    .is_break()
-    {
-        return Ok(());
+        if stream_segment_from_server(
+            &mut client,
+            store_info,
+            &tx,
+            dataset_id.into(),
+            segment_id,
+            fragment,
+            &options,
+        )
+        .await?
+        .is_break()
+        {
+            return Ok(());
+        }
     }
 
     Ok(())

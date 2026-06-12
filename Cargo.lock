@@ -9454,6 +9454,7 @@ version = "0.34.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
+ "bitflags 2.11.0",
  "ehttp",
  "futures",
  "itertools 0.14.0",
