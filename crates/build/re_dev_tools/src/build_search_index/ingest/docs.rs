@@ -25,6 +25,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             tags: vec![],
             content: body,
             url,
+            image: None,
         });
     }
 

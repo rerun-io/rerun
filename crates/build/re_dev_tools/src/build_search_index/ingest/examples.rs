@@ -21,6 +21,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             tags: vec![],
             content: category.prelude.clone(),
             url: format!("https://rerun.io/examples/{category_name}"),
+            image: None,
         });
 
         for example_name in &category.examples {
@@ -45,6 +46,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
                     tags: example.tags,
                     content: example.readme_body,
                     url: format!("https://rerun.io/examples/{category_name}/{example_name}"),
+                    image: (!example.thumbnail_url.is_empty()).then_some(example.thumbnail_url),
                 });
 
                 break;

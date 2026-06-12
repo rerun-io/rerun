@@ -140,6 +140,9 @@ struct DocumentData {
     tags: Vec<String>,
     content: String,
     url: String,
+    /// Thumbnail shown next to the result in the website's search dialog.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    image: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
