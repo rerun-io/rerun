@@ -85,6 +85,8 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             tags: vec![],
             content: docs.get(&path).cloned().unwrap_or_default(),
             url: format!("{base_url}/{uri}", uri = obj.uri),
+            page: None,
+            page_title: None,
             image: None,
             title: path,
         });

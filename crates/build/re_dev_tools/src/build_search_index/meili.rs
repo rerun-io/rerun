@@ -74,7 +74,16 @@ impl SearchClient {
     fn settings() -> serde_json::Value {
         serde_json::json!({
             // Order = matching priority: a hit in `title` beats a hit in `content`.
+            // `page_title` is display-only: making it searchable let pages
+            // whose titles contain query filler ("Migrating from 0.25 to
+            // 0.26" matches "to") outrank better results, and page-level
+            // findability already comes from each page's intro document.
             "searchableAttributes": ["title", "tags", "hidden_tags", "content"],
+            // Docs are indexed one document per `##` section, all sharing
+            // their page URL in `page` — so results show at most one (the
+            // best-matching) section per page. Other kinds set `page` to
+            // their unique URL and are unaffected.
+            "distinctAttribute": "page",
             // Default rules plus `weight:desc` (see `DocumentKind::weight`) so
             // docs/example pages rank above per-symbol API documents, while
             // `exactness` still lets exact symbol queries win.

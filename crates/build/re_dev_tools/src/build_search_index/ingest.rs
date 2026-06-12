@@ -91,9 +91,20 @@ impl Context {
     }
 
     fn push(&self, data: DocumentData) {
+        let weight = data.kind.weight();
+        self.push_weighted(data, weight);
+    }
+
+    fn push_weighted(&self, mut data: DocumentData, weight: u64) {
+        // `page` is the distinct attribute: docs sections share their parent
+        // page's URL so search shows at most one (the best) section per page,
+        // while every other document keeps a unique value and is unaffected.
+        if data.page.is_none() {
+            data.page = Some(data.url.clone());
+        }
         self.documents.borrow_mut().push(Document {
             id: self.id_gen.next(),
-            weight: data.kind.weight(),
+            weight,
             data,
         });
     }
@@ -140,6 +151,14 @@ struct DocumentData {
     tags: Vec<String>,
     content: String,
     url: String,
+    /// Deduplication key (Meilisearch `distinctAttribute`). Defaults to `url`
+    /// in [`Context::push`]; docs sections set it to their parent page URL.
+    #[serde(default)]
+    page: Option<String>,
+    /// For docs sections: the title of the page the section belongs to.
+    /// Display-only (NOT searchable — see the settings in `meili.rs`).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    page_title: Option<String>,
     /// Thumbnail shown next to the result in the website's search dialog.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     image: Option<String>,

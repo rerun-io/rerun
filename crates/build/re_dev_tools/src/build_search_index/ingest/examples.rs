@@ -21,6 +21,8 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             tags: vec![],
             content: strip_html_tags(&category.prelude),
             url: format!("https://rerun.io/examples/{category_name}"),
+            page: None,
+            page_title: None,
             image: None,
         });
 
@@ -46,6 +48,8 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
                     tags: example.tags,
                     content: strip_html_tags(&example.readme_body),
                     url: format!("https://rerun.io/examples/{category_name}/{example_name}"),
+                    page: None,
+                    page_title: None,
                     image: (!example.thumbnail_url.is_empty()).then_some(example.thumbnail_url),
                 });
 

@@ -64,6 +64,8 @@ impl Visitor<'_> {
             tags: vec![],
             content: description,
             url: format!("https://ref.rerun.io/docs/cpp/stable/{uri}"),
+            page: None,
+            page_title: None,
             image: None,
         });
     }
