@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::{Context, DocumentData, DocumentKind};
+use super::{Context, DocumentData, DocumentKind, strip_html_tags};
 use crate::build_search_index::util::ProgressBarExt as _;
 
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
@@ -23,7 +23,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             title: frontmatter.title,
             hidden_tags: vec![],
             tags: vec![],
-            content: body,
+            content: strip_html_tags(&body),
             url,
             image: None,
         });
