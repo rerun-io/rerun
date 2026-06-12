@@ -892,6 +892,16 @@ impl App {
         store_hub.entity_db(recording_id)
     }
 
+    /// Returns a [`re_chunk_store::LatestAtQuery`] for the active recording's current timeline
+    /// position, suitable for querying frame data from [`Self::recording_db`].
+    pub fn current_query(&self) -> Option<re_chunk_store::LatestAtQuery> {
+        let store_id = self.active_recording_id()?;
+        self.state
+            .time_controls
+            .get(store_id)
+            .map(|tc| tc.current_query())
+    }
+
     // NOTE: Relying on `self` is dangerous, as this is called during a time where some internal
     // fields may have been temporarily `take()`n out. Keep this a static method.
     fn handle_dropping_files(
