@@ -9,6 +9,10 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 
     let manifest = ExamplesManifest::load(ctx.workspace_root())?;
 
+    // Examples may be listed under multiple categories; only index the first
+    // occurrence so a single example doesn't show up twice in search results.
+    let mut seen = std::collections::HashSet::new();
+
     for (category_name, category) in &manifest.categories {
         ctx.push(DocumentData {
             kind: DocumentKind::Examples,
@@ -20,6 +24,9 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         });
 
         for example_name in &category.examples {
+            if !seen.insert(example_name) {
+                continue;
+            }
             for language in LANGUAGES.iter().copied() {
                 progress.set(
                     format!("{category_name}/{example_name}.{}", language.extension()),

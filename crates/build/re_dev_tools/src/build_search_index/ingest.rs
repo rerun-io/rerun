@@ -93,6 +93,7 @@ impl Context {
     fn push(&self, data: DocumentData) {
         self.documents.borrow_mut().push(Document {
             id: self.id_gen.next(),
+            weight: data.kind.weight(),
             data,
         });
     }
@@ -107,6 +108,10 @@ impl Context {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Document {
     id: u64,
+    /// Page-type ranking weight, used by the `weight:desc` ranking rule
+    /// so that guides and examples rank above individual API symbols.
+    #[serde(default)]
+    weight: u64,
     #[serde(flatten)]
     data: DocumentData,
 }
@@ -144,6 +149,19 @@ enum DocumentKind {
     Examples,
     Python,
     Cpp,
+}
+
+impl DocumentKind {
+    /// Documents are ranked by this weight (descending) after word/typo/proximity/attribute
+    /// matching, so that whole-page guides beat the thousands of per-symbol API documents
+    /// for generic queries, while exact symbol matches still win on `exactness`.
+    fn weight(self) -> u64 {
+        match self {
+            Self::Docs => 10,
+            Self::Examples => 8,
+            Self::Python | Self::Cpp => 3,
+        }
+    }
 }
 
 struct IdGen {
