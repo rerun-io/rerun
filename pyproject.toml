@@ -158,6 +158,10 @@ docs = [
 [tool.uv]
 package = false
 
+# pyarrow 24.0.0 ships an incomplete `py.typed` that breaks mypy on `pyarrow.compute.*`.
+# 23.x has no type stubs (so mypy leaves it untyped) and clears RUSTSEC/GHSA pyarrow alert >= 23.0.1.
+constraint-dependencies = ["pyarrow>=23.0.1,<24"]
+
 # Override lerobot's dependency on rerun-sdk to use the workspace version
 # TODO(RR-3548): Figure out how to have lerobot as a workspace member without causing dependency issues.
 # override-dependencies = ["rerun-sdk"]
