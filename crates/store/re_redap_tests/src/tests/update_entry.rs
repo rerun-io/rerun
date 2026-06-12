@@ -300,6 +300,8 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
         .blueprint_dataset
         .expect("recording datasets should get an implicit blueprint dataset");
     let default_blueprint_segment = SegmentId::from("default_dataset_blueprint");
+    let default_segment_table_blueprint_segment =
+        SegmentId::from("default_dataset_segment_table_blueprint");
 
     let updated = update_dataset_entry(
         &service,
@@ -308,6 +310,9 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
             dataset_details: DatasetDetails {
                 blueprint_dataset: Some(hidden_blueprint),
                 default_blueprint_segment: Some(default_blueprint_segment.clone()),
+                default_segment_table_blueprint_segment: Some(
+                    default_segment_table_blueprint_segment.clone(),
+                ),
             },
         },
     )
@@ -321,6 +326,12 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
         updated.dataset_details.default_blueprint_segment,
         Some(default_blueprint_segment)
     );
+    assert_eq!(
+        updated
+            .dataset_details
+            .default_segment_table_blueprint_segment,
+        Some(default_segment_table_blueprint_segment)
+    );
 
     let status = update_dataset_entry(
         &service,
@@ -329,6 +340,7 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
             dataset_details: DatasetDetails {
                 blueprint_dataset: None,
                 default_blueprint_segment: Some(SegmentId::from("missing_blueprint_dataset")),
+                default_segment_table_blueprint_segment: None,
             },
         },
     )
@@ -347,6 +359,7 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
             dataset_details: DatasetDetails {
                 blueprint_dataset: Some(EntryId::new()),
                 default_blueprint_segment: None,
+                default_segment_table_blueprint_segment: None,
             },
         },
     )
@@ -368,6 +381,7 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
             dataset_details: DatasetDetails {
                 blueprint_dataset: Some(recording_dataset.details.id),
                 default_blueprint_segment: None,
+                default_segment_table_blueprint_segment: None,
             },
         },
     )

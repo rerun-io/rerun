@@ -944,21 +944,64 @@ impl From<EntryDetails> for crate::cloud::v1alpha1::EntryDetails {
     }
 }
 
+// --- DatasetDetails / TableDetails validation ---
+
+/// Error returned when the blueprint configuration in [`DatasetDetails`] or [`TableDetails`] is
+/// internally inconsistent.
+///
+/// This only covers checks that can be made without consulting the store. Callers with store
+/// access must additionally verify that the referenced `blueprint_dataset` exists and is itself a
+/// blueprint dataset.
+#[derive(Debug, thiserror::Error)]
+#[error("default {entry_kind} blueprint requires a blueprint dataset")]
+pub struct InconsistentBlueprintDetailsError {
+    entry_kind: &'static str,
+}
+
 // --- DatasetDetails ---
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DatasetDetails {
     pub blueprint_dataset: Option<EntryId>,
     pub default_blueprint_segment: Option<SegmentId>,
+    pub default_segment_table_blueprint_segment: Option<SegmentId>,
 }
 
 impl DatasetDetails {
+    /// Checks that the blueprint configuration is internally consistent.
+    ///
+    /// A default blueprint (for either the dataset or its segment table) can only be set if a
+    /// [`Self::blueprint_dataset`] is set too.
+    ///
+    /// This does *not* check that the blueprint dataset actually exists or is itself a blueprint
+    /// dataset — callers with store access must verify that separately.
+    pub fn validate_consistency(&self) -> Result<(), InconsistentBlueprintDetailsError> {
+        let has_default_blueprint = self.default_blueprint_segment.is_some()
+            || self.default_segment_table_blueprint_segment.is_some();
+        if has_default_blueprint && self.blueprint_dataset.is_none() {
+            return Err(InconsistentBlueprintDetailsError {
+                entry_kind: "dataset",
+            });
+        }
+        Ok(())
+    }
+
     /// Returns the default blueprint for this dataset.
     ///
     /// Both `blueprint_dataset` and `default_blueprint_segment` must be set.
     pub fn default_blueprint(&self) -> Option<(EntryId, SegmentId)> {
         let blueprint = self.blueprint_dataset.as_ref()?;
         self.default_blueprint_segment
+            .as_ref()
+            .map(|default| (blueprint.clone(), default.clone()))
+    }
+
+    /// Returns the default blueprint for this dataset's segment table.
+    ///
+    /// Both `blueprint_dataset` and `default_segment_table_blueprint_segment` must be set.
+    pub fn default_segment_table_blueprint(&self) -> Option<(EntryId, SegmentId)> {
+        let blueprint = self.blueprint_dataset.as_ref()?;
+        self.default_segment_table_blueprint_segment
             .as_ref()
             .map(|default| (blueprint.clone(), default.clone()))
     }
@@ -973,9 +1016,15 @@ impl TryFrom<crate::cloud::v1alpha1::DatasetDetails> for DatasetDetails {
             .map(TryInto::try_into)
             .transpose()?;
 
+        let default_segment_table_blueprint_segment = value
+            .default_segment_table_blueprint_segment
+            .map(TryInto::try_into)
+            .transpose()?;
+
         Ok(Self {
             blueprint_dataset: value.blueprint_dataset.map(TryInto::try_into).transpose()?,
             default_blueprint_segment,
+            default_segment_table_blueprint_segment,
         })
     }
 }
@@ -985,6 +1034,10 @@ impl From<DatasetDetails> for crate::cloud::v1alpha1::DatasetDetails {
         Self {
             blueprint_dataset: value.blueprint_dataset.map(Into::into),
             default_blueprint_segment: value.default_blueprint_segment.clone().map(Into::into),
+            default_segment_table_blueprint_segment: value
+                .default_segment_table_blueprint_segment
+                .clone()
+                .map(Into::into),
         }
     }
 }
@@ -998,6 +1051,21 @@ pub struct TableDetails {
 }
 
 impl TableDetails {
+    /// Checks that the blueprint configuration is internally consistent.
+    ///
+    /// A default blueprint can only be set if a [`Self::blueprint_dataset`] is set too.
+    ///
+    /// This does *not* check that the blueprint dataset actually exists or is itself a blueprint
+    /// dataset — callers with store access must verify that separately.
+    pub fn validate_consistency(&self) -> Result<(), InconsistentBlueprintDetailsError> {
+        if self.default_blueprint_segment.is_some() && self.blueprint_dataset.is_none() {
+            return Err(InconsistentBlueprintDetailsError {
+                entry_kind: "table",
+            });
+        }
+        Ok(())
+    }
+
     /// Returns the default blueprint for this table.
     ///
     /// Both `blueprint_dataset` and `default_blueprint_segment` must be set.

@@ -1035,6 +1035,10 @@ message DatasetDetails {
   // The segment of the blueprint dataset corresponding to the default blueprint (if any).
   optional rerun.common.v1alpha1.SegmentId default_blueprint_segment = 5;
 
+  // The segment of the blueprint dataset corresponding to the default blueprint for this dataset's
+  // segment table (if any).
+  optional rerun.common.v1alpha1.SegmentId default_segment_table_blueprint_segment = 6;
+
   reserved 4;
   reserved "default_blueprint";
 }

@@ -339,7 +339,6 @@ impl Server {
         .table_id(TableId::new(table.id().to_string()))
         .title(table.name().to_string())
         .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
-        .remote_table(re_uri::EntryUri::new(table.origin.clone(), table.id()))
         .show(viewer_ctx, &self.runtime, ui, view_states);
     }
 }

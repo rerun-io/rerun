@@ -470,6 +470,7 @@ impl InMemoryStore {
                 let dataset_details = DatasetDetails {
                     blueprint_dataset: Some(blueprint_dataset_id),
                     default_blueprint_segment: None,
+                    default_segment_table_blueprint_segment: None,
                 };
 
                 self.create_dataset_impl(

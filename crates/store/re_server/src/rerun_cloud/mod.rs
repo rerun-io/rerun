@@ -423,18 +423,15 @@ impl RerunCloudHandler {
     }
 }
 
-fn validate_blueprint_details_update(
+/// Verifies that the referenced blueprint dataset (if any) exists and is itself a blueprint dataset.
+///
+/// Internal consistency of the `DatasetDetails`/`TableDetails` is checked separately via their
+/// `validate_consistency` methods.
+fn validate_blueprint_dataset(
     store: &InMemoryStore,
     blueprint_dataset: Option<EntryId>,
-    has_default_blueprint: bool,
     entry_kind: &str,
 ) -> tonic::Result<()> {
-    if has_default_blueprint && blueprint_dataset.is_none() {
-        return Err(tonic::Status::invalid_argument(format!(
-            "default {entry_kind} blueprint requires a blueprint dataset"
-        )));
-    }
-
     let Some(blueprint_dataset) = blueprint_dataset else {
         return Ok(());
     };
@@ -635,13 +632,13 @@ impl RerunCloudService for RerunCloudHandler {
     {
         let request: UpdateDatasetEntryRequest = request.into_inner().try_into()?;
 
+        request
+            .dataset_details
+            .validate_consistency()
+            .map_err(|err| tonic::Status::invalid_argument(err.to_string()))?;
+
         let mut store = self.store.write().await;
-        validate_blueprint_details_update(
-            &store,
-            request.dataset_details.blueprint_dataset,
-            request.dataset_details.default_blueprint_segment.is_some(),
-            "dataset",
-        )?;
+        validate_blueprint_dataset(&store, request.dataset_details.blueprint_dataset, "dataset")?;
 
         let dataset = store.dataset_mut(request.id)?;
 
@@ -708,12 +705,10 @@ impl RerunCloudService for RerunCloudHandler {
             );
         }
 
-        validate_blueprint_details_update(
-            &store,
-            table_details.blueprint_dataset,
-            table_details.default_blueprint_segment.is_some(),
-            "table",
-        )?;
+        table_details
+            .validate_consistency()
+            .map_err(|err| tonic::Status::invalid_argument(err.to_string()))?;
+        validate_blueprint_dataset(&store, table_details.blueprint_dataset, "table")?;
 
         let table = store.table_mut(request.id).ok_or_else(|| {
             tonic::Status::not_found(format!("table with entry ID '{}' not found", request.id))

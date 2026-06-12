@@ -1,3 +1,4 @@
+use std::str::FromStr as _;
 use std::sync::Arc;
 
 use arrow::array::{Array as _, BooleanArray};
@@ -164,6 +165,8 @@ pub struct DataFusionTableWidget<'a> {
     title: Option<String>,
 
     /// If provided, this will add a "copy URL" button next to the title (which must be provided).
+    ///
+    /// This is also the url used for flag upserts if enabled.
     url: Option<String>,
 
     /// User-provided closure to provide column blueprint.
@@ -174,11 +177,6 @@ pub struct DataFusionTableWidget<'a> {
 
     /// Registered table blueprint supplied by the caller.
     registered_table_blueprint: Option<&'a re_entity_db::EntityDb>,
-
-    /// Remote address of this table, needed for write-back operations (e.g. flag upsert).
-    ///
-    /// `None` for local/test tables where write-back is not supported.
-    remote_table: Option<re_uri::EntryUri>,
 }
 
 impl<'a> DataFusionTableWidget<'a> {
@@ -225,7 +223,6 @@ impl<'a> DataFusionTableWidget<'a> {
             column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
             initial_blueprint: Default::default(),
             registered_table_blueprint: None,
-            remote_table: None,
         }
     }
 
@@ -245,14 +242,6 @@ impl<'a> DataFusionTableWidget<'a> {
     pub fn url(mut self, url: impl Into<String>) -> Self {
         self.url = Some(url.into());
 
-        self
-    }
-
-    /// Set the remote address of this table for write-back operations.
-    ///
-    /// Required for flag upsert to persist changes to the server.
-    pub fn remote_table(mut self, entry_uri: re_uri::EntryUri) -> Self {
-        self.remote_table = Some(entry_uri);
         self
     }
 
@@ -313,6 +302,11 @@ impl<'a> DataFusionTableWidget<'a> {
     pub fn prefilter(mut self, expression: datafusion::prelude::Expr) -> Self {
         self.initial_blueprint.prefilter = Some(expression);
         self
+    }
+
+    /// Associated url as readp uri if any & correctly parsed.
+    fn readp_uri(&self) -> Option<re_uri::RedapUri> {
+        re_uri::RedapUri::from_str(self.url.as_ref()?).ok()
     }
 
     /// Resolve the original Arrow field for the configured flag column if flagging is available.
@@ -477,6 +471,8 @@ impl<'a> DataFusionTableWidget<'a> {
             view_states,
         );
 
+        let redap_uri = self.readp_uri();
+
         // Flag changes are only produced when flagging_enabled was true in table_ui,
         // which already validated: flag_column is Some and column exists as boolean.
         if !output.flag_changes.is_empty()
@@ -484,14 +480,14 @@ impl<'a> DataFusionTableWidget<'a> {
         {
             table_state.apply_flag_changes(ui, flag_col, &output.flag_changes);
 
-            if let Some(remote) = &self.remote_table
+            if let Some(re_uri::RedapUri::Entry(entry_uri)) = &redap_uri
                 && let Some(Ok(results)) = &table_state.results
                 && let Some(flag_column_field) = &output.flag_column_field
             {
                 upsert_flag_changes(
                     viewer_ctx,
                     runtime,
-                    remote.clone(),
+                    entry_uri.clone(),
                     results,
                     flag_column_field,
                     &output.flag_changes,
@@ -584,8 +580,36 @@ impl<'a> DataFusionTableWidget<'a> {
             }),
         );
 
+        let redap_uri = self.readp_uri();
+
         let table_cards_and_blueprints_enabled =
             ctx.app_options().experimental.table_cards_and_blueprints;
+
+        let view_renderer = if table_cards_and_blueprints_enabled {
+            let blueprint_db = self.registered_table_blueprint.or_else(|| {
+                let id = self.table_id.as_ref()?;
+                ctx.storage_context.hub.table_blueprint(id)
+            });
+
+            // Populate runtime blueprint fields from the registered table blueprint.
+            if let Some(db) = blueprint_db {
+                new_blueprint.populate_from_registered_blueprint(db);
+            }
+
+            blueprint_db.and_then(crate::preview_renderer::RecordingPreviewRenderer::from_blueprint)
+        } else {
+            None
+        };
+
+        // Fill remaining unset fields via schema field metadata + structural heuristics.
+        new_blueprint = new_blueprint.apply_heuristics(
+            &query_result.original_schema,
+            &columns,
+            &display_record_batches,
+            &table_config,
+            redap_uri.as_ref().map(|uri| uri.origin()),
+        );
+
         let view_mode_id = session_id.with("view_mode");
         let mut view_mode = if table_cards_and_blueprints_enabled {
             ui.ctx()
@@ -634,39 +658,19 @@ impl<'a> DataFusionTableWidget<'a> {
             .columns
             .arrow_fields(re_sorbet::BatchType::Dataframe);
 
-        let view_renderer = if table_cards_and_blueprints_enabled {
-            let blueprint_db = self.registered_table_blueprint.or_else(|| {
-                let id = self.table_id.as_ref()?;
-                ctx.storage_context.hub.table_blueprint(id)
-            });
-
-            // Populate runtime blueprint fields from the registered table blueprint.
-            if let Some(db) = blueprint_db {
-                new_blueprint.populate_from_registered_blueprint(db);
-            }
-
-            blueprint_db.and_then(crate::preview_renderer::RecordingPreviewRenderer::from_blueprint)
-        } else {
-            None
-        };
-
         let show_segment_previews =
             view_renderer.is_some() && new_blueprint.segment_preview_column.is_some();
 
-        // Fill remaining unset fields via schema field metadata + structural heuristics.
-        new_blueprint.apply_heuristics(
-            &query_result.original_schema,
-            &columns,
-            &display_record_batches,
-            &table_config,
-            self.remote_table.as_ref().map(|r| &r.origin),
-        );
-
+        let entry_uri = if let Some(re_uri::RedapUri::Entry(entry_uri)) = &redap_uri {
+            Some(entry_uri)
+        } else {
+            None
+        };
         let flag_column_field = Self::flag_column_field(
             &new_blueprint,
             &columns,
             &query_result.original_schema,
-            self.remote_table.as_ref(),
+            entry_uri,
             ctx.app_ctx.connection_registry,
         );
         if show_segment_previews {

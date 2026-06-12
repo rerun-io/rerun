@@ -131,7 +131,7 @@ async fn test_grid_view_flagging() {
                 test_context.run_recording(&ui.ctx().clone(), |ctx| {
                     DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                         .title("Flag test")
-                        .remote_table(remote_uri.clone())
+                        .url(remote_uri.to_string())
                         .show(
                             ctx,
                             &runtime_handle,

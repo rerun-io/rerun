@@ -34,6 +34,8 @@ pub struct TableBlueprint {
     /// For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
     /// meaning that the regular structure of [`archetypes::ViewportBlueprint`][crate::blueprint::archetypes::ViewportBlueprint], and [`archetypes::ViewBlueprint`][crate::blueprint::archetypes::ViewBlueprint] structure applies.
     /// However, this mostly ignores layout container types as well as automatic spawning.
+    ///
+    /// If unset, defaults to the first URL column in the table that points to the same Rerun server
     pub segment_preview_column: Option<SerializedComponentBatch>,
 
     /// The name of the boolean column used for flag/annotation toggles.
@@ -52,9 +54,7 @@ pub struct TableBlueprint {
 
     /// The name of the column containing URLs to open when a card is clicked in grid view.
     ///
-    /// If unset, defaults to the first URL column in the table that points to the same
-    /// Rerun server. If no such column exists, no URL is associated with cards and
-    /// clicking them does not navigate anywhere.
+    /// If unset, defaults to the segment preview column.
     pub url_column: Option<SerializedComponentBatch>,
 }
 
@@ -290,6 +290,8 @@ impl TableBlueprint {
     /// For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
     /// meaning that the regular structure of [`archetypes::ViewportBlueprint`][crate::blueprint::archetypes::ViewportBlueprint], and [`archetypes::ViewBlueprint`][crate::blueprint::archetypes::ViewBlueprint] structure applies.
     /// However, this mostly ignores layout container types as well as automatic spawning.
+    ///
+    /// If unset, defaults to the first URL column in the table that points to the same Rerun server
     #[inline]
     pub fn with_segment_preview_column(
         mut self,
@@ -335,9 +337,7 @@ impl TableBlueprint {
 
     /// The name of the column containing URLs to open when a card is clicked in grid view.
     ///
-    /// If unset, defaults to the first URL column in the table that points to the same
-    /// Rerun server. If no such column exists, no URL is associated with cards and
-    /// clicking them does not navigate anywhere.
+    /// If unset, defaults to the segment preview column.
     #[inline]
     pub fn with_url_column(
         mut self,

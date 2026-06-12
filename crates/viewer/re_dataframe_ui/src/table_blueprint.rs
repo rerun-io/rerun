@@ -191,13 +191,13 @@ impl TableBlueprint {
     /// 1. Per-field Arrow schema metadata (see [`crate::experimental_field_metadata`]).
     /// 2. Structural heuristics over the loaded columns/data.
     pub fn apply_heuristics(
-        &mut self,
+        mut self,
         schema: &arrow::datatypes::Schema,
         columns: &Columns<'_>,
         display_record_batches: &[DisplayRecordBatch],
         table_config: &TableConfig,
         current_server_origin: Option<&re_uri::Origin>,
-    ) {
+    ) -> Self {
         if self.flag_column.is_none() {
             self.flag_column =
                 find_field_with_flag(schema, crate::experimental_field_metadata::IS_FLAG_COLUMN)
@@ -223,31 +223,35 @@ impl TableBlueprint {
             });
         }
 
-        if self.url_column.is_none() {
-            self.url_column = columns
-                .columns
-                .iter()
-                .enumerate()
-                .filter(|(_, c)| {
-                    matches!(
-                        &c.desc,
-                        ColumnDescriptorRef::Component(c)
-                            if c.store_datatype == arrow::datatypes::DataType::Utf8
-                    )
-                })
-                .find_map(|(idx, col)| {
-                    let sample = display_record_batches.iter().find_map(|batch| {
-                        let DisplayColumn::Component(comp) = batch.columns().get(idx)? else {
-                            return None;
-                        };
-                        (0..batch.num_rows()).find_map(|row| comp.string_value_at(row))
-                    })?;
-                    let uri = re_uri::RedapUri::from_str(&sample).ok()?;
-                    current_server_origin
-                        .is_none_or(|origin| uri.origin() == origin)
-                        .then(|| col.display_name())
-                });
+        if self.url_column.is_none() && self.segment_preview_column.is_none() {
+            let first_url = columns.columns.iter().enumerate().find_map(|(idx, col)| {
+                if !matches!(
+                    &col.desc,
+                    ColumnDescriptorRef::Component(c)
+                        if c.store_datatype == arrow::datatypes::DataType::Utf8
+                ) {
+                    return None;
+                }
+
+                let sample = display_record_batches.iter().find_map(|batch| {
+                    let DisplayColumn::Component(comp) = batch.columns().get(idx)? else {
+                        return None;
+                    };
+                    (0..batch.num_rows()).find_map(|row| comp.string_value_at(row))
+                })?;
+                let uri = re_uri::RedapUri::from_str(&sample).ok()?;
+
+                current_server_origin
+                    .is_none_or(|origin| uri.origin() == origin)
+                    .then(|| col.display_name())
+            });
+            self.url_column = first_url.clone();
+            self.segment_preview_column = first_url;
+        } else if self.url_column.is_none() && self.segment_preview_column.is_some() {
+            self.url_column = self.segment_preview_column.clone();
         }
+
+        self
     }
 }
 

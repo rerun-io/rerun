@@ -252,7 +252,7 @@ fn fetch_entry_details(
         // Since we don't need these tables yet, we just skip them for now.
         EntryKind::BlueprintDataset => None,
         EntryKind::Dataset => Some(Left(Left(
-            fetch_dataset_details(client, entry.id, origin)
+            fetch_dataset_details(client, entry.id, origin, runtime, command_sender)
                 .map_ok(|(dataset, table_provider)| (EntryInner::Dataset(dataset), table_provider))
                 .map(move |res| (entry, res)),
         ))),
@@ -284,8 +284,18 @@ async fn fetch_dataset_details(
     mut client: ConnectionClient,
     id: EntryId,
     origin: &re_uri::Origin,
+    runtime: &AsyncRuntimeHandle,
+    command_sender: &CommandSender,
 ) -> EntryResult<(Dataset, Arc<dyn TableProvider>)> {
     let dataset_entry = client.read_dataset_entry(id).await?;
+
+    start_streaming_segment_table_blueprint(
+        client.clone(),
+        &dataset_entry,
+        origin,
+        runtime,
+        command_sender,
+    );
 
     let result = Dataset {
         dataset_entry,
@@ -300,6 +310,50 @@ async fn fetch_dataset_details(
         })?;
 
     Ok((result, table_provider))
+}
+
+/// Stream the dataset's default segment-table blueprint (if any) and associate it with the dataset's segment table view.
+fn start_streaming_segment_table_blueprint(
+    client: ConnectionClient,
+    dataset_entry: &DatasetEntry,
+    origin: &re_uri::Origin,
+    runtime: &AsyncRuntimeHandle,
+    command_sender: &CommandSender,
+) {
+    let dataset_id = dataset_entry.details.id;
+    let Some((blueprint_dataset, blueprint_segment)) = dataset_entry
+        .dataset_details
+        .default_segment_table_blueprint()
+    else {
+        return;
+    };
+
+    let blueprint_store_id =
+        re_log_types::StoreId::random(re_log_types::StoreKind::Blueprint, dataset_id.to_string());
+
+    let (tx, rx) = re_redap_client::table_blueprint_log_channel(
+        origin.clone(),
+        blueprint_dataset,
+        &blueprint_segment,
+        TableId::new(dataset_id.to_string()),
+        blueprint_store_id.clone(),
+    );
+
+    command_sender.send_system(SystemCommand::AddReceiver(rx));
+
+    runtime.spawn_future(async move {
+        if let Err(err) = re_redap_client::stream_table_blueprint_segment_from_server(
+            client,
+            tx,
+            blueprint_store_id,
+            blueprint_dataset,
+            blueprint_segment,
+        )
+        .await
+        {
+            re_log::warn!("Failed to stream segment table blueprint: {err}");
+        }
+    });
 }
 
 fn start_registered_table_blueprint_stream(

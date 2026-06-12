@@ -186,11 +186,14 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.arrow_schema()
 
-    def register_blueprint(self, uri: str, set_default: bool = True) -> None:
+    def register_blueprint(self, uri: str, set_default: bool = True, *, segment_table: bool = False) -> None:
         """
         Register an existing .rbl visible to the server.
 
         By default, also set this blueprint as default.
+
+        Set `segment_table=True` (and `set_default=True`) to register it as this dataset's
+        default for the segment table blueprint.
 
         The associated blueprint dataset is owned by this dataset for lifecycle purposes.
         Deleting this dataset also deletes the associated blueprint dataset and its storage.
@@ -206,7 +209,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         )
 
         if set_default:
-            self.set_default_blueprint(segment_id)
+            if segment_table:
+                self.set_default_segment_table_blueprint(segment_id)
+            else:
+                self.set_default_blueprint(segment_id)
 
     def blueprints(self) -> list[str]:
         """Lists all blueprints currently registered with this dataset."""
@@ -226,6 +232,16 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Return the name currently set blueprint."""
 
         return self._internal.default_blueprint_segment_id()
+
+    def set_default_segment_table_blueprint(self, blueprint_name: str | None) -> None:
+        """Set an already-registered blueprint as the default segment table blueprint for this dataset."""
+
+        return self._internal.set_default_segment_table_blueprint_segment_id(blueprint_name)
+
+    def default_segment_table_blueprint(self) -> str | None:
+        """Return the name of the currently set segment table blueprint."""
+
+        return self._internal.default_segment_table_blueprint_segment_id()
 
     def blueprint_dataset(self) -> DatasetEntry | None:
         """

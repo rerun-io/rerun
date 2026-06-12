@@ -16,6 +16,9 @@ The flag column remains part of the table data. Its current boolean value contro
 Enable `Settings > Experimental > Table cards and blueprints` in the viewer, then open the
 printed URL.
 
+Flagging works on regular tables, but does **not** yet work on the segment tables of datasets:
+segment tables have no write operations yet, so flag changes cannot be persisted back to the server.
+
 ## Run the code
 
 ```bash

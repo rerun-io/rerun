@@ -1468,6 +1468,11 @@ pub struct DatasetDetails {
     #[prost(message, optional, tag = "5")]
     pub default_blueprint_segment:
         ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+    /// The segment of the blueprint dataset corresponding to the default blueprint for this dataset's
+    /// segment table (if any).
+    #[prost(message, optional, tag = "6")]
+    pub default_segment_table_blueprint_segment:
+        ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
 }
 impl ::prost::Name for DatasetDetails {
     const NAME: &'static str = "DatasetDetails";

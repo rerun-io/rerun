@@ -4490,7 +4490,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "segment_preview_column",
                         display_name: "Segment preview column",
                         component_type: "rerun.blueprint.components.ColumnName".into(),
-                        docstring_md: "The name of the column that contains recording URIs for segment previews.\n\nEvery row can at most preview a single segment.\n\nFor the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,\nmeaning that the regular structure of archetypes.ViewportBlueprint, and archetypes.ViewBlueprint structure applies.\nHowever, this mostly ignores layout container types as well as automatic spawning.",
+                        docstring_md: "The name of the column that contains recording URIs for segment previews.\n\nEvery row can at most preview a single segment.\n\nFor the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,\nmeaning that the regular structure of archetypes.ViewportBlueprint, and archetypes.ViewBlueprint structure applies.\nHowever, this mostly ignores layout container types as well as automatic spawning.\n\nIf unset, defaults to the first URL column in the table that points to the same Rerun server",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -4511,7 +4511,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "url_column",
                         display_name: "Url column",
                         component_type: "rerun.blueprint.components.ColumnName".into(),
-                        docstring_md: "The name of the column containing URLs to open when a card is clicked in grid view.\n\nIf unset, defaults to the first URL column in the table that points to the same\nRerun server. If no such column exists, no URL is associated with cards and\nclicking them does not navigate anywhere.",
+                        docstring_md: "The name of the column containing URLs to open when a card is clicked in grid view.\n\nIf unset, defaults to the segment preview column.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

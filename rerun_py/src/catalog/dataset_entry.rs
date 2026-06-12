@@ -147,6 +147,41 @@ impl PyDatasetEntryInternal {
         Ok(())
     }
 
+    /// The default segment table blueprint segment ID for this dataset, if any.
+    fn default_segment_table_blueprint_segment_id(self_: PyRef<'_, Self>) -> Option<String> {
+        self_
+            .dataset_details
+            .default_segment_table_blueprint_segment
+            .as_ref()
+            .map(ToString::to_string)
+    }
+
+    /// Set the default segment table blueprint segment ID for this dataset.
+    ///
+    /// Pass `None` to clear the blueprint. This fails if the change cannot be made to the remote server.
+    #[pyo3(signature = (segment_id))]
+    fn set_default_segment_table_blueprint_segment_id(
+        mut self_: PyRefMut<'_, Self>,
+        py: Python<'_>,
+        segment_id: Option<String>,
+    ) -> PyResult<()> {
+        let _span = read_trace_context_from_python(
+            py,
+            "DatasetEntry.set_default_segment_table_blueprint_segment_id",
+        )
+        .entered();
+        let connection = self_.client.borrow(py).connection().clone();
+
+        let mut dataset_details = self_.dataset_details.clone();
+        dataset_details.default_segment_table_blueprint_segment = segment_id.map(Into::into);
+
+        let result = connection.update_dataset(py, self_.entry_details.id, dataset_details)?;
+
+        self_.dataset_details = result.dataset_details;
+
+        Ok(())
+    }
+
     /// Return the schema of the data contained in the dataset.
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let _span = read_trace_context_from_python(self_.py(), "DatasetEntry.schema").entered();
