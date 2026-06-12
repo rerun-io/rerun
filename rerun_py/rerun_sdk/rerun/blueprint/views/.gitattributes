@@ -13,3 +13,4 @@ tensor_view.py linguist-generated=true
 text_document_view.py linguist-generated=true
 text_log_view.py linguist-generated=true
 time_series_view.py linguist-generated=true
+web_page_view.py linguist-generated=true

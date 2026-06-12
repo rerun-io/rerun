@@ -38,6 +38,7 @@ from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
 from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
+from .show_navigation_controls import ShowNavigationControls, ShowNavigationControlsBatch
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
 from .text_log_column import TextLogColumn, TextLogColumnBatch
 from .time_int import TimeInt, TimeIntBatch
@@ -54,6 +55,7 @@ from .visual_bounds2d import VisualBounds2D, VisualBounds2DBatch
 from .visualizer_component_mapping import VisualizerComponentMapping, VisualizerComponentMappingBatch
 from .visualizer_instruction_id import VisualizerInstructionId, VisualizerInstructionIdBatch
 from .visualizer_type import VisualizerType, VisualizerTypeBatch
+from .web_page_url import WebPageUrl, WebPageUrlBatch
 from .zoom_level import ZoomLevel, ZoomLevelBatch
 
 __all__ = [
@@ -149,6 +151,8 @@ __all__ = [
     "RowShareBatch",
     "SelectedColumns",
     "SelectedColumnsBatch",
+    "ShowNavigationControls",
+    "ShowNavigationControlsBatch",
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderBatch",
     "TextLogColumn",
@@ -183,6 +187,8 @@ __all__ = [
     "VisualizerInstructionIdBatch",
     "VisualizerType",
     "VisualizerTypeBatch",
+    "WebPageUrl",
+    "WebPageUrlBatch",
     "ZoomLevel",
     "ZoomLevelBatch",
 ]

@@ -40,6 +40,7 @@ pub use re_sdk_types::blueprint::components::QueryExpression;
 pub use re_sdk_types::blueprint::components::RootContainer;
 pub use re_sdk_types::blueprint::components::RowShare;
 pub use re_sdk_types::blueprint::components::SelectedColumns;
+pub use re_sdk_types::blueprint::components::ShowNavigationControls;
 pub use re_sdk_types::blueprint::components::TensorDimensionIndexSlider;
 pub use re_sdk_types::blueprint::components::TextLogColumn;
 pub use re_sdk_types::blueprint::components::TimeInt;
@@ -56,6 +57,7 @@ pub use re_sdk_types::blueprint::components::VisualBounds2D;
 pub use re_sdk_types::blueprint::components::VisualizerComponentMapping;
 pub use re_sdk_types::blueprint::components::VisualizerInstructionId;
 pub use re_sdk_types::blueprint::components::VisualizerType;
+pub use re_sdk_types::blueprint::components::WebPageUrl;
 pub use re_sdk_types::blueprint::components::ZoomLevel;
 
 /// Because blueprints are both read and written the schema must match what
@@ -98,6 +100,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)
         && validate_component::<SelectedColumns>(blueprint)
+        && validate_component::<ShowNavigationControls>(blueprint)
         && validate_component::<TensorDimensionIndexSlider>(blueprint)
         && validate_component::<TextLogColumn>(blueprint)
         && validate_component::<TimeInt>(blueprint)
@@ -114,5 +117,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<VisualizerComponentMapping>(blueprint)
         && validate_component::<VisualizerInstructionId>(blueprint)
         && validate_component::<VisualizerType>(blueprint)
+        && validate_component::<WebPageUrl>(blueprint)
         && validate_component::<ZoomLevel>(blueprint)
 }

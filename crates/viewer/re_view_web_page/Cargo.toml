@@ -1,0 +1,56 @@
+[package]
+authors.workspace = true
+description = "A native-only view that embeds a configured web page."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "re_view_web_page"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = []
+native_webview = [
+  "dep:eframe",
+  "dep:gtk",
+  "dep:raw-window-handle",
+  "dep:scoped-tls",
+  "dep:wry",
+]
+
+[dependencies]
+ahash.workspace = true
+egui.workspace = true
+gtk = { workspace = true, optional = true }
+parking_lot.workspace = true
+re_log_types.workspace = true
+re_sdk_types.workspace = true
+re_tracing.workspace = true
+re_ui.workspace = true
+re_viewer_context.workspace = true
+re_viewport_blueprint.workspace = true
+url.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+eframe = { workspace = true, optional = true, default-features = false }
+raw-window-handle = { workspace = true, optional = true }
+scoped-tls = { workspace = true, optional = true }
+wry = { workspace = true, optional = true, default-features = false, features = [
+  "os-webview",
+  "x11",
+] }
+
+[dev-dependencies]
+egui_kittest.workspace = true
+re_test_context.workspace = true
+re_test_viewport.workspace = true

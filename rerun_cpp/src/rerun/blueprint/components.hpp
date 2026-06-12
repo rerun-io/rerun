@@ -38,6 +38,7 @@
 #include "blueprint/components/root_container.hpp"
 #include "blueprint/components/row_share.hpp"
 #include "blueprint/components/selected_columns.hpp"
+#include "blueprint/components/show_navigation_controls.hpp"
 #include "blueprint/components/tensor_dimension_index_slider.hpp"
 #include "blueprint/components/text_log_column.hpp"
 #include "blueprint/components/time_int.hpp"
@@ -54,4 +55,5 @@
 #include "blueprint/components/visualizer_component_mapping.hpp"
 #include "blueprint/components/visualizer_instruction_id.hpp"
 #include "blueprint/components/visualizer_type.hpp"
+#include "blueprint/components/web_page_url.hpp"
 #include "blueprint/components/zoom_level.hpp"

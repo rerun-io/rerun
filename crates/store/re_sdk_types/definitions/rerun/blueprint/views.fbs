@@ -11,3 +11,4 @@ include "./views/tensor.fbs";
 include "./views/text_document.fbs";
 include "./views/text_log.fbs";
 include "./views/time_series.fbs";
+include "./views/web_page.fbs";

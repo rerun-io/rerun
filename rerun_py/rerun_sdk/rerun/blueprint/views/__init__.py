@@ -13,6 +13,7 @@ from .tensor_view import TensorView
 from .text_document_view import TextDocumentView
 from .text_log_view import TextLogView
 from .time_series_view import TimeSeriesView
+from .web_page_view import WebPageView
 
 __all__ = [
     "BarChartView",
@@ -26,4 +27,5 @@ __all__ = [
     "TextDocumentView",
     "TextLogView",
     "TimeSeriesView",
+    "WebPageView",
 ]

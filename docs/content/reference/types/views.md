@@ -18,4 +18,5 @@ Views are the panels shown in the viewer's viewport and the primary means of ins
 * [`TextDocumentView`](views/text_document_view.md): A view of a single text document, for use with [`archetypes.TextDocument`](https://rerun.io/docs/reference/types/archetypes/text_document).
 * [`TextLogView`](views/text_log_view.md): A view of a text log, for use with [`archetypes.TextLog`](https://rerun.io/docs/reference/types/archetypes/text_log).
 * [`TimeSeriesView`](views/time_series_view.md): A time series view for scalars over time, for use with [`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars).
+* [`WebPageView`](views/web_page_view.md): A native-only view that embeds a configured web page.
 

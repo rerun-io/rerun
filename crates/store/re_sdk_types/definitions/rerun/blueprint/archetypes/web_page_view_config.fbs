@@ -1,0 +1,19 @@
+namespace rerun.blueprint.archetypes;
+
+/// Configuration for the Web Page View.
+table WebPageViewConfig (
+    "attr.docs.view_types": "WebPageView",
+    "attr.rerun.scope": "blueprint"
+) {
+    // --- Required ---
+
+    /// The initial URL to load.
+    url: rerun.blueprint.components.WebPageUrl ("attr.rerun.component_required", order: 100);
+
+    // --- Optional ---
+
+    /// Whether browser navigation controls should be shown.
+    ///
+    /// Defaults to true.
+    show_navigation_controls: rerun.blueprint.components.ShowNavigationControls ("attr.rerun.component_optional", nullable, order: 200);
+}

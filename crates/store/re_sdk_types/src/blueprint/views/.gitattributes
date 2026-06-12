@@ -13,3 +13,4 @@ tensor_view.rs linguist-generated=true
 text_document_view.rs linguist-generated=true
 text_log_view.rs linguist-generated=true
 time_series_view.rs linguist-generated=true
+web_page_view.rs linguist-generated=true

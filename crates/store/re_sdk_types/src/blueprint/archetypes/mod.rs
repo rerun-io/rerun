@@ -36,6 +36,7 @@ mod viewport_blueprint;
 mod visible_time_ranges;
 mod visual_bounds2d;
 mod visualizer_instruction;
+mod web_page_view_config;
 
 pub use self::active_visualizers::ActiveVisualizers;
 pub use self::background::Background;
@@ -72,3 +73,4 @@ pub use self::viewport_blueprint::ViewportBlueprint;
 pub use self::visible_time_ranges::VisibleTimeRanges;
 pub use self::visual_bounds2d::VisualBounds2D;
 pub use self::visualizer_instruction::VisualizerInstruction;
+pub use self::web_page_view_config::WebPageViewConfig;

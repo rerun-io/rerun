@@ -3,7 +3,7 @@
 //! The `Viewer` has ownership of this state and pass it around to users (mainly viewport and
 //! selection panel).
 
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
 
 use re_log_types::StoreId;
 
@@ -45,6 +45,22 @@ impl re_byte_size::SizeBytes for ViewStates {
 }
 
 impl ViewStates {
+    pub fn retain_for_views(
+        &mut self,
+        store_id: &StoreId,
+        retained_view_ids: impl IntoIterator<Item = ViewId>,
+    ) {
+        let retained_view_ids: HashSet<ViewId> = retained_view_ids.into_iter().collect();
+
+        self.states.retain(|(state_store_id, view_id), _| {
+            state_store_id != store_id || retained_view_ids.contains(view_id)
+        });
+        self.visualizer_reports
+            .retain(|(state_store_id, view_id), _| {
+                state_store_id != store_id || retained_view_ids.contains(view_id)
+            });
+    }
+
     pub fn get(&self, store_id: &StoreId, view_id: ViewId) -> Option<&dyn ViewState> {
         self.states
             .get(&(store_id.clone(), view_id))

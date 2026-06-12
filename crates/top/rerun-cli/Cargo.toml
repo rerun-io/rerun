@@ -87,6 +87,9 @@ nasm = ["rerun/nasm"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["rerun/native_viewer"]
 
+## Experimental native embedded webview support for the Web Page View.
+native_webview = ["native_viewer", "rerun/native_webview"]
+
 ## Enable the in-memory Rerun Server, useful for testing.
 oss_server = ["rerun/oss_server"]
 

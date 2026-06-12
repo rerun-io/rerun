@@ -1,0 +1,13 @@
+
+namespace rerun.blueprint.components;
+
+/// The initial URL to load in a Web Page View.
+table WebPageUrl (
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "str",
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
+) {
+  url: rerun.datatypes.Utf8 (order: 100);
+}

@@ -11,6 +11,7 @@ mod tensor_view;
 mod text_document_view;
 mod text_log_view;
 mod time_series_view;
+mod web_page_view;
 
 pub use self::bar_chart_view::BarChartView;
 pub use self::dataframe_view::DataframeView;
@@ -23,3 +24,4 @@ pub use self::tensor_view::TensorView;
 pub use self::text_document_view::TextDocumentView;
 pub use self::text_log_view::TextLogView;
 pub use self::time_series_view::TimeSeriesView;
+pub use self::web_page_view::WebPageView;

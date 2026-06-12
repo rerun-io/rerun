@@ -90,6 +90,9 @@ nasm = ["re_video/nasm"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["dep:re_viewer", "dep:re_crash_handler"]
 
+## Experimental native embedded webview support for the Web Page View.
+native_webview = ["native_viewer", "re_viewer/native_webview"]
+
 ## Enable the in-memory Rerun Server, useful for testing.
 oss_server = ["dep:re_server"]
 

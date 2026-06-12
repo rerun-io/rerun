@@ -32,3 +32,4 @@ include "./archetypes/viewport_blueprint.fbs";
 include "./archetypes/visible_time_ranges.fbs";
 include "./archetypes/visual_bounds2d.fbs";
 include "./archetypes/visualizer_instruction.fbs";
+include "./archetypes/web_page_view_config.fbs";

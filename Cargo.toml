@@ -155,6 +155,7 @@ re_view_tensor = { path = "crates/viewer/re_view_tensor", version = "=0.32.0-alp
 re_view_text_document = { path = "crates/viewer/re_view_text_document", version = "=0.32.0-alpha.1", default-features = false }
 re_view_text_log = { path = "crates/viewer/re_view_text_log", version = "=0.32.0-alpha.1", default-features = false }
 re_view_time_series = { path = "crates/viewer/re_view_time_series", version = "=0.32.0-alpha.1", default-features = false }
+re_view_web_page = { path = "crates/viewer/re_view_web_page", version = "=0.32.0-alpha.1", default-features = false }
 re_viewer = { path = "crates/viewer/re_viewer", version = "=0.32.0-alpha.1", default-features = false }
 re_viewer_context = { path = "crates/viewer/re_viewer_context", version = "=0.32.0-alpha.1", default-features = false }
 re_viewport = { path = "crates/viewer/re_viewport", version = "=0.32.0-alpha.1", default-features = false }
@@ -360,6 +361,7 @@ roxmltree = "0.20.0"
 ring = "0.17.14"
 rustls = { version = "0.23.37", default-features = false }
 saturating_cast = "0.1"
+scoped-tls = "1.0"
 scuffle-av1 = "0.1.4"
 scuffle-bytes-util = "0.1.5"
 semver = "1.0.27"
@@ -439,7 +441,9 @@ webbrowser = "1.1"
 windows-core = { version = "0.62", default-features = false, features = [
   "std",
 ] } # Ensure `std` is enabled so `windows-result::Error` impls `core::error::Error` (needed by wgpu-hal gles on Windows)
+gtk = "0.18.2"
 winit = { version = "0.30.13", default-features = false }
+wry = { version = "0.55.1", default-features = false }
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
 wgpu = { version = "29.0.1", default-features = false, features = [

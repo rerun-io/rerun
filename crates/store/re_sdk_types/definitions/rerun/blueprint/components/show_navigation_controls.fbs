@@ -1,0 +1,14 @@
+
+namespace rerun.blueprint.components;
+
+/// Whether browser navigation controls should be shown in the Web Page View.
+struct ShowNavigationControls (
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "bool",
+  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  show_navigation_controls: rerun.datatypes.Bool (order: 100);
+}

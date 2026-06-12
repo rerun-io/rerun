@@ -1,0 +1,17 @@
+namespace rerun.blueprint.views;
+
+/// A native-only view that embeds a configured web page.
+///
+/// Web Page View is unsupported in the web viewer. Native support depends on the
+/// operating-system webview runtime provided through `wry`: `WebView2` on Windows,
+/// `WebKit` on macOS, and `WebKitGTK` on Linux. Linux child webviews may also depend
+/// on the active display-server integration; the direct child-window path is
+/// X11-oriented, while Wayland-capable embedding requires a GTK container path.
+table WebPageView (
+    "attr.docs.unreleased",
+    "attr.rerun.view_identifier": "WebPage",
+    "attr.rerun.state": "unstable"
+) {
+    /// Configuration for the web page to embed.
+    config: rerun.blueprint.archetypes.WebPageViewConfig (order: 1000);
+}

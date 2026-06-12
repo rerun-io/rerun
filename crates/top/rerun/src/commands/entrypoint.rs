@@ -1760,6 +1760,7 @@ fn record_cli_command_analytics(args: &Args) {
         cors_allow_origin: _,
         port: _,
         new: _,
+        ws_url: _,
     } = args;
 
     let (command, subcommand) = match command {
@@ -1834,7 +1835,14 @@ fn record_cli_command_analytics(args: &Args) {
 
 /// A function that wraps a `re_viewer::App` into a custom `Box<dyn eframe::App>`.
 /// Used by dimos-viewer to inject keyboard teleop and other behaviors.
-pub type AppWrapper = Box<dyn FnOnce(re_viewer::App) -> Result<Box<dyn re_viewer::external::eframe::App>, Box<dyn std::error::Error + Send + Sync>> + Send>;
+pub type AppWrapper = Box<
+    dyn FnOnce(
+            re_viewer::App,
+        ) -> Result<
+            Box<dyn re_viewer::external::eframe::App>,
+            Box<dyn std::error::Error + Send + Sync>,
+        > + Send,
+>;
 
 /// Optional patches to [`re_viewer::StartupOptions`] injected by the app wrapper.
 #[derive(Default)]

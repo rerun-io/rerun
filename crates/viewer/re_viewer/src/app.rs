@@ -2527,6 +2527,33 @@ impl App {
                     let empty_store_context = ActiveStoreContext::empty();
                     let active_store_context = store_context.unwrap_or(&empty_store_context);
 
+                    #[cfg(all(not(target_arch = "wasm32"), feature = "native_webview"))]
+                    re_view_web_page::native_backend::with_native_parent_window(frame, || {
+                        self.state.show(
+                            &self.app_env,
+                            &self.startup_options,
+                            app_blueprint,
+                            ui,
+                            render_ctx,
+                            active_store_context,
+                            storage_context,
+                            &self.reflection,
+                            &self.component_ui_registry,
+                            &self.component_fallback_registry,
+                            &self.view_class_registry,
+                            &self.rx_log,
+                            &self.command_sender,
+                            &WelcomeScreenState {
+                                hide_examples: self.startup_options.hide_welcome_screen,
+                                opacity: self.welcome_screen_opacity(ui),
+                            },
+                            self.event_dispatcher.as_ref(),
+                            &self.connection_registry,
+                            &self.async_runtime,
+                        );
+                    });
+
+                    #[cfg(any(target_arch = "wasm32", not(feature = "native_webview")))]
                     self.state.show(
                         &self.app_env,
                         &self.startup_options,

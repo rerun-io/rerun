@@ -437,6 +437,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ShowNavigationControls as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether browser navigation controls should be shown in the Web Page View.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(ShowNavigationControls::default().to_arrow()?),
+                datatype: ShowNavigationControls::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: ShowNavigationControls::verify_arrow_array,
+            },
+        ),
+        (
             <TensorDimensionIndexSlider as Component>::name(),
             ComponentReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -610,6 +621,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 datatype: VisualizerType::arrow_datatype(),
                 is_enum: false,
                 verify_arrow_array: VisualizerType::verify_arrow_array,
+            },
+        ),
+        (
+            <WebPageUrl as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The initial URL to load in a Web Page View.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(WebPageUrl::default().to_arrow()?),
+                datatype: WebPageUrl::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: WebPageUrl::verify_arrow_array,
             },
         ),
         (
@@ -4717,6 +4739,31 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         component_type: "rerun.blueprint.components.VisualizerComponentMapping"
                             .into(),
                         docstring_md: "The component mapping pairs.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.WebPageViewConfig"),
+            ArchetypeReflection {
+                display_name: "Web page view config",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &["WebPageView"],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "url",
+                        display_name: "Url",
+                        component_type: "rerun.blueprint.components.WebPageUrl".into(),
+                        docstring_md: "The initial URL to load.",
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "show_navigation_controls",
+                        display_name: "Show navigation controls",
+                        component_type: "rerun.blueprint.components.ShowNavigationControls".into(),
+                        docstring_md: "Whether browser navigation controls should be shown.\n\nDefaults to true.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

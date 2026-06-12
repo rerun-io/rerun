@@ -86,6 +86,7 @@ impl ViewportUi {
         };
 
         // Reset all error states.
+        view_states.retain_for_views(ctx.store_id(), blueprint.view_ids().copied());
         view_states.reset_visualizer_reports();
 
         let executed_systems_per_view =
