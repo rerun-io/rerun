@@ -11,10 +11,9 @@ use re_log_encoding::RawRrdManifest;
 use re_log_types::{EntryId, StoreId, StoreKind, TimeType};
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
+use re_protos::cloud::v1alpha1::ext::ScanDatasetManifestDataframe;
 use re_protos::cloud::v1alpha1::ext::{DataSourceKind, DatasetDetails, DatasetEntry, EntryDetails};
-use re_protos::cloud::v1alpha1::{
-    EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
-};
+use re_protos::cloud::v1alpha1::{EntryKind, ScanSegmentTableResponse};
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use re_types_core::LayerName;
 
@@ -339,7 +338,7 @@ impl Dataset {
             all_segment_properties.push(properties_batch);
             all_index_ranges.push(indexes_batch);
 
-            segment_ids.push(segment_id.to_string());
+            segment_ids.push(segment_id.clone());
             layer_names.push(layer_names_row);
             storage_urls.push(storage_urls_row);
             last_updated_at.push(segment.last_updated_at().as_nanosecond() as i64);
@@ -434,7 +433,7 @@ impl Dataset {
         for (layer_name, segment_id, source) in layers {
             layer_names.push(layer_name.clone());
             storage_urls.push(format!("memory:///store/{}", source.store_slot_id()));
-            segment_ids.push(segment_id);
+            segment_ids.push(segment_id.into());
             layer_types.push(source.data_source_kind().to_string());
             registration_times.push(source.registration_time().as_nanosecond() as i64);
             last_updated_at.push(source.last_updated_at().as_nanosecond() as i64);
@@ -453,7 +452,7 @@ impl Dataset {
             properties.push(source.compute_properties()?);
         }
 
-        let base_record_batch = ScanDatasetManifestResponse::create_dataframe(
+        let base_record_batch = ScanDatasetManifestDataframe::new(
             layer_names,
             segment_ids,
             storage_urls,
@@ -465,6 +464,7 @@ impl Dataset {
             schema_sha256s,
             registration_statuses,
         )
+        .into_record_batch()
         .map_err(Error::failed_to_extract_properties)?;
 
         let properties_record_batch =

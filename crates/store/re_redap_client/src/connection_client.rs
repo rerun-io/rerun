@@ -1,7 +1,6 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use itertools::Itertools as _;
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::{RawRrdManifest, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::EntryName;
@@ -12,9 +11,10 @@ use re_protos::cloud::v1alpha1::ext::{
     QueryDatasetRequest, QueryTasksOnCompletionRequest, QueryTasksRequest,
     ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
     RegisterWithDatasetDataframe, RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor,
-    TableDetails, TableEntry, TableInsertMode, UnregisterFromDatasetRequest,
-    UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
-    UpdateTableEntryRequest, UpdateTableEntryResponse, VersionResponse,
+    ScanSegmentTableDataframe, TableDetails, TableEntry, TableInsertMode,
+    UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+    UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest, UpdateTableEntryResponse,
+    VersionResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::cloud::v1alpha1::{
@@ -24,13 +24,13 @@ use re_protos::cloud::v1alpha1::{
     GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryDatasetResponse,
     QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
     ReadTableEntryRequest, RegisterWithDatasetResponse, ScanSegmentTableRequest,
-    ScanSegmentTableResponse, UnregisterFromDatasetResponse, VersionRequest, WriteTableRequest,
+    UnregisterFromDatasetResponse, VersionRequest, WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_protos::{TypeConversionError, missing_column, missing_field};
+use re_protos::{TypeConversionError, missing_field};
 use re_types_core::LayerName;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
@@ -597,7 +597,7 @@ where
         &mut self,
         entry_id: EntryId,
     ) -> ApiResult<Vec<SegmentId>> {
-        const COLUMN_NAME: &str = ScanSegmentTableResponse::FIELD_SEGMENT_ID;
+        const COLUMN_NAME: &str = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME;
 
         let response = self
             .inner()
@@ -634,30 +634,17 @@ where
                     )
                 })?;
 
-            let segment_id_col = record_batch.column_by_name(COLUMN_NAME).ok_or_else(|| {
-                let err = missing_column!(ScanSegmentTableResponse, COLUMN_NAME);
-                ApiError::deserialization_with_source(
-                    trace_id,
-                    err,
-                    "missing column from item in /ScanSegmentTable stream",
-                )
-            })?;
-
-            let segment_id_array = segment_id_col
-                .try_downcast_array_ref::<arrow::array::StringArray>()
+            let segment_id_column = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
+                .extract(&record_batch)
                 .map_err(|err| {
                     ApiError::deserialization_with_source(
                         trace_id,
                         err,
-                        "unexpected types in item in /ScanSegmentTable stream",
+                        "invalid segment id column in item in /ScanSegmentTable stream",
                     )
                 })?;
 
-            segment_ids.extend(
-                segment_id_array
-                    .iter()
-                    .filter_map(|opt| opt.map(|s| SegmentId::new(s.to_owned()))),
-            );
+            segment_ids.extend(segment_id_column);
         }
 
         Ok(segment_ids)

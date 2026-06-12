@@ -2,8 +2,8 @@
 # name: test_segment_ids
   pyarrow.Table
   rerun_segment_id: string not null
-  rerun_layer_names: list<rerun_layer_names: string not null> not null
-    child 0, rerun_layer_names: string not null
+  rerun_layer_names: list<item: string not null> not null
+    child 0, item: string not null
   rerun_num_chunks: uint64 not null
   log_tick:end: int64
   log_tick:start: int64

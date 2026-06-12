@@ -35,7 +35,8 @@ use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
 use re_log_types::{StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::{FetchChunksRequest, ScanSegmentTableResponse};
+use re_protos::cloud::v1alpha1::FetchChunksRequest;
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use tokio::runtime::Handle;
 use tonic::IntoRequest as _;
 
@@ -290,8 +291,10 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             None => Arc::clone(table_schema),
         };
 
-        let partition_col = Arc::new(Column::new(ScanSegmentTableResponse::FIELD_SEGMENT_ID, 0))
-            as Arc<dyn PhysicalExpr>;
+        let partition_col = Arc::new(Column::new(
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            0,
+        )) as Arc<dyn PhysicalExpr>;
         let order_col = sort_index
             .and_then(|index| {
                 let index_name = index.as_str();
@@ -328,7 +331,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         let output_partitioning = if partition_in_output_schema {
             Partitioning::Hash(
                 vec![Arc::new(Column::new(
-                    ScanSegmentTableResponse::FIELD_SEGMENT_ID,
+                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
                     0,
                 ))],
                 num_partitions,
@@ -401,7 +404,7 @@ fn create_next_row(
 
     let batch_schema = Arc::new(prepend_string_column_schema(
         &query_schema,
-        ScanSegmentTableResponse::FIELD_SEGMENT_ID,
+        ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
     ));
 
     let batch = RecordBatch::try_new_with_options(

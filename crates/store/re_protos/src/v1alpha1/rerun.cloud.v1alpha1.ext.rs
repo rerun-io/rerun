@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, BinaryArray, BooleanArray, DictionaryArray, FixedSizeBinaryBuilder,
-    Int64Array, ListBuilder, PrimitiveDictionaryBuilder, RecordBatch, RecordBatchOptions,
-    StringArray, StringBuilder, TimestampNanosecondArray, UInt64Array,
+    Array, ArrayRef, BinaryArray, BooleanArray, DictionaryArray, Int64Array,
+    PrimitiveDictionaryBuilder, RecordBatch, RecordBatchOptions, StringArray, UInt64Array,
 };
-use arrow::datatypes::{DataType, Field, FieldRef, Int32Type, Int64Type, Schema, TimeUnit};
+use arrow::datatypes::{DataType, Field, FieldRef, Int32Type, Int64Type, Schema};
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use prost::Name as _;
@@ -2131,11 +2130,8 @@ pub struct RegisterWithDatasetTaskDescriptor {
 
 // --- UnregisterFromDatasetResponse ---
 
+/// The dataframe follows the same schema as [`ScanDatasetManifestDataframe`].
 impl UnregisterFromDatasetResponse {
-    pub fn schema() -> Schema {
-        ScanDatasetManifestResponse::schema()
-    }
-
     pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
         Ok(self
             .data
@@ -2146,140 +2142,33 @@ impl UnregisterFromDatasetResponse {
 
 // --- ScanSegmentTableResponse --
 
-// One row per segment
+// One row per segment; see [`ScanSegmentTableDataframe`].
 impl ScanSegmentTableResponse {
-    /// The unique identifier of the segment.
-    pub const FIELD_SEGMENT_ID: &str = "rerun_segment_id";
-
-    /// Layer names for this segment, one per layer.
-    ///
-    /// Should have the same length as [`Self::FIELD_STORAGE_URLS`].
-    pub const FIELD_LAYER_NAMES: &str = "rerun_layer_names";
-
-    /// Storage URLs for this segment, one per layer.
-    ///
-    /// Should have the same length as [`Self::FIELD_LAYER_NAMES`].
-    pub const FIELD_STORAGE_URLS: &str = "rerun_storage_urls";
-
-    /// Keeps track of the most recent time any layer belonging to this segment was updated in any
-    /// way.
-    pub const FIELD_LAST_UPDATED_AT: &str = "rerun_last_updated_at";
-
-    /// Total number of chunks for this segment.
-    pub const FIELD_NUM_CHUNKS: &str = "rerun_num_chunks";
-
-    /// Total size in bytes for this segment.
-    pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
-
-    pub fn field_segment_id() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_SEGMENT_ID, DataType::Utf8, false))
-    }
-
-    pub fn field_layer_names() -> FieldRef {
-        lazy_field_ref!(Field::new(
-            Self::FIELD_LAYER_NAMES,
-            DataType::List(Self::field_layer_names_inner()),
-            false,
-        ))
-    }
-
-    pub fn field_layer_names_inner() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_LAYER_NAMES, DataType::Utf8, false))
-    }
-
-    pub fn field_storage_urls() -> FieldRef {
-        lazy_field_ref!(Field::new(
-            Self::FIELD_STORAGE_URLS,
-            DataType::List(Self::field_storage_urls_inner()),
-            false,
-        ))
-    }
-
-    pub fn field_storage_urls_inner() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_STORAGE_URLS, DataType::Utf8, false))
-    }
-
-    pub fn field_last_updated_at() -> FieldRef {
-        lazy_field_ref!(Field::new(
-            Self::FIELD_LAST_UPDATED_AT,
-            DataType::Timestamp(TimeUnit::Nanosecond, None),
-            false,
-        ))
-    }
-
-    pub fn field_num_chunks() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_NUM_CHUNKS, DataType::UInt64, false))
-    }
-
-    pub fn field_size_bytes() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_SIZE_BYTES, DataType::UInt64, false))
-    }
-
-    // NOTE: changing this method is a breaking change for implementation (aka it at least breaks
-    // tests in `dataplatform`)
-    pub fn fields() -> Vec<FieldRef> {
-        vec![
-            Self::field_segment_id(),
-            Self::field_layer_names(),
-            Self::field_storage_urls(),
-            Self::field_last_updated_at(),
-            Self::field_num_chunks(),
-            Self::field_size_bytes(),
-        ]
-    }
-
-    pub fn schema() -> Schema {
-        Schema::new(Self::fields())
+    /// The inner field of the list columns, using arrow's conventional `"item"` name.
+    pub fn list_item_field() -> FieldRef {
+        lazy_field_ref!(Field::new("item", DataType::Utf8, false))
     }
 
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
-        segment_ids: Vec<String>,
+        segment_ids: Vec<SegmentId>,
         layer_names: Vec<Vec<LayerName>>,
         storage_urls: Vec<Vec<String>>,
         last_updated_at: Vec<i64>,
         num_chunks: Vec<u64>,
         size_bytes: Vec<u64>,
     ) -> arrow::error::Result<RecordBatch> {
-        let row_count = segment_ids.len();
-        let schema = Arc::new(Self::schema());
-
-        let mut layer_names_builder =
-            ListBuilder::new(StringBuilder::new()).with_field(Self::field_layer_names_inner());
-
-        for inner_vec in layer_names {
-            for layer_name in inner_vec {
-                layer_names_builder
-                    .values()
-                    .append_value(layer_name.as_str());
-            }
-            layer_names_builder.append(true);
+        ScanSegmentTableDataframe {
+            rerun_segment_id: segment_ids.into(),
+            rerun_layer_names: layer_names.into(),
+            rerun_storage_urls: storage_urls.into(),
+            rerun_last_updated_at: last_updated_at.into(),
+            rerun_num_chunks: num_chunks.into(),
+            rerun_size_bytes: size_bytes.into(),
+            extra_columns: vec![],
         }
-
-        let mut urls_builder =
-            ListBuilder::new(StringBuilder::new()).with_field(Self::field_storage_urls_inner());
-
-        for mut inner_vec in storage_urls {
-            for layer_name in inner_vec.drain(..) {
-                urls_builder.values().append_value(layer_name)
-            }
-            urls_builder.append(true);
-        }
-
-        let columns: Vec<ArrayRef> = vec![
-            Arc::new(StringArray::from(segment_ids)),
-            Arc::new(layer_names_builder.finish()),
-            Arc::new(urls_builder.finish()),
-            Arc::new(TimestampNanosecondArray::from(last_updated_at)),
-            Arc::new(UInt64Array::from(num_chunks)),
-            Arc::new(UInt64Array::from(size_bytes)),
-        ];
-
-        RecordBatch::try_new_with_options(
-            schema,
-            columns,
-            &RecordBatchOptions::default().with_row_count(Some(row_count)),
-        )
+        .into_record_batch()
+        .map_err(|err| ArrowError::InvalidArgumentError(err.to_string()))
     }
 
     pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
@@ -2288,6 +2177,40 @@ impl ScanSegmentTableResponse {
             .as_ref()
             .ok_or_else(|| missing_field!(Self, "data"))?)
     }
+}
+
+/// Strongly-typed view of the dataframe in [`ScanSegmentTableResponse::data`].
+///
+/// One row per segment; all the segment's layers are folded into the list columns.
+/// The field names are the column names.
+#[derive(Default, quiver::Quiver)]
+pub struct ScanSegmentTableDataframe {
+    /// The unique identifier of the segment.
+    pub rerun_segment_id: quiver::Column<SegmentId>,
+
+    /// Layer names for this segment, one per layer.
+    ///
+    /// Same length as [`Self::rerun_storage_urls`].
+    pub rerun_layer_names: quiver::Column<quiver::List<LayerName>>,
+
+    /// Storage URLs for this segment, one per layer.
+    ///
+    /// Same length as [`Self::rerun_layer_names`].
+    pub rerun_storage_urls: quiver::Column<quiver::List<quiver::Utf8>>,
+
+    /// Keeps track of the most recent time any layer belonging to this segment
+    /// was updated in any way.
+    pub rerun_last_updated_at: quiver::Column<quiver::TimestampNanosecond>,
+
+    /// Total number of chunks for this segment.
+    pub rerun_num_chunks: quiver::Column<u64>,
+
+    /// Total size in bytes for this segment.
+    pub rerun_size_bytes: quiver::Column<u64>,
+
+    /// Any per-dataset property and index-range columns appended at runtime.
+    #[quiver(extra_columns)]
+    pub extra_columns: Vec<quiver::DynColumn>,
 }
 
 // --- ScanDatasetManifestResponse --
@@ -2309,115 +2232,62 @@ impl ScanSegmentTableResponse {
 //
 // TODO(RR-4807): consider this choice, e.g. a single row per asset layer with a NULL segment id instead.
 impl ScanDatasetManifestResponse {
+    pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
+        Ok(self
+            .data
+            .as_ref()
+            .ok_or_else(|| missing_field!(Self, "data"))?)
+    }
+}
+
+/// Strongly-typed view of the dataframe in [`ScanDatasetManifestResponse::data`].
+///
+/// See [`ScanDatasetManifestResponse`] for the row semantics
+/// (one row per (layer, segment) pair).
+/// The field names are the column names.
+#[derive(Default, quiver::Quiver)]
+pub struct ScanDatasetManifestDataframe {
     /// The name of the layer.
-    pub const FIELD_LAYER_NAME: &str = "rerun_layer_name";
+    pub rerun_layer_name: quiver::Column<LayerName>,
 
     /// The segment this row belongs to.
-    pub const FIELD_SEGMENT_ID: &str = "rerun_segment_id";
+    pub rerun_segment_id: quiver::Column<SegmentId>,
 
     /// Where the data of this row's source is stored.
-    pub const FIELD_STORAGE_URL: &str = "rerun_storage_url";
+    pub rerun_storage_url: quiver::Column<quiver::Utf8>,
 
-    /// The kind of data source backing this row, e.g. `rrd` (see `DataSourceKind`).
-    pub const FIELD_LAYER_TYPE: &str = "rerun_layer_type";
+    /// The kind of data source backing this row, e.g. `rrd` (see [`DataSourceKind`]).
+    pub rerun_layer_type: quiver::Column<quiver::Utf8>,
 
     /// Time at which this row's source was initially registered.
-    pub const FIELD_REGISTRATION_TIME: &str = "rerun_registration_time";
+    pub rerun_registration_time: quiver::Column<quiver::TimestampNanosecond>,
 
     /// When was this row of the manifest modified last?
-    pub const FIELD_LAST_UPDATED_AT: &str = "rerun_last_updated_at";
+    pub rerun_last_updated_at: quiver::Column<quiver::TimestampNanosecond>,
 
     /// Total number of chunks in this row's source.
-    pub const FIELD_NUM_CHUNKS: &str = "rerun_num_chunks";
+    pub rerun_num_chunks: quiver::Column<u64>,
 
     /// Total size in bytes of this row's source.
-    pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
+    pub rerun_size_bytes: quiver::Column<u64>,
 
     /// SHA-256 hash of the schema of this row's source.
-    pub const FIELD_SCHEMA_SHA256: &str = "rerun_schema_sha256";
+    pub rerun_schema_sha256: quiver::Column<quiver::FixedSizeBinary<32>>,
 
     /// The registration status of this row's source (see [`LayerRegistrationStatus`]).
-    pub const FIELD_REGISTRATION_STATUS: &str = "rerun_registration_status";
+    pub rerun_registration_status: quiver::Column<quiver::Utf8>,
 
-    pub fn field_layer_name() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_LAYER_NAME, DataType::Utf8, false))
-    }
+    /// Any per-dataset property columns appended at runtime.
+    #[quiver(extra_columns)]
+    pub extra_columns: Vec<quiver::DynColumn>,
+}
 
-    pub fn field_segment_id() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_SEGMENT_ID, DataType::Utf8, false))
-    }
-
-    pub fn field_storage_url() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_STORAGE_URL, DataType::Utf8, false))
-    }
-
-    pub fn field_layer_type() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_LAYER_TYPE, DataType::Utf8, false))
-    }
-
-    pub fn field_registration_time() -> FieldRef {
-        lazy_field_ref!(Field::new(
-            Self::FIELD_REGISTRATION_TIME,
-            DataType::Timestamp(TimeUnit::Nanosecond, None),
-            false
-        ))
-    }
-
-    pub fn field_last_updated_at() -> FieldRef {
-        lazy_field_ref!(Field::new(
-            Self::FIELD_LAST_UPDATED_AT,
-            DataType::Timestamp(TimeUnit::Nanosecond, None),
-            false
-        ))
-    }
-
-    pub fn field_num_chunks() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_NUM_CHUNKS, DataType::UInt64, false))
-    }
-
-    pub fn field_size_bytes() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_SIZE_BYTES, DataType::UInt64, false))
-    }
-
-    pub fn field_schema_sha256() -> FieldRef {
-        lazy_field_ref!(Field::new(
-            Self::FIELD_SCHEMA_SHA256,
-            DataType::FixedSizeBinary(32),
-            false
-        ))
-    }
-
-    pub fn field_registration_status() -> FieldRef {
-        lazy_field_ref!(Field::new(
-            Self::FIELD_REGISTRATION_STATUS,
-            DataType::Utf8,
-            false
-        ))
-    }
-
-    pub fn fields() -> Vec<FieldRef> {
-        vec![
-            Self::field_layer_name(),
-            Self::field_segment_id(),
-            Self::field_storage_url(),
-            Self::field_layer_type(),
-            Self::field_registration_time(),
-            Self::field_last_updated_at(),
-            Self::field_num_chunks(),
-            Self::field_size_bytes(),
-            Self::field_schema_sha256(),
-            Self::field_registration_status(),
-        ]
-    }
-
-    pub fn schema() -> Schema {
-        Schema::new(Self::fields())
-    }
-
-    /// Helper to simplify instantiation of the dataframe in [`Self::data`].
-    pub fn create_dataframe(
+impl ScanDatasetManifestDataframe {
+    /// One row per (layer, segment) pair; all columns must have the same length.
+    #[expect(clippy::too_many_arguments)]
+    pub fn new(
         layer_names: Vec<LayerName>,
-        segment_ids: Vec<String>,
+        segment_ids: Vec<SegmentId>,
         storage_urls: Vec<String>,
         layer_types: Vec<String>,
         registration_times: Vec<i64>,
@@ -2426,44 +2296,20 @@ impl ScanDatasetManifestResponse {
         size_bytes: Vec<u64>,
         schema_sha256s: Vec<[u8; 32]>,
         registration_statuses: Vec<String>,
-    ) -> arrow::error::Result<RecordBatch> {
-        let row_count = segment_ids.len();
-        let schema = Arc::new(Self::schema());
-
-        let mut schema_sha256_builder = FixedSizeBinaryBuilder::with_capacity(row_count, 32);
-        for sha256 in schema_sha256s {
-            schema_sha256_builder.append_value(sha256.as_slice())?;
+    ) -> Self {
+        Self {
+            rerun_layer_name: layer_names.into(),
+            rerun_segment_id: segment_ids.into(),
+            rerun_storage_url: storage_urls.into(),
+            rerun_layer_type: layer_types.into(),
+            rerun_registration_time: registration_times.into(),
+            rerun_last_updated_at: last_updated_at_times.into(),
+            rerun_num_chunks: num_chunks.into(),
+            rerun_size_bytes: size_bytes.into(),
+            rerun_schema_sha256: schema_sha256s.into(),
+            rerun_registration_status: registration_statuses.into(),
+            extra_columns: vec![],
         }
-
-        let layer_names: Vec<String> = layer_names
-            .into_iter()
-            .map(LayerName::into_string)
-            .collect();
-        let columns: Vec<ArrayRef> = vec![
-            Arc::new(StringArray::from(layer_names)),
-            Arc::new(StringArray::from(segment_ids)),
-            Arc::new(StringArray::from(storage_urls)),
-            Arc::new(StringArray::from(layer_types)),
-            Arc::new(TimestampNanosecondArray::from(registration_times)),
-            Arc::new(TimestampNanosecondArray::from(last_updated_at_times)),
-            Arc::new(UInt64Array::from(num_chunks)),
-            Arc::new(UInt64Array::from(size_bytes)),
-            Arc::new(schema_sha256_builder.finish()),
-            Arc::new(StringArray::from(registration_statuses)),
-        ];
-
-        RecordBatch::try_new_with_options(
-            schema,
-            columns,
-            &RecordBatchOptions::default().with_row_count(Some(row_count)),
-        )
-    }
-
-    pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
-        Ok(self
-            .data
-            .as_ref()
-            .ok_or_else(|| missing_field!(Self, "data"))?)
     }
 }
 
@@ -2482,6 +2328,12 @@ impl std::fmt::Display for DataSourceKind {
         match self {
             Self::Rrd => write!(f, "rrd"),
         }
+    }
+}
+
+impl From<DataSourceKind> for String {
+    fn from(kind: DataSourceKind) -> Self {
+        kind.to_string()
     }
 }
 
@@ -2958,10 +2810,9 @@ mod tests {
         .unwrap();
     }
 
-    /// Ensure `crate_dataframe` implementation is consistent with `schema()`
     #[test]
     fn test_scan_segment_table_response_create_dataframe() {
-        let segment_ids = vec!["1".to_owned(), "2".to_owned()];
+        let segment_ids = vec![SegmentId::from("1"), SegmentId::from("2")];
         let layer_names = vec![
             vec![LayerName::from("a"), LayerName::from("b")],
             vec![LayerName::from("c")],
@@ -2971,7 +2822,7 @@ mod tests {
         let num_chunks = vec![1, 2];
         let size_bytes = vec![1, 2];
 
-        ScanSegmentTableResponse::create_dataframe(
+        let batch = ScanSegmentTableResponse::create_dataframe(
             segment_ids,
             layer_names,
             storage_urls,
@@ -2980,6 +2831,12 @@ mod tests {
             size_bytes,
         )
         .unwrap();
+
+        assert_eq!(
+            batch.schema().as_ref(),
+            &ScanSegmentTableDataframe::max_schema(),
+            "the builder must produce exactly the declared columns (no stray extra columns)"
+        );
     }
 
     #[test]
@@ -3146,11 +3003,10 @@ mod tests {
         );
     }
 
-    /// Ensure `crate_dataframe` implementation is consistent with `schema()`
     #[test]
-    fn test_scan_dataset_manifest_response_create_dataframe() {
+    fn test_scan_dataset_manifest_dataframe() {
         let layer_name = vec![LayerName::from("a")];
-        let segment_id = vec!["1".to_owned()];
+        let segment_id = vec![SegmentId::from("1")];
         let storage_url = vec!["d".to_owned()];
         let layer_type = vec!["c".to_owned()];
         let registration_time = vec![1];
@@ -3160,7 +3016,7 @@ mod tests {
         let schema_sha256 = vec![[1; 32]];
         let registration_status = vec![LayerRegistrationStatus::Done.to_string()];
 
-        ScanDatasetManifestResponse::create_dataframe(
+        let batch = ScanDatasetManifestDataframe::new(
             layer_name,
             segment_id,
             storage_url,
@@ -3172,7 +3028,14 @@ mod tests {
             schema_sha256,
             registration_status,
         )
+        .into_record_batch()
         .unwrap();
+
+        assert_eq!(
+            batch.schema().as_ref(),
+            &ScanDatasetManifestDataframe::max_schema(),
+            "the builder must produce exactly the declared columns (no stray extra columns)"
+        );
     }
 
     /// Snapshot-friendly schema description, in declared column order.
@@ -3220,6 +3083,14 @@ mod tests {
         insta::assert_snapshot!(
             "register_with_dataset_dataframe_schema",
             format_schema(&RegisterWithDatasetDataframe::max_schema())
+        );
+        insta::assert_snapshot!(
+            "scan_dataset_manifest_dataframe_schema",
+            format_schema(&ScanDatasetManifestDataframe::max_schema())
+        );
+        insta::assert_snapshot!(
+            "scan_segment_table_dataframe_schema",
+            format_schema(&ScanSegmentTableDataframe::max_schema())
         );
     }
 }

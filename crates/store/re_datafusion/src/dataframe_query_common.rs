@@ -26,12 +26,13 @@ use re_dataframe::{Index, IndexValue, QueryExpression, SparseFillStrategy};
 use re_log_types::{EntityPath, EntryId};
 use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
-    ScanSegmentTableResponse,
 };
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
-    cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange},
+    cloud::v1alpha1::ext::{
+        Query, QueryDatasetRequest, QueryLatestAt, QueryRange, ScanSegmentTableDataframe,
+    },
     common::v1alpha1::ext::SegmentId,
 };
 use re_redap_client::{ApiError, ApiResult, ConnectionClient, ConnectionRegistryHandle};
@@ -320,7 +321,7 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
 
         let schema = Arc::new(prepend_string_column_schema(
             &schema,
-            ScanSegmentTableResponse::FIELD_SEGMENT_ID,
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
         ));
 
         Ok(Self {

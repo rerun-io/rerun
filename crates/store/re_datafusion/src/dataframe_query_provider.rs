@@ -37,7 +37,7 @@ use futures_util::Stream;
 use io_loop::chunk_stream_io_loop;
 use itertools::Itertools as _;
 use re_dataframe::{Index, QueryExpression, TimelineName};
-use re_protos::cloud::v1alpha1::ScanSegmentTableResponse;
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_redap_client::{ApiError, ApiResult};
 
 use crate::IntoDfError as _;
@@ -473,42 +473,43 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         // segment ID and then time index. If the output does not have rerun
         // segment ID included, we cannot specify any output ordering.
 
-        let orderings = if projected_schema
-            .fields()
-            .iter()
-            .any(|f| f.name().as_str() == ScanSegmentTableResponse::FIELD_SEGMENT_ID)
-        {
-            let segment_col = Arc::new(Column::new(ScanSegmentTableResponse::FIELD_SEGMENT_ID, 0))
-                as Arc<dyn PhysicalExpr>;
-            let order_col = sort_index
-                .and_then(|index| {
-                    let index_name = index.as_str();
-                    projected_schema
-                        .fields()
-                        .iter()
-                        .enumerate()
-                        .find(|(_idx, field)| field.name() == index_name)
-                        .map(|(index_col, _)| Column::new(index_name, index_col))
-                })
-                .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
+        let orderings =
+            if projected_schema.fields().iter().any(|f| {
+                f.name().as_str() == ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME
+            }) {
+                let segment_col = Arc::new(Column::new(
+                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+                    0,
+                )) as Arc<dyn PhysicalExpr>;
+                let order_col = sort_index
+                    .and_then(|index| {
+                        let index_name = index.as_str();
+                        projected_schema
+                            .fields()
+                            .iter()
+                            .enumerate()
+                            .find(|(_idx, field)| field.name() == index_name)
+                            .map(|(index_col, _)| Column::new(index_name, index_col))
+                    })
+                    .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
 
-            let mut physical_ordering = vec![PhysicalSortExpr::new(
-                segment_col,
-                SortOptions::new(false, true),
-            )];
-            if let Some(col_expr) = order_col {
-                physical_ordering.push(PhysicalSortExpr::new(
-                    col_expr,
+                let mut physical_ordering = vec![PhysicalSortExpr::new(
+                    segment_col,
                     SortOptions::new(false, true),
-                ));
-            }
-            vec![
-                LexOrdering::new(physical_ordering)
-                    .expect("LexOrdering should return Some since input is not empty"),
-            ]
-        } else {
-            vec![]
-        };
+                )];
+                if let Some(col_expr) = order_col {
+                    physical_ordering.push(PhysicalSortExpr::new(
+                        col_expr,
+                        SortOptions::new(false, true),
+                    ));
+                }
+                vec![
+                    LexOrdering::new(physical_ordering)
+                        .expect("LexOrdering should return Some since input is not empty"),
+                ]
+            } else {
+                vec![]
+            };
 
         let eq_properties =
             EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), orderings);
@@ -518,7 +519,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         let output_partitioning = if partition_in_output_schema {
             Partitioning::Hash(
                 vec![Arc::new(Column::new(
-                    ScanSegmentTableResponse::FIELD_SEGMENT_ID,
+                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
                     0,
                 ))],
                 num_partitions,

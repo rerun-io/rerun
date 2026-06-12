@@ -17,7 +17,9 @@ use re_dataframe::{
     StorageEngine, TimelineName,
 };
 use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TimeInt};
-use re_protos::{cloud::v1alpha1::ScanSegmentTableResponse, common::v1alpha1::ext::SegmentId};
+use re_protos::{
+    cloud::v1alpha1::ext::ScanSegmentTableDataframe, common::v1alpha1::ext::SegmentId,
+};
 use re_redap_client::{ApiError, ApiResult};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::{Instrument as _, instrument};
@@ -91,7 +93,7 @@ async fn send_next_row_batch(
         re_tracing::profile_scope!("build_and_align_batch");
         let batch_schema = Arc::new(prepend_string_column_schema(
             &query_schema,
-            ScanSegmentTableResponse::FIELD_SEGMENT_ID,
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
         ));
 
         let batch = RecordBatch::try_new_with_options(

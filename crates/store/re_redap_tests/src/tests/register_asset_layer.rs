@@ -1,15 +1,12 @@
-use arrow::array::{FixedSizeBinaryArray, StringArray};
+use arrow::array::FixedSizeBinaryArray;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
-use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_protos::cloud::v1alpha1::ext::{DataSource, QueryDatasetRequest};
+use re_protos::cloud::v1alpha1::ext::{self, DataSource, QueryDatasetRequest};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
-use re_protos::cloud::v1alpha1::{
-    RegisterWithDatasetRequest, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-};
+use re_protos::cloud::v1alpha1::{RegisterWithDatasetRequest, ScanDatasetManifestRequest};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_types_core::ChunkId;
+use re_types_core::{ChunkId, LayerName};
 use url::Url;
 
 use super::common::{
@@ -111,37 +108,28 @@ async fn scan_manifest(
     Ok(arrow::compute::concat_batches(&schema, &batches)?)
 }
 
-fn string_column(batch: &arrow::array::RecordBatch, column_name: &str) -> Vec<String> {
-    string_column_unsorted(batch, column_name)
+fn manifest_layer_names(batch: &arrow::array::RecordBatch) -> Vec<String> {
+    ext::ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME
+        .extract(batch)
+        .expect("valid layer name column")
         .into_iter()
+        .map(LayerName::into_string)
         .sorted()
         .collect()
-}
-
-fn manifest_layer_names(batch: &arrow::array::RecordBatch) -> Vec<String> {
-    string_column(batch, ScanDatasetManifestResponse::FIELD_LAYER_NAME)
 }
 
 /// The segment ids of all manifest rows with the given layer name, sorted.
 fn segment_ids_of_layer(batch: &arrow::array::RecordBatch, layer_name: &str) -> Vec<String> {
-    let layer_names = string_column_unsorted(batch, ScanDatasetManifestResponse::FIELD_LAYER_NAME);
-    let segment_ids = string_column_unsorted(batch, ScanDatasetManifestResponse::FIELD_SEGMENT_ID);
+    let layer_names = ext::ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME
+        .extract(batch)
+        .expect("valid layer name column");
+    let segment_ids = ext::ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID
+        .extract(batch)
+        .expect("valid segment id column");
     std::iter::zip(layer_names, segment_ids)
         .filter(|(name, _)| name == layer_name)
-        .map(|(_, segment_id)| segment_id)
+        .map(|(_, segment_id)| String::from(segment_id))
         .sorted()
-        .collect()
-}
-
-fn string_column_unsorted(batch: &arrow::array::RecordBatch, column_name: &str) -> Vec<String> {
-    batch
-        .column_by_name(column_name)
-        .expect("missing column")
-        .downcast_array_ref::<StringArray>()
-        .expect("expected a StringArray")
-        .iter()
-        .flatten()
-        .map(str::to_owned)
         .collect()
 }
 
