@@ -11,7 +11,9 @@ use re_log_channel::{LogReceiverSet, LogSource, RecordingOpenBehavior};
 use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
+use re_sdk_types::blueprint::archetypes::{self as blueprint_archetypes, WebPageViewConfig};
 use re_sdk_types::blueprint::components::{PanelState, PlayState};
+use re_sdk_types::components::Name;
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
@@ -19,13 +21,14 @@ use re_viewer_context::{
     AsyncRuntimeHandle, AuthContext, BlueprintContext, BlueprintUndoState, CommandSender,
     ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, FocusTarget, Item, Route,
     SelectionChange, StorageContext, StoreHub, StoreViewContext, SystemCommand,
-    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
-    ViewStates, ViewerContext, blueprint_timeline,
+    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClass as _,
+    ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
 };
 use re_viewport::ViewportUi;
-use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty, ViewportBlueprint};
 
+use crate::app::WebPageViewRequest;
 use crate::app_blueprint::AppBlueprint;
 use crate::navigation::Navigation;
 use crate::open_url_description::ViewerOpenUrlDescription;
@@ -121,6 +124,14 @@ pub struct AppState {
     /// Are we logged in?
     #[serde(skip)]
     pub(crate) auth_state: Option<AuthContext>,
+
+    /// Queued external requests to create or update Web Page View panels.
+    #[serde(skip)]
+    pending_web_page_view_requests: Vec<WebPageViewRequest>,
+
+    /// Runtime-only mapping from external panel ids to viewer view ids.
+    #[serde(skip)]
+    web_page_panel_ids: HashMap<String, ViewId>,
 }
 
 impl Default for AppState {
@@ -146,6 +157,8 @@ impl Default for AppState {
             selection_state: Default::default(),
             focused_item: Default::default(),
             auth_state: Default::default(),
+            pending_web_page_view_requests: Default::default(),
+            web_page_panel_ids: Default::default(),
 
             #[cfg(feature = "testing")]
             test_hook: None,
@@ -175,6 +188,10 @@ impl AppState {
 
     pub fn set_examples_manifest_url(&mut self, egui_ctx: &egui::Context, url: String) {
         self.welcome_screen.set_examples_manifest_url(egui_ctx, url);
+    }
+
+    pub fn queue_web_page_view_request(&mut self, request: WebPageViewRequest) {
+        self.pending_web_page_view_requests.push(request);
     }
 
     pub fn app_options(&self) -> &AppOptions {
@@ -301,6 +318,8 @@ impl AppState {
                     selection_state,
                     focused_item,
                     auth_state,
+                    pending_web_page_view_requests,
+                    web_page_panel_ids,
                     ..
                 } = self;
 
@@ -473,6 +492,13 @@ impl AppState {
                     viewport_ui.blueprint.set_auto_views(true, &ctx);
                     egui_ctx.request_repaint();
                 }
+
+                apply_pending_web_page_view_requests(
+                    &ctx,
+                    &viewport_ui.blueprint,
+                    pending_web_page_view_requests,
+                    web_page_panel_ids,
+                );
 
                 // Update the viewport. May spawn new views and handle queued requests (like screenshots).
                 viewport_ui.on_frame_start(&ctx);
@@ -1024,4 +1050,52 @@ impl re_byte_size::MemUsageTreeCapture for AppState {
         tree.add("view_states", self.view_states.total_size_bytes());
         tree.into_tree()
     }
+}
+
+fn apply_pending_web_page_view_requests(
+    ctx: &ViewerContext<'_>,
+    viewport_blueprint: &ViewportBlueprint,
+    pending_requests: &mut Vec<WebPageViewRequest>,
+    panel_ids: &mut HashMap<String, ViewId>,
+) {
+    for request in pending_requests.drain(..) {
+        let view_id = panel_ids
+            .get(&request.panel_id)
+            .copied()
+            .filter(|view_id| viewport_blueprint.view(view_id).is_some())
+            .unwrap_or_else(|| {
+                let mut view = ViewBlueprint::new_with_root_wildcard(
+                    re_view_web_page::WebPageView::identifier(),
+                );
+                view.display_name = Some(request.title.clone());
+
+                let view_id = viewport_blueprint.add_view_at_root(view);
+                panel_ids.insert(request.panel_id.clone(), view_id);
+                view_id
+            });
+
+        save_web_page_view_request(ctx, view_id, &request);
+        viewport_blueprint.focus_tab(view_id);
+    }
+}
+
+fn save_web_page_view_request(
+    ctx: &ViewerContext<'_>,
+    view_id: ViewId,
+    request: &WebPageViewRequest,
+) {
+    ctx.save_blueprint_component(
+        view_id.as_entity_path(),
+        &blueprint_archetypes::ViewBlueprint::descriptor_display_name(),
+        &Name::from(request.title.clone()),
+    );
+
+    let config_property = ViewProperty::from_archetype::<WebPageViewConfig>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query,
+        view_id,
+    );
+    let config = WebPageViewConfig::new(request.url.clone())
+        .with_show_navigation_controls(request.show_navigation_controls);
+    ctx.save_blueprint_archetype(config_property.blueprint_store_path, &config);
 }

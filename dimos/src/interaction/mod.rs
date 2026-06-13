@@ -6,4 +6,4 @@ pub mod ws;
 pub use handle::InteractionHandle;
 pub use keyboard::KeyboardHandler;
 pub use protocol::ViewerEvent;
-pub use ws::{SendError, WsPublisher};
+pub use ws::{SendError, WsCommand, WsPublisher};

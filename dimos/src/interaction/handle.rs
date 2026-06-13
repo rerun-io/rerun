@@ -1,5 +1,5 @@
-use tokio::sync::mpsc;
 use super::protocol::ViewerEvent;
+use tokio::sync::mpsc;
 
 /// Handle for sending interaction events from the viewer to the application.
 ///
@@ -58,7 +58,13 @@ mod tests {
 
         let event = rx.try_recv().unwrap();
         match event {
-            ViewerEvent::Click { position, entity_path, view_id, is_2d, .. } => {
+            ViewerEvent::Click {
+                position,
+                entity_path,
+                view_id,
+                is_2d,
+                ..
+            } => {
                 assert_eq!(position, [1.0, 2.0, 3.0]);
                 assert_eq!(entity_path, Some("world/robot".to_string()));
                 assert_eq!(view_id, "view_123");

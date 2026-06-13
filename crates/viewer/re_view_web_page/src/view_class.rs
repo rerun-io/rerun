@@ -4,7 +4,7 @@ use re_sdk_types::blueprint::{
     components::{ShowNavigationControls, WebPageUrl},
 };
 use re_sdk_types::{View as _, ViewClassIdentifier};
-use re_ui::{Help, icons};
+use re_ui::{Help, UiExt as _, icons};
 use re_viewer_context::{
     ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewSystemExecutionError, ViewerContext,
@@ -18,6 +18,10 @@ use crate::url_policy::{UrlPolicyResult, validate_url};
 #[derive(Default)]
 struct WebPageViewState {
     lifecycle: WebViewLifecycle,
+    address_bar_url: String,
+    address_bar_home_url: Option<String>,
+    address_bar_error: Option<String>,
+    pending_navigation_command: Option<NavigationCommand>,
 }
 
 impl ViewState for WebPageViewState {
@@ -160,6 +164,13 @@ impl ViewClass for WebPageView {
             .as_any_mut()
             .downcast_mut::<WebPageViewState>()
             .ok_or(ViewSystemExecutionError::StateCastError("WebPageViewState"))?;
+
+        if state.address_bar_home_url.as_deref() != Some(url.as_str()) {
+            state.address_bar_url.clone_from(&url);
+            state.address_bar_home_url = Some(url.clone());
+            state.address_bar_error = None;
+        }
+
         if config.show_navigation_controls {
             let mut navigation_command = None;
             ui.horizontal(|ui| {
@@ -175,19 +186,54 @@ impl ViewClass for WebPageView {
                 if ui.button("Home").clicked() {
                     navigation_command = Some(NavigationCommand::Home);
                 }
-                ui.label(&url);
+                let label = ui.label("Address");
+                let go_button_width =
+                    ui.spacing().interact_size.x + ui.spacing().button_padding.x * 2.0;
+                let address_width =
+                    (ui.available_width() - go_button_width - ui.spacing().item_spacing.x)
+                        .max(80.0);
+                let response = ui
+                    .add(
+                        egui::TextEdit::singleline(&mut state.address_bar_url)
+                            .desired_width(address_width)
+                            .hint_text("Address"),
+                    )
+                    .labelled_by(label.id);
+                let go_clicked = ui.button("Go").clicked();
+                if go_clicked
+                    || response.has_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter))
+                {
+                    match validate_url(&state.address_bar_url) {
+                        UrlPolicyResult::Accepted(address_bar_url) => {
+                            state.address_bar_url.clone_from(&address_bar_url);
+                            state.address_bar_error = None;
+                            navigation_command =
+                                Some(NavigationCommand::NavigateTo(address_bar_url));
+                        }
+                        UrlPolicyResult::Invalid => {
+                            state.address_bar_error = Some("Invalid URL".to_owned());
+                        }
+                        UrlPolicyResult::UnsupportedScheme(scheme) => {
+                            state.address_bar_error =
+                                Some(format!("Unsupported URL scheme: {scheme}"));
+                        }
+                    }
+                }
             });
+            if let Some(error) = &state.address_bar_error {
+                ui.error_label(error);
+            }
             ui.separator();
 
-            match navigation_command {
-                Some(NavigationCommand::Back) => state.lifecycle.go_back(),
-                Some(NavigationCommand::Forward) => state.lifecycle.go_forward(),
-                Some(NavigationCommand::Reload) => state.lifecycle.reload(),
-                Some(NavigationCommand::Home) => state.lifecycle.navigate_to(&url),
-                None => {}
+            if matches!(navigation_command, Some(NavigationCommand::Home)) {
+                state.address_bar_url.clone_from(&url);
+                state.address_bar_error = None;
             }
+
+            state.pending_navigation_command = navigation_command;
         } else {
             ui.label(&url);
+            state.pending_navigation_command = None;
         }
 
         let webview_rect = ui.available_rect_before_wrap();
@@ -201,6 +247,19 @@ impl ViewClass for WebPageView {
         match lifecycle_status {
             WebViewLifecycleStatus::Ready => {
                 state.lifecycle.update_bounds(query.view_id, webview_bounds);
+                state.lifecycle.set_visible(true);
+                match state.pending_navigation_command.take() {
+                    Some(NavigationCommand::Back) => state.lifecycle.go_back(),
+                    Some(NavigationCommand::Forward) => state.lifecycle.go_forward(),
+                    Some(NavigationCommand::Reload) => state.lifecycle.reload(),
+                    Some(NavigationCommand::Home) => {
+                        state.lifecycle.navigate_to(&url);
+                    }
+                    Some(NavigationCommand::NavigateTo(address_bar_url)) => {
+                        state.lifecycle.navigate_to(&address_bar_url);
+                    }
+                    None => {}
+                }
                 ui.allocate_rect(webview_rect, egui::Sense::hover());
             }
             WebViewLifecycleStatus::Unavailable => {
@@ -227,4 +286,5 @@ enum NavigationCommand {
     Forward,
     Reload,
     Home,
+    NavigateTo(String),
 }

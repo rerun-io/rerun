@@ -4,11 +4,11 @@
 //! - Click-to-navigate: click any entity with a 3D position → sends click event via WebSocket
 //! - WASD keyboard teleop: click overlay to engage, then WASD publishes Twist via WebSocket
 
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use dimos_viewer::interaction::{KeyboardHandler, WsPublisher};
+use dimos_viewer::interaction::{KeyboardHandler, WsCommand, WsPublisher};
 use rerun::external::{eframe, egui, re_log, re_memory, re_viewer};
 
 #[global_allocator]
@@ -28,6 +28,35 @@ const RAPID_CLICK_THRESHOLD: usize = 5;
 struct DimosApp {
     inner: re_viewer::App,
     keyboard: KeyboardHandler,
+    ws_publisher: WsPublisher,
+}
+
+impl DimosApp {
+    fn handle_ws_commands(&mut self) {
+        while let Some(command) = self.ws_publisher.try_recv_command() {
+            if let Err(err) = command.validate() {
+                re_log::warn!("Ignoring invalid websocket command: {err}");
+                continue;
+            }
+
+            match command {
+                WsCommand::OpenWebPageView {
+                    panel_id,
+                    title,
+                    url,
+                    show_navigation_controls,
+                } => {
+                    self.inner
+                        .open_or_update_web_page_view(re_viewer::WebPageViewRequest {
+                            panel_id,
+                            title,
+                            url,
+                            show_navigation_controls,
+                        });
+                }
+            }
+        }
+    }
 }
 
 impl eframe::App for DimosApp {
@@ -40,17 +69,28 @@ impl eframe::App for DimosApp {
 
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         self.keyboard.process(ui.ctx());
-        self.keyboard.draw_overlay(ui.ctx());
+        let keyboard_overlay_rect = self.keyboard.draw_overlay(ui.ctx());
+        self.inner
+            .set_web_page_overlay_clip_rect(keyboard_overlay_rect);
+        self.handle_ws_commands();
         self.inner.ui(ui, frame);
     }
 
-    fn save(&mut self, storage: &mut dyn eframe::Storage) { self.inner.save(storage); }
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        self.inner.save(storage);
+    }
 
-    fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] { self.inner.clear_color(visuals) }
+    fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
+        self.inner.clear_color(visuals)
+    }
 
-    fn persist_egui_memory(&self) -> bool { self.inner.persist_egui_memory() }
+    fn persist_egui_memory(&self) -> bool {
+        self.inner.persist_egui_memory()
+    }
 
-    fn auto_save_interval(&self) -> Duration { self.inner.auto_save_interval() }
+    fn auto_save_interval(&self) -> Duration {
+        self.inner.auto_save_interval()
+    }
 
     fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
         self.inner.raw_input_hook(ctx, raw_input);
@@ -87,10 +127,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let keyboard_handler_ws = ws_publisher.clone();
+    let command_ws = ws_publisher.clone();
 
-    let last_click_time = Rc::new(RefCell::new(
-        Instant::now() - Duration::from_secs(10)
-    ));
+    let last_click_time = Rc::new(RefCell::new(Instant::now() - Duration::from_secs(10)));
     let rapid_click_count = Rc::new(RefCell::new(0usize));
 
     // Plain click (no Ctrl required) fires nav goal on any entity with a 3D position
@@ -142,7 +181,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                             re_log::debug!(
                                 "Click event published: entity={}, pos=({:.2}, {:.2}, {:.2})",
-                                entity_path, pos.x, pos.y, pos.z
+                                entity_path,
+                                pos.x,
+                                pos.y,
+                                pos.z
                             );
                         }
                         re_viewer::SelectionChangeItem::Entity { position: None, .. } => {
@@ -165,16 +207,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(ref connect) = parsed.connect {
             match connect.as_deref() {
                 Some(url) => eprintln!("[DIMOS_DEBUG] gRPC connecting to: {url}"),
-                None => eprintln!("[DIMOS_DEBUG] gRPC connecting to default (port {})", parsed.port),
+                None => eprintln!(
+                    "[DIMOS_DEBUG] gRPC connecting to default (port {})",
+                    parsed.port
+                ),
             }
         } else {
-            eprintln!("[DIMOS_DEBUG] gRPC: starting local server on port {}", parsed.port);
+            eprintln!(
+                "[DIMOS_DEBUG] gRPC: starting local server on port {}",
+                parsed.port
+            );
         }
     }
 
     let wrapper: rerun::AppWrapper = Box::new(move |app| {
         let keyboard = KeyboardHandler::new(keyboard_handler_ws.clone());
-        Ok(Box::new(DimosApp { inner: app, keyboard }))
+        Ok(Box::new(DimosApp {
+            inner: app,
+            keyboard,
+            ws_publisher: command_ws.clone(),
+        }))
     });
 
     let exit_code = rerun::run_with_app_wrapper(

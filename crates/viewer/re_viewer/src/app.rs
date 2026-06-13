@@ -158,6 +158,19 @@ pub struct App {
     async_runtime: AsyncRuntimeHandle,
 }
 
+/// Request to open or update a Web Page View in the active viewport.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WebPageViewRequest {
+    /// Caller-owned stable identifier used to update the same panel later.
+    pub panel_id: String,
+    /// Human-readable panel title.
+    pub title: String,
+    /// Configured page URL.
+    pub url: String,
+    /// Whether browser-like controls should be visible.
+    pub show_navigation_controls: bool,
+}
+
 impl App {
     pub fn new(
         main_thread_token: MainThreadToken,
@@ -486,6 +499,31 @@ impl App {
 
     pub fn connection_registry(&self) -> &ConnectionRegistryHandle {
         &self.connection_registry
+    }
+
+    /// Queue a Web Page View panel request for the active viewport.
+    ///
+    /// This is intended for thin custom viewer wrappers such as `DimOS`. The request is translated
+    /// into normal blueprint state on the next viewer frame.
+    pub fn open_or_update_web_page_view(&mut self, request: WebPageViewRequest) {
+        self.state.queue_web_page_view_request(request);
+        self.egui_ctx.request_repaint();
+    }
+
+    /// Clip native Web Page View surfaces around an egui overlay rectangle.
+    ///
+    /// Native webviews are OS child surfaces and can cover egui foreground overlays. This keeps the
+    /// overlay appearance unchanged by punching an overlay-shaped hole in the native surface where
+    /// supported. Platforms that do not need/support this ignore the request.
+    pub fn set_web_page_overlay_clip_rect(&self, rect: egui::Rect) {
+        #[cfg(all(not(target_arch = "wasm32"), feature = "native_webview"))]
+        re_view_web_page::native_backend::set_overlay_clip_rect(
+            rect,
+            self.egui_ctx.pixels_per_point(),
+        );
+
+        #[cfg(not(all(not(target_arch = "wasm32"), feature = "native_webview")))]
+        let _ = (self, rect);
     }
 
     pub fn set_examples_manifest_url(&mut self, url: String) {

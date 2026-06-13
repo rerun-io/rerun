@@ -74,6 +74,17 @@ impl WebViewInstance {
         }
     }
 
+    pub(crate) fn set_visible(&self, visible: bool) {
+        #[cfg(not(all(not(target_arch = "wasm32"), feature = "native_webview")))]
+        let _ = self;
+        let _ = visible;
+
+        #[cfg(all(not(target_arch = "wasm32"), feature = "native_webview"))]
+        if self.has_native_webview {
+            crate::native_backend::set_visible(self.view_id, visible);
+        }
+    }
+
     pub(crate) fn go_back(&self) {
         #[cfg(debug_assertions)]
         if let Some(fake_backend) = &self.fake_backend {
@@ -154,8 +165,8 @@ impl WebViewBounds {
         let min = rect.min * pixels_per_point;
         let size = rect.size() * pixels_per_point;
         Self {
-            min: [min.x, min.y],
-            size: [size.x, size.y],
+            min: [min.x.round(), min.y.round()],
+            size: [size.x.round(), size.y.round()],
         }
     }
 }

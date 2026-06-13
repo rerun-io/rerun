@@ -63,7 +63,7 @@ mod loading;
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
 
-pub use app::App;
+pub use app::{App, WebPageViewRequest};
 pub(crate) use app_state::AppState;
 pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
 pub use re_capabilities::MainThreadToken;

@@ -52,6 +52,12 @@ impl WebViewLifecycle {
         self.last_bounds = Some(bounds);
     }
 
+    pub(crate) fn set_visible(&mut self, visible: bool) {
+        if let Some(webview) = &mut self.webview {
+            webview.set_visible(visible);
+        }
+    }
+
     pub(crate) fn go_back(&mut self) {
         if let Some(webview) = &mut self.webview {
             webview.go_back();

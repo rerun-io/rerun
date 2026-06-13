@@ -78,10 +78,12 @@ fn https_url_is_accepted() {
 
     harness.run();
 
-    assert!(
+    assert_eq!(
         harness
-            .query_by_label_contains("https://example.com")
-            .is_some()
+            .get_by_role_and_label(egui::accesskit::Role::TextInput, "Address")
+            .value()
+            .as_deref(),
+        Some("https://example.com")
     );
     assert!(harness.query_by_label_contains("Invalid URL").is_none());
     assert!(
@@ -104,10 +106,12 @@ fn localhost_http_url_is_accepted() {
 
     harness.run();
 
-    assert!(
+    assert_eq!(
         harness
-            .query_by_label_contains("http://localhost:3000")
-            .is_some()
+            .get_by_role_and_label(egui::accesskit::Role::TextInput, "Address")
+            .value()
+            .as_deref(),
+        Some("http://localhost:3000")
     );
     assert!(harness.query_by_label_contains("Invalid URL").is_none());
     assert!(
@@ -182,7 +186,31 @@ fn home_navigation_does_not_mutate_configured_url() {
     assert_eq!(navigation_requests.len(), 1);
     assert_eq!(navigation_requests[0].view_id, view_id);
     assert_eq!(navigation_requests[0].url, configured_url);
-    assert!(harness.query_by_label_contains(configured_url).is_some());
+    assert_eq!(
+        harness
+            .get_by_role_and_label(egui::accesskit::Role::TextInput, "Address")
+            .value()
+            .as_deref(),
+        Some(configured_url)
+    );
+}
+
+#[test]
+fn navigation_controls_include_editable_address_bar() {
+    let configured_url = "https://example.com/home";
+    let mut test_context = TestContext::new_with_view_class::<WebPageView>();
+    let view_id = setup_configured_web_page_view(&mut test_context, configured_url, true);
+
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui([700.0, 250.0])
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+    harness.run();
+
+    let address_bar = harness.get_by_role_and_label(egui::accesskit::Role::TextInput, "Address");
+    assert_eq!(address_bar.value().as_deref(), Some(configured_url));
+    assert!(harness.query_by_label("Go").is_some());
 }
 
 #[test]

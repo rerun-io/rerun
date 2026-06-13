@@ -3166,11 +3166,13 @@ dependencies = [
  "clap",
  "futures-util",
  "mimalloc",
+ "parking_lot",
  "rerun",
  "serde",
  "serde_json",
  "tokio",
  "tokio-tungstenite",
+ "url",
 ]
 
 [[package]]
