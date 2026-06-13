@@ -91,8 +91,20 @@ impl Context {
     }
 
     fn push(&self, data: DocumentData) {
+        let weight = data.kind.weight();
+        self.push_weighted(data, weight);
+    }
+
+    fn push_weighted(&self, mut data: DocumentData, weight: u64) {
+        // `page` is the distinct attribute: docs sections share their parent
+        // page's URL so search shows at most one (the best) section per page,
+        // while every other document keeps a unique value and is unaffected.
+        if data.page.is_none() {
+            data.page = Some(data.url.clone());
+        }
         self.documents.borrow_mut().push(Document {
             id: self.id_gen.next(),
+            weight,
             data,
         });
     }
@@ -107,6 +119,10 @@ impl Context {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Document {
     id: u64,
+    /// Page-type ranking weight, used by the `weight:desc` ranking rule
+    /// so that guides and examples rank above individual API symbols.
+    #[serde(default)]
+    weight: u64,
     #[serde(flatten)]
     data: DocumentData,
 }
@@ -135,6 +151,17 @@ struct DocumentData {
     tags: Vec<String>,
     content: String,
     url: String,
+    /// Deduplication key (Meilisearch `distinctAttribute`). Defaults to `url`
+    /// in [`Context::push`]; docs sections set it to their parent page URL.
+    #[serde(default)]
+    page: Option<String>,
+    /// For docs sections: the title of the page the section belongs to.
+    /// Display-only (NOT searchable — see the settings in `meili.rs`).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    page_title: Option<String>,
+    /// Thumbnail shown next to the result in the website's search dialog.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    image: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
@@ -144,6 +171,40 @@ enum DocumentKind {
     Examples,
     Python,
     Cpp,
+}
+
+impl DocumentKind {
+    /// Documents are ranked by this weight (descending) after word/typo/proximity/attribute
+    /// matching, so that whole-page guides beat the thousands of per-symbol API documents
+    /// for generic queries, while exact symbol matches still win on `exactness`.
+    fn weight(self) -> u64 {
+        match self {
+            Self::Docs => 10,
+            Self::Examples => 8,
+            Self::Python | Self::Cpp => 3,
+        }
+    }
+}
+
+/// Remove HTML tags (e.g. the `<picture>`/`<img>` embeds in docs and example
+/// READMEs) so attribute soup like `srcset="…1024w.png"` neither pollutes
+/// search matching nor leaks into result excerpts on the website.
+pub fn strip_html_tags(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut in_tag = false;
+    for c in s.chars() {
+        match c {
+            '<' => {
+                in_tag = true;
+                // Tags act as word boundaries.
+                out.push(' ');
+            }
+            '>' if in_tag => in_tag = false,
+            c if !in_tag => out.push(c),
+            _ => {}
+        }
+    }
+    out
 }
 
 struct IdGen {
