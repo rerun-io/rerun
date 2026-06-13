@@ -21,6 +21,7 @@ all-features = true
 
 [features]
 default = []
+_bench = []
 
 ## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
@@ -49,6 +50,7 @@ indent.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 parking_lot = { workspace = true, features = ["arc_lock"] }
+rayon.workspace = true
 saturating_cast.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
