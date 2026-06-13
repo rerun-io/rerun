@@ -510,22 +510,6 @@ impl App {
         self.egui_ctx.request_repaint();
     }
 
-    /// Clip native Web Page View surfaces around an egui overlay rectangle.
-    ///
-    /// Native webviews are OS child surfaces and can cover egui foreground overlays. This keeps the
-    /// overlay appearance unchanged by punching an overlay-shaped hole in the native surface where
-    /// supported. Platforms that do not need/support this ignore the request.
-    pub fn set_web_page_overlay_clip_rect(&self, rect: egui::Rect) {
-        #[cfg(all(not(target_arch = "wasm32"), feature = "native_webview"))]
-        re_view_web_page::native_backend::set_overlay_clip_rect(
-            rect,
-            self.egui_ctx.pixels_per_point(),
-        );
-
-        #[cfg(not(all(not(target_arch = "wasm32"), feature = "native_webview")))]
-        let _ = (self, rect);
-    }
-
     pub fn set_examples_manifest_url(&mut self, url: String) {
         re_log::info!("Using manifest_url={url:?}");
         self.state.set_examples_manifest_url(&self.egui_ctx, url);

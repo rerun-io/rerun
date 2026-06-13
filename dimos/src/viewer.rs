@@ -69,9 +69,7 @@ impl eframe::App for DimosApp {
 
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         self.keyboard.process(ui.ctx());
-        let keyboard_overlay_rect = self.keyboard.draw_overlay(ui.ctx());
-        self.inner
-            .set_web_page_overlay_clip_rect(keyboard_overlay_rect);
+        self.keyboard.draw_overlay(ui.ctx());
         self.handle_ws_commands();
         self.inner.ui(ui, frame);
     }

@@ -49,12 +49,6 @@ fn blueprint_configured_web_page_view_reads_url_and_navigation_preference_withou
 
     assert!(
         harness
-            .query_by_label_contains("https://example.com")
-            .is_some(),
-        "expected Web Page View to read and display the configured URL"
-    );
-    assert!(
-        harness
             .query_by_label_contains("No URL configured")
             .is_none(),
         "expected configured Web Page View not to render the missing-URL status"
@@ -62,6 +56,16 @@ fn blueprint_configured_web_page_view_reads_url_and_navigation_preference_withou
     assert!(
         harness.query_by_label_contains("Back").is_none(),
         "expected navigation controls to be hidden when show_navigation_controls is false"
+    );
+    assert!(
+        harness.query_by_label_contains("Address").is_none(),
+        "expected address label to be hidden when show_navigation_controls is false"
+    );
+    assert!(
+        harness
+            .query_by_label_contains("https://example.com")
+            .is_none(),
+        "expected configured URL label to be hidden when show_navigation_controls is false"
     );
 }
 
@@ -160,6 +164,12 @@ fn navigation_controls_can_be_hidden() {
     assert!(harness.query_by_label_contains("Forward").is_none());
     assert!(harness.query_by_label_contains("Reload").is_none());
     assert!(harness.query_by_label_contains("Home").is_none());
+    assert!(harness.query_by_label_contains("Address").is_none());
+    assert!(
+        harness
+            .query_by_label_contains("https://example.com")
+            .is_none()
+    );
 }
 
 #[test]

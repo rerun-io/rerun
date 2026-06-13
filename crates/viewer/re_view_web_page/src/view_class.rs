@@ -232,7 +232,6 @@ impl ViewClass for WebPageView {
 
             state.pending_navigation_command = navigation_command;
         } else {
-            ui.label(&url);
             state.pending_navigation_command = None;
         }
 

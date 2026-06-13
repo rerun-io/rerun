@@ -133,7 +133,7 @@ impl KeyboardHandler {
 
     /// Draw keyboard overlay HUD anchored to the bottom-right of the viewport.
     /// Clickable: clicking the overlay toggles engaged state.
-    pub fn draw_overlay(&mut self, ctx: &egui::Context) -> egui::Rect {
+    pub fn draw_overlay(&mut self, ctx: &egui::Context) {
         let area_response = egui::Area::new("dimos_keyboard_hud_br".into())
             .anchor(egui::Align2::RIGHT_BOTTOM, egui::vec2(-5.0, -5.0))
             .order(egui::Order::Foreground)
@@ -197,8 +197,6 @@ impl KeyboardHandler {
             self.state.reset();
             self.was_active = false;
         }
-
-        area_response.interact_rect
     }
 
     fn draw_hud_content(&self, ui: &mut egui::Ui) {
