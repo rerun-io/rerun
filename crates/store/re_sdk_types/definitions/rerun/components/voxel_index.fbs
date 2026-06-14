@@ -1,0 +1,15 @@
+namespace rerun.components;
+
+// ---
+
+/// Integer index of a voxel in a sparse 3D voxel grid.
+///
+/// The voxel center in local grid coordinates is `(index + 0.5) * voxel_size`.
+struct VoxelIndex (
+  "attr.python.aliases": "npt.NDArray[Any] | npt.ArrayLike | Sequence[int]",
+  "attr.python.array_aliases": "npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[int]] | Sequence[int]",
+  "attr.rust.derive": "Copy, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  index: rerun.datatypes.IVec3D (order: 100);
+}

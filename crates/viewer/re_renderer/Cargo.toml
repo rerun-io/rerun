@@ -120,6 +120,10 @@ bench = false
 name = "bench_bounding_box"
 harness = false
 
+[[bench]]
+name = "bench_voxel_grid_draw_data"
+harness = false
+
 # For build.rs:
 [build-dependencies]
 # Rerun

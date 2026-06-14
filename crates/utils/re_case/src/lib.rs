@@ -21,6 +21,7 @@ pub fn to_snake_case(s: &str) -> String {
     if let Some(last) = parts.last_mut() {
         *last = last
             .replace("UVec", "uvec")
+            .replace("IVec", "ivec")
             .replace("DVec", "dvec")
             .replace("UInt", "uint");
         *last = rerun_snake.convert(last.as_str());
@@ -55,6 +56,14 @@ fn test_to_snake_case() {
     assert_eq!(
         to_snake_case("rerun.datatypes.uvec2d"),
         "rerun.datatypes.uvec2d"
+    );
+    assert_eq!(
+        to_snake_case("rerun.datatypes.IVec3D"),
+        "rerun.datatypes.ivec3d"
+    );
+    assert_eq!(
+        to_snake_case("rerun.datatypes.ivec3d"),
+        "rerun.datatypes.ivec3d"
     );
 
     assert_eq!(
@@ -111,6 +120,7 @@ pub fn to_pascal_case(s: &str) -> String {
     if let Some(last) = parts.last_mut() {
         *last = last
             .replace("uvec", "UVec")
+            .replace("ivec", "IVec")
             .replace("dvec", "DVec")
             .replace("uint", "UInt")
             .replace("2d", "2D") // NOLINT
@@ -139,6 +149,14 @@ fn test_to_pascal_case() {
     assert_eq!(
         to_pascal_case("rerun.datatypes.UVec2D"),
         "rerun.datatypes.UVec2D"
+    );
+    assert_eq!(
+        to_pascal_case("rerun.datatypes.ivec3d"),
+        "rerun.datatypes.IVec3D"
+    );
+    assert_eq!(
+        to_pascal_case("rerun.datatypes.IVec3D"),
+        "rerun.datatypes.IVec3D"
     );
 
     assert_eq!(
@@ -192,8 +210,10 @@ pub fn to_human_case(s: &str) -> String {
         *last = rerun_human.convert(last.as_str());
         *last = last
             .replace("Uvec", "UVec")
+            .replace("Ivec", "IVec")
             .replace("Uint", "UInt")
             .replace("U vec", "UVec")
+            .replace("I vec", "IVec")
             .replace("U int", "UInt")
             .replace("Int 32", "Int32")
             .replace("mat 3x 3", "mat3x3")
@@ -223,6 +243,14 @@ fn test_to_human_case() {
     assert_eq!(
         to_human_case("rerun.datatypes.UVec2D"),
         "rerun.datatypes.UVec 2D"
+    );
+    assert_eq!(
+        to_human_case("rerun.datatypes.ivec3d"),
+        "rerun.datatypes.IVec 3D"
+    );
+    assert_eq!(
+        to_human_case("rerun.datatypes.IVec3D"),
+        "rerun.datatypes.IVec 3D"
     );
 
     assert_eq!(
