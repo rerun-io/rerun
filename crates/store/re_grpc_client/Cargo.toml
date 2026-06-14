@@ -51,3 +51,5 @@ tonic = { workspace = true, default-features = false, features = ["transport", "
 tonic-web-wasm-client.workspace = true
 wasm-bindgen-futures.workspace = true
 tonic = { workspace = true, default-features = false }
+js-sys.workspace = true
+web-sys = { workspace = true, features = ["Window"] }
