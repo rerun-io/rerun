@@ -162,6 +162,7 @@ async fn register_rrds(
     let mut task_ids = Vec::with_capacity(items.len());
     for item in items {
         let cloud_ext::RegisterWithDatasetTaskDescriptor {
+            layer_name: _,
             segment_id,
             segment_type: _,
             storage_url: _,

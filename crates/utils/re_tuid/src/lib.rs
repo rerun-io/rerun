@@ -97,6 +97,23 @@ impl std::fmt::Debug for Tuid {
     }
 }
 
+impl From<[u8; 16]> for Tuid {
+    #[inline]
+    fn from(bytes: [u8; 16]) -> Self {
+        Self::from_bytes(bytes)
+    }
+}
+
+impl From<Tuid> for [u8; 16] {
+    #[inline]
+    fn from(tuid: Tuid) -> Self {
+        tuid.as_bytes()
+    }
+}
+
+// Make `quiver::Column<Tuid>` work (backed by a big-endian `FixedSizeBinary(16)` column):
+quiver::newtype_datatype!(Tuid, quiver::FixedSizeBinary<16>);
+
 impl From<Tuid> for std::borrow::Cow<'_, Tuid> {
     #[inline]
     fn from(value: Tuid) -> Self {

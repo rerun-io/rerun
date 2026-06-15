@@ -15,7 +15,9 @@ use re_chunk_store::{
 };
 use re_log_encoding::ToTransport as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, TimelineName};
-use re_protos::cloud::v1alpha1::ext::{QueryTasksDataframe, RegisterWithDatasetDataframe};
+use re_protos::cloud::v1alpha1::ext::{
+    QueryDatasetDataframe, QueryTasksDataframe, RegisterWithDatasetDataframe,
+};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, DoBandwidthTestResponse,
@@ -1239,7 +1241,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         if chunk_stores.is_empty() {
             let stream = futures::stream::iter([{
-                let batch = QueryDatasetResponse::create_empty_dataframe();
+                let batch = QueryDatasetDataframe::empty_record_batch();
                 let data = Some(batch.into());
                 Ok(QueryDatasetResponse { data })
             }]);
@@ -1397,9 +1399,7 @@ impl RerunCloudService for RerunCloudHandler {
                     .collect();
 
                 for meta in &metadata_vec {
-                    if !select_all_entity_paths
-                        && !entity_paths.contains(&EntityPath::from(meta.entity_path.as_str()))
-                    {
+                    if !select_all_entity_paths && !entity_paths.contains(&meta.entity_path) {
                         continue;
                     }
 
@@ -1437,7 +1437,7 @@ impl RerunCloudService for RerunCloudHandler {
                         timeline_data.1.push(None);
                     }
 
-                    chunk_segment_ids.push(segment_id.to_string());
+                    chunk_segment_ids.push(segment_id.clone());
                     chunk_ids.push(meta.chunk_id);
                     chunk_entity_path.push(meta.entity_path.clone());
                     chunk_is_static.push(meta.is_static);
@@ -1876,7 +1876,7 @@ fn latest_at_or_static(latest_at: &ext::QueryLatestAt) -> LatestAtQuery {
 /// Metadata for a single chunk, extractable from either a physical `Chunk` or a manifest.
 struct ChunkMetadata {
     chunk_id: ChunkId,
-    entity_path: String,
+    entity_path: EntityPath,
     is_static: bool,
     byte_size: u64,
     timelines: IntMap<TimelineName, AbsoluteTimeRange>,
@@ -1891,7 +1891,7 @@ impl ChunkMetadata {
             .collect();
         Self {
             chunk_id: chunk.id(),
-            entity_path: chunk.entity_path().to_string(),
+            entity_path: chunk.entity_path().clone(),
             is_static: chunk.is_static(),
             byte_size: re_byte_size::SizeBytes::total_size_bytes(chunk),
             timelines,
@@ -1906,10 +1906,7 @@ impl ChunkMetadata {
     ) -> Self {
         Self {
             chunk_id,
-            entity_path: manifest
-                .col_chunk_entity_path_raw()
-                .value(row_idx)
-                .to_owned(),
+            entity_path: EntityPath::from(manifest.col_chunk_entity_path_raw().value(row_idx)),
             is_static: manifest.col_chunk_is_static_raw().value(row_idx),
             byte_size: manifest.col_chunk_byte_size_uncompressed()[row_idx],
             timelines: chunk_timelines.cloned().unwrap_or_default(),

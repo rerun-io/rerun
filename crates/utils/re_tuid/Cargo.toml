@@ -32,6 +32,7 @@ re_log.workspace = true
 
 document-features.workspace = true
 getrandom.workspace = true
+quiver.workspace = true
 serde = { workspace = true, features = ["derive"] }
 web-time.workspace = true
 

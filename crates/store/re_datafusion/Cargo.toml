@@ -59,6 +59,7 @@ itertools.workspace = true
 opentelemetry.workspace = true
 opentelemetry-proto = { workspace = true, features = ["gen-tonic-messages", "trace"] }
 parking_lot.workspace = true
+quiver.workspace = true
 tokio.workspace = true
 jiff.workspace = true
 tokio-stream.workspace = true

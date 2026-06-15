@@ -15,7 +15,8 @@ use tonic::IntoRequest as _;
 use tracing::Instrument as _;
 
 use re_dataframe::external::re_chunk::Chunk;
-use re_protos::cloud::v1alpha1::{FetchChunksRequest, QueryDatasetResponse};
+use re_protos::cloud::v1alpha1::FetchChunksRequest;
+use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
 use re_protos::{
     cloud::v1alpha1::ext::{
         ChunkKey, ETag, RrdChunkLocation, SOURCE_CHANGED_MESSAGE, url_strip_query,
@@ -205,7 +206,7 @@ impl std::error::Error for DirectFetchError {}
 /// Returns `true` if the batch contains at least one non-null direct URL.
 pub fn batch_has_any_direct_urls(batch: &RecordBatch) -> bool {
     batch
-        .column_by_name(QueryDatasetResponse::FIELD_DIRECT_URL)
+        .column_by_name(QueryDatasetDataframe::COLUMN_RERUN_LAYER_DIRECT_URL_NAME)
         .is_some_and(|col| col.null_count() < col.len())
 }
 
@@ -218,7 +219,9 @@ pub fn split_batch_by_direct_url(
     re_tracing::profile_function!();
     use arrow::compute::{filter_record_batch, is_not_null, not};
 
-    let Some(url_col) = batch.column_by_name(QueryDatasetResponse::FIELD_DIRECT_URL) else {
+    let Some(url_col) =
+        batch.column_by_name(QueryDatasetDataframe::COLUMN_RERUN_LAYER_DIRECT_URL_NAME)
+    else {
         return (None, Some(batch.clone()));
     };
 
@@ -243,7 +246,7 @@ pub fn split_batch_by_direct_url(
 /// Sum of `chunk_byte_len` values in a batch (best-effort, returns 0 on missing column).
 pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
     batch
-        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
+        .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME)
         .and_then(|c| c.as_any().downcast_ref::<UInt64Array>())
         .map(|arr| arr.iter().map(|v| v.unwrap_or(0)).sum())
         .unwrap_or(0)
@@ -255,7 +258,7 @@ pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
 /// the column was not projected).
 pub fn batch_byte_size_uncompressed(batch: &RecordBatch) -> Option<u64> {
     batch
-        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED)
+        .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME)
         .and_then(|c| c.as_any().downcast_ref::<UInt64Array>())
         .map(|arr| arr.iter().map(|v| v.unwrap_or(0)).sum())
 }
@@ -603,19 +606,22 @@ async fn fetch_batch_via_direct_urls(
     // populated by the server. `chunk_key` carries the canonical source URL
     // (e.g. `s3://`) plus per-source-object metadata (etag, registration_time)
     // used here purely for drift detection — never as the transport URL.
-    let chunk_keys: &BinaryArray = batch_column(batch, QueryDatasetResponse::FIELD_CHUNK_KEY)?;
-    let direct_urls =
-        batch_column::<DictionaryArray<Int32Type>>(batch, QueryDatasetResponse::FIELD_DIRECT_URL)?
-            .downcast_dict::<StringArray>()
-            .ok_or_else(|| {
-                DirectFetchError::new("direct_url dict values must be strings".to_owned(), false)
-            })?;
+    let chunk_keys: &BinaryArray =
+        batch_column(batch, QueryDatasetDataframe::COLUMN_CHUNK_KEY_NAME)?;
+    let direct_urls = batch_column::<DictionaryArray<Int32Type>>(
+        batch,
+        QueryDatasetDataframe::COLUMN_RERUN_LAYER_DIRECT_URL_NAME,
+    )?
+    .downcast_dict::<StringArray>()
+    .ok_or_else(|| {
+        DirectFetchError::new("direct_url dict values must be strings".to_owned(), false)
+    })?;
     // Segment IDs are required on QueryDatasetResponse, but treat them as
     // optional here: we use them purely for diagnostic logging on the decode
     // failure path, and a missing column should never break the fetch path.
-    let segment_ids: Option<&StringArray> = batch
-        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
-        .and_then(|col| col.as_any().downcast_ref::<StringArray>());
+    let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+        .extract(batch)
+        .ok();
 
     let num_rows = batch.num_rows();
 
@@ -660,9 +666,7 @@ async fn fetch_batch_via_direct_urls(
             .entry(url)
             .or_insert_with(|| UrlGroup {
                 ranges: Vec::new(),
-                segment_id: segment_ids
-                    .filter(|arr| !arr.is_null(i))
-                    .map(|arr| SegmentId::from(arr.value(i).to_owned())),
+                segment_id: segment_ids.as_ref().map(|col| col.value_owned(i)),
                 expected_etag: chunk_key.etag,
                 registration_time: chunk_key.registration_time,
             })

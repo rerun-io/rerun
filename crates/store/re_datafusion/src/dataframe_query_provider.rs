@@ -13,6 +13,7 @@ use crate::analytics::{QueryErrorKind, build_metrics_set_for_explain};
 use crate::chunk_fetcher::{batch_byte_size, batch_byte_size_uncompressed};
 use crate::dataframe_query_common::{
     DataframeClientAPI, IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id,
+    segment_partition_hash,
 };
 use crate::metrics_capture::QueryMetrics;
 use crate::pipeline_budget::PipelineBudget;
@@ -20,7 +21,6 @@ use arrow::array::RecordBatch;
 use arrow::compute::SortOptions;
 use arrow::datatypes::{Schema, SchemaRef};
 use cpu_worker::{CpuWorkerMsg, chunk_store_cpu_worker_thread};
-use datafusion::common::hash_utils::HashValue as _;
 use datafusion::common::{exec_datafusion_err, exec_err, plan_err};
 use datafusion::config::ConfigOptions;
 use datafusion::error::DataFusionError;
@@ -38,6 +38,8 @@ use io_loop::chunk_stream_io_loop;
 use itertools::Itertools as _;
 use re_dataframe::{Index, QueryExpression, TimelineName};
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
+use re_types_core::SegmentId;
+
 use re_redap_client::{ApiError, ApiResult};
 
 use crate::IntoDfError as _;
@@ -76,7 +78,7 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// reuse multiple times in theory. We may also need to recompute if the
     /// user asks for a different target partition. These are generally not
     /// too large.
-    chunk_info: Arc<BTreeMap<String, Vec<RecordBatch>>>,
+    chunk_info: Arc<BTreeMap<SegmentId, Vec<RecordBatch>>>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
     target_partitions: usize,
@@ -640,7 +642,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             self.chunk_info
                 .iter()
                 .filter(|(segment_id, _)| {
-                    let hash_value = segment_id.hash_one(&random_state) as usize;
+                    let hash_value = segment_partition_hash(segment_id, &random_state) as usize;
                     hash_value % self.target_partitions == partition
                 })
                 // Drop segments not referenced by `index_values` before
@@ -650,9 +652,9 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 // without releasing — leaking the reservation for the
                 // rest of the query.
                 .filter(|(segment_id, _)| {
-                    self.index_values.as_ref().is_none_or(|iv| {
-                        iv.contains_key(&re_types_core::SegmentId::from(segment_id.as_str()))
-                    })
+                    self.index_values
+                        .as_ref()
+                        .is_none_or(|iv| iv.contains_key(*segment_id))
                 })
                 // we end up with 1 batch per (rerun) segment. Order is important and must be preserved.
                 // See SegmentStreamExec::try_new for details on ordering.

@@ -7,6 +7,7 @@ use re_protos::cloud::v1alpha1::ext;
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_types_core::{LayerClass, LayerName};
+use url::Url;
 
 use crate::store::{
     Error, InMemoryStore, LayerInfo, ResolvedStore, StoreSlotId, TASK_ID_SUCCESS, TaskResult,
@@ -18,20 +19,20 @@ pub struct RegisterWithDatasetResult {
     /// Recording IDs from the registered RRDs, one per data source.
     ///
     /// Empty string for sources that failed with a schema conflict.
-    pub segment_ids: Vec<String>,
+    pub segment_ids: Vec<SegmentId>,
 
     /// Layer name for each registered source.
     pub segment_layers: Vec<LayerName>,
 
     /// File format of each source (e.g. `"rrd"`).
-    pub segment_types: Vec<String>,
+    pub segment_types: Vec<ext::DataSourceKind>,
 
     /// Storage URL for each source.
-    pub storage_urls: Vec<String>,
+    pub storage_urls: Vec<Url>,
 
     /// Task ID for each source; [`crate::store::TASK_ID_SUCCESS`] for successes,
     /// a unique ID for schema-conflict failures.
-    pub task_ids: Vec<String>,
+    pub task_ids: Vec<TaskId>,
 }
 
 /// A data source that has been validated (paths confirmed to exist, duplicates checked)
@@ -56,7 +57,7 @@ struct ReadySource {
     resolved: ResolvedStore,
     segment_id: SegmentId,
     layer_info: Arc<LayerInfo>,
-    storage_url: String,
+    storage_url: Url,
 }
 
 // ---
@@ -290,12 +291,16 @@ fn load_sources(
                 segment_id,
                 layer_info,
             } => {
+                let storage_url =
+                    Url::parse(&format!("memory:///store/{store_slot_id}")).map_err(|err| {
+                        tonic::Status::internal(format!("failed to build memory URL: {err}"))
+                    })?;
                 ready.push(ReadySource {
-                    storage_url: format!("memory:///store/{store_slot_id}"),
                     store_slot_id,
                     resolved,
                     segment_id,
                     layer_info,
+                    storage_url,
                 });
             }
 
@@ -312,7 +317,7 @@ fn load_sources(
                         resolved,
                         segment_id: SegmentId::new(store_id.recording_id().to_string()),
                         layer_info: layer_info.clone(),
-                        storage_url: storage_url.to_string(),
+                        storage_url: storage_url.clone(),
                     });
                 }
             }
@@ -368,21 +373,23 @@ async fn register_sources(
 
             match add_result {
                 Ok(()) => {
-                    result.segment_ids.push(source.segment_id.to_string());
+                    result.segment_ids.push(source.segment_id);
                     result.segment_layers.push(source.layer_info.name.clone());
-                    result.segment_types.push("rrd".to_owned());
+                    result.segment_types.push(ext::DataSourceKind::Rrd);
                     result.storage_urls.push(source.storage_url);
-                    result.task_ids.push(TASK_ID_SUCCESS.to_owned());
+                    result.task_ids.push(TaskId {
+                        id: TASK_ID_SUCCESS.to_owned(),
+                    });
                 }
 
                 Err(Error::SchemaConflict(msg)) => {
-                    result.segment_ids.push(String::new());
+                    result.segment_ids.push(SegmentId::new(String::new()));
                     result.segment_layers.push(source.layer_info.name.clone());
-                    result.segment_types.push("rrd".to_owned());
+                    result.segment_types.push(ext::DataSourceKind::Rrd);
                     result.storage_urls.push(source.storage_url);
 
                     let task_id = TaskId::new();
-                    result.task_ids.push(task_id.id.clone());
+                    result.task_ids.push(task_id.clone());
                     failed_task_results.push((task_id, TaskResult::failed(&msg)));
                 }
 

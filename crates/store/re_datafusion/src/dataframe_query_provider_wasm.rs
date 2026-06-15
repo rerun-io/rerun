@@ -6,11 +6,12 @@ use std::sync::{Arc, atomic::AtomicBool};
 use std::task::{Context, Poll};
 
 use crate::DataframeClientAPI;
-use crate::dataframe_query_common::{IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id};
+use crate::dataframe_query_common::{
+    IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id, segment_partition_hash,
+};
 use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-use datafusion::common::hash_utils::HashValue as _;
 use datafusion::common::plan_err;
 use datafusion::config::ConfigOptions;
 use datafusion::error::DataFusionError;
@@ -37,6 +38,7 @@ use re_dataframe::{
 use re_log_types::{StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
+use re_types_core::SegmentId;
 use tokio::runtime::Handle;
 use tonic::IntoRequest as _;
 
@@ -49,7 +51,7 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// reuse multiple times in theory. We may also need to recompute if the
     /// user asks for a different target partition. These are generally not
     /// too large.
-    chunk_info: Arc<BTreeMap<String, Vec<RecordBatch>>>,
+    chunk_info: Arc<BTreeMap<SegmentId, Vec<RecordBatch>>>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
     target_partitions: usize,
@@ -79,9 +81,9 @@ pub struct DataframeSegmentStream<T: DataframeClientAPI> {
     projected_schema: SchemaRef,
     client: T,
     chunk_infos: Vec<RecordBatch>,
-    current_query: Option<(String, QueryHandle<StorageEngine>)>,
+    current_query: Option<(SegmentId, QueryHandle<StorageEngine>)>,
     query_expression: QueryExpression,
-    remaining_segment_ids: Vec<String>,
+    remaining_segment_ids: Vec<SegmentId>,
 
     /// Pending query analytics — kept alive so the event fires on drop.
     pending_analytics: crate::PendingQueryAnalytics,
@@ -374,7 +376,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
 #[tracing::instrument(level = "trace", skip_all)]
 fn create_next_row(
     query_handle: &mut QueryHandle<StorageEngine>,
-    segment_id: &str,
+    segment_id: &SegmentId,
     target_schema: &Arc<Schema>,
 ) -> ApiResult<Option<RecordBatch>> {
     let query_schema = Arc::clone(query_handle.schema());
@@ -396,7 +398,7 @@ fn create_next_row(
 
     let num_rows = next_row[0].len();
     let sid_array =
-        Arc::new(StringArray::from(vec![segment_id.to_owned(); num_rows])) as Arc<dyn Array>;
+        Arc::new(StringArray::from(vec![segment_id.to_string(); num_rows])) as Arc<dyn Array>;
 
     let mut arrays = Vec::with_capacity(num_fields + 1);
     arrays.push(sid_array);
@@ -506,7 +508,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             .chunk_info
             .keys()
             .filter(|segment_id| {
-                let hash_value = segment_id.hash_one(&random_state) as usize;
+                let hash_value = segment_partition_hash(segment_id, &random_state) as usize;
                 hash_value % self.target_partitions == partition
             })
             .cloned()

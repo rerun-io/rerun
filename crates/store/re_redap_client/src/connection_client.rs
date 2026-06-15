@@ -975,7 +975,7 @@ where
         // Validates the columns (existence, datatype, no nulls):
         let RegisterWithDatasetDataframe {
             rerun_segment_id,
-            rerun_segment_layer: _, // TODO(emilk): return this too
+            rerun_segment_layer,
             rerun_segment_type,
             rerun_storage_url,
             rerun_task_id,
@@ -997,25 +997,29 @@ where
             })?;
 
         let descriptors = itertools::izip!(
+            rerun_segment_layer,
             rerun_segment_id,
             segment_types,
             rerun_storage_url,
             rerun_task_id
         )
-        .map(|(segment_id, segment_type, storage_url, task_id)| {
-            Ok(RegisterWithDatasetTaskDescriptor {
-                segment_id,
-                segment_type,
-                storage_url: url::Url::parse(&storage_url).map_err(|err| {
-                    ApiError::deserialization_with_source(
-                        trace_id,
-                        TypeConversionError::UrlParseError(err),
-                        "failed to parse /RegisterWithDataset response",
-                    )
-                })?,
-                task_id,
-            })
-        })
+        .map(
+            |(layer_name, segment_id, segment_type, storage_url, task_id)| {
+                Ok(RegisterWithDatasetTaskDescriptor {
+                    layer_name,
+                    segment_id,
+                    segment_type,
+                    storage_url: url::Url::parse(&storage_url).map_err(|err| {
+                        ApiError::deserialization_with_source(
+                            trace_id,
+                            TypeConversionError::UrlParseError(err),
+                            "failed to parse /RegisterWithDataset response",
+                        )
+                    })?,
+                    task_id,
+                })
+            },
+        )
         .try_collect()?;
 
         Ok((trace_id, descriptors))

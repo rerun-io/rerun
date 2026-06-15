@@ -1,4 +1,3 @@
-use arrow::array::FixedSizeBinaryArray;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use re_protos::cloud::v1alpha1::ext::{self, DataSource, QueryDatasetRequest};
@@ -134,17 +133,13 @@ fn segment_ids_of_layer(batch: &arrow::array::RecordBatch, layer_name: &str) -> 
 }
 
 fn collect_chunk_ids(batches: &[arrow::array::RecordBatch]) -> Vec<ChunkId> {
-    use re_protos::cloud::v1alpha1::QueryDatasetResponse;
+    use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
     let mut ids = Vec::new();
     for batch in batches {
-        let col = batch
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .expect("missing chunk id column");
-        let arr = col
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .expect("expected a FixedSizeBinaryArray");
-        ids.extend_from_slice(ChunkId::try_slice_from_arrow(arr).expect("invalid chunk ids"));
+        let col = QueryDatasetDataframe::COLUMN_CHUNK_ID
+            .extract(batch)
+            .expect("bad chunk id column");
+        ids.extend(col.iter_owned());
     }
     ids
 }

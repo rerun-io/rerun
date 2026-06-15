@@ -1,16 +1,13 @@
 use std::sync::Arc;
 
-use arrow::array::{
-    Array, ArrayRef, BinaryArray, BooleanArray, DictionaryArray, Int64Array,
-    PrimitiveDictionaryBuilder, RecordBatch, RecordBatchOptions, StringArray, UInt64Array,
-};
-use arrow::datatypes::{DataType, Field, FieldRef, Int32Type, Int64Type, Schema};
+use arrow::array::{Array, ArrayRef, Int64Array, RecordBatch, StringArray};
+use arrow::datatypes::{DataType, Field, FieldRef, Schema};
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use prost::Name as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
-use re_log_types::{AbsoluteTimeRange, external::re_types_core::ComponentBatch as _};
+use re_log_types::AbsoluteTimeRange;
 use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_types_core::{LayerClass, LayerName};
 
@@ -378,137 +375,6 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
 // --- QueryDatasetResponse ---
 
 impl QueryDatasetResponse {
-    // These columns are guaranteed to be returned by `QueryDataset`. Additional columns may also be
-    // returned.
-    pub const FIELD_CHUNK_ID: &str = "chunk_id";
-    pub const FIELD_CHUNK_SEGMENT_ID: &str = "chunk_segment_id";
-    pub const FIELD_CHUNK_LAYER_NAME: &str = "rerun_segment_layer";
-    pub const FIELD_CHUNK_KEY: &str = "chunk_key";
-    pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
-    pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
-
-    /// Byte offset of the chunk within the source object.
-    ///
-    /// **Deprecated**: this is a denormalized projection of
-    /// [`RrdChunkLocation::offset`](crate::cloud::v1alpha1::ext::RrdChunkLocation),
-    /// which the OSS client now decodes directly out of `FIELD_CHUNK_KEY`.
-    /// Still emitted by the server for compatibility with old clients; new
-    /// code should not read it.
-    pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
-
-    /// Byte length of the chunk within the source object.
-    ///
-    /// **Deprecated**: see [`FIELD_CHUNK_BYTE_OFFSET`](Self::FIELD_CHUNK_BYTE_OFFSET).
-    /// Decode `FIELD_CHUNK_KEY` instead.
-    pub const FIELD_CHUNK_BYTE_LENGTH: &str = "chunk_byte_len";
-
-    pub const FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED: &str = "chunk_byte_size_uncompressed";
-
-    /// Direct (presigned) URL for fetching the source object.
-    ///
-    /// **Note**: server policy field. Presence indicates the server expects
-    /// the client to fetch this row via direct HTTP Range; absence routes the
-    /// row through gRPC `FetchChunks`.
-    pub const FIELD_DIRECT_URL: &str = "rerun_layer_direct_url";
-
-    pub const FIELD_DIRECT_URL_EXPIRES_AT: &str = "rerun_layer_direct_url_expires_at";
-
-    pub fn field_chunk_id() -> FieldRef {
-        lazy_field_ref!(
-            Field::new(Self::FIELD_CHUNK_ID, DataType::FixedSizeBinary(16), false).with_metadata(
-                [(
-                    re_sorbet::metadata::RERUN_KIND.to_owned(),
-                    "control".to_owned()
-                )]
-                .into_iter()
-                .collect(),
-            )
-        )
-    }
-
-    pub fn field_chunk_segment_id() -> FieldRef {
-        lazy_field_ref!(
-            Field::new(Self::FIELD_CHUNK_SEGMENT_ID, DataType::Utf8, false).with_metadata(
-                [(
-                    re_sorbet::metadata::RERUN_KIND.to_owned(),
-                    "control".to_owned()
-                )]
-                .into_iter()
-                .collect(),
-            )
-        )
-    }
-
-    pub fn field_chunk_layer_name() -> FieldRef {
-        lazy_field_ref!(Field::new(
-            Self::FIELD_CHUNK_LAYER_NAME,
-            DataType::Utf8,
-            false
-        ))
-    }
-
-    pub fn field_chunk_key() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_CHUNK_KEY, DataType::Binary, false))
-    }
-
-    pub fn field_chunk_entity_path() -> FieldRef {
-        lazy_field_ref!(
-            Field::new(Self::FIELD_CHUNK_ENTITY_PATH, DataType::Utf8, false).with_metadata(
-                [(
-                    re_sorbet::metadata::RERUN_KIND.to_owned(),
-                    "control".to_owned()
-                )]
-                .into_iter()
-                .collect(),
-            )
-        )
-    }
-
-    pub fn field_chunk_is_static() -> FieldRef {
-        lazy_field_ref!(
-            Field::new(Self::FIELD_CHUNK_IS_STATIC, DataType::Boolean, false).with_metadata(
-                [(
-                    re_sorbet::metadata::RERUN_KIND.to_owned(),
-                    "control".to_owned()
-                )]
-                .into_iter()
-                .collect(),
-            )
-        )
-    }
-
-    pub fn field_chunk_byte_len() -> FieldRef {
-        lazy_field_ref!(Field::new(
-            Self::FIELD_CHUNK_BYTE_LENGTH,
-            DataType::UInt64,
-            false
-        ))
-    }
-
-    pub fn field_chunk_byte_len_uncompressed() -> FieldRef {
-        lazy_field_ref!(Field::new(
-            Self::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED,
-            DataType::UInt64,
-            true
-        ))
-    }
-
-    pub fn field_direct_url() -> FieldRef {
-        lazy_field_ref!(Field::new(
-            Self::FIELD_DIRECT_URL,
-            DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8)),
-            true
-        ))
-    }
-
-    pub fn field_direct_url_expires_at() -> FieldRef {
-        lazy_field_ref!(Field::new(
-            Self::FIELD_DIRECT_URL_EXPIRES_AT,
-            DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Int64)),
-            true
-        ))
-    }
-
     /// Per-timeline `{timeline_name}:start` column that carries `time_min` for each chunk.
     ///
     /// Consumed by the client's `build_segment_manifests` to compute the per-segment safe
@@ -531,36 +397,12 @@ impl QueryDatasetResponse {
         )
     }
 
-    pub fn fields() -> Vec<FieldRef> {
-        vec![
-            Self::field_chunk_id(),
-            Self::field_chunk_segment_id(),
-            Self::field_chunk_layer_name(),
-            Self::field_chunk_key(),
-            Self::field_chunk_entity_path(),
-            Self::field_chunk_is_static(),
-            Self::field_chunk_byte_len(),
-            Self::field_chunk_byte_len_uncompressed(),
-            Self::field_direct_url(),
-            Self::field_direct_url_expires_at(),
-        ]
-    }
-
-    pub fn schema() -> arrow::datatypes::Schema {
-        Schema::new(Self::fields())
-    }
-
-    pub fn create_empty_dataframe() -> RecordBatch {
-        let schema = Arc::new(Self::schema());
-        RecordBatch::new_empty(schema)
-    }
-
     pub fn create_dataframe(
         chunk_ids: Vec<re_chunk::ChunkId>,
-        chunk_segment_ids: Vec<String>,
+        chunk_segment_ids: Vec<SegmentId>,
         chunk_layer_names: Vec<LayerName>,
         chunk_keys: Vec<&[u8]>,
-        chunk_entity_paths: Vec<String>,
+        chunk_entity_paths: Vec<EntityPath>,
         chunk_is_static: Vec<bool>,
         chunk_byte_lengths: Vec<u64>,
         chunk_byte_lengths_uncompressed: Vec<Option<u64>>,
@@ -584,10 +426,10 @@ impl QueryDatasetResponse {
 
     pub fn create_dataframe_with_timelines(
         chunk_ids: Vec<re_chunk::ChunkId>,
-        chunk_segment_ids: Vec<String>,
+        chunk_segment_ids: Vec<SegmentId>,
         chunk_layer_names: Vec<LayerName>,
         chunk_keys: Vec<&[u8]>,
-        chunk_entity_paths: Vec<String>,
+        chunk_entity_paths: Vec<EntityPath>,
         chunk_is_static: Vec<bool>,
         chunk_byte_lengths: Vec<u64>,
         chunk_byte_lengths_uncompressed: Vec<Option<u64>>,
@@ -595,63 +437,100 @@ impl QueryDatasetResponse {
         chunk_direct_urls_expiry: Vec<Option<i64>>,
         timelines: &std::collections::BTreeMap<String, (DataType, Vec<Option<i64>>)>,
     ) -> arrow::error::Result<RecordBatch> {
-        let num_rows = chunk_ids.len();
+        QueryDatasetDataframe {
+            chunk_id: chunk_ids.into(),
+            chunk_segment_id: chunk_segment_ids.into(),
+            rerun_segment_layer: chunk_layer_names.into(),
+            chunk_key: chunk_keys.into(),
+            chunk_entity_path: chunk_entity_paths.into(),
+            chunk_is_static: chunk_is_static.into(),
+            chunk_byte_len: chunk_byte_lengths.into(),
+            chunk_byte_size_uncompressed: chunk_byte_lengths_uncompressed.into(),
+            rerun_layer_direct_url: quiver::Column::try_from_values(chunk_direct_urls)?,
+            rerun_layer_direct_url_expires_at: quiver::Column::try_from_values(
+                chunk_direct_urls_expiry,
+            )?,
 
-        let mut chunk_direct_url_expiry_builder =
-            PrimitiveDictionaryBuilder::<Int32Type, Int64Type>::new();
-        chunk_direct_url_expiry_builder.extend(chunk_direct_urls_expiry);
-
-        let chunk_layer_names: Vec<String> = chunk_layer_names
-            .into_iter()
-            .map(LayerName::into_string)
-            .collect();
-
-        let mut fields: Vec<FieldRef> = Self::fields();
-        let mut columns: Vec<ArrayRef> = vec![
-            chunk_ids
-                .to_arrow()
-                .expect("to_arrow for ChunkIds never fails"),
-            Arc::new(StringArray::from(chunk_segment_ids)),
-            Arc::new(StringArray::from(chunk_layer_names)),
-            Arc::new(BinaryArray::from(chunk_keys)),
-            Arc::new(StringArray::from(chunk_entity_paths)),
-            Arc::new(BooleanArray::from(chunk_is_static)),
-            Arc::new(UInt64Array::from(chunk_byte_lengths)),
-            Arc::new(UInt64Array::from(chunk_byte_lengths_uncompressed)),
-            Arc::new(
-                chunk_direct_urls
-                    .iter()
-                    .map(|s| s.as_deref())
-                    .collect::<DictionaryArray<Int32Type>>(),
-            ),
-            Arc::new(chunk_direct_url_expiry_builder.finish()),
-        ];
-
-        // Caller is responsible for producing the same `timelines` set for every response of a
-        // single query, so all batches share a schema and the client can concatenate them.
-        for (timeline_name, (_data_type, mins)) in timelines {
-            fields.push(Self::field_timeline_start(timeline_name));
-            columns.push(Arc::new(Int64Array::from(mins.clone())) as ArrayRef);
+            // Caller is responsible for producing the same `timelines` set for every response of a
+            // single query, so all batches share a schema and the client can concatenate them.
+            extra_columns: timelines
+                .iter()
+                .map(|(timeline_name, (_data_type, mins))| quiver::DynColumn {
+                    field: Self::field_timeline_start(timeline_name),
+                    array: Arc::new(Int64Array::from(mins.clone())),
+                })
+                .collect(),
         }
-
-        let schema = Arc::new(Schema::new(fields));
-        RecordBatch::try_new_with_options(
-            schema,
-            columns,
-            &RecordBatchOptions::default().with_row_count(Some(num_rows)),
-        )
+        .into_record_batch()
+        .map_err(|err| ArrowError::InvalidArgumentError(err.to_string()))
     }
+}
+
+/// Strongly-typed view of the dataframe in `QueryDatasetResponse`.
+///
+/// See [`QueryDatasetResponse`] for the column semantics.
+/// The field names are the column names.
+#[derive(quiver::Quiver)]
+pub struct QueryDatasetDataframe {
+    /// The id of the chunk ([`re_chunk::ChunkId`]).
+    //
+    // NOTE: these `rerun:kind` values must match `re_sorbet::metadata::RERUN_KIND` usage.
+    #[quiver(metadata("rerun:kind" = "control"))]
+    pub chunk_id: quiver::Column<re_chunk::ChunkId>,
+
+    /// The segment this chunk belongs to.
+    #[quiver(metadata("rerun:kind" = "control"))]
+    pub chunk_segment_id: quiver::Column<SegmentId>,
+
+    /// The layer this chunk belongs to.
+    pub rerun_segment_layer: quiver::Column<LayerName>,
+
+    /// Opaque key encoding where to fetch the chunk
+    /// (see [`RrdChunkLocation`](crate::cloud::v1alpha1::ext::RrdChunkLocation)).
+    pub chunk_key: quiver::Column<quiver::Binary>,
+
+    /// The entity path of the chunk.
+    #[quiver(metadata("rerun:kind" = "control"))]
+    pub chunk_entity_path: quiver::Column<EntityPath>,
+
+    /// Does this chunk hold static data?
+    #[quiver(metadata("rerun:kind" = "control"))]
+    pub chunk_is_static: quiver::Column<bool>,
+
+    /// Byte length of the chunk within the source object.
+    ///
+    /// **Deprecated**: this is a denormalized projection of
+    /// [`RrdChunkLocation`](crate::cloud::v1alpha1::ext::RrdChunkLocation),
+    /// which new code decodes directly out of [`Self::chunk_key`].
+    /// Still emitted (and required by old clients; see RR-2677)
+    /// (as is the `chunk_byte_offset` column some servers include).
+    pub chunk_byte_len: quiver::Column<u64>,
+
+    /// Uncompressed size of the chunk, if known.
+    pub chunk_byte_size_uncompressed: quiver::Column<Option<u64>>,
+
+    /// Direct (presigned) URL for fetching the source object, if the server wants
+    /// the client to fetch this row via direct HTTP Range.
+    pub rerun_layer_direct_url: quiver::Column<Option<quiver::Dictionary<i32, quiver::Utf8>>>,
+
+    /// When the direct URL expires, if any.
+    pub rerun_layer_direct_url_expires_at: quiver::Column<Option<quiver::Dictionary<i32, i64>>>,
+
+    /// Per-timeline `{timeline_name}:start` columns
+    /// (see [`QueryDatasetResponse::field_timeline_start`]).
+    #[quiver(extra_columns)]
+    pub extra_columns: Vec<quiver::DynColumn>,
 }
 
 impl FetchChunksRequest {
     // This is the only required column in the request.
-    pub const FIELD_CHUNK_KEY: &str = QueryDatasetResponse::FIELD_CHUNK_KEY;
+    pub const FIELD_CHUNK_KEY: &str = QueryDatasetDataframe::COLUMN_CHUNK_KEY_NAME;
 
     //TODO(RR-2677): actually, these are also required for now.
-    pub const FIELD_CHUNK_ID: &str = QueryDatasetResponse::FIELD_CHUNK_ID;
-    pub const FIELD_CHUNK_SEGMENT_ID: &str = QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID;
-    pub const FIELD_CHUNK_LAYER_NAME: &str = QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME;
-    pub const FIELD_CHUNK_BYTE_LENGTH: &str = QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH;
+    pub const FIELD_CHUNK_ID: &str = QueryDatasetDataframe::COLUMN_CHUNK_ID_NAME;
+    pub const FIELD_CHUNK_SEGMENT_ID: &str = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID_NAME;
+    pub const FIELD_CHUNK_LAYER_NAME: &str = QueryDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER_NAME;
+    pub const FIELD_CHUNK_BYTE_LENGTH: &str = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME;
 
     pub fn required_column_names() -> Vec<String> {
         vec![
@@ -662,35 +541,6 @@ impl FetchChunksRequest {
             Self::FIELD_CHUNK_LAYER_NAME.to_owned(),
             Self::FIELD_CHUNK_BYTE_LENGTH.to_owned(),
         ]
-    }
-
-    pub fn field_chunk_id() -> FieldRef {
-        QueryDatasetResponse::field_chunk_id()
-    }
-
-    pub fn field_chunk_segment_id() -> FieldRef {
-        QueryDatasetResponse::field_chunk_segment_id()
-    }
-
-    pub fn field_chunk_layer_name() -> FieldRef {
-        QueryDatasetResponse::field_chunk_layer_name()
-    }
-
-    pub fn field_chunk_key() -> FieldRef {
-        QueryDatasetResponse::field_chunk_key()
-    }
-
-    pub fn fields() -> Vec<FieldRef> {
-        vec![
-            Self::field_chunk_id(),
-            Self::field_chunk_segment_id(),
-            Self::field_chunk_layer_name(),
-            Self::field_chunk_key(),
-        ]
-    }
-
-    pub fn schema() -> arrow::datatypes::Schema {
-        Schema::new(Self::fields())
     }
 }
 
@@ -2122,6 +1972,7 @@ pub struct RegisterWithDatasetDataframe {
 //TODO(ab): this should be an actual grpc message, returned by `RegisterWithDataset` instead of a dataframe
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RegisterWithDatasetTaskDescriptor {
+    pub layer_name: LayerName,
     pub segment_id: SegmentId,
     pub segment_type: DataSourceKind,
     pub storage_url: url::Url,
@@ -2784,10 +2635,13 @@ mod tests {
     #[test]
     fn test_query_dataset_response_create_dataframe() {
         let chunk_ids = vec![re_chunk::ChunkId::new(), re_chunk::ChunkId::new()];
-        let chunk_segment_ids = vec!["segment_id_1".to_owned(), "segment_id_2".to_owned()];
+        let chunk_segment_ids = vec![
+            SegmentId::from("segment_id_1"),
+            SegmentId::from("segment_id_2"),
+        ];
         let chunk_layer_names = vec![LayerName::from("layer1"), LayerName::from("layer2")];
         let chunk_keys = vec![b"key1".to_byte_slice(), b"key2".to_byte_slice()];
-        let chunk_entity_paths = vec!["/".to_owned(), "/".to_owned()];
+        let chunk_entity_paths = vec![EntityPath::root(), EntityPath::root()];
         let chunk_is_static = vec![true, false];
         let chunk_byte_lengths = vec![1024u64, 2048u64];
         let direct_urls = vec![None, None];
@@ -2795,7 +2649,7 @@ mod tests {
 
         let chunk_byte_lengths_uncompressed = vec![Some(2048u64), Some(4096u64)];
 
-        QueryDatasetResponse::create_dataframe(
+        let batch = QueryDatasetResponse::create_dataframe(
             chunk_ids,
             chunk_segment_ids,
             chunk_layer_names,
@@ -2808,6 +2662,12 @@ mod tests {
             direct_urls_expiry,
         )
         .unwrap();
+
+        assert_eq!(
+            batch.schema().as_ref(),
+            &QueryDatasetDataframe::max_schema(),
+            "the builder must produce exactly the declared columns (no stray extra columns)"
+        );
     }
 
     #[test]
@@ -3069,13 +2929,17 @@ mod tests {
         out
     }
 
-    /// Pin the wire schemas of the response dataframes, including
-    /// column order, nullability, and field metadata.
+    /// Pin the wire schemas of all dataframe responses, including column order,
+    /// nullability, and field metadata.
     ///
-    /// If one of these snapshots changes, you are changing the public wire
-    /// format — make sure all consumers can handle it.
+    /// If one of these snapshots changes, you are changing the public wire format —
+    /// make sure all consumers can handle it.
     #[test]
     fn dataframe_schema_snapshots() {
+        insta::assert_snapshot!(
+            "query_dataset_dataframe_schema",
+            format_schema(&QueryDatasetDataframe::max_schema())
+        );
         insta::assert_snapshot!(
             "query_tasks_dataframe_schema",
             format_schema(&QueryTasksDataframe::max_schema())

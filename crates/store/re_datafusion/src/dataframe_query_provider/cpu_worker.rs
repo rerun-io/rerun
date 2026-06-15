@@ -17,9 +17,8 @@ use re_dataframe::{
     StorageEngine, TimelineName,
 };
 use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TimeInt};
-use re_protos::{
-    cloud::v1alpha1::ext::ScanSegmentTableDataframe, common::v1alpha1::ext::SegmentId,
-};
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
+use re_protos::common::v1alpha1::ext::SegmentId;
 use re_redap_client::{ApiError, ApiResult};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::{Instrument as _, instrument};

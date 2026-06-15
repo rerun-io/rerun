@@ -11,13 +11,13 @@ use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use re_arrow_util::RecordBatchExt as _;
 use re_protos::cloud::v1alpha1::ext::{
-    LayerRegistrationStatus, QueryDatasetRequest, ScanDatasetManifestDataframe,
-    ScanSegmentTableDataframe,
+    LayerRegistrationStatus, QueryDatasetDataframe, QueryDatasetRequest,
+    ScanDatasetManifestDataframe, ScanSegmentTableDataframe,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest, QueryDatasetResponse,
-    ReadDatasetEntryRequest, ScanDatasetManifestRequest, ScanSegmentTableRequest,
+    GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest, ReadDatasetEntryRequest,
+    ScanDatasetManifestRequest, ScanSegmentTableRequest,
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
 
@@ -600,7 +600,7 @@ async fn query_dataset_snapshot(
     let merged_chunk_info = concat_record_batches(&chunk_info);
 
     // these are the only columns guaranteed to be returned by `query_dataset`
-    let required_field = QueryDatasetResponse::fields();
+    let required_field = QueryDatasetDataframe::min_schema().fields().to_vec();
 
     assert!(
         merged_chunk_info
@@ -628,9 +628,9 @@ async fn query_dataset_snapshot(
     // these columns are not stable, so we cannot snapshot them
     let filtered_chunk_info = required_chunk_info
         .remove_columns(&[
-            QueryDatasetResponse::FIELD_CHUNK_KEY,
-            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
-            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED,
+            QueryDatasetDataframe::COLUMN_CHUNK_KEY_NAME,
+            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
+            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME,
         ])
         .auto_sort_rows()
         .unwrap();
