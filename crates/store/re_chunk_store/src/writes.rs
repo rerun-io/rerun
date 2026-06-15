@@ -9,6 +9,7 @@ use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
 use re_log::debug_assert;
 use re_log_encoding::{RrdManifest, RrdManifestTemporalMapEntry};
+use re_sdk_types::{Archetype as _, ArchetypeName, archetypes};
 
 use crate::store::ChunkIdSetPerTime;
 use crate::{
@@ -16,6 +17,27 @@ use crate::{
     ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffAddition,
     ChunkStoreError, ChunkStoreEvent, ChunkStoreResult,
 };
+
+/// Does this component belong to a transform archetype whose static data must be preserved in full?
+///
+/// [Sometime ago](https://github.com/rerun-io/rerun/pull/7518), we introduced a mechanism to auto-
+/// delete static chunks that are "shadowed" by a newly inserted static chunk.
+/// The reason for that is that in the basic data model, a latest-at query only ever returns the
+/// most recent value for a given `(entity, component)`, so superseded static chunks can be safely
+/// dropped, giving the benefit of "insta-GC" through logging with static data.
+///
+/// Named transform data is the exception: it is interpreted in full, not latest-at. A single entity
+/// can carry many distinct frames across multiple static chunks (e.g. a `/tf_static` topic logging
+/// transforms over its lifetime.
+///
+/// See RR-4887 for more info.
+fn is_transform_archetype(archetype: Option<ArchetypeName>) -> bool {
+    // Note: these are "named transform" archetypes, aka those which have parent/child frame
+    // references
+    archetype.is_some_and(|archetype| {
+        archetype == archetypes::Transform3D::name() || archetype == archetypes::Pinhole::name()
+    })
+}
 
 // ---
 
@@ -410,6 +432,7 @@ impl ChunkStore {
 
         let chunk_before_processing = Arc::clone(chunk); // we'll need it to create the store event
 
+        //TODO(RR-4887): we should NEVER delete chunks
         let (chunk_after_processing, diffs) = if chunk.is_static() {
             // Static data: make sure to keep the most recent chunk available for each component column.
             re_tracing::profile_scope!("static");
@@ -432,6 +455,8 @@ impl ChunkStore {
                 else {
                     continue;
                 };
+
+                let is_transform = is_transform_archetype(column.descriptor.archetype);
 
                 self.static_chunk_ids_per_entity
                     .entry(chunk.entity_path().clone())
@@ -467,7 +492,9 @@ impl ChunkStore {
                                     chunk.row_id_range().map(|(row_id_min, _)| row_id_min)
                                 });
 
-                            if let Some(cur_row_id_min_for_chunk) = cur_row_id_min_for_chunk {
+                            if let Some(cur_row_id_min_for_chunk) = cur_row_id_min_for_chunk
+                                && !is_transform
+                            {
                                 overwritten_chunk_ids
                                     .insert(*cur_chunk_id, cur_row_id_min_for_chunk);
                             }
@@ -1444,6 +1471,93 @@ mod tests {
             assert_eq!(2, num_rows);
             assert_eq!(3, num_events);
         }
+
+        Ok(())
+    }
+
+    /// Regression test for RR-4880: `rrd optimize` / `.collect(optimize=…)` lose static transforms.
+    ///
+    /// Both optimize paths route every chunk through `ChunkStore::insert_chunk`, which applies
+    /// auto-delete shadowed static chunk semantics. See [`is_transform_archetype`] and RR-4887 for
+    /// more info.
+    ///
+    /// This test reproduces that loss with three static chunks on the same entity, each carrying a
+    /// `Transform3D` for a distinct child frame. All three must be preserved.
+    #[test]
+    fn static_transforms_spread_across_chunks_are_preserved() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            Default::default(),
+        );
+
+        let entity_path = EntityPath::from("tf_static");
+
+        // Three distinct frames, each in its own static chunk, all on the same entity, with
+        // increasing RowIds (as if logged over time). They share the same component columns but
+        // carry different child frames, so last-write-wins would clobber all but the last.
+        let child_frames = ["child0", "child1", "child2"];
+
+        for (i, child_frame) in child_frames.iter().enumerate() {
+            let transform = archetypes::Transform3D::default()
+                .with_child_frame(*child_frame)
+                .with_translation([i as f32, i as f32, i as f32]);
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_archetype(RowId::new(), TimePoint::STATIC, &transform)
+                .build()?;
+            store.insert_chunk(&Arc::new(chunk))?;
+        }
+
+        let ChunkStoreChunkStats { num_rows, .. } = store.stats().static_chunks;
+        assert_eq!(
+            num_rows,
+            child_frames.len() as u64,
+            "all static transform rows spread across chunks should be preserved, \
+             but {num_rows} of {} survived",
+            child_frames.len(),
+        );
+
+        Ok(())
+    }
+
+    /// Counterpart to [`static_transforms_spread_across_chunks_are_preserved`]: non-transform
+    /// static data must *still* be deduplicated to the latest value.
+    //TODO(RR-4887): this test should no longer pass with this issue is resolved.
+    #[test]
+    fn static_non_transform_data_spread_across_chunks_is_deduplicated() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            Default::default(),
+        );
+
+        let entity_path = EntityPath::from("camera");
+
+        let values = [
+            MyPoint::new(1.0, 1.0),
+            MyPoint::new(2.0, 2.0),
+            MyPoint::new(3.0, 3.0),
+        ];
+
+        for value in &values {
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    [(MyPoints::descriptor_points(), &[*value] as _)],
+                )
+                .build()?;
+            store.insert_chunk(&Arc::new(chunk))?;
+        }
+
+        let ChunkStoreChunkStats { num_rows, .. } = store.stats().static_chunks;
+        assert_eq!(
+            num_rows, 1,
+            "non-transform static data should be deduplicated to the latest value, \
+             but {num_rows} rows survived",
+        );
 
         Ok(())
     }
