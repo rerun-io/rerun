@@ -379,20 +379,18 @@ impl SelectionPanel {
                 self.view_selection_ui(ctx, ui, viewport, view_id, view_states);
             }
 
-            Item::DataResult(data_result) => {
-                if data_result.instance_path.is_all() {
-                    entity_selection_ui(
-                        ctx,
-                        ui,
-                        &data_result.instance_path.entity_path,
-                        viewport,
-                        &data_result.view_id,
-                        view_states,
-                    );
-                } else {
-                    // NOTE: not implemented when a single instance is selected
-                }
+            Item::DataResult(data_result) if data_result.instance_path.is_all() => {
+                // NOTE: not implemented when a single instance is selected
+                entity_selection_ui(
+                    ctx,
+                    ui,
+                    &data_result.instance_path.entity_path,
+                    viewport,
+                    &data_result.view_id,
+                    view_states,
+                );
             }
+
             _ => {}
         }
     }

@@ -139,10 +139,11 @@ struct FilterCapture {
 }
 
 /// This trait provides the specific methods used when interacting with the
-/// gRPC services for the datafusion client services. By implementing this
-/// as a trait we can provide an alternative implementation in our testing
-/// facility to remove all gRPC layers and test the server responses
-/// more directly.
+/// gRPC services for the datafusion client services.
+///
+/// By implementing this as a trait we can provide an alternative implementation
+/// in our testing facility to remove all gRPC layers and test the server
+/// responses more directly.
 #[async_trait]
 pub trait DataframeClientAPI: std::fmt::Debug + Clone + Send + Sync + Unpin + 'static {
     async fn get_dataset_schema(
