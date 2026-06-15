@@ -39,6 +39,12 @@ Tables without a registered blueprint fall back to Arrow field metadata and view
 > As of this release table blueprints alongside dataset preview are still regarded as an
 > experimental feature which means that the table & APIs for table blueprints may change significantly.
 
+## `DatasetEntry.manifest()` deprecated
+
+`DatasetEntry.manifest()` was always intended for internal and debugging use only and should never have been part of the public API.
+It is now marked `@deprecated` and will be removed in a future release.
+No public replacement is offered.
+
 ## Remove previously deprecated SDK methods for custom indices
 
 The `DatasetEntry` methods `create_fts_search_index`,  `create_vector_search_index`, `delete_search_indexes`, `search_fts`, and `search_vector` have been removed, having been deprecated in 0.31.

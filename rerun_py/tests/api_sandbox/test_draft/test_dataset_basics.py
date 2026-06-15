@@ -107,7 +107,7 @@ def test_dataset_register(rrd_paths: list[Path]) -> None:
         with pytest.raises(ValueError):
             ds.register([p.as_uri() for p in rrd_paths], layer_name=["not", "enough"]).wait()
 
-        df = ds.manifest().select("rerun_layer_name", "rerun_segment_id").sort("rerun_layer_name", "rerun_segment_id")
+        df = ds._manifest().select("rerun_layer_name", "rerun_segment_id").sort("rerun_layer_name", "rerun_segment_id")
         df_schema = df.schema()
         for batch in df.collect():
             assert batch.schema.equals(df_schema, check_metadata=True)
@@ -269,19 +269,19 @@ def test_dataset_metadata(complex_dataset_prefix: Path) -> None:
 
 
 def test_manifest_diagnostic_data(complex_dataset_prefix: Path) -> None:
-    """Test the include_diagnostic_data parameter on manifest()."""
+    """Test the include_diagnostic_data parameter on _manifest()."""
     with rr.server.Server() as server:
         client = server.client()
         ds = client.create_dataset("dataset")
         ds.register_prefix(complex_dataset_prefix.as_uri()).wait()
 
         # Default: rerun_registration_status column should not be present
-        manifest = ds.manifest()
+        manifest = ds._manifest()
         column_names = [f.name for f in manifest.schema()]
         assert "rerun_registration_status" not in column_names
 
         # With include_diagnostic_data=True: column should be present
-        manifest_diag = ds.manifest(include_diagnostic_data=True)
+        manifest_diag = ds._manifest(include_diagnostic_data=True)
         column_names_diag = [f.name for f in manifest_diag.schema()]
         assert "rerun_registration_status" in column_names_diag
 

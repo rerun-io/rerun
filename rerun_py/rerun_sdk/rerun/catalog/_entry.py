@@ -316,6 +316,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return segment_table_df
 
+    @deprecated(
+        "DatasetEntry.manifest() is deprecated and will be removed in a future release. "
+        "It was intended for internal and debugging use only."
+    )
     def manifest(self, include_diagnostic_data: bool = False) -> datafusion.DataFrame:
         """
         Return the dataset manifest as a DataFusion DataFrame.
@@ -331,6 +335,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
                 Diagnostic data is subject to change in any release and should not be relied on for production.
 
         """
+
+        return self._manifest(include_diagnostic_data=include_diagnostic_data)
+
+    def _manifest(self, include_diagnostic_data: bool = False) -> datafusion.DataFrame:
+        """Return the dataset manifest as a DataFusion DataFrame. Intended for internal and debugging use only."""
 
         from datafusion import col
 

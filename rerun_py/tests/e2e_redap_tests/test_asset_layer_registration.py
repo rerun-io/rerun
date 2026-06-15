@@ -8,7 +8,9 @@ import pytest
 import rerun as rr
 from rerun.catalog import AlreadyExistsError, OnDuplicateSegmentLayer
 
-pytestmark = pytest.mark.filterwarnings("ignore:_register_asset_layer:UserWarning")
+pytestmark = [
+    pytest.mark.filterwarnings("ignore:_register_asset_layer:UserWarning"),
+]
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -60,13 +62,13 @@ def test_register_asset_layer_appears_in_manifest(entry_factory: EntryFactory, t
     ds._register_asset_layer(layer_name="my_asset", recording_uri=asset_uri).wait()
 
     # No segments yet, so the asset layer is invisible in the manifest.
-    table = ds.manifest(include_diagnostic_data=False).to_arrow_table()
+    table = ds._manifest(include_diagnostic_data=False).to_arrow_table()
     assert table.num_rows == 0
 
     # Register a segment; the asset layer should now appear for it.
     ds.register([seg_uri]).wait()
 
-    table = ds.manifest(include_diagnostic_data=False).to_arrow_table()
+    table = ds._manifest(include_diagnostic_data=False).to_arrow_table()
     layer_names = table.column("rerun_layer_name").to_pylist()
     assert "my_asset" in layer_names
     assert "base" in layer_names
@@ -86,7 +88,7 @@ def test_register_asset_layer_with_segment_layers(entry_factory: EntryFactory, t
     ds._register_asset_layer(layer_name="shared_mesh", recording_uri=asset_uri).wait()
     ds.register([seg_uri]).wait()
 
-    manifest = ds.manifest(include_diagnostic_data=False)
+    manifest = ds._manifest(include_diagnostic_data=False)
     table = manifest.to_arrow_table()
 
     layer_names = set(table.column("rerun_layer_name").to_pylist())
@@ -131,7 +133,7 @@ def test_register_asset_layer_duplicate_replace(entry_factory: EntryFactory, tmp
         layer_name="robot_urdf", recording_uri=asset_uri, on_duplicate=OnDuplicateSegmentLayer.REPLACE
     ).wait()
 
-    manifest = ds.manifest(include_diagnostic_data=False)
+    manifest = ds._manifest(include_diagnostic_data=False)
     layer_names = manifest.to_arrow_table().column("rerun_layer_name").to_pylist()
     assert layer_names.count("robot_urdf") == 1
 
@@ -155,6 +157,6 @@ def test_register_asset_layer_duplicate_skip(entry_factory: EntryFactory, tmp_pa
         layer_name="robot_urdf", recording_uri=asset_uri, on_duplicate=OnDuplicateSegmentLayer.SKIP
     ).wait()
 
-    manifest = ds.manifest(include_diagnostic_data=False)
+    manifest = ds._manifest(include_diagnostic_data=False)
     layer_names = manifest.to_arrow_table().column("rerun_layer_name").to_pylist()
     assert layer_names.count("robot_urdf") == 1
