@@ -1576,6 +1576,66 @@ mod tests {
         Ok(())
     }
 
+    /// Regression test for RR-4880: `rrd optimize` / `.collect(optimize=…)` lose static data.
+    ///
+    /// Both optimize paths route every chunk through `ChunkStore::insert_chunk`, which applies
+    /// live-query static-overwrite semantics: for a given `(entity, component)`, only the static
+    /// chunk with the most-recent `RowId` survives, and fully-superseded static chunks are
+    /// physically dropped.
+    ///
+    /// That is correct for the live viewer (a query only ever returns the latest static value),
+    /// but wrong for optimize, which is meant to be a faithful round-trip. `rerun mcap convert`
+    /// streams chunks straight to the encoder and never hits this path, so an MCAP whose static
+    /// data is spread across multiple chunks for the same component (e.g. a `/tf_static` topic
+    /// carrying many transforms over its lifetime) keeps every row in the converted `.rrd`, but
+    /// loses all but the newest chunk once it is optimized.
+    ///
+    /// This test reproduces that loss with three static chunks for the same `(entity, component)`,
+    /// each carrying a distinct value (standing in for distinct transforms). The desired behavior
+    /// is that optimize preserves all three; today only the newest survives.
+    #[ignore = "RR-4880: optimize drops static data spread across multiple chunks"]
+    #[test]
+    fn static_data_spread_across_chunks_is_preserved() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            Default::default(),
+        );
+
+        let entity_path = EntityPath::from("tf_static");
+
+        // Three distinct "transforms", each in its own static chunk, all writing the same
+        // component column on the same entity, with increasing RowIds (as if logged over time).
+        let transforms = [
+            MyPoint::new(1.0, 1.0),
+            MyPoint::new(2.0, 2.0),
+            MyPoint::new(3.0, 3.0),
+        ];
+
+        for transform in &transforms {
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    [(MyPoints::descriptor_points(), &[*transform] as _)],
+                )
+                .build()?;
+            store.insert_chunk(&Arc::new(chunk))?;
+        }
+
+        let ChunkStoreChunkStats { num_rows, .. } = store.stats().static_chunks;
+        assert_eq!(
+            num_rows,
+            transforms.len() as u64,
+            "all static rows spread across chunks should be preserved through optimize, \
+             but {num_rows} of {} survived",
+            transforms.len(),
+        );
+
+        Ok(())
+    }
+
     /// Temporal data first, then static: `is_static` should transition and re-emit a `SchemaAddition`.
     #[test]
     fn schema_temporal_then_static() -> anyhow::Result<()> {
