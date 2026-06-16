@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import signal
+import subprocess
 import warnings
 from typing import TYPE_CHECKING
 
@@ -259,14 +260,25 @@ class ViewerClient:
             return
 
         try:
-            # On Windows there are no POSIX process groups
+            # The python `rerun` command is a shim (see `rerun_cli/__main__.py`) that spawns the
+            # rust cli binary as a child process. Killing only the shim pid would orphan that child
+            # and leak the viewer (along with the port it holds), so we must take down the whole
+            # process tree.
             if os.name != "posix":
-                os.kill(pid, signal.SIGTERM)
+                # Windows has no POSIX process groups. `taskkill /T` walks the parent → child
+                # relationship Windows records for the `subprocess.call` in the shim and kills the
+                # native viewer too. `/F` is required because the GUI viewer has no console to
+                # receive a graceful signal (`os.kill`/SIGTERM maps to `TerminateProcess` anyway).
+                subprocess.run(
+                    ["taskkill", "/PID", str(pid), "/T", "/F"],
+                    check=True,
+                    capture_output=True,
+                )
             else:
-                # Due to the python rerun command being a shim, wrapping the rust cli binary, we launch the shim in a new
-                # process group, so we can kill both cleanly here:
+                # On unix the shim is launched in its own process group (see `spawn.rs`), and the
+                # viewer child inherits it, so we can kill both cleanly with a single `killpg`.
                 os.killpg(pid, signal.SIGTERM)
-        except OSError as err:
+        except (OSError, subprocess.CalledProcessError) as err:
             warnings.warn(
                 f"ViewerClient.close() could not close pid {pid}: {err}",
                 UserWarning,

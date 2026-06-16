@@ -73,6 +73,21 @@ class ColumnDecoder(ABC):
         del field_path
         return None
 
+    @property
+    def fill_latest_at(self) -> bool:
+        """
+        Whether this column's prefetch read latest-at-fills empty grid slots.
+
+        `True` for stateless columns (images, scalars): each grid slot wants the
+        most recent value snapped from the real rows. Compressed video keeps it
+        `True` too (consecutive duplicates from a dense grid are dropped at
+        decode time), but a decoder reading frame-indexed data where the grid
+        lands 1:1 on real samples can override to `False` for exact, fill-free
+        packet reads. The read is partitioned by this flag so it stays a global
+        query argument per group rather than a per-column one.
+        """
+        return True
+
     def __repr__(self) -> str:
         return f"{type(self).__name__}()"
 

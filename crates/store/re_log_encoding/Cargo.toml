@@ -23,10 +23,10 @@ all-features = true
 default = []
 
 ## Enable loading data from an .rrd file.
-decoder = ["re_log_types/serde", "dep:bytes", "dep:tokio", "dep:tokio-stream"]
+decoder = ["dep:bytes", "dep:tokio", "dep:tokio-stream"]
 
 ## Enable encoding of log messages to an .rrd file/stream.
-encoder = ["re_log_types/serde"]
+encoder = []
 
 ## Enable streaming of .rrd files from HTTP.
 stream_from_http = [

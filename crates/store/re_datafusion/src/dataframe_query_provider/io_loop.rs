@@ -6,10 +6,12 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use arrow::array::{Array as _, BooleanArray, RecordBatch, StringArray, UInt64Array};
+use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use re_dataframe::TimelineName;
-use re_log_types::{EntityPath, TimeInt};
+use re_log_types::TimeInt;
+use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
+
 use re_redap_client::{ApiError, ApiResult};
 use re_types_core::SegmentId;
 use tokio::sync::mpsc::Sender;
@@ -99,34 +101,27 @@ fn build_segment_manifests(
                     "`{start_col_name}` column has unsupported type: {err}"
                 ))
             })?;
-        let seg_arr = rb
-            .column_by_name(
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID,
-            )
-            .ok_or_else(|| ApiError::internal("missing segment_id column in chunk_info batch"))?
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .ok_or_else(|| ApiError::internal("segment_id column is not a string array"))?;
-        let entity_arr = rb
-            .column_by_name(
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_ENTITY_PATH,
-            )
-            .ok_or_else(|| ApiError::internal("missing entity_path column in chunk_info batch"))?
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .ok_or_else(|| ApiError::internal("entity_path column is not a string array"))?;
-        let static_arr = rb
-            .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_IS_STATIC)
-            .ok_or_else(|| ApiError::internal("missing is_static column in chunk_info batch"))?
-            .as_any()
-            .downcast_ref::<BooleanArray>()
-            .ok_or_else(|| ApiError::internal("is_static column is not a boolean array"))?;
+        let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+            .extract(rb)
+            .map_err(|err| {
+                ApiError::internal(format!("bad segment_id column in chunk_info batch: {err}"))
+            })?;
+        let entity_paths = QueryDatasetDataframe::COLUMN_CHUNK_ENTITY_PATH
+            .extract(rb)
+            .map_err(|err| {
+                ApiError::internal(format!("bad entity_path column in chunk_info batch: {err}"))
+            })?;
+        let is_statics = QueryDatasetDataframe::COLUMN_CHUNK_IS_STATIC
+            .extract(rb)
+            .map_err(|err| {
+                ApiError::internal(format!("bad is_static column in chunk_info batch: {err}"))
+            })?;
 
         for i in 0..rb.num_rows() {
             if start_nulls.as_ref().is_some_and(|n| n.is_null(i)) {
                 continue;
             }
-            if static_arr.value(i) {
+            if is_statics.value(i) {
                 continue;
             }
             let time_min = TimeInt::saturated_temporal_i64(start_values[i]);
@@ -141,8 +136,8 @@ fn build_segment_manifests(
             if time_min.is_static() {
                 continue;
             }
-            let seg = SegmentId::from(seg_arr.value(i));
-            let entity = EntityPath::from(entity_arr.value(i));
+            let seg = segment_ids.value_owned(i);
+            let entity = entity_paths.value_owned(i);
             manifests
                 .entry(seg)
                 .or_default()
@@ -171,27 +166,23 @@ fn build_segment_manifests(
 /// on `segment_id` and tolerates announce/chunk arrival in any order.
 /// First-encounter order is preserved purely for trace readability.
 fn count_chunks_per_segment(chunk_infos: &[RecordBatch]) -> ApiResult<Vec<(SegmentId, usize)>> {
-    let mut counts: HashMap<String, usize> = HashMap::new();
-    let mut order: Vec<String> = Vec::new();
+    let mut counts: HashMap<SegmentId, usize> = HashMap::new();
+    let mut order: Vec<SegmentId> = Vec::new();
     for rb in chunk_infos {
-        let seg_col = rb
-            .column_by_name(
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID,
-            )
-            .ok_or_else(|| ApiError::internal("missing segment_id column in chunk_info batch"))?
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .ok_or_else(|| ApiError::internal("segment_id column is not a string array"))?;
-        for i in 0..rb.num_rows() {
-            let seg = seg_col.value(i);
-            // Avoid the `to_owned` allocation on the hot repeated-segment path:
+        let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+            .extract(rb)
+            .map_err(|err| {
+                ApiError::internal(format!("bad segment_id column in chunk_info batch: {err}"))
+            })?;
+        for seg in &segment_ids {
+            // Avoid the `SegmentId::from` allocation on the hot repeated-segment path:
             // only take it when we are actually inserting a new entry.
             if let Some(c) = counts.get_mut(seg) {
                 *c += 1;
             } else {
-                let owned = seg.to_owned();
-                order.push(owned.clone());
-                counts.insert(owned, 1);
+                let seg = SegmentId::from(seg);
+                order.push(seg.clone());
+                counts.insert(seg, 1);
             }
         }
     }
@@ -199,7 +190,7 @@ fn count_chunks_per_segment(chunk_infos: &[RecordBatch]) -> ApiResult<Vec<(Segme
         .into_iter()
         .map(|s| {
             let c = counts.remove(&s).unwrap_or(0);
-            (SegmentId::from(s), c)
+            (s, c)
         })
         .collect())
 }
@@ -208,27 +199,24 @@ fn count_chunks_per_segment(chunk_infos: &[RecordBatch]) -> ApiResult<Vec<(Segme
 /// chunks *for a single segment*, hence we can just take the first row's `segment_id`. This is
 /// guaranteed by the implementation in `group_chunk_infos_by_segment_id`.
 fn extract_segment_id(chunk_info: &RecordBatch) -> ApiResult<SegmentId> {
-    let segment_ids = chunk_info
-        .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
-        .ok_or_else(|| ApiError::internal("missing segment_id column in chunk_info batch"))?
-        .as_any()
-        .downcast_ref::<StringArray>()
-        .ok_or_else(|| ApiError::internal("segment_id column is not a string array"))?;
+    let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+        .extract(chunk_info)
+        .map_err(|err| {
+            ApiError::internal(format!("bad segment_id column in chunk_info batch: {err}"))
+        })?;
 
-    Ok(SegmentId::from(segment_ids.value(0)))
+    Ok(segment_ids.value_owned(0))
 }
 
-/// Extract chunk sizes from a `chunk_info` `RecordBatch`.
-/// Returns a reference to the arrow array containing `chunk_byte_len` values.
-fn extract_chunk_sizes(chunk_info: &RecordBatch) -> ApiResult<&UInt64Array> {
-    let chunk_sizes = chunk_info
-        .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
-        .ok_or_else(|| ApiError::internal("missing chunk_byte_len column in chunk_info batch"))?
-        .as_any()
-        .downcast_ref::<UInt64Array>()
-        .ok_or_else(|| ApiError::internal("chunk_byte_len column is not a uint64 array"))?;
-
-    Ok(chunk_sizes)
+/// Extract chunk sizes (`chunk_byte_len` values) from a `chunk_info` `RecordBatch`.
+fn extract_chunk_sizes(chunk_info: &RecordBatch) -> ApiResult<quiver::Column<u64>> {
+    QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN
+        .extract(chunk_info)
+        .map_err(|err| {
+            ApiError::internal(format!(
+                "bad chunk_byte_len column in chunk_info batch: {err}"
+            ))
+        })
 }
 
 type BatchingResult = (Vec<RecordBatch>, Vec<SegmentId>);
@@ -259,7 +247,7 @@ fn create_request_batches(
     for chunk_info in chunk_infos {
         let segment_id = extract_segment_id(&chunk_info)?;
         let chunk_sizes = extract_chunk_sizes(&chunk_info)?;
-        let segment_size: u64 = chunk_sizes.iter().map(|v| v.unwrap_or(0)).sum();
+        let segment_size: u64 = chunk_sizes.iter().sum();
 
         // Track original segment order
         if segment_seen.insert(segment_id.clone()) {
@@ -288,7 +276,7 @@ fn create_request_batches(
             }
 
             let split_batches =
-                split_large_segments(&segment_id, &chunk_info, target_size_bytes, chunk_sizes)?;
+                split_large_segments(&segment_id, &chunk_info, target_size_bytes, &chunk_sizes)?;
 
             // Split batches are already individual RecordBatches, add them directly
             for split_batch in split_batches {
@@ -323,7 +311,7 @@ fn split_large_segments(
     segment_id: &SegmentId,
     chunk_info: &RecordBatch,
     target_size: u64,
-    chunk_sizes: &UInt64Array,
+    chunk_sizes: &quiver::Column<u64>,
 ) -> ApiResult<Vec<RecordBatch>> {
     re_tracing::profile_function!();
     let take_err = |err: arrow::error::ArrowError| {
@@ -335,7 +323,7 @@ fn split_large_segments(
     let mut current_size = 0u64;
 
     for row_idx in 0..chunk_info.num_rows() {
-        let chunk_size = chunk_sizes.value(row_idx);
+        let chunk_size = chunk_sizes[row_idx];
 
         // Always include at least one chunk per batch (even if it exceeds target)
         if current_indices.is_empty() || current_size + chunk_size <= target_size {
@@ -363,11 +351,7 @@ fn split_large_segments(
     tracing::debug!(
         "Split large segment '{}' ({}) into {} requests",
         segment_id,
-        re_format::format_bytes(
-            (0..chunk_info.num_rows())
-                .map(|i| chunk_sizes.value(i))
-                .sum::<u64>() as _
-        ),
+        re_format::format_bytes(chunk_sizes.iter().sum::<u64>() as _),
         result_batches.len()
     );
 
@@ -781,8 +765,12 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
 mod tests {
     use std::collections::HashMap;
 
-    use arrow::array::{Array as _, FixedSizeBinaryBuilder, Int64Array, RecordBatchOptions};
+    use arrow::array::{
+        BooleanArray, FixedSizeBinaryBuilder, Int64Array, RecordBatchOptions, StringArray,
+        UInt64Array,
+    };
     use arrow::datatypes::{Field, Schema};
+    use re_log_types::EntityPath;
 
     use super::*;
 
@@ -812,17 +800,13 @@ mod tests {
 
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_segment_id()
-                    .as_ref()
-                    .clone(),
+                QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field(),
                 Field::new(
-                    re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
+                    QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
                     arrow::datatypes::DataType::UInt64,
                     false,
                 ),
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_id()
-                    .as_ref()
-                    .clone(),
+                QueryDatasetDataframe::COLUMN_CHUNK_ID.arrow_field(),
             ],
             HashMap::default(),
         ));
@@ -924,20 +908,12 @@ mod tests {
         );
 
         // Verify that segments within the batch maintain input order
-        let segment_id_column = batches[0]
-            .column_by_name(
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID,
-            )
-            .unwrap()
-            .as_any()
-            .downcast_ref::<StringArray>()
+        let segment_id_column = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+            .extract(&batches[0])
             .unwrap();
 
-        let batch_segment_ids: Vec<String> = (0..segment_id_column.len())
-            .map(|i| segment_id_column.value(i).to_owned())
-            .collect();
-
-        assert_eq!(batch_segment_ids, vec!["segA", "segB", "segC"]);
+        let batch_segment_ids: Vec<&str> = segment_id_column.iter().collect();
+        assert_eq!(batch_segment_ids, ["segA", "segB", "segC"]);
     }
 
     #[test]
@@ -1105,15 +1081,9 @@ mod tests {
 
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_segment_id()
-                    .as_ref()
-                    .clone(),
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_entity_path()
-                    .as_ref()
-                    .clone(),
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_is_static()
-                    .as_ref()
-                    .clone(),
+                QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field(),
+                QueryDatasetDataframe::COLUMN_CHUNK_ENTITY_PATH.arrow_field(),
+                QueryDatasetDataframe::COLUMN_CHUNK_IS_STATIC.arrow_field(),
                 re_protos::cloud::v1alpha1::QueryDatasetResponse::field_timeline_start(
                     timeline_name,
                 )
@@ -1261,15 +1231,9 @@ mod tests {
         // timestamp arrays.
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_segment_id()
-                    .as_ref()
-                    .clone(),
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_entity_path()
-                    .as_ref()
-                    .clone(),
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_is_static()
-                    .as_ref()
-                    .clone(),
+                QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field(),
+                QueryDatasetDataframe::COLUMN_CHUNK_ENTITY_PATH.arrow_field(),
+                QueryDatasetDataframe::COLUMN_CHUNK_IS_STATIC.arrow_field(),
                 Field::new(
                     "time:start",
                     arrow::datatypes::DataType::Timestamp(

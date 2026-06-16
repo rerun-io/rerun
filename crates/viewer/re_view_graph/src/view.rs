@@ -28,7 +28,10 @@ impl ViewClass for GraphView {
     // State type as described above.
 
     fn identifier() -> ViewClassIdentifier {
-        "Graph".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            ViewClassIdentifier,
+            "Graph"
+        )
     }
 
     fn display_name(&self) -> &'static str {
@@ -194,20 +197,16 @@ impl ViewClass for GraphView {
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let empty_node_data = ahash::HashMap::default();
-        let empty_edge_data = ahash::HashMap::default();
         let node_data = system_output
-            .visualizer_data::<ahash::HashMap<EntityPath, crate::visualizers::NodeData>>(
+            .visualizer_data_or_default::<ahash::HashMap<EntityPath, crate::visualizers::NodeData>>(
                 NodeVisualizer::identifier(),
-            )
-            .unwrap_or(&empty_node_data);
+            )?;
         let edge_data = system_output
-            .visualizer_data::<ahash::HashMap<EntityPath, crate::visualizers::EdgeData>>(
+            .visualizer_data_or_default::<ahash::HashMap<EntityPath, crate::visualizers::EdgeData>>(
                 EdgesVisualizer::identifier(),
-            )
-            .unwrap_or(&empty_edge_data);
+            )?;
 
-        let graphs = merge(node_data, edge_data)
+        let graphs = merge(&node_data, &edge_data)
             .map(|(ent, nodes, edges)| Graph::new(ui, ent.clone(), nodes, edges))
             .collect::<Vec<_>>();
 

@@ -162,16 +162,15 @@ segment_table = (
 print(segment_table)
 # endregion: verify
 
-# region: manifest
-manifest = (
+# region: list_layers
+layers = (
     dataset
-    .manifest()
+    .segment_table()
     .select(
         "rerun_segment_id",
-        "rerun_layer_name",
-        "property:quality:tracking_good",
+        "rerun_layer_names",
     )
-    .sort("rerun_segment_id", "rerun_layer_name")
+    .sort("rerun_segment_id")
 )
-print(manifest)
-# endregion: manifest
+print(layers)
+# endregion: list_layers

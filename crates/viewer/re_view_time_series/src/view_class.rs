@@ -1,5 +1,5 @@
 use ahash::HashMap;
-use egui::{NumExt as _, Vec2, Vec2b};
+use egui::{NumExt as _, Vec2, Vec2b, emath::fast_midpoint};
 use egui_plot::{Plot, PlotPoint};
 use itertools::{Either, Itertools as _, chain};
 use nohash_hasher::{IntMap, IntSet};
@@ -432,10 +432,10 @@ impl ViewClass for TimeSeriesView {
         // borrow conflict with view_systems which is borrowed via all_plot_series).
         let re_renderer_draw_data: Vec<_> = system_output.drain_draw_data().collect();
 
-        let line_series =
-            system_output.visualizer_data::<SeriesLinesOutput>(SeriesLinesSystem::identifier())?;
-        let point_series =
-            system_output.visualizer_data::<SeriesPointsOutput>(SeriesPointsSystem::identifier())?;
+        let line_series = system_output
+            .visualizer_data_or_default::<SeriesLinesOutput>(SeriesLinesSystem::identifier())?;
+        let point_series = system_output
+            .visualizer_data_or_default::<SeriesPointsOutput>(SeriesPointsSystem::identifier())?;
 
         let all_plot_series: Vec<_> =
             chain!(&line_series.all_series, &point_series.all_series).collect();
@@ -1610,7 +1610,7 @@ pub(crate) fn to_stepped_points(points: &[[f64; 2]], mode: crate::StepMode) -> V
         }
         crate::StepMode::Mid => {
             for pair in points.windows(2) {
-                let mid_t = (pair[0][0] + pair[1][0]) * 0.5;
+                let mid_t = fast_midpoint(pair[0][0], pair[1][0]);
                 stepped.push(pair[0]);
                 stepped.push([mid_t, pair[0][1]]);
                 stepped.push([mid_t, pair[1][1]]);
@@ -1716,7 +1716,7 @@ pub fn make_range_sane(y_range: Range1D) -> Range1D {
     }
 
     if end <= start {
-        let center = f64::midpoint(start, end);
+        let center = fast_midpoint(start, end);
         let margin = f64::max(1.0, center.abs() * 0.01);
         Range1D::new(center - margin, center + margin)
     } else {

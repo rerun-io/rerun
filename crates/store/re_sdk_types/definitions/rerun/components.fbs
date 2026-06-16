@@ -47,6 +47,7 @@ include "./components/name.fbs";
 include "./components/opacity.fbs";
 include "./components/pinhole_projection.fbs";
 include "./components/plane3d.fbs";
+include "./components/point_shading.fbs";
 include "./components/position2d.fbs";
 include "./components/position3d.fbs";
 include "./components/radius.fbs";

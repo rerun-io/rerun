@@ -45,12 +45,15 @@ struct GridMapComponentData {
     rotation_axis_angle: Option<RotationAxisAngle>,
     quaternion: Option<RotationQuat>,
     opacity: Option<Opacity>,
-    colormap: Option<Colormap>,
+    colormap: Colormap,
 }
 
 impl IdentifiedViewSystem for GridMapVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "GridMap".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "GridMap"
+        )
     }
 }
 
@@ -177,7 +180,10 @@ impl GridMapVisualizer {
                     opacity: opacities.and_then(|o| o.first().copied()).map(Into::into),
                     colormap: colormaps
                         .and_then(|c| c.first().copied())
-                        .and_then(Colormap::try_from_integer),
+                        .and_then(Colormap::try_from_integer)
+                        .unwrap_or_else(|| {
+                            typed_fallback_for(ctx, GridMap::descriptor_colormap().component)
+                        }),
                 })
             },
         );
@@ -323,14 +329,10 @@ impl GridMapVisualizer {
         results: &re_view::VisualizerInstructionQueryResults<'_>,
         component_data: &GridMapComponentData,
     ) -> GridMapColorMode {
-        let Some(colormap) = component_data.colormap else {
-            return GridMapColorMode::NoColormap;
-        };
-
         if component_data.image.format.color_model() != ColorModel::L {
             results.report_for_component(
                 GridMap::descriptor_colormap().component,
-                VisualizerReportSeverity::Warning,
+                VisualizerReportSeverity::Info,
                 format!(
                     "GridMap colormaps only apply to single-channel images; ignoring colormap for {:?} data.",
                     component_data.image.format.color_model()
@@ -339,12 +341,13 @@ impl GridMapVisualizer {
             return GridMapColorMode::NoColormap;
         }
 
-        if matches!(colormap, Colormap::RvizMap | Colormap::RvizCostmap)
-            && !matches!(
-                component_data.image.format.datatype(),
-                re_sdk_types::datatypes::ChannelDatatype::U8
-            )
-        {
+        if matches!(
+            component_data.colormap,
+            Colormap::RvizMap | Colormap::RvizCostmap
+        ) && !matches!(
+            component_data.image.format.datatype(),
+            re_sdk_types::datatypes::ChannelDatatype::U8
+        ) {
             results.report_for_component(
                 GridMap::descriptor_colormap().component,
                 VisualizerReportSeverity::Warning,
@@ -362,7 +365,10 @@ impl GridMapVisualizer {
                 &component_data.image,
             );
 
-        let value_range = if matches!(colormap, Colormap::RvizMap | Colormap::RvizCostmap) {
+        let value_range = if matches!(
+            component_data.colormap,
+            Colormap::RvizMap | Colormap::RvizCostmap
+        ) {
             // RViz grid-map colormaps are discrete mappings for u8 values, not continuous gradients.
             [0.0, 255.0]
         } else {
@@ -373,7 +379,7 @@ impl GridMapVisualizer {
         };
 
         GridMapColorMode::Colormapped(ColormapWithRange {
-            colormap,
+            colormap: component_data.colormap,
             value_range,
         })
     }

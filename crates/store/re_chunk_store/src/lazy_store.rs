@@ -6,7 +6,7 @@ use nohash_hasher::{IntMap, IntSet};
 
 use re_chunk::{Chunk, ChunkId};
 use re_log_encoding::{ChunkProvider, RawRrdManifest, RrdManifest};
-use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, Timeline};
+use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimelineName};
 
 use crate::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ChunkStoreResult, ChunkTrackingMode,
@@ -33,7 +33,7 @@ pub struct LazyStore {
     chunk_id_to_index: HashMap<ChunkId, usize>,
 
     /// Precomputed per-chunk timeline ranges.
-    timeline_ranges: HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>>,
+    timeline_ranges: HashMap<ChunkId, IntMap<TimelineName, AbsoluteTimeRange>>,
 
     /// Monotonic count of chunks physically materialized through [`Self::load_chunks`].
     /// Used for test purposes.
@@ -78,14 +78,14 @@ impl LazyStore {
 
     fn build_timeline_ranges(
         manifest: &RrdManifest,
-    ) -> HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>> {
-        let mut result: HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>> = HashMap::new();
+    ) -> HashMap<ChunkId, IntMap<TimelineName, AbsoluteTimeRange>> {
+        let mut result: HashMap<ChunkId, IntMap<TimelineName, AbsoluteTimeRange>> = HashMap::new();
         for per_entity in manifest.temporal_map().values() {
             for (timeline, per_component) in per_entity {
                 for per_chunk in per_component.values() {
                     for (&chunk_id, entry) in per_chunk {
                         let e = result.entry(chunk_id).or_default();
-                        e.entry(*timeline)
+                        e.entry(*timeline.name())
                             .and_modify(|existing| {
                                 *existing = existing.union(entry.time_range);
                             })
@@ -168,7 +168,7 @@ impl LazyStore {
     }
 
     /// Per-chunk timeline ranges.
-    pub fn timeline_ranges(&self) -> &HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>> {
+    pub fn timeline_ranges(&self) -> &HashMap<ChunkId, IntMap<TimelineName, AbsoluteTimeRange>> {
         &self.timeline_ranges
     }
 

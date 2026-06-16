@@ -44,11 +44,13 @@ impl PlotLegend {
     /// The corresponding component is [`crate::blueprint::components::Corner2D`].
     #[inline]
     pub fn descriptor_corner() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-            component: "PlotLegend:corner".into(),
-            component_type: Some("rerun.blueprint.components.Corner2D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+                component: "PlotLegend:corner".into(),
+                component_type: Some("rerun.blueprint.components.Corner2D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
@@ -56,11 +58,13 @@ impl PlotLegend {
     /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-            component: "PlotLegend:visible".into(),
-            component_type: Some("rerun.components.Visible".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+                component: "PlotLegend:visible".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -94,7 +98,10 @@ impl PlotLegend {
 impl ::re_types_core::Archetype for PlotLegend {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.PlotLegend".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.PlotLegend"
+        )
     }
 
     #[inline]

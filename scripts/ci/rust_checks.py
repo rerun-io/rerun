@@ -229,6 +229,10 @@ def sdk_variations(results: list[Result]) -> None:
     results.append(run_cargo("check", "-p rerun --no-default-features"))
     results.append(run_cargo("check", "-p rerun --no-default-features --features sdk"))
 
+    # `re_server` is built without the optional `lance` feature in many configurations
+    # (e.g. when pulled in by `rerun`'s `--all-features`, which does not propagate `re_server/lance`).
+    results.append(run_cargo("check", "-p re_server"))
+
 
 deny_targets = [
     "aarch64-apple-darwin",

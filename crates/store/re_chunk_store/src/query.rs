@@ -1297,10 +1297,9 @@ mod tests {
     // Make sure queries yield partial results when we expect them to.
     #[test]
     fn partial_data_basics() {
-        let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
-            crate::ChunkStoreConfig::ALL_DISABLED,
-        );
+        let store_id =
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app");
+        let mut store = ChunkStore::new(store_id.clone(), crate::ChunkStoreConfig::ALL_DISABLED);
 
         let entity_path: EntityPath = "some_entity".into();
 
@@ -1354,6 +1353,16 @@ mod tests {
 
             assert!(store.take_tracked_chunk_ids().missing_virtual.is_empty());
         }
+
+        // Back the chunks with an RRD manifest. That way, once they get garbage collected, they
+        // stay recoverable and keep being reported as missing (partial results) instead of
+        // vanishing from the virtual indices entirely.
+        let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+            store_id,
+            [&*chunk1, &*chunk2, &*chunk3].into_iter(),
+        )
+        .unwrap();
+        _ = store.insert_rrd_manifest(rrd_manifest);
 
         store.insert_chunk(&chunk1).unwrap();
         store.insert_chunk(&chunk2).unwrap();

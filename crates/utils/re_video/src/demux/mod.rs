@@ -1199,6 +1199,13 @@ pub enum VideoLoadError {
         re_mp4::Error,
     ),
 
+    #[error("I/O error: {0}")]
+    Io(
+        #[from]
+        #[size_bytes(ignore)]
+        std::io::Error,
+    ),
+
     #[error("Video file has no video tracks")]
     NoVideoTrack,
 

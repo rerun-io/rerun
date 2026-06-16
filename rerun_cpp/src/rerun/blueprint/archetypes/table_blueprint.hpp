@@ -27,6 +27,8 @@ namespace rerun::blueprint::archetypes {
         /// For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
         /// meaning that the regular structure of `archetypes::ViewportBlueprint`, and `archetypes::ViewBlueprint` structure applies.
         /// However, this mostly ignores layout container types as well as automatic spawning.
+        ///
+        /// If unset, defaults to the first URL column in the table that points to the same Rerun server
         std::optional<ComponentBatch> segment_preview_column;
 
         /// The name of the boolean column used for flag/annotation toggles.
@@ -45,9 +47,7 @@ namespace rerun::blueprint::archetypes {
 
         /// The name of the column containing URLs to open when a card is clicked in grid view.
         ///
-        /// If unset, defaults to the first URL column in the table that points to the same
-        /// Rerun server. If no such column exists, no URL is associated with cards and
-        /// clicking them does not navigate anywhere.
+        /// If unset, defaults to the segment preview column.
         std::optional<ComponentBatch> url_column;
 
       public:
@@ -97,6 +97,8 @@ namespace rerun::blueprint::archetypes {
         /// For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
         /// meaning that the regular structure of `archetypes::ViewportBlueprint`, and `archetypes::ViewBlueprint` structure applies.
         /// However, this mostly ignores layout container types as well as automatic spawning.
+        ///
+        /// If unset, defaults to the first URL column in the table that points to the same Rerun server
         TableBlueprint with_segment_preview_column(
             const rerun::blueprint::components::ColumnName& _segment_preview_column
         ) && {
@@ -138,9 +140,7 @@ namespace rerun::blueprint::archetypes {
 
         /// The name of the column containing URLs to open when a card is clicked in grid view.
         ///
-        /// If unset, defaults to the first URL column in the table that points to the same
-        /// Rerun server. If no such column exists, no URL is associated with cards and
-        /// clicking them does not navigate anywhere.
+        /// If unset, defaults to the segment preview column.
         TableBlueprint with_url_column(const rerun::blueprint::components::ColumnName& _url_column
         ) && {
             url_column =

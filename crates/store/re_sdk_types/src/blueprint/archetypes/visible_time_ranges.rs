@@ -47,11 +47,13 @@ impl VisibleTimeRanges {
     /// The corresponding component is [`crate::blueprint::components::VisibleTimeRange`].
     #[inline]
     pub fn descriptor_ranges() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
-            component: "VisibleTimeRanges:ranges".into(),
-            component_type: Some("rerun.blueprint.components.VisibleTimeRange".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
+                component: "VisibleTimeRanges:ranges".into(),
+                component_type: Some("rerun.blueprint.components.VisibleTimeRange".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -75,7 +77,10 @@ impl VisibleTimeRanges {
 impl ::re_types_core::Archetype for VisibleTimeRanges {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.VisibleTimeRanges".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.VisibleTimeRanges"
+        )
     }
 
     #[inline]

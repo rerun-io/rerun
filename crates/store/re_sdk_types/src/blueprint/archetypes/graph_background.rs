@@ -37,11 +37,13 @@ impl GraphBackground {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.GraphBackground".into()),
-            component: "GraphBackground:color".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.GraphBackground".into()),
+                component: "GraphBackground:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -65,7 +67,10 @@ impl GraphBackground {
 impl ::re_types_core::Archetype for GraphBackground {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.GraphBackground".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.GraphBackground"
+        )
     }
 
     #[inline]

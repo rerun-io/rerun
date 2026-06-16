@@ -23,9 +23,13 @@ pub use self::connection_registry::{
     Credentials, SourcedCredentials,
 };
 pub use self::grpc::{
-    ChunksWithSegment, RedapClient, RedapClientInner, StreamingOptions, channel,
+    ChunksWithSegment, RedapClient, RedapClientInner, SegmentDownload, StreamingOptions, channel,
     fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
+    stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::grpc::PoolChannel;
 
 /// Re-export of [`opentelemetry::TraceId`] for callers constructing
 /// [`ApiError`]s without taking a direct dependency on `opentelemetry`.

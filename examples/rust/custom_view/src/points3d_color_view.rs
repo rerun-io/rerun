@@ -135,12 +135,10 @@ impl ViewClass for ColorCoordinatesView {
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
-        let empty_colors = crate::points3d_color_visualizer::Points3DColorVisualizerOutput::new();
         let colors = system_output
-            .visualizer_data::<crate::points3d_color_visualizer::Points3DColorVisualizerOutput>(
+            .visualizer_data_or_default::<crate::points3d_color_visualizer::Points3DColorVisualizerOutput>(
                 Points3DColorVisualizer::identifier(),
-            )
-            .unwrap_or(&empty_colors);
+            )?;
         // Read the same blueprint property that the selection UI edits.
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let color_coordinates = ViewProperty::from_archetype::<ColorCoordinatesConfiguration>(
@@ -173,7 +171,7 @@ impl ViewClass for ColorCoordinatesView {
                     (rgba.r(), rgba.g())
                 },
             };
-            color_space_ui(ui, ctx, colors, query, color_at, position_at);
+            color_space_ui(ui, ctx, colors.as_ref(), query, color_at, position_at);
         });
         Ok(())
     }

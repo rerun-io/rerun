@@ -89,11 +89,13 @@ impl AnnotationContext {
     /// The corresponding component is [`crate::components::AnnotationContext`].
     #[inline]
     pub fn descriptor_context() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.AnnotationContext".into()),
-            component: "AnnotationContext:context".into(),
-            component_type: Some("rerun.components.AnnotationContext".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.AnnotationContext".into()),
+                component: "AnnotationContext:context".into(),
+                component_type: Some("rerun.components.AnnotationContext".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -117,7 +119,10 @@ impl AnnotationContext {
 impl ::re_types_core::Archetype for AnnotationContext {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.AnnotationContext".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.AnnotationContext"
+        )
     }
 
     #[inline]

@@ -25,6 +25,8 @@ mod result_extensions;
 mod setup;
 #[cfg(feature = "setup")]
 pub use channel_logger::{LogMsg, Receiver, Sender, add_log_msg_receiver};
+#[cfg(feature = "setup")]
+pub use event_visitor::FieldValue;
 
 pub use tracing::Level;
 #[cfg(feature = "setup")]

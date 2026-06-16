@@ -218,8 +218,9 @@ impl DataFusionQuery {
         //
 
         if let Some(sort_by) = sort_by {
+            let ascending = sort_by.direction.is_ascending();
             dataframe = dataframe.sort(vec![
-                col(&sort_by.column_physical_name).sort(sort_by.direction.is_ascending(), true),
+                col(&sort_by.column_physical_name).sort(ascending, ascending),
             ])?;
         }
 

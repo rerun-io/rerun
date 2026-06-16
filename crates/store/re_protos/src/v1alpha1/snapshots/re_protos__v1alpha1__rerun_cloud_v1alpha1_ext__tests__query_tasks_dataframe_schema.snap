@@ -1,0 +1,15 @@
+---
+source: crates/store/re_protos/src/v1alpha1/./rerun.cloud.v1alpha1.ext.rs
+expression: "format_schema(&QueryTasksDataframe::max_schema())"
+---
+task_id: non-null Utf8
+kind: nullable Utf8
+data: nullable Utf8
+exec_status: non-null Utf8
+msgs: nullable Utf8
+blob_len: nullable UInt64
+lease_owner: nullable Utf8
+lease_expiration: nullable Timestamp(ns)
+attempts: non-null UInt8
+creation_time: nullable Timestamp(ns)
+last_update_time: nullable Timestamp(ns)

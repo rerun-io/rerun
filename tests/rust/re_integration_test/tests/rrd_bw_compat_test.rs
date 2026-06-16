@@ -223,9 +223,12 @@ async fn test_old_rrds_in_current_viewer() {
         // Pause playback and seek to the end of the recording so the snapshot
         // is deterministic. If the default active timeline is `log_time`
         // (inherently unstable across runs), switch to `log_tick` first.
-        harness.run_with_viewer_context(|ctx| {
+        harness.run_with_app_context(|ctx| {
             let mut commands = vec![];
-            if *ctx.time_ctrl.timeline_name() == TimelineName::log_time() {
+            let time_ctrl = ctx
+                .active_time_ctrl()
+                .expect("active recording route should have a time control");
+            if *time_ctrl.timeline_name() == TimelineName::log_time() {
                 // log_time is inherently unstable and non-deterministic, so change to log_tick
                 commands.push(TimeControlCommand::SetActiveTimeline(
                     TimelineName::log_tick(),
@@ -233,12 +236,12 @@ async fn test_old_rrds_in_current_viewer() {
             }
             commands.push(TimeControlCommand::Pause);
             commands.push(TimeControlCommand::MoveEnd);
-            ctx.send_time_commands(commands);
+            ctx.send_time_commands_to_active_recording(commands);
         });
         harness.run();
 
         if UNSTABLE_BLUEPRINT_EXAMPLES.contains(&example_name.as_str()) {
-            harness.run_with_viewer_context(|ctx| {
+            harness.run_with_app_context(|ctx| {
                 ctx.command_sender()
                     .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
             });

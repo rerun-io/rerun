@@ -99,11 +99,13 @@ impl TransformAxes3D {
     /// The corresponding component is [`crate::components::AxisLength`].
     #[inline]
     pub fn descriptor_axis_length() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.TransformAxes3D".into()),
-            component: "TransformAxes3D:axis_length".into(),
-            component_type: Some("rerun.components.AxisLength".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TransformAxes3D".into()),
+                component: "TransformAxes3D:axis_length".into(),
+                component_type: Some("rerun.components.AxisLength".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_frame`].
@@ -111,11 +113,13 @@ impl TransformAxes3D {
     /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_frame() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.TransformAxes3D".into()),
-            component: "TransformAxes3D:show_frame".into(),
-            component_type: Some("rerun.components.ShowLabels".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TransformAxes3D".into()),
+                component: "TransformAxes3D:show_frame".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -144,7 +148,10 @@ impl TransformAxes3D {
 impl ::re_types_core::Archetype for TransformAxes3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.TransformAxes3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.TransformAxes3D"
+        )
     }
 
     #[inline]

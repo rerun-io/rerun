@@ -122,7 +122,7 @@ impl PyServerInternal {
 fn extract_named_paths(dict: &Bound<'_, PyDict>) -> Vec<re_server::NamedPath> {
     dict.iter()
         .filter_map(|(k, v)| {
-            let name = k.downcast::<PyString>().ok()?;
+            let name = k.cast::<PyString>().ok()?;
             let path = v.extract::<&str>().ok()?;
 
             Some(re_server::NamedPath {
@@ -136,7 +136,7 @@ fn extract_named_paths(dict: &Bound<'_, PyDict>) -> Vec<re_server::NamedPath> {
 fn extract_named_collections(dict: &Bound<'_, PyDict>) -> Vec<NamedPathCollection> {
     dict.iter()
         .filter_map(|(k, v)| {
-            let name = k.downcast::<PyString>().ok()?;
+            let name = k.cast::<PyString>().ok()?;
             let paths: Vec<String> = v.extract().ok()?;
 
             let entry_name =

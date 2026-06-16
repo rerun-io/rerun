@@ -479,6 +479,17 @@ impl MemUsageTreeCapture for ChunkStore {
                 MemUsageTree::Bytes(self.schema.total_size_bytes()),
             )
             .with_child("entities", entities_node.into_tree())
+            .with_child("chunks_lineage", self.chunks_lineage.total_size_bytes())
+            .with_child(
+                "leaky_compactions",
+                self.leaky_compactions.total_size_bytes(),
+            )
+            .with_child("split_on_ingest", self.split_on_ingest.total_size_bytes())
+            .with_child("dangling_splits", self.dangling_splits.total_size_bytes())
+            .with_child(
+                "queried_chunk_id_tracker",
+                self.queried_chunk_id_tracker.total_size_bytes(),
+            )
             .with_total_size_bytes(self.total_size_bytes())
     }
 }

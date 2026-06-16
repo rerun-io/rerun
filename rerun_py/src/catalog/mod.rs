@@ -10,7 +10,6 @@ mod dataset_view;
 mod entry;
 mod errors;
 mod index_columns;
-mod indexes;
 mod registration_handle;
 mod schema;
 mod segment_url_udf;
@@ -31,10 +30,6 @@ pub use self::dataset_view::PyDatasetViewInternal;
 pub use self::entry::{PyEntryDetails, PyEntryId, PyEntryKind};
 pub use self::errors::to_py_err;
 pub use self::index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector};
-pub use self::indexes::{
-    PyIndexConfig, PyIndexProperties, PyIndexingResult, PyVectorDistanceMetric,
-    VectorDistanceMetricLike, VectorLike,
-};
 pub use self::registration_handle::{PyRegistrationHandleInternal, PyRegistrationIterator};
 pub use self::schema::PySchemaInternal;
 pub use self::segment_url_udf::PySegmentUrlUdfInternal;
@@ -65,12 +60,6 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyIndexColumnSelector>()?;
     m.add_class::<PyComponentColumnDescriptor>()?;
     m.add_class::<PyComponentColumnSelector>()?;
-
-    // indexing
-    m.add_class::<PyIndexingResult>()?;
-    m.add_class::<PyIndexConfig>()?;
-    m.add_class::<PyIndexProperties>()?;
-    m.add_class::<PyVectorDistanceMetric>()?;
 
     // testing
     m.add_class::<PyIndexValuesLikeInternal>()?;

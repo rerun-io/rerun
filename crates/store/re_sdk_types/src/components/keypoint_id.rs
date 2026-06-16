@@ -42,7 +42,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
+#[derive(::serde::Serialize, ::serde::Deserialize)]
 pub struct KeypointId(pub crate::datatypes::KeypointId);
 
 impl ::re_types_core::WrapperComponent for KeypointId {

@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime, timedelta
-from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
 
@@ -11,16 +10,16 @@ import datafusion as dfn
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from typing_extensions import deprecated
 
 from .types import (
     IndexValuesLike as IndexValuesLike,
-    VectorDistanceMetricLike as VectorDistanceMetricLike,
 )
 
 # NOTE
 #
 # The pure Python wrapper/internal pyo3 object is documented in `rerun_py/ARCHITECTURE.md`.
+#
+# Refrain from adding doc strings for APIs that is wrapped on the Python side as they are unchecked and just add duplication.
 
 class IndexColumnDescriptor:
     """
@@ -171,14 +170,6 @@ class ComponentColumnSelector:
 
         This property is read-only.
         """
-
-class VectorDistanceMetric(Enum):  # type: ignore[misc]
-    """Which distance metric for use for vector index."""
-
-    L2: VectorDistanceMetric
-    COSINE: VectorDistanceMetric
-    DOT: VectorDistanceMetric
-    HAMMING: VectorDistanceMetric
 
 class SchemaInternal:
     def index_columns(self) -> list[IndexColumnDescriptor]: ...
@@ -996,6 +987,8 @@ class DatasetEntryInternal:
     def blueprint_dataset(self) -> DatasetEntryInternal | None: ...
     def default_blueprint_segment_id(self) -> str | None: ...
     def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
+    def default_segment_table_blueprint_segment_id(self) -> str | None: ...
+    def set_default_segment_table_blueprint_segment_id(self, segment_id: str | None) -> None: ...
 
     # ---
 
@@ -1023,6 +1016,9 @@ class DatasetEntryInternal:
     def register_prefix(
         self, recordings_prefix: str, layer_name: str, on_duplicate: str
     ) -> RegistrationHandleInternal: ...
+    def _register_asset_layer(
+        self, *, layer_name: str, recording_uri: str, on_duplicate: str
+    ) -> RegistrationHandleInternal: ...
     def unregister(
         self,
         *,
@@ -1034,54 +1030,6 @@ class DatasetEntryInternal:
     # ---
 
     def segment_store(self, segment_id: str) -> LazyStoreInternal: ...
-
-    # ---
-
-    @deprecated(
-        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def create_fts_search_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        store_position: bool = False,
-        base_tokenizer: str = "simple",
-    ) -> None: ...
-    @deprecated(
-        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def create_vector_search_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        target_partition_num_rows: int | None = None,
-        num_sub_vectors: int = 16,
-        distance_metric: VectorDistanceMetric | str = ...,
-    ) -> IndexingResult: ...
-    def list_search_indexes(self) -> list[IndexingResult]: ...
-    def delete_search_indexes(
-        self,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> list[IndexConfig]: ...
-    @deprecated(
-        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def search_fts(
-        self,
-        query: str,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> dfn.DataFrame: ...
-    @deprecated(
-        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def search_vector(
-        self,
-        query: Any,  # VectorLike
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        top_k: int,
-    ) -> dfn.DataFrame: ...
 
     # ---
 
@@ -1132,6 +1080,12 @@ class TableEntryInternal:
     def delete(self) -> None: ...
     def set_name(self, name: str) -> None: ...
     def entry_details(self) -> EntryDetailsInternal: ...
+
+    # ---
+
+    def blueprint_dataset(self) -> DatasetEntryInternal: ...
+    def default_blueprint_segment_id(self) -> str | None: ...
+    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
 
     # ---
 
@@ -1267,52 +1221,10 @@ class _IndexValuesLikeInternal:
     def to_index_values(self) -> npt.NDArray[np.int64]: ...
     def len(self) -> int: ...
 
-class IndexProperties:
-    """The properties and configuration of a user-defined index."""
+class TableProviderAdapterInternal:
+    """Internal opaque adapter exposing a Rust DataFusion `TableProvider` to Python via the FFI capsule protocol."""
 
-class IndexConfig:
-    """The complete description of a user-defined index."""
-
-    @property
-    def time_column(self) -> IndexColumnSelector:
-        """Returns the time column that this index applies to."""
-
-    @property
-    def component_column(self) -> ComponentColumnSelector:
-        """Returns the component column that this index applies to."""
-
-    @property
-    def properties(self) -> IndexProperties:
-        """Returns the properties/configuration of the index."""
-
-class IndexingResult:
-    """Indexing operation status result."""
-
-    @property
-    def properties(self) -> IndexConfig:
-        """Returns configuration information and properties about the newly created index."""
-
-    @property
-    def column(self) -> ComponentColumnSelector:
-        """Returns the component column that this index was created on."""
-
-    @property
-    def statistics(self) -> str:
-        """Returns best-effort backend-specific statistics about the newly created index."""
-
-    def debug_info(self) -> dict[str, Any] | None:
-        """
-        Get debug information about the indexing operation.
-
-        The exact contents of debug information may vary depending on the indexing operation performed
-        and the server implementation.
-
-        Returns
-        -------
-        Optional[dict]
-            A dictionary containing debug information, or `None` if no debug information is available
-
-        """
+    def __datafusion_table_provider__(self, session: Any) -> Any: ...
 
 class CatalogClientInternal:
     def __init__(self, url: str, token: str | None = None) -> None: ...
@@ -1576,6 +1488,16 @@ class ChunkStoreInternal:
     def num_chunks(self) -> int: ...
     def summary(self) -> str: ...
     def stream(self) -> LazyChunkStreamInternal: ...
+    def reader(
+        self,
+        *,
+        index: str | None,
+        contents: list[str] | None,
+        include_semantically_empty_columns: bool,
+        include_tombstone_columns: bool,
+        fill_latest_at: bool,
+        using_index_values: IndexValuesLike | None,
+    ) -> TableProviderAdapterInternal: ...
 
 class LazyStoreInternal:
     """Internal implementation. Use LazyStore from rerun.experimental instead."""
@@ -1624,6 +1546,25 @@ class McapReaderInternal:
     def path(self) -> Path: ...
     @staticmethod
     def available_decoders() -> list[str]: ...
+
+class Mp4ReaderInternal:
+    """Internal implementation. Use Mp4Reader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: str,
+        mode: Literal["asset", "stream"] = "stream",
+        chunk_by_gop: bool = True,
+        timeline_name: str = "video",
+        timeline_type: Literal["duration", "timestamp"] = "duration",
+        allow_b_frames: bool = False,
+        entity_path: str | None = None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> Path: ...
+    @property
+    def entity_path(self) -> str: ...
 
 class ParquetReaderInternal:
     """Internal implementation. Use ParquetReader from rerun.experimental instead."""
@@ -1701,6 +1642,7 @@ class LazyChunkStreamInternal:
         chunk insertion. The Python wrapper `LazyChunkStream.collect(optimize=...)`
         is the intended entry point.
         """
+
     def to_chunks(self) -> list[ChunkInternal]: ...
     def __iter__(self) -> LazyChunkStreamIterator: ...
     @staticmethod

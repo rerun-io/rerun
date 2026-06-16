@@ -611,6 +611,12 @@ fn show_visualizer_report(
                 label.on_hover_text(details);
             }
         }
+        re_viewer_context::VisualizerReportSeverity::Info => {
+            let label = ui.info_label(&report.summary);
+            if let Some(details) = &report.details {
+                label.on_hover_text(details);
+            }
+        }
     }
 }
 

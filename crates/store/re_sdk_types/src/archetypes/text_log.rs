@@ -87,11 +87,13 @@ impl TextLog {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_text() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.TextLog".into()),
-            component: "TextLog:text".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextLog".into()),
+                component: "TextLog:text".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::level`].
@@ -99,11 +101,13 @@ impl TextLog {
     /// The corresponding component is [`crate::components::TextLogLevel`].
     #[inline]
     pub fn descriptor_level() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.TextLog".into()),
-            component: "TextLog:level".into(),
-            component_type: Some("rerun.components.TextLogLevel".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextLog".into()),
+                component: "TextLog:level".into(),
+                component_type: Some("rerun.components.TextLogLevel".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
@@ -111,11 +115,13 @@ impl TextLog {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.TextLog".into()),
-            component: "TextLog:color".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextLog".into()),
+                component: "TextLog:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -145,7 +151,10 @@ impl TextLog {
 impl ::re_types_core::Archetype for TextLog {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.TextLog".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.TextLog"
+        )
     }
 
     #[inline]

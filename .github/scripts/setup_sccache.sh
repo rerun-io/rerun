@@ -120,6 +120,7 @@ verify_sha1() {
   local sha1_path="$2"
   local expected actual
   expected="$(awk '{print $1}' "$sha1_path")"
+  # shellcheck disable=SC2218 # False positive: sha1_file is defined before verify_sha1 is called.
   actual="$(sha1_file "$archive")"
   actual="$(printf '%s' "$actual" | tr '[:upper:]' '[:lower:]')"
   expected="$(printf '%s' "$expected" | tr '[:upper:]' '[:lower:]')"
@@ -229,6 +230,7 @@ start_server() {
 
 install_sccache() {
   local arch target_platform extension exe filename install_root archive sha1_path extract_dir bin_dir sccache_bin base_url
+  # shellcheck disable=SC2218 # False positive: runner_arch is defined before install_sccache is called.
   arch="$(runner_arch)"
   read -r target_platform extension exe <<< "$(runner_platform)"
   filename="sccache-${version}-${arch}-${target_platform}.${extension}"
@@ -262,6 +264,7 @@ case "$backend" in
   *) echo "Unsupported backend: $backend" >&2; exit 2 ;;
 esac
 
+# shellcheck disable=SC2218 # False positive: resolve_backend is defined above.
 resolved_backend="$(resolve_backend)"
 sccache_bin="$(install_sccache)"
 

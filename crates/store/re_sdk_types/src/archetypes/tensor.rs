@@ -80,11 +80,13 @@ impl Tensor {
     /// The corresponding component is [`crate::components::TensorData`].
     #[inline]
     pub fn descriptor_data() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Tensor".into()),
-            component: "Tensor:data".into(),
-            component_type: Some("rerun.components.TensorData".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Tensor".into()),
+                component: "Tensor:data".into(),
+                component_type: Some("rerun.components.TensorData".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::value_range`].
@@ -92,11 +94,13 @@ impl Tensor {
     /// The corresponding component is [`crate::components::ValueRange`].
     #[inline]
     pub fn descriptor_value_range() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Tensor".into()),
-            component: "Tensor:value_range".into(),
-            component_type: Some("rerun.components.ValueRange".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Tensor".into()),
+                component: "Tensor:value_range".into(),
+                component_type: Some("rerun.components.ValueRange".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -120,7 +124,10 @@ impl Tensor {
 impl ::re_types_core::Archetype for Tensor {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Tensor".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Tensor"
+        )
     }
 
     #[inline]

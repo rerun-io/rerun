@@ -89,6 +89,18 @@ You should now be able to run `rerun --help` in any terminal.
 - ⁉️ [Troubleshooting](https://www.rerun.io/docs/overview/installing-rerun/troubleshooting)
 
 
+### Agent skills
+This repo ships a set of agent skills that help coding agents write Rerun code.
+
+Install them into your agent with the `skills` CLI:
+
+```sh
+npx skills add rerun-io/rerun
+```
+
+The skills themselves live in [`skills/`](./skills) if you want to read them directly.
+
+
 ## Status
 We are in active development.
 There are many features we want to add, and the API is still evolving.

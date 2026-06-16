@@ -130,11 +130,13 @@ impl InstancePoses3D {
     /// The corresponding component is [`crate::components::Translation3D`].
     #[inline]
     pub fn descriptor_translations() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
-            component: "InstancePoses3D:translations".into(),
-            component_type: Some("rerun.components.Translation3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+                component: "InstancePoses3D:translations".into(),
+                component_type: Some("rerun.components.Translation3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
@@ -142,11 +144,13 @@ impl InstancePoses3D {
     /// The corresponding component is [`crate::components::RotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
-            component: "InstancePoses3D:rotation_axis_angles".into(),
-            component_type: Some("rerun.components.RotationAxisAngle".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+                component: "InstancePoses3D:rotation_axis_angles".into(),
+                component_type: Some("rerun.components.RotationAxisAngle".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
@@ -154,11 +158,13 @@ impl InstancePoses3D {
     /// The corresponding component is [`crate::components::RotationQuat`].
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
-            component: "InstancePoses3D:quaternions".into(),
-            component_type: Some("rerun.components.RotationQuat".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+                component: "InstancePoses3D:quaternions".into(),
+                component_type: Some("rerun.components.RotationQuat".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::scales`].
@@ -166,11 +172,13 @@ impl InstancePoses3D {
     /// The corresponding component is [`crate::components::Scale3D`].
     #[inline]
     pub fn descriptor_scales() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
-            component: "InstancePoses3D:scales".into(),
-            component_type: Some("rerun.components.Scale3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+                component: "InstancePoses3D:scales".into(),
+                component_type: Some("rerun.components.Scale3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::mat3x3`].
@@ -178,11 +186,13 @@ impl InstancePoses3D {
     /// The corresponding component is [`crate::components::TransformMat3x3`].
     #[inline]
     pub fn descriptor_mat3x3() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
-            component: "InstancePoses3D:mat3x3".into(),
-            component_type: Some("rerun.components.TransformMat3x3".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+                component: "InstancePoses3D:mat3x3".into(),
+                component_type: Some("rerun.components.TransformMat3x3".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -222,7 +232,10 @@ impl InstancePoses3D {
 impl ::re_types_core::Archetype for InstancePoses3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.InstancePoses3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.InstancePoses3D"
+        )
     }
 
     #[inline]

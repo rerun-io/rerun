@@ -121,7 +121,10 @@ struct Cylinders3DComponentData<'a> {
 
 impl IdentifiedViewSystem for Cylinders3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Cylinders3D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Cylinders3D"
+        )
     }
 }
 

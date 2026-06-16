@@ -21,9 +21,27 @@ use crate::{StableIndexDeque, Time, Timescale};
 impl VideoDataDescription {
     pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {
         re_tracing::profile_function!();
+        Self::load_mp4_from_reader(&mut Cursor::new(bytes), bytes.len() as u64, debug_name)
+    }
+
+    /// Load mp4 metadata from a `Read + Seek` source.
+    ///
+    /// Only the container metadata (the `moov`/`stbl` boxes) is read up front;
+    /// the bulk sample data (`mdat`) stays on the source and is referenced by
+    /// the byte spans in [`SampleMetadata`], to be read on demand by the caller.
+    /// `size` is the total length of the stream in bytes (e.g. the file size).
+    ///
+    /// (VP8/VP9 are the one exception: their sync flags must be recovered from
+    /// the bitstream, so those samples are read from `reader` during load.)
+    pub fn load_mp4_from_reader<R: std::io::Read + std::io::Seek>(
+        reader: &mut R,
+        size: u64,
+        debug_name: &str,
+    ) -> Result<Self, VideoLoadError> {
+        re_tracing::profile_function!();
         let mp4 = {
-            re_tracing::profile_scope!("Mp4::read_bytes");
-            re_mp4::Mp4::read_bytes(bytes)?
+            re_tracing::profile_scope!("Mp4::read");
+            re_mp4::Mp4::read(&mut *reader, size)?
         };
 
         let mp4_tracks = mp4.tracks().iter().map(|(k, t)| (*k, t.kind)).collect();
@@ -88,16 +106,20 @@ impl VideoDataDescription {
         if matches!(codec, crate::VideoCodec::VP8 | crate::VideoCodec::VP9) {
             re_tracing::profile_scope!("fix vp8/vp9 sync flags");
             keyframe_indices.clear();
+            let mut data = Vec::new();
             for (idx, sample_state) in samples.iter_mut().enumerate() {
                 if let Some(sample) = sample_state.sample_mut() {
                     let span = match sample.source {
                         crate::VideoSource::Span(span) => span,
                         crate::VideoSource::Id { .. } => unreachable!(),
                     };
-                    let data = &bytes[span.range_usize()];
+                    let byte_range = span.range_usize();
+                    reader.seek(std::io::SeekFrom::Start(byte_range.start as u64))?;
+                    data.resize(byte_range.len(), 0);
+                    reader.read_exact(&mut data)?;
                     let bitstream_is_sync = match codec {
-                        crate::VideoCodec::VP8 => crate::vp8::vp8_is_keyframe(data),
-                        crate::VideoCodec::VP9 => crate::vp9::vp9_is_keyframe(data),
+                        crate::VideoCodec::VP8 => crate::vp8::vp8_is_keyframe(&data),
+                        crate::VideoCodec::VP9 => crate::vp9::vp9_is_keyframe(&data),
                         _ => unreachable!(),
                     };
                     sample.is_sync = bitstream_is_sync;

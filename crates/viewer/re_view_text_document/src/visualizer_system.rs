@@ -22,7 +22,10 @@ pub struct TextDocumentSystem;
 
 impl IdentifiedViewSystem for TextDocumentSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "TextDocument".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "TextDocument"
+        )
     }
 }
 

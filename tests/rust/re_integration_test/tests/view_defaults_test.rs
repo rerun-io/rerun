@@ -69,8 +69,10 @@ pub async fn test_view_defaults_stroke_width() {
     harness.snapshot_app("view_defaults");
 
     // Verify the default is queryable from the blueprint store on the blueprint timeline.
-    let stroke_width = harness.run_with_viewer_context(move |viewer_context| {
-        let blueprint_db = viewer_context.store_context.blueprint;
+    let stroke_width = harness.run_with_app_context(move |app_context| {
+        let blueprint_db = app_context
+            .active_blueprint()
+            .expect("active recording route should have a blueprint");
         let query = LatestAtQuery::latest(blueprint_timeline());
         let results = blueprint_db.latest_at(&query, &defaults_path, [component_id]);
         results.component_mono::<re_sdk_types::components::StrokeWidth>(component_id)

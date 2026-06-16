@@ -21,8 +21,8 @@ use crate::{
 type ViewStateKey = (StoreId, ViewId);
 
 #[derive(re_byte_size::SizeBytes)]
-struct ActivePreview {
-    time_control: TimeControl,
+pub struct ActivePreview {
+    pub time_control: TimeControl,
 }
 
 impl Default for ActivePreview {
@@ -98,6 +98,10 @@ impl PreviewState {
         }
 
         needs_repaint
+    }
+
+    pub fn iter_active_previews(&self) -> impl Iterator<Item = (&StoreId, &ActivePreview)> {
+        self.active_previews.iter()
     }
 
     pub fn recording_time_control(&self, store_id: &StoreId) -> Option<&TimeControl> {

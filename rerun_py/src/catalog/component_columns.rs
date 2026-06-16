@@ -10,6 +10,7 @@ use re_sorbet::{ComponentColumnDescriptor, ComponentColumnSelector};
 /// column, use [`ComponentColumnSelector`][rerun.catalog.ComponentColumnSelector].
 #[pyclass(
     frozen,
+    from_py_object,
     hash,
     eq,
     name = "ComponentColumnDescriptor",
@@ -124,6 +125,7 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 ///     The component to select
 #[pyclass(
     frozen,
+    from_py_object,
     eq,
     name = "ComponentColumnSelector",
     module = "rerun_bindings.rerun_bindings"

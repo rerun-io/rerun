@@ -2,14 +2,13 @@ use std::collections::HashSet;
 
 use futures::StreamExt as _;
 use itertools::Itertools as _;
+use re_protos::cloud::v1alpha1::FetchChunksRequest;
+use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
 use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
-use re_protos::cloud::v1alpha1::{FetchChunksRequest, QueryDatasetResponse};
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk::external::re_log_encoding::ToApplication as _;
-use re_tuid::Tuid;
-use re_types_core::Loggable as _;
 
 use crate::RecordBatchTestExt as _;
 use crate::tests::common::{
@@ -58,7 +57,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
     let required_columns = FetchChunksRequest::required_column_names();
     let required_columns_ref = required_columns.iter().map(|s| s.as_str()).collect_vec();
     let chunk_keys = concat_record_batches(&chunk_info)
-        .sort_rows_by(&[QueryDatasetResponse::FIELD_CHUNK_ID])
+        .sort_rows_by(&[QueryDatasetDataframe::COLUMN_CHUNK_ID_NAME])
         .unwrap()
         .project_columns(&required_columns_ref);
 
@@ -212,14 +211,12 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     // Check we have everything.
     //
 
-    let requested_ids = Tuid::from_arrow(
-        chunk_info
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_iter()
-    .collect::<HashSet<_>>();
+    let requested_ids = QueryDatasetDataframe::COLUMN_CHUNK_ID
+        .extract(&chunk_info)
+        .unwrap()
+        .iter_owned()
+        .map(|id| id.as_tuid())
+        .collect::<HashSet<_>>();
 
     let received_ids = chunks
         .into_iter()

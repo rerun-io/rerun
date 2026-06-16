@@ -40,11 +40,13 @@ impl VisualizerInstruction {
     /// The corresponding component is [`crate::blueprint::components::VisualizerType`].
     #[inline]
     pub fn descriptor_visualizer_type() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.VisualizerInstruction".into()),
-            component: "VisualizerInstruction:visualizer_type".into(),
-            component_type: Some("rerun.blueprint.components.VisualizerType".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.VisualizerInstruction".into()),
+                component: "VisualizerInstruction:visualizer_type".into(),
+                component_type: Some("rerun.blueprint.components.VisualizerType".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::component_map`].
@@ -52,11 +54,15 @@ impl VisualizerInstruction {
     /// The corresponding component is [`crate::blueprint::components::VisualizerComponentMapping`].
     #[inline]
     pub fn descriptor_component_map() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.VisualizerInstruction".into()),
-            component: "VisualizerInstruction:component_map".into(),
-            component_type: Some("rerun.blueprint.components.VisualizerComponentMapping".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.VisualizerInstruction".into()),
+                component: "VisualizerInstruction:component_map".into(),
+                component_type: Some(
+                    "rerun.blueprint.components.VisualizerComponentMapping".into(),
+                ),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -85,7 +91,10 @@ impl VisualizerInstruction {
 impl ::re_types_core::Archetype for VisualizerInstruction {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.VisualizerInstruction".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.VisualizerInstruction"
+        )
     }
 
     #[inline]

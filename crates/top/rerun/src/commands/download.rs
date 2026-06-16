@@ -70,6 +70,7 @@ impl DownloadCommand {
 
             let streaming_options = re_redap_client::StreamingOptions {
                 force_full_download: true,
+                download: re_redap_client::SegmentDownload::default(),
                 on_progress: Some(Arc::new(move |bytes_downloaded, total_bytes| {
                     downloaded_for_progress.store(bytes_downloaded, Ordering::Relaxed);
                     match total_bytes {

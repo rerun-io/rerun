@@ -1152,6 +1152,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <PointShading as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Defines how points are shaded.",
+                deprecation_summary: None,
+                custom_placeholder: Some(PointShading::default().to_arrow()?),
+                datatype: PointShading::arrow_datatype(),
+                is_enum: true,
+                verify_arrow_array: PointShading::verify_arrow_array,
+            },
+        ),
+        (
             <Position2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A position in 2D space.",
@@ -3336,6 +3347,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
+                        name: "point_shading",
+                        display_name: "Point shading",
+                        component_type: "rerun.components.PointShading".into(),
+                        docstring_md: "How points should be shaded.\n\nIf not set, points are rendered with [`components.PointShading#Gradient`](https://rerun.io/docs/reference/types/components/point_shading?speculative-link) by default.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
                         name: "class_ids",
                         display_name: "Class ids",
                         component_type: "rerun.components.ClassId".into(),
@@ -4586,7 +4604,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "segment_preview_column",
                         display_name: "Segment preview column",
                         component_type: "rerun.blueprint.components.ColumnName".into(),
-                        docstring_md: "The name of the column that contains recording URIs for segment previews.\n\nEvery row can at most preview a single segment.\n\nFor the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,\nmeaning that the regular structure of archetypes.ViewportBlueprint, and archetypes.ViewBlueprint structure applies.\nHowever, this mostly ignores layout container types as well as automatic spawning.",
+                        docstring_md: "The name of the column that contains recording URIs for segment previews.\n\nEvery row can at most preview a single segment.\n\nFor the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,\nmeaning that the regular structure of archetypes.ViewportBlueprint, and archetypes.ViewBlueprint structure applies.\nHowever, this mostly ignores layout container types as well as automatic spawning.\n\nIf unset, defaults to the first URL column in the table that points to the same Rerun server",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -4607,7 +4625,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "url_column",
                         display_name: "Url column",
                         component_type: "rerun.blueprint.components.ColumnName".into(),
-                        docstring_md: "The name of the column containing URLs to open when a card is clicked in grid view.\n\nIf unset, defaults to the first URL column in the table that points to the same\nRerun server. If no such column exists, no URL is associated with cards and\nclicking them does not navigate anywhere.",
+                        docstring_md: "The name of the column containing URLs to open when a card is clicked in grid view.\n\nIf unset, defaults to the segment preview column.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

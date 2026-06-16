@@ -19,6 +19,7 @@ use crate::series_query::{
 use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, util};
 
 /// Output data from [`SeriesLinesSystem`].
+#[derive(Default, Clone)]
 pub struct SeriesLinesOutput {
     pub all_series: Vec<PlotSeries>,
 }
@@ -29,7 +30,10 @@ pub struct SeriesLinesSystem;
 
 impl IdentifiedViewSystem for SeriesLinesSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "SeriesLines".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "SeriesLines"
+        )
     }
 }
 

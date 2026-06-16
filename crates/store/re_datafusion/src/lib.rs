@@ -13,11 +13,12 @@ mod dataframe_query_provider_wasm;
 mod dataset_manifest;
 mod errors;
 mod grpc_streaming_provider;
+#[cfg(not(target_arch = "wasm32"))]
+mod local_chunk_store_provider;
 mod metrics_capture;
 #[cfg(not(target_arch = "wasm32"))]
 mod pipeline_budget;
 pub(crate) mod pushdown_expressions;
-mod search_provider;
 #[cfg(not(target_arch = "wasm32"))]
 mod segment_chunk_manifest;
 mod segment_table;
@@ -38,8 +39,9 @@ pub(crate) use dataframe_query_provider::SegmentStreamExec;
 #[cfg(target_arch = "wasm32")]
 pub(crate) use dataframe_query_provider_wasm::SegmentStreamExec;
 pub use dataset_manifest::DatasetManifestProvider;
+#[cfg(not(target_arch = "wasm32"))]
+pub use local_chunk_store_provider::LocalChunkStoreTableProvider;
 pub use metrics_capture::{MetricsCollector, QuerySnapshot};
-pub use search_provider::SearchResultsTableProvider;
 pub use segment_table::SegmentTableProvider;
 pub use table_entry_provider::TableEntryTableProvider;
 

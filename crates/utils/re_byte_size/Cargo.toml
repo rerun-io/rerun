@@ -20,11 +20,6 @@ all-features = true
 
 
 [features]
-default = ["derive"]
-
-## Provides the `#[derive(SizeBytes)]` macro.
-derive = ["dep:re_byte_size_derive"]
-
 ecolor = ["dep:ecolor"]
 egui = ["dep:egui", "ecolor"]
 glam = ["dep:glam"]
@@ -32,14 +27,13 @@ macaw = ["dep:macaw"]
 
 
 [dependencies]
+re_byte_size_derive = { workspace = true }
+
 arrow.workspace = true
 half.workspace = true
 parking_lot.workspace = true
 smallvec.workspace = true
 vec1.workspace = true # Small enough to always depend on it.
-
-# Optional dependencies:
-re_byte_size_derive = { workspace = true, optional = true }
 
 ecolor = { workspace = true, optional = true }
 egui = { workspace = true, optional = true }

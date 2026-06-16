@@ -18,6 +18,7 @@ use crate::view_kind::SpatialViewKind;
 use crate::visualizers::process_radius;
 use crate::visualizers::utilities::spatial_view_kind_from_view_class;
 
+#[derive(Default, Clone)]
 pub struct CamerasVisualizerOutput {
     pub pinhole_cameras: Vec<PinholeWrapper>,
 }
@@ -27,7 +28,10 @@ pub struct CamerasVisualizer;
 
 impl IdentifiedViewSystem for CamerasVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Cameras".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Cameras"
+        )
     }
 }
 

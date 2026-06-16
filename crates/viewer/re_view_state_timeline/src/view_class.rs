@@ -1,14 +1,14 @@
 use re_log_types::{
-    AbsoluteTimeRange, EntityPath, TimeCell, TimeInt, TimeReal, TimeType, TimelineName,
-    TimestampFormat,
+    AbsoluteTimeRange, ComponentPath, EntityPath, TimeCell, TimeInt, TimeReal, TimeType,
+    TimelineName, TimestampFormat,
 };
 use re_time_ruler::TimeRangesUi;
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_viewer_context::{
-    DataResultInteractionAddress, DragAndDropFeedback, DragAndDropPayload,
-    IdentifiedViewSystem as _, Item, TimeControlCommand, TimeView, ViewClass,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
-    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    DataResultInteractionAddress, DragAndDropFeedback, IdentifiedViewSystem as _, Item,
+    TimeControlCommand, TimeView, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError,
+    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewerContext,
 };
 
 use crate::data::{StateLane, StateLanePhase, StateLanesData};
@@ -192,6 +192,32 @@ impl ViewClass for StateTimelineView {
         Ok(())
     }
 
+    /// Accept drops of components onto the state timeline view. For each dropped component, a new
+    /// `StateVisualizer` is added that remaps `StateChange.state` from it.
+    ///
+    /// The viewport owns the drop feedback (cursor) and the drop-target frame; we only signal
+    /// acceptance and perform the mutation on release.
+    fn handle_component_drop(
+        &self,
+        ctx: &ViewerContext<'_>,
+        view_id: ViewId,
+        component_paths: &[ComponentPath],
+        released: bool,
+    ) -> DragAndDropFeedback {
+        // Reject if none of the dropped components would add a new visualizer (e.g. they are
+        // already visualized), mirroring the entity-drop behavior.
+        if !crate::drop_handler::can_drop_any_component(ctx, view_id, component_paths) {
+            return DragAndDropFeedback::Reject(Some("Already visualized"));
+        }
+
+        if released {
+            egui::DragAndDrop::clear_payload(ctx.egui_ctx());
+            crate::drop_handler::handle_component_drop(ctx, view_id, component_paths);
+        }
+
+        DragAndDropFeedback::Accept
+    }
+
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -220,7 +246,6 @@ impl ViewClass for StateTimelineView {
         if all_lanes.is_empty() {
             let (rect, _) =
                 ui.allocate_exact_size(ui.available_size(), egui::Sense::click_and_drag());
-            handle_component_drop_zone(ui, ctx, query.view_id, rect);
             ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
                 ui.centered_and_justified(|ui| {
                     ui.label(
@@ -264,8 +289,6 @@ impl ViewClass for StateTimelineView {
         if !ui.is_rect_visible(rect) {
             return Ok(());
         }
-
-        handle_component_drop_zone(ui, ctx, query.view_id, rect);
 
         // Layout: ruler at the top, lanes below.
         let time_axis_rect = egui::Rect::from_min_max(
@@ -876,7 +899,7 @@ fn paint_jagged_band(
     for k in 0..=JAGGED_TOOTH_COUNT {
         let y0 = rect.top() + (k as f32 - 0.5) * tooth_h;
         let y1 = y0 + tooth_h;
-        let apex = egui::pos2(rect.right(), (y0 + y1) * 0.5);
+        let apex = egui::pos2(rect.right(), f32::midpoint(y0, y1));
         painter.add(egui::epaint::PathShape::convex_polygon(
             vec![
                 egui::pos2(jagged_right, y0),
@@ -996,49 +1019,6 @@ fn readable_text_color(bg: egui::Color32) -> egui::Color32 {
         egui::Color32::BLACK
     } else {
         egui::Color32::WHITE
-    }
-}
-
-/// Accept drops of components from the timeline onto the state timeline view and, for each
-/// dropped component, add a new `StateVisualizer` that remaps `StateChange.state` from it.
-fn handle_component_drop_zone(
-    ui: &egui::Ui,
-    ctx: &ViewerContext<'_>,
-    view_id: ViewId,
-    rect: egui::Rect,
-) {
-    let Some(payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ui.ctx()) else {
-        return;
-    };
-    let DragAndDropPayload::Components { component_paths } = payload.as_ref() else {
-        return;
-    };
-
-    let Some(pointer_pos) = ui.ctx().pointer_interact_pos() else {
-        return;
-    };
-    if !rect.contains(pointer_pos) {
-        return;
-    }
-
-    ctx.drag_and_drop_manager()
-        .set_feedback(DragAndDropFeedback::Accept);
-
-    // Draw the drop-target frame.
-    let tokens = ui.tokens();
-    let stroke = tokens.drop_target_container_stroke;
-    ui.painter()
-        .rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Inside);
-    ui.painter().rect_filled(
-        rect.shrink(stroke.width),
-        0.0,
-        stroke.color.gamma_multiply(0.1),
-    );
-
-    if ui.input(|i| i.pointer.any_released()) {
-        let component_paths = component_paths.clone();
-        egui::DragAndDrop::clear_payload(ui.ctx());
-        crate::drop_handler::handle_component_drop(ctx, view_id, &component_paths);
     }
 }
 

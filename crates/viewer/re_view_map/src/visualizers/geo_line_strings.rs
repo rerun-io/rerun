@@ -11,7 +11,7 @@ use re_viewer_context::{
     typed_fallback_for,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct GeoLineStringsBatch {
     lines: Vec<Vec<walkers::Position>>,
     radii: Vec<Radius>,
@@ -20,7 +20,7 @@ struct GeoLineStringsBatch {
 }
 
 /// Output data from [`GeoLineStringsVisualizer`].
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct GeoLineStringsOutput {
     batches: Vec<(EntityPath, GeoLineStringsBatch)>,
 }
@@ -31,7 +31,10 @@ pub struct GeoLineStringsVisualizer;
 
 impl IdentifiedViewSystem for GeoLineStringsVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "GeoLineStrings".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "GeoLineStrings"
+        )
     }
 }
 

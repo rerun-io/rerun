@@ -531,7 +531,7 @@ impl TestContext {
         edit_fn(&mut selection_state);
 
         // the selection state is double-buffered, so let's ensure it's updated
-        selection_state.on_frame_start(|_| true, None);
+        selection_state.on_frame_start(|item| Some(item.clone()), None);
     }
 
     /// Log an entity to the recording store.
@@ -569,6 +569,7 @@ impl TestContext {
         active_recording.data_source = Some(re_log_channel::LogSource::RedapGrpcStream {
             uri: "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
             open_behavior: re_log_channel::RecordingOpenBehavior::OpenAndSelect,
+            table_blueprint: None,
         });
     }
 
@@ -670,7 +671,7 @@ impl TestContext {
                 connection_registry: &self.connection_registry,
 
                 storage_context: &storage_context,
-                active_store_context: Some(&store_context), // TODO(RR-3033): should sometimes be `None`
+                active_store_context: Some(&store_context),
 
                 component_ui_registry: &self.component_ui_registry,
                 view_class_registry: &self.view_class_registry,
@@ -712,7 +713,7 @@ impl TestContext {
 
         render_ctx.before_submit();
 
-        selection_state.on_frame_start(|_| true, None);
+        selection_state.on_frame_start(|item| Some(item.clone()), None);
         *focused_item = None;
     }
 
@@ -933,7 +934,6 @@ impl TestContext {
                 | SystemCommand::Logout
                 | SystemCommand::SaveScreenshot { .. }
                 | SystemCommand::ShowNotification { .. }
-                | SystemCommand::RegisterTableBlueprint { .. }
                 | SystemCommand::ReadbackAndSaveTexture { .. } => handled = false,
 
                 #[cfg(debug_assertions)]

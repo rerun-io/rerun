@@ -45,11 +45,13 @@ impl VisualBounds2D {
     /// The corresponding component is [`crate::blueprint::components::VisualBounds2D`].
     #[inline]
     pub fn descriptor_range() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-            component: "VisualBounds2D:range".into(),
-            component_type: Some("rerun.blueprint.components.VisualBounds2D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
+                component: "VisualBounds2D:range".into(),
+                component_type: Some("rerun.blueprint.components.VisualBounds2D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -73,7 +75,10 @@ impl VisualBounds2D {
 impl ::re_types_core::Archetype for VisualBounds2D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.VisualBounds2D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.VisualBounds2D"
+        )
     }
 
     #[inline]

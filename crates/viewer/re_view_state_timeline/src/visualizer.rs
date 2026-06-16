@@ -187,7 +187,10 @@ pub struct StateVisualizer;
 
 impl IdentifiedViewSystem for StateVisualizer {
     fn identifier() -> ViewSystemIdentifier {
-        "StateVisualizer".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "StateVisualizer"
+        )
     }
 }
 

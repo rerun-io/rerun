@@ -1,9 +1,5 @@
-use itertools::Either;
 use re_chunk::{Chunk, RowId};
 use re_log_types::{ApplicationId, EntityPath, TimePoint};
-use re_sdk_types::ComponentBatch;
-use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference};
-use re_sdk_types::components::VideoTimestamp;
 
 use crate::{ImportedData, Importer, ImporterError};
 
@@ -107,59 +103,6 @@ impl Importer for ArchetypeImporter {
             }
         }
 
-        let mut rows = Vec::new();
-
-        if crate::SUPPORTED_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
-            re_log::debug!(?filepath, importer = self.name(), "Loading image…",);
-            rows.extend(load_image(
-                &filepath,
-                timepoint,
-                entity_path,
-                contents.into_owned(),
-            )?);
-        } else if crate::SUPPORTED_DEPTH_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
-            re_log::debug!(?filepath, importer = self.name(), "Loading depth image…",);
-            rows.extend(load_depth_image(
-                &filepath,
-                timepoint,
-                entity_path,
-                contents.into_owned(),
-            )?);
-        } else if crate::SUPPORTED_VIDEO_EXTENSIONS.contains(&extension.as_str()) {
-            re_log::debug!(?filepath, importer = self.name(), "Loading video…",);
-            rows.extend(load_video(
-                &filepath,
-                timepoint,
-                &entity_path,
-                contents.into_owned(),
-            )?);
-        } else if crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension.as_str()) {
-            re_log::debug!(?filepath, importer = self.name(), "Loading 3D model…",);
-            rows.extend(load_mesh(
-                filepath.clone(),
-                timepoint,
-                entity_path,
-                contents.into_owned(),
-            )?);
-        } else if crate::SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension.as_str()) {
-            re_log::debug!(?filepath, importer = self.name(), "Loading 3D point cloud…",);
-            rows.extend(load_point_cloud(timepoint, entity_path, &contents)?);
-        } else if crate::SUPPORTED_TEXT_EXTENSIONS.contains(&extension.as_str()) {
-            re_log::debug!(?filepath, importer = self.name(), "Loading text document…",);
-            rows.extend(load_text_document(
-                filepath.clone(),
-                timepoint,
-                entity_path,
-                contents.into_owned(),
-            )?);
-        } else {
-            return Err(crate::ImporterError::Incompatible(filepath.clone()));
-        }
-
-        if rows.is_empty() {
-            re_log::warn!("{} is empty", filepath.display());
-        }
-
         let store_id = settings.opened_store_id.clone().unwrap_or_else(|| {
             re_log_types::StoreId::recording(
                 settings
@@ -169,14 +112,94 @@ impl Importer for ArchetypeImporter {
                 settings.recording_id.clone(),
             )
         });
-        for row in rows {
-            let data = ImportedData::Chunk(Self::name(&Self), store_id.clone(), row);
-            if re_quota_channel::send_crossbeam(&tx, data).is_err() {
-                break; // The other end has decided to hang up, not our problem.
-            }
+
+        // We stream chunks to `tx` as each loader produces them, rather than
+        // collecting into a `Vec` first: that way the bounded channel's
+        // backpressure actually limits how much is held in memory at once.
+        let num_chunks = if crate::SUPPORTED_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, importer = self.name(), "Loading image…",);
+            self.send_chunks(
+                &tx,
+                &store_id,
+                load_image(&filepath, timepoint, entity_path, contents.into_owned())?,
+            )
+        } else if crate::SUPPORTED_DEPTH_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, importer = self.name(), "Loading depth image…",);
+            self.send_chunks(
+                &tx,
+                &store_id,
+                load_depth_image(&filepath, timepoint, entity_path, contents.into_owned())?,
+            )
+        } else if crate::SUPPORTED_VIDEO_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, importer = self.name(), "Loading video…",);
+            self.send_chunks(
+                &tx,
+                &store_id,
+                load_video(&filepath, timepoint, &entity_path, contents.into_owned())?,
+            )
+        } else if crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, importer = self.name(), "Loading 3D model…",);
+            self.send_chunks(
+                &tx,
+                &store_id,
+                load_mesh(
+                    filepath.clone(),
+                    timepoint,
+                    entity_path,
+                    contents.into_owned(),
+                )?,
+            )
+        } else if crate::SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, importer = self.name(), "Loading 3D point cloud…",);
+            self.send_chunks(
+                &tx,
+                &store_id,
+                load_point_cloud(timepoint, entity_path, &contents)?,
+            )
+        } else if crate::SUPPORTED_TEXT_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, importer = self.name(), "Loading text document…",);
+            self.send_chunks(
+                &tx,
+                &store_id,
+                load_text_document(
+                    filepath.clone(),
+                    timepoint,
+                    entity_path,
+                    contents.into_owned(),
+                )?,
+            )
+        } else {
+            return Err(crate::ImporterError::Incompatible(filepath.clone()));
+        };
+
+        if num_chunks == 0 {
+            re_log::warn!("{} is empty", filepath.display());
         }
 
         Ok(())
+    }
+}
+
+impl ArchetypeImporter {
+    /// Streams `chunks` to `tx`, returning the number actually sent.
+    ///
+    /// Stops early (without erroring) if the receiver has hung up — that just
+    /// means the import is being torn down, which is not our problem.
+    fn send_chunks(
+        &self,
+        tx: &crossbeam::channel::Sender<ImportedData>,
+        store_id: &re_log_types::StoreId,
+        chunks: impl Iterator<Item = Chunk>,
+    ) -> usize {
+        let mut num_sent = 0;
+        for chunk in chunks {
+            let data = ImportedData::Chunk(self.name(), store_id.clone(), chunk);
+            if re_quota_channel::send_crossbeam(tx, data).is_err() {
+                break;
+            }
+            num_sent += 1;
+        }
+        num_sent
     }
 }
 
@@ -242,12 +265,8 @@ fn load_video(
     mut timepoint: TimePoint,
     entity_path: &EntityPath,
     contents: Vec<u8>,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
+) -> Result<impl Iterator<Item = Chunk> + use<>, ImporterError> {
     re_tracing::profile_function!();
-    // TODO(#10929): remove this once the limit got fixed.
-    if contents.len() > i32::MAX as usize {
-        return Err(ImporterError::VideoTooLarge(contents.len()));
-    }
 
     let video_timeline = re_log_types::Timeline::new_duration("video");
     timepoint.insert_cell(
@@ -255,67 +274,33 @@ fn load_video(
         re_log_types::TimeCell::ZERO_DURATION,
     );
 
-    let video_asset = {
-        re_tracing::profile_scope!("serialize-as-arrow");
-        AssetVideo::new(contents)
+    let config = re_mp4_reader::Mp4Config {
+        mode: re_mp4_reader::Mode::Asset { timepoint },
+        timeline_name: "video".into(),
+        timeline_type: re_log_types::TimeType::DurationNs,
     };
 
-    let video_frame_reference_chunk = match video_asset.read_frame_timestamps_nanos() {
-        Ok(frame_timestamps_nanos) => {
-            // Time column.
-            let is_sorted = Some(true);
-            let frame_timestamps_nanos: arrow::buffer::ScalarBuffer<i64> =
-                frame_timestamps_nanos.into();
-            let time_column = re_chunk::TimeColumn::new(
-                is_sorted,
-                video_timeline,
-                frame_timestamps_nanos.clone(),
-            );
+    // An up-front failure (e.g. the asset being too large) aborts the import.
+    let debug_name = filepath.display().to_string();
+    let chunks = re_mp4_reader::load_mp4_from_bytes(contents, &config, entity_path, &debug_name)
+        .map_err(|err| ImporterError::Mp4 {
+            path: filepath.to_path_buf(),
+            source: err,
+        })?;
 
-            // VideoTimestamp component column.
-            let video_timestamps = frame_timestamps_nanos
-                .iter()
-                .copied()
-                .map(VideoTimestamp::from_nanos)
-                .collect::<Vec<_>>();
-            let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;
-            let video_timestamp_list_array = video_timestamp_batch
-                .to_arrow_list_array()
-                .map_err(re_chunk::ChunkError::from)?;
-
-            Some(Chunk::from_auto_row_ids(
-                re_chunk::ChunkId::new(),
-                entity_path.clone(),
-                std::iter::once((*video_timeline.name(), time_column)).collect(),
-                std::iter::once((
-                    VideoFrameReference::descriptor_timestamp(),
-                    video_timestamp_list_array,
-                ))
-                .collect(),
-            )?)
-        }
-
+    // The returned iterator is lazy — chunks are constructed one at a time as
+    // the caller drains it. A per-chunk failure is *not* fatal: we log it and
+    // stop, keeping whatever chunks were produced before it (partial import).
+    // (Unreadable frame timestamps are not an error at all — `re_mp4_reader`
+    // handles that leniently by emitting only the asset chunk.)
+    let filepath = filepath.to_path_buf();
+    Ok(chunks.map_while(move |chunk| match chunk {
+        Ok(chunk) => Some(chunk),
         Err(err) => {
-            re_log::warn_once!(
-                "Failed to read frame timestamps from video asset {filepath:?}: {err}"
-            );
+            re_log::warn!(?filepath, "Failed to load chunk from video: {err}");
             None
         }
-    };
-
-    // Put video asset into its own chunk since it can be fairly large.
-    let video_asset_chunk = Chunk::builder(entity_path.clone())
-        .with_archetype(RowId::new(), timepoint.clone(), &video_asset)
-        .build()?;
-
-    if let Some(video_frame_reference_chunk) = video_frame_reference_chunk {
-        Ok(Either::Left(
-            [video_asset_chunk, video_frame_reference_chunk].into_iter(),
-        ))
-    } else {
-        // Still log the video asset, but don't include video frames.
-        Ok(Either::Right(std::iter::once(video_asset_chunk)))
-    }
+    }))
 }
 
 fn load_mesh(

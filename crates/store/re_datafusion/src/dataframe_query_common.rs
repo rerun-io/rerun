@@ -5,9 +5,8 @@ use crate::metrics_capture::QueryMetrics;
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
 use ahash::{HashMap, HashMapExt as _, HashSet};
 use arrow::array::{
-    Array as _, ArrayRef, DurationNanosecondArray, FixedSizeBinaryArray, Int64Array, RecordBatch,
-    StringArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
-    TimestampSecondArray, UInt32Array,
+    ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, TimestampMicrosecondArray,
+    TimestampMillisecondArray, TimestampNanosecondArray, TimestampSecondArray, UInt32Array,
 };
 use arrow::compute::concat_batches;
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
@@ -24,9 +23,10 @@ use parking_lot::Mutex;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, IndexValue, QueryExpression, SparseFillStrategy};
 use re_log_types::{EntityPath, EntryId};
+use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
-    ScanSegmentTableResponse,
 };
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -138,10 +138,11 @@ struct FilterCapture {
 }
 
 /// This trait provides the specific methods used when interacting with the
-/// gRPC services for the datafusion client services. By implementing this
-/// as a trait we can provide an alternative implementation in our testing
-/// facility to remove all gRPC layers and test the server responses
-/// more directly.
+/// gRPC services for the datafusion client services.
+///
+/// By implementing this as a trait we can provide an alternative implementation
+/// in our testing facility to remove all gRPC layers and test the server
+/// responses more directly.
 #[async_trait]
 pub trait DataframeClientAPI: std::fmt::Debug + Clone + Send + Sync + Unpin + 'static {
     async fn get_dataset_schema(
@@ -320,7 +321,7 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
 
         let schema = Arc::new(prepend_string_column_schema(
             &schema,
-            ScanSegmentTableResponse::FIELD_SEGMENT_ID,
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
         ));
 
         Ok(Self {
@@ -464,6 +465,18 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                         filters_applied_client_side += 1;
                     }
                 }
+            }
+
+            // Now that filter pushdown has settled each query's `segment_ids`, bound each query's chunk fetch
+            // to its sampled index values.
+            // Done here rather than at construction so the per-segment value lists stay aligned with `segment_ids` after a
+            // `rerun_segment_id` predicate narrows or splits them.
+            for query in &mut dataset_queries {
+                apply_per_segment_pushdown(
+                    query,
+                    &self.index_values,
+                    self.query_expression.filtered_index,
+                );
             }
 
             // Entity path projection pushdown: narrow the server request to only
@@ -919,6 +932,18 @@ pub(crate) fn prepend_string_column_schema(schema: &Schema, column_name: &str) -
     Schema::new_with_metadata(fields, schema.metadata.clone())
 }
 
+/// Hash a segment id for DataFusion partition routing.
+///
+/// Hashes the underlying string with DataFusion's `HashValue` so the result
+/// matches `RepartitionExec`'s hashing of the segment-id string column.
+pub(crate) fn segment_partition_hash(
+    segment_id: &SegmentId,
+    random_state: &ahash::RandomState,
+) -> u64 {
+    use datafusion::common::hash_utils::HashValue as _;
+    segment_id.as_str().hash_one(random_state)
+}
+
 /// We need to create `num_partitions` of DataFusion partition stream outputs, each of
 /// which will be fed from multiple `rerun_segment_id` sources. The partitioning
 /// output is a hash of the `rerun_segment_id`. We will reuse some of the
@@ -931,34 +956,18 @@ pub(crate) fn prepend_string_column_schema(schema: &Schema, column_name: &str) -
 #[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn group_chunk_infos_by_segment_id(
     chunk_info_batches: &[RecordBatch],
-) -> Result<Arc<BTreeMap<String, Vec<RecordBatch>>>, DataFusionError> {
-    let mut results: BTreeMap<String, Vec<RecordBatch>> = BTreeMap::new();
+) -> Result<Arc<BTreeMap<SegmentId, Vec<RecordBatch>>>, DataFusionError> {
+    let mut results: BTreeMap<SegmentId, Vec<RecordBatch>> = BTreeMap::new();
 
     for batch in chunk_info_batches {
-        let segment_ids = batch
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
-            .ok_or(exec_datafusion_err!(
-                "Unable to find {} column",
-                QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
-            ))?
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .ok_or(exec_datafusion_err!(
-                "{} must be string type",
-                QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
-            ))?;
+        let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+            .extract(batch)
+            .map_err(|err| exec_datafusion_err!("{err}"))?;
 
         // group rows by segment ID
-        let mut segment_rows: BTreeMap<String, Vec<usize>> = BTreeMap::new();
-        for (row_idx, segment_id) in segment_ids.iter().enumerate() {
-            let sid = segment_id.ok_or(exec_datafusion_err!(
-                "Found null segment id in {} column at row {row_idx}",
-                QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
-            ))?;
-            segment_rows
-                .entry(sid.to_owned())
-                .or_default()
-                .push(row_idx);
+        let mut segment_rows: BTreeMap<SegmentId, Vec<usize>> = BTreeMap::new();
+        for (row_idx, segment_id) in segment_ids.into_iter().enumerate() {
+            segment_rows.entry(segment_id).or_default().push(row_idx);
         }
 
         for (segment_id, row_indices) in segment_rows {
@@ -1055,33 +1064,23 @@ pub(crate) struct ChunkInfoAggregates {
 }
 
 pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAggregates {
-    use arrow::array::UInt64Array;
-
     let chunks = batch.num_rows();
 
-    /// Downcasts `column_name` to array type `T` and iterates over its non-null values.
-    fn iter_column_values<'a, T: Any>(
-        batch: &'a RecordBatch,
-        column_name: &str,
-    ) -> Option<std::iter::Flatten<<&'a T as IntoIterator>::IntoIter>>
-    where
-        &'a T: IntoIterator<Item: IntoIterator>,
-    {
-        let arr = batch
-            .column_by_name(column_name)?
-            .as_any()
-            .downcast_ref::<T>()?;
-        Some(arr.into_iter().flatten())
-    }
+    // Lenient: these are analytics aggregates — a missing or mistyped column yields zeros.
+    let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+        .extract(batch)
+        .ok();
+    let layer_names = QueryDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER
+        .extract(batch)
+        .ok();
+    let byte_lens = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN
+        .extract(batch)
+        .ok();
 
     // Segment count + per-segment histogram in one pass
     let mut per_segment: HashMap<&str, u32> = HashMap::new();
-    if let Some(items) =
-        iter_column_values::<StringArray>(batch, QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
-    {
-        for v in items {
-            *per_segment.entry(v).or_default() += 1;
-        }
+    for v in segment_ids.iter().flatten() {
+        *per_segment.entry(v).or_default() += 1;
     }
     let segments = per_segment.len();
     let (chunks_per_segment_min, chunks_per_segment_max) = per_segment
@@ -1100,14 +1099,9 @@ pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAgg
         chunks as f32 / segments as f32
     };
 
-    let layers =
-        iter_column_values::<StringArray>(batch, QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME)
-            .map(|iter| iter.collect::<HashSet<_>>().len())
-            .unwrap_or(0);
+    let layers = layer_names.map_or(0, |col| col.iter().collect::<HashSet<_>>().len());
 
-    let bytes: u64 =
-        iter_column_values::<UInt64Array>(batch, QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
-            .map_or(0, Iterator::sum);
+    let bytes: u64 = byte_lens.map_or(0, |col| col.iter().sum());
 
     ChunkInfoAggregates {
         chunks,
@@ -1118,6 +1112,70 @@ pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAgg
         chunks_per_segment_max,
         chunks_per_segment_mean,
     }
+}
+
+/// Bound a single settled query's server-side chunk scan to the chunks covering
+/// its sampled index values, by setting them as `QueryLatestAt.per_segment_values`
+/// (aligned to the query's own `segment_ids`).
+///
+/// Runs in [`DataframeQueryTableProvider::scan`] *after* filter pushdown has
+/// narrowed or split `segment_ids`, so the per-segment value lists always line up
+/// with the segment ids the server validates against. Without it the server
+/// fetches every segment's entire chunk set; it narrows only what is fetched, not
+/// the rows produced.
+fn apply_per_segment_pushdown(
+    query_request: &mut QueryDatasetRequest,
+    index_values: &IndexValuesMap,
+    timeline: Option<Index>,
+) {
+    let Some(index_values) = index_values.as_ref() else {
+        return; // no `using_index_values`, nothing to push
+    };
+    let Some(timeline) = timeline else {
+        return; // static-only query, no index to bound
+    };
+    // The contract requires non-empty, positionally-matched segment ids. An
+    // unscoped reader (no `filter_segments`) sends none, so there is nothing to
+    // align against.
+    if query_request.segment_ids.is_empty() {
+        return;
+    }
+    let per_segment_values = per_segment_values_aligned(&query_request.segment_ids, index_values);
+
+    let Some(query) = query_request.query.as_mut() else {
+        return;
+    };
+    query.latest_at = Some(QueryLatestAt {
+        index: Some(timeline),
+        at: IndexValue::STATIC,
+        per_segment_values,
+    });
+    query.range = None;
+}
+
+/// Build `QueryLatestAt.per_segment_values` for `segment_ids`, looking each up in `index_values`.
+///
+/// One list per segment, in order, since the server matches them positionally against `QueryDatasetRequest.segment_ids`.
+/// Segments absent from the map get an empty list and `STATIC` values are skipped.
+fn per_segment_values_aligned(
+    segment_ids: &[SegmentId],
+    index_values: &BTreeMap<SegmentId, BTreeSet<IndexValue>>,
+) -> Vec<Vec<i64>> {
+    segment_ids
+        .iter()
+        .map(|segment_id| {
+            index_values
+                .get(segment_id)
+                .map(|values| {
+                    values
+                        .iter()
+                        .filter(|value| !value.is_static())
+                        .map(|value| value.as_i64())
+                        .collect()
+                })
+                .unwrap_or_default()
+        })
+        .collect()
 }
 
 /// Build a server-side [`Query`] from a [`QueryExpression`].
@@ -1175,26 +1233,15 @@ fn compute_unique_chunk_info_ids(
     let combined = concat_batches(&schema, &chunk_info_batches)?;
     drop(chunk_info_batches);
 
-    // Find the chunk_id column
-    let chunk_id_col = combined
-        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-        .ok_or(exec_datafusion_err!("chunk_id column not found"))?;
-
-    let chunk_id_array = chunk_id_col
-        .as_any()
-        .downcast_ref::<FixedSizeBinaryArray>()
-        .ok_or(exec_datafusion_err!("chunk_id is not FixedSizeBinary"))?;
+    let chunk_ids = QueryDatasetDataframe::COLUMN_CHUNK_ID
+        .extract(&combined)
+        .map_err(|err| exec_datafusion_err!("{err}"))?;
 
     let mut indices_to_keep = Vec::new();
     let mut seen: HashSet<[u8; 16]> = HashSet::default();
 
-    for row_idx in 0..combined.num_rows() {
-        let chunk_id = chunk_id_array.value(row_idx);
-        let chunk_id_fixed: [u8; 16] = chunk_id
-            .try_into()
-            .expect("chunk_id should be exactly 16 bytes");
-
-        if seen.insert(chunk_id_fixed) {
+    for (row_idx, chunk_id) in chunk_ids.iter().enumerate() {
+        if seen.insert(*chunk_id) {
             indices_to_keep.push(row_idx as u32);
         }
     }
@@ -1214,16 +1261,194 @@ fn compute_unique_chunk_info_ids(
 mod tests {
     use std::{collections::HashMap, iter::once};
 
-    use arrow::array::{Array as _, FixedSizeBinaryArray, FixedSizeBinaryBuilder};
+    use arrow::array::{FixedSizeBinaryBuilder, StringArray};
+    use re_protos::cloud::v1alpha1::ext;
 
     use super::*;
+
+    #[test]
+    fn per_segment_values_align_to_segment_ids_order() {
+        let seg = |s: &str| SegmentId::from(s);
+        let at = IndexValue::new_temporal;
+
+        let index_values: BTreeMap<SegmentId, BTreeSet<IndexValue>> = [
+            (seg("a"), BTreeSet::from([at(30), at(10), at(20)])),
+            (seg("b"), BTreeSet::from([at(5)])),
+        ]
+        .into_iter()
+        .collect();
+
+        // Output is positionally matched to `segment_ids`
+        // "b" comes first here, and "c" (absent from the map) yields an empty list rather than being skipped.
+        let segment_ids = [seg("b"), seg("a"), seg("c")];
+        let values = per_segment_values_aligned(&segment_ids, &index_values);
+
+        assert_eq!(values, vec![vec![5], vec![10, 20, 30], vec![]]);
+    }
+
+    #[test]
+    fn per_segment_values_skip_static() {
+        let index_values: BTreeMap<SegmentId, BTreeSet<IndexValue>> = std::iter::once((
+            SegmentId::from("a"),
+            BTreeSet::from([IndexValue::STATIC, IndexValue::new_temporal(7)]),
+        ))
+        .collect();
+
+        let values = per_segment_values_aligned(&[SegmentId::from("a")], &index_values);
+
+        assert_eq!(values, vec![vec![7]]);
+    }
+
+    /// Per-segment pushdown stays aligned with `segment_ids` when a
+    /// `rerun_segment_id` predicate narrows them, and rewrites the survivor into
+    /// the bounded encoding: sorted `per_segment_values`, `range` dropped, and `at`
+    /// parked at STATIC against the query's index.
+    #[test]
+    fn segment_id_filter_keeps_per_segment_values_aligned() {
+        use datafusion::logical_expr::{col, lit};
+
+        let seg = |s: &str| SegmentId::from(s);
+        let at = IndexValue::new_temporal;
+        let timeline = Index::new("my_index");
+
+        // Three scoped segments, each sampled at specific index values, as set by
+        // `filter_segments([…]).reader(using_index_values={…})`.
+        let segment_ids = vec![seg("a"), seg("b"), seg("c")];
+        // "b" carries two values so the survivor exercises sorted multi-value emission.
+        let map: BTreeMap<SegmentId, BTreeSet<IndexValue>> = [
+            (seg("a"), BTreeSet::from([at(10), at(20)])),
+            (seg("b"), BTreeSet::from([at(15), at(5)])),
+            (seg("c"), BTreeSet::from([at(7), at(8)])),
+        ]
+        .into_iter()
+        .collect();
+        let index_values: IndexValuesMap = Some(Arc::new(map));
+
+        // Baseline request as built before any pushdown: a temporal `range`, and
+        // no `per_segment_values` yet (the pushdown is deferred to `scan`).
+        let request = QueryDatasetRequest {
+            segment_ids: segment_ids.clone(),
+            query: Some(Query {
+                latest_at: None,
+                range: Some(QueryRange {
+                    index: timeline,
+                    index_range: re_log_types::AbsoluteTimeRange::new(at(0), at(100)),
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // 1. A `WHERE rerun_segment_id = 'b'` predicate is pushed down, narrowing
+        //    `segment_ids` exactly as `scan`'s filter loop does. (The index field's
+        //    `rerun:kind=index` metadata is irrelevant to a segment-id predicate,
+        //    but mirrors a real query schema.)
+        let schema = {
+            let mut index_meta = HashMap::new();
+            index_meta.insert(
+                re_sorbet::metadata::RERUN_KIND.to_owned(),
+                "index".to_owned(),
+            );
+            Arc::new(Schema::new_with_metadata(
+                vec![
+                    Field::new("my_index", DataType::Int64, false).with_metadata(index_meta),
+                    Field::new("rerun_segment_id", DataType::Utf8, false),
+                ],
+                HashMap::default(),
+            ))
+        };
+        let expr = col("rerun_segment_id").eq(lit("b"));
+        let mut narrowed = apply_filter_expr_to_queries(vec![request], &expr, &schema, false)
+            .unwrap()
+            .expect("segment-id predicate is pushed down");
+        assert_eq!(narrowed.len(), 1);
+
+        // 2. Per-segment pushdown runs after narrowing and aligns to the survivor.
+        apply_per_segment_pushdown(&mut narrowed[0], &index_values, Some(timeline));
+
+        let narrowed = &narrowed[0];
+        assert_eq!(narrowed.segment_ids, vec![seg("b")]);
+
+        // `per_segment_values` is aligned to the surviving segment "b" → `[[5, 15]]`
+        // (sorted), not the stale full `[[10, 20], [5, 15], [7, 8]]`. `range` is
+        // cleared and `at` parked at STATIC against the query's index — the encoding
+        // required alongside `per_segment_values`.
+        let query = narrowed.query.as_ref().unwrap();
+        let la = query.latest_at.as_ref().unwrap();
+        assert_eq!(
+            la.per_segment_values,
+            vec![vec![5, 15]],
+            "per_segment_values must align to the surviving segment_ids, sorted"
+        );
+        assert_eq!(la.index, Some(timeline));
+        assert_eq!(la.at, IndexValue::STATIC);
+        assert!(query.range.is_none());
+
+        let wire: re_protos::cloud::v1alpha1::QueryDatasetRequest = narrowed.clone().into();
+        re_protos::cloud::v1alpha1::ext::QueryDatasetRequest::try_from(wire)
+            .expect("server must accept the request after segment-id narrowing");
+    }
+
+    /// `apply_per_segment_pushdown` only fires for a scoped temporal query with
+    /// sampled values. Every other case leaves the request untouched, so the
+    /// server falls back to its normal full per-segment scan.
+    #[test]
+    fn pushdown_is_noop_unless_scoped_temporal() {
+        let seg = |s: &str| SegmentId::from(s);
+        let timeline = Index::new("my_index");
+        let values: IndexValuesMap = Some(Arc::new(
+            once((seg("a"), BTreeSet::from([IndexValue::new_temporal(10)]))).collect(),
+        ));
+
+        let baseline = || QueryDatasetRequest {
+            segment_ids: vec![seg("a")],
+            query: Some(Query {
+                latest_at: None,
+                range: Some(QueryRange {
+                    index: timeline,
+                    index_range: re_log_types::AbsoluteTimeRange::new(
+                        IndexValue::new_temporal(0),
+                        IndexValue::new_temporal(100),
+                    ),
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let assert_untouched = |request: &QueryDatasetRequest| {
+            let query = request.query.as_ref().unwrap();
+            assert!(query.range.is_some(), "range must survive a no-op");
+            assert!(
+                query.latest_at.is_none(),
+                "no `per_segment_values` must be pushed on a no-op"
+            );
+        };
+
+        // No `using_index_values`.
+        let no_values: IndexValuesMap = None;
+        let mut req = baseline();
+        apply_per_segment_pushdown(&mut req, &no_values, Some(timeline));
+        assert_untouched(&req);
+
+        // Static-only query: no index to bound against.
+        let mut req = baseline();
+        apply_per_segment_pushdown(&mut req, &values, None);
+        assert_untouched(&req);
+
+        // Unscoped reader: no `segment_ids` to align values to.
+        let mut req = baseline();
+        req.segment_ids.clear();
+        apply_per_segment_pushdown(&mut req, &values, Some(timeline));
+        assert_untouched(&req);
+    }
 
     #[test]
     fn test_batches_grouping() {
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                QueryDatasetResponse::field_chunk_segment_id(),
-                QueryDatasetResponse::field_chunk_id(),
+                Arc::new(ext::QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field()),
+                Arc::new(ext::QueryDatasetDataframe::COLUMN_CHUNK_ID.arrow_field()),
             ],
             HashMap::default(),
         ));
@@ -1274,66 +1499,48 @@ mod tests {
 
         assert_eq!(grouped.len(), 4);
 
+        fn chunk_ids_of(batch: &RecordBatch) -> Vec<re_types_core::ChunkId> {
+            QueryDatasetDataframe::COLUMN_CHUNK_ID
+                .extract(batch)
+                .unwrap()
+                .to_vec()
+        }
+
         let group_a = grouped.get("A").unwrap();
         assert_eq!(group_a.len(), 1);
-        let chunk_ids_a = group_a[0]
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .unwrap();
-        assert_eq!(chunk_ids_a.len(), 2);
-        assert_eq!(chunk_ids_a.value(0), [0u8; 16]);
-        assert_eq!(chunk_ids_a.value(1), [2u8; 16]);
+        assert_eq!(
+            chunk_ids_of(&group_a[0]),
+            [[0u8; 16], [2u8; 16]].map(re_types_core::ChunkId::from)
+        );
 
         let group_b = grouped.get("B").unwrap();
         assert_eq!(group_b.len(), 2);
-        let chunk_ids_b1 = group_b[0]
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .unwrap();
-        assert_eq!(chunk_ids_b1.len(), 1);
-        assert_eq!(chunk_ids_b1.value(0), [1u8; 16]);
-        let chunk_ids_b2 = group_b[1]
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .unwrap();
-        assert_eq!(chunk_ids_b2.len(), 1);
-        assert_eq!(chunk_ids_b2.value(0), [4u8; 16]);
+        assert_eq!(
+            chunk_ids_of(&group_b[0]),
+            [[1u8; 16]].map(re_types_core::ChunkId::from)
+        );
+        assert_eq!(
+            chunk_ids_of(&group_b[1]),
+            [[4u8; 16]].map(re_types_core::ChunkId::from)
+        );
 
         let group_c = grouped.get("C").unwrap();
         assert_eq!(group_c.len(), 2);
-        let chunk_ids_c1 = group_c[0]
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .unwrap();
-        assert_eq!(chunk_ids_c1.len(), 1);
-        assert_eq!(chunk_ids_c1.value(0), [3u8; 16]);
-        let chunk_ids_c2 = group_c[1]
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .unwrap();
-        assert_eq!(chunk_ids_c2.len(), 1);
-        assert_eq!(chunk_ids_c2.value(0), [5u8; 16]);
+        assert_eq!(
+            chunk_ids_of(&group_c[0]),
+            [[3u8; 16]].map(re_types_core::ChunkId::from)
+        );
+        assert_eq!(
+            chunk_ids_of(&group_c[1]),
+            [[5u8; 16]].map(re_types_core::ChunkId::from)
+        );
 
         let group_d = grouped.get("D").unwrap();
         assert_eq!(group_d.len(), 1);
-        let chunk_ids_d = group_d[0]
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .unwrap();
-        assert_eq!(chunk_ids_d.len(), 1);
-        assert_eq!(chunk_ids_d.value(0), [6u8; 16]);
+        assert_eq!(
+            chunk_ids_of(&group_d[0]),
+            [[6u8; 16]].map(re_types_core::ChunkId::from)
+        );
     }
 
     // ==================== Entity path projection pushdown tests ====================
@@ -1761,9 +1968,9 @@ mod tests {
 
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                QueryDatasetResponse::field_chunk_segment_id(),
-                QueryDatasetResponse::field_chunk_layer_name(),
-                QueryDatasetResponse::field_chunk_byte_len(),
+                Arc::new(ext::QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field()),
+                Arc::new(ext::QueryDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER.arrow_field()),
+                Arc::new(ext::QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN.arrow_field()),
             ],
             HashMap::default(),
         ));

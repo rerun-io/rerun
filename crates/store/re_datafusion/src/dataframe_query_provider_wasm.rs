@@ -6,11 +6,12 @@ use std::sync::{Arc, atomic::AtomicBool};
 use std::task::{Context, Poll};
 
 use crate::DataframeClientAPI;
-use crate::dataframe_query_common::{IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id};
+use crate::dataframe_query_common::{
+    IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id, segment_partition_hash,
+};
 use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-use datafusion::common::hash_utils::HashValue as _;
 use datafusion::common::plan_err;
 use datafusion::config::ConfigOptions;
 use datafusion::error::DataFusionError;
@@ -35,20 +36,22 @@ use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
 use re_log_types::{StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::{FetchChunksRequest, ScanSegmentTableResponse};
+use re_protos::cloud::v1alpha1::FetchChunksRequest;
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
+use re_types_core::SegmentId;
 use tokio::runtime::Handle;
 use tonic::IntoRequest as _;
 
 #[derive(Debug)]
 pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
-    props: PlanProperties,
+    props: Arc<PlanProperties>,
 
     /// Describes the chunks per segment, derived from `chunk_info_batches`.
     /// We keep both around so that we only have to process once, but we may
     /// reuse multiple times in theory. We may also need to recompute if the
     /// user asks for a different target partition. These are generally not
     /// too large.
-    chunk_info: Arc<BTreeMap<String, Vec<RecordBatch>>>,
+    chunk_info: Arc<BTreeMap<SegmentId, Vec<RecordBatch>>>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
     target_partitions: usize,
@@ -78,9 +81,9 @@ pub struct DataframeSegmentStream<T: DataframeClientAPI> {
     projected_schema: SchemaRef,
     client: T,
     chunk_infos: Vec<RecordBatch>,
-    current_query: Option<(String, QueryHandle<StorageEngine>)>,
+    current_query: Option<(SegmentId, QueryHandle<StorageEngine>)>,
     query_expression: QueryExpression,
-    remaining_segment_ids: Vec<String>,
+    remaining_segment_ids: Vec<SegmentId>,
 
     /// Pending query analytics — kept alive so the event fires on drop.
     pending_analytics: crate::PendingQueryAnalytics,
@@ -290,8 +293,10 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             None => Arc::clone(table_schema),
         };
 
-        let partition_col = Arc::new(Column::new(ScanSegmentTableResponse::FIELD_SEGMENT_ID, 0))
-            as Arc<dyn PhysicalExpr>;
+        let partition_col = Arc::new(Column::new(
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            0,
+        )) as Arc<dyn PhysicalExpr>;
         let order_col = sort_index
             .and_then(|index| {
                 let index_name = index.as_str();
@@ -328,7 +333,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         let output_partitioning = if partition_in_output_schema {
             Partitioning::Hash(
                 vec![Arc::new(Column::new(
-                    ScanSegmentTableResponse::FIELD_SEGMENT_ID,
+                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
                     0,
                 ))],
                 num_partitions,
@@ -342,7 +347,8 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             output_partitioning,
             EmissionType::Incremental,
             Boundedness::Bounded,
-        );
+        )
+        .into();
 
         let chunk_info = group_chunk_infos_by_segment_id(chunk_info_batches.as_slice())?;
         drop(chunk_info_batches);
@@ -370,7 +376,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
 #[tracing::instrument(level = "trace", skip_all)]
 fn create_next_row(
     query_handle: &mut QueryHandle<StorageEngine>,
-    segment_id: &str,
+    segment_id: &SegmentId,
     target_schema: &Arc<Schema>,
 ) -> ApiResult<Option<RecordBatch>> {
     let query_schema = Arc::clone(query_handle.schema());
@@ -392,7 +398,7 @@ fn create_next_row(
 
     let num_rows = next_row[0].len();
     let sid_array =
-        Arc::new(StringArray::from(vec![segment_id.to_owned(); num_rows])) as Arc<dyn Array>;
+        Arc::new(StringArray::from(vec![segment_id.to_string(); num_rows])) as Arc<dyn Array>;
 
     let mut arrays = Vec::with_capacity(num_fields + 1);
     arrays.push(sid_array);
@@ -400,7 +406,7 @@ fn create_next_row(
 
     let batch_schema = Arc::new(prepend_string_column_schema(
         &query_schema,
-        ScanSegmentTableResponse::FIELD_SEGMENT_ID,
+        ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
     ));
 
     let batch = RecordBatch::try_new_with_options(
@@ -432,7 +438,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         self
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.props
     }
 
@@ -474,13 +480,19 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             snapshot_sent: Arc::clone(&self.snapshot_sent),
         };
 
-        plan.props.partitioning = match plan.props.partitioning {
+        let partitioning = match &plan.props.as_ref().partitioning {
             Partitioning::RoundRobinBatch(_) => Partitioning::RoundRobinBatch(target_partitions),
             Partitioning::UnknownPartitioning(_) => {
                 Partitioning::UnknownPartitioning(target_partitions)
             }
-            Partitioning::Hash(expr, _) => Partitioning::Hash(expr, target_partitions),
+            Partitioning::Hash(expr, _) => Partitioning::Hash(expr.clone(), target_partitions),
         };
+        plan.props = self
+            .props
+            .as_ref()
+            .clone()
+            .with_partitioning(partitioning)
+            .into();
 
         Ok(Some(Arc::new(plan) as Arc<dyn ExecutionPlan>))
     }
@@ -496,7 +508,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             .chunk_info
             .keys()
             .filter(|segment_id| {
-                let hash_value = segment_id.hash_one(&random_state) as usize;
+                let hash_value = segment_partition_hash(segment_id, &random_state) as usize;
                 hash_value % self.target_partitions == partition
             })
             .cloned()

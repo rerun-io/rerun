@@ -45,11 +45,13 @@ impl ForcePosition {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-            component: "ForcePosition:enabled".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+                component: "ForcePosition:enabled".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
@@ -57,11 +59,13 @@ impl ForcePosition {
     /// The corresponding component is [`crate::blueprint::components::ForceStrength`].
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-            component: "ForcePosition:strength".into(),
-            component_type: Some("rerun.blueprint.components.ForceStrength".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+                component: "ForcePosition:strength".into(),
+                component_type: Some("rerun.blueprint.components.ForceStrength".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::position`].
@@ -69,11 +73,13 @@ impl ForcePosition {
     /// The corresponding component is [`crate::components::Position2D`].
     #[inline]
     pub fn descriptor_position() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-            component: "ForcePosition:position".into(),
-            component_type: Some("rerun.components.Position2D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+                component: "ForcePosition:position".into(),
+                component_type: Some("rerun.components.Position2D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -109,7 +115,10 @@ impl ForcePosition {
 impl ::re_types_core::Archetype for ForcePosition {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ForcePosition".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ForcePosition"
+        )
     }
 
     #[inline]

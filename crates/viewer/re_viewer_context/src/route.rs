@@ -10,7 +10,7 @@ pub enum Route {
     /// The settings dialog for application-wide configuration.
     Settings {
         /// What to return to when exiting this mode.
-        previous: Box<Self>,
+        return_route: Box<Self>,
     },
 
     // TODO(isse): It would be nice to only switch to newly loaded items if we
@@ -19,6 +19,8 @@ pub enum Route {
     Loading(Box<re_log_channel::LogSource>),
 
     /// Regular view of the local recordings, including the current recording's viewport.
+    ///
+    /// This includes recordings we're streaming from a Redap server.
     LocalRecording {
         recording_id: StoreId,
         // TODO(RR-3033): add blueprint id
@@ -46,7 +48,7 @@ pub enum Route {
         selected_chunk: Option<ChunkId>,
 
         /// What to return to when exiting this mode.
-        previous: Box<Self>,
+        return_route: Box<Self>,
     },
 }
 
@@ -86,7 +88,7 @@ impl Route {
         match self {
             Self::LocalRecording { recording_id } => Some(recording_id),
             Self::ChunkStoreBrowser { store_id, .. } => store_id.as_ref(),
-            Self::Settings { previous } => previous.recording_id(),
+            Self::Settings { return_route } => return_route.recording_id(),
             Self::Loading { .. }
             | Self::LocalTable { .. }
             | Self::RedapEntry { .. }
@@ -101,7 +103,7 @@ impl Route {
             Self::ChunkStoreBrowser { store_id, .. } => {
                 store_id.as_ref().map(StoreId::application_id)
             }
-            Self::Settings { previous } => previous.app_id(),
+            Self::Settings { return_route } => return_route.app_id(),
             Self::RedapServer(server) => {
                 if server == &*EXAMPLES_ORIGIN {
                     Some(crate::StoreHub::welcome_screen_app_id())
@@ -197,12 +199,12 @@ impl Route {
                 Some(uri.origin().clone())
             }
 
-            Self::Settings { previous }
+            Self::Settings { return_route }
             | Self::ChunkStoreBrowser {
                 store_id: None,
-                previous,
+                return_route,
                 ..
-            } => previous.redap_origin(store_hub),
+            } => return_route.redap_origin(store_hub),
 
             Self::Loading(log_source) => {
                 let uri = log_source.redap_uri()?;

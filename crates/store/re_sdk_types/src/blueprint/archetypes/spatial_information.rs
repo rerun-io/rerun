@@ -45,11 +45,13 @@ impl SpatialInformation {
     /// The corresponding component is [`crate::components::TransformFrameId`].
     #[inline]
     pub fn descriptor_target_frame() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
-            component: "SpatialInformation:target_frame".into(),
-            component_type: Some("rerun.components.TransformFrameId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
+                component: "SpatialInformation:target_frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_axes`].
@@ -57,11 +59,13 @@ impl SpatialInformation {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_show_axes() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
-            component: "SpatialInformation:show_axes".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
+                component: "SpatialInformation:show_axes".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_bounding_box`].
@@ -69,11 +73,13 @@ impl SpatialInformation {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_show_bounding_box() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
-            component: "SpatialInformation:show_bounding_box".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
+                component: "SpatialInformation:show_bounding_box".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -109,7 +115,10 @@ impl SpatialInformation {
 impl ::re_types_core::Archetype for SpatialInformation {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.SpatialInformation".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.SpatialInformation"
+        )
     }
 
     #[inline]

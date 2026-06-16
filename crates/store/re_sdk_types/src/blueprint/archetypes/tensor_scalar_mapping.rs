@@ -51,11 +51,13 @@ impl TensorScalarMapping {
     /// The corresponding component is [`crate::components::MagnificationFilter`].
     #[inline]
     pub fn descriptor_mag_filter() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component: "TensorScalarMapping:mag_filter".into(),
-            component_type: Some("rerun.components.MagnificationFilter".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+                component: "TensorScalarMapping:mag_filter".into(),
+                component_type: Some("rerun.components.MagnificationFilter".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
@@ -63,11 +65,13 @@ impl TensorScalarMapping {
     /// The corresponding component is [`crate::components::Colormap`].
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component: "TensorScalarMapping:colormap".into(),
-            component_type: Some("rerun.components.Colormap".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+                component: "TensorScalarMapping:colormap".into(),
+                component_type: Some("rerun.components.Colormap".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::gamma`].
@@ -75,11 +79,13 @@ impl TensorScalarMapping {
     /// The corresponding component is [`crate::components::GammaCorrection`].
     #[inline]
     pub fn descriptor_gamma() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component: "TensorScalarMapping:gamma".into(),
-            component_type: Some("rerun.components.GammaCorrection".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+                component: "TensorScalarMapping:gamma".into(),
+                component_type: Some("rerun.components.GammaCorrection".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -115,7 +121,10 @@ impl TensorScalarMapping {
 impl ::re_types_core::Archetype for TensorScalarMapping {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TensorScalarMapping".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TensorScalarMapping"
+        )
     }
 
     #[inline]

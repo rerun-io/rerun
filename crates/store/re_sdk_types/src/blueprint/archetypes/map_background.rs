@@ -39,11 +39,13 @@ impl MapBackground {
     /// The corresponding component is [`crate::blueprint::components::MapProvider`].
     #[inline]
     pub fn descriptor_provider() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.MapBackground".into()),
-            component: "MapBackground:provider".into(),
-            component_type: Some("rerun.blueprint.components.MapProvider".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.MapBackground".into()),
+                component: "MapBackground:provider".into(),
+                component_type: Some("rerun.blueprint.components.MapProvider".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -67,7 +69,10 @@ impl MapBackground {
 impl ::re_types_core::Archetype for MapBackground {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.MapBackground".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.MapBackground"
+        )
     }
 
     #[inline]

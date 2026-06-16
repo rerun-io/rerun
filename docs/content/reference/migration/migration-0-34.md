@@ -28,3 +28,26 @@ The related `rr.send_recording()`, `RecordingStream.send_recording()`, `Recordin
 
 Use `rerun.experimental.RrdReader` instead.
 See the [0.32 migration guide](migration-0-32.md#rerunrecording-deprecated-in-favor-of-rrdreader) for more details.
+
+## Remove embedded base64-encoded table blueprints & replace with blueprint registration
+
+Table blueprints are no longer read from the Arrow schema metadata key `rerun:table_blueprint`.
+If you previously stored `base64:…` encoded `.rbl` bytes in table metadata, export that blueprint as a regular `.rbl` file and register it with `TableEntry.register_blueprint(...)` instead.
+Tables without a registered blueprint fall back to Arrow field metadata and viewer heuristics.
+
+> [!NOTE]
+> As of this release table blueprints alongside dataset preview are still regarded as an
+> experimental feature which means that the table & APIs for table blueprints may change significantly.
+
+## `DatasetEntry.manifest()` deprecated
+
+`DatasetEntry.manifest()` was always intended for internal and debugging use only and should never have been part of the public API.
+It is now marked `@deprecated` and will be removed in a future release.
+No public replacement is offered.
+
+## Remove previously deprecated SDK methods for custom indices
+
+The `DatasetEntry` methods `create_fts_search_index`,  `create_vector_search_index`, `delete_search_indexes`, `search_fts`, and `search_vector` have been removed, having been deprecated in 0.31.
+
+This change does not impact your ability to search through your dataset via [dataframe queries](https://rerun.io/docs/concepts/query-and-transform/dataframe-queries).
+

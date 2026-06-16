@@ -39,11 +39,13 @@ impl TextLogFormat {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_monospace_body() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TextLogFormat".into()),
-            component: "TextLogFormat:monospace_body".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextLogFormat".into()),
+                component: "TextLogFormat:monospace_body".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -67,7 +69,10 @@ impl TextLogFormat {
 impl ::re_types_core::Archetype for TextLogFormat {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TextLogFormat".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TextLogFormat"
+        )
     }
 
     #[inline]

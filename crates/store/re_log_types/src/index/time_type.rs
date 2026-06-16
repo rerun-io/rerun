@@ -22,8 +22,9 @@ use crate::{AbsoluteTimeRange, TimestampFormat};
     Ord,
     num_derive::FromPrimitive,
     re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
 )]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeType {
     /// Used e.g. for frames in a film.
     Sequence,

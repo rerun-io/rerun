@@ -39,11 +39,13 @@ impl NearClipPlane {
     /// The corresponding component is [`crate::blueprint::components::NearClipPlane`].
     #[inline]
     pub fn descriptor_near_clip_plane() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
-            component: "NearClipPlane:near_clip_plane".into(),
-            component_type: Some("rerun.blueprint.components.NearClipPlane".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
+                component: "NearClipPlane:near_clip_plane".into(),
+                component_type: Some("rerun.blueprint.components.NearClipPlane".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -67,7 +69,10 @@ impl NearClipPlane {
 impl ::re_types_core::Archetype for NearClipPlane {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.NearClipPlane".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.NearClipPlane"
+        )
     }
 
     #[inline]

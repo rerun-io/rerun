@@ -1476,10 +1476,10 @@ mod tests {
         assert_eq!(received_log.level, re_log::Level::WARN);
         assert!(
             received_log
-                .msg
+                .message
                 .contains("Ignoring transform at root entity"),
             "Expected warning about ignoring implicit root parent frame, got: {}",
-            received_log.msg
+            received_log.message
         );
 
         Ok(())

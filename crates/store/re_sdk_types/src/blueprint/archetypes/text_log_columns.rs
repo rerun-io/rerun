@@ -44,11 +44,13 @@ impl TextLogColumns {
     /// The corresponding component is [`crate::blueprint::components::TimelineColumn`].
     #[inline]
     pub fn descriptor_timeline_columns() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
-            component: "TextLogColumns:timeline_columns".into(),
-            component_type: Some("rerun.blueprint.components.TimelineColumn".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
+                component: "TextLogColumns:timeline_columns".into(),
+                component_type: Some("rerun.blueprint.components.TimelineColumn".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::text_log_columns`].
@@ -56,11 +58,13 @@ impl TextLogColumns {
     /// The corresponding component is [`crate::blueprint::components::TextLogColumn`].
     #[inline]
     pub fn descriptor_text_log_columns() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
-            component: "TextLogColumns:text_log_columns".into(),
-            component_type: Some("rerun.blueprint.components.TextLogColumn".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
+                component: "TextLogColumns:text_log_columns".into(),
+                component_type: Some("rerun.blueprint.components.TextLogColumn".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -94,7 +98,10 @@ impl TextLogColumns {
 impl ::re_types_core::Archetype for TextLogColumns {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TextLogColumns".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TextLogColumns"
+        )
     }
 
     #[inline]

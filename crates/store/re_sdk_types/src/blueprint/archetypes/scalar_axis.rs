@@ -42,11 +42,13 @@ impl ScalarAxis {
     /// The corresponding component is [`crate::components::Range1D`].
     #[inline]
     pub fn descriptor_range() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
-            component: "ScalarAxis:range".into(),
-            component_type: Some("rerun.components.Range1D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
+                component: "ScalarAxis:range".into(),
+                component_type: Some("rerun.components.Range1D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::zoom_lock`].
@@ -54,11 +56,13 @@ impl ScalarAxis {
     /// The corresponding component is [`crate::blueprint::components::LockRangeDuringZoom`].
     #[inline]
     pub fn descriptor_zoom_lock() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
-            component: "ScalarAxis:zoom_lock".into(),
-            component_type: Some("rerun.blueprint.components.LockRangeDuringZoom".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
+                component: "ScalarAxis:zoom_lock".into(),
+                component_type: Some("rerun.blueprint.components.LockRangeDuringZoom".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -92,7 +96,10 @@ impl ScalarAxis {
 impl ::re_types_core::Archetype for ScalarAxis {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ScalarAxis".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ScalarAxis"
+        )
     }
 
     #[inline]

@@ -1,35 +1,23 @@
 use std::sync::Arc;
 
-use arrow::array::{RecordBatch, RecordBatchOptions, StringArray};
-use arrow::datatypes::{Field, Schema as ArrowSchema};
+use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyOverflowError, PyRuntimeError, PyValueError};
 use pyo3::types::PyAnyMethods as _;
-use pyo3::{Bound, Py, PyAny, PyErr, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
+use pyo3::{Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::LazyStore;
-use re_datafusion::{DatasetManifestProvider, SearchResultsTableProvider, SegmentTableProvider};
+use re_datafusion::{DatasetManifestProvider, SegmentTableProvider};
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::ext::{
-    DatasetDetails, DatasetEntry, EntryDetails, IndexProperties,
-};
-use re_protos::cloud::v1alpha1::{
-    CreateIndexRequest, DeleteIndexesRequest, IndexConfig, IndexQueryProperties,
-    InvertedIndexQuery, ListIndexesRequest, SearchDatasetRequest, VectorIndexQuery,
-    index_query_properties,
-};
+use re_protos::cloud::v1alpha1::ext::{DatasetDetails, DatasetEntry, EntryDetails};
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
-use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::SegmentChunkProvider;
-use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
+use re_sorbet::SorbetColumnDescriptors;
 use re_types_core::LayerName;
 
 use super::registration_handle::PyRegistrationHandleInternal;
-use super::{
-    PyCatalogClientInternal, PyEntryDetails, PyIndexConfig, PyIndexingResult,
-    PyTableProviderAdapterInternal, VectorDistanceMetricLike, VectorLike, to_py_err,
-};
+use super::{PyCatalogClientInternal, PyEntryDetails, PyTableProviderAdapterInternal, to_py_err};
+use crate::catalog::PySchemaInternal;
 use crate::catalog::entry::set_entry_name;
-use crate::catalog::{AnyComponentColumn, PyIndexColumnSelector, PySchemaInternal};
 use crate::chunk_stream::lazy_store::PyLazyStoreInternal;
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::{get_tokio_runtime, wait_for_future};
@@ -151,6 +139,41 @@ impl PyDatasetEntryInternal {
 
         let mut dataset_details = self_.dataset_details.clone();
         dataset_details.default_blueprint_segment = segment_id.map(Into::into);
+
+        let result = connection.update_dataset(py, self_.entry_details.id, dataset_details)?;
+
+        self_.dataset_details = result.dataset_details;
+
+        Ok(())
+    }
+
+    /// The default segment table blueprint segment ID for this dataset, if any.
+    fn default_segment_table_blueprint_segment_id(self_: PyRef<'_, Self>) -> Option<String> {
+        self_
+            .dataset_details
+            .default_segment_table_blueprint_segment
+            .as_ref()
+            .map(ToString::to_string)
+    }
+
+    /// Set the default segment table blueprint segment ID for this dataset.
+    ///
+    /// Pass `None` to clear the blueprint. This fails if the change cannot be made to the remote server.
+    #[pyo3(signature = (segment_id))]
+    fn set_default_segment_table_blueprint_segment_id(
+        mut self_: PyRefMut<'_, Self>,
+        py: Python<'_>,
+        segment_id: Option<String>,
+    ) -> PyResult<()> {
+        let _span = read_trace_context_from_python(
+            py,
+            "DatasetEntry.set_default_segment_table_blueprint_segment_id",
+        )
+        .entered();
+        let connection = self_.client.borrow(py).connection().clone();
+
+        let mut dataset_details = self_.dataset_details.clone();
+        dataset_details.default_segment_table_blueprint_segment = segment_id.map(Into::into);
 
         let result = connection.update_dataset(py, self_.entry_details.id, dataset_details)?;
 
@@ -288,7 +311,7 @@ impl PyDatasetEntryInternal {
         Ok(re_uri::DatasetSegmentUri {
             origin: connection.origin().clone(),
             dataset_id: self_.entry_details.id.id,
-            segment_id,
+            segment_id: SegmentId::from(segment_id),
             fragment: re_uri::Fragment {
                 selection: None,
                 when: timeline.map(|timeline| {
@@ -459,6 +482,57 @@ impl PyDatasetEntryInternal {
         ))
     }
 
+    /// Register a single RRD URI as an asset layer (shared across all segments in the dataset).
+    ///
+    /// Unlike segment layers (one recording per segment), an asset layer is a single recording
+    /// that is shared across all segments. This is useful for deduplicating common assets such
+    /// as robot URDFs or environment meshes.
+    ///
+    /// !!! warning
+    ///     This is an incomplete, experimental API and may change or be removed in future versions without
+    ///     going through the normal deprecation cycle.
+    ///
+    /// Parameters
+    /// ----------
+    /// layer_name: str
+    ///     The name of the asset layer.
+    ///
+    /// recording_uri: str
+    ///     The URI of the RRD recording to register as the asset.
+    ///
+    /// on_duplicate: str
+    ///     How to handle the case where the layer already exists. One of "error", "skip", or "replace".
+    #[pyo3(name = "_register_asset_layer")]
+    #[pyo3(signature = (*, layer_name, recording_uri, on_duplicate))]
+    #[pyo3(text_signature = "(self, /, *, layer_name, recording_uri, on_duplicate)")]
+    fn register_asset_layer(
+        self_: PyRef<'_, Self>,
+        layer_name: String,
+        recording_uri: String,
+        on_duplicate: &str,
+    ) -> PyResult<PyRegistrationHandleInternal> {
+        let py = self_.py();
+        let _span =
+            // TODO(RR-4797): remove experimental status
+            read_trace_context_from_python(py, "DatasetEntry._register_asset_layer").entered();
+        let connection = self_.client.borrow(py).connection().clone();
+        let on_duplicate = parse_on_duplicate(on_duplicate)?;
+
+        let (request_trace_id, results) = connection.register_asset_layer(
+            py,
+            self_.entry_details.id,
+            recording_uri,
+            LayerName::new(layer_name),
+            on_duplicate,
+        )?;
+
+        Ok(PyRegistrationHandleInternal::new(
+            self_.client.clone_ref(py),
+            results,
+            request_trace_id,
+        ))
+    }
+
     /// Open a remote segment as a [`LazyStore`][rerun.experimental.LazyStore].
     ///
     /// One round-trip on construction (the manifest); chunks are fetched on
@@ -484,338 +558,6 @@ impl PyDatasetEntryInternal {
 
         let lazy = LazyStore::new(Arc::new(provider));
         Ok(PyLazyStoreInternal::new(lazy))
-    }
-
-    // TODO(RR-2824): we should have a generic `create_index(PyIndexConfig)`
-
-    /// Create a full-text search index on the given column.
-    #[pyo3(signature = (
-            *,
-            column,
-            time_index,
-            store_position = false,
-            base_tokenizer = "simple",
-        ))]
-    fn create_fts_search_index(
-        self_: PyRef<'_, Self>,
-        column: AnyComponentColumn,
-        time_index: PyIndexColumnSelector,
-        store_position: bool,
-        base_tokenizer: &str,
-    ) -> PyResult<()> {
-        let _span =
-            read_trace_context_from_python(self_.py(), "DatasetEntry.create_fts_search_index")
-                .entered();
-        let connection = self_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = self_.entry_details.id;
-        let time_selector: TimeColumnSelector = time_index.into();
-
-        let schema = Self::fetch_schema(&self_)?;
-        let component_descriptor = schema.column_for_selector(column)?;
-
-        let properties = IndexProperties::Inverted {
-            store_position,
-            base_tokenizer: base_tokenizer.into(),
-        };
-
-        let request = CreateIndexRequest {
-            config: Some(IndexConfig {
-                properties: Some(properties.into()),
-                column: Some(component_descriptor.0.into()),
-                time_index: Some(time_selector.timeline.into()),
-            }),
-        };
-
-        wait_for_future(self_.py(), async {
-            connection
-                .client()
-                .await?
-                .inner()
-                .create_index(tonic::Request::new(request).with_entry_id(dataset_id))
-                .await
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
-            Ok(())
-        })
-    }
-
-    /// Create a vector index on the given column.
-    ///
-    /// This will enable indexing and build the vector index over all existing values
-    /// in the specified component column.
-    ///
-    /// Results can be retrieved using the `search_vector` API, which will include
-    /// the time-point on the indexed timeline.
-    ///
-    /// Only one index can be created per component column -- executing this a second
-    /// time for the same component column will replace the existing index.
-    ///
-    /// Parameters
-    /// ----------
-    /// column : AnyComponentColumn
-    ///     The component column to create the index on.
-    /// time_index : IndexColumnSelector
-    ///     Which timeline this index will map to.
-    /// target_partition_num_rows : int | None
-    ///     The target size (in number of rows) for each partition.
-    ///     The underlying indexer (lance) will pick a default when no value
-    ///     is specified - today this is 8192. It will also cap the
-    ///     maximum number of partitions independently of this setting - currently
-    ///     4096.
-    /// num_sub_vectors : int
-    ///     The number of sub-vectors to use when building the index.
-    /// distance_metric : VectorDistanceMetricLike
-    ///     The distance metric to use for the index. ("L2", "Cosine", "Dot", "Hamming")
-    #[pyo3(signature = (
-        *,
-        column,
-        time_index,
-        target_partition_num_rows = None,
-        num_sub_vectors = 16,
-        distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
-    ))]
-    fn create_vector_search_index(
-        self_: PyRef<'_, Self>,
-        column: AnyComponentColumn,
-        time_index: PyIndexColumnSelector,
-        target_partition_num_rows: Option<u32>,
-        num_sub_vectors: u32,
-        distance_metric: VectorDistanceMetricLike,
-    ) -> PyResult<PyIndexingResult> {
-        let _span =
-            read_trace_context_from_python(self_.py(), "DatasetEntry.create_vector_search_index")
-                .entered();
-        let connection = self_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = self_.entry_details.id;
-
-        let time_selector: TimeColumnSelector = time_index.into();
-
-        let schema = Self::fetch_schema(&self_)?;
-        let component_descriptor = schema.column_for_selector(column)?;
-
-        let distance_metric: re_protos::cloud::v1alpha1::VectorDistanceMetric =
-            distance_metric.try_into()?;
-
-        let properties = IndexProperties::VectorIvfPq {
-            target_partition_num_rows,
-            num_sub_vectors,
-            metric: distance_metric,
-        };
-
-        let config = re_protos::cloud::v1alpha1::ext::IndexConfig {
-            time_index: time_selector.timeline,
-            column: component_descriptor.0.clone().into(),
-            properties: properties.clone(),
-        };
-
-        let request = CreateIndexRequest {
-            config: Some(IndexConfig {
-                properties: Some(properties.into()),
-                column: Some(component_descriptor.0.into()),
-                time_index: Some(time_selector.timeline.into()),
-            }),
-        };
-
-        wait_for_future(self_.py(), async {
-            let result = connection
-                .client()
-                .await?
-                .inner()
-                .create_index(tonic::Request::new(request).with_entry_id(dataset_id))
-                .await
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-                .into_inner();
-
-            Ok(PyIndexingResult {
-                index: config.into(),
-                statistics_json: result.statistics_json,
-                debug_info: result.debug_info,
-            })
-        })
-    }
-
-    /// List all user-defined indexes in this dataset.
-    fn list_search_indexes(self_: PyRef<'_, Self>) -> PyResult<Vec<PyIndexingResult>> {
-        let _span = read_trace_context_from_python(self_.py(), "DatasetEntry.list_search_indexes")
-            .entered();
-        let connection = self_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = self_.entry_details.id;
-
-        let request = ListIndexesRequest {};
-
-        wait_for_future(self_.py(), async {
-            let result = connection
-                .client()
-                .await?
-                .inner()
-                .list_indexes(tonic::Request::new(request).with_entry_id(dataset_id))
-                .await
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-                .into_inner();
-
-            let indexes: Result<Vec<_>, PyErr> = result
-                .indexes
-                .into_iter()
-                .map(|index| {
-                    let index = re_protos::cloud::v1alpha1::ext::IndexConfig::try_from(index)?;
-                    Ok(PyIndexConfig::from(index))
-                })
-                .collect();
-
-            Ok(itertools::izip!(indexes?, result.statistics_json)
-                .map(|(index, statistics_json)| PyIndexingResult {
-                    index,
-                    statistics_json,
-                    debug_info: None,
-                })
-                .collect())
-        })
-    }
-
-    /// Deletes all user-defined indexes for the specified column.
-    //
-    // TODO(RR-2824): this should also be capable of accepting a `PyIndexConfig` directly.
-    fn delete_search_indexes(
-        self_: PyRef<'_, Self>,
-        column: AnyComponentColumn,
-    ) -> PyResult<Vec<PyIndexConfig>> {
-        let _span =
-            read_trace_context_from_python(self_.py(), "DatasetEntry.delete_search_indexes")
-                .entered();
-        let connection = self_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = self_.entry_details.id;
-
-        let schema = Self::fetch_schema(&self_)?;
-        let component_descriptor = schema.column_for_selector(column)?;
-
-        let request = DeleteIndexesRequest {
-            column: Some(component_descriptor.0.into()),
-        };
-
-        wait_for_future(self_.py(), async {
-            let result = connection
-                .client()
-                .await?
-                .inner()
-                .delete_indexes(tonic::Request::new(request).with_entry_id(dataset_id))
-                .await
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-                .into_inner();
-
-            let indexes: Result<Vec<_>, PyErr> = result
-                .indexes
-                .into_iter()
-                .map(|index| {
-                    let index = re_protos::cloud::v1alpha1::ext::IndexConfig::try_from(index)?;
-                    Ok(PyIndexConfig::from(index))
-                })
-                .collect();
-
-            indexes
-        })
-    }
-
-    /// Search the dataset using a full-text search query.
-    fn search_fts(
-        self_: PyRef<'_, Self>,
-        query: String,
-        column: AnyComponentColumn,
-    ) -> PyResult<Bound<'_, PyAny>> {
-        let py = self_.py();
-        let _span = read_trace_context_from_python(py, "DatasetEntry.search_fts").entered();
-        let connection = self_.client.borrow(py).connection().clone();
-        let dataset_id = self_.entry_details.id;
-
-        let schema = Self::fetch_schema(&self_)?;
-        let component_descriptor = schema.column_for_selector(column)?;
-
-        let schema = arrow::datatypes::Schema::new_with_metadata(
-            vec![Field::new("items", arrow::datatypes::DataType::Utf8, false)],
-            Default::default(),
-        );
-
-        let query = RecordBatch::try_new_with_options(
-            Arc::new(schema),
-            vec![Arc::new(StringArray::from_iter_values([query]))],
-            &RecordBatchOptions::default().with_row_count(Some(1)),
-        )
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
-        let request = SearchDatasetRequest {
-            column: Some(component_descriptor.0.into()),
-            properties: Some(IndexQueryProperties {
-                props: Some(
-                    re_protos::cloud::v1alpha1::index_query_properties::Props::Inverted(
-                        InvertedIndexQuery {},
-                    ),
-                ),
-            }),
-            query: Some(query.into()),
-            scan_parameters: None,
-        };
-
-        let provider = wait_for_future(py, async move {
-            SearchResultsTableProvider::new(connection.client().await?, dataset_id, request)
-                .map_err(to_py_err)?
-                .into_provider()
-                .await
-                .map_err(to_py_err)
-        })?;
-
-        let table = PyTableProviderAdapterInternal::new(provider, false);
-
-        let client = self_.client.borrow(py);
-        let ctx = client.ctx(py)?;
-        let ctx = ctx.bind(py);
-        drop(client);
-
-        ctx.call_method1("read_table", (table,))
-    }
-
-    /// Search the dataset using a vector search query.
-    fn search_vector<'py>(
-        self_: PyRef<'py, Self>,
-        query: VectorLike<'_>,
-        column: AnyComponentColumn,
-        top_k: u32,
-    ) -> PyResult<Bound<'py, PyAny>> {
-        let py = self_.py();
-        let _span = read_trace_context_from_python(py, "DatasetEntry.search_vector").entered();
-        let connection = self_.client.borrow(py).connection().clone();
-        let dataset_id = self_.entry_details.id;
-
-        let schema = Self::fetch_schema(&self_)?;
-        let component_descriptor = schema.column_for_selector(column)?;
-
-        let query = query.to_record_batch()?;
-
-        let request = SearchDatasetRequest {
-            column: Some(component_descriptor.0.into()),
-            properties: Some(IndexQueryProperties {
-                props: Some(index_query_properties::Props::Vector(VectorIndexQuery {
-                    top_k: Some(top_k),
-                })),
-            }),
-            query: Some(query.into()),
-            scan_parameters: None,
-        };
-
-        let provider = wait_for_future(py, async move {
-            SearchResultsTableProvider::new(connection.client().await?, dataset_id, request)
-                .map_err(to_py_err)?
-                .into_provider()
-                .await
-                .map_err(to_py_err)
-        })?;
-
-        let table = PyTableProviderAdapterInternal::new(provider, false);
-
-        let client = self_.client.borrow(py);
-        let ctx = client.ctx(py)?;
-        let ctx = ctx.bind(py);
-        drop(client);
-
-        ctx.call_method1("read_table", (table,))
     }
 
     /// Perform maintenance tasks on the datasets.

@@ -45,11 +45,13 @@ impl TimeAxis {
     /// The corresponding component is [`crate::blueprint::components::LinkAxis`].
     #[inline]
     pub fn descriptor_link() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
-            component: "TimeAxis:link".into(),
-            component_type: Some("rerun.blueprint.components.LinkAxis".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+                component: "TimeAxis:link".into(),
+                component_type: Some("rerun.blueprint.components.LinkAxis".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::view_range`].
@@ -57,11 +59,13 @@ impl TimeAxis {
     /// The corresponding component is [`crate::blueprint::components::TimeRange`].
     #[inline]
     pub fn descriptor_view_range() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
-            component: "TimeAxis:view_range".into(),
-            component_type: Some("rerun.blueprint.components.TimeRange".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+                component: "TimeAxis:view_range".into(),
+                component_type: Some("rerun.blueprint.components.TimeRange".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::zoom_lock`].
@@ -69,11 +73,13 @@ impl TimeAxis {
     /// The corresponding component is [`crate::blueprint::components::LockRangeDuringZoom`].
     #[inline]
     pub fn descriptor_zoom_lock() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
-            component: "TimeAxis:zoom_lock".into(),
-            component_type: Some("rerun.blueprint.components.LockRangeDuringZoom".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+                component: "TimeAxis:zoom_lock".into(),
+                component_type: Some("rerun.blueprint.components.LockRangeDuringZoom".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -109,7 +115,10 @@ impl TimeAxis {
 impl ::re_types_core::Archetype for TimeAxis {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TimeAxis".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TimeAxis"
+        )
     }
 
     #[inline]

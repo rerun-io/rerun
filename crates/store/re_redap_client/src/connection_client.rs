@@ -1,18 +1,20 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use itertools::Itertools as _;
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::{RawRrdManifest, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::EntryName;
+use re_protos::cloud::v1alpha1::ext::{self as cloud_ext, WatchEventsResponse};
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
     DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
     QueryDatasetRequest, QueryTasksOnCompletionRequest, QueryTasksRequest,
     ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
-    RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableEntry, TableInsertMode,
+    RegisterWithDatasetDataframe, RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor,
+    ScanSegmentTableDataframe, TableDetails, TableEntry, TableInsertMode,
     UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
-    UpdateEntryRequest, UpdateEntryResponse, VersionResponse,
+    UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest, UpdateTableEntryResponse,
+    VersionResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::cloud::v1alpha1::{
@@ -22,13 +24,13 @@ use re_protos::cloud::v1alpha1::{
     GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryDatasetResponse,
     QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
     ReadTableEntryRequest, RegisterWithDatasetResponse, ScanSegmentTableRequest,
-    ScanSegmentTableResponse, UnregisterFromDatasetResponse, VersionRequest, WriteTableRequest,
+    UnregisterFromDatasetResponse, VersionRequest, WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
+use re_protos::{TypeConversionError, missing_field};
 use re_types_core::LayerName;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
@@ -146,8 +148,10 @@ impl ConnectionClient {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new_disconnected() -> Self {
         let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
-        let (raw_client, service) =
-            crate::grpc::assemble_client(channel, /* credentials */ None);
+        let (raw_client, service) = crate::grpc::assemble_client(
+            crate::grpc::PoolChannel::single(channel),
+            /* credentials */ None,
+        );
         Self::new(GenericConnectionClient::new(raw_client), service)
     }
 }
@@ -293,7 +297,7 @@ where
         num_bytes: u64,
         rtt: std::time::Duration,
     ) -> ApiResult<Option<f64>> {
-        let max = re_protos::cloud::v1alpha1::ext::MAX_BANDWIDTH_TEST_BYTES;
+        let max = cloud_ext::MAX_BANDWIDTH_TEST_BYTES;
         if num_bytes > max {
             return Err(ApiError::invalid_arguments(format!(
                 "num_bytes ({num_bytes}) exceeds the maximum of {max}"
@@ -323,6 +327,31 @@ where
             return Ok(None);
         };
         Ok(Some(received as f64 / transfer.as_secs_f64()))
+    }
+
+    /// Stream catalog lifecycle events as they happen on the server.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn watch_events(&mut self) -> ApiResult<ApiResponseStream<WatchEventsResponse>> {
+        let response = self
+            .inner()
+            .watch_events(re_protos::cloud::v1alpha1::WatchEventsRequest {
+                kinds: vec![re_protos::cloud::v1alpha1::EventKind::entry()],
+            })
+            .await
+            .map_err(|err| ApiError::tonic(err, "/WatchEvents failed"))?;
+
+        let stream = ApiResponseStream::from_tonic_response(response, "/WatchEvents");
+        let trace_id = stream.trace_id();
+        let stream = stream.map(move |resp| {
+            resp?.try_into().map_err(|err| {
+                ApiError::deserialization_with_source(
+                    trace_id,
+                    err,
+                    "failed parsing /WatchEvents response",
+                )
+            })
+        });
+        Ok(ApiResponseStream::new(stream, trace_id))
     }
 
     /// Find all entries matching the given filter.
@@ -527,6 +556,36 @@ where
         Ok(response.table_entry)
     }
 
+    /// Update the details of a table entry.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn update_table_entry(
+        &mut self,
+        entry_id: EntryId,
+        table_details: TableDetails,
+    ) -> ApiResult<TableEntry> {
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .update_table_entry(tonic::Request::new(
+                    UpdateTableEntryRequest {
+                        id: entry_id,
+                        table_details,
+                    }
+                    .into(),
+                ))
+                .await
+                .map_err(|err| ApiError::tonic(err, "/UpdateTableEntry failed"))?,
+        );
+        let response: UpdateTableEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /UpdateTableEntry response",
+            )
+        })?;
+
+        Ok(response.table_entry)
+    }
+
     //TODO(ab): accept entry name
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_segment_table_schema(&mut self, entry_id: EntryId) -> ApiResult<ArrowSchema> {
@@ -565,7 +624,7 @@ where
         &mut self,
         entry_id: EntryId,
     ) -> ApiResult<Vec<SegmentId>> {
-        const COLUMN_NAME: &str = ScanSegmentTableResponse::FIELD_SEGMENT_ID;
+        const COLUMN_NAME: &str = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME;
 
         let response = self
             .inner()
@@ -602,30 +661,17 @@ where
                     )
                 })?;
 
-            let segment_id_col = record_batch.column_by_name(COLUMN_NAME).ok_or_else(|| {
-                let err = missing_column!(ScanSegmentTableResponse, COLUMN_NAME);
-                ApiError::deserialization_with_source(
-                    trace_id,
-                    err,
-                    "missing column from item in /ScanSegmentTable stream",
-                )
-            })?;
-
-            let segment_id_array = segment_id_col
-                .try_downcast_array_ref::<arrow::array::StringArray>()
+            let segment_id_column = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
+                .extract(&record_batch)
                 .map_err(|err| {
                     ApiError::deserialization_with_source(
                         trace_id,
                         err,
-                        "unexpected types in item in /ScanSegmentTable stream",
+                        "invalid segment id column in item in /ScanSegmentTable stream",
                     )
                 })?;
 
-            segment_ids.extend(
-                segment_id_array
-                    .iter()
-                    .filter_map(|opt| opt.map(|s| SegmentId::new(s.to_owned()))),
-            );
+            segment_ids.extend(segment_id_column);
         }
 
         Ok(segment_ids)
@@ -953,115 +999,54 @@ where
                 )
             })?;
 
-        // TODO(andrea): why is the schema completely off?
-        #[expect(clippy::overly_complex_bool_expr)]
-        if false
-            && !response
-                .schema()
-                .contains(&RegisterWithDatasetResponse::schema())
-        {
-            let err = invalid_schema!(RegisterWithDatasetResponse);
-            return Err(ApiError::deserialization_with_source(
-                trace_id,
-                err,
-                "invalid schema in /RegisterWithDataset response",
-            ));
-        }
-
-        let get_string_array = |column_name: &'static str| {
-            response
-                .column_by_name(column_name)
-                .and_then(|column| {
-                    column
-                        .try_downcast_array_ref::<arrow::array::StringArray>()
-                        .ok()
-                })
-                .ok_or_else(|| {
-                    let err = missing_column!(RegisterWithDatasetResponse, column_name);
-                    ApiError::deserialization_with_source(
-                        trace_id,
-                        err,
-                        "missing column in /RegisterWithDataset response",
-                    )
-                })
-        };
-
-        let segment_id_column = get_string_array(RegisterWithDatasetResponse::FIELD_SEGMENT_ID)?;
-        let segment_type_column = DataSourceKind::many_from_arrow(
-            response
-                .column_by_name(RegisterWithDatasetResponse::FIELD_SEGMENT_TYPE)
-                .ok_or_else(|| {
-                    let err = missing_column!(
-                        RegisterWithDatasetResponse,
-                        RegisterWithDatasetResponse::FIELD_SEGMENT_TYPE
-                    );
-                    ApiError::deserialization_with_source(
-                        trace_id,
-                        err,
-                        "missing column in /RegisterWithDataset response",
-                    )
-                })?,
-        )
-        .map_err(|err| {
+        // Validates the columns (existence, datatype, no nulls):
+        let RegisterWithDatasetDataframe {
+            rerun_segment_id,
+            rerun_segment_layer,
+            rerun_segment_type,
+            rerun_storage_url,
+            rerun_task_id,
+        } = RegisterWithDatasetDataframe::try_from(response).map_err(|err| {
             ApiError::deserialization_with_source(
                 trace_id,
                 err,
-                "failed parsing /RegisterWithDataset response",
+                "invalid dataframe in /RegisterWithDataset response",
             )
         })?;
-        let storage_url_column = get_string_array(RegisterWithDatasetResponse::FIELD_STORAGE_URL)?;
-        let task_id_column = get_string_array(RegisterWithDatasetResponse::FIELD_TASK_ID)?;
+
+        let segment_types = DataSourceKind::many_from_arrow(rerun_segment_type.as_arrow().as_ref())
+            .map_err(|err| {
+                ApiError::deserialization_with_source(
+                    trace_id,
+                    err,
+                    "failed parsing /RegisterWithDataset response",
+                )
+            })?;
 
         let descriptors = itertools::izip!(
-            segment_id_column,
-            segment_type_column,
-            storage_url_column,
-            task_id_column,
+            rerun_segment_layer,
+            rerun_segment_id,
+            segment_types,
+            rerun_storage_url,
+            rerun_task_id
         )
-        .map(|(segment_id, segment_type, storage_url, task_id)| {
-            Ok(RegisterWithDatasetTaskDescriptor {
-                segment_id: SegmentId::new(
-                    segment_id
-                        .ok_or_else(|| {
-                            let err = missing_field!(RegisterWithDatasetResponse, "segment_id");
-                            ApiError::deserialization_with_source(
-                                trace_id,
-                                err,
-                                "missing field in /RegisterWithDataset response",
-                            )
-                        })?
-                        .to_owned(),
-                ),
-                segment_type,
-                storage_url: url::Url::parse(storage_url.ok_or_else(|| {
-                    let err = missing_field!(RegisterWithDatasetResponse, "storage_url");
-                    ApiError::deserialization_with_source(
-                        trace_id,
-                        err,
-                        "missing field in /RegisterWithDataset response",
-                    )
-                })?)
-                .map_err(|err| {
-                    ApiError::deserialization_with_source(
-                        trace_id,
-                        TypeConversionError::UrlParseError(err),
-                        "failed to parse /RegisterWithDataset response",
-                    )
-                })?,
-                task_id: TaskId {
-                    id: task_id
-                        .ok_or_else(|| {
-                            let err = missing_field!(RegisterWithDatasetResponse, "task_id");
-                            ApiError::deserialization_with_source(
-                                trace_id,
-                                err,
-                                "missing field in /RegisterWithDataset response",
-                            )
-                        })?
-                        .to_owned(),
-                },
-            })
-        })
+        .map(
+            |(layer_name, segment_id, segment_type, storage_url, task_id)| {
+                Ok(RegisterWithDatasetTaskDescriptor {
+                    layer_name,
+                    segment_id,
+                    segment_type,
+                    storage_url: url::Url::parse(&storage_url).map_err(|err| {
+                        ApiError::deserialization_with_source(
+                            trace_id,
+                            TypeConversionError::UrlParseError(err),
+                            "failed to parse /RegisterWithDataset response",
+                        )
+                    })?,
+                    task_id,
+                })
+            },
+        )
         .try_collect()?;
 
         Ok((trace_id, descriptors))
@@ -1148,7 +1133,7 @@ where
         name: EntryName,
         url: url::Url,
     ) -> ApiResult<TableEntry> {
-        let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
+        let request = cloud_ext::RegisterTableRequest {
             name,
             provider_details: ProviderDetails::LanceTable(LanceTable { table_url: url }),
         };
@@ -1189,7 +1174,7 @@ where
         self.inner()
             .do_maintenance(
                 tonic::Request::new(
-                    re_protos::cloud::v1alpha1::ext::DoMaintenanceRequest {
+                    cloud_ext::DoMaintenanceRequest {
                         optimize_indexes,
                         retrain_indexes,
                         compact_fragments,

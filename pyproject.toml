@@ -70,7 +70,7 @@ dev = [
   "huggingface-hub<1.0",
   # Typed packages for dataframe/arrow operations (needed for linting examples/tests)
   "polars>=1.0",
-  "datafusion>=50.0",
+  "datafusion>=53.0",
   "jupyter>=1.0",
   "types-protobuf", # Needed by mcap-protobuf-support
   # Needed for pretty-printing tables in `fetch_patch_candidates.py`
@@ -157,6 +157,10 @@ docs = [
 
 [tool.uv]
 package = false
+
+# pyarrow 24.0.0 ships an incomplete `py.typed` that breaks mypy on `pyarrow.compute.*`.
+# 23.x has no type stubs (so mypy leaves it untyped) and clears RUSTSEC/GHSA pyarrow alert >= 23.0.1.
+constraint-dependencies = ["pyarrow>=23.0.1,<24"]
 
 # Override lerobot's dependency on rerun-sdk to use the workspace version
 # TODO(RR-3548): Figure out how to have lerobot as a workspace member without causing dependency issues.

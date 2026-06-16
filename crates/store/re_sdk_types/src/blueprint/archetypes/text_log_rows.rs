@@ -39,11 +39,13 @@ impl TextLogRows {
     /// The corresponding component is [`crate::components::TextLogLevel`].
     #[inline]
     pub fn descriptor_filter_by_log_level() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TextLogRows".into()),
-            component: "TextLogRows:filter_by_log_level".into(),
-            component_type: Some("rerun.components.TextLogLevel".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextLogRows".into()),
+                component: "TextLogRows:filter_by_log_level".into(),
+                component_type: Some("rerun.components.TextLogLevel".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -67,7 +69,10 @@ impl TextLogRows {
 impl ::re_types_core::Archetype for TextLogRows {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TextLogRows".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TextLogRows"
+        )
     }
 
     #[inline]

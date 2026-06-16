@@ -144,7 +144,10 @@ struct Lines2DComponentData<'a> {
 
 impl IdentifiedViewSystem for Lines2DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Lines2D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Lines2D"
+        )
     }
 }
 

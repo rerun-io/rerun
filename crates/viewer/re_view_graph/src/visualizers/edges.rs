@@ -15,6 +15,7 @@ use crate::graph::NodeId;
 #[derive(Default)]
 pub struct EdgesVisualizer;
 
+#[derive(Clone)]
 pub struct EdgeInstance {
     // We will need this in the future, when we want to select individual edges.
     pub instance: Instance,
@@ -24,6 +25,7 @@ pub struct EdgeInstance {
     pub target_index: NodeId,
 }
 
+#[derive(Clone)]
 pub struct EdgeData {
     pub graph_type: components::GraphType,
     pub edges: Vec<EdgeInstance>,
@@ -31,7 +33,10 @@ pub struct EdgeData {
 
 impl IdentifiedViewSystem for EdgesVisualizer {
     fn identifier() -> ViewSystemIdentifier {
-        "GraphEdges".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "GraphEdges"
+        )
     }
 }
 

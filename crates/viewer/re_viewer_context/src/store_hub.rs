@@ -26,10 +26,12 @@ use crate::{
 
 /// Per-frame usage tracking for an [`EntityDb`].
 ///
-/// Tracks two states giving context to how it's used:
+/// Tracks a few states giving context to how it's used:
 /// - `was_preview`: If the entity db was used the render a preview last frame.
 /// - `opened`: If the entity db was explicitly opened by the user and should be
 ///   shown in the recording list. This is not tracked per frame.
+/// - `blueprint_pending`: If the recording was streamed without its server blueprint
+///   (as previews are), and we still owe a blueprint fetch should it be opened for real.
 pub struct EntityDbUsages {
     /// Whether this store was rendered as a preview cell in the previous frame.
     prev_preview: bool,
@@ -42,6 +44,13 @@ pub struct EntityDbUsages {
     /// Unlike the frame-based preview flag, this persists across frames
     /// and is not reset by [`Self::update`].
     pub opened: bool,
+
+    /// True if this recording was streamed without its server blueprint, and we
+    /// haven't fetched that blueprint since.
+    ///
+    /// Previews skip the blueprint download, so a recording that was only ever a
+    /// preview carries this debt until it is opened for real.
+    pub blueprint_pending: bool,
 }
 
 impl Clone for EntityDbUsages {
@@ -50,6 +59,7 @@ impl Clone for EntityDbUsages {
             prev_preview: self.prev_preview,
             new_preview: std::sync::atomic::AtomicBool::new(false),
             opened: self.opened,
+            blueprint_pending: self.blueprint_pending,
         }
     }
 }
@@ -60,6 +70,7 @@ impl EntityDbUsages {
             prev_preview: false,
             new_preview: std::sync::atomic::AtomicBool::new(false),
             opened: false,
+            blueprint_pending: false,
         }
     }
 
@@ -176,10 +187,11 @@ pub struct BlueprintPersistence {
     pub deleter: Option<Box<BlueprintDeleter>>,
 }
 
-/// Convenient information used for `MemoryPanel`.
+/// Convenient information used for `DevPanel`.
 ///
 /// This is per [`StoreId`], which could be either a recording or a blueprint.
 pub struct StoreStats {
+    pub store_source: Option<LogSource>,
     pub store_config: ChunkStoreConfig,
     pub store_stats: ChunkStoreStats,
 
@@ -190,7 +202,7 @@ pub struct StoreStats {
     pub cache_vram_usage: MemUsageTree,
 }
 
-/// Convenient information used for `MemoryPanel`
+/// Convenient information used for `DevPanel`
 #[derive(Default)]
 pub struct StoreHubStats {
     pub store_stats: BTreeMap<StoreId, StoreStats>,
@@ -312,6 +324,21 @@ impl StoreHub {
     /// Whether the user has explicitly opened this store.
     pub fn is_opened(&self, store_id: &StoreId) -> bool {
         self.store_usages.get(store_id).is_some_and(|u| u.opened)
+    }
+
+    /// Set or clear the [`EntityDbUsages::blueprint_pending`] flag for a store.
+    pub fn set_blueprint_pending(&mut self, store_id: &StoreId, pending: bool) {
+        self.store_usages
+            .entry(store_id.clone())
+            .or_insert_with(EntityDbUsages::new)
+            .blueprint_pending = pending;
+    }
+
+    /// Whether this recording was streamed without its server blueprint and still owes a fetch.
+    pub fn is_blueprint_pending(&self, store_id: &StoreId) -> bool {
+        self.store_usages
+            .get(store_id)
+            .is_some_and(|u| u.blueprint_pending)
     }
 
     // ---------------------
@@ -495,18 +522,30 @@ impl StoreHub {
         self.table_stores.insert(id, store)
     }
 
-    /// Store a decoded table blueprint [`EntityDb`] for the given table.
-    ///
-    /// Any previously stored blueprint for this table is removed first.
-    pub fn insert_table_blueprint(&mut self, table_id: TableId, blueprint: EntityDb) {
-        // Remove any previous blueprint for this table.
-        if let Some(old_store_id) = self.table_blueprints.remove(&table_id) {
-            self.store_bundle.remove(&old_store_id);
+    /// Register a fully-loaded blueprint store as the blueprint for a table.
+    pub fn associate_table_blueprint(
+        &mut self,
+        table_id: TableId,
+        store_id: &StoreId,
+    ) -> anyhow::Result<()> {
+        let store = self
+            .store_bundle
+            .get(store_id)
+            .with_context(|| format!("missing table blueprint store: {store_id:?}"))?;
+
+        anyhow::ensure!(
+            store.store_kind() == StoreKind::Blueprint,
+            "table blueprint store must be a blueprint store, got {:?}",
+            store.store_kind()
+        );
+
+        if let Some(old_store_id) = self.table_blueprints.insert(table_id, store_id.clone())
+            && &old_store_id != store_id
+        {
+            self.remove_store(&old_store_id);
         }
 
-        let store_id = blueprint.store_id().clone();
-        self.store_bundle.insert(blueprint);
-        self.table_blueprints.insert(table_id, store_id);
+        Ok(())
     }
 
     /// Look up the decoded blueprint [`EntityDb`] for a table, if one was stored.
@@ -1361,9 +1400,11 @@ impl StoreHub {
                 .get(store_id)
                 .map(|cache| cache.vram_usage())
                 .unwrap_or_default();
+
             store_stats.insert(
                 store_id.clone(),
                 StoreStats {
+                    store_source: store.data_source.clone(),
                     store_config: engine.store().config().clone(),
                     store_stats: engine.store().stats(),
                     query_cache_stats: engine.cache().stats(),

@@ -8,14 +8,10 @@ from rerun_bindings import (
     EntryKind as EntryKind,
     IndexColumnDescriptor as IndexColumnDescriptor,
     IndexColumnSelector as IndexColumnSelector,
-    IndexConfig as IndexConfig,
-    IndexingResult as IndexingResult,
     NotFoundError as NotFoundError,
-    VectorDistanceMetric as VectorDistanceMetric,
 )
 from rerun_bindings.types import (
     IndexValuesLike as IndexValuesLike,
-    VectorDistanceMetricLike as VectorDistanceMetricLike,
 )
 
 from ._catalog_client import CatalogClient as CatalogClient, VersionInfo as VersionInfo

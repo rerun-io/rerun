@@ -113,7 +113,7 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
     }) = &db.data_source
     {
         ui.grid_left_hand_label("Segment ID");
-        ui.label(segment_id);
+        ui.label(segment_id.to_string());
         ui.end_row();
     }
 

@@ -5,8 +5,19 @@ use crate::{NonMinI64, TimeInt, TimeType};
 pub struct OutOfRange;
 
 /// An typed cell of an index, e.g. a point in time on some unknown timeline.
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct TimeCell {
     pub typ: TimeType,
     pub value: NonMinI64,

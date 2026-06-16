@@ -6,21 +6,20 @@
 #![cfg(feature = "lance")]
 #![expect(clippy::unwrap_used)]
 
-use arrow::array::StringArray;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 
+use re_protos::cloud::v1alpha1::DeleteEntryRequest;
 use re_protos::cloud::v1alpha1::ScanDatasetManifestRequest;
 use re_protos::cloud::v1alpha1::ext;
+use re_protos::cloud::v1alpha1::ext::ScanDatasetManifestDataframe;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService as _;
-use re_protos::cloud::v1alpha1::{DeleteEntryRequest, ScanDatasetManifestResponse};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_tests::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name,
     register_and_wait,
 };
 use re_server::{RerunCloudHandler, RerunCloudHandlerBuilder};
-use re_types_core::LayerName;
 
 fn build() -> RerunCloudHandler {
     RerunCloudHandlerBuilder::new().build()
@@ -50,13 +49,10 @@ async fn register_memory_url_cross_dataset() {
 
     // Extract the memory:// URL from the manifest
     let manifest_a = scan_manifest(&service, "dataset_a").await;
-    let urls = manifest_a
-        .column_by_name(ScanDatasetManifestResponse::FIELD_STORAGE_URL)
-        .unwrap()
-        .as_any()
-        .downcast_ref::<StringArray>()
+    let urls = ScanDatasetManifestDataframe::COLUMN_RERUN_STORAGE_URL
+        .extract(&manifest_a)
         .unwrap();
-    let memory_url = urls.value(0).to_owned();
+    let memory_url = urls.value_owned(0);
     assert!(
         memory_url.starts_with("memory:///store/"),
         "expected memory URL, got: {memory_url}"
@@ -65,13 +61,8 @@ async fn register_memory_url_cross_dataset() {
     // --- Step 2: Create dataset B, register using the memory:// URL ---
     let dataset_b = service.create_dataset_entry_with_name("dataset_b").await;
 
-    let memory_data_source: re_protos::cloud::v1alpha1::DataSource = ext::DataSource {
-        storage_url: url::Url::parse(&memory_url).unwrap(),
-        is_prefix: false,
-        layer: LayerName::base(),
-        kind: ext::DataSourceKind::Rrd,
-    }
-    .into();
+    let memory_data_source: re_protos::cloud::v1alpha1::DataSource =
+        ext::DataSource::new_rrd(&memory_url).unwrap().into();
 
     let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
         data_sources: vec![memory_data_source.clone()],
@@ -147,13 +138,8 @@ async fn register_memory_url_not_found() {
     let fake_tuid = re_tuid::Tuid::new();
     let fake_memory_url = format!("memory:///store/{fake_tuid}");
 
-    let memory_data_source: re_protos::cloud::v1alpha1::DataSource = ext::DataSource {
-        storage_url: url::Url::parse(&fake_memory_url).unwrap(),
-        is_prefix: false,
-        layer: LayerName::base(),
-        kind: ext::DataSourceKind::Rrd,
-    }
-    .into();
+    let memory_data_source: re_protos::cloud::v1alpha1::DataSource =
+        ext::DataSource::new_rrd(&fake_memory_url).unwrap().into();
 
     let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
         data_sources: vec![memory_data_source],

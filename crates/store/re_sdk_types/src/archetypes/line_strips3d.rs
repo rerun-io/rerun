@@ -142,11 +142,13 @@ impl LineStrips3D {
     /// The corresponding component is [`crate::components::LineStrip3D`].
     #[inline]
     pub fn descriptor_strips() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.LineStrips3D".into()),
-            component: "LineStrips3D:strips".into(),
-            component_type: Some("rerun.components.LineStrip3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips3D".into()),
+                component: "LineStrips3D:strips".into(),
+                component_type: Some("rerun.components.LineStrip3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
@@ -154,11 +156,13 @@ impl LineStrips3D {
     /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.LineStrips3D".into()),
-            component: "LineStrips3D:radii".into(),
-            component_type: Some("rerun.components.Radius".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips3D".into()),
+                component: "LineStrips3D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
@@ -166,11 +170,13 @@ impl LineStrips3D {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.LineStrips3D".into()),
-            component: "LineStrips3D:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips3D".into()),
+                component: "LineStrips3D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
@@ -178,11 +184,13 @@ impl LineStrips3D {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.LineStrips3D".into()),
-            component: "LineStrips3D:labels".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips3D".into()),
+                component: "LineStrips3D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
@@ -190,11 +198,13 @@ impl LineStrips3D {
     /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.LineStrips3D".into()),
-            component: "LineStrips3D:show_labels".into(),
-            component_type: Some("rerun.components.ShowLabels".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips3D".into()),
+                component: "LineStrips3D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
@@ -202,11 +212,13 @@ impl LineStrips3D {
     /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.LineStrips3D".into()),
-            component: "LineStrips3D:class_ids".into(),
-            component_type: Some("rerun.components.ClassId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips3D".into()),
+                component: "LineStrips3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -250,7 +262,10 @@ impl LineStrips3D {
 impl ::re_types_core::Archetype for LineStrips3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.LineStrips3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.LineStrips3D"
+        )
     }
 
     #[inline]

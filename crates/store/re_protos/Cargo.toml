@@ -26,10 +26,10 @@ re_build_info.workspace = true
 re_byte_size.workspace = true
 re_chunk.workspace = true
 re_grpc_headers.workspace = true
-re_log_types = { workspace = true, features = ["serde"] }
+re_log_types.workspace = true
 re_sorbet.workspace = true
 re_tracing.workspace = true
-re_types_core = { workspace = true, features = ["serde"] }
+re_types_core.workspace = true
 re_tuid.workspace = true
 
 # External
@@ -42,6 +42,7 @@ opentelemetry.workspace = true
 prost-types.workspace = true
 prost.workspace = true
 pyo3 = { workspace = true, optional = true }
+quiver = { workspace = true, features = ["derive"] }
 serde.workspace = true
 thiserror.workspace = true
 tonic-prost.workspace = true
@@ -57,6 +58,9 @@ tonic = { workspace = true, default-features = false, features = ["codegen", "tr
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tonic = { workspace = true, default-features = false, features = ["codegen"] }
 
+
+[dev-dependencies]
+insta.workspace = true
 
 [lints]
 workspace = true

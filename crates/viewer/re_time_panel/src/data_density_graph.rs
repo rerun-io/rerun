@@ -5,8 +5,8 @@
 
 use std::sync::Arc;
 
-use egui::epaint::Vertex;
 use egui::{Color32, NumExt as _, Rangef, Rect, Shape, lerp, pos2, remap};
+use egui::{emath::fast_midpoint, epaint::Vertex};
 use re_chunk::TimelineName;
 use re_chunk_store::{ChunkTrackingMode, RangeQuery};
 use re_entity_db::EntityDb;
@@ -363,12 +363,6 @@ impl DensityGraph {
 
         painter.add(Shape::Mesh(Arc::new(mesh)));
     }
-}
-
-/// This is faster than `f32::midpoint`, but less accurate.
-#[inline(always)]
-fn fast_midpoint(min_y: f32, max_y: f32) -> f32 {
-    0.5 * (min_y + max_y)
 }
 
 // ----------------------------------------------------------------------------

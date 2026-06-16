@@ -153,7 +153,10 @@ struct EntityTransformIdMapping {
 
 impl IdentifiedViewSystem for TransformTreeContext {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "TransformContext".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "TransformContext"
+        )
     }
 }
 

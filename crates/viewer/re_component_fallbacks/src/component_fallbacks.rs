@@ -174,7 +174,6 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
             )
         },
     );
-
     // Boxes2D
     registry.register_component_fallback_provider(
         archetypes::Boxes2D::descriptor_draw_order().component,

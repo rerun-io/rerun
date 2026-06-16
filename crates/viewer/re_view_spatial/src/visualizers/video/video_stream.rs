@@ -16,7 +16,10 @@ pub struct VideoStreamVisualizer;
 
 impl IdentifiedViewSystem for VideoStreamVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "VideoStream".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "VideoStream"
+        )
     }
 }
 

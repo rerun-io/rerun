@@ -111,6 +111,17 @@ impl App {
                         }
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
+                        if let LogSource::RedapGrpcStream {
+                            table_blueprint: Some(table_blueprint),
+                            ..
+                        } = channel_source.as_ref()
+                            && let Err(err) = store_hub.associate_table_blueprint(
+                                table_blueprint.table_id.clone(),
+                                &table_blueprint.blueprint_id,
+                            )
+                        {
+                            re_log::warn!("Failed to register table blueprint: {err}");
+                        }
                     }
                     continue;
                 }
@@ -382,7 +393,18 @@ impl App {
         store_hub: &mut StoreHub,
     ) {
         match channel_source.open_behavior() {
-            RecordingOpenBehavior::Background => {}
+            RecordingOpenBehavior::Background => {
+                // Background streams (previews) skip the blueprint download.
+                if store_id.kind() == StoreKind::Recording {
+                    store_hub.set_blueprint_pending(store_id, true);
+
+                    // The user may have already opened the segment while this preview stream was
+                    // still in flight.
+                    if store_hub.is_opened(store_id) {
+                        self.fetch_pending_blueprint(store_hub, store_id);
+                    }
+                }
+            }
 
             RecordingOpenBehavior::Open => {
                 if store_id.kind() == StoreKind::Recording {
@@ -605,6 +627,8 @@ impl App {
 
         store_hub.set_opened(store_id, true);
         store_hub.load_blueprint_and_caches(store_id, &self.view_class_registry);
+        // If this recording was streamed as a preview, fetch the blueprint we skipped back then.
+        self.fetch_pending_blueprint(store_hub, store_id);
         self.state.navigation.replace(Route::LocalRecording {
             recording_id: store_id.clone(),
         });
@@ -738,7 +762,7 @@ impl App {
                     Some(current_mem_use.saturating_sub(total_chunk_bytes));
             }
 
-            self.memory_panel.note_memory_purge();
+            self.dev_panel.note_memory_purge();
         }
     }
 
@@ -784,6 +808,12 @@ impl App {
         let mut recordings_info: HashMap<StoreId, RecordingPrefetchInfo> = HashMap::default();
 
         for recording in store_hub.store_bundle().recordings() {
+            if !recording.can_fetch_chunks_from_redap() {
+                // Clear tracked chunk ids.
+                recording.storage_engine().store().take_tracked_chunk_ids();
+
+                continue;
+            }
             if recording.is_downloading_first_part_of_manifest() {
                 // We need at least ONE part of the manifest before prefetching chunks.
                 continue;

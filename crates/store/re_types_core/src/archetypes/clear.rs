@@ -93,11 +93,13 @@ impl Clear {
     /// The corresponding component is [`crate::components::ClearIsRecursive`].
     #[inline]
     pub fn descriptor_is_recursive() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Clear".into()),
-            component: "Clear:is_recursive".into(),
-            component_type: Some("rerun.components.ClearIsRecursive".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Clear".into()),
+                component: "Clear:is_recursive".into(),
+                component_type: Some("rerun.components.ClearIsRecursive".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -121,7 +123,10 @@ impl Clear {
 impl crate::Archetype for Clear {
     #[inline]
     fn name() -> crate::ArchetypeName {
-        "rerun.archetypes.Clear".into()
+        crate::external::re_string_interner::intern_static!(
+            crate::ArchetypeName,
+            "rerun.archetypes.Clear"
+        )
     }
 
     #[inline]

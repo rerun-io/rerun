@@ -222,8 +222,7 @@ impl App {
                     | LogSource::Sdk
                     | LogSource::RedapGrpcStream { .. }
                     | LogSource::MessageProxy { .. }
-                    | LogSource::Stdin
-                    | LogSource::EmbeddedTableBlueprint => true,
+                    | LogSource::Stdin => true,
                 });
             }
 
@@ -253,6 +252,9 @@ impl App {
                 if let Some(recording_id) = new_route.recording_id() {
                     store_hub.set_opened(recording_id, true);
                     store_hub.load_blueprint_and_caches(recording_id, &self.view_class_registry);
+                    // If we're navigating to a recording that was only ever a preview, fetch the
+                    // blueprint we skipped while previewing it.
+                    self.fetch_pending_blueprint(store_hub, recording_id);
                 }
 
                 if matches!(new_route, Route::Loading(_)) {
@@ -268,7 +270,7 @@ impl App {
 
             SystemCommand::OpenSettings => {
                 self.state.navigation.replace(Route::Settings {
-                    previous: Box::new(self.state.navigation.current().clone()),
+                    return_route: Box::new(self.state.navigation.current().clone()),
                 });
 
                 #[cfg(feature = "analytics")]
@@ -281,7 +283,7 @@ impl App {
             } => match self.state.navigation.current() {
                 Route::ChunkStoreBrowser {
                     store_id: current_store_id,
-                    previous,
+                    return_route,
                     ..
                 } => {
                     self.state.navigation.replace(Route::ChunkStoreBrowser {
@@ -289,14 +291,14 @@ impl App {
                         // using the current chunk browser store context.
                         store_id: store_id.or_else(|| current_store_id.clone()),
                         selected_chunk,
-                        previous: previous.clone(),
+                        return_route: return_route.clone(),
                     });
                 }
                 current => {
                     self.state.navigation.replace(Route::ChunkStoreBrowser {
                         store_id: store_id.or_else(|| current.recording_id().cloned()),
                         selected_chunk,
-                        previous: Box::new(current.clone()),
+                        return_route: Box::new(current.clone()),
                     });
                 }
             },
@@ -639,13 +641,6 @@ impl App {
                 self.egui_ctx
                     .send_viewport_cmd(egui::ViewportCommand::Focus);
             }
-
-            SystemCommand::RegisterTableBlueprint {
-                table_id,
-                blueprint,
-            } => {
-                store_hub.insert_table_blueprint(table_id, *blueprint);
-            }
         }
     }
 
@@ -935,8 +930,8 @@ impl App {
                 }
             }
 
-            UICommand::ToggleMemoryPanel => {
-                self.memory_panel_open ^= true;
+            UICommand::ToggleDevPanel => {
+                self.dev_panel_open ^= true;
             }
             UICommand::TogglePanelStateOverrides => {
                 self.panel_state_overrides_active ^= true;
@@ -963,15 +958,15 @@ impl App {
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             UICommand::ToggleChunkStoreBrowser => match self.state.navigation.current() {
-                Route::ChunkStoreBrowser { previous, .. } => {
-                    self.state.navigation.replace((**previous).clone());
+                Route::ChunkStoreBrowser { return_route, .. } => {
+                    self.state.navigation.replace((**return_route).clone());
                 }
 
                 current => {
                     self.state.navigation.replace(Route::ChunkStoreBrowser {
                         store_id: current.recording_id().cloned(),
                         selected_chunk: None,
-                        previous: Box::new(current.clone()),
+                        return_route: Box::new(current.clone()),
                     });
                 }
             },
@@ -1461,8 +1456,7 @@ impl App {
                 | LogSource::JsChannel { .. }
                 | LogSource::Sdk
                 | LogSource::Stdin
-                | LogSource::MessageProxy(_)
-                | LogSource::EmbeddedTableBlueprint => false,
+                | LogSource::MessageProxy(_) => false,
             };
 
             if should_close {

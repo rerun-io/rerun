@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 use parking_lot::RwLock;
+use re_log_types::{StoreId, TableId};
 use re_uri::RedapUri;
 
 mod data_source_message;
@@ -50,6 +51,7 @@ pub enum FlushError {
 #[derive(
     Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize,
 )]
+#[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
 pub enum LogSource {
     /// The sender is a background thread reading data from a file on disk
     /// (could be `.rrd` files, or `.glb`, `.png`, …).
@@ -96,27 +98,36 @@ pub enum LogSource {
         uri: re_uri::DatasetSegmentUri,
 
         open_behavior: RecordingOpenBehavior,
+
+        /// If set, this source is streaming a blueprint that should be associated with a table
+        /// once the stream completes successfully.
+        #[serde(default)]
+        table_blueprint: Option<TableBlueprintSource>,
     },
 
     /// The data is streaming in via a message proxy.
     MessageProxy(re_uri::ProxyUri),
+}
 
-    /// A blueprint embedded in Arrow schema metadata for a table.
-    EmbeddedTableBlueprint,
+#[derive(
+    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize,
+)]
+pub struct TableBlueprintSource {
+    pub table_id: TableId,
+    pub blueprint_id: StoreId,
 }
 
 impl std::fmt::Display for LogSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File { path, .. } => write!(f, "file://{}", path.to_string_lossy()),
-            Self::HttpStream { url, follow: _ } => url.fmt(f),
+            Self::HttpStream { url, follow: _ } => url_display_name(url).fmt(f),
             Self::MessageProxy(uri) => uri.fmt(f),
             Self::RedapGrpcStream { uri, .. } => uri.fmt(f),
             Self::RrdWebEvent => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
             Self::Stdin => "stdin".fmt(f),
-            Self::EmbeddedTableBlueprint => "embedded table blueprint".fmt(f),
         }
     }
 }
@@ -128,11 +139,7 @@ impl LogSource {
 
     pub fn is_network(&self) -> bool {
         match self {
-            Self::File { .. }
-            | Self::Sdk
-            | Self::RrdWebEvent
-            | Self::Stdin
-            | Self::EmbeddedTableBlueprint => false,
+            Self::File { .. } | Self::Sdk | Self::RrdWebEvent | Self::Stdin => false,
             Self::HttpStream { .. }
             | Self::JsChannel { .. }
             | Self::RedapGrpcStream { .. }
@@ -148,8 +155,7 @@ impl LogSource {
             | Self::Stdin
             | Self::HttpStream { .. }
             | Self::JsChannel { .. }
-            | Self::MessageProxy { .. }
-            | Self::EmbeddedTableBlueprint => RecordingOpenBehavior::OpenAndSelect,
+            | Self::MessageProxy { .. } => RecordingOpenBehavior::OpenAndSelect,
 
             Self::RedapGrpcStream { open_behavior, .. } => *open_behavior,
         }
@@ -165,8 +171,7 @@ impl LogSource {
             | Self::RrdWebEvent
             | Self::Stdin
             | Self::HttpStream { .. }
-            | Self::JsChannel { .. }
-            | Self::EmbeddedTableBlueprint => None,
+            | Self::JsChannel { .. } => None,
         }
     }
 
@@ -189,15 +194,14 @@ impl LogSource {
         match self {
             // We only show things we know are very-soon-to-be recordings:
             Self::File { path, .. } => Some(path.to_string_lossy().into_owned()),
-            Self::HttpStream { url, .. } => Some(url.clone()),
-            Self::RedapGrpcStream { uri, .. } => Some(uri.segment_id.clone()),
+            Self::HttpStream { url, .. } => Some(url_display_name(url)),
+            Self::RedapGrpcStream { uri, .. } => Some(uri.segment_id.to_string()),
 
             Self::RrdWebEvent
             | Self::JsChannel { .. }
             | Self::MessageProxy { .. }
             | Self::Sdk
-            | Self::Stdin
-            | Self::EmbeddedTableBlueprint => {
+            | Self::Stdin => {
                 // For all of these sources we're not actively loading data, but rather waiting for data to be sent.
                 // These show up in the top panel - see `top_panel.rs`.
                 None
@@ -213,7 +217,7 @@ impl LogSource {
             }
             Self::Stdin => "Loading stdin…".to_owned(),
             Self::HttpStream { url, .. } => {
-                format!("Waiting for data on {url}…")
+                format!("Waiting for data on {}…", url_display_name(url))
             }
             Self::MessageProxy(uri) => {
                 format!("Waiting for data on {uri}…")
@@ -226,7 +230,6 @@ impl LogSource {
             }
             Self::RrdWebEvent | Self::JsChannel { .. } => "Waiting for logging data…".to_owned(),
             Self::Sdk => "Waiting for logging data from SDK".to_owned(),
-            Self::EmbeddedTableBlueprint => "Loading embedded table blueprint…".to_owned(),
         }
     }
 
@@ -243,6 +246,21 @@ impl LogSource {
             _ => self == other,
         }
     }
+}
+
+/// A human-readable name for a source URL, safe to render as a label or log line.
+///
+/// `data:` URLs embed their payload inline and can be many megabytes long.
+pub fn url_display_name(url: &str) -> String {
+    // The part of a `data:` URL before the first comma is the media type
+    // (e.g. `data:application/octet-stream;base64`); the rest is the payload.
+    if url.starts_with("data:")
+        && let Some(comma) = url.find(',')
+    {
+        return format!("{}…", &url[..=comma]);
+    }
+
+    url.to_owned()
 }
 
 // -------------------------------------------------------------------------------------
@@ -320,5 +338,35 @@ impl SmartMessage {
             SmartMessagePayload::Msg(msg) => Some(msg),
             SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::url_display_name;
+
+    #[test]
+    fn url_display_name_keeps_short_urls() {
+        let url = "https://example.com/data.rrd";
+        assert_eq!(url_display_name(url), url);
+    }
+
+    #[test]
+    fn url_display_name_keeps_long_real_urls() {
+        // Presigned links and redap URIs are legitimately long — render them in full.
+        let url = format!("https://example.com/data.rrd?token={}", "x".repeat(1000));
+        assert_eq!(url_display_name(&url), url);
+    }
+
+    #[test]
+    fn url_display_name_truncates_long_data_url() {
+        // A multi-megabyte `data:` URL must not be rendered verbatim (it OOMs text layout).
+        let payload = "A".repeat(5_000_000);
+        let url = format!("data:application/octet-stream;base64,{payload}");
+
+        let name = url_display_name(&url);
+
+        assert_eq!(name, "data:application/octet-stream;base64,…");
+        assert!(name.len() < 100);
     }
 }

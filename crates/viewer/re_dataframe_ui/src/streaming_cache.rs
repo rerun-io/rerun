@@ -284,7 +284,7 @@ impl TableProvider for StreamingCacheTableProvider {
 /// Execution plan that streams from the cache.
 struct CachedStreamingExec {
     cache: Arc<Mutex<StreamingCacheInner>>,
-    properties: PlanProperties,
+    properties: Arc<PlanProperties>,
 }
 
 impl CachedStreamingExec {
@@ -295,7 +295,8 @@ impl CachedStreamingExec {
             Partitioning::UnknownPartitioning(1),
             EmissionType::Incremental,
             Boundedness::Bounded,
-        );
+        )
+        .into();
         Self { cache, properties }
     }
 }
@@ -327,7 +328,7 @@ impl ExecutionPlan for CachedStreamingExec {
         Arc::clone(&self.cache.lock().schema)
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.properties
     }
 

@@ -75,7 +75,7 @@ pub use re_viewer_context::{
 };
 pub use startup_options::{LoginOptions, StartupOptions};
 pub use ui::about_rerun_ui;
-pub(crate) use ui::memory_panel;
+pub(crate) use ui::dev_panel;
 
 pub mod external {
     pub use re_chunk::external::*;

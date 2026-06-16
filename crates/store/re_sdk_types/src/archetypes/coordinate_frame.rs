@@ -100,11 +100,13 @@ impl CoordinateFrame {
     /// The corresponding component is [`crate::components::TransformFrameId`].
     #[inline]
     pub fn descriptor_frame() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.CoordinateFrame".into()),
-            component: "CoordinateFrame:frame".into(),
-            component_type: Some("rerun.components.TransformFrameId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.CoordinateFrame".into()),
+                component: "CoordinateFrame:frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -128,7 +130,10 @@ impl CoordinateFrame {
 impl ::re_types_core::Archetype for CoordinateFrame {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.CoordinateFrame".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.CoordinateFrame"
+        )
     }
 
     #[inline]

@@ -206,7 +206,7 @@ impl QueryCache {
         let fraction_to_purge = target.target_fraction_from_size(self.total_size_bytes());
 
         let mut caches = self.latest_at_per_cache_key.write();
-        for (_key, cache) in caches.iter_mut() {
+        for cache in caches.values_mut() {
             let mut cache = cache.write();
 
             let split_point =
@@ -821,10 +821,9 @@ mod tests {
     #[test]
     #[expect(clippy::bool_assert_comparison)] // I like it that way, sue me
     fn partial_data_basics() {
-        let store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
-            ChunkStoreConfig::ALL_DISABLED,
-        );
+        let store_id =
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app");
+        let store = ChunkStore::new(store_id.clone(), ChunkStoreConfig::ALL_DISABLED);
         let store = ChunkStoreHandle::new(store);
 
         let entity_path: EntityPath = "some_entity".into();
@@ -864,6 +863,15 @@ mod tests {
             );
             assert!(results.is_empty());
         }
+
+        // Back the chunks with an RRD manifest so they stay recoverable after removal, and keep
+        // being reported as missing (partial results) rather than vanishing from the virtual indices.
+        let rrd_manifest = RrdManifest::build_in_memory_from_chunks(
+            store_id,
+            [&chunk1, &chunk2, &chunk3].into_iter(),
+        )
+        .unwrap();
+        _ = store.write().insert_rrd_manifest(rrd_manifest);
 
         // We don't care about events yet, since the cache is empty anyways.
         store
@@ -987,10 +995,9 @@ mod tests {
     #[test]
     #[expect(clippy::bool_assert_comparison)] // I like it that way, sue me
     fn partial_data_clears() {
-        let store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
-            ChunkStoreConfig::COMPACTION_DISABLED,
-        );
+        let store_id =
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app");
+        let store = ChunkStore::new(store_id.clone(), ChunkStoreConfig::COMPACTION_DISABLED);
         let store = ChunkStoreHandle::new(store);
 
         let entity_parent: EntityPath = "/parent".into();
@@ -1064,6 +1071,15 @@ mod tests {
             (chunk_parent_clear_recursive, true),
         ];
         for (tombstone, should_actually_clear) in tombstones {
+            // Back the tombstone with an RRD manifest so that, once shallowly removed, it stays
+            // recoverable and keeps being reported as missing (partial) instead of vanishing.
+            let rrd_manifest = RrdManifest::build_in_memory_from_chunks(
+                store_id.clone(),
+                [&tombstone].into_iter(),
+            )
+            .unwrap();
+            cache.on_events(&store.write().insert_rrd_manifest(rrd_manifest));
+
             cache.on_events(
                 &store
                     .write()

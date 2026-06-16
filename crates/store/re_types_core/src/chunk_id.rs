@@ -47,8 +47,9 @@ use crate::Loggable as _;
     bytemuck::AnyBitPattern,
     bytemuck::NoUninit,
     re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
 )]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ChunkId(pub(crate) re_tuid::Tuid);
 
 impl std::fmt::Debug for ChunkId {
@@ -147,6 +148,23 @@ impl ChunkId {
         }
     }
 }
+
+impl From<[u8; 16]> for ChunkId {
+    #[inline]
+    fn from(bytes: [u8; 16]) -> Self {
+        Self(re_tuid::Tuid::from_bytes(bytes))
+    }
+}
+
+impl From<ChunkId> for [u8; 16] {
+    #[inline]
+    fn from(id: ChunkId) -> Self {
+        id.0.as_bytes()
+    }
+}
+
+// Make `quiver::Column<ChunkId>` work (backed by a big-endian `FixedSizeBinary(16)` column):
+quiver::newtype_datatype!(ChunkId, quiver::FixedSizeBinary<16>);
 
 impl std::ops::Deref for ChunkId {
     type Target = re_tuid::Tuid;

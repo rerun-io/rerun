@@ -167,39 +167,26 @@ When you register a recording without specifying a `layer_name`, it is assigned 
 ### Is it possible to obtain a dataframe with a list of all layers in a dataset?
 
 Yes.
-The [`DatasetEntry.manifest()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.manifest) method returns a DataFusion DataFrame containing the full dataset manifest, which includes layer information for each segment:
+The [`DatasetEntry.segment_table()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.segment_table) method returns a DataFusion DataFrame with one row per segment and a `rerun_layer_names` column listing the layers of each segment:
 
-snippet: howto/layers[manifest]
+snippet: howto/layers[list_layers]
 
 Output:
 
 ```
-┌───────────────────────────────────────┬──────────────────┬────────────────────────────────────┐
-│ rerun_segment_id                      ┆ rerun_layer_name ┆ property:quality:tracking_good     │
-│ ---                                   ┆ ---              ┆ ---                                │
-│ type: Utf8                            ┆ type: Utf8       ┆ type: nullable List[nullable bool] │
-│                                       ┆                  ┆ component: tracking_good           │
-│                                       ┆                  ┆ entity_path: /__properties/quality │
-│                                       ┆                  ┆ kind: data                         │
-╞═══════════════════════════════════════╪══════════════════╪════════════════════════════════════╡
-│ ILIAD_50aee79f_2023_07_12_20h_55m_08s ┆ base             ┆ null                               │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ILIAD_50aee79f_2023_07_12_20h_55m_08s ┆ quality          ┆ [false]                            │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ILIAD_50aee79f_2023_07_12_20h_55m_08s ┆ tracking_error   ┆ null                               │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ILIAD_5e938e3b_2023_07_20_10h_40m_10s ┆ base             ┆ null                               │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ILIAD_5e938e3b_2023_07_20_10h_40m_10s ┆ quality          ┆ [false]                            │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ILIAD_5e938e3b_2023_07_20_10h_40m_10s ┆ tracking_error   ┆ null                               │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ILIAD_5e938e3b_2023_07_28_11h_25m_26s ┆ base             ┆ null                               │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ILIAD_5e938e3b_2023_07_28_11h_25m_26s ┆ quality          ┆ [true]                             │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ILIAD_5e938e3b_2023_07_28_11h_25m_26s ┆ tracking_error   ┆ null                               │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ILIAD_j807b3f8_2023_06_15_13h_42m_56s ┆ base             ┆ null                               │
-└───────────────────────────────────────┴──────────────────┴────────────────────────────────────┘
+┌───────────────────────────────────────┬─────────────────────────────────┐
+│ rerun_segment_id                      ┆ rerun_layer_names               │
+│ ---                                   ┆ ---                             │
+│ type: Utf8                            ┆ type: List[Utf8]                │
+╞═══════════════════════════════════════╪═════════════════════════════════╡
+│ ILIAD_50aee79f_2023_07_12_20h_55m_08s ┆ [base, tracking_error, quality] │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ILIAD_5e938e3b_2023_07_20_10h_40m_10s ┆ [base, tracking_error, quality] │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ILIAD_5e938e3b_2023_07_28_11h_25m_26s ┆ [base, tracking_error, quality] │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ILIAD_j807b3f8_2023_06_15_13h_42m_56s ┆ [base, tracking_error, quality] │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s ┆ [base, tracking_error, quality] │
+└───────────────────────────────────────┴─────────────────────────────────┘
 ```

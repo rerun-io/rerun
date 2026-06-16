@@ -49,6 +49,7 @@
 #include "components/opacity.hpp"
 #include "components/pinhole_projection.hpp"
 #include "components/plane3d.hpp"
+#include "components/point_shading.hpp"
 #include "components/position2d.hpp"
 #include "components/position3d.hpp"
 #include "components/radius.hpp"

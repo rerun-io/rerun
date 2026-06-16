@@ -92,7 +92,7 @@ pub fn build_chunk_from_components(
     let (arrays, timeline_names): (Vec<ArrowArrayRef>, Vec<TimelineName>) =
         itertools::process_results(
             timelines.iter().map(|(name, array)| {
-                let py_name = name.downcast::<PyString>()?;
+                let py_name = name.cast::<PyString>()?;
                 let name: std::borrow::Cow<'_, str> = py_name.extract()?;
                 let timeline_name: TimelineName = name.as_ref().into();
                 array_to_rust(&array).map(|array| (array, timeline_name))

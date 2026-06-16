@@ -4,6 +4,7 @@ use std::ops::{Deref, DerefMut};
 ///
 /// Provides immutable access via `Deref`, and mutable access via `modify()`,
 /// which returns a guard that automatically updates the timestamp when dropped.
+#[derive(Default)]
 pub struct Tracked<T> {
     value: T,
     updated_at: jiff::Timestamp,

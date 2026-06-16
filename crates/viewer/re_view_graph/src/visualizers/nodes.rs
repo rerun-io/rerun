@@ -45,6 +45,7 @@ pub struct NodeInstance {
     pub label: Label,
 }
 
+#[derive(Clone)]
 pub struct NodeData {
     pub visualizer_instruction_id: VisualizerInstructionId,
     pub nodes: Vec<NodeInstance>,
@@ -52,7 +53,10 @@ pub struct NodeData {
 
 impl IdentifiedViewSystem for NodeVisualizer {
     fn identifier() -> ViewSystemIdentifier {
-        "GraphNodes".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "GraphNodes"
+        )
     }
 }
 

@@ -72,6 +72,7 @@ re_log = { workspace = true, features = ["setup"] }
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_mcap.workspace = true
+re_mp4_reader.workspace = true
 re_parquet.workspace = true
 re_memory.workspace = true
 re_quota_channel.workspace = true
@@ -87,7 +88,6 @@ re_server = { workspace = true, features = ["lance"] }
 
 anyhow.workspace = true
 arrow = { workspace = true, features = ["pyarrow"] }
-bytes.workspace = true
 chrono.workspace = true #TODO(#9317): migrate to jiff
 comfy-table.workspace = true
 crossbeam.workspace = true

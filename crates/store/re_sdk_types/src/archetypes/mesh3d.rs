@@ -183,11 +183,13 @@ impl Mesh3D {
     /// The corresponding component is [`crate::components::Position3D`].
     #[inline]
     pub fn descriptor_vertex_positions() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Mesh3D".into()),
-            component: "Mesh3D:vertex_positions".into(),
-            component_type: Some("rerun.components.Position3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:vertex_positions".into(),
+                component_type: Some("rerun.components.Position3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::triangle_indices`].
@@ -195,11 +197,13 @@ impl Mesh3D {
     /// The corresponding component is [`crate::components::TriangleIndices`].
     #[inline]
     pub fn descriptor_triangle_indices() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Mesh3D".into()),
-            component: "Mesh3D:triangle_indices".into(),
-            component_type: Some("rerun.components.TriangleIndices".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:triangle_indices".into(),
+                component_type: Some("rerun.components.TriangleIndices".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::vertex_normals`].
@@ -207,11 +211,13 @@ impl Mesh3D {
     /// The corresponding component is [`crate::components::Vector3D`].
     #[inline]
     pub fn descriptor_vertex_normals() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Mesh3D".into()),
-            component: "Mesh3D:vertex_normals".into(),
-            component_type: Some("rerun.components.Vector3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:vertex_normals".into(),
+                component_type: Some("rerun.components.Vector3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::vertex_colors`].
@@ -219,11 +225,13 @@ impl Mesh3D {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_vertex_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Mesh3D".into()),
-            component: "Mesh3D:vertex_colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:vertex_colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::vertex_texcoords`].
@@ -231,11 +239,13 @@ impl Mesh3D {
     /// The corresponding component is [`crate::components::Texcoord2D`].
     #[inline]
     pub fn descriptor_vertex_texcoords() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Mesh3D".into()),
-            component: "Mesh3D:vertex_texcoords".into(),
-            component_type: Some("rerun.components.Texcoord2D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:vertex_texcoords".into(),
+                component_type: Some("rerun.components.Texcoord2D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_factor`].
@@ -243,11 +253,13 @@ impl Mesh3D {
     /// The corresponding component is [`crate::components::AlbedoFactor`].
     #[inline]
     pub fn descriptor_albedo_factor() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Mesh3D".into()),
-            component: "Mesh3D:albedo_factor".into(),
-            component_type: Some("rerun.components.AlbedoFactor".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:albedo_factor".into(),
+                component_type: Some("rerun.components.AlbedoFactor".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::face_rendering`].
@@ -255,11 +267,13 @@ impl Mesh3D {
     /// The corresponding component is [`crate::components::MeshFaceRendering`].
     #[inline]
     pub fn descriptor_face_rendering() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Mesh3D".into()),
-            component: "Mesh3D:face_rendering".into(),
-            component_type: Some("rerun.components.MeshFaceRendering".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:face_rendering".into(),
+                component_type: Some("rerun.components.MeshFaceRendering".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_buffer`].
@@ -267,11 +281,13 @@ impl Mesh3D {
     /// The corresponding component is [`crate::components::ImageBuffer`].
     #[inline]
     pub fn descriptor_albedo_texture_buffer() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Mesh3D".into()),
-            component: "Mesh3D:albedo_texture_buffer".into(),
-            component_type: Some("rerun.components.ImageBuffer".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:albedo_texture_buffer".into(),
+                component_type: Some("rerun.components.ImageBuffer".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_format`].
@@ -279,11 +295,13 @@ impl Mesh3D {
     /// The corresponding component is [`crate::components::ImageFormat`].
     #[inline]
     pub fn descriptor_albedo_texture_format() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Mesh3D".into()),
-            component: "Mesh3D:albedo_texture_format".into(),
-            component_type: Some("rerun.components.ImageFormat".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:albedo_texture_format".into(),
+                component_type: Some("rerun.components.ImageFormat".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
@@ -291,11 +309,13 @@ impl Mesh3D {
     /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Mesh3D".into()),
-            component: "Mesh3D:class_ids".into(),
-            component_type: Some("rerun.components.ClassId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -347,7 +367,10 @@ impl Mesh3D {
 impl ::re_types_core::Archetype for Mesh3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Mesh3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Mesh3D"
+        )
     }
 
     #[inline]

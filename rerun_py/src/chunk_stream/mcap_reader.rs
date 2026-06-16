@@ -146,6 +146,11 @@ impl McapStreamFactory {
     }
 }
 
+// TODO(RR-4850): this spawn-thread + bounded-channel block is hand-copied across
+// mp4/mcap/parquet. Factor it into a shared `spawn_threaded_stream` adapter and
+// benchmark whether mcap benefits from threaded pipelining. Note mcap pushes chunks
+// via an `emit_chunks` callback rather than returning an iterator, so the shared
+// adapter must accept a callback-style producer too (not just `Iterator`).
 impl ChunkStreamFactory for McapStreamFactory {
     fn create(&self) -> Result<Box<dyn ChunkStream>, ChunkPipelineError> {
         let (tx, rx) = crossbeam::channel::bounded::<Result<Arc<Chunk>, ChunkPipelineError>>(

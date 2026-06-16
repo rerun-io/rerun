@@ -22,7 +22,10 @@ struct SegmentationImageComponentData {
 
 impl IdentifiedViewSystem for SegmentationImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "SegmentationImage".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "SegmentationImage"
+        )
     }
 }
 

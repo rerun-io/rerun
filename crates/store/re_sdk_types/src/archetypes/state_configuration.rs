@@ -102,11 +102,13 @@ impl StateConfiguration {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_values() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.StateConfiguration".into()),
-            component: "StateConfiguration:values".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.StateConfiguration".into()),
+                component: "StateConfiguration:values".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
@@ -114,11 +116,13 @@ impl StateConfiguration {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.StateConfiguration".into()),
-            component: "StateConfiguration:labels".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.StateConfiguration".into()),
+                component: "StateConfiguration:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
@@ -126,11 +130,13 @@ impl StateConfiguration {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.StateConfiguration".into()),
-            component: "StateConfiguration:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.StateConfiguration".into()),
+                component: "StateConfiguration:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
@@ -138,11 +144,13 @@ impl StateConfiguration {
     /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.StateConfiguration".into()),
-            component: "StateConfiguration:visible".into(),
-            component_type: Some("rerun.components.Visible".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.StateConfiguration".into()),
+                component: "StateConfiguration:visible".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -180,7 +188,10 @@ impl StateConfiguration {
 impl ::re_types_core::Archetype for StateConfiguration {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.StateConfiguration".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.StateConfiguration"
+        )
     }
 
     #[inline]

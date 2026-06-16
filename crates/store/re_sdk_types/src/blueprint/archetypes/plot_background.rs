@@ -40,11 +40,13 @@ impl PlotBackground {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.PlotBackground".into()),
-            component: "PlotBackground:color".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PlotBackground".into()),
+                component: "PlotBackground:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_grid`].
@@ -52,11 +54,13 @@ impl PlotBackground {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_show_grid() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.PlotBackground".into()),
-            component: "PlotBackground:show_grid".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PlotBackground".into()),
+                component: "PlotBackground:show_grid".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -90,7 +94,10 @@ impl PlotBackground {
 impl ::re_types_core::Archetype for PlotBackground {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.PlotBackground".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.PlotBackground"
+        )
     }
 
     #[inline]

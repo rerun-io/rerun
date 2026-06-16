@@ -14,6 +14,7 @@ from ._lazy_chunk_stream import LazyChunkStream as LazyChunkStream
 from ._lazy_store import LazyStore as LazyStore
 from ._lens import DeriveLens as DeriveLens, Lens as Lens, MutateLens as MutateLens
 from ._mcap_reader import McapReader as McapReader
+from ._mp4_reader import Mp4Reader as Mp4Reader
 from ._optimization_profile import OptimizationProfile as OptimizationProfile
 from ._parquet_reader import ColumnRule as ColumnRule, ParquetReader as ParquetReader
 from ._query_metrics import (

@@ -8,6 +8,7 @@ use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
 use egui_kittest::{Harness, SnapshotResults};
 use re_integration_test::{HarnessExt as _, TestServer};
+use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::ext::TableInsertMode;
 use re_sdk::external::re_log_types::EntryId;
 use re_viewer::App;
@@ -19,7 +20,7 @@ fn assert_route_and_selection(harness: &mut Harness<'static, App>, expected_rout
     assert_eq!(&actual_route, expected_route, "unexpected route");
 
     let actual_selection =
-        harness.run_with_viewer_context(|ctx| ctx.selection().single_item().cloned());
+        harness.run_with_app_context(|ctx| ctx.selection().single_item().cloned());
     assert_eq!(
         actual_selection,
         expected_route.item(),
@@ -228,7 +229,7 @@ async fn create_table(
     name: &str,
     schema: &Arc<Schema>,
     row_name: &str,
-) -> re_protos::cloud::v1alpha1::ext::TableEntry {
+) -> ext::TableEntry {
     let batch = RecordBatch::try_new_with_options(
         schema.clone(),
         vec![

@@ -233,12 +233,11 @@ pub fn picking(
             },
             SpatialViewKind::ThreeD => {
                 let hovered_point = picking_result.space_position();
-                let empty_cameras = Vec::new();
-                let pinhole_cameras = system_output
-                    .visualizer_data::<CamerasVisualizerOutput>(CamerasVisualizer::identifier())
-                    .ok()
-                    .map(|d| &d.pinhole_cameras)
-                    .unwrap_or(&empty_cameras);
+                let cameras = system_output.visualizer_data_or_default::<CamerasVisualizerOutput>(
+                    CamerasVisualizer::identifier(),
+                )?;
+
+                let pinhole_cameras = &cameras.pinhole_cameras;
 
                 ItemContext::ThreeD {
                     space_3d: query.space_origin.clone(),
@@ -278,12 +277,12 @@ fn get_pixel_picking_info(
 ) -> Option<PickedPixelInfo> {
     let depth_visualizer_output = system_output
         .visualizer_data::<DepthImageVisualizerOutput>(DepthImageVisualizer::identifier())
-        .ok();
+        .ok()?;
     let encoded_depth_visualizer_output = system_output
         .visualizer_data::<EncodedDepthImageVisualizerOutput>(
             EncodedDepthImageVisualizer::identifier(),
         )
-        .ok();
+        .ok()?;
 
     if hit.hit_type == PickingHitType::TexturedRect {
         iter_pickable_rects(system_output)

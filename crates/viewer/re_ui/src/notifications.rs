@@ -103,6 +103,10 @@ pub struct Notification {
 
     /// if set this notifications will have a collapsible details section.
     details: Option<String>,
+
+    /// Structured key-value fields, shown one `key: value` per line.
+    fields: Vec<(&'static str, re_log::FieldValue)>,
+
     link: Option<Link>,
 
     /// If set, the notification will NEVER be shown again
@@ -128,6 +132,7 @@ impl Notification {
             level,
             text: text.into(),
             details: None,
+            fields: Vec::new(),
             link: None,
             permanent_dismiss_id: None,
             created_at: Timestamp::now(),
@@ -146,8 +151,23 @@ impl Notification {
         &self.text
     }
 
+    /// The full text contents, including any structured fields, one `key: value` per line.
+    fn copy_text(&self) -> String {
+        use std::fmt::Write as _;
+        let mut text = self.text.clone();
+        for (key, value) in &self.fields {
+            write!(text, "\n{key}: {value}").ok();
+        }
+        text
+    }
+
     pub fn with_details(mut self, details: impl Into<String>) -> Self {
         self.details = Some(details.into());
+        self
+    }
+
+    pub fn with_fields(mut self, fields: Vec<(&'static str, re_log::FieldValue)>) -> Self {
+        self.fields = fields;
         self
     }
 
@@ -236,17 +256,24 @@ impl NotificationUi {
     /// ## Special cased text
     /// - If a notifications text contains [`re_error::DETAILS_SEPARATOR`] the section after that
     ///   will be displayed inside a collapsible details header.
-    pub fn add_log(&mut self, message: re_log::LogMsg) {
-        let re_log::LogMsg { level, target, msg } = message;
+    pub fn add_log(&mut self, log_msg: re_log::LogMsg) {
+        let re_log::LogMsg {
+            level,
+            target,
+            message,
+            fields,
+        } = log_msg;
 
         if is_relevant(&target, level) {
-            let (summary, details) = re_error::split_details(&msg);
+            let (summary, details) = re_error::split_details(&message);
 
             let mut notification = Notification::new(level.into(), summary);
 
             if let Some(details) = details {
                 notification = notification.with_details(details);
             }
+
+            notification = notification.with_fields(fields);
 
             self.add(notification);
         }
@@ -454,7 +481,7 @@ impl Toasts {
                 if let Some(link) = &notification.link {
                     egui_ctx.open_url(egui::OpenUrl::new_tab(link.url.clone()));
                 } else {
-                    egui_ctx.copy_text(notification.text.clone());
+                    egui_ctx.copy_text(notification.copy_text());
                 }
                 notification.toast_ttl = Duration::ZERO;
             }
@@ -483,6 +510,7 @@ fn show_notification(
         level,
         text,
         details,
+        fields,
         link,
         permanent_dismiss_id,
         created_at,
@@ -514,6 +542,14 @@ fn show_notification(
                             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                             ui.set_width(270.0);
                             ui.label(text);
+
+                            for (key, value) in fields {
+                                ui.label(
+                                    egui::RichText::new(format!("{key}: {value}"))
+                                        .monospace()
+                                        .weak(),
+                                );
+                            }
 
                             if let Some(details) = details {
                                 ui.collapsing_header("Details", false, |ui| ui.label(details));

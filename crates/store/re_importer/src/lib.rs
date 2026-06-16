@@ -407,9 +407,11 @@ pub enum ImporterError {
     #[error(transparent)]
     Mcap(#[from] ::mcap::McapError),
 
-    #[error("Video file is too large ({} bytes). \
-             Maximum supported blob size is ~2 GiB due to Arrow i32 offset limits.", .0)]
-    VideoTooLarge(usize),
+    #[error("Failed to import mp4 video: {source}\nFile path: {path:?}")]
+    Mp4 {
+        path: std::path::PathBuf,
+        source: re_mp4_reader::Mp4Error,
+    },
 
     #[error("{}", re_error::format(.0))]
     Other(#[from] anyhow::Error),

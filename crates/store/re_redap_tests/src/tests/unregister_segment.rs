@@ -5,17 +5,19 @@ use super::common::{
 };
 use crate::tests::common::concat_record_batches;
 use crate::{FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _};
-use arrow::array::{RecordBatch, StringArray};
+use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
-use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
-use re_protos::cloud::v1alpha1::ext::{LayerRegistrationStatus, QueryDatasetRequest};
+use re_arrow_util::RecordBatchExt as _;
+use re_protos::cloud::v1alpha1::ext::{
+    LayerRegistrationStatus, QueryDatasetDataframe, QueryDatasetRequest,
+    ScanDatasetManifestDataframe, ScanSegmentTableDataframe,
+};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest, QueryDatasetResponse,
-    ReadDatasetEntryRequest, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-    ScanSegmentTableRequest, ScanSegmentTableResponse,
+    GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest, ReadDatasetEntryRequest,
+    ScanDatasetManifestRequest, ScanSegmentTableRequest,
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
 
@@ -363,16 +365,16 @@ async fn scan_segment_table_and_snapshot(
         alleged_schema.format_snapshot(),
     );
 
-    let required_fields = ScanSegmentTableResponse::fields();
+    let required_fields = ScanSegmentTableDataframe::min_schema().fields().to_vec();
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
         "the schema should contain all the required fields, but it doesn't",
     );
 
     let unstable_column_names = vec![
-        ScanSegmentTableResponse::FIELD_STORAGE_URLS,
-        ScanSegmentTableResponse::FIELD_SIZE_BYTES,
-        ScanSegmentTableResponse::FIELD_LAST_UPDATED_AT,
+        ScanSegmentTableDataframe::COLUMN_RERUN_STORAGE_URLS_NAME,
+        ScanSegmentTableDataframe::COLUMN_RERUN_SIZE_BYTES_NAME,
+        ScanSegmentTableDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
     ];
     let filtered_batch = batch
         .remove_columns(&unstable_column_names)
@@ -451,7 +453,7 @@ async fn scan_dataset_manifest_and_snapshot(
         alleged_schema.format_snapshot(),
     );
 
-    let required_fields = ScanDatasetManifestResponse::fields();
+    let required_fields = ScanDatasetManifestDataframe::min_schema().fields().to_vec();
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
         "the schema should contain all the required fields, but it doesn't",
@@ -459,11 +461,11 @@ async fn scan_dataset_manifest_and_snapshot(
 
     let unstable_column_names = vec![
         // implementation-dependent
-        ScanDatasetManifestResponse::FIELD_STORAGE_URL,
-        ScanDatasetManifestResponse::FIELD_SIZE_BYTES,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_STORAGE_URL_NAME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_SIZE_BYTES_NAME,
         // unstable
-        ScanDatasetManifestResponse::FIELD_LAST_UPDATED_AT,
-        ScanDatasetManifestResponse::FIELD_REGISTRATION_TIME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_TIME_NAME,
     ];
     let filtered_batch = batch
         .remove_columns(&unstable_column_names)
@@ -474,14 +476,13 @@ async fn scan_dataset_manifest_and_snapshot(
     // For the comparison to make sense across the OSS and enterprise servers, we need to filter
     // out rows where `status=deleted`, since OSS doesn't keep track of removed segments/layers.
     let filtered_batch = {
-        let col_status = filtered_batch
-            .column_by_name(ScanDatasetManifestResponse::FIELD_REGISTRATION_STATUS)
+        let col_status = ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_STATUS
+            .extract(&filtered_batch)
             .unwrap();
-        let col_status = col_status.downcast_array_ref::<StringArray>().unwrap();
 
         let mask = col_status
             .iter()
-            .map(|s| s != Some(LayerRegistrationStatus::Deleted.as_str()))
+            .map(|s| s != LayerRegistrationStatus::Deleted.as_str())
             .collect_vec();
 
         arrow::compute::filter_record_batch(&filtered_batch, &mask.into()).unwrap()
@@ -530,7 +531,7 @@ async fn snapshot_response(
         alleged_schema.format_snapshot(),
     );
 
-    let required_fields = ScanDatasetManifestResponse::fields();
+    let required_fields = ScanDatasetManifestDataframe::min_schema().fields().to_vec();
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
         "the schema should contain all the required fields, but it doesn't",
@@ -538,11 +539,11 @@ async fn snapshot_response(
 
     let unstable_column_names = vec![
         // implementation-dependent
-        ScanDatasetManifestResponse::FIELD_STORAGE_URL,
-        ScanDatasetManifestResponse::FIELD_SIZE_BYTES,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_STORAGE_URL_NAME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_SIZE_BYTES_NAME,
         // unstable
-        ScanDatasetManifestResponse::FIELD_LAST_UPDATED_AT,
-        ScanDatasetManifestResponse::FIELD_REGISTRATION_TIME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_TIME_NAME,
     ];
     let filtered_batch = batch
         .remove_columns(&unstable_column_names)
@@ -553,14 +554,13 @@ async fn snapshot_response(
     // For the comparison to make sense across the OSS and enterprise servers, we need to filter
     // out rows where `status=deleted`, since OSS doesn't keep track of removed segments/layers.
     let filtered_batch = {
-        let col_status = filtered_batch
-            .column_by_name(ScanDatasetManifestResponse::FIELD_REGISTRATION_STATUS)
+        let col_status = ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_STATUS
+            .extract(&filtered_batch)
             .unwrap();
-        let col_status = col_status.downcast_array_ref::<StringArray>().unwrap();
 
         let mask = col_status
             .iter()
-            .map(|s| s != Some(LayerRegistrationStatus::Deleted.as_str()))
+            .map(|s| s != LayerRegistrationStatus::Deleted.as_str())
             .collect_vec();
 
         arrow::compute::filter_record_batch(&filtered_batch, &mask.into()).unwrap()
@@ -600,7 +600,7 @@ async fn query_dataset_snapshot(
     let merged_chunk_info = concat_record_batches(&chunk_info);
 
     // these are the only columns guaranteed to be returned by `query_dataset`
-    let required_field = QueryDatasetResponse::fields();
+    let required_field = QueryDatasetDataframe::min_schema().fields().to_vec();
 
     assert!(
         merged_chunk_info
@@ -628,9 +628,9 @@ async fn query_dataset_snapshot(
     // these columns are not stable, so we cannot snapshot them
     let filtered_chunk_info = required_chunk_info
         .remove_columns(&[
-            QueryDatasetResponse::FIELD_CHUNK_KEY,
-            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
-            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED,
+            QueryDatasetDataframe::COLUMN_CHUNK_KEY_NAME,
+            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
+            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME,
         ])
         .auto_sort_rows()
         .unwrap();

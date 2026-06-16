@@ -34,16 +34,10 @@ if TYPE_CHECKING:
 
     from . import (
         CatalogClient,
-        ComponentColumnDescriptor,
-        ComponentColumnSelector,
         EntryKind,
-        IndexColumnSelector,
-        IndexConfig,
-        IndexingResult,
         IndexValuesLike,
         RegistrationHandle,
         Schema,
-        VectorDistanceMetric,
     )
 
 
@@ -192,11 +186,17 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.arrow_schema()
 
-    def register_blueprint(self, uri: str, set_default: bool = True) -> None:
+    def register_blueprint(self, uri: str, set_default: bool = True, *, segment_table: bool = False) -> None:
         """
         Register an existing .rbl visible to the server.
 
         By default, also set this blueprint as default.
+
+        Set `segment_table=True` (and `set_default=True`) to register it as this dataset's
+        default for the segment table blueprint.
+
+        The associated blueprint dataset is owned by this dataset for lifecycle purposes.
+        Deleting this dataset also deletes the associated blueprint dataset and its storage.
         """
 
         blueprint_dataset = self.blueprint_dataset()
@@ -209,7 +209,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         )
 
         if set_default:
-            self.set_default_blueprint(segment_id)
+            if segment_table:
+                self.set_default_segment_table_blueprint(segment_id)
+            else:
+                self.set_default_blueprint(segment_id)
 
     def blueprints(self) -> list[str]:
         """Lists all blueprints currently registered with this dataset."""
@@ -230,8 +233,23 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.default_blueprint_segment_id()
 
+    def set_default_segment_table_blueprint(self, blueprint_name: str | None) -> None:
+        """Set an already-registered blueprint as the default segment table blueprint for this dataset."""
+
+        return self._internal.set_default_segment_table_blueprint_segment_id(blueprint_name)
+
+    def default_segment_table_blueprint(self) -> str | None:
+        """Return the name of the currently set segment table blueprint."""
+
+        return self._internal.default_segment_table_blueprint_segment_id()
+
     def blueprint_dataset(self) -> DatasetEntry | None:
-        """The associated blueprint dataset, if any."""
+        """
+        The associated blueprint dataset, if any.
+
+        The associated blueprint dataset is owned by this dataset for lifecycle purposes.
+        Deleting this dataset also deletes the associated blueprint dataset and its storage.
+        """
 
         ds = self._internal.blueprint_dataset()
         return None if ds is None else DatasetEntry(ds)
@@ -298,6 +316,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return segment_table_df
 
+    @deprecated(
+        "DatasetEntry.manifest() is deprecated and will be removed in a future release. "
+        "It was intended for internal and debugging use only."
+    )
     def manifest(self, include_diagnostic_data: bool = False) -> datafusion.DataFrame:
         """
         Return the dataset manifest as a DataFusion DataFrame.
@@ -313,6 +335,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
                 Diagnostic data is subject to change in any release and should not be relied on for production.
 
         """
+
+        return self._manifest(include_diagnostic_data=include_diagnostic_data)
+
+    def _manifest(self, include_diagnostic_data: bool = False) -> datafusion.DataFrame:
+        """Return the dataset manifest as a DataFusion DataFrame. Intended for internal and debugging use only."""
 
         from datafusion import col
 
@@ -369,6 +396,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.segment_url(segment_id, timeline, start, end)
 
+    @with_tracing("DatasetEntry.register")
     def register(
         self,
         # NOTE: this can't be Sequence[str], because `str` IS a `Sequence[str]`, and we would thus get no helpful typechecking
@@ -434,6 +462,68 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             self._internal.register(recording_uris, recording_layers=layer_names, on_duplicate=on_duplicate)
         )
 
+    @with_tracing("DatasetEntry._register_asset_layer")
+    def _register_asset_layer(
+        self,
+        *,
+        recording_uri: str,
+        layer_name: str,
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+    ) -> RegistrationHandle:
+        """
+        Register a single RRD as an asset layer shared across all segments in the dataset.
+
+        Unlike segment layers (one recording per segment), an asset layer is a single recording
+        shared by every segment in the dataset.
+        This is useful for common assets such as robot URDFs or environment meshes that would
+        otherwise be duplicated in every segment.
+
+        !!! warning "Experimental"
+            This API is experimental and may change or be removed in future versions without
+            going through the normal deprecation cycle.
+
+        Parameters
+        ----------
+        layer_name:
+            The name for this asset layer.
+
+        recording_uri:
+            The URI of the RRD to register as the asset.
+
+        on_duplicate:
+            How to handle the case where the layer already exists.
+            Defaults to `OnDuplicateSegmentLayer.ERROR`.
+
+        Returns
+        -------
+        RegistrationHandle
+            A handle to track and wait on the registration task.
+
+        Examples
+        --------
+        ```python
+        handle = dataset._register_asset_layer(layer_name="robot_urdf", recording_uri="s3://my-bucket/robot.rrd")
+        handle.wait()
+        ```
+
+        """
+        import warnings
+
+        # TODO(RR-4797): remove experimental status
+        warnings.warn(
+            "_register_asset_layer is experimental and may change or be removed in future versions.",
+            stacklevel=2,
+        )
+
+        from ._registration_handle import RegistrationHandle
+
+        return RegistrationHandle(
+            self._internal._register_asset_layer(
+                recording_uri=recording_uri, layer_name=layer_name, on_duplicate=on_duplicate
+            )
+        )
+
+    @with_tracing("DatasetEntry.unregister")
     def unregister(
         self,
         *,
@@ -702,7 +792,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             - **DataFrame**: must have `rerun_segment_id` and index columns;
               treated as a per-segment value list.
 
-            !!! warning
+            !!! note
                 The plain array form requires a scan of the segment table to
                 map values to the segments whose index range covers them. On
                 datasets with many segments this can be expensive. Prefer the
@@ -728,135 +818,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             fill_latest_at=fill_latest_at,
             using_index_values=using_index_values,
         )
-
-    @deprecated(
-        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def create_fts_search_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        store_position: bool = False,
-        base_tokenizer: str = "simple",
-    ) -> None:
-        """Create a full-text search index on the given column."""
-
-        try:
-            return self._internal.create_fts_search_index(  # ty: ignore[deprecated]
-                column=column,
-                time_index=time_index,
-                store_position=store_position,
-                base_tokenizer=base_tokenizer,
-            )
-        except Exception as err:
-            raise NotImplementedError(
-                "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-            ) from err
-
-    @deprecated(
-        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def create_vector_search_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        target_partition_num_rows: int | None = None,
-        num_sub_vectors: int = 16,
-        distance_metric: VectorDistanceMetric | str = "Cosine",
-    ) -> IndexingResult:
-        """
-        Create a vector index on the given column.
-
-        This will enable indexing and build the vector index over all existing values
-        in the specified component column.
-
-        Results can be retrieved using the `search_vector` API, which will include
-        the time-point on the indexed timeline.
-
-        Only one index can be created per component column -- executing this a second
-        time for the same component column will replace the existing index.
-
-        Parameters
-        ----------
-        column
-            The component column to create the index on.
-        time_index
-            Which timeline this index will map to.
-        target_partition_num_rows
-            The target size (in number of rows) for each partition.
-            The underlying indexer (lance) will pick a default when no value
-            is specified - today this is 8192. It will also cap the
-            maximum number of partitions independently of this setting - currently
-            4096.
-        num_sub_vectors
-            The number of sub-vectors to use when building the index.
-        distance_metric
-            The distance metric to use for the index. ("L2", "Cosine", "Dot", "Hamming")
-
-        """
-
-        try:
-            return self._internal.create_vector_search_index(  # ty: ignore[deprecated]
-                column=column,
-                time_index=time_index,
-                target_partition_num_rows=target_partition_num_rows,
-                num_sub_vectors=num_sub_vectors,
-                distance_metric=distance_metric,
-            )
-        except Exception as err:
-            raise NotImplementedError(
-                "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-            ) from err
-
-    def list_search_indexes(self) -> list[IndexingResult]:
-        """List all user-defined indexes in this dataset."""
-
-        return self._internal.list_search_indexes()
-
-    def delete_search_indexes(
-        self,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> list[IndexConfig]:
-        """Deletes all user-defined indexes for the specified column."""
-
-        return self._internal.delete_search_indexes(column)
-
-    @deprecated(
-        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def search_fts(
-        self,
-        query: str,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> datafusion.DataFrame:
-        """Search the dataset using a full-text search query."""
-
-        try:
-            return self._internal.search_fts(query, column)  # ty: ignore[deprecated]
-        except Exception as err:
-            raise NotImplementedError(
-                "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-            ) from err
-
-    @deprecated(
-        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def search_vector(
-        self,
-        query: Any,  # VectorLike
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        top_k: int,
-    ) -> datafusion.DataFrame:
-        """Search the dataset using a vector search query."""
-
-        try:
-            return self._internal.search_vector(query, column, top_k)  # ty: ignore[deprecated]
-        except Exception as err:
-            raise NotImplementedError(
-                "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-            ) from err
 
     def do_maintenance(  # noqa: PLR0917
         self,
@@ -1074,7 +1035,7 @@ class DatasetView:
             - **DataFrame**: must have `rerun_segment_id` and index columns;
               treated as a per-segment value list.
 
-            !!! warning
+            !!! note
                 The plain array form requires a scan of the segment table to
                 map values to the segments whose index range covers them. On
                 datasets with many segments this can be expensive. Prefer the
@@ -1340,6 +1301,79 @@ class TableEntry(Entry[TableEntryInternal]):
 
         return self.reader().schema()
 
+    def register_blueprint(self, uri: str, set_default: bool = True) -> None:
+        """
+        Register an existing .rbl visible to the server as this table's blueprint.
+
+        By default, also set this blueprint as default.
+
+        The associated blueprint dataset is owned by this table for lifecycle purposes.
+        Deleting this table also deletes the associated blueprint dataset and its storage.
+
+        !!! note
+            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+            TODO(#12746): Stabilize table blueprint APIs.
+        """
+
+        blueprint_dataset = self.blueprint_dataset()
+
+        segment_id = (
+            blueprint_dataset.register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+        )
+
+        if set_default:
+            self.set_default_blueprint(segment_id)
+
+    def blueprints(self) -> list[str]:
+        """
+        Lists all blueprints currently registered with this table.
+
+        !!! note
+            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+            TODO(#12746): Stabilize table blueprint APIs.
+        """
+
+        return self.blueprint_dataset().segment_ids()
+
+    def set_default_blueprint(self, blueprint_name: str | None) -> None:
+        """
+        Set an already-registered blueprint as default for this table.
+
+        !!! note
+            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+            TODO(#12746): Stabilize table blueprint APIs.
+        """
+
+        return self._internal.set_default_blueprint_segment_id(blueprint_name)
+
+    def default_blueprint(self) -> str | None:
+        """
+        Return the name currently set blueprint.
+
+        !!! note
+            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+            TODO(#12746): Stabilize table blueprint APIs.
+        """
+
+        return self._internal.default_blueprint_segment_id()
+
+    def blueprint_dataset(self) -> DatasetEntry:
+        """
+        The associated blueprint dataset.
+
+        Tables get a blueprint dataset automatically when they are created.
+        For tables created by older servers, this creates the missing blueprint dataset before returning.
+
+        The associated blueprint dataset is owned by this table for lifecycle purposes.
+        Deleting this table also deletes the associated blueprint dataset and its storage.
+
+        !!! note
+            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+            TODO(#12746): Stabilize table blueprint APIs.
+        """
+
+        return DatasetEntry(self._internal.blueprint_dataset())
+
     # ---
 
     def append(
@@ -1500,10 +1534,7 @@ def _python_objects_to_record_batch(schema: pa.Schema, named_params: dict[str, A
                 )
 
                 if pa.types.is_list(field.type) or pa.types.is_large_list(field.type):
-                    error += (
-                        f" Hint: For single-row list-typed columns, wrap your list in another list: "
-                        f"{name}=[[...]] instead of {name}=[...]"  # NOLINT
-                    )
+                    error += f" Hint: For single-row list-typed columns, wrap your list in another list: {name}=[[…]] instead of {name}=[…]"
 
                 raise ValueError(error)
 

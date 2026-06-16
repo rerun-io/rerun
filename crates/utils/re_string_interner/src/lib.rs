@@ -10,7 +10,6 @@
 
 pub mod external {
     pub use nohash_hasher;
-    #[cfg(feature = "serde")]
     pub use serde;
 }
 
@@ -132,7 +131,6 @@ impl std::fmt::Display for InternedString {
     }
 }
 
-#[cfg(feature = "serde")]
 impl serde::Serialize for InternedString {
     #[inline]
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -140,7 +138,6 @@ impl serde::Serialize for InternedString {
     }
 }
 
-#[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for InternedString {
     #[inline]
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -188,6 +185,29 @@ impl StringInterner {
 }
 
 // ----------------------------------------------------------------------------
+
+/// Intern a string literal once and return the cached value on subsequent calls.
+///
+/// Use for hot paths that produce the same interned identifier every call. Without this,
+/// each call hashes the literal and locks the global interner, which adds up on per-frame
+/// invocations from visualizer `execute` methods, codegen accessors, etc.
+///
+/// `$ty` must be a type declared via [`declare_new_type!`] (or anything constructible via
+/// `From<&'static str>`).
+///
+/// ```ignore
+/// fn identifier() -> ViewSystemIdentifier {
+///     re_string_interner::intern_static!(ViewSystemIdentifier, "Ellipsoids3D")
+/// }
+/// ```
+#[macro_export]
+macro_rules! intern_static {
+    ($ty:ty, $lit:literal) => {{
+        static CACHED: ::std::sync::LazyLock<$ty> =
+            ::std::sync::LazyLock::new(|| <$ty as ::std::convert::From<&str>>::from($lit));
+        *CACHED
+    }};
+}
 
 /// Declare a newtype wrapper around [`InternedString`] with
 /// all the convenience methods you would want.

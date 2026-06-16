@@ -96,11 +96,13 @@ impl SegmentationImage {
     /// The corresponding component is [`crate::components::ImageBuffer`].
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SegmentationImage".into()),
-            component: "SegmentationImage:buffer".into(),
-            component_type: Some("rerun.components.ImageBuffer".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SegmentationImage".into()),
+                component: "SegmentationImage:buffer".into(),
+                component_type: Some("rerun.components.ImageBuffer".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::format`].
@@ -108,11 +110,13 @@ impl SegmentationImage {
     /// The corresponding component is [`crate::components::ImageFormat`].
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SegmentationImage".into()),
-            component: "SegmentationImage:format".into(),
-            component_type: Some("rerun.components.ImageFormat".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SegmentationImage".into()),
+                component: "SegmentationImage:format".into(),
+                component_type: Some("rerun.components.ImageFormat".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
@@ -120,11 +124,13 @@ impl SegmentationImage {
     /// The corresponding component is [`crate::components::Opacity`].
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SegmentationImage".into()),
-            component: "SegmentationImage:opacity".into(),
-            component_type: Some("rerun.components.Opacity".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SegmentationImage".into()),
+                component: "SegmentationImage:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
@@ -132,11 +138,13 @@ impl SegmentationImage {
     /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SegmentationImage".into()),
-            component: "SegmentationImage:draw_order".into(),
-            component_type: Some("rerun.components.DrawOrder".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SegmentationImage".into()),
+                component: "SegmentationImage:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -177,7 +185,10 @@ impl SegmentationImage {
 impl ::re_types_core::Archetype for SegmentationImage {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.SegmentationImage".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.SegmentationImage"
+        )
     }
 
     #[inline]

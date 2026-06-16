@@ -39,7 +39,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
+#[derive(::serde::Serialize, ::serde::Deserialize)]
 pub struct ClassId(pub crate::datatypes::ClassId);
 
 impl ::re_types_core::WrapperComponent for ClassId {

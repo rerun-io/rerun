@@ -200,7 +200,8 @@ Filter message types and toggle column visibility in a selection panel.",
 
         let tokens = ui.tokens();
         let state = state.downcast_mut::<TextViewState>()?;
-        let text = system_output.visualizer_data::<Vec<Entry>>(TextLogSystem::identifier())?;
+        let text =
+            system_output.visualizer_data_or_default::<Vec<Entry>>(TextLogSystem::identifier())?;
 
         let columns_property = ViewProperty::from_archetype::<TextLogColumns>(
             ctx.blueprint_db(),
@@ -239,7 +240,7 @@ Filter message types and toggle column visibility in a selection panel.",
             TextLogRows::descriptor_filter_by_log_level().component,
         )?;
 
-        for te in text {
+        for te in text.iter() {
             if let Some(lvl) = &te.level {
                 state.seen_levels.insert(lvl.to_string());
             }

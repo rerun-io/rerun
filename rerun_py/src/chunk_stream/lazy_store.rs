@@ -24,6 +24,7 @@ use crate::catalog::PySchemaInternal;
 /// that pulls chunks in byte-budgeted batches.
 #[pyclass(
     frozen,
+    from_py_object,
     name = "LazyStoreInternal",
     module = "rerun_bindings.rerun_bindings"
 )]

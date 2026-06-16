@@ -56,11 +56,13 @@ impl TensorSliceSelection {
     /// The corresponding component is [`crate::components::TensorWidthDimension`].
     #[inline]
     pub fn descriptor_width() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-            component: "TensorSliceSelection:width".into(),
-            component_type: Some("rerun.components.TensorWidthDimension".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+                component: "TensorSliceSelection:width".into(),
+                component_type: Some("rerun.components.TensorWidthDimension".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::height`].
@@ -68,11 +70,13 @@ impl TensorSliceSelection {
     /// The corresponding component is [`crate::components::TensorHeightDimension`].
     #[inline]
     pub fn descriptor_height() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-            component: "TensorSliceSelection:height".into(),
-            component_type: Some("rerun.components.TensorHeightDimension".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+                component: "TensorSliceSelection:height".into(),
+                component_type: Some("rerun.components.TensorHeightDimension".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::indices`].
@@ -80,11 +84,13 @@ impl TensorSliceSelection {
     /// The corresponding component is [`crate::components::TensorDimensionIndexSelection`].
     #[inline]
     pub fn descriptor_indices() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-            component: "TensorSliceSelection:indices".into(),
-            component_type: Some("rerun.components.TensorDimensionIndexSelection".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+                component: "TensorSliceSelection:indices".into(),
+                component_type: Some("rerun.components.TensorDimensionIndexSelection".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::slider`].
@@ -92,11 +98,15 @@ impl TensorSliceSelection {
     /// The corresponding component is [`crate::blueprint::components::TensorDimensionIndexSlider`].
     #[inline]
     pub fn descriptor_slider() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-            component: "TensorSliceSelection:slider".into(),
-            component_type: Some("rerun.blueprint.components.TensorDimensionIndexSlider".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+                component: "TensorSliceSelection:slider".into(),
+                component_type: Some(
+                    "rerun.blueprint.components.TensorDimensionIndexSlider".into(),
+                ),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -134,7 +144,10 @@ impl TensorSliceSelection {
 impl ::re_types_core::Archetype for TensorSliceSelection {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TensorSliceSelection".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TensorSliceSelection"
+        )
     }
 
     #[inline]

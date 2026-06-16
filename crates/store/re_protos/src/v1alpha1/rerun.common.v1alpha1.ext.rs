@@ -126,17 +126,18 @@ impl TryFrom<crate::common::v1alpha1::SegmentId> for SegmentId {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::SegmentId) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: value
-                .id
-                .ok_or(missing_field!(crate::common::v1alpha1::SegmentId, "id"))?,
-        })
+        Ok(Self::from(value.id.ok_or(missing_field!(
+            crate::common::v1alpha1::SegmentId,
+            "id"
+        ))?))
     }
 }
 
 impl From<SegmentId> for crate::common::v1alpha1::SegmentId {
     fn from(value: SegmentId) -> Self {
-        Self { id: Some(value.id) }
+        Self {
+            id: Some(value.into()),
+        }
     }
 }
 
@@ -215,6 +216,10 @@ impl crate::common::v1alpha1::TaskId {
         Self::from_hashable(re_tuid::Tuid::new())
     }
 
+    pub fn into_string(self) -> String {
+        self.id
+    }
+
     pub fn from_hashable<H: std::hash::Hash>(hashable: H) -> Self {
         let mut hasher = std::hash::DefaultHasher::new();
         hashable.hash(&mut hasher);
@@ -225,6 +230,21 @@ impl crate::common::v1alpha1::TaskId {
         }
     }
 }
+
+impl From<String> for crate::common::v1alpha1::TaskId {
+    fn from(id: String) -> Self {
+        Self { id }
+    }
+}
+
+impl From<crate::common::v1alpha1::TaskId> for String {
+    fn from(task_id: crate::common::v1alpha1::TaskId) -> Self {
+        task_id.id
+    }
+}
+
+// Make `quiver::Column<TaskId>` work (backed by a `Utf8` column):
+quiver::newtype_datatype!(crate::common::v1alpha1::TaskId, quiver::Utf8);
 
 // ---
 

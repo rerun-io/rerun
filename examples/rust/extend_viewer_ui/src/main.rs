@@ -87,6 +87,10 @@ impl eframe::App for MyApp {
         // Now show the Rerun Viewer in the remaining space:
         self.rerun_app.ui(ui, frame);
     }
+
+    fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.rerun_app.logic(ctx, frame);
+    }
 }
 
 impl MyApp {

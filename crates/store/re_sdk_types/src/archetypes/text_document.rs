@@ -113,11 +113,13 @@ impl TextDocument {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_text() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.TextDocument".into()),
-            component: "TextDocument:text".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextDocument".into()),
+                component: "TextDocument:text".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
@@ -125,11 +127,13 @@ impl TextDocument {
     /// The corresponding component is [`crate::components::MediaType`].
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.TextDocument".into()),
-            component: "TextDocument:media_type".into(),
-            component_type: Some("rerun.components.MediaType".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextDocument".into()),
+                component: "TextDocument:media_type".into(),
+                component_type: Some("rerun.components.MediaType".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -158,7 +162,10 @@ impl TextDocument {
 impl ::re_types_core::Archetype for TextDocument {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.TextDocument".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.TextDocument"
+        )
     }
 
     #[inline]

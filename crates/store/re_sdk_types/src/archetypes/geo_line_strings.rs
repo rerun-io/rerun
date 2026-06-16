@@ -81,11 +81,13 @@ impl GeoLineStrings {
     /// The corresponding component is [`crate::components::GeoLineString`].
     #[inline]
     pub fn descriptor_line_strings() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GeoLineStrings".into()),
-            component: "GeoLineStrings:line_strings".into(),
-            component_type: Some("rerun.components.GeoLineString".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoLineStrings".into()),
+                component: "GeoLineStrings:line_strings".into(),
+                component_type: Some("rerun.components.GeoLineString".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
@@ -93,11 +95,13 @@ impl GeoLineStrings {
     /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GeoLineStrings".into()),
-            component: "GeoLineStrings:radii".into(),
-            component_type: Some("rerun.components.Radius".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoLineStrings".into()),
+                component: "GeoLineStrings:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
@@ -105,11 +109,13 @@ impl GeoLineStrings {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.GeoLineStrings".into()),
-            component: "GeoLineStrings:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoLineStrings".into()),
+                component: "GeoLineStrings:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -144,7 +150,10 @@ impl GeoLineStrings {
 impl ::re_types_core::Archetype for GeoLineStrings {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.GeoLineStrings".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.GeoLineStrings"
+        )
     }
 
     #[inline]

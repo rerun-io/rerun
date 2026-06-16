@@ -13,6 +13,7 @@ use crate::analytics::{QueryErrorKind, build_metrics_set_for_explain};
 use crate::chunk_fetcher::{batch_byte_size, batch_byte_size_uncompressed};
 use crate::dataframe_query_common::{
     DataframeClientAPI, IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id,
+    segment_partition_hash,
 };
 use crate::metrics_capture::QueryMetrics;
 use crate::pipeline_budget::PipelineBudget;
@@ -20,7 +21,6 @@ use arrow::array::RecordBatch;
 use arrow::compute::SortOptions;
 use arrow::datatypes::{Schema, SchemaRef};
 use cpu_worker::{CpuWorkerMsg, chunk_store_cpu_worker_thread};
-use datafusion::common::hash_utils::HashValue as _;
 use datafusion::common::{exec_datafusion_err, exec_err, plan_err};
 use datafusion::config::ConfigOptions;
 use datafusion::error::DataFusionError;
@@ -37,7 +37,9 @@ use futures_util::Stream;
 use io_loop::chunk_stream_io_loop;
 use itertools::Itertools as _;
 use re_dataframe::{Index, QueryExpression, TimelineName};
-use re_protos::cloud::v1alpha1::ScanSegmentTableResponse;
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
+use re_types_core::SegmentId;
+
 use re_redap_client::{ApiError, ApiResult};
 
 use crate::IntoDfError as _;
@@ -68,7 +70,7 @@ pub(crate) fn attach_trace_context(
 
 #[derive(Debug)]
 pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
-    props: PlanProperties,
+    props: Arc<PlanProperties>,
     index_values: IndexValuesMap,
 
     /// Describes the chunks per partition, derived from `chunk_info_batches`.
@@ -76,7 +78,7 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// reuse multiple times in theory. We may also need to recompute if the
     /// user asks for a different target partition. These are generally not
     /// too large.
-    chunk_info: Arc<BTreeMap<String, Vec<RecordBatch>>>,
+    chunk_info: Arc<BTreeMap<SegmentId, Vec<RecordBatch>>>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
     target_partitions: usize,
@@ -473,42 +475,43 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         // segment ID and then time index. If the output does not have rerun
         // segment ID included, we cannot specify any output ordering.
 
-        let orderings = if projected_schema
-            .fields()
-            .iter()
-            .any(|f| f.name().as_str() == ScanSegmentTableResponse::FIELD_SEGMENT_ID)
-        {
-            let segment_col = Arc::new(Column::new(ScanSegmentTableResponse::FIELD_SEGMENT_ID, 0))
-                as Arc<dyn PhysicalExpr>;
-            let order_col = sort_index
-                .and_then(|index| {
-                    let index_name = index.as_str();
-                    projected_schema
-                        .fields()
-                        .iter()
-                        .enumerate()
-                        .find(|(_idx, field)| field.name() == index_name)
-                        .map(|(index_col, _)| Column::new(index_name, index_col))
-                })
-                .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
+        let orderings =
+            if projected_schema.fields().iter().any(|f| {
+                f.name().as_str() == ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME
+            }) {
+                let segment_col = Arc::new(Column::new(
+                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+                    0,
+                )) as Arc<dyn PhysicalExpr>;
+                let order_col = sort_index
+                    .and_then(|index| {
+                        let index_name = index.as_str();
+                        projected_schema
+                            .fields()
+                            .iter()
+                            .enumerate()
+                            .find(|(_idx, field)| field.name() == index_name)
+                            .map(|(index_col, _)| Column::new(index_name, index_col))
+                    })
+                    .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
 
-            let mut physical_ordering = vec![PhysicalSortExpr::new(
-                segment_col,
-                SortOptions::new(false, true),
-            )];
-            if let Some(col_expr) = order_col {
-                physical_ordering.push(PhysicalSortExpr::new(
-                    col_expr,
+                let mut physical_ordering = vec![PhysicalSortExpr::new(
+                    segment_col,
                     SortOptions::new(false, true),
-                ));
-            }
-            vec![
-                LexOrdering::new(physical_ordering)
-                    .expect("LexOrdering should return Some since input is not empty"),
-            ]
-        } else {
-            vec![]
-        };
+                )];
+                if let Some(col_expr) = order_col {
+                    physical_ordering.push(PhysicalSortExpr::new(
+                        col_expr,
+                        SortOptions::new(false, true),
+                    ));
+                }
+                vec![
+                    LexOrdering::new(physical_ordering)
+                        .expect("LexOrdering should return Some since input is not empty"),
+                ]
+            } else {
+                vec![]
+            };
 
         let eq_properties =
             EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), orderings);
@@ -518,7 +521,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         let output_partitioning = if partition_in_output_schema {
             Partitioning::Hash(
                 vec![Arc::new(Column::new(
-                    ScanSegmentTableResponse::FIELD_SEGMENT_ID,
+                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
                     0,
                 ))],
                 num_partitions,
@@ -532,7 +535,8 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             output_partitioning,
             EmissionType::Incremental,
             Boundedness::Bounded,
-        );
+        )
+        .into();
 
         // Compute total uncompressed size for adaptive budget before consuming the batches.
         let total_uncompressed: usize = chunk_info_batches
@@ -589,7 +593,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         self
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.props
     }
 
@@ -638,7 +642,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             self.chunk_info
                 .iter()
                 .filter(|(segment_id, _)| {
-                    let hash_value = segment_id.hash_one(&random_state) as usize;
+                    let hash_value = segment_partition_hash(segment_id, &random_state) as usize;
                     hash_value % self.target_partitions == partition
                 })
                 // Drop segments not referenced by `index_values` before
@@ -648,9 +652,9 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 // without releasing — leaking the reservation for the
                 // rest of the query.
                 .filter(|(segment_id, _)| {
-                    self.index_values.as_ref().is_none_or(|iv| {
-                        iv.contains_key(&re_types_core::SegmentId::from(segment_id.as_str()))
-                    })
+                    self.index_values
+                        .as_ref()
+                        .is_none_or(|iv| iv.contains_key(*segment_id))
                 })
                 // we end up with 1 batch per (rerun) segment. Order is important and must be preserved.
                 // See SegmentStreamExec::try_new for details on ordering.
@@ -780,13 +784,19 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             snapshot_sent: Arc::clone(&self.snapshot_sent),
         };
 
-        plan.props.partitioning = match plan.props.partitioning {
+        let partitioning = match &plan.props.as_ref().partitioning {
             Partitioning::RoundRobinBatch(_) => Partitioning::RoundRobinBatch(target_partitions),
             Partitioning::UnknownPartitioning(_) => {
                 Partitioning::UnknownPartitioning(target_partitions)
             }
-            Partitioning::Hash(expr, _) => Partitioning::Hash(expr, target_partitions),
+            Partitioning::Hash(expr, _) => Partitioning::Hash(expr.clone(), target_partitions),
         };
+        plan.props = self
+            .props
+            .as_ref()
+            .clone()
+            .with_partitioning(partitioning)
+            .into();
 
         Ok(Some(Arc::new(plan) as Arc<dyn ExecutionPlan>))
     }

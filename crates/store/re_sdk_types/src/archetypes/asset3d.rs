@@ -89,11 +89,13 @@ impl Asset3D {
     /// The corresponding component is [`crate::components::Blob`].
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Asset3D".into()),
-            component: "Asset3D:blob".into(),
-            component_type: Some("rerun.components.Blob".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Asset3D".into()),
+                component: "Asset3D:blob".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
@@ -101,11 +103,13 @@ impl Asset3D {
     /// The corresponding component is [`crate::components::MediaType`].
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Asset3D".into()),
-            component: "Asset3D:media_type".into(),
-            component_type: Some("rerun.components.MediaType".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Asset3D".into()),
+                component: "Asset3D:media_type".into(),
+                component_type: Some("rerun.components.MediaType".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_factor`].
@@ -113,11 +117,13 @@ impl Asset3D {
     /// The corresponding component is [`crate::components::AlbedoFactor`].
     #[inline]
     pub fn descriptor_albedo_factor() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Asset3D".into()),
-            component: "Asset3D:albedo_factor".into(),
-            component_type: Some("rerun.components.AlbedoFactor".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Asset3D".into()),
+                component: "Asset3D:albedo_factor".into(),
+                component_type: Some("rerun.components.AlbedoFactor".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -147,7 +153,10 @@ impl Asset3D {
 impl ::re_types_core::Archetype for Asset3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Asset3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Asset3D"
+        )
     }
 
     #[inline]

@@ -132,13 +132,11 @@ impl SpatialView3D {
         re_tracing::profile_function!();
 
         let highlights = &query.highlights;
-        let empty_cameras = Vec::new();
-        let space_cameras = system_output
-            .visualizer_data::<CamerasVisualizerOutput>(
-                crate::visualizers::CamerasVisualizer::identifier(),
-            )
-            .map(|d| &d.pinhole_cameras)
-            .unwrap_or(&empty_cameras);
+        let cameras = system_output.visualizer_data_or_default::<CamerasVisualizerOutput>(
+            crate::visualizers::CamerasVisualizer::identifier(),
+        )?;
+        let space_cameras = &cameras.pinhole_cameras;
+
         let scene_view_coordinates = query_view_coordinates_at_closest_ancestor(
             query.space_origin,
             ctx.recording(),

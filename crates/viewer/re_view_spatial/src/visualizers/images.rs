@@ -25,7 +25,10 @@ struct ImageComponentData {
 
 impl IdentifiedViewSystem for ImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Image".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Image"
+        )
     }
 }
 

@@ -50,11 +50,8 @@ import-obj = ["dep:tobj"]
 ## Support importing binary & ascii .stl files
 import-stl = ["dep:stl_io"]
 
-## Enable (de)serialization using serde.
-serde = ["dep:serde"]
-
 [dependencies]
-re_byte_size = { workspace = true, features = ["derive"] }
+re_byte_size.workspace = true
 re_error.workspace = true
 re_log.workspace = true
 re_mutex.workspace = true
@@ -83,6 +80,7 @@ parking_lot.workspace = true
 # This will hook them up to the puffin profiler as backend:
 profiling = { workspace = true, features = ["profile-with-puffin"] }
 regex-lite.workspace = true
+serde = { workspace = true, features = ["derive"] }
 slotmap.workspace = true
 smallvec.workspace = true
 static_assertions.workspace = true
@@ -93,7 +91,6 @@ wgpu.workspace = true
 # optional
 gltf = { workspace = true, optional = true }
 stl_io = { workspace = true, optional = true }
-serde = { workspace = true, features = ["derive"], optional = true }
 tobj = { workspace = true, optional = true }
 
 # native

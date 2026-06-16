@@ -1,3 +1,4 @@
+use std::str::FromStr as _;
 use std::sync::Arc;
 
 use arrow::array::{Array as _, BooleanArray};
@@ -12,6 +13,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_format::{format_plural_s, format_uint};
 use re_log::error;
 use re_log_types::{EntryId, Timestamp};
+use re_protos::cloud::v1alpha1::ext;
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::menu::menu_style;
@@ -163,6 +165,8 @@ pub struct DataFusionTableWidget<'a> {
     title: Option<String>,
 
     /// If provided, this will add a "copy URL" button next to the title (which must be provided).
+    ///
+    /// This is also the url used for flag upserts if enabled.
     url: Option<String>,
 
     /// User-provided closure to provide column blueprint.
@@ -171,10 +175,8 @@ pub struct DataFusionTableWidget<'a> {
     /// The blueprint used the first time the table is queried.
     initial_blueprint: TableBlueprint,
 
-    /// Remote address of this table, needed for write-back operations (e.g. flag upsert).
-    ///
-    /// `None` for local/test tables where write-back is not supported.
-    remote_table: Option<re_uri::EntryUri>,
+    /// Registered table blueprint supplied by the caller.
+    registered_table_blueprint: Option<&'a re_entity_db::EntityDb>,
 }
 
 impl<'a> DataFusionTableWidget<'a> {
@@ -220,7 +222,7 @@ impl<'a> DataFusionTableWidget<'a> {
             url: None,
             column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
             initial_blueprint: Default::default(),
-            remote_table: None,
+            registered_table_blueprint: None,
         }
     }
 
@@ -243,14 +245,6 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    /// Set the remote address of this table for write-back operations.
-    ///
-    /// Required for flag upsert to persist changes to the server.
-    pub fn remote_table(mut self, entry_uri: re_uri::EntryUri) -> Self {
-        self.remote_table = Some(entry_uri);
-        self
-    }
-
     pub fn column_blueprint(
         mut self,
         column_blueprint_fn: impl Fn(&ColumnDescriptorRef<'_>) -> ColumnBlueprint + 'a,
@@ -262,6 +256,14 @@ impl<'a> DataFusionTableWidget<'a> {
 
     pub fn initial_blueprint(mut self, initial_blueprint: TableBlueprint) -> Self {
         self.initial_blueprint = initial_blueprint;
+        self
+    }
+
+    pub fn registered_table_blueprint(
+        mut self,
+        blueprint: Option<&'a re_entity_db::EntityDb>,
+    ) -> Self {
+        self.registered_table_blueprint = blueprint;
         self
     }
 
@@ -300,6 +302,11 @@ impl<'a> DataFusionTableWidget<'a> {
     pub fn prefilter(mut self, expression: datafusion::prelude::Expr) -> Self {
         self.initial_blueprint.prefilter = Some(expression);
         self
+    }
+
+    /// Associated url as readp uri if any & correctly parsed.
+    fn readp_uri(&self) -> Option<re_uri::RedapUri> {
+        re_uri::RedapUri::from_str(self.url.as_ref()?).ok()
     }
 
     /// Resolve the original Arrow field for the configured flag column if flagging is available.
@@ -464,6 +471,8 @@ impl<'a> DataFusionTableWidget<'a> {
             view_states,
         );
 
+        let redap_uri = self.readp_uri();
+
         // Flag changes are only produced when flagging_enabled was true in table_ui,
         // which already validated: flag_column is Some and column exists as boolean.
         if !output.flag_changes.is_empty()
@@ -471,14 +480,14 @@ impl<'a> DataFusionTableWidget<'a> {
         {
             table_state.apply_flag_changes(ui, flag_col, &output.flag_changes);
 
-            if let Some(remote) = &self.remote_table
+            if let Some(re_uri::RedapUri::Entry(entry_uri)) = &redap_uri
                 && let Some(Ok(results)) = &table_state.results
                 && let Some(flag_column_field) = &output.flag_column_field
             {
                 upsert_flag_changes(
                     viewer_ctx,
                     runtime,
-                    remote.clone(),
+                    entry_uri.clone(),
                     results,
                     flag_column_field,
                     &output.flag_changes,
@@ -571,8 +580,36 @@ impl<'a> DataFusionTableWidget<'a> {
             }),
         );
 
+        let redap_uri = self.readp_uri();
+
         let table_cards_and_blueprints_enabled =
             ctx.app_options().experimental.table_cards_and_blueprints;
+
+        let view_renderer = if table_cards_and_blueprints_enabled {
+            let blueprint_db = self.registered_table_blueprint.or_else(|| {
+                let id = self.table_id.as_ref()?;
+                ctx.storage_context.hub.table_blueprint(id)
+            });
+
+            // Populate runtime blueprint fields from the registered table blueprint.
+            if let Some(db) = blueprint_db {
+                new_blueprint.populate_from_registered_blueprint(db);
+            }
+
+            blueprint_db.and_then(crate::preview_renderer::RecordingPreviewRenderer::from_blueprint)
+        } else {
+            None
+        };
+
+        // Fill remaining unset fields via schema field metadata + structural heuristics.
+        new_blueprint = new_blueprint.apply_heuristics(
+            &query_result.original_schema,
+            &columns,
+            &display_record_batches,
+            &table_config,
+            redap_uri.as_ref().map(|uri| uri.origin()),
+        );
+
         let view_mode_id = session_id.with("view_mode");
         let mut view_mode = if table_cards_and_blueprints_enabled {
             ui.ctx()
@@ -621,47 +658,19 @@ impl<'a> DataFusionTableWidget<'a> {
             .columns
             .arrow_fields(re_sorbet::BatchType::Dataframe);
 
-        let mut decoded_blueprint = None;
-        let view_renderer = if table_cards_and_blueprints_enabled {
-            let blueprint_db = self
-                .table_id
-                .as_ref()
-                .and_then(|id| ctx.storage_context.hub.table_blueprint(id))
-                .or_else(|| {
-                    decoded_blueprint = crate::preview_renderer::decode_table_blueprint(
-                        &query_result.original_schema.metadata,
-                    );
-                    decoded_blueprint.as_ref()
-                });
+        let show_segment_previews =
+            view_renderer.is_some() && new_blueprint.segment_preview_column.is_some();
 
-            // Populate runtime blueprint fields from the embedded archetype.
-            if let Some(db) = blueprint_db {
-                new_blueprint.populate_from_embedded_blueprint(db);
-            }
-
-            blueprint_db.and_then(crate::preview_renderer::RecordingPreviewRenderer::from_blueprint)
+        let entry_uri = if let Some(re_uri::RedapUri::Entry(entry_uri)) = &redap_uri {
+            Some(entry_uri)
         } else {
             None
         };
-
-        let show_segment_previews = view_renderer.is_some()
-            && new_blueprint.segment_preview_column.is_some()
-            && !ctx.is_test;
-
-        // Fill remaining unset fields via schema field metadata + structural heuristics.
-        new_blueprint.apply_heuristics(
-            &query_result.original_schema,
-            &columns,
-            &display_record_batches,
-            &table_config,
-            self.remote_table.as_ref().map(|r| &r.origin),
-        );
-
         let flag_column_field = Self::flag_column_field(
             &new_blueprint,
             &columns,
             &query_result.original_schema,
-            self.remote_table.as_ref(),
+            entry_uri,
             ctx.app_ctx.connection_registry,
         );
         if show_segment_previews {
@@ -741,19 +750,6 @@ impl<'a> DataFusionTableWidget<'a> {
                     flag_column_field.is_some(),
                 );
             }
-        }
-
-        // If we decoded a blueprint from metadata this frame, register it in the hub
-        // so subsequent frames can skip the decoding and it's accessible on store inspections.
-        // Note: the command is processed asynchronously, so the decode may happen for 1-2 extra
-        // frames until the hub has the blueprint cached. This is intentional and harmless.
-        if let (Some(blueprint), Some(table_id)) = (decoded_blueprint, self.table_id.as_ref()) {
-            ctx.command_sender.send_system(
-                re_viewer_context::SystemCommand::RegisterTableBlueprint {
-                    table_id: table_id.clone(),
-                    blueprint: Box::new(blueprint),
-                },
-            );
         }
 
         table_config.store(ui.ctx());
@@ -1022,10 +1018,13 @@ fn table_index_column_index(schema: &arrow::datatypes::Schema) -> Option<usize> 
     })
 }
 
-/// Asynchronously upsert flag changes to the remote server.
+/// Asynchronously write flag changes back to the remote server.
 ///
 /// Constructs a minimal `RecordBatch` with the table index column + flag column for each
-/// changed row and sends it via `WriteTable` with `Replace` (upsert) semantics.
+/// changed row and sends it via `WriteTable` with `Update` semantics: rows are matched on
+/// the table index and only their flag column is updated. Because every changed row already
+/// exists in the table, the subset schema (index + flag) and `Update`'s drop-unmatched
+/// behavior are exactly what we want — we never want to insert new rows here.
 ///
 /// This is fire-and-forget: errors are logged but don't block the UI.
 fn upsert_flag_changes(
@@ -1092,7 +1091,10 @@ fn upsert_flag_changes(
                 .write_table(
                     futures::stream::once(async { upsert_batch }),
                     remote.entry_id,
-                    re_protos::cloud::v1alpha1::ext::TableInsertMode::Replace,
+                    // `Update`: match existing rows on the table index and update only the
+                    // flag column. Unmatched source rows are dropped, which is correct here
+                    // since we only ever edit flags on rows that already exist.
+                    ext::TableInsertMode::Update,
                 )
                 .await
         }
@@ -1127,7 +1129,7 @@ struct DataFusionTableDelegate<'a> {
     num_preview_views: Option<usize>,
 
     /// Renderer for the segment preview column (column 0 in the delegate's column space).
-    /// `None` when no table blueprint is embedded in the schema metadata.
+    /// `None` when no table blueprint is registered for this table.
     view_renderer: Option<crate::preview_renderer::RecordingPreviewRenderer<'a>>,
 
     /// Shared view states for segment preview views, persisted across frames.

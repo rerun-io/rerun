@@ -7,20 +7,21 @@ use arrow::pyarrow::PyArrowType;
 use itertools::Itertools as _;
 use pyo3::exceptions::PyValueError;
 use pyo3::{PyResult, Python};
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{QueryExpression, SparseFillStrategy};
 use re_datafusion::query_from_query_expression;
 use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource, DatasetDetails, DatasetEntry, EntryDetails, QueryDatasetRequest,
-    RegisterWithDatasetTaskDescriptor, TableEntry, VersionResponse,
+    DataSource, DatasetDetails, DatasetEntry, EntryDetails, QueryDatasetDataframe,
+    QueryDatasetRequest, QueryTasksDataframe, RegisterWithDatasetTaskDescriptor, TableDetails,
+    TableEntry, VersionResponse,
 };
-use re_protos::cloud::v1alpha1::{EntryFilter, QueryDatasetResponse, QueryTasksResponse};
+use re_protos::cloud::v1alpha1::{EntryFilter, QueryTasksResponse};
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_protos::{invalid_schema, missing_field};
+use re_protos::missing_field;
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle, TraceId};
 use re_types_core::LayerName;
 
@@ -118,8 +119,8 @@ impl ConnectionHandle {
         &self,
         py: Python<'_>,
         entry_id: EntryId,
-        entry_details_update: re_protos::cloud::v1alpha1::ext::EntryDetailsUpdate,
-    ) -> PyResult<re_protos::cloud::v1alpha1::ext::EntryDetails> {
+        entry_details_update: cloud_ext::EntryDetailsUpdate,
+    ) -> PyResult<cloud_ext::EntryDetails> {
         wait_for_future(py, async {
             self.client()
                 .await?
@@ -181,7 +182,7 @@ impl ConnectionHandle {
                 .await
                 .map_err(to_py_err)?
                 .iter()
-                .map(|id| id.id.clone())
+                .map(|id| id.to_string())
                 .collect::<Vec<_>>())
         })
     }
@@ -227,6 +228,22 @@ impl ConnectionHandle {
             self.client()
                 .await?
                 .read_table_entry(entry_id)
+                .await
+                .map_err(to_py_err)
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn update_table(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        table_details: TableDetails,
+    ) -> PyResult<TableEntry> {
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .update_table_entry(entry_id, table_details)
                 .await
                 .map_err(to_py_err)
         })
@@ -379,6 +396,29 @@ impl ConnectionHandle {
         })
     }
 
+    /// Initiate registration of a single recording as an asset layer (shared across all segments)
+    /// and return the corresponding task descriptors.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn register_asset_layer(
+        &self,
+        py: Python<'_>,
+        dataset_id: EntryId,
+        recording_uri: String,
+        layer_name: LayerName,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> PyResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
+        let data_source =
+            DataSource::new_rrd_asset_layer(layer_name, recording_uri.parse().map_err(to_py_err)?);
+
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .register_with_dataset(dataset_id, vec![data_source], on_duplicate)
+                .await
+                .map_err(to_py_err)
+        })
+    }
+
     #[tracing::instrument(level = "info", skip_all)]
     #[expect(clippy::fn_params_excessive_bools)]
     pub fn do_maintenance(
@@ -475,58 +515,26 @@ impl ConnectionHandle {
                     .try_into()
                     .map_err(to_py_err)?;
 
-                // TODO(andrea): all this column unwrapping is a bit hideous. Maybe the idea of returning a dataframe rather
-                // than a nicely typed object should be revisited.
-
-                let schema = item.schema();
-                if !schema.contains(&QueryTasksResponse::schema()) {
-                    let err = invalid_schema!(QueryTasksResponse);
-                    let err = ApiError::deserialization_with_source(
-                        trace_id,
-                        err,
-                        "failed waiting for tasks done: received item with invalid schema",
-                    );
-                    return Err(to_py_err(err));
-                }
-
-                let col_indices: Vec<_> = [
-                    QueryTasksResponse::FIELD_TASK_ID,
-                    QueryTasksResponse::FIELD_EXEC_STATUS,
-                    QueryTasksResponse::FIELD_MSGS,
-                ]
-                .iter()
-                .map(|name| schema.index_of(name))
-                .try_collect()
-                .map_err(|err| {
+                let on_err = |err| {
                     to_py_err(ApiError::deserialization_with_source(
                         trace_id,
                         err,
-                        "failed waiting for tasks done: missing column on item",
+                        "failed waiting for tasks done: received item with invalid schema",
                     ))
-                })?;
-
-                let projected = item.project(&col_indices).map_err(to_py_err)?;
-
-                let (task_ids, statuses, msgs) = {
-                    (
-                        projected
-                            .column(0)
-                            .try_downcast_array_ref::<arrow::array::StringArray>()
-                            .map_err(to_py_err)?,
-                        projected
-                            .column(1)
-                            .try_downcast_array_ref::<arrow::array::StringArray>()
-                            .map_err(to_py_err)?,
-                        projected
-                            .column(2)
-                            .try_downcast_array_ref::<arrow::array::StringArray>()
-                            .map_err(to_py_err)?,
-                    )
                 };
-                for i in 0..projected.num_rows() {
-                    if statuses.value(i) != "success" {
-                        let err = format!("task {}: {}", task_ids.value(i), msgs.value(i));
-                        errors.push(err);
+                let task_ids = QueryTasksDataframe::COLUMN_TASK_ID
+                    .extract(&item)
+                    .map_err(&on_err)?;
+                let statuses = QueryTasksDataframe::COLUMN_EXEC_STATUS
+                    .extract(&item)
+                    .map_err(&on_err)?;
+                let msgs = QueryTasksDataframe::COLUMN_MSGS
+                    .extract(&item)
+                    .map_err(&on_err)?;
+
+                for (task_id, status, msg) in itertools::izip!(&task_ids, &statuses, &msgs) {
+                    if status != "success" {
+                        errors.push(format!("task {task_id}: {}", msg.unwrap_or_default()));
                     }
                 }
             }
@@ -604,8 +612,8 @@ impl ConnectionHandle {
             query: Some(query),
             scan_parameters: Some(ScanParameters {
                 columns: vec![
-                    QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID.to_owned(),
-                    QueryDatasetResponse::FIELD_CHUNK_ID.to_owned(),
+                    QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID_NAME.to_owned(),
+                    QueryDatasetDataframe::COLUMN_CHUNK_ID_NAME.to_owned(),
                 ],
                 ..Default::default()
             }),

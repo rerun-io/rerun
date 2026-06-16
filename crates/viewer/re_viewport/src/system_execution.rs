@@ -57,6 +57,17 @@ fn run_view_systems(
         .systems
         .par_iter()
         .map(|(name, vis_system)| {
+            // Skip execution when no entities in the view have instructions for this
+            // visualizer.
+            if !query
+                .active_visualizer_instructions_per_type
+                .contains_key(name)
+            {
+                let mut output = VisualizerExecutionOutput::default();
+                output.affinity = vis_system.affinity();
+                return (*name, Ok(output));
+            }
+
             re_tracing::profile_scope!("VisualizerSystem::execute", name.as_str());
             let affinity = vis_system.affinity();
             let result = vis_system

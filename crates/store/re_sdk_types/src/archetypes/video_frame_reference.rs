@@ -176,11 +176,13 @@ impl VideoFrameReference {
     /// The corresponding component is [`crate::components::VideoTimestamp`].
     #[inline]
     pub fn descriptor_timestamp() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
-            component: "VideoFrameReference:timestamp".into(),
-            component_type: Some("rerun.components.VideoTimestamp".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+                component: "VideoFrameReference:timestamp".into(),
+                component_type: Some("rerun.components.VideoTimestamp".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::video_reference`].
@@ -188,11 +190,13 @@ impl VideoFrameReference {
     /// The corresponding component is [`crate::components::EntityPath`].
     #[inline]
     pub fn descriptor_video_reference() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
-            component: "VideoFrameReference:video_reference".into(),
-            component_type: Some("rerun.components.EntityPath".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+                component: "VideoFrameReference:video_reference".into(),
+                component_type: Some("rerun.components.EntityPath".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
@@ -200,11 +204,13 @@ impl VideoFrameReference {
     /// The corresponding component is [`crate::components::Opacity`].
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
-            component: "VideoFrameReference:opacity".into(),
-            component_type: Some("rerun.components.Opacity".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+                component: "VideoFrameReference:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
@@ -212,11 +218,13 @@ impl VideoFrameReference {
     /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
-            component: "VideoFrameReference:draw_order".into(),
-            component_type: Some("rerun.components.DrawOrder".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+                component: "VideoFrameReference:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -253,7 +261,10 @@ impl VideoFrameReference {
 impl ::re_types_core::Archetype for VideoFrameReference {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.VideoFrameReference".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.VideoFrameReference"
+        )
     }
 
     #[inline]

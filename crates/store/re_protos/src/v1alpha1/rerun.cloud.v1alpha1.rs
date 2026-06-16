@@ -120,6 +120,117 @@ impl ::prost::Name for DoBandwidthTestResponse {
         "/rerun.cloud.v1alpha1.DoBandwidthTestResponse".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WatchEventsRequest {
+    /// Which kinds of events to subscribe to.
+    ///
+    /// If empty, the server subscribes to all event kinds.
+    #[prost(message, repeated, tag = "1")]
+    pub kinds: ::prost::alloc::vec::Vec<EventKind>,
+}
+impl ::prost::Name for WatchEventsRequest {
+    const NAME: &'static str = "WatchEventsRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.WatchEventsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.WatchEventsRequest".into()
+    }
+}
+/// Selects a category of events to subscribe to in `WatchEvents`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EventKind {
+    #[prost(oneof = "event_kind::Kind", tags = "1")]
+    pub kind: ::core::option::Option<event_kind::Kind>,
+}
+/// Nested message and enum types in `EventKind`.
+pub mod event_kind {
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Kind {
+        /// Catalog entry lifecycle events (created, deleted).
+        #[prost(message, tag = "1")]
+        Entry(super::EntryEvents),
+    }
+}
+impl ::prost::Name for EventKind {
+    const NAME: &'static str = "EventKind";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EventKind".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EventKind".into()
+    }
+}
+/// Subscribe to all catalog entry lifecycle events.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EntryEvents {}
+impl ::prost::Name for EntryEvents {
+    const NAME: &'static str = "EntryEvents";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntryEvents".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntryEvents".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WatchEventsResponse {
+    #[prost(oneof = "watch_events_response::Kind", tags = "1, 2")]
+    pub kind: ::core::option::Option<watch_events_response::Kind>,
+}
+/// Nested message and enum types in `WatchEventsResponse`.
+pub mod watch_events_response {
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Kind {
+        #[prost(message, tag = "1")]
+        EntryCreated(super::EntryCreatedEvent),
+        #[prost(message, tag = "2")]
+        EntryDeleted(super::EntryDeletedEvent),
+    }
+}
+impl ::prost::Name for WatchEventsResponse {
+    const NAME: &'static str = "WatchEventsResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.WatchEventsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.WatchEventsResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EntryCreatedEvent {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for EntryCreatedEvent {
+    const NAME: &'static str = "EntryCreatedEvent";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntryCreatedEvent".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntryCreatedEvent".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EntryDeletedEvent {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for EntryDeletedEvent {
+    const NAME: &'static str = "EntryDeletedEvent";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntryDeletedEvent".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntryDeletedEvent".into()
+    }
+}
 /// Application level error - used as `details` in the `google.rpc.Status` message
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Error {
@@ -161,6 +272,12 @@ pub struct DataSource {
     /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
     #[prost(enumeration = "DataSourceKind", tag = "2")]
     pub typ: i32,
+    /// ⚠️ UNSTABLE: Is this an asset layer (shared across all segments) or a segment layer (one recording per segment)?
+    /// Defaults to LAYER_CLASS_SEGMENT if unspecified.
+    ///
+    /// TODO(RR-4797): remove unstable-warning
+    #[prost(enumeration = "LayerClass", tag = "5")]
+    pub layer_class: i32,
 }
 impl ::prost::Name for DataSource {
     const NAME: &'static str = "DataSource";
@@ -478,373 +595,6 @@ impl ::prost::Name for GetRrdManifestResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.GetRrdManifestResponse".into()
-    }
-}
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct CreateIndexRequest {
-    #[prost(message, optional, tag = "3")]
-    pub config: ::core::option::Option<IndexConfig>,
-}
-impl ::prost::Name for CreateIndexRequest {
-    const NAME: &'static str = "CreateIndexRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.CreateIndexRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.CreateIndexRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct CreateIndexResponse {
-    /// The properties/configuration of the newly created index.
-    #[prost(message, optional, tag = "3")]
-    pub index: ::core::option::Option<IndexConfig>,
-    /// Backend-specific statistics about the index.
-    ///
-    /// This is guaranteed to be valid JSON.
-    #[prost(bytes = "bytes", tag = "4")]
-    pub statistics_json: ::prost::bytes::Bytes,
-    /// Optional debug information about the index-creation task
-    #[prost(message, optional, tag = "2")]
-    pub debug_info: ::core::option::Option<DebugInfo>,
-}
-impl ::prost::Name for CreateIndexResponse {
-    const NAME: &'static str = "CreateIndexResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.CreateIndexResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.CreateIndexResponse".into()
-    }
-}
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct ListIndexesRequest {}
-impl ::prost::Name for ListIndexesRequest {
-    const NAME: &'static str = "ListIndexesRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.ListIndexesRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.ListIndexesRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListIndexesResponse {
-    /// The respective properties/configuration of the indexes.
-    #[prost(message, repeated, tag = "1")]
-    pub indexes: ::prost::alloc::vec::Vec<IndexConfig>,
-    /// Backend-specific statistics about the indexes.
-    ///
-    /// This is guaranteed to be valid JSON.
-    ///
-    /// If non-empty, this is the same length as `indexes`, and in the same order.
-    #[prost(bytes = "bytes", repeated, tag = "2")]
-    pub statistics_json: ::prost::alloc::vec::Vec<::prost::bytes::Bytes>,
-}
-impl ::prost::Name for ListIndexesResponse {
-    const NAME: &'static str = "ListIndexesResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.ListIndexesResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.ListIndexesResponse".into()
-    }
-}
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct DeleteIndexesRequest {
-    /// Which column to delete the indexes for.
-    #[prost(message, optional, tag = "1")]
-    pub column: ::core::option::Option<IndexColumn>,
-}
-impl ::prost::Name for DeleteIndexesRequest {
-    const NAME: &'static str = "DeleteIndexesRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.DeleteIndexesRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.DeleteIndexesRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DeleteIndexesResponse {
-    /// Which indexes were actually deleted.
-    ///
-    /// Can be empty if no matching indexes were found.
-    #[prost(message, repeated, tag = "1")]
-    pub indexes: ::prost::alloc::vec::Vec<IndexConfig>,
-}
-impl ::prost::Name for DeleteIndexesResponse {
-    const NAME: &'static str = "DeleteIndexesResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.DeleteIndexesResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.DeleteIndexesResponse".into()
-    }
-}
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct IndexConfig {
-    /// what kind of index do we want to create and what are its index specific properties.
-    #[prost(message, optional, tag = "1")]
-    pub properties: ::core::option::Option<IndexProperties>,
-    /// Component / column we want to index.
-    #[prost(message, optional, tag = "2")]
-    pub column: ::core::option::Option<IndexColumn>,
-    /// What is the filter index i.e. timeline for which we will query the timepoints.
-    ///
-    /// TODO(zehiko) this might go away and we might just index across all the timelines
-    #[prost(message, optional, tag = "3")]
-    pub time_index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
-}
-impl ::prost::Name for IndexConfig {
-    const NAME: &'static str = "IndexConfig";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.IndexConfig".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.IndexConfig".into()
-    }
-}
-/// used to define which column we want to index
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct IndexColumn {
-    /// The path of the entity.
-    #[prost(message, optional, tag = "1")]
-    pub entity_path: ::core::option::Option<super::super::common::v1alpha1::EntityPath>,
-    /// Component details
-    #[prost(message, optional, tag = "2")]
-    pub component: ::core::option::Option<super::super::common::v1alpha1::ComponentDescriptor>,
-}
-impl ::prost::Name for IndexColumn {
-    const NAME: &'static str = "IndexColumn";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.IndexColumn".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.IndexColumn".into()
-    }
-}
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct IndexProperties {
-    #[prost(oneof = "index_properties::Props", tags = "1, 2, 3")]
-    pub props: ::core::option::Option<index_properties::Props>,
-}
-/// Nested message and enum types in `IndexProperties`.
-pub mod index_properties {
-    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
-    pub enum Props {
-        #[prost(message, tag = "1")]
-        Inverted(super::InvertedIndex),
-        #[prost(message, tag = "2")]
-        Vector(super::VectorIvfPqIndex),
-        #[prost(message, tag = "3")]
-        Btree(super::BTreeIndex),
-    }
-}
-impl ::prost::Name for IndexProperties {
-    const NAME: &'static str = "IndexProperties";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.IndexProperties".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.IndexProperties".into()
-    }
-}
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct InvertedIndex {
-    #[prost(bool, optional, tag = "1")]
-    pub store_position: ::core::option::Option<bool>,
-    /// TODO(zehiko) add other properties as needed
-    #[prost(string, optional, tag = "2")]
-    pub base_tokenizer: ::core::option::Option<::prost::alloc::string::String>,
-}
-impl ::prost::Name for InvertedIndex {
-    const NAME: &'static str = "InvertedIndex";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.InvertedIndex".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.InvertedIndex".into()
-    }
-}
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct VectorIvfPqIndex {
-    #[prost(uint32, optional, tag = "2")]
-    pub num_sub_vectors: ::core::option::Option<u32>,
-    #[prost(enumeration = "VectorDistanceMetric", tag = "3")]
-    pub distance_metrics: i32,
-    /// Target size of the IVF partition in rows.
-    /// NOTE: "partition" here refers to Lance's IVF (Inverted File Index) partitions,
-    /// not Rerun segments.
-    ///
-    /// This maps to lance's underlying `target_partition_size` property
-    /// and it indirectly determines how many inverted indices (partitions)
-    /// to build (the larger this value, the fewer partitions will be built):
-    /// num_partitions = total_vectors / target_partition_num_rows
-    ///
-    /// A smaller number here will lead to more partitions, which can improve
-    /// search recall at the cost of higher training time and memory usage.
-    ///
-    /// If missing, we let Lance will pick a default value, which, today, is
-    /// 8192 rows per partition.
-    ///
-    /// Note that Lance will cap the maximum `num_partitions` to 4096:
-    /// `num_partitions = min(4096, total_vectors / target_partition_num_rows)`
-    /// So this means that setting this value too low will have no effect for
-    /// large enough datasets.
-    ///
-    /// References:
-    /// - \[<https://github.com/rerun-io/lance/blob/547bf3e288ff0bc13e96f29c7af46155fbd9f5c2/rust/lance/src/index/vector.rs#L336\]>
-    /// - \[<https://github.com/rerun-io/lance/blob/a55c3afe250bcbe4d338c108ebe4a03d8a92697b/rust/lance-index/src/vector/ivf/builder.rs#L123\]>
-    /// - \[<https://github.com/rerun-io/lance/blob/a55c3afe250bcbe4d338c108ebe4a03d8a92697b/rust/lance-index/src/lib.rs#L280\]>
-    #[prost(uint32, optional, tag = "4")]
-    pub target_partition_num_rows: ::core::option::Option<u32>,
-}
-impl ::prost::Name for VectorIvfPqIndex {
-    const NAME: &'static str = "VectorIvfPqIndex";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.VectorIvfPqIndex".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.VectorIvfPqIndex".into()
-    }
-}
-/// TODO(zehiko) add properties as needed
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct BTreeIndex {}
-impl ::prost::Name for BTreeIndex {
-    const NAME: &'static str = "BTreeIndex";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.BTreeIndex".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.BTreeIndex".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SearchDatasetRequest {
-    /// Index column that is queried
-    #[prost(message, optional, tag = "2")]
-    pub column: ::core::option::Option<IndexColumn>,
-    /// Query data - type of data is index specific. Caller must ensure
-    /// to provide the right type. For vector search this should
-    /// be a vector of appropriate size, for inverted index this should be a string.
-    /// Query data is represented as a unit (single row) RecordBatch with 1 column.
-    #[prost(message, optional, tag = "3")]
-    pub query: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-    /// Index type specific properties
-    #[prost(message, optional, tag = "4")]
-    pub properties: ::core::option::Option<IndexQueryProperties>,
-    /// Scan parameters
-    #[prost(message, optional, tag = "5")]
-    pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
-}
-impl ::prost::Name for SearchDatasetRequest {
-    const NAME: &'static str = "SearchDatasetRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.SearchDatasetRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.SearchDatasetRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct SearchDatasetResponse {
-    /// Chunks as arrow RecordBatch
-    #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-}
-impl ::prost::Name for SearchDatasetResponse {
-    const NAME: &'static str = "SearchDatasetResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.SearchDatasetResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.SearchDatasetResponse".into()
-    }
-}
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct IndexQueryProperties {
-    /// specific index query properties based on the index type
-    #[prost(oneof = "index_query_properties::Props", tags = "1, 2, 3")]
-    pub props: ::core::option::Option<index_query_properties::Props>,
-}
-/// Nested message and enum types in `IndexQueryProperties`.
-pub mod index_query_properties {
-    /// specific index query properties based on the index type
-    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
-    pub enum Props {
-        #[prost(message, tag = "1")]
-        Inverted(super::InvertedIndexQuery),
-        #[prost(message, tag = "2")]
-        Vector(super::VectorIndexQuery),
-        #[prost(message, tag = "3")]
-        Btree(super::BTreeIndexQuery),
-    }
-}
-impl ::prost::Name for IndexQueryProperties {
-    const NAME: &'static str = "IndexQueryProperties";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.IndexQueryProperties".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.IndexQueryProperties".into()
-    }
-}
-/// TODO(zehiko) add properties as needed
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct InvertedIndexQuery {}
-impl ::prost::Name for InvertedIndexQuery {
-    const NAME: &'static str = "InvertedIndexQuery";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.InvertedIndexQuery".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.InvertedIndexQuery".into()
-    }
-}
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct VectorIndexQuery {
-    #[prost(uint32, optional, tag = "1")]
-    pub top_k: ::core::option::Option<u32>,
-}
-impl ::prost::Name for VectorIndexQuery {
-    const NAME: &'static str = "VectorIndexQuery";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.VectorIndexQuery".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.VectorIndexQuery".into()
-    }
-}
-/// TODO(zehiko) add properties as needed
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct BTreeIndexQuery {}
-impl ::prost::Name for BTreeIndexQuery {
-    const NAME: &'static str = "BTreeIndexQuery";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.BTreeIndexQuery".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.BTreeIndexQuery".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1198,15 +948,15 @@ impl ::prost::Name for WriteTableResponse {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DoMaintenanceRequest {
-    /// Optimize all builtin and user-defined indexes on this dataset.
+    /// Optimize all builtin indexes on this dataset.
     ///
     /// This merges all individual index deltas back in the main index, improving runtime performance
     /// of all indexes.
     #[prost(bool, tag = "2")]
     pub optimize_indexes: bool,
-    /// Retrain all user-defined indexes on this dataset from scratch.
+    /// Retrain all builtin indexes on this dataset from scratch.
     ///
-    /// This retrains all user-defined indexes from scratch for optimal runtime performance.
+    /// This retrains all builtin indexes from scratch for optimal runtime performance.
     /// This is faster than re-creating the indexes, and automatically keeps track of their configurations.
     ///
     /// This implies `optimize_indexes`.
@@ -1722,6 +1472,41 @@ impl ::prost::Name for ReadTableEntryResponse {
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct UpdateTableEntryRequest {
+    /// The table to modify.
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The new values.
+    #[prost(message, optional, tag = "2")]
+    pub table_details: ::core::option::Option<TableDetails>,
+}
+impl ::prost::Name for UpdateTableEntryRequest {
+    const NAME: &'static str = "UpdateTableEntryRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.UpdateTableEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.UpdateTableEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct UpdateTableEntryResponse {
+    /// The updated table entry.
+    #[prost(message, optional, tag = "1")]
+    pub table: ::core::option::Option<TableEntry>,
+}
+impl ::prost::Name for UpdateTableEntryResponse {
+    const NAME: &'static str = "UpdateTableEntryResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.UpdateTableEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.UpdateTableEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EntryFilter {
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
@@ -1787,11 +1572,17 @@ impl ::prost::Name for EntryDetailsUpdate {
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DatasetDetails {
     /// The blueprint dataset associated with this dataset (if any).
+    /// This association is owned for lifecycle purposes: deleting this dataset also deletes the associated blueprint dataset.
     #[prost(message, optional, tag = "3")]
     pub blueprint_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The segment of the blueprint dataset corresponding to the default blueprint (if any).
     #[prost(message, optional, tag = "5")]
     pub default_blueprint_segment:
+        ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+    /// The segment of the blueprint dataset corresponding to the default blueprint for this dataset's
+    /// segment table (if any).
+    #[prost(message, optional, tag = "6")]
+    pub default_segment_table_blueprint_segment:
         ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
 }
 impl ::prost::Name for DatasetDetails {
@@ -1826,12 +1617,38 @@ impl ::prost::Name for DatasetEntry {
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TableDetails {
+    /// Blueprint dataset associated with this table.
+    /// This association is owned for lifecycle purposes: deleting this table also deletes the associated blueprint dataset.
+    ///
+    /// Like recording datasets, tables get an associated blueprint dataset automatically when they are created.
+    #[prost(message, optional, tag = "1")]
+    pub blueprint_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// Segment of the blueprint dataset corresponding to the default table blueprint.
+    #[prost(message, optional, tag = "2")]
+    pub default_blueprint_segment:
+        ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+}
+impl ::prost::Name for TableDetails {
+    const NAME: &'static str = "TableDetails";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.TableDetails".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.TableDetails".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TableEntry {
     #[prost(message, optional, tag = "1")]
     pub details: ::core::option::Option<EntryDetails>,
     /// Details specific to the table-provider
     #[prost(message, optional, tag = "3")]
     pub provider_details: ::core::option::Option<::prost_types::Any>,
+    /// Table-specific information, may be updated with `UpdateTableEntry`.
+    #[prost(message, optional, tag = "4")]
+    pub table_details: ::core::option::Option<TableDetails>,
 }
 impl ::prost::Name for TableEntry {
     const NAME: &'static str = "TableEntry";
@@ -2022,49 +1839,36 @@ impl DataSourceKind {
         }
     }
 }
-#[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Clone,
-    Copy,
-    Debug,
-    PartialEq,
-    Eq,
-    Hash,
-    PartialOrd,
-    Ord,
-    ::prost::Enumeration,
-)]
+/// ⚠️ UNSTABLE: Describes the class of a dataset layer.
+///
+/// TODO(RR-4797): remove unstable-warning.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-pub enum VectorDistanceMetric {
+pub enum LayerClass {
     Unspecified = 0,
-    L2 = 1,
-    Cosine = 2,
-    Dot = 3,
-    Hamming = 4,
+    /// Asset layer: a single source (recording) shared across all segments in the layer.
+    Asset = 1,
+    /// Segment layer: one (or zero) sources (recordings) per segment in the layer.
+    Segment = 2,
 }
-impl VectorDistanceMetric {
+impl LayerClass {
     /// String value of the enum field names used in the ProtoBuf definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Unspecified => "VECTOR_DISTANCE_METRIC_UNSPECIFIED",
-            Self::L2 => "VECTOR_DISTANCE_METRIC_L2",
-            Self::Cosine => "VECTOR_DISTANCE_METRIC_COSINE",
-            Self::Dot => "VECTOR_DISTANCE_METRIC_DOT",
-            Self::Hamming => "VECTOR_DISTANCE_METRIC_HAMMING",
+            Self::Unspecified => "LAYER_CLASS_UNSPECIFIED",
+            Self::Asset => "LAYER_CLASS_ASSET",
+            Self::Segment => "LAYER_CLASS_SEGMENT",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "VECTOR_DISTANCE_METRIC_UNSPECIFIED" => Some(Self::Unspecified),
-            "VECTOR_DISTANCE_METRIC_L2" => Some(Self::L2),
-            "VECTOR_DISTANCE_METRIC_COSINE" => Some(Self::Cosine),
-            "VECTOR_DISTANCE_METRIC_DOT" => Some(Self::Dot),
-            "VECTOR_DISTANCE_METRIC_HAMMING" => Some(Self::Hamming),
+            "LAYER_CLASS_UNSPECIFIED" => Some(Self::Unspecified),
+            "LAYER_CLASS_ASSET" => Some(Self::Asset),
+            "LAYER_CLASS_SEGMENT" => Some(Self::Segment),
             _ => None,
         }
     }
@@ -2080,6 +1884,11 @@ pub enum TableInsertMode {
     Overwrite = 2,
     /// Overwrite rows based on the rerun_table_index fields.
     Replace = 3,
+    /// Update existing rows matched by rerun_table_index fields. Source rows that
+    /// do not match any existing row are dropped. The source schema may be a
+    /// subset of the table schema (only the key columns plus the columns to
+    /// update). Maps to SQL `UPDATE`.
+    Update = 4,
 }
 impl TableInsertMode {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -2092,6 +1901,7 @@ impl TableInsertMode {
             Self::Append => "TABLE_INSERT_MODE_APPEND",
             Self::Overwrite => "TABLE_INSERT_MODE_OVERWRITE",
             Self::Replace => "TABLE_INSERT_MODE_REPLACE",
+            Self::Update => "TABLE_INSERT_MODE_UPDATE",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2101,6 +1911,7 @@ impl TableInsertMode {
             "TABLE_INSERT_MODE_APPEND" => Some(Self::Append),
             "TABLE_INSERT_MODE_OVERWRITE" => Some(Self::Overwrite),
             "TABLE_INSERT_MODE_REPLACE" => Some(Self::Replace),
+            "TABLE_INSERT_MODE_UPDATE" => Some(Self::Update),
             _ => None,
         }
     }
@@ -2339,6 +2150,27 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        pub async fn watch_events(
+            &mut self,
+            request: impl tonic::IntoRequest<super::WatchEventsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::WatchEventsResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/WatchEvents",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "WatchEvents",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
         pub async fn find_entries(
             &mut self,
             request: impl tonic::IntoRequest<super::FindEntriesRequest>,
@@ -2491,6 +2323,25 @@ pub mod rerun_cloud_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.cloud.v1alpha1.RerunCloudService",
                 "ReadTableEntry",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn update_table_entry(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateTableEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateTableEntryResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/UpdateTableEntry",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "UpdateTableEntry",
             ));
             self.inner.unary(req, path, codec).await
         }
@@ -2727,96 +2578,6 @@ pub mod rerun_cloud_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.cloud.v1alpha1.RerunCloudService",
                 "GetRrdManifest",
-            ));
-            self.inner.server_streaming(req, path, codec).await
-        }
-        /// Creates a custom index for a specific column (vector search, full-text search, etc).
-        ///
-        /// This endpoint requires the standard dataset headers.
-        pub async fn create_index(
-            &mut self,
-            request: impl tonic::IntoRequest<super::CreateIndexRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/CreateIndex",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "CreateIndex",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// List all user-defined indexes in this dataset.
-        ///
-        /// This endpoint requires the standard dataset headers.
-        pub async fn list_indexes(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ListIndexesRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListIndexesResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/ListIndexes",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "ListIndexes",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// Delete a custom index for a specific column.
-        ///
-        /// This endpoint requires the standard dataset headers.
-        pub async fn delete_indexes(
-            &mut self,
-            request: impl tonic::IntoRequest<super::DeleteIndexesRequest>,
-        ) -> std::result::Result<tonic::Response<super::DeleteIndexesResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/DeleteIndexes",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "DeleteIndexes",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// Search a previously created index.
-        ///
-        /// This endpoint requires the standard dataset headers.
-        pub async fn search_dataset(
-            &mut self,
-            request: impl tonic::IntoRequest<super::SearchDatasetRequest>,
-        ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::SearchDatasetResponse>>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/SearchDataset",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "SearchDataset",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -3125,6 +2886,15 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::DoBandwidthTestRequest>,
         ) -> std::result::Result<tonic::Response<Self::DoBandwidthTestStream>, tonic::Status>;
+        /// Server streaming response type for the WatchEvents method.
+        type WatchEventsStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::WatchEventsResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        async fn watch_events(
+            &self,
+            request: tonic::Request<super::WatchEventsRequest>,
+        ) -> std::result::Result<tonic::Response<Self::WatchEventsStream>, tonic::Status>;
         async fn find_entries(
             &self,
             request: tonic::Request<super::FindEntriesRequest>,
@@ -3160,6 +2930,10 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::ReadTableEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::ReadTableEntryResponse>, tonic::Status>;
+        async fn update_table_entry(
+            &self,
+            request: tonic::Request<super::UpdateTableEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateTableEntryResponse>, tonic::Status>;
         /// Register new segments with the Dataset.
         ///
         /// This endpoint requires the standard dataset headers.
@@ -3274,39 +3048,6 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::GetRrdManifestRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetRrdManifestStream>, tonic::Status>;
-        /// Creates a custom index for a specific column (vector search, full-text search, etc).
-        ///
-        /// This endpoint requires the standard dataset headers.
-        async fn create_index(
-            &self,
-            request: tonic::Request<super::CreateIndexRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>;
-        /// List all user-defined indexes in this dataset.
-        ///
-        /// This endpoint requires the standard dataset headers.
-        async fn list_indexes(
-            &self,
-            request: tonic::Request<super::ListIndexesRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListIndexesResponse>, tonic::Status>;
-        /// Delete a custom index for a specific column.
-        ///
-        /// This endpoint requires the standard dataset headers.
-        async fn delete_indexes(
-            &self,
-            request: tonic::Request<super::DeleteIndexesRequest>,
-        ) -> std::result::Result<tonic::Response<super::DeleteIndexesResponse>, tonic::Status>;
-        /// Server streaming response type for the SearchDataset method.
-        type SearchDatasetStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::SearchDatasetResponse, tonic::Status>,
-            > + std::marker::Send
-            + 'static;
-        /// Search a previously created index.
-        ///
-        /// This endpoint requires the standard dataset headers.
-        async fn search_dataset(
-            &self,
-            request: tonic::Request<super::SearchDatasetRequest>,
-        ) -> std::result::Result<tonic::Response<Self::SearchDatasetStream>, tonic::Status>;
         /// Server streaming response type for the QueryDataset method.
         type QueryDatasetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::QueryDatasetResponse, tonic::Status>,
@@ -3607,6 +3348,50 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = DoBandwidthTestSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/WatchEvents" => {
+                    #[allow(non_camel_case_types)]
+                    struct WatchEventsSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::WatchEventsRequest>
+                        for WatchEventsSvc<T>
+                    {
+                        type Response = super::WatchEventsResponse;
+                        type ResponseStream = T::WatchEventsStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::WatchEventsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::watch_events(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = WatchEventsSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3945,6 +3730,48 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = ReadTableEntrySvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/UpdateTableEntry" => {
+                    #[allow(non_camel_case_types)]
+                    struct UpdateTableEntrySvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::UpdateTableEntryRequest>
+                        for UpdateTableEntrySvc<T>
+                    {
+                        type Response = super::UpdateTableEntryResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UpdateTableEntryRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::update_table_entry(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UpdateTableEntrySvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -4338,176 +4165,6 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetRrdManifestSvc(inner);
-                        let codec = tonic_prost::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.server_streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.cloud.v1alpha1.RerunCloudService/CreateIndex" => {
-                    #[allow(non_camel_case_types)]
-                    struct CreateIndexSvc<T: RerunCloudService>(pub Arc<T>);
-                    impl<T: RerunCloudService>
-                        tonic::server::UnaryService<super::CreateIndexRequest>
-                        for CreateIndexSvc<T>
-                    {
-                        type Response = super::CreateIndexResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::CreateIndexRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as RerunCloudService>::create_index(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = CreateIndexSvc(inner);
-                        let codec = tonic_prost::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.cloud.v1alpha1.RerunCloudService/ListIndexes" => {
-                    #[allow(non_camel_case_types)]
-                    struct ListIndexesSvc<T: RerunCloudService>(pub Arc<T>);
-                    impl<T: RerunCloudService>
-                        tonic::server::UnaryService<super::ListIndexesRequest>
-                        for ListIndexesSvc<T>
-                    {
-                        type Response = super::ListIndexesResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ListIndexesRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as RerunCloudService>::list_indexes(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = ListIndexesSvc(inner);
-                        let codec = tonic_prost::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.cloud.v1alpha1.RerunCloudService/DeleteIndexes" => {
-                    #[allow(non_camel_case_types)]
-                    struct DeleteIndexesSvc<T: RerunCloudService>(pub Arc<T>);
-                    impl<T: RerunCloudService>
-                        tonic::server::UnaryService<super::DeleteIndexesRequest>
-                        for DeleteIndexesSvc<T>
-                    {
-                        type Response = super::DeleteIndexesResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::DeleteIndexesRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as RerunCloudService>::delete_indexes(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = DeleteIndexesSvc(inner);
-                        let codec = tonic_prost::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.cloud.v1alpha1.RerunCloudService/SearchDataset" => {
-                    #[allow(non_camel_case_types)]
-                    struct SearchDatasetSvc<T: RerunCloudService>(pub Arc<T>);
-                    impl<T: RerunCloudService>
-                        tonic::server::ServerStreamingService<super::SearchDatasetRequest>
-                        for SearchDatasetSvc<T>
-                    {
-                        type Response = super::SearchDatasetResponse;
-                        type ResponseStream = T::SearchDatasetStream;
-                        type Future =
-                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::SearchDatasetRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as RerunCloudService>::search_dataset(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = SearchDatasetSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

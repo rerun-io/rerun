@@ -18,8 +18,19 @@ use crate::TimeInt;
 ///
 /// We use 64+64 bit fixed point representation in order to support
 /// large numbers (nanos since unix epoch) with sub-integer precision.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct TimeReal(#[size_bytes(ignore)] FixedI128<typenum::U64>);
 
 impl TimeReal {

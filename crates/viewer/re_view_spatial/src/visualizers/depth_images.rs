@@ -222,7 +222,10 @@ fn process_entity_view_as_depth_cloud(
 
 impl IdentifiedViewSystem for DepthImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "DepthImage".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "DepthImage"
+        )
     }
 }
 

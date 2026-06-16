@@ -5,7 +5,7 @@ mod share_modal;
 mod top_panel;
 mod welcome_screen;
 
-pub(crate) mod memory_panel;
+pub(crate) mod dev_panel;
 mod settings_screen;
 
 // ----

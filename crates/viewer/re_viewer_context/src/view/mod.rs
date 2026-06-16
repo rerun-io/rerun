@@ -89,9 +89,6 @@ pub enum ViewSystemExecutionError {
 
     #[error(transparent)]
     ViewBuilderError(#[from] re_renderer::view_builder::ViewBuilderError),
-
-    #[error("Missing output data for view system {0}.")]
-    MissingOutputData(ViewSystemIdentifier),
 }
 
 const _: () = assert!(

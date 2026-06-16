@@ -205,6 +205,18 @@ impl<T: SizeBytes> SizeBytes for Vec<T> {
     }
 }
 
+impl<T: SizeBytes> SizeBytes for Box<[T]> {
+    fn heap_size_bytes(&self) -> u64 {
+        let slice_size = (self.len() * size_of::<T>()) as u64;
+
+        if T::IS_POD {
+            slice_size
+        } else {
+            slice_size + self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
+        }
+    }
+}
+
 impl<T: SizeBytes + Clone> SizeBytes for std::borrow::Cow<'_, [T]> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {

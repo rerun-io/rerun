@@ -83,11 +83,13 @@ impl BarChart {
     /// The corresponding component is [`crate::components::TensorData`].
     #[inline]
     pub fn descriptor_values() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.BarChart".into()),
-            component: "BarChart:values".into(),
-            component_type: Some("rerun.components.TensorData".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.BarChart".into()),
+                component: "BarChart:values".into(),
+                component_type: Some("rerun.components.TensorData".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
@@ -95,11 +97,13 @@ impl BarChart {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.BarChart".into()),
-            component: "BarChart:color".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.BarChart".into()),
+                component: "BarChart:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::abscissa`].
@@ -107,11 +111,13 @@ impl BarChart {
     /// The corresponding component is [`crate::components::TensorData`].
     #[inline]
     pub fn descriptor_abscissa() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.BarChart".into()),
-            component: "BarChart:abscissa".into(),
-            component_type: Some("rerun.components.TensorData".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.BarChart".into()),
+                component: "BarChart:abscissa".into(),
+                component_type: Some("rerun.components.TensorData".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::widths`].
@@ -119,11 +125,13 @@ impl BarChart {
     /// The corresponding component is [`crate::components::Length`].
     #[inline]
     pub fn descriptor_widths() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.BarChart".into()),
-            component: "BarChart:widths".into(),
-            component_type: Some("rerun.components.Length".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.BarChart".into()),
+                component: "BarChart:widths".into(),
+                component_type: Some("rerun.components.Length".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -160,7 +168,10 @@ impl BarChart {
 impl ::re_types_core::Archetype for BarChart {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.BarChart".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.BarChart"
+        )
     }
 
     #[inline]

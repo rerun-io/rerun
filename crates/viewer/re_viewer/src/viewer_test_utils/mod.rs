@@ -102,7 +102,7 @@ pub fn step_until<'app, 'harness, Predicate>(
     step_duration: std::time::Duration,
     max_duration: std::time::Duration,
 ) where
-    Predicate: for<'a> FnMut(&'a egui_kittest::Harness<'app, App>) -> bool,
+    Predicate: for<'a> FnMut(&'a mut egui_kittest::Harness<'app, App>) -> bool,
 {
     let start_time = std::time::Instant::now();
     let mut success = predicate(harness);

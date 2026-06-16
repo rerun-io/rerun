@@ -244,14 +244,12 @@ impl ViewClass for MapView {
             query.view_id,
         );
 
-        let empty_geo_points = GeoPointsOutput::default();
-        let empty_geo_line_strings = GeoLineStringsOutput::default();
         let geo_points_visualizer = system_output
-            .visualizer_data::<GeoPointsOutput>(GeoPointsVisualizer::identifier())
-            .unwrap_or(&empty_geo_points);
+            .visualizer_data_or_default::<GeoPointsOutput>(GeoPointsVisualizer::identifier())?;
         let geo_line_strings_visualizers = system_output
-            .visualizer_data::<GeoLineStringsOutput>(GeoLineStringsVisualizer::identifier())
-            .unwrap_or(&empty_geo_line_strings);
+            .visualizer_data_or_default::<GeoLineStringsOutput>(
+                GeoLineStringsVisualizer::identifier(),
+            )?;
 
         //
         // Map Provider

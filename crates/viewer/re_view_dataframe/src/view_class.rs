@@ -47,7 +47,10 @@ pub struct DataframeView;
 
 impl ViewClass for DataframeView {
     fn identifier() -> ViewClassIdentifier {
-        "Dataframe".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            ViewClassIdentifier,
+            "Dataframe"
+        )
     }
 
     fn recommendation_order(&self) -> i32 {

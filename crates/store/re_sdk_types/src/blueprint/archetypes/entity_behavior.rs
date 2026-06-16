@@ -50,11 +50,13 @@ impl EntityBehavior {
     /// The corresponding component is [`crate::components::Interactive`].
     #[inline]
     pub fn descriptor_interactive() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
-            component: "EntityBehavior:interactive".into(),
-            component_type: Some("rerun.components.Interactive".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
+                component: "EntityBehavior:interactive".into(),
+                component_type: Some("rerun.components.Interactive".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
@@ -62,11 +64,13 @@ impl EntityBehavior {
     /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
-            component: "EntityBehavior:visible".into(),
-            component_type: Some("rerun.components.Visible".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
+                component: "EntityBehavior:visible".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -100,7 +104,10 @@ impl EntityBehavior {
 impl ::re_types_core::Archetype for EntityBehavior {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.EntityBehavior".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.EntityBehavior"
+        )
     }
 
     #[inline]

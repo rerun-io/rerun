@@ -47,11 +47,13 @@ impl ForceManyBody {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-            component: "ForceManyBody:enabled".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+                component: "ForceManyBody:enabled".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
@@ -59,11 +61,13 @@ impl ForceManyBody {
     /// The corresponding component is [`crate::blueprint::components::ForceStrength`].
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-            component: "ForceManyBody:strength".into(),
-            component_type: Some("rerun.blueprint.components.ForceStrength".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+                component: "ForceManyBody:strength".into(),
+                component_type: Some("rerun.blueprint.components.ForceStrength".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -97,7 +101,10 @@ impl ForceManyBody {
 impl ::re_types_core::Archetype for ForceManyBody {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ForceManyBody".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ForceManyBody"
+        )
     }
 
     #[inline]

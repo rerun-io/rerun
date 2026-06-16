@@ -20,7 +20,7 @@ impl App {
         frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_context: Option<&ActiveStoreContext<'_>>,
+        active_store_context: Option<&ActiveStoreContext<'_>>,
         storage_context: &StorageContext<'_>,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
@@ -79,13 +79,13 @@ impl App {
                     frame,
                     self,
                     app_blueprint,
-                    store_context,
+                    active_store_context,
                     storage_context.hub,
                     gpu_resource_stats,
                     ui,
                 );
 
-                self.memory_panel_ui(
+                self.dev_panel_ui(
                     ui,
                     gpu_resource_stats,
                     mem_usage_tree,
@@ -117,6 +117,7 @@ impl App {
                             &self.async_runtime,
                             &self.egui_ctx,
                             self.startup_options.login_enabled(),
+                            &self.command_sender,
                         );
                     }
 
@@ -126,10 +127,6 @@ impl App {
                         &self.command_sender,
                         &mut self.notifications,
                     );
-
-                    // TODO(RR-3033): `AppState::show` still expects a non-optional `ActiveStoreContext`; fall back to a sentinel empty context for no-store routes.
-                    let empty_store_context = ActiveStoreContext::empty();
-                    let active_store_context = store_context.unwrap_or(&empty_store_context);
 
                     self.state.show(
                         &self.app_env,
@@ -169,7 +166,7 @@ impl App {
         }
     }
 
-    fn memory_panel_ui(
+    fn dev_panel_ui(
         &mut self,
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
@@ -183,18 +180,18 @@ impl App {
             ..ui.tokens().bottom_panel_frame(window_frame)
         };
 
-        let external_trees = if self.memory_panel_open {
+        let external_trees = if self.dev_panel_open {
             self.external_memory_users.captured_trees()
         } else {
             &[]
         };
 
-        egui::Panel::bottom("memory_panel")
+        egui::Panel::bottom("dev_panel")
             .default_size(300.0)
             .resizable(true)
             .frame(frame)
-            .show_animated_inside(ui, self.memory_panel_open, |ui| {
-                self.memory_panel.ui(
+            .show_animated_inside(ui, self.dev_panel_open, |ui| {
+                let response = self.dev_panel.ui(
                     ui,
                     &self.state.app_options().memory_limit,
                     mem_usage_tree,
@@ -203,6 +200,9 @@ impl App {
                     store_stats,
                     storage_context,
                 );
+                if response.close_requested {
+                    self.dev_panel_open = false;
+                }
             });
     }
 
@@ -262,7 +262,6 @@ impl App {
                     return true; // We expect data soon, so fade-in
                 }
 
-                LogSource::EmbeddedTableBlueprint
                 // We start a gRPC server by default in native rerun, i.e. when just running `rerun`,
                 // and in that case fading in the welcome screen would be slightly annoying.
                 // However, we also use the gRPC server for sending data from the logging SDKs
@@ -270,7 +269,7 @@ impl App {
                 // Therefore `spawn()` uses the special `--expect-data-soon` flag
                 // (handled earlier in this function), so here we know we are in the other case:
                 // a user calling `rerun` in their terminal (don't fade in).
-                | LogSource::MessageProxy { .. } => {}
+                LogSource::MessageProxy { .. } => {}
             }
         }
 

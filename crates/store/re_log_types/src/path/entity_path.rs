@@ -450,6 +450,10 @@ impl From<EntityPath> for String {
     }
 }
 
+// Make `quiver::Column<EntityPath>` work (backed by a `Utf8` column).
+// Reading parses with `parse_forgiving` (via `From<String>`).
+quiver::newtype_datatype!(EntityPath, quiver::Utf8);
+
 impl From<re_types_core::datatypes::EntityPath> for EntityPath {
     #[inline]
     fn from(value: re_types_core::datatypes::EntityPath) -> Self {
@@ -587,7 +591,6 @@ impl Loggable for EntityPath {
 
 // ----------------------------------------------------------------------------
 
-#[cfg(feature = "serde")]
 impl serde::Serialize for EntityPath {
     #[inline]
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -595,7 +598,6 @@ impl serde::Serialize for EntityPath {
     }
 }
 
-#[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for EntityPath {
     #[inline]
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {

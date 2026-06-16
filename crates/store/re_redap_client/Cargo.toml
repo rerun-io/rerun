@@ -53,6 +53,7 @@ re_uri.workspace = true
 
 ahash.workspace = true
 arrow.workspace = true
+bitflags.workspace = true
 ehttp.workspace = true
 futures.workspace = true
 itertools.workspace = true
@@ -70,6 +71,7 @@ web-time.workspace = true
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 re_perf_telemetry = { workspace = true, optional = true }
+http-body.workspace = true
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "fs"] }
 tonic = { workspace = true, default-features = false, features = ["transport", "tls-native-roots"] }
 

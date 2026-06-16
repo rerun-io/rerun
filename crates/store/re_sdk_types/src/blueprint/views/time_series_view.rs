@@ -49,6 +49,9 @@ pub struct TimeSeriesView {
 impl ::re_types_core::View for TimeSeriesView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
-        "TimeSeries".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ViewClassIdentifier,
+            "TimeSeries"
+        )
     }
 }

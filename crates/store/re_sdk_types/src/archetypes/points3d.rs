@@ -228,6 +228,11 @@ pub struct Points3D {
     /// or the number of instances on this entity is under a certain threshold.
     pub show_labels: Option<SerializedComponentBatch>,
 
+    /// How points should be shaded.
+    ///
+    /// If not set, points are rendered with [`components::PointShading::Gradient`][crate::components::PointShading::Gradient] by default.
+    pub point_shading: Option<SerializedComponentBatch>,
+
     /// Optional class Ids for the points.
     ///
     /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
@@ -250,11 +255,13 @@ impl Points3D {
     /// The corresponding component is [`crate::components::Position3D`].
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Points3D".into()),
-            component: "Points3D:positions".into(),
-            component_type: Some("rerun.components.Position3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:positions".into(),
+                component_type: Some("rerun.components.Position3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
@@ -262,11 +269,13 @@ impl Points3D {
     /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Points3D".into()),
-            component: "Points3D:radii".into(),
-            component_type: Some("rerun.components.Radius".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
@@ -274,11 +283,13 @@ impl Points3D {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Points3D".into()),
-            component: "Points3D:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
@@ -286,11 +297,13 @@ impl Points3D {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Points3D".into()),
-            component: "Points3D:labels".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
@@ -298,11 +311,27 @@ impl Points3D {
     /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Points3D".into()),
-            component: "Points3D:show_labels".into(),
-            component_type: Some("rerun.components.ShowLabels".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::point_shading`].
+    ///
+    /// The corresponding component is [`crate::components::PointShading`].
+    #[inline]
+    pub fn descriptor_point_shading() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:point_shading".into(),
+                component_type: Some("rerun.components.PointShading".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
@@ -310,11 +339,13 @@ impl Points3D {
     /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Points3D".into()),
-            component: "Points3D:class_ids".into(),
-            component_type: Some("rerun.components.ClassId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::keypoint_ids`].
@@ -322,11 +353,13 @@ impl Points3D {
     /// The corresponding component is [`crate::components::KeypointId`].
     #[inline]
     pub fn descriptor_keypoint_ids() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Points3D".into()),
-            component: "Points3D:keypoint_ids".into(),
-            component_type: Some("rerun.components.KeypointId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:keypoint_ids".into(),
+                component_type: Some("rerun.components.KeypointId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -336,17 +369,18 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
     std::sync::LazyLock::new(|| [Points3D::descriptor_radii(), Points3D::descriptor_colors()]);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
     std::sync::LazyLock::new(|| {
         [
             Points3D::descriptor_labels(),
             Points3D::descriptor_show_labels(),
+            Points3D::descriptor_point_shading(),
             Points3D::descriptor_class_ids(),
             Points3D::descriptor_keypoint_ids(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             Points3D::descriptor_positions(),
@@ -354,20 +388,24 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
             Points3D::descriptor_colors(),
             Points3D::descriptor_labels(),
             Points3D::descriptor_show_labels(),
+            Points3D::descriptor_point_shading(),
             Points3D::descriptor_class_ids(),
             Points3D::descriptor_keypoint_ids(),
         ]
     });
 
 impl Points3D {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 impl ::re_types_core::Archetype for Points3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Points3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Points3D"
+        )
     }
 
     #[inline]
@@ -421,6 +459,11 @@ impl ::re_types_core::Archetype for Points3D {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_show_labels())
             });
+        let point_shading = arrays_by_descr
+            .get(&Self::descriptor_point_shading())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_point_shading())
+            });
         let class_ids = arrays_by_descr
             .get(&Self::descriptor_class_ids())
             .map(|array| {
@@ -437,6 +480,7 @@ impl ::re_types_core::Archetype for Points3D {
             colors,
             labels,
             show_labels,
+            point_shading,
             class_ids,
             keypoint_ids,
         })
@@ -453,6 +497,7 @@ impl ::re_types_core::AsComponents for Points3D {
             self.colors.clone(),
             self.labels.clone(),
             self.show_labels.clone(),
+            self.point_shading.clone(),
             self.class_ids.clone(),
             self.keypoint_ids.clone(),
         ]
@@ -483,6 +528,7 @@ impl Points3D {
             colors: None,
             labels: None,
             show_labels: None,
+            point_shading: None,
             class_ids: None,
             keypoint_ids: None,
         }
@@ -518,6 +564,10 @@ impl Points3D {
             show_labels: Some(SerializedComponentBatch::new(
                 crate::components::ShowLabels::arrow_empty(),
                 Self::descriptor_show_labels(),
+            )),
+            point_shading: Some(SerializedComponentBatch::new(
+                crate::components::PointShading::arrow_empty(),
+                Self::descriptor_point_shading(),
             )),
             class_ids: Some(SerializedComponentBatch::new(
                 crate::components::ClassId::arrow_empty(),
@@ -564,6 +614,9 @@ impl Points3D {
             self.show_labels
                 .map(|show_labels| show_labels.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.point_shading
+                .map(|point_shading| point_shading.partitioned(_lengths.clone()))
+                .transpose()?,
             self.class_ids
                 .map(|class_ids| class_ids.partitioned(_lengths.clone()))
                 .transpose()?,
@@ -587,6 +640,7 @@ impl Points3D {
         let len_colors = self.colors.as_ref().map(|b| b.array.len());
         let len_labels = self.labels.as_ref().map(|b| b.array.len());
         let len_show_labels = self.show_labels.as_ref().map(|b| b.array.len());
+        let len_point_shading = self.point_shading.as_ref().map(|b| b.array.len());
         let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
         let len_keypoint_ids = self.keypoint_ids.as_ref().map(|b| b.array.len());
         let len = None
@@ -595,6 +649,7 @@ impl Points3D {
             .or(len_colors)
             .or(len_labels)
             .or(len_show_labels)
+            .or(len_point_shading)
             .or(len_class_ids)
             .or(len_keypoint_ids)
             .unwrap_or(0);
@@ -667,6 +722,31 @@ impl Points3D {
         show_labels: impl IntoIterator<Item = impl Into<crate::components::ShowLabels>>,
     ) -> Self {
         self.show_labels = try_serialize_field(Self::descriptor_show_labels(), show_labels);
+        self
+    }
+
+    /// How points should be shaded.
+    ///
+    /// If not set, points are rendered with [`components::PointShading::Gradient`][crate::components::PointShading::Gradient] by default.
+    #[inline]
+    pub fn with_point_shading(
+        mut self,
+        point_shading: impl Into<crate::components::PointShading>,
+    ) -> Self {
+        self.point_shading = try_serialize_field(Self::descriptor_point_shading(), [point_shading]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::PointShading`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_point_shading`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_point_shading(
+        mut self,
+        point_shading: impl IntoIterator<Item = impl Into<crate::components::PointShading>>,
+    ) -> Self {
+        self.point_shading = try_serialize_field(Self::descriptor_point_shading(), point_shading);
         self
     }
 

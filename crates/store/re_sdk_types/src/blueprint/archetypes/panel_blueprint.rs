@@ -37,11 +37,13 @@ impl PanelBlueprint {
     /// The corresponding component is [`crate::blueprint::components::PanelState`].
     #[inline]
     pub fn descriptor_state() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
-            component: "PanelBlueprint:state".into(),
-            component_type: Some("rerun.blueprint.components.PanelState".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
+                component: "PanelBlueprint:state".into(),
+                component_type: Some("rerun.blueprint.components.PanelState".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -65,7 +67,10 @@ impl PanelBlueprint {
 impl ::re_types_core::Archetype for PanelBlueprint {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.PanelBlueprint".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.PanelBlueprint"
+        )
     }
 
     #[inline]

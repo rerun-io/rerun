@@ -133,7 +133,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::OpenProfiler.menu_button_ui(ui, &self.command_sender);
 
-            UICommand::ToggleMemoryPanel.menu_button_ui(ui, &self.command_sender);
+            UICommand::ToggleDevPanel.menu_button_ui(ui, &self.command_sender);
             UICommand::ToggleChunkStoreBrowser.menu_button_ui(ui, &self.command_sender);
 
             #[cfg(debug_assertions)]
