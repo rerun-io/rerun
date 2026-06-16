@@ -25,8 +25,8 @@ from rerun.urdf import UrdfTree
 
 urdf = UrdfTree.from_file_path(
     urdf_path,
-    entity_path_prefix="robot",            # links log under /robot/<link>
-    frame_prefix="",                        # prepended to every frame name
+    entity_path_prefix="robot",  # links log under /robot/<link>
+    frame_prefix="",  # prepended to every frame name
     static_transform_entity_path="robot/tf_static",
 )
 ```
@@ -48,8 +48,9 @@ fixed-joint transforms as chunks. This is the whole "log the URDF" step:
 
 ```python
 model = (
-    urdf.stream(include_joint_transforms=True)          # rest-pose joint transforms too
-    .drop(content="/robot/**/collision_geometries/**")  # unless you need collision meshes
+    urdf.stream(include_joint_transforms=True).drop(  # rest-pose joint transforms too
+        content="/robot/**/collision_geometries/**"
+    )  # unless you need collision meshes
 )
 ```
 
@@ -179,16 +180,16 @@ from rerun.experimental import Chunk, LazyChunkStream
 
 # world -> this robot's base, from your calibration (translation + xyzw quaternion)
 edge = Chunk.from_columns(
-    "/world/robot_base",                       # any sensible bridging entity path
-    indexes=[],                                 # no index == static
+    "/world/robot_base",  # any sensible bridging entity path
+    indexes=[],  # no index == static
     columns=rr.Transform3D.columns(
         translation=[translation],
         quaternion=[quaternion_xyzw],
-        parent_frame=["world"],                 # must match the root frame name
-        child_frame=["arm_base_link"],          # must match the URDF root frame (prefixed)
+        parent_frame=["world"],  # must match the root frame name
+        child_frame=["arm_base_link"],  # must match the URDF root frame (prefixed)
     ),
 )
-edges = LazyChunkStream.from_iter([edge])       # merge alongside model + FK streams
+edges = LazyChunkStream.from_iter([edge])  # merge alongside model + FK streams
 ```
 
 Log a fixed-chain result (step 3) the same way, with `parent_frame` and
@@ -213,7 +214,8 @@ fk = (
             "rerun.urdf.JointTransformBatch",
             Selector(".").pipe(lambda msgs: urdf.compute_joint_transform_batches(read_names(msgs), read_values(msgs))),
         ),
-        content=JOINT_SOURCE_PATH, output_mode="forward_all",
+        content=JOINT_SOURCE_PATH,
+        output_mode="forward_all",
     )
     .lenses(
         DeriveLens("rerun.urdf.JointTransformBatch", output_entity="/robot/transforms", scatter=True)
@@ -221,13 +223,16 @@ fk = (
         .to_component(rr.Transform3D.descriptor_quaternion(), Selector("[].quaternion"))
         .to_component(rr.Transform3D.descriptor_parent_frame(), Selector("[].parent_frame"))
         .to_component(rr.Transform3D.descriptor_child_frame(), Selector("[].child_frame")),
-        content="/tmp/batches", output_mode="drop_unmatched",
+        content="/tmp/batches",
+        output_mode="drop_unmatched",
     )
     .filter(content="/robot/transforms")
 )
 
 LazyChunkStream.merge(model, fk).collect(optimize=OptimizationProfile.OBJECT_STORE).write_rrd(
-    out_path, application_id="urdf", recording_id=segment_id,
+    out_path,
+    application_id="urdf",
+    recording_id=segment_id,
 )
 ```
 

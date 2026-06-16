@@ -23,7 +23,7 @@ dataset_dir = snapshot_download(repo_id="rerun/so101-pick-and-place", repo_type=
 
 with rr.RecordingStream("rerun_example_lerobot") as rec:
     rec.save(str(combined_rrd))
-    rec.log_file_from_path(str(dataset_dir))   # the built-in importer
+    rec.log_file_from_path(str(dataset_dir))  # the built-in importer
 ```
 
 The importer emits one recording per episode (recording ids like `episode_1`), plus a metadata-only root recording, all into the single RRD.
@@ -37,9 +37,9 @@ Split with `RrdReader`:
 reader = rr.experimental.RrdReader(str(combined_rrd))
 for entry in reader.recordings():
     store = reader.store(store=entry)
-    if not store.schema().entity_paths():       # skip the metadata-only root recording
+    if not store.schema().entity_paths():  # skip the metadata-only root recording
         continue
-    episode_id = zero_pad(entry.recording_id)   # episode_1 -> episode_00001
+    episode_id = zero_pad(entry.recording_id)  # episode_1 -> episode_00001
     with rr.RecordingStream("rerun_example_lerobot", recording_id=episode_id, send_properties=False) as rec:
         rec.save(str(rrd_dir / f"{episode_id}.rrd"))
         rec.send_chunks(store)
