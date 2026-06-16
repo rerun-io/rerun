@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use re_log_types::Instance;
 use re_renderer::renderer::{VoxelGridDrawData, VoxelGridInstance, VoxelGridOptions};
 use re_renderer::{Color32, PickingLayerInstanceId};
 use re_sdk_types::Archetype as _;
@@ -262,6 +263,11 @@ impl VoxelGridMapVisualizer {
 
         let colors = Self::resolve_colors(ctx, max_voxels, colors, values, value_range, colormap);
 
+        // Outline masks for individually highlighted voxels (e.g. picked ones).
+        // Keyed by the instance index, which equals the picking-layer instance id below.
+        let highlighted_instances = &spatial_ctx.highlight.instances;
+        let mut additional_outline_mask_ids_instance_ranges = Vec::new();
+
         let mut voxel_instances = Vec::with_capacity(max_voxels);
         let mut local_bbox = macaw::BoundingBox::nothing();
         for (instance_index, (index, mut color)) in std::iter::zip(indices, colors).enumerate() {
@@ -286,6 +292,15 @@ impl VoxelGridMapVisualizer {
                 picking_instance_id: PickingLayerInstanceId(instance_index as _),
             });
 
+            // TODO: consider not skipping
+            // Voxels with zero alpha are skipped above, so the instance-buffer position can differ
+            // from the instance index. Translate any individual highlight to its buffer position.
+            if let Some(mask) = highlighted_instances.get(&Instance::from(instance_index as u64)) {
+                let buffer_index = (voxel_instances.len() - 1) as u32;
+                additional_outline_mask_ids_instance_ranges
+                    .push((buffer_index..buffer_index + 1, *mask));
+            }
+
             let min = index.as_vec3() * voxel_size;
             let max = (index + glam::IVec3::ONE).as_vec3() * voxel_size;
             local_bbox = local_bbox.union(macaw::BoundingBox::from_min_max(min, max));
@@ -307,6 +322,7 @@ impl VoxelGridMapVisualizer {
                 voxel_size,
                 picking_object_id: re_renderer::PickingLayerObjectId(entity_path.hash64()),
                 outline_mask_ids: spatial_ctx.highlight.overall,
+                additional_outline_mask_ids_instance_ranges,
                 depth_offset: spatial_ctx.depth_offset,
             },
         )

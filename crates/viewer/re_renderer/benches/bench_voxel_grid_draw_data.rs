@@ -189,9 +189,10 @@ fn bench_voxel_grid_draw_data(c: &mut Criterion) {
             voxel_size,
             picking_object_id: PickingLayerObjectId(1),
             outline_mask_ids: OutlineMaskPreference::NONE,
+            additional_outline_mask_ids_instance_ranges: Vec::new(),
             depth_offset: 0,
         };
-        let _ = VoxelGridDrawData::new(&voxel_ctx, &voxels, voxel_options)
+        let _ = VoxelGridDrawData::new(&voxel_ctx, &voxels, voxel_options.clone())
             .expect("Failed to warm up voxel draw data");
         finish_frame(&mut voxel_ctx);
 
@@ -209,7 +210,7 @@ fn bench_voxel_grid_draw_data(c: &mut Criterion) {
                         &voxels,
                         VoxelGridOptions {
                             draw_order_position,
-                            ..voxel_options
+                            ..voxel_options.clone()
                         },
                     )
                     .expect("Failed to create voxel draw data");

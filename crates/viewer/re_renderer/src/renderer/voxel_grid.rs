@@ -1,7 +1,10 @@
+use std::ops::Range;
+
+use enumset::{EnumSet, enum_set};
 use smallvec::smallvec;
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
-use crate::allocator::create_and_fill_uniform_buffer;
+use crate::allocator::{create_and_fill_uniform_buffer, create_and_fill_uniform_buffer_batch};
 use crate::draw_phases::{DrawPhase, OutlineMaskProcessor};
 use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
 use crate::wgpu_resources::{
@@ -32,7 +35,7 @@ pub struct VoxelGridInstance {
 }
 
 /// Batch-level options shared by all voxels in a draw-data object.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct VoxelGridOptions {
     /// Transform from local grid coordinates to world coordinates.
     pub world_from_grid: glam::Affine3A,
@@ -48,6 +51,15 @@ pub struct VoxelGridOptions {
 
     /// Optional outline mask ids shared by all voxels.
     pub outline_mask_ids: OutlineMaskPreference,
+
+    /// Outline masks for individual voxel instance ranges.
+    ///
+    /// Ranges are relative to the `instances` slice passed to [`VoxelGridDrawData::new`].
+    ///
+    /// Each range is drawn as an extra draw call in the outline-mask phase only, so this is
+    /// meant for a limited number of "extra selections" (e.g. picked voxels), not bulk highlighting.
+    /// These override the overall mask for the covered voxels.
+    pub additional_outline_mask_ids_instance_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
 
     /// Depth offset used to resolve z-fighting.
     pub depth_offset: DepthOffset,
@@ -98,13 +110,23 @@ mod gpu_data {
     }
 }
 
+/// A single draw call covering a range of voxel instances.
+#[derive(Clone)]
+struct VoxelGridDraw {
+    bind_group: GpuBindGroup,
+    instance_range: Range<u32>,
+    active_phases: EnumSet<DrawPhase>,
+}
+
 #[derive(Clone)]
 pub struct VoxelGridDrawData {
     instance_buffer: Option<GpuBuffer>,
-    bind_group: GpuBindGroup,
     voxel_count: u32,
-    draw_phase: DrawPhase,
-    draw_outline_mask: bool,
+
+    /// Outline draws can draw only a small subset of the instances (==cubes) covered by the overall buffer.
+    /// Typically, the first element in this list is the entire range.
+    draws: Vec<VoxelGridDraw>,
+
     position: glam::Vec3A,
 }
 
@@ -120,11 +142,11 @@ impl DrawData for VoxelGridDrawData {
             return;
         }
 
-        let drawable = DrawDataDrawable::from_world_position(view_info, self.position, 0);
-        collector.add_drawable(self.draw_phase, drawable);
-        collector.add_drawable(DrawPhase::PickingLayer, drawable);
-        if self.draw_outline_mask {
-            collector.add_drawable(DrawPhase::OutlineMask, drawable);
+        for (draw_idx, draw) in self.draws.iter().enumerate() {
+            collector.add_drawable(
+                draw.active_phases,
+                DrawDataDrawable::from_world_position(view_info, self.position, draw_idx as _),
+            );
         }
     }
 }
@@ -137,6 +159,16 @@ impl VoxelGridDrawData {
         options: VoxelGridOptions,
     ) -> Result<Self, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
+
+        let VoxelGridOptions {
+            world_from_grid,
+            draw_order_position,
+            voxel_size,
+            picking_object_id,
+            outline_mask_ids,
+            additional_outline_mask_ids_instance_ranges,
+            depth_offset,
+        } = options;
 
         let renderer = ctx.renderer::<VoxelGridRenderer>();
         let voxel_count = instances.len() as u32;
@@ -185,44 +217,81 @@ impl VoxelGridDrawData {
             Some(instance_buffer)
         };
 
-        let uniform_buffer_binding = create_and_fill_uniform_buffer(
-            ctx,
-            "VoxelGridDrawData::uniform_buffer".into(),
-            gpu_data::UniformBuffer {
-                world_from_grid: options.world_from_grid.into(),
-                voxel_size_depth_offset: options
-                    .voxel_size
-                    .extend(options.depth_offset as f32)
-                    .into(),
-                picking_object_id: glam::UVec2::new(
-                    options.picking_object_id.0 as u32,
-                    (options.picking_object_id.0 >> 32) as u32,
-                )
-                .into(),
-                outline_mask_ids: options
-                    .outline_mask_ids
-                    .0
-                    .map_or([0, 0], |mask| mask)
-                    .into(),
-                end_padding: Default::default(),
-            },
+        let picking_object_id_packed = glam::UVec2::new(
+            picking_object_id.0 as u32,
+            (picking_object_id.0 >> 32) as u32,
         );
+        let make_uniform = |mask: OutlineMaskPreference| gpu_data::UniformBuffer {
+            world_from_grid: world_from_grid.into(),
+            voxel_size_depth_offset: voxel_size.extend(depth_offset as f32).into(),
+            picking_object_id: picking_object_id_packed.into(),
+            outline_mask_ids: mask.0.map_or([0, 0], |mask| mask).into(),
+            end_padding: Default::default(),
+        };
 
-        Ok(Self {
-            instance_buffer,
-            bind_group: ctx.gpu_resources.bind_groups.alloc(
+        let make_bind_group = |label: &str, uniform_binding| {
+            ctx.gpu_resources.bind_groups.alloc(
                 &ctx.device,
                 &ctx.gpu_resources,
                 &BindGroupDesc {
-                    label: "VoxelGridDrawData::bind_group".into(),
-                    entries: smallvec![uniform_buffer_binding],
+                    label: label.into(),
+                    entries: smallvec![uniform_binding],
                     layout: renderer.bind_group_layout,
                 },
+            )
+        };
+
+        // First draw covers all voxels for color, picking, and the overall outline mask (if any).
+        let mut overall_phases = enum_set![draw_phase | DrawPhase::PickingLayer];
+        if outline_mask_ids.is_some() {
+            overall_phases.insert(DrawPhase::OutlineMask);
+        }
+        let mut draws = vec![VoxelGridDraw {
+            bind_group: make_bind_group(
+                "VoxelGridDrawData::bind_group",
+                create_and_fill_uniform_buffer(
+                    ctx,
+                    "VoxelGridDrawData::uniform_buffer".into(),
+                    make_uniform(outline_mask_ids),
+                ),
             ),
+            instance_range: 0..voxel_count,
+            active_phases: overall_phases,
+        }];
+
+        // Generate an extra outline-mask-only draw for each individually highlighted voxel range.
+        // Costly if there are many (each needs its own uniform buffer & draw call), but cheap if
+        // there are only a few, which is the expected case (e.g. a single picked voxel).
+        if !additional_outline_mask_ids_instance_ranges.is_empty() {
+            let sub_draw_uniform_bindings = create_and_fill_uniform_buffer_batch(
+                ctx,
+                "VoxelGridDrawData::outline_mask_uniform_buffers".into(),
+                additional_outline_mask_ids_instance_ranges
+                    .iter()
+                    .map(|(_, mask)| make_uniform(*mask)),
+            );
+
+            draws.extend(
+                std::iter::zip(
+                    additional_outline_mask_ids_instance_ranges,
+                    sub_draw_uniform_bindings,
+                )
+                .map(|((range, _), uniform_binding)| VoxelGridDraw {
+                    bind_group: make_bind_group(
+                        "VoxelGridDrawData::outline_mask_bind_group",
+                        uniform_binding,
+                    ),
+                    instance_range: range,
+                    active_phases: enum_set![DrawPhase::OutlineMask],
+                }),
+            );
+        }
+
+        Ok(Self {
+            instance_buffer,
             voxel_count,
-            draw_phase,
-            draw_outline_mask: options.outline_mask_ids.is_some(),
-            position: options.draw_order_position,
+            draws,
+            position: draw_order_position,
         })
     }
 
@@ -377,11 +446,12 @@ impl Renderer for VoxelGridRenderer {
             let Some(instance_buffer) = &draw_data.instance_buffer else {
                 continue;
             };
-            pass.set_bind_group(1, &draw_data.bind_group, &[]);
             pass.set_vertex_buffer(0, instance_buffer.slice(..));
 
-            for _drawable in *drawables {
-                pass.draw(0..VERTICES_PER_VOXEL, 0..draw_data.voxel_count);
+            for drawable in *drawables {
+                let draw = &draw_data.draws[drawable.draw_data_payload as usize];
+                pass.set_bind_group(1, &draw.bind_group, &[]);
+                pass.draw(0..VERTICES_PER_VOXEL, draw.instance_range.clone());
             }
         }
 
@@ -420,6 +490,7 @@ mod tests {
                 voxel_size: glam::Vec3::splat(0.25),
                 picking_object_id: PickingLayerObjectId(42),
                 outline_mask_ids: OutlineMaskPreference::some(1, 2),
+                additional_outline_mask_ids_instance_ranges: Vec::new(),
                 depth_offset: 0,
             },
         )
@@ -478,6 +549,7 @@ mod tests {
                 voxel_size: glam::Vec3::splat(0.25),
                 picking_object_id: PickingLayerObjectId(42),
                 outline_mask_ids: OutlineMaskPreference::some(1, 2),
+                additional_outline_mask_ids_instance_ranges: Vec::new(),
                 depth_offset: 0,
             },
         )
@@ -514,6 +586,68 @@ mod tests {
         assert_eq!(
             draw_phase_manager
                 .drawables_for_phase(DrawPhase::OutlineMask)
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn per_instance_outline_masks_add_extra_outline_drawables() {
+        let ctx = RenderContext::new_test();
+        let draw_data = VoxelGridDrawData::new(
+            &ctx,
+            &[
+                VoxelGridInstance {
+                    index: glam::IVec3::ZERO,
+                    color: Color32::RED,
+                    picking_instance_id: PickingLayerInstanceId(0),
+                },
+                VoxelGridInstance {
+                    index: glam::IVec3::ONE,
+                    color: Color32::GREEN,
+                    picking_instance_id: PickingLayerInstanceId(1),
+                },
+                VoxelGridInstance {
+                    index: glam::IVec3::splat(2),
+                    color: Color32::BLUE,
+                    picking_instance_id: PickingLayerInstanceId(2),
+                },
+            ],
+            VoxelGridOptions {
+                world_from_grid: glam::Affine3A::IDENTITY,
+                draw_order_position: glam::Vec3A::ZERO,
+                voxel_size: glam::Vec3::splat(0.25),
+                picking_object_id: PickingLayerObjectId(42),
+                // No overall outline, but two individually highlighted voxels.
+                outline_mask_ids: OutlineMaskPreference::NONE,
+                additional_outline_mask_ids_instance_ranges: vec![
+                    (0..1, OutlineMaskPreference::some(1, 0)),
+                    (2..3, OutlineMaskPreference::some(2, 0)),
+                ],
+                depth_offset: 0,
+            },
+        )
+        .unwrap();
+
+        let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
+        draw_phase_manager.add_draw_data(
+            &ctx,
+            draw_data.into(),
+            &DrawableCollectionViewInfo {
+                camera_world_position: glam::Vec3A::ZERO,
+            },
+        );
+
+        // No overall mask, so the only outline drawables are the two per-instance ones.
+        assert_eq!(
+            draw_phase_manager
+                .drawables_for_phase(DrawPhase::OutlineMask)
+                .len(),
+            2
+        );
+        assert_eq!(
+            draw_phase_manager
+                .drawables_for_phase(DrawPhase::Opaque)
                 .len(),
             1
         );
