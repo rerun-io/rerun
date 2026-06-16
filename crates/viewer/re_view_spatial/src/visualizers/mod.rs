@@ -29,8 +29,8 @@ pub use depth_images::{DepthImageProcessResult, DepthImageVisualizer, DepthImage
 use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, archetypes};
 pub use transform_axes_3d::{TransformAxes3DVisualizer, add_axis_arrows};
 pub use utilities::{
-    SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget, entity_iterator,
-    iter_spatial_data, process_labels_3d, textured_rect_from_image,
+    SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget, entity_from_grid_transform,
+    entity_iterator, iter_spatial_data, process_labels_3d, textured_rect_from_image,
 };
 pub use video::{EncodedDepthImageVisualizer, EncodedDepthImageVisualizerOutput};
 

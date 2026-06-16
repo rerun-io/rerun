@@ -7,7 +7,6 @@ use re_sdk_types::archetypes::VoxelGridMap;
 use re_sdk_types::components::{
     Colormap, Opacity, RotationAxisAngle, RotationQuat, Translation3D, VoxelSize,
 };
-use re_sdk_types::datatypes::Quaternion;
 use re_sdk_types::reflection::Enum as _;
 use re_view::clamped_or_nothing;
 use re_viewer_context::{
@@ -216,16 +215,24 @@ impl VoxelGridMapVisualizer {
             return Ok(None);
         }
 
-        let Some(world_from_grid) = Self::world_from_grid(
-            ctx,
+        let world_from_entity = spatial_ctx
+            .transform_info
+            .single_transform_required_for_entity(entity_path, VoxelGridMap::name())
+            .as_affine3a();
+
+        let Some(entity_from_grid) = super::entity_from_grid_transform(
             results,
-            spatial_ctx,
+            entity_path,
+            "VoxelGridMap",
             translation,
             rotation_axis_angle,
             quaternion,
+            VoxelGridMap::descriptor_quaternion().component,
+            VoxelGridMap::descriptor_rotation_axis_angle().component,
         ) else {
             return Ok(None);
         };
+        let world_from_grid = world_from_entity * entity_from_grid;
 
         let max_voxels = if ctx.app_ctx().app_options.visualizer_limits_enabled
             && indices.len() > NUM_VOXEL_LIMIT_PER_BATCH
@@ -356,72 +363,5 @@ impl VoxelGridMapVisualizer {
         let fallback_color: re_sdk_types::components::Color =
             typed_fallback_for(ctx, VoxelGridMap::descriptor_colors().component);
         vec![Color32::from(fallback_color); num_voxels]
-    }
-
-    fn world_from_grid(
-        ctx: &QueryContext<'_>,
-        results: &re_view::VisualizerInstructionQueryResults<'_>,
-        spatial_ctx: &SpatialSceneVisualizerInstructionContext<'_>,
-        translation: Option<Translation3D>,
-        rotation_axis_angle: Option<RotationAxisAngle>,
-        quaternion: Option<RotationQuat>,
-    ) -> Option<glam::Affine3A> {
-        let entity_path = ctx.target_entity_path;
-        let world_from_entity = spatial_ctx
-            .transform_info
-            .single_transform_required_for_entity(entity_path, VoxelGridMap::name())
-            .as_affine3a();
-
-        let translation = translation.map_or(glam::Affine3A::IDENTITY, Into::into);
-
-        let rotation = match (quaternion, rotation_axis_angle) {
-            (Some(quaternion), Some(rotation_axis_angle))
-                if quaternion.0 != Quaternion::IDENTITY
-                    && rotation_axis_angle != RotationAxisAngle::IDENTITY =>
-            {
-                results.report_for_component(
-                    VoxelGridMap::descriptor_quaternion().component,
-                    VisualizerReportSeverity::Warning,
-                    format!(
-                        "VoxelGridMap {entity_path} has both quaternion and rotation_axis_angle set; using quaternion."
-                    ),
-                );
-
-                let Ok(rotation) = glam::Affine3A::try_from(quaternion) else {
-                    results.report_for_component(
-                        VoxelGridMap::descriptor_quaternion().component,
-                        VisualizerReportSeverity::Error,
-                        "invalid rotation quaternion",
-                    );
-                    return None;
-                };
-                rotation
-            }
-            (Some(quaternion), _) => {
-                let Ok(rotation) = glam::Affine3A::try_from(quaternion) else {
-                    results.report_for_component(
-                        VoxelGridMap::descriptor_quaternion().component,
-                        VisualizerReportSeverity::Error,
-                        "invalid rotation quaternion",
-                    );
-                    return None;
-                };
-                rotation
-            }
-            (_, Some(rotation_axis_angle)) => {
-                let Ok(rotation) = glam::Affine3A::try_from(rotation_axis_angle) else {
-                    results.report_for_component(
-                        VoxelGridMap::descriptor_rotation_axis_angle().component,
-                        VisualizerReportSeverity::Error,
-                        "invalid rotation axis-angle",
-                    );
-                    return None;
-                };
-                rotation
-            }
-            (None, None) => glam::Affine3A::IDENTITY,
-        };
-
-        Some(world_from_entity * translation * rotation)
     }
 }
