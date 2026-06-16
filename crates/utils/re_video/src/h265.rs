@@ -127,14 +127,8 @@ pub fn detect_h265_annexb_gop(data: &[u8]) -> Result<GopStartDetection, DetectGo
                 // convert into your VideoEncodingDetails
                 details = Some(encoding_details_from_h265_sps(sps_ref));
             }
-            // Any IRAP picture (IDR, CRA, or BLA) is a valid random-access point a
-            // decoder can start from — not just IDR. Open-GOP encoders emit CRA
-            // (NAL 21) for their periodic keyframes, so a segmented recording whose
-            // chunks are cut on a periodic keyframe begins on a CRA and contains no
-            // IDR at all; requiring IDR here made such a chunk look keyframe-less
-            // ("No key frames prior to current time"). ffmpeg can begin decoding at
-            // a CRA, discarding the associated RASL leading pictures, so treating
-            // CRA/BLA as a GOP start is safe.
+            // Any Intra Random Access Pictures (IRAP) picture is a valid random-access point a decoder can start from — not just IDR.
+            // See https://www.hevcbook.de/hevc-picture-types/
             t if t.is_irap() => {
                 irap_found = true;
             }
