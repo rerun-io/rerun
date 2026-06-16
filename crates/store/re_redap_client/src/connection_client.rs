@@ -148,8 +148,10 @@ impl ConnectionClient {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new_disconnected() -> Self {
         let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
-        let (raw_client, service) =
-            crate::grpc::assemble_client(channel, /* credentials */ None);
+        let (raw_client, service) = crate::grpc::assemble_client(
+            crate::grpc::PoolChannel::single(channel),
+            /* credentials */ None,
+        );
         Self::new(GenericConnectionClient::new(raw_client), service)
     }
 }

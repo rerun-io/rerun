@@ -9459,6 +9459,7 @@ dependencies = [
  "bitflags 2.11.0",
  "ehttp",
  "futures",
+ "http-body",
  "itertools 0.14.0",
  "jiff",
  "opentelemetry",

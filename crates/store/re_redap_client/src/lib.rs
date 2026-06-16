@@ -28,6 +28,9 @@ pub use self::grpc::{
     stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
 };
 
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::grpc::PoolChannel;
+
 /// Re-export of [`opentelemetry::TraceId`] for callers constructing
 /// [`ApiError`]s without taking a direct dependency on `opentelemetry`.
 pub use opentelemetry::TraceId;
