@@ -35,9 +35,9 @@ A voxel center is at `(index + 0.5) * voxel_size` in local grid coordinates (i.e
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `VoxelGridMap`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1VoxelGridMap.html)
- * 🐍 [Python API docs for `VoxelGridMap`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.VoxelGridMap)
- * 🦀 [Rust API docs for `VoxelGridMap`](https://docs.rs/rerun/latest/rerun/archetypes/struct.VoxelGridMap.html)
+ * 🌊 [C++ API docs for `VoxelGridMap`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1VoxelGridMap.html?speculative-link)
+ * 🐍 [Python API docs for `VoxelGridMap`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.VoxelGridMap)
+ * 🦀 [Rust API docs for `VoxelGridMap`](https://docs.rs/rerun/latest/rerun/archetypes/struct.VoxelGridMap.html?speculative-link)
 
 ## Example
 

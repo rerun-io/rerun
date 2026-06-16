@@ -132,11 +132,13 @@ impl VoxelGridMap {
     /// The corresponding component is [`crate::components::VoxelIndex`].
     #[inline]
     pub fn descriptor_voxel_indices() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VoxelGridMap".into()),
-            component: "VoxelGridMap:voxel_indices".into(),
-            component_type: Some("rerun.components.VoxelIndex".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VoxelGridMap".into()),
+                component: "VoxelGridMap:voxel_indices".into(),
+                component_type: Some("rerun.components.VoxelIndex".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::voxel_size`].
@@ -144,11 +146,13 @@ impl VoxelGridMap {
     /// The corresponding component is [`crate::components::VoxelSize`].
     #[inline]
     pub fn descriptor_voxel_size() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VoxelGridMap".into()),
-            component: "VoxelGridMap:voxel_size".into(),
-            component_type: Some("rerun.components.VoxelSize".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VoxelGridMap".into()),
+                component: "VoxelGridMap:voxel_size".into(),
+                component_type: Some("rerun.components.VoxelSize".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::values`].
@@ -156,11 +160,13 @@ impl VoxelGridMap {
     /// The corresponding component is [`crate::components::VoxelValue`].
     #[inline]
     pub fn descriptor_values() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VoxelGridMap".into()),
-            component: "VoxelGridMap:values".into(),
-            component_type: Some("rerun.components.VoxelValue".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VoxelGridMap".into()),
+                component: "VoxelGridMap:values".into(),
+                component_type: Some("rerun.components.VoxelValue".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
@@ -168,11 +174,13 @@ impl VoxelGridMap {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VoxelGridMap".into()),
-            component: "VoxelGridMap:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VoxelGridMap".into()),
+                component: "VoxelGridMap:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::translation`].
@@ -180,11 +188,13 @@ impl VoxelGridMap {
     /// The corresponding component is [`crate::components::Translation3D`].
     #[inline]
     pub fn descriptor_translation() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VoxelGridMap".into()),
-            component: "VoxelGridMap:translation".into(),
-            component_type: Some("rerun.components.Translation3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VoxelGridMap".into()),
+                component: "VoxelGridMap:translation".into(),
+                component_type: Some("rerun.components.Translation3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angle`].
@@ -192,11 +202,13 @@ impl VoxelGridMap {
     /// The corresponding component is [`crate::components::RotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angle() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VoxelGridMap".into()),
-            component: "VoxelGridMap:rotation_axis_angle".into(),
-            component_type: Some("rerun.components.RotationAxisAngle".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VoxelGridMap".into()),
+                component: "VoxelGridMap:rotation_axis_angle".into(),
+                component_type: Some("rerun.components.RotationAxisAngle".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternion`].
@@ -204,11 +216,13 @@ impl VoxelGridMap {
     /// The corresponding component is [`crate::components::RotationQuat`].
     #[inline]
     pub fn descriptor_quaternion() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VoxelGridMap".into()),
-            component: "VoxelGridMap:quaternion".into(),
-            component_type: Some("rerun.components.RotationQuat".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VoxelGridMap".into()),
+                component: "VoxelGridMap:quaternion".into(),
+                component_type: Some("rerun.components.RotationQuat".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
@@ -216,11 +230,13 @@ impl VoxelGridMap {
     /// The corresponding component is [`crate::components::Opacity`].
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VoxelGridMap".into()),
-            component: "VoxelGridMap:opacity".into(),
-            component_type: Some("rerun.components.Opacity".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VoxelGridMap".into()),
+                component: "VoxelGridMap:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::value_range`].
@@ -228,11 +244,13 @@ impl VoxelGridMap {
     /// The corresponding component is [`crate::components::ValueRange`].
     #[inline]
     pub fn descriptor_value_range() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VoxelGridMap".into()),
-            component: "VoxelGridMap:value_range".into(),
-            component_type: Some("rerun.components.ValueRange".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VoxelGridMap".into()),
+                component: "VoxelGridMap:value_range".into(),
+                component_type: Some("rerun.components.ValueRange".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
@@ -240,11 +258,13 @@ impl VoxelGridMap {
     /// The corresponding component is [`crate::components::Colormap`].
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VoxelGridMap".into()),
-            component: "VoxelGridMap:colormap".into(),
-            component_type: Some("rerun.components.Colormap".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VoxelGridMap".into()),
+                component: "VoxelGridMap:colormap".into(),
+                component_type: Some("rerun.components.Colormap".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -297,7 +317,10 @@ impl VoxelGridMap {
 impl ::re_types_core::Archetype for VoxelGridMap {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.VoxelGridMap".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.VoxelGridMap"
+        )
     }
 
     #[inline]

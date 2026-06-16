@@ -35,4 +35,4 @@ Struct(
 * [`GridMap`](../archetypes/grid_map.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
 * [`Transform3D`](../archetypes/transform3d.md)
-* [`VoxelGridMap`](../archetypes/voxel_grid_map.md)
+* [`VoxelGridMap`](../archetypes/voxel_grid_map.md?speculative-link)

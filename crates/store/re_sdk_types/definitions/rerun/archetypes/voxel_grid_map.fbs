@@ -15,6 +15,7 @@ namespace rerun.archetypes;
 /// \example archetypes/voxel_grid_map_simple title="Simple sparse voxel grid map"
 table VoxelGridMap (
   "attr.docs.category": "Spatial 3D",
+  "attr.docs.unreleased",
   "attr.docs.view_types": "Spatial3DView",
   "attr.rerun.state": "unstable",
   "attr.rerun.visualizer": "VoxelGridMap",

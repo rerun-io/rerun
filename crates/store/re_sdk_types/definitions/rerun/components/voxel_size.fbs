@@ -7,6 +7,7 @@ namespace rerun.components;
 /// Each component is the size of a voxel along the corresponding local grid axis.
 /// All components must be finite and positive.
 struct VoxelSize (
+  "attr.docs.unreleased",
   "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {

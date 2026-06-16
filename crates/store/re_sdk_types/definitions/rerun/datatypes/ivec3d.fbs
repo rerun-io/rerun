@@ -4,6 +4,7 @@ namespace rerun.datatypes;
 
 /// An int32 vector in 3D space.
 struct IVec3D (
+  "attr.docs.unreleased",
   "attr.arrow.transparent",
   "attr.python.aliases": "npt.NDArray[Any] | npt.ArrayLike | Sequence[int]",
   "attr.python.array_aliases": "npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[int]] | Sequence[int]",
