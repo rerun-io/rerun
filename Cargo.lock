@@ -9429,6 +9429,7 @@ dependencies = [
  "itertools 0.14.0",
  "js-sys",
  "re_auth",
+ "re_backoff",
  "re_component_ui",
  "re_dataframe_ui",
  "re_datafusion",

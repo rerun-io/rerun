@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use re_log_encoding::{RawRrdManifest, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::EntryName;
-use re_protos::cloud::v1alpha1::ext as cloud_ext;
+use re_protos::cloud::v1alpha1::ext::{self as cloud_ext, WatchEventsResponse};
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
     DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
@@ -327,6 +327,31 @@ where
             return Ok(None);
         };
         Ok(Some(received as f64 / transfer.as_secs_f64()))
+    }
+
+    /// Stream catalog lifecycle events as they happen on the server.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn watch_events(&mut self) -> ApiResult<ApiResponseStream<WatchEventsResponse>> {
+        let response = self
+            .inner()
+            .watch_events(re_protos::cloud::v1alpha1::WatchEventsRequest {
+                kinds: vec![re_protos::cloud::v1alpha1::EventKind::entry()],
+            })
+            .await
+            .map_err(|err| ApiError::tonic(err, "/WatchEvents failed"))?;
+
+        let stream = ApiResponseStream::from_tonic_response(response, "/WatchEvents");
+        let trace_id = stream.trace_id();
+        let stream = stream.map(move |resp| {
+            resp?.try_into().map_err(|err| {
+                ApiError::deserialization_with_source(
+                    trace_id,
+                    err,
+                    "failed parsing /WatchEvents response",
+                )
+            })
+        });
+        Ok(ApiResponseStream::new(stream, trace_id))
     }
 
     /// Find all entries matching the given filter.

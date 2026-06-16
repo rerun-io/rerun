@@ -35,6 +35,9 @@ pub struct Server {
 
     connection_registry: re_redap_client::ConnectionRegistryHandle,
     runtime: AsyncRuntimeHandle,
+
+    /// Dropping this cancels the background task that listens for catalog events.
+    _watch_events_guard: futures::channel::oneshot::Sender<()>,
 }
 
 impl Server {
@@ -43,6 +46,7 @@ impl Server {
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
+        command_sender: crossbeam::channel::Sender<Command>,
         viewer_command_sender: ViewerCommandSender,
     ) -> Self {
         let tables_session_ctx = Self::session_context();
@@ -56,12 +60,25 @@ impl Server {
             viewer_command_sender,
         );
 
+        let (cancel_tx, cancel_rx) = futures::channel::oneshot::channel();
+        let listener = watch_events_loop(
+            connection_registry.clone(),
+            origin.clone(),
+            command_sender,
+            egui_ctx.clone(),
+        );
+        runtime.spawn_future(async move {
+            futures::pin_mut!(listener);
+            futures::future::select(listener, cancel_rx).await;
+        });
+
         Self {
             origin,
             entries,
             tables_session_ctx,
             connection_registry,
             runtime,
+            _watch_events_guard: cancel_tx,
         }
     }
 
@@ -82,7 +99,9 @@ impl Server {
         egui_ctx: &egui::Context,
         viewer_command_sender: ViewerCommandSender,
     ) {
-        // Note: this also drops the DataFusionTableWidget caches
+        // TODO(RR-4874): this replaces the whole session context, dropping the DataFusionTableWidget
+        // caches. As a result, a currently-displayed table reverts to "Loading…" on any catalog
+        // refresh, even when that table itself is unchanged.
         self.tables_session_ctx = Self::session_context();
 
         self.entries = Entries::new(
@@ -840,6 +859,7 @@ impl RedapServers {
                             runtime.clone(),
                             egui_ctx,
                             origin.clone(),
+                            self.command_sender.clone(),
                             viewer_command_sender.clone(),
                         ),
                     );
@@ -961,4 +981,72 @@ impl RedapServers {
             re_log::warn_once!("Failed to send command: {err}");
         }
     }
+}
+
+/// Listens for catalog change events on a server and auto-refreshes its collection.
+///
+/// Reconnects with exponential backoff when the stream ends or errors. Stops if the server does
+/// not support event listening, and otherwise runs until cancelled, i.e. until the owning
+/// [`Server`] is dropped.
+async fn watch_events_loop(
+    connection_registry: ConnectionRegistryHandle,
+    origin: re_uri::Origin,
+    command_sender: crossbeam::channel::Sender<Command>,
+    egui_ctx: egui::Context,
+) {
+    let mut backoff = re_backoff::BackoffGenerator::new(
+        std::time::Duration::from_secs(1),
+        std::time::Duration::from_secs(30),
+    )
+    .expect("valid backoff range");
+
+    loop {
+        match run_event_listener(
+            &connection_registry,
+            &origin,
+            &command_sender,
+            &egui_ctx,
+            &mut backoff,
+        )
+        .await
+        {
+            Ok(()) => {}
+            Err(err) if err.kind == re_redap_client::ApiErrorKind::Unimplemented => {
+                // Permanent condition (e.g. an older server), so don't keep reconnecting.
+                re_log::debug!("Server does not support event listening\nServer: {origin}");
+                return;
+            }
+            Err(err) => {
+                re_log::debug!("Event stream failed, will reconnect: {err}\nServer: {origin}");
+            }
+        }
+        backoff.gen_next().sleep().await;
+    }
+}
+
+/// Connects and refreshes the collection whenever events arrive.
+///
+/// Returns when the stream ends or errors so the caller can reconnect.
+async fn run_event_listener(
+    connection_registry: &ConnectionRegistryHandle,
+    origin: &re_uri::Origin,
+    command_sender: &crossbeam::channel::Sender<Command>,
+    egui_ctx: &egui::Context,
+    backoff: &mut re_backoff::BackoffGenerator,
+) -> re_redap_client::ApiResult<()> {
+    use futures::StreamExt as _;
+
+    let mut client = connection_registry.client(origin.clone()).await?;
+    let mut stream = client.watch_events().await?;
+
+    // We connected successfully, so a later reconnect (if any) should start fast again.
+    backoff.reset();
+
+    while let Some(event) = stream.next().await {
+        event?;
+        send_crossbeam(command_sender, Command::RefreshCollection(origin.clone())).ok();
+        egui_ctx.request_repaint();
+    }
+
+    Ok(())
 }

@@ -42,6 +42,8 @@ service RerunCloudService {
 
   // --- Catalog ---
 
+  rpc WatchEvents(WatchEventsRequest) returns (stream WatchEventsResponse) {}
+
   rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
 
   rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse) {}
@@ -279,6 +281,44 @@ message DoBandwidthTestResponse {
   //
   // The total length across all streamed chunks equals `DoBandwidthTestRequest.num_bytes`.
   bytes payload = 1;
+}
+
+// WatchEvents
+
+message WatchEventsRequest {
+  // Which kinds of events to subscribe to.
+  //
+  // If empty, the server subscribes to all event kinds.
+  repeated EventKind kinds = 1;
+}
+
+// Selects a category of events to subscribe to in `WatchEvents`.
+message EventKind {
+  oneof kind {
+    // Catalog entry lifecycle events (created, deleted).
+    EntryEvents entry = 1;
+
+    // TODO(RR-4853): RegistrationEvents registration = 2;
+  }
+}
+
+// Subscribe to all catalog entry lifecycle events.
+message EntryEvents {}
+
+message WatchEventsResponse {
+  oneof kind {
+    EntryCreatedEvent entry_created = 1;
+    EntryDeletedEvent entry_deleted = 2;
+
+    // TODO(RR-4853): Add register events here too.
+  }
+}
+
+message EntryCreatedEvent {
+  rerun.common.v1alpha1.EntryId id = 1;
+}
+message EntryDeletedEvent {
+  rerun.common.v1alpha1.EntryId id = 1;
 }
 
 // Application level error - used as `details` in the `google.rpc.Status` message

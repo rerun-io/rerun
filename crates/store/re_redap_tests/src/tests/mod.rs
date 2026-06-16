@@ -13,6 +13,7 @@ mod register_segment;
 mod rrd_manifest;
 mod unregister_segment;
 mod update_entry;
+mod watch_events;
 mod write_table;
 
 /// Generate wrappers and the `generate_redap_tests!`/`generate_oss_only_redap_tests!`
@@ -175,4 +176,7 @@ define_redap_tests! {
     register_asset_layer::reregister_layer_change_class,
     register_asset_layer::segment_layer_name_collision_with_asset_layer_errors,
     register_asset_layer::unregister_asset_and_segment_layers,
+    // TODO(RR-4859): the cloud server returns `Unimplemented` for `WatchEvents`.
+    watch_events::watch_events_entry_created,
+    watch_events::watch_events_entry_deleted,
 }

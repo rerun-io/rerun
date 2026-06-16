@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use egui::collapsing_header::CollapsingState;
-use egui::{RichText, Widget as _};
+use egui::{RichText, Widget as _, WidgetInfo, WidgetType};
 use re_data_ui::AppUi as _;
 use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_channel::LogSource;
@@ -74,6 +74,10 @@ impl RecordingPanel {
                 ui.panel_content(|ui| {
                     re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
                         all_sections_ui(ctx, ui, servers, &recording_panel_data);
+                    })
+                    .response
+                    .widget_info(|| {
+                        WidgetInfo::labeled(WidgetType::Panel, true, "_recording_panel")
                     });
                 });
             });

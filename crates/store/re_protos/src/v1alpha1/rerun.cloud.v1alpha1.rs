@@ -120,6 +120,117 @@ impl ::prost::Name for DoBandwidthTestResponse {
         "/rerun.cloud.v1alpha1.DoBandwidthTestResponse".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WatchEventsRequest {
+    /// Which kinds of events to subscribe to.
+    ///
+    /// If empty, the server subscribes to all event kinds.
+    #[prost(message, repeated, tag = "1")]
+    pub kinds: ::prost::alloc::vec::Vec<EventKind>,
+}
+impl ::prost::Name for WatchEventsRequest {
+    const NAME: &'static str = "WatchEventsRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.WatchEventsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.WatchEventsRequest".into()
+    }
+}
+/// Selects a category of events to subscribe to in `WatchEvents`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EventKind {
+    #[prost(oneof = "event_kind::Kind", tags = "1")]
+    pub kind: ::core::option::Option<event_kind::Kind>,
+}
+/// Nested message and enum types in `EventKind`.
+pub mod event_kind {
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Kind {
+        /// Catalog entry lifecycle events (created, deleted).
+        #[prost(message, tag = "1")]
+        Entry(super::EntryEvents),
+    }
+}
+impl ::prost::Name for EventKind {
+    const NAME: &'static str = "EventKind";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EventKind".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EventKind".into()
+    }
+}
+/// Subscribe to all catalog entry lifecycle events.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EntryEvents {}
+impl ::prost::Name for EntryEvents {
+    const NAME: &'static str = "EntryEvents";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntryEvents".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntryEvents".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WatchEventsResponse {
+    #[prost(oneof = "watch_events_response::Kind", tags = "1, 2")]
+    pub kind: ::core::option::Option<watch_events_response::Kind>,
+}
+/// Nested message and enum types in `WatchEventsResponse`.
+pub mod watch_events_response {
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Kind {
+        #[prost(message, tag = "1")]
+        EntryCreated(super::EntryCreatedEvent),
+        #[prost(message, tag = "2")]
+        EntryDeleted(super::EntryDeletedEvent),
+    }
+}
+impl ::prost::Name for WatchEventsResponse {
+    const NAME: &'static str = "WatchEventsResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.WatchEventsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.WatchEventsResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EntryCreatedEvent {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for EntryCreatedEvent {
+    const NAME: &'static str = "EntryCreatedEvent";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntryCreatedEvent".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntryCreatedEvent".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EntryDeletedEvent {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for EntryDeletedEvent {
+    const NAME: &'static str = "EntryDeletedEvent";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntryDeletedEvent".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntryDeletedEvent".into()
+    }
+}
 /// Application level error - used as `details` in the `google.rpc.Status` message
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Error {
@@ -2039,6 +2150,27 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        pub async fn watch_events(
+            &mut self,
+            request: impl tonic::IntoRequest<super::WatchEventsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::WatchEventsResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/WatchEvents",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "WatchEvents",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
         pub async fn find_entries(
             &mut self,
             request: impl tonic::IntoRequest<super::FindEntriesRequest>,
@@ -2754,6 +2886,15 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::DoBandwidthTestRequest>,
         ) -> std::result::Result<tonic::Response<Self::DoBandwidthTestStream>, tonic::Status>;
+        /// Server streaming response type for the WatchEvents method.
+        type WatchEventsStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::WatchEventsResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        async fn watch_events(
+            &self,
+            request: tonic::Request<super::WatchEventsRequest>,
+        ) -> std::result::Result<tonic::Response<Self::WatchEventsStream>, tonic::Status>;
         async fn find_entries(
             &self,
             request: tonic::Request<super::FindEntriesRequest>,
@@ -3207,6 +3348,50 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = DoBandwidthTestSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/WatchEvents" => {
+                    #[allow(non_camel_case_types)]
+                    struct WatchEventsSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::WatchEventsRequest>
+                        for WatchEventsSvc<T>
+                    {
+                        type Response = super::WatchEventsResponse;
+                        type ResponseStream = T::WatchEventsStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::WatchEventsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::watch_events(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = WatchEventsSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

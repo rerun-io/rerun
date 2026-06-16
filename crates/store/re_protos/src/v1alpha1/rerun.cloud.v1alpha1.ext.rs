@@ -793,6 +793,88 @@ impl From<EntryDetails> for crate::cloud::v1alpha1::EntryDetails {
     }
 }
 
+// --- WatchEventsRequest ---
+
+impl crate::cloud::v1alpha1::EventKind {
+    /// Subscribe to all catalog entry lifecycle events.
+    pub fn entry() -> Self {
+        use crate::cloud::v1alpha1::{EntryEvents, event_kind::Kind};
+        Self {
+            kind: Some(Kind::Entry(EntryEvents {})),
+        }
+    }
+}
+
+impl crate::cloud::v1alpha1::watch_events_response::Kind {
+    /// Is this a catalog entry lifecycle event (created or deleted)?
+    pub fn is_entry_kind(&self) -> bool {
+        use crate::cloud::v1alpha1::watch_events_response::Kind;
+        match self {
+            Kind::EntryCreated(_) | Kind::EntryDeleted(_) => true,
+        }
+    }
+}
+
+// --- WatchEventsResponse ---
+
+/// A catalog lifecycle event delivered over the `WatchEvents` stream.
+//
+// TODO(RR-4853): add register events.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum WatchEventsResponse {
+    EntryCreated(EntryId),
+    EntryDeleted(EntryId),
+}
+
+impl TryFrom<crate::cloud::v1alpha1::WatchEventsResponse> for WatchEventsResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::WatchEventsResponse) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::watch_events_response::Kind;
+
+        match value.kind.ok_or(missing_field!(
+            crate::cloud::v1alpha1::WatchEventsResponse,
+            "kind"
+        ))? {
+            Kind::EntryCreated(event) => Ok(Self::EntryCreated(
+                event
+                    .id
+                    .ok_or(missing_field!(
+                        crate::cloud::v1alpha1::EntryCreatedEvent,
+                        "id"
+                    ))?
+                    .try_into()?,
+            )),
+            Kind::EntryDeleted(event) => Ok(Self::EntryDeleted(
+                event
+                    .id
+                    .ok_or(missing_field!(
+                        crate::cloud::v1alpha1::EntryDeletedEvent,
+                        "id"
+                    ))?
+                    .try_into()?,
+            )),
+        }
+    }
+}
+
+impl From<WatchEventsResponse> for crate::cloud::v1alpha1::WatchEventsResponse {
+    fn from(value: WatchEventsResponse) -> Self {
+        use crate::cloud::v1alpha1::watch_events_response::Kind;
+        use crate::cloud::v1alpha1::{EntryCreatedEvent, EntryDeletedEvent};
+
+        let kind = match value {
+            WatchEventsResponse::EntryCreated(id) => Kind::EntryCreated(EntryCreatedEvent {
+                id: Some(id.into()),
+            }),
+            WatchEventsResponse::EntryDeleted(id) => Kind::EntryDeleted(EntryDeletedEvent {
+                id: Some(id.into()),
+            }),
+        };
+        Self { kind: Some(kind) }
+    }
+}
+
 // --- DatasetDetails / TableDetails validation ---
 
 /// Error returned when the blueprint configuration in [`DatasetDetails`] or [`TableDetails`] is

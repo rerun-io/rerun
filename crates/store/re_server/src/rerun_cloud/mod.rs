@@ -21,12 +21,13 @@ use re_protos::cloud::v1alpha1::ext::{
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, DoBandwidthTestResponse,
-    EntryDetails, EntryKind, FetchChunksRequest, GetDatasetManifestSchemaRequest,
-    GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse, GetRrdManifestResponse,
-    GetSegmentTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
-    QueryTasksOnCompletionResponse, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
-    RegisterTableResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-    ScanSegmentTableResponse, ScanTableResponse,
+    EntryCreatedEvent, EntryDeletedEvent, EntryDetails, EntryKind, EventKind, FetchChunksRequest,
+    GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
+    GetRrdManifestResponse, GetSegmentTableSchemaResponse, QueryDatasetResponse,
+    QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
+    QueryTasksResponse, RegisterTableRequest, RegisterTableResponse, ScanDatasetManifestRequest,
+    ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse, WatchEventsResponse,
+    watch_events_response,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_protos::headers::RerunHeadersExtractorExt as _;
@@ -163,16 +164,28 @@ pub struct RerunCloudHandler {
     settings: RerunCloudHandlerSettings,
     eager_chunk_store_config: re_chunk_store::ChunkStoreConfig,
     store: tokio::sync::RwLock<InMemoryStore>,
+    events_tx: tokio::sync::broadcast::Sender<WatchEventsResponse>,
 }
 
 impl RerunCloudHandler {
     pub fn new(settings: RerunCloudHandlerSettings, store: InMemoryStore) -> Self {
         let eager_chunk_store_config = store.eager_chunk_store_config();
+        let (events_tx, _) = tokio::sync::broadcast::channel(1024);
         Self {
             settings,
             eager_chunk_store_config,
             store: tokio::sync::RwLock::new(store),
+            events_tx,
         }
+    }
+
+    /// Broadcast a catalog event to all `WatchEvents` subscribers.
+    fn notify(&self, kind: watch_events_response::Kind) {
+        // A send error just means there are no subscribers, which is fine.
+        let _ = self
+            .events_tx
+            .send(WatchEventsResponse { kind: Some(kind) })
+            .ok();
     }
 
     /// Returns all the chunk stores of the specified dataset and segment ids. If `segment_ids`
@@ -318,6 +331,7 @@ macro_rules! decl_stream {
 }
 
 decl_stream!(DoBandwidthTestResponseStream<rerun_cloud:DoBandwidthTestResponse>);
+decl_stream!(WatchEventsResponseStream<rerun_cloud:WatchEventsResponse>);
 decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
 decl_stream!(GetRrdManifestResponseStream<manifest:GetRrdManifestResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
@@ -507,6 +521,42 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
+    type WatchEventsStream = WatchEventsResponseStream;
+
+    async fn watch_events(
+        &self,
+        request: Request<re_protos::cloud::v1alpha1::WatchEventsRequest>,
+    ) -> tonic::Result<tonic::Response<Self::WatchEventsStream>> {
+        let rx = self.events_tx.subscribe();
+
+        let kinds = request.into_inner().kinds;
+
+        let stream = futures::stream::unfold((rx, kinds), |(mut rx, kinds)| async move {
+            loop {
+                match rx.recv().await {
+                    Ok(event) => {
+                        if kinds.is_empty() {
+                            return Some((Ok(event), (rx, kinds)));
+                        }
+
+                        let subscribed = event.kind.is_some_and(|kind| kind.is_entry_kind())
+                            && kinds.contains(&EventKind::entry());
+
+                        if subscribed {
+                            return Some((Ok(event), (rx, kinds)));
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => return None,
+                }
+            }
+        });
+
+        Ok(tonic::Response::new(
+            Box::pin(stream) as Self::WatchEventsStream
+        ))
+    }
+
     // --- Catalog ---
 
     async fn find_entries(
@@ -602,6 +652,12 @@ impl RerunCloudService for RerunCloudHandler {
         let mut store = self.store.write().await;
         let dataset_id = store.create_dataset(dataset_name, dataset_id)?;
         let dataset = store.dataset(dataset_id)?;
+
+        self.notify(watch_events_response::Kind::EntryCreated(
+            EntryCreatedEvent {
+                id: Some(dataset_id.into()),
+            },
+        ));
 
         Ok(tonic::Response::new(
             CreateDatasetEntryResponse {
@@ -732,6 +788,12 @@ impl RerunCloudService for RerunCloudHandler {
         let entry_id = request.into_inner().try_into()?;
 
         self.store.write().await.delete_entry(entry_id)?;
+
+        self.notify(watch_events_response::Kind::EntryDeleted(
+            EntryDeletedEvent {
+                id: Some(entry_id.into()),
+            },
+        ));
 
         Ok(tonic::Response::new(DeleteEntryResponse {}))
     }
@@ -1621,6 +1683,12 @@ impl RerunCloudService for RerunCloudHandler {
             table_entry: Some(table_entry.try_into()?),
         };
 
+        self.notify(watch_events_response::Kind::EntryCreated(
+            EntryCreatedEvent {
+                id: Some(entry_id.into()),
+            },
+        ));
+
         Ok(response.into())
     }
 
@@ -1835,6 +1903,12 @@ impl RerunCloudService for RerunCloudHandler {
                 ));
             }
         };
+
+        self.notify(watch_events_response::Kind::EntryCreated(
+            EntryCreatedEvent {
+                id: Some(table.details.id.into()),
+            },
+        ));
 
         Ok(Response::new(
             CreateTableEntryResponse { table }.try_into()?,
