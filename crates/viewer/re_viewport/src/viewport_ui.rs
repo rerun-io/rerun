@@ -16,8 +16,7 @@ use re_ui::{
 use re_viewer_context::{
     Contents, DataResultInteractionAddress, DragAndDropFeedback, DragAndDropPayload, Item,
     MissingChunkReporter, PublishedViewInfo, SystemCommand, SystemCommandSender as _,
-    SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, VisualizerReportSeverity,
-    icon_for_container_kind,
+    SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
 };
 use re_viewport_blueprint::{
     ViewBlueprint, ViewportBlueprint, ViewportCommand, create_entity_add_info,
@@ -759,7 +758,9 @@ impl TilesDelegate<'_, '_> {
                             });
                             for instruction_report in report.reports_for(instruction_id) {
                                 // Only show a button for errors and warnings.
-                                if instruction_report.severity != VisualizerReportSeverity::Info {
+                                if instruction_report.severity
+                                    != re_viewer_context::VisualizerReportSeverity::Info
+                                {
                                     grouped_reports
                                         .entry(item.clone())
                                         .or_default()
@@ -865,8 +866,8 @@ impl TilesDelegate<'_, '_> {
                             }
                             re_viewer_context::VisualizerReportSeverity::Warning => {
                                 (&icons::WARNING, ui.tokens().alert_warning.icon)
-                            },
-                            re_viewer_context::VisualizerReportSeverity::Info => continue
+                            }
+                            re_viewer_context::VisualizerReportSeverity::Info => continue,
                         };
 
                         ui.horizontal_top(|ui| {

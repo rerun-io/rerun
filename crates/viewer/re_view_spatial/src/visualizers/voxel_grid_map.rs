@@ -36,7 +36,7 @@ struct VoxelGridMapComponentData<'a> {
     quaternion: Option<RotationQuat>,
     opacity: Option<Opacity>,
     value_range: Option<[f64; 2]>,
-    colormap: Option<Colormap>,
+    colormap: Colormap,
 }
 
 impl IdentifiedViewSystem for VoxelGridMapVisualizer {
@@ -153,7 +153,13 @@ impl VisualizerSystem for VoxelGridMapVisualizer {
                             value_range: value_ranges.and_then(|r| r.first().copied()),
                             colormap: colormaps
                                 .and_then(|c| c.first().copied())
-                                .and_then(Colormap::try_from_integer),
+                                .and_then(Colormap::try_from_integer)
+                                .unwrap_or_else(|| {
+                                    typed_fallback_for(
+                                        ctx,
+                                        VoxelGridMap::descriptor_colormap().component,
+                                    )
+                                }),
                         }
                     },
                 );
@@ -331,13 +337,21 @@ impl VoxelGridMapVisualizer {
 
     fn resolve_colors(
         ctx: &QueryContext<'_>,
+        results: &re_view::VisualizerInstructionQueryResults<'_>,
         num_voxels: usize,
         colors: &[u32],
         values: &[f32],
         value_range: Option<[f64; 2]>,
-        colormap: Option<Colormap>,
+        colormap: Colormap,
     ) -> Vec<Color32> {
         if !colors.is_empty() {
+            // Explicit per-voxel colors take precedence; a colormap only applies to scalar values.
+            // It's expected that the colormap has no effect here, so this is informational only.
+            results.report_for_component(
+                VoxelGridMap::descriptor_colormap().component,
+                VisualizerReportSeverity::Info,
+                "VoxelGridMap colormaps only apply to scalar values; ignoring the colormap because explicit per-voxel colors are present.",
+            );
             return clamped_or_nothing(colors, num_voxels)
                 .map(|&color| Color32::from(re_sdk_types::components::Color::from(color)))
                 .collect();
@@ -351,9 +365,6 @@ impl VoxelGridMapVisualizer {
                         typed_fallback_for(ctx, VoxelGridMap::descriptor_value_range().component);
                     [range.0.0[0] as f32, range.0.0[1] as f32]
                 });
-            let colormap = colormap.unwrap_or_else(|| {
-                typed_fallback_for(ctx, VoxelGridMap::descriptor_colormap().component)
-            });
             let colormap = gpu_bridge::colormap_to_re_renderer(colormap);
             let value_span = value_range[1] - value_range[0];
 
@@ -373,6 +384,14 @@ impl VoxelGridMapVisualizer {
                 })
                 .collect();
         }
+
+        // Neither explicit colors nor scalar values: the colormap can't apply.
+        // Expected, so informational only.
+        results.report_for_component(
+            VoxelGridMap::descriptor_colormap().component,
+            VisualizerReportSeverity::Info,
+            "VoxelGridMap colormaps require scalar values; showing the fallback color because no values are present.",
+        );
 
         let fallback_color: re_sdk_types::components::Color =
             typed_fallback_for(ctx, VoxelGridMap::descriptor_colors().component);
