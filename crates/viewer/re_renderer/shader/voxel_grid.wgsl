@@ -71,14 +71,9 @@ const CULLED_POSITION: vec4f = vec4f(2.0, 2.0, 2.0, 1.0);
 
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32, @builtin(instance_index) instance_idx: u32, in_instance: InstanceIn) -> VertexOut {
-    let alpha = in_instance.color_srgba.a;
-
     var out: VertexOut;
-    out.color = vec4f(linear_from_srgb(in_instance.color_srgba.rgb), alpha);
-    out.normal_world_space = vec3f(0.0, 0.0, 1.0);
-    out.instance_id = vec2u(instance_idx, 0u);
-
-    if alpha <= 0.0 {
+    out.color = linear_from_srgba_premultiplied(in_instance.color_srgba);
+    if out.color.a <= 0.0 {
         out.position = CULLED_POSITION;
         return out;
     }
@@ -90,6 +85,9 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32, @builtin(instance_index) inst
 
     out.position = apply_depth_offset(frame.projection_from_world * world_position, batch.depth_offset);
     out.normal_world_space = normal_world_space;
+    out.normal_world_space = vec3f(0.0, 0.0, 1.0);
+    out.instance_id = vec2u(instance_idx, 0u);
+
     return out;
 }
 
