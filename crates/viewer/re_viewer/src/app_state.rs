@@ -308,7 +308,9 @@ impl AppState {
         let mut new_app_options = self.app_options.clone();
 
         match self.navigation.current() {
-            Route::Settings { previous } => {
+            Route::Settings {
+                return_route: previous,
+            } => {
                 let mut show_settings_ui = true;
                 settings_screen_ui(ui, &mut new_app_options, &mut show_settings_ui);
                 if !show_settings_ui {
@@ -322,40 +324,17 @@ impl AppState {
             Route::ChunkStoreBrowser {
                 store_id,
                 selected_chunk,
-                previous,
+                return_route,
             } => {
-                let previous = previous.clone();
-                let store_id = store_id.clone();
-                let selected_chunk_before = *selected_chunk;
-
-                let result = self.datastore_ui.ui(
-                    active_store_context,
-                    storage_context,
+                self.datastore_ui.ui(
                     ui,
+                    storage_context,
                     self.app_options.timestamp_format,
-                    selected_chunk_before,
-                    &previous,
+                    store_id.as_ref(),
+                    selected_chunk.as_ref(),
+                    return_route.as_ref(),
+                    command_sender,
                 );
-                // Only reflect store/chunk changes back into the route when
-                // the route started with an explicit store_id. Otherwise the
-                // empty fallback recording would be written into the route,
-                // polluting the navigation history.
-                let result_store_id = store_id.as_ref().and_then(|_| result.recording_id.clone());
-                if !result.keep_open {
-                    command_sender.send_system(SystemCommand::SetRoute((*previous).clone()));
-                } else if result_store_id != store_id
-                    || result.selected_chunk != selected_chunk_before
-                {
-                    command_sender.send_system(SystemCommand::SetRoute(Route::ChunkStoreBrowser {
-                        store_id: result_store_id.clone(),
-                        selected_chunk: if result_store_id == store_id {
-                            result.selected_chunk
-                        } else {
-                            None
-                        },
-                        previous,
-                    }));
-                }
 
                 self.share_modal
                     .ui(None, ui, startup_options.web_viewer_base_url().as_ref());

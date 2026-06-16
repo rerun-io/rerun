@@ -1108,7 +1108,7 @@ mod tests {
             ViewerOpenUrl::from_route(
                 &store_hub,
                 &Route::Settings {
-                    previous: Box::new(dummy_mode.clone())
+                    return_route: Box::new(dummy_mode.clone())
                 }
             )
             .unwrap(),
@@ -1121,7 +1121,7 @@ mod tests {
                 &Route::ChunkStoreBrowser {
                     store_id: Some(StoreId::empty_recording()),
                     selected_chunk: None,
-                    previous: Box::new(dummy_mode),
+                    return_route: Box::new(dummy_mode),
                 }
             )
             .unwrap(),

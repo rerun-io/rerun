@@ -270,7 +270,7 @@ impl App {
 
             SystemCommand::OpenSettings => {
                 self.state.navigation.replace(Route::Settings {
-                    previous: Box::new(self.state.navigation.current().clone()),
+                    return_route: Box::new(self.state.navigation.current().clone()),
                 });
 
                 #[cfg(feature = "analytics")]
@@ -283,7 +283,7 @@ impl App {
             } => match self.state.navigation.current() {
                 Route::ChunkStoreBrowser {
                     store_id: current_store_id,
-                    previous,
+                    return_route,
                     ..
                 } => {
                     self.state.navigation.replace(Route::ChunkStoreBrowser {
@@ -291,14 +291,14 @@ impl App {
                         // using the current chunk browser store context.
                         store_id: store_id.or_else(|| current_store_id.clone()),
                         selected_chunk,
-                        previous: previous.clone(),
+                        return_route: return_route.clone(),
                     });
                 }
                 current => {
                     self.state.navigation.replace(Route::ChunkStoreBrowser {
                         store_id: store_id.or_else(|| current.recording_id().cloned()),
                         selected_chunk,
-                        previous: Box::new(current.clone()),
+                        return_route: Box::new(current.clone()),
                     });
                 }
             },
@@ -958,15 +958,15 @@ impl App {
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             UICommand::ToggleChunkStoreBrowser => match self.state.navigation.current() {
-                Route::ChunkStoreBrowser { previous, .. } => {
-                    self.state.navigation.replace((**previous).clone());
+                Route::ChunkStoreBrowser { return_route, .. } => {
+                    self.state.navigation.replace((**return_route).clone());
                 }
 
                 current => {
                     self.state.navigation.replace(Route::ChunkStoreBrowser {
                         store_id: current.recording_id().cloned(),
                         selected_chunk: None,
-                        previous: Box::new(current.clone()),
+                        return_route: Box::new(current.clone()),
                     });
                 }
             },
