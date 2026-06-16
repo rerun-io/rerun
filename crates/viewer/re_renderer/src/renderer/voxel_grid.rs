@@ -14,8 +14,7 @@ use crate::wgpu_resources::{
 };
 use crate::{
     Color32, CpuWriteGpuReadError, DepthOffset, DrawableCollector, OutlineMaskPreference,
-    PickingLayerInstanceId, PickingLayerObjectId, PickingLayerProcessor, ViewBuilder,
-    include_shader_module,
+    PickingLayerObjectId, PickingLayerProcessor, ViewBuilder, include_shader_module,
 };
 
 /// Number of vertices generated for each voxel cube.
@@ -29,9 +28,6 @@ pub struct VoxelGridInstance {
 
     /// Per-voxel sRGBA color.
     pub color: Color32,
-
-    /// Picking-layer instance id for this voxel.
-    pub picking_instance_id: PickingLayerInstanceId,
 }
 
 /// Batch-level options shared by all voxels in a draw-data object.
@@ -75,10 +71,9 @@ mod gpu_data {
     pub struct InstanceData {
         pub index: [i32; 3],
         pub color: Color32,
-        pub picking_instance_id: [u32; 2],
     }
 
-    static_assertions::assert_eq_size!(InstanceData, [u8; 24]);
+    static_assertions::assert_eq_size!(InstanceData, [u8; 16]);
 
     impl InstanceData {
         pub fn vertex_buffer_layout() -> VertexBufferLayout {
@@ -87,12 +82,7 @@ mod gpu_data {
                 step_mode: wgpu::VertexStepMode::Instance,
                 attributes: VertexBufferLayout::attributes_from_formats(
                     0,
-                    [
-                        wgpu::VertexFormat::Sint32x3,
-                        wgpu::VertexFormat::Unorm8x4,
-                        wgpu::VertexFormat::Uint32x2,
-                    ]
-                    .into_iter(),
+                    [wgpu::VertexFormat::Sint32x3, wgpu::VertexFormat::Unorm8x4].into_iter(),
                 ),
             }
         }
@@ -203,10 +193,6 @@ impl VoxelGridDrawData {
             staging.extend(instances.iter().map(|instance| gpu_data::InstanceData {
                 index: instance.index.to_array(),
                 color: instance.color,
-                picking_instance_id: [
-                    instance.picking_instance_id.0 as u32,
-                    (instance.picking_instance_id.0 >> 32) as u32,
-                ],
             }))?;
             staging.copy_to_buffer(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
@@ -476,12 +462,10 @@ mod tests {
                 VoxelGridInstance {
                     index: glam::IVec3::new(-1, 0, 2),
                     color: Color32::RED,
-                    picking_instance_id: PickingLayerInstanceId(7),
                 },
                 VoxelGridInstance {
                     index: glam::IVec3::ONE,
                     color: Color32::GREEN,
-                    picking_instance_id: PickingLayerInstanceId(8),
                 },
             ],
             VoxelGridOptions {
@@ -541,7 +525,6 @@ mod tests {
                 index: glam::IVec3::ZERO,
                 #[expect(clippy::disallowed_methods)]
                 color: Color32::from_rgba_unmultiplied(255, 0, 0, 128),
-                picking_instance_id: PickingLayerInstanceId(7),
             }],
             VoxelGridOptions {
                 world_from_grid: glam::Affine3A::IDENTITY,
@@ -600,17 +583,14 @@ mod tests {
                 VoxelGridInstance {
                     index: glam::IVec3::ZERO,
                     color: Color32::RED,
-                    picking_instance_id: PickingLayerInstanceId(0),
                 },
                 VoxelGridInstance {
                     index: glam::IVec3::ONE,
                     color: Color32::GREEN,
-                    picking_instance_id: PickingLayerInstanceId(1),
                 },
                 VoxelGridInstance {
                     index: glam::IVec3::splat(2),
                     color: Color32::BLUE,
-                    picking_instance_id: PickingLayerInstanceId(2),
                 },
             ],
             VoxelGridOptions {

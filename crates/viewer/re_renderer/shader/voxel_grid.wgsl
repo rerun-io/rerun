@@ -10,9 +10,6 @@ struct InstanceIn {
 
     @location(1)
     color_srgba: vec4f,
-
-    @location(2)
-    picking_instance_id: vec2u,
 };
 
 struct UniformBuffer {
@@ -37,7 +34,7 @@ struct VertexOut {
     normal_world_space: vec3f,
 
     @location(2) @interpolate(flat)
-    picking_instance_id: vec2u,
+    instance_id: vec2u,
 };
 
 const CUBE_VERTICES: array<vec3f, 36> = array<vec3f, 36>(
@@ -73,13 +70,13 @@ const CUBE_NORMALS: array<vec3f, 6> = array<vec3f, 6>(
 const CULLED_POSITION: vec4f = vec4f(2.0, 2.0, 2.0, 1.0);
 
 @vertex
-fn vs_main(@builtin(vertex_index) vertex_idx: u32, in_instance: InstanceIn) -> VertexOut {
+fn vs_main(@builtin(vertex_index) vertex_idx: u32, @builtin(instance_index) instance_idx: u32, in_instance: InstanceIn) -> VertexOut {
     let alpha = in_instance.color_srgba.a;
 
     var out: VertexOut;
     out.color = vec4f(linear_from_srgb(in_instance.color_srgba.rgb), alpha);
     out.normal_world_space = vec3f(0.0, 0.0, 1.0);
-    out.picking_instance_id = in_instance.picking_instance_id;
+    out.instance_id = vec2u(instance_idx, 0u);
 
     if alpha <= 0.0 {
         out.position = CULLED_POSITION;
@@ -104,7 +101,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
 
 @fragment
 fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
-    return vec4u(batch.picking_layer_object_id, in.picking_instance_id);
+    return vec4u(batch.picking_layer_object_id, in.instance_id);
 }
 
 @fragment

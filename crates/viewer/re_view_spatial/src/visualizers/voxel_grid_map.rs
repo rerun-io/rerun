@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use re_log_types::Instance;
+use re_renderer::Color32;
 use re_renderer::renderer::{VoxelGridDrawData, VoxelGridInstance, VoxelGridOptions};
-use re_renderer::{Color32, PickingLayerInstanceId};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::VoxelGridMap;
 use re_sdk_types::components::{
@@ -261,52 +261,50 @@ impl VoxelGridMapVisualizer {
             .0
             .clamp(0.0, 1.0);
 
-        let colors = Self::resolve_colors(ctx, max_voxels, colors, values, value_range, colormap);
+        let colors = Self::resolve_colors(
+            ctx,
+            results,
+            max_voxels,
+            colors,
+            values,
+            value_range,
+            colormap,
+        );
 
         // Outline masks for individually highlighted voxels (e.g. picked ones).
-        // Keyed by the instance index, which equals the picking-layer instance id below.
         let highlighted_instances = &spatial_ctx.highlight.instances;
         let mut additional_outline_mask_ids_instance_ranges = Vec::new();
 
         let mut voxel_instances = Vec::with_capacity(max_voxels);
-        let mut local_bbox = macaw::BoundingBox::nothing();
+        let mut min_index = glam::IVec3::splat(i32::MAX);
+        let mut max_index = glam::IVec3::splat(i32::MIN);
         for (instance_index, (index, mut color)) in std::iter::zip(indices, colors).enumerate() {
             if instance_index >= max_voxels {
                 break;
             }
 
-            let alpha = ((color.a() as f32) * opacity).round().clamp(0.0, 255.0) as u8;
-            if alpha == 0 {
-                continue;
-            }
-            #[expect(clippy::disallowed_methods)]
-            // This alpha comes from logged data, not from a hard-coded UI color.
-            {
-                color = Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), alpha);
+            if opacity < 1.0 {
+                color = color.gamma_multiply(opacity);
             }
 
             let index = glam::IVec3::from_array(*index);
-            voxel_instances.push(VoxelGridInstance {
-                index,
-                color,
-                picking_instance_id: PickingLayerInstanceId(instance_index as _),
-            });
+            voxel_instances.push(VoxelGridInstance { index, color });
 
-            // TODO: consider not skipping
-            // Voxels with zero alpha are skipped above, so the instance-buffer position can differ
-            // from the instance index. Translate any individual highlight to its buffer position.
             if let Some(mask) = highlighted_instances.get(&Instance::from(instance_index as u64)) {
-                let buffer_index = (voxel_instances.len() - 1) as u32;
+                let instance_index = instance_index as u32;
                 additional_outline_mask_ids_instance_ranges
-                    .push((buffer_index..buffer_index + 1, *mask));
+                    .push((instance_index..instance_index + 1, *mask));
             }
 
-            let min = index.as_vec3() * voxel_size;
-            let max = (index + glam::IVec3::ONE).as_vec3() * voxel_size;
-            local_bbox = local_bbox.union(macaw::BoundingBox::from_min_max(min, max));
+            min_index = min_index.min(index);
+            max_index = max_index.max(index);
         }
 
-        if voxel_instances.is_empty() {
+        let local_bbox = macaw::BoundingBox::from_min_max(
+            min_index.as_vec3() * voxel_size,
+            (max_index + glam::IVec3::ONE).as_vec3() * voxel_size,
+        );
+        if local_bbox.is_nothing() {
             return Ok(None);
         }
 

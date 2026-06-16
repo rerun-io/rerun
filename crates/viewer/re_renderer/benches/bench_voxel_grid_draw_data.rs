@@ -8,8 +8,8 @@ use re_renderer::renderer::{
     GpuMeshInstance, MeshDrawData, VoxelGridDrawData, VoxelGridInstance, VoxelGridOptions,
 };
 use re_renderer::{
-    Color32, OutlineMaskPreference, PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId,
-    RenderConfig, RenderContext, Rgba32Unmul, UnalignedColor32,
+    Color32, OutlineMaskPreference, PickingLayerId, PickingLayerObjectId, RenderConfig,
+    RenderContext, Rgba32Unmul, UnalignedColor32,
 };
 use smallvec::smallvec;
 
@@ -44,7 +44,6 @@ fn voxel_index(i: usize) -> glam::IVec3 {
 struct SourceVoxel {
     index: glam::IVec3,
     color: Color32,
-    picking_instance_id: PickingLayerInstanceId,
 }
 
 fn source_voxels(len: usize) -> Vec<SourceVoxel> {
@@ -58,7 +57,6 @@ fn source_voxels(len: usize) -> Vec<SourceVoxel> {
                 255,
             ])
             .into(),
-            picking_instance_id: PickingLayerInstanceId(i as _),
         })
         .collect()
 }
@@ -78,7 +76,6 @@ fn voxel_instances(
             VoxelGridInstance {
                 index: voxel.index,
                 color: voxel.color,
-                picking_instance_id: voxel.picking_instance_id,
             }
         })
         .collect();
