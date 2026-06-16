@@ -52,6 +52,12 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
             .register_fallback_provider(component, |_ctx| components::Radius::new_ui_points(0.5));
     }
 
+    // VideoReference
+    system_registry.register_fallback_provider(
+        archetypes::VideoFrameReference::descriptor_video_reference().component,
+        |ctx| components::EntityPath::from(ctx.target_entity_path),
+    );
+
     // Pinhole
     system_registry.register_fallback_provider(
         archetypes::Pinhole::descriptor_image_plane_distance().component,
