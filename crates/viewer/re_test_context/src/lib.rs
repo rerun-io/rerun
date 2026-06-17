@@ -631,7 +631,8 @@ impl TestContext {
         let route = Route::LocalRecording {
             recording_id: self.recording_store_id.clone(),
         };
-        let (storage_context, store_context) = store_hub.read_context(&route);
+        let active_time_ctrl = self.time_ctrl.read();
+        let (storage_context, store_context) = store_hub.read_context(&route, &active_time_ctrl);
         let store_context = store_context
             .expect("a `Route::LocalRecording` must always have an active store context");
 
@@ -684,13 +685,11 @@ impl TestContext {
                 selection_state: &selection_state,
                 focused_item: &focused_item,
                 drag_and_drop_manager: &drag_and_drop_manager,
-                active_time_ctrl: Some(&self.time_ctrl.read()),
                 connected_receivers: &Default::default(),
                 auth_context: None,
                 login_enabled: false,
                 login_signed_in_url: None,
             },
-            connected_receivers: &Default::default(),
             store_context: &store_context,
             visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,

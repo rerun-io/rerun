@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, StoreId};
 
-use crate::{Cache, CacheEntryAccess, StoreCache, ViewClassRegistry};
+use crate::{Cache, CacheEntryAccess, StoreCache, TimeControl, ViewClassRegistry};
 
 /// The current Blueprint and Recording being displayed by the viewer
 pub struct ActiveStoreContext<'a> {
@@ -21,6 +21,11 @@ pub struct ActiveStoreContext<'a> {
     /// Per-recording caches.
     pub caches: &'a StoreCache,
 
+    /// The time control for the active recording.
+    ///
+    /// If none was created yet (or none is active), this points to a default time control.
+    pub time_ctrl: &'a TimeControl,
+
     /// Should we enable the heuristics during this frame?
     pub should_enable_heuristics: bool,
 }
@@ -36,6 +41,15 @@ impl ActiveStoreContext<'_> {
 
     pub fn recording_store_id(&self) -> &StoreId {
         self.recording.store_id()
+    }
+
+    /// Currently selected section of time, if any.
+    pub fn loop_selection(
+        &self,
+    ) -> Option<(re_log_types::TimelineName, re_log_types::AbsoluteTimeRangeF)> {
+        self.time_ctrl
+            .time_selection()
+            .map(|q| (*self.time_ctrl.timeline_name(), q))
     }
 
     /// Accesses a memoization cache for reading and writing.
@@ -87,12 +101,14 @@ impl ActiveStoreContext<'static> {
         static EMPTY_CACHES: LazyLock<StoreCache> = LazyLock::new(|| {
             StoreCache::empty(&ViewClassRegistry::default(), StoreId::empty_recording())
         });
+        static EMPTY_TIME_CTRL: LazyLock<TimeControl> = LazyLock::new(TimeControl::default);
 
         Self {
             blueprint: &EMPTY_BLUEPRINT,
             default_blueprint: None,
             recording: &EMPTY_RECORDING,
             caches: &EMPTY_CACHES,
+            time_ctrl: &EMPTY_TIME_CTRL,
             should_enable_heuristics: false,
         }
     }

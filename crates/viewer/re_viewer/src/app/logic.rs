@@ -50,7 +50,17 @@ impl App {
             // We also need to check for Ui commands, especially `UiCommand::Quit`.
 
             let route = self.state.navigation.current().clone();
-            let (storage_context, store_context) = store_hub.read_context(&route);
+
+            // Cloned snapshot of the active recording's time control, so that
+            // handing out references to it doesn't keep `self` borrowed. Defaults to an
+            // empty time control on routes without a recording (where it's ignored anyway).
+            let active_time_ctrl = route
+                .recording_id()
+                .and_then(|id| self.state.time_controls.get(id).cloned())
+                .unwrap_or_default();
+
+            let (storage_context, store_context) =
+                store_hub.read_context(&route, &active_time_ctrl);
 
             let blueprint = store_context.as_ref().map(|ctx| ctx.blueprint);
             let blueprint_query = self.state.blueprint_query_for_viewer(blueprint);

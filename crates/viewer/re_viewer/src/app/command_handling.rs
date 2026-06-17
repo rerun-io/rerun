@@ -97,14 +97,13 @@ impl App {
                         }
 
                         store_hub.load_blueprint_and_caches(&store_id, &self.view_class_registry); // Ensure caches and blueprints
-                        let route = Route::LocalRecording {
-                            recording_id: store_id.clone(),
-                        };
-                        let (storage_ctx, store_ctx) = store_hub.read_context(&route); // Materialize the target blueprint on-demand
+                        store_hub.ensure_active_blueprint_for_app(store_id.application_id()); // Materialize the target blueprint on-demand
 
-                        let Some(store_ctx) = store_ctx else {
+                        let Some(target_blueprint) =
+                            store_hub.active_blueprint_for_app(store_id.application_id())
+                        else {
                             re_log::debug_panic!(
-                                "No store context found for recording {store_id:?} when handling time control commands sent from {sent_from}. This should never happen for local recording routes.",
+                                "No active blueprint found for recording {store_id:?} when handling time control commands sent from {sent_from}. This should never happen for local recording routes.",
                             );
                             re_log::error_once!(
                                 "Can't change time for recording {store_id:?} because it is not active."
@@ -112,7 +111,6 @@ impl App {
                             return;
                         };
 
-                        let target_blueprint = store_ctx.blueprint;
                         let blueprint_query = self
                             .state
                             .blueprint_query_for_viewer(Some(target_blueprint));
@@ -120,19 +118,23 @@ impl App {
                         let blueprint_ctx = AppBlueprintCtx {
                             command_sender: &self.command_sender,
                             current_blueprint: target_blueprint,
-                            default_blueprint: storage_ctx
-                                .hub
+                            default_blueprint: store_hub
                                 .default_blueprint_for_app(store_id.application_id()),
                             blueprint_query,
                         };
 
-                        let time_ctrl = self
-                            .state
-                            .time_control_mut(store_ctx.recording, &blueprint_ctx);
+                        let Some(recording) = store_hub.entity_db(&store_id) else {
+                            re_log::error_once!(
+                                "Can't change time for recording {store_id:?} because it is not loaded."
+                            );
+                            return;
+                        };
+
+                        let time_ctrl = self.state.time_control_mut(recording, &blueprint_ctx);
 
                         let response = time_ctrl.handle_time_commands(
                             Some(&blueprint_ctx),
-                            store_ctx.recording,
+                            recording,
                             &time_commands,
                         );
 
@@ -141,7 +143,7 @@ impl App {
                         }
 
                         handle_time_ctrl_event(
-                            store_ctx.recording,
+                            recording,
                             self.event_dispatcher.as_ref(),
                             &response,
                         );
@@ -678,7 +680,7 @@ impl App {
             UICommand::SaveRecording => {
                 #[cfg(target_arch = "wasm32")] // Web
                 {
-                    if let Err(err) = save_active_recording(self, store_context, None) {
+                    if let Err(err) = save_active_recording(self, store_context) {
                         re_log::error!("Failed to save recording: {err}");
                     }
                 }
@@ -710,7 +712,7 @@ impl App {
                         .collect_vec();
 
                     if selected_stores.is_empty() {
-                        if let Err(err) = save_active_recording(self, store_context, None) {
+                        if let Err(err) = save_active_recording(self, store_context) {
                             re_log::error!("Failed to save recording: {err}");
                         }
                     } else if selected_stores.len() == 1 {
@@ -733,11 +735,7 @@ impl App {
                 }
             }
             UICommand::SaveRecordingSelection => {
-                if let Err(err) = save_active_recording(
-                    self,
-                    store_context,
-                    self.state.loop_selection(store_context),
-                ) {
+                if let Err(err) = save_active_recording(self, store_context) {
                     re_log::error!("Failed to save recording: {err}");
                 }
             }
@@ -1544,14 +1542,13 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
 fn save_active_recording(
     app: &mut App,
     store_context: Option<&ActiveStoreContext<'_>>,
-    loop_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
 ) -> anyhow::Result<()> {
-    let Some(entity_db) = store_context.as_ref().map(|view| view.recording) else {
+    let Some(store_context) = store_context else {
         // NOTE: Can only happen if saving through the command palette.
         anyhow::bail!("No recording data to save");
     };
 
-    save_recording(app, entity_db, loop_selection)
+    save_recording(app, store_context.recording, store_context.loop_selection())
 }
 
 fn save_recording(

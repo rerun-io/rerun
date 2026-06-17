@@ -212,7 +212,7 @@ impl App {
                 // button, as this will determine whether its grayed out or not!
                 // TODO(cmc): In practice the loop (green) selection is always there
                 // at the moment so…
-                let loop_selection = self.state.loop_selection(store_ctx);
+                let loop_selection = store_ctx.and_then(|ctx| ctx.loop_selection());
 
                 if ui
                     .add_enabled(loop_selection.is_some(), save_selection_button)

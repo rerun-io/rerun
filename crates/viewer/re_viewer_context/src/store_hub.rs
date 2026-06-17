@@ -19,7 +19,7 @@ use re_sdk_types::components::Timestamp;
 
 use crate::{
     ActiveStoreContext, BlueprintUndoState, RecordingOrTable, Route, StorageContext, StoreCache,
-    TableStore, TableStores, ViewClassRegistry,
+    TableStore, TableStores, TimeControl, ViewClassRegistry,
 };
 
 // ---
@@ -363,10 +363,15 @@ impl StoreHub {
     ///
     /// When returned, all of the references to blueprints and recordings will
     /// have a matching [`ApplicationId`].
-    pub fn read_context(
-        &mut self,
+    ///
+    /// The caller must provide the `active_time_ctrl` for the route's recording (if any).
+    /// It's only used to populate [`ActiveStoreContext::time_ctrl`] when a context is returned;
+    /// for routes without a recording it's ignored, so passing a default is fine there.
+    pub fn read_context<'a>(
+        &'a mut self,
         route: &Route,
-    ) -> (StorageContext<'_>, Option<ActiveStoreContext<'_>>) {
+        active_time_ctrl: &'a TimeControl,
+    ) -> (StorageContext<'a>, Option<ActiveStoreContext<'a>>) {
         // Used as stand-ins within the `Some` branch when only parts of a
         // context are available (e.g. we have a blueprint but no recording).
         static EMPTY_RECORDING: LazyLock<EntityDb> =
@@ -418,6 +423,7 @@ impl StoreHub {
                 default_blueprint,
                 recording: recording.unwrap_or(&EMPTY_RECORDING),
                 caches,
+                time_ctrl: active_time_ctrl,
                 should_enable_heuristics,
             })
         };

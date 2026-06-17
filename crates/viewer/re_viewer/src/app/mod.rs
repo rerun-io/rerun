@@ -634,7 +634,7 @@ impl App {
                     timeline_change: _,
                     time_change: _,
                 } = self.state.blueprint_time_control.update(
-                    bp_ctx.current_blueprint,
+                    blueprint,
                     &re_viewer_context::TimeControlUpdateParams {
                         stable_dt,
                         more_data_is_streaming_in: true,
@@ -1347,8 +1347,16 @@ impl eframe::App for App {
         }
 
         {
+            let active_route = self.state.navigation.current();
+
+            // Read-only copy of time control state (to avoid borrow checker issues with mutable state access).
+            let active_time_ctrl = active_route
+                .recording_id()
+                .and_then(|id| self.state.time_controls.get(id).cloned())
+                .unwrap_or_default();
+
             let (storage_context, store_context) =
-                store_hub.read_context(self.state.navigation.current());
+                store_hub.read_context(active_route, &active_time_ctrl);
 
             let blueprint = store_context.as_ref().map(|ctx| ctx.blueprint);
             let blueprint_query = self.state.blueprint_query_for_viewer(blueprint);

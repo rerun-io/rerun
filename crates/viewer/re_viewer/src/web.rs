@@ -393,7 +393,7 @@ impl WebHandle {
         Some(recording.store_id().recording_id().to_string())
     }
 
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
     #[wasm_bindgen]
     pub fn set_active_recording_id(&self, recording_id: &str) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
@@ -419,28 +419,21 @@ impl WebHandle {
         app.egui_ctx.request_repaint();
     }
 
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
     #[wasm_bindgen]
     pub fn get_active_timeline(&self, recording_id: &str) -> Option<String> {
-        let mut app = self.runner.app_mut::<crate::App>()?;
-        let crate::App {
-            store_hub: Some(hub),
-            state,
-            ..
-        } = &mut *app
-        else {
-            return None;
-        };
+        let app = self.runner.app_mut::<crate::App>()?;
+        let hub = app.store_hub.as_ref()?;
 
         let store_id = store_id_from_recording_id(hub, recording_id)?;
-        let time_ctrl = state.time_control(&store_id)?;
+        let time_ctrl = app.state.time_control(&store_id)?;
         Some(time_ctrl.timeline_name().as_str().to_owned())
     }
 
     /// Set the active timeline.
     ///
     /// This does nothing if the timeline can't be found.
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
     #[wasm_bindgen]
     pub fn set_active_timeline(&self, recording_id: &str, timeline_name: &str) {
         let Some(app) = self.runner.app_mut::<crate::App>() else {
@@ -464,12 +457,13 @@ impl WebHandle {
         app.egui_ctx.request_repaint();
     }
 
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
     #[wasm_bindgen]
     pub fn get_time_for_timeline(&self, recording_id: &str, timeline_name: &str) -> Option<f64> {
         let app = self.runner.app_mut::<crate::App>()?;
 
-        let store_id = store_id_from_recording_id(app.store_hub.as_ref()?, recording_id)?;
+        let hub = app.store_hub.as_ref()?;
+        let store_id = store_id_from_recording_id(hub, recording_id)?;
         let time_ctrl = app.state.time_control(&store_id)?;
 
         time_ctrl
@@ -477,7 +471,7 @@ impl WebHandle {
             .map(|v| v.as_f64())
     }
 
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
     #[wasm_bindgen]
     pub fn set_time_for_timeline(&self, recording_id: &str, timeline_name: &str, time: f64) {
         let Some(app) = self.runner.app_mut::<crate::App>() else {
@@ -504,7 +498,7 @@ impl WebHandle {
         app.egui_ctx.request_repaint();
     }
 
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
     #[wasm_bindgen]
     pub fn get_timeline_time_range(&self, recording_id: &str, timeline_name: &str) -> JsValue {
         let Some(app) = self.runner.app_mut::<crate::App>() else {
@@ -539,29 +533,22 @@ impl WebHandle {
         JsValue::from(obj)
     }
 
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
     #[wasm_bindgen]
     pub fn get_playing(&self, recording_id: &str) -> Option<bool> {
         let app = self.runner.app_mut::<crate::App>()?;
-        let crate::App {
-            store_hub: Some(hub),
-            state,
-            ..
-        } = &*app
-        else {
-            return None;
-        };
+        let hub = app.store_hub.as_ref()?;
 
         let store_id = store_id_from_recording_id(hub, recording_id)?;
         if !hub.store_bundle().contains(&store_id) {
             return None;
         }
-        let time_ctrl = state.time_control(&store_id)?;
+        let time_ctrl = app.state.time_control(&store_id)?;
 
         Some(time_ctrl.play_state() == PlayState::Playing)
     }
 
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
     #[wasm_bindgen]
     pub fn set_playing(&self, recording_id: &str, value: bool) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {

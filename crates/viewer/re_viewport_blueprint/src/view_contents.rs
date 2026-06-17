@@ -848,11 +848,13 @@ mod tests {
                 )
             });
 
+        let time_ctrl = re_viewer_context::TimeControl::default();
         let ctx = ActiveStoreContext {
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,
             caches: &StoreCache::new(&view_class_registry, &recording),
+            time_ctrl: &time_ctrl,
             should_enable_heuristics: false,
         };
 

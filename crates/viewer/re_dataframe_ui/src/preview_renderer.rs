@@ -180,14 +180,6 @@ impl<'a> RecordingPreviewRenderer<'a> {
             }
         };
 
-        let store_context = ActiveStoreContext {
-            blueprint: self.blueprint,
-            default_blueprint: None,
-            recording,
-            caches,
-            should_enable_heuristics: false,
-        };
-
         // Derive visualizable/indicated entities from the bootstrapped cache.
         let visualizable_entities_per_visualizer =
             caches.visualizable_entities_for_visualizer_systems();
@@ -198,6 +190,15 @@ impl<'a> RecordingPreviewRenderer<'a> {
             .recording_time_control(store_id)
             .cloned()
             .unwrap_or_else(TimeControl::preview_time_control);
+
+        let store_context = ActiveStoreContext {
+            blueprint: self.blueprint,
+            default_blueprint: None,
+            recording,
+            caches,
+            time_ctrl: &time_ctrl,
+            should_enable_heuristics: false,
+        };
 
         let active_timeline = time_ctrl.timeline();
 
@@ -250,17 +251,14 @@ impl<'a> RecordingPreviewRenderer<'a> {
         }
 
         // One shared `ViewerContext` for all views of this recording.
-        let connected_receivers = Default::default();
         let blueprint_time_ctrl = TimeControl::default();
         let empty_selection_state = ApplicationSelectionState::default(); // We don't support selecting/hovering in previews yet.
         let ctx = ViewerContext {
             app_ctx: re_viewer_context::AppContext {
                 active_store_context: Some(&store_context),
-                active_time_ctrl: Some(&time_ctrl),
                 selection_state: &empty_selection_state,
                 ..app_ctx.clone()
             },
-            connected_receivers: &connected_receivers,
             store_context: &store_context,
             visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,

@@ -80,9 +80,6 @@ pub struct AppContext<'a> {
     /// Helper object to manage drag-and-drop operations.
     pub drag_and_drop_manager: &'a DragAndDropManager,
 
-    /// The time control for the active recording, if any.
-    pub active_time_ctrl: Option<&'a TimeControl>,
-
     /// Where we are getting our data from.
     pub connected_receivers: &'a re_log_channel::LogReceiverSet,
 
@@ -215,7 +212,7 @@ impl AppContext<'_> {
 
     /// The time control for the active recording, if any.
     pub fn active_time_ctrl(&self) -> Option<&TimeControl> {
-        self.active_time_ctrl
+        self.active_store_context.map(|ctx| ctx.time_ctrl)
     }
 
     /// Helper function to send [`TimeControlCommand`]s for the active recording.
@@ -246,11 +243,11 @@ impl AppContext<'_> {
     ) {
         let mut interacted_items = interacted_items.into();
 
-        if let Some(store_ctx) = self.active_store_context
-            && let Some(time_ctrl) = self.active_time_ctrl
-        {
-            interacted_items = interacted_items
-                .into_mono_instance_path_items(store_ctx.recording, &time_ctrl.current_query());
+        if let Some(store_ctx) = self.active_store_context {
+            interacted_items = interacted_items.into_mono_instance_path_items(
+                store_ctx.recording,
+                &store_ctx.time_ctrl.current_query(),
+            );
         }
         let selection_state = self.selection_state();
 
@@ -377,11 +374,11 @@ impl AppContext<'_> {
 
         // If we have an active recording, resolve to mono-instance paths so selection matches
         // what the rest of the viewer selects.
-        if let Some(store_ctx) = self.active_store_context
-            && let Some(time_ctrl) = self.active_time_ctrl
-        {
-            interacted_items = interacted_items
-                .into_mono_instance_path_items(store_ctx.recording, &time_ctrl.current_query());
+        if let Some(store_ctx) = self.active_store_context {
+            interacted_items = interacted_items.into_mono_instance_path_items(
+                store_ctx.recording,
+                &store_ctx.time_ctrl.current_query(),
+            );
         }
 
         // Focus -> Selection

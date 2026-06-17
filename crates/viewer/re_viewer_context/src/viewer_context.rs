@@ -44,9 +44,6 @@ pub struct ViewerContext<'a> {
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
 
-    /// Where we are getting our data from.
-    pub connected_receivers: &'a re_log_channel::LogReceiverSet,
-
     /// The active recording and blueprint.
     pub store_context: &'a ActiveStoreContext<'a>,
 }
