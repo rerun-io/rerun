@@ -45,6 +45,7 @@ re_view_time_series.workspace = true
 
 arrow.workspace = true
 datafusion.workspace = true
+directories.workspace = true
 insta.workspace = true
 ndarray.workspace = true
 reqwest = { workspace = true, features = ["json"] }
