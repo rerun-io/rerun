@@ -6,6 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.compute as pc
 from datafusion import col, lit
 from datafusion import functions as F
 
@@ -31,21 +32,23 @@ def create_sub_dataset(
 ) -> rr.catalog.DatasetEntry:
     """Create a new dataset with a subset of segments from another dataset."""
 
-    # Query the manifest for storage URLs of the selected segments
-    manifest = pa.table(
+    # Look up the storage URLs of the selected segments.
+    selected = pa.table(
         source
-        .manifest()
+        .segment_table()
         .filter(
             F.in_list(col("rerun_segment_id"), [lit(s) for s in segment_ids])
         )
-        .select("rerun_storage_url", "rerun_layer_name")
+        .select("rerun_storage_urls", "rerun_layer_names")
     )
 
     sub_dataset = client.create_dataset(name)
 
-    if manifest.num_rows > 0:
-        uris = manifest.column("rerun_storage_url").to_pylist()
-        layers = manifest.column("rerun_layer_name").to_pylist()
+    # Flatten the per-segment lists into the (url, layer) pairs to register.
+    uris = pc.list_flatten(selected.column("rerun_storage_urls")).to_pylist()
+    layers = pc.list_flatten(selected.column("rerun_layer_names")).to_pylist()
+
+    if uris:
         sub_dataset.register(uris, layer_name=layers).wait()
 
     return sub_dataset
@@ -83,12 +86,12 @@ print(
     .sort("rerun_segment_id")
 )
 
-print("\nSub-dataset manifest:")
+print("\nSub-dataset storage URLs:")
 print(
     sub_dataset
-    .manifest()
-    .select("rerun_segment_id", "rerun_layer_name", "rerun_storage_url")
-    .sort("rerun_segment_id", "rerun_layer_name")
+    .segment_table()
+    .select("rerun_segment_id", "rerun_layer_names", "rerun_storage_urls")
+    .sort("rerun_segment_id")
 )
 # endregion: verify
 

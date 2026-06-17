@@ -18,7 +18,7 @@ lenses, merge, write) are in `rerun-chunk-processing`.
 ```python
 from rerun.experimental import McapReader
 
-reader = McapReader(mcap_path)   # see help(McapReader) for the full option set
+reader = McapReader(mcap_path)  # see help(McapReader) for the full option set
 stream = reader.stream()
 ```
 

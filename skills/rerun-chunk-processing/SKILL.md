@@ -60,7 +60,7 @@ from rerun.experimental import Chunk, LazyChunkStream, OptimizationProfile
 - `LazyChunkStream.from_iter(chunks)` wraps hand-built chunks.
 
 ```python
-stream = source_stream()                        # any importer skill
+stream = source_stream()  # any importer skill
 stream = stream.drop(content="/video_raw/**")
 stream = stream.lenses(fix_lens, content="/cam/**", output_mode="forward_unmatched")
 merged = LazyChunkStream.merge(stream, sidecar_stream)
@@ -76,7 +76,7 @@ Empty `indexes` means static.
 ```python
 chunk = Chunk.from_columns(
     "/tf_static/robot_offsets",
-    indexes=[],                                  # static
+    indexes=[],  # static
     columns=rr.Transform3D.columns(
         translation=translations,
         quaternion=quaternions_xyzw,
@@ -122,9 +122,12 @@ In-place fix (keep Arrow type and length intact):
 stream = stream.lenses(
     MutateLens(
         "Pinhole:resolution",
-        Selector(".").pipe(lambda res: pa.array(
-            [(h, w) for w, h in res.to_pylist()], type=res.type,
-        )),
+        Selector(".").pipe(
+            lambda res: pa.array(
+                [(h, w) for w, h in res.to_pylist()],
+                type=res.type,
+            )
+        ),
     ),
     content=["/external/cam_low", "/external/cam_high"],
     output_mode="forward_unmatched",
