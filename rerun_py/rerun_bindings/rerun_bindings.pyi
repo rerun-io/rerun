@@ -198,7 +198,12 @@ class ChunkInternal:
     def to_record_batch(self) -> pa.RecordBatch: ...
     def with_entity_path(self, entity_path: str) -> ChunkInternal: ...
     @staticmethod
-    def from_record_batch(record_batch: pa.RecordBatch) -> ChunkInternal: ...
+    def from_record_batch(
+        record_batch: pa.RecordBatch,
+        index_mode: str,
+        index_columns: list[str],
+        entity_path: str | None,
+    ) -> list[ChunkInternal]: ...
     @staticmethod
     def from_columns(
         entity_path: str,

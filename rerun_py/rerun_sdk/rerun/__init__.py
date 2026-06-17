@@ -74,6 +74,7 @@ from ._send_columns import (
     send_columns as send_columns,
 )
 from ._send_dataframe import (
+    AUTO_INDEX as AUTO_INDEX,
     RECORDING_PROPERTIES_PATH as RECORDING_PROPERTIES_PATH,
     RERUN_KIND as RERUN_KIND,
     RERUN_KIND_CONTROL as RERUN_KIND_CONTROL,

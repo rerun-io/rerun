@@ -58,6 +58,10 @@ pub enum ChunkError {
 
     #[error(transparent)]
     InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
+
+    // Boxed: `DataframeToChunksError` is large (it wraps a `SorbetError`), and this variant is rare.
+    #[error(transparent)]
+    DataframeToChunks(#[from] Box<re_sorbet::DataframeToChunksError>),
 }
 
 const _: () = assert!(

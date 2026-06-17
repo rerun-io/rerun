@@ -48,7 +48,10 @@ impl SorbetSchema {
 impl SorbetSchema {
     pub fn arrow_batch_metadata(&self) -> ArrowBatchMetadata {
         fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
-            ("rerun:id".to_owned(), chunk_id.to_string())
+            (
+                crate::metadata::RERUN_CHUNK_ID.to_owned(),
+                chunk_id.to_string(),
+            )
         }
 
         fn entity_path_metadata(entity_path: &EntityPath) -> (String, String) {
@@ -140,7 +143,7 @@ impl SorbetSchema {
 
         let columns = SorbetColumnDescriptors::try_from_arrow_fields(entity_path.as_ref(), fields)?;
 
-        let chunk_id = if let Some(chunk_id_str) = metadata.get("rerun:id") {
+        let chunk_id = if let Some(chunk_id_str) = metadata.get(crate::metadata::RERUN_CHUNK_ID) {
             Some(chunk_id_str.parse().map_err(|err| {
                 SorbetError::ChunkIdDeserializationError(format!(
                     "Failed to deserialize chunk id {chunk_id_str:?}: {err}"

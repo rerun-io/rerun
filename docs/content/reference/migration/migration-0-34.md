@@ -51,3 +51,19 @@ The `DatasetEntry` methods `create_fts_search_index`,  `create_vector_search_ind
 
 This change does not impact your ability to search through your dataset via [dataframe queries](https://rerun.io/docs/concepts/query-and-transform/dataframe-queries).
 
+## `rr.send_dataframe` is now stricter and built on `Chunk.from_record_batch`
+
+`rr.send_dataframe` / `rr.send_record_batch` are now thin wrappers over the new `rerun.experimental.Chunk.from_record_batch` (and `Chunk.from_dataframe`), which turns an Arrow record batch into one chunk per entity path.
+This makes the Arrow → chunk interpretation a first-class, well-specified capability, but it changes a few behaviors that previously happened silently.
+
+Consequently, the following breaking behavior changes are introduced:
+
+- A batch with no index column now raises instead of silently logging static data.
+  Opt in for a static chunk explicitly with `index=None` for static, or specify a column to use as index with `index=<column>` for temporal chunk.
+- Entity-path recognition from a column name now requires a leading `/`.
+  Names without it are no longer parsed for an entity path: `foo` and `foo:bar` previously became the entity `/foo`, and now land on the root entity `/` as components.
+  Only `/entity:component` names are split.
+  (Column names emitted by the Rerun SDK always have the `/` prefix.)
+- As a consequence, `property:…` columns now land on the root entity `/` rather than an entity named `property`.
+  Neither map back to `/__properties` — proper handling of this is not yet implemented.
+- `component_type` is no longer defaulted to the literal `"Unknown"` when absent; it is left unset.

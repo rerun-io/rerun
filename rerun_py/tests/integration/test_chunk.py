@@ -15,34 +15,6 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------
-# from_record_batch
-# ---------------------------------------------------------------------------
-
-
-def test_chunk_from_record_batch_round_trip(test_rrd_path: Path) -> None:
-    """to_record_batch() -> from_record_batch() round-trips correctly."""
-    chunks = RrdReader(test_rrd_path).stream().to_chunks()
-    assert len(chunks) > 0
-
-    for original in chunks:
-        rb = original.to_record_batch()
-        restored = Chunk.from_record_batch(rb)
-        assert restored.entity_path == original.entity_path
-        assert restored.num_rows == original.num_rows
-        assert restored.num_columns == original.num_columns
-        assert restored.is_static == original.is_static
-        assert sorted(restored.timeline_names) == sorted(original.timeline_names)
-
-
-def test_chunk_from_record_batch_rejects_plain_batch() -> None:
-    """from_record_batch() raises on a RecordBatch without Rerun metadata."""
-
-    plain_batch = pa.record_batch({"x": [1, 2, 3]})
-    with pytest.raises(ValueError):
-        Chunk.from_record_batch(plain_batch)
-
-
-# ---------------------------------------------------------------------------
 # from_columns
 # ---------------------------------------------------------------------------
 
