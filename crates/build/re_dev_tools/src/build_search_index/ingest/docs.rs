@@ -232,12 +232,12 @@ fn word_count(s: &str) -> usize {
 fn resolve_snippets(body: &str, snippets_root: &camino::Utf8Path) -> String {
     let mut out = String::with_capacity(body.len());
     for line in body.lines() {
-        if let Some(reference) = line.trim().strip_prefix("snippet:") {
-            if let Some(code) = load_snippet(snippets_root, reference.trim()) {
-                out.push_str(&code);
-                out.push('\n');
-                continue;
-            }
+        if let Some(reference) = line.trim().strip_prefix("snippet:")
+            && let Some(code) = load_snippet(snippets_root, reference.trim())
+        {
+            out.push_str(&code);
+            out.push('\n');
+            continue;
         }
         out.push_str(line);
         out.push('\n');
