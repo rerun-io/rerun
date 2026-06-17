@@ -1,11 +1,18 @@
 use std::path::Path;
 
+use camino::Utf8PathBuf;
+
 use super::{Context, DocumentData, DocumentKind, strip_html_tags};
 use crate::build_search_index::util::ProgressBarExt as _;
 
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("docs");
 
+    let snippets_root = ctx
+        .workspace_root()
+        .join("docs")
+        .join("snippets")
+        .join("all");
     let dir = ctx.workspace_root().join("docs").join("content");
     for entry in glob::glob(&format!("{dir}/**/*.md"))? {
         let entry = entry?;
@@ -16,7 +23,11 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             .to_string();
         progress.set(path.clone(), ctx.is_tty());
         let page_url = format!("https://rerun.io/docs/{path}");
-        let (frontmatter, body) = parse_docs_frontmatter(&entry)?;
+        let (frontmatter, raw_body) = parse_docs_frontmatter(&entry)?;
+        // Inline `snippet:` build directives so sections whose only content is
+        // a snippet carry the snippet's docstring and code, not an opaque
+        // directive line.
+        let body = resolve_snippets(&raw_body, &snippets_root);
 
         // Migration guides are special: their headings are bare renamed-API
         // names ("log_image", "serve_grpc") that collide with real queries,
@@ -212,6 +223,81 @@ fn word_count(s: &str) -> usize {
     s.split_whitespace().count()
 }
 
+/// Replace `snippet: <ref>` build directives with the referenced snippet's
+/// source. Many archetype and how-to sections (e.g. "Update an image over
+/// time") contain nothing but a heading and a snippet directive; the website
+/// expands them, but the raw markdown leaves search with the opaque directive
+/// line as its only content (and excerpt). Python is preferred because these
+/// snippets lead with a descriptive docstring that makes an ideal excerpt.
+fn resolve_snippets(body: &str, snippets_root: &camino::Utf8Path) -> String {
+    let mut out = String::with_capacity(body.len());
+    for line in body.lines() {
+        if let Some(reference) = line.trim().strip_prefix("snippet:") {
+            if let Some(code) = load_snippet(snippets_root, reference.trim()) {
+                out.push_str(&code);
+                out.push('\n');
+                continue;
+            }
+        }
+        out.push_str(line);
+        out.push('\n');
+    }
+    out
+}
+
+/// Load a snippet by reference (`path/name` or `path/name[region]`), preferring
+/// the Python source. Returns the snippet text with region markers removed,
+/// or just the named region if one was requested.
+fn load_snippet(root: &camino::Utf8Path, reference: &str) -> Option<String> {
+    let (rel, region) = match reference.split_once('[') {
+        Some((p, r)) => (p.trim(), Some(r.trim_end_matches(']').trim())),
+        None => (reference, None),
+    };
+    for ext in ["py", "cpp", "rs"] {
+        let path: Utf8PathBuf = root.join(format!("{rel}.{ext}"));
+        if let Ok(text) = std::fs::read_to_string(&path) {
+            return Some(extract_region(&text, region));
+        }
+    }
+    None
+}
+
+/// Strip `# region:` / `// region:` markers. If `region` is given, keep only
+/// the lines inside the matching `region`/`endregion` block.
+fn extract_region(text: &str, region: Option<&str>) -> String {
+    let is_marker = |line: &str, kind: &str| {
+        let t = line.trim();
+        let t = t
+            .strip_prefix("# ")
+            .or_else(|| t.strip_prefix("// "))
+            .unwrap_or(t);
+        t.strip_prefix(kind)
+            .map(|name| name.trim_start_matches(':').trim().to_owned())
+    };
+
+    let mut out = String::new();
+    let mut in_target = region.is_none();
+    for line in text.lines() {
+        if let Some(name) = is_marker(line, "region") {
+            if region == Some(name.as_str()) {
+                in_target = true;
+            }
+            continue; // never keep the marker line itself
+        }
+        if let Some(name) = is_marker(line, "endregion") {
+            if region == Some(name.as_str()) {
+                in_target = false;
+            }
+            continue;
+        }
+        if in_target {
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    out
+}
+
 /// Anchor id for a heading. Must match `getHeadingId` in the website
 /// (rerun-io/landing `src/lib/client/docs.ts`), which computes ids from the
 /// raw heading text: lowercase, drop everything but `[a-z0-9 ]`, spaces
@@ -333,6 +419,31 @@ again with a single send covering the entire timeline of frames.
             parts[0].anchor.as_deref(),
             Some("updating-a-point-cloud-over-time")
         );
+    }
+
+    #[test]
+    fn region_extraction_strips_markers_and_scopes() {
+        use super::extract_region;
+        let src = "\
+header line
+# region: setup
+import rerun as rr
+# endregion: setup
+# region: ingest
+rr.log(\"x\", data)
+# endregion: ingest
+";
+        // No region requested: whole file minus marker lines.
+        let all = extract_region(src, None);
+        assert!(all.contains("header line"));
+        assert!(all.contains("import rerun"));
+        assert!(all.contains("rr.log"));
+        assert!(!all.contains("region:"));
+        // A named region: only its body.
+        let ingest = extract_region(src, Some("ingest"));
+        assert!(ingest.contains("rr.log"));
+        assert!(!ingest.contains("import rerun"));
+        assert!(!ingest.contains("header line"));
     }
 
     #[test]
