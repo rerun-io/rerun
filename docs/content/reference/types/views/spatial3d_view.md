@@ -81,6 +81,7 @@ snippet: views/spatial3d
 * [`Transform3D`](../archetypes/transform3d.md)
 * [`TransformAxes3D`](../archetypes/transform_axes3d.md)
 * [`ViewCoordinates`](../archetypes/view_coordinates.md)
+* [`VoxelGridMap`](../archetypes/voxel_grid_map.md)
 * [`Arrows2D`](../archetypes/arrows2d.md) (if logged under a projection)
 * [`AssetVideo`](../archetypes/asset_video.md) (if logged under a projection)
 * [`Boxes2D`](../archetypes/boxes2d.md) (if logged under a projection)

@@ -1,10 +1,83 @@
 use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
+use re_sdk_types::components::{RotationAxisAngle, RotationQuat, Translation3D};
+use re_sdk_types::datatypes::Quaternion;
 use re_viewer_context::{ViewClass as _, VisualizerExecutionOutput, VisualizerReportSeverity};
 
 use crate::contexts::{TransformInfo, TransformTreeContext};
 use crate::view_kind::SpatialViewKind;
+
+/// Resolves the optional translation and rotation components of a grid-like archetype into a
+/// `grid_from_entity` affine transform.
+///
+/// If both a quaternion and an axis-angle rotation are set, the quaternion takes precedence (and a
+/// warning is reported). Reports an error and returns `None` if a provided rotation is invalid.
+///
+/// `archetype_label` is used in the warning message, e.g. `"GridMap"` or `"VoxelGridMap"`.
+#[expect(clippy::too_many_arguments)]
+pub fn entity_from_grid_transform(
+    results: &re_view::VisualizerInstructionQueryResults<'_>,
+    entity_path: &EntityPath,
+    archetype_label: &str,
+    translation: Option<Translation3D>,
+    rotation_axis_angle: Option<RotationAxisAngle>,
+    quaternion: Option<RotationQuat>,
+    quaternion_component: re_sdk_types::ComponentIdentifier,
+    rotation_axis_angle_component: re_sdk_types::ComponentIdentifier,
+) -> Option<glam::Affine3A> {
+    let translation = translation.map_or(glam::Affine3A::IDENTITY, Into::into);
+
+    let rotation = match (quaternion, rotation_axis_angle) {
+        (Some(quaternion), Some(rotation_axis_angle))
+            if quaternion.0 != Quaternion::IDENTITY
+                && rotation_axis_angle != RotationAxisAngle::IDENTITY =>
+        {
+            results.report_for_component(
+                quaternion_component,
+                VisualizerReportSeverity::Warning,
+                format!(
+                    "{archetype_label} {entity_path} has both quaternion and rotation_axis_angle set; using quaternion."
+                ),
+            );
+
+            let Ok(rotation) = glam::Affine3A::try_from(quaternion) else {
+                results.report_for_component(
+                    quaternion_component,
+                    VisualizerReportSeverity::Error,
+                    "invalid rotation quaternion",
+                );
+                return None;
+            };
+            rotation
+        }
+        (Some(quaternion), _) => {
+            let Ok(rotation) = glam::Affine3A::try_from(quaternion) else {
+                results.report_for_component(
+                    quaternion_component,
+                    VisualizerReportSeverity::Error,
+                    "invalid rotation quaternion",
+                );
+                return None;
+            };
+            rotation
+        }
+        (_, Some(rotation_axis_angle)) => {
+            let Ok(rotation) = glam::Affine3A::try_from(rotation_axis_angle) else {
+                results.report_for_component(
+                    rotation_axis_angle_component,
+                    VisualizerReportSeverity::Error,
+                    "invalid rotation axis-angle",
+                );
+                return None;
+            };
+            rotation
+        }
+        (None, None) => glam::Affine3A::IDENTITY,
+    };
+
+    Some(translation * rotation)
+}
 
 /// Derive the spatial view kind from the view class identifier.
 pub fn spatial_view_kind_from_view_class(class: ViewClassIdentifier) -> SpatialViewKind {

@@ -82,3 +82,6 @@ video_sample.rs linguist-generated=true
 video_timestamp.rs linguist-generated=true
 view_coordinates.rs linguist-generated=true
 visible.rs linguist-generated=true
+voxel_index.rs linguist-generated=true
+voxel_size.rs linguist-generated=true
+voxel_value.rs linguist-generated=true

@@ -6,7 +6,7 @@ use re_sdk_types::components::{
     CellSize, Colormap, ImageBuffer, ImageFormat, Opacity, RotationAxisAngle, RotationQuat,
     Translation3D,
 };
-use re_sdk_types::datatypes::{ColorModel, Quaternion};
+use re_sdk_types::datatypes::ColorModel;
 use re_sdk_types::image::ImageKind;
 use re_sdk_types::reflection::Enum as _;
 use re_viewer_context::{
@@ -274,67 +274,17 @@ impl GridMapVisualizer {
             .single_transform_required_for_entity(entity_path, GridMap::name())
             .as_affine3a();
 
-        let translation = if let Some(translation) = translation {
-            translation.into()
-        } else {
-            glam::Affine3A::IDENTITY
-        };
-
-        let rotation = match (quaternion, rotation_axis_angle) {
-            (Some(quaternion), Some(rotation_axis_angle))
-                if quaternion.0 != Quaternion::IDENTITY
-                    && rotation_axis_angle != RotationAxisAngle::IDENTITY =>
-            {
-                // Match the behavior documented in the archetype definition:
-                // if both are set, the quaternion takes precedence.
-                results.report_for_component(
-                    GridMap::descriptor_quaternion().component,
-                    VisualizerReportSeverity::Warning,
-                    format!(
-                        "GridMap {entity_path} has both quaternion and rotation_axis_angle set; using quaternion."
-                    ),
-                );
-
-                if let Ok(rotation) = glam::Affine3A::try_from(quaternion) {
-                    rotation
-                } else {
-                    results.report_for_component(
-                        GridMap::descriptor_quaternion().component,
-                        VisualizerReportSeverity::Error,
-                        "invalid rotation quaternion",
-                    );
-                    return None;
-                }
-            }
-            (Some(quaternion), _) => {
-                if let Ok(rotation) = glam::Affine3A::try_from(quaternion) {
-                    rotation
-                } else {
-                    results.report_for_component(
-                        GridMap::descriptor_quaternion().component,
-                        VisualizerReportSeverity::Error,
-                        "invalid rotation quaternion",
-                    );
-                    return None;
-                }
-            }
-            (_, Some(rotation_axis_angle)) => {
-                if let Ok(rotation) = glam::Affine3A::try_from(rotation_axis_angle) {
-                    rotation
-                } else {
-                    results.report_for_component(
-                        GridMap::descriptor_rotation_axis_angle().component,
-                        VisualizerReportSeverity::Error,
-                        "invalid rotation axis-angle",
-                    );
-                    return None;
-                }
-            }
-            (None, None) => glam::Affine3A::IDENTITY,
-        };
-
-        let grid_from_entity = translation * rotation;
-        let world_from_grid = world_from_entity * grid_from_entity;
+        let entity_from_grid = super::entity_from_grid_transform(
+            results,
+            entity_path,
+            "GridMap",
+            translation,
+            rotation_axis_angle,
+            quaternion,
+            GridMap::descriptor_quaternion().component,
+            GridMap::descriptor_rotation_axis_angle().component,
+        )?;
+        let world_from_grid = world_from_entity * entity_from_grid;
 
         let [width, height] = image.width_height_f32();
         let extent_u = world_from_grid.transform_vector3(Vec3::X * width * cell_size);

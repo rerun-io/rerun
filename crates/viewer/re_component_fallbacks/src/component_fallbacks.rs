@@ -413,6 +413,20 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
         |_| components::CellSize::from(0.01),
     );
 
+    // VoxelGridMap
+    registry.register_component_fallback_provider(
+        archetypes::VoxelGridMap::descriptor_voxel_size().component,
+        |_| components::VoxelSize::from([0.01, 0.01, 0.01]),
+    );
+    registry.register_component_fallback_provider(
+        archetypes::VoxelGridMap::descriptor_value_range().component,
+        |_| components::ValueRange::new(0.0, 1.0),
+    );
+    registry.register_component_fallback_provider(
+        archetypes::VoxelGridMap::descriptor_colormap().component,
+        |_| components::Colormap::Turbo,
+    );
+
     // SegmentationImage
     registry.register_component_fallback_provider(
         archetypes::SegmentationImage::descriptor_draw_order().component,

@@ -18,6 +18,7 @@
 #include "datatypes/float32.hpp"
 #include "datatypes/float64.hpp"
 #include "datatypes/image_format.hpp"
+#include "datatypes/ivec3d.hpp"
 #include "datatypes/keypoint_id.hpp"
 #include "datatypes/keypoint_pair.hpp"
 #include "datatypes/mat3x3.hpp"

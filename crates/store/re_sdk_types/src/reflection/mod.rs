@@ -1525,6 +1525,39 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 verify_arrow_array: Visible::verify_arrow_array,
             },
         ),
+        (
+            <VoxelIndex as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Integer index of a voxel in a sparse 3D voxel grid.\n\nThe voxel center in local grid coordinates is `(index + 0.5) * voxel_size`.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: VoxelIndex::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: VoxelIndex::verify_arrow_array,
+            },
+        ),
+        (
+            <VoxelSize as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The scene-unit dimensions of one voxel in a sparse 3D voxel grid.\n\nEach component is the size of a voxel along the corresponding local grid axis.\nAll components must be finite and positive.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: VoxelSize::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: VoxelSize::verify_arrow_array,
+            },
+        ),
+        (
+            <VoxelValue as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Optional scalar occupancy or value associated with a voxel.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: VoxelValue::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: VoxelValue::verify_arrow_array,
+            },
+        ),
     ];
     Ok(ComponentReflectionMap::from_iter(array))
 }
@@ -3844,6 +3877,87 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md: "The directions of the [x, y, z] axes.",
                     flags: ArchetypeFieldFlags::REQUIRED,
                 }],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.VoxelGridMap"),
+            ArchetypeReflection {
+                display_name: "Voxel grid map",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["Spatial3DView"],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "voxel_indices",
+                        display_name: "Voxel indices",
+                        component_type: "rerun.components.VoxelIndex".into(),
+                        docstring_md: "Indices of the voxels within the grid volume.",
+                        flags: ArchetypeFieldFlags::REQUIRED,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "voxel_size",
+                        display_name: "Voxel size",
+                        component_type: "rerun.components.VoxelSize".into(),
+                        docstring_md: "The scene-unit dimensions of a single voxel cell.\n\nThis defines the voxel size along the local grid X/Y/Z axes.\nEach dimension must be finite and positive.",
+                        flags: ArchetypeFieldFlags::REQUIRED,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "values",
+                        display_name: "Values",
+                        component_type: "rerun.components.VoxelValue".into(),
+                        docstring_md: "Optional scalar occupancy or value data for each voxel.\n\nIf explicit colors are not provided, values are mapped through `colormap` and `value_range`.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "colors",
+                        display_name: "Colors",
+                        component_type: "rerun.components.Color".into(),
+                        docstring_md: "Optional colors for each voxel.\n\nIf set, these colors take precedence over color-mapped scalar values.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "translation",
+                        display_name: "Translation",
+                        component_type: "rerun.components.Translation3D".into(),
+                        docstring_md: "Translation of the minimum corner of voxel `[0, 0, 0]`.\n\nTogether with [`components.RotationAxisAngle`](https://rerun.io/docs/reference/types/components/rotation_axis_angle) or [`components.RotationQuat`](https://rerun.io/docs/reference/types/components/rotation_quat), this defines the pose of the\ngrid relative to the map's parent coordinate frame.\n\nIf not set, the minimum corner is placed at the origin of the map's parent coordinate frame.",
+                        flags: ArchetypeFieldFlags::empty(),
+                    },
+                    ArchetypeFieldReflection {
+                        name: "rotation_axis_angle",
+                        display_name: "Rotation axis angle",
+                        component_type: "rerun.components.RotationAxisAngle".into(),
+                        docstring_md: "Rotation of the grid via axis + angle.\n\nTogether with [`components.Translation3D`](https://rerun.io/docs/reference/types/components/translation3d), this defines the pose of the grid relative to the\nmap's parent coordinate frame.\n\nNote: either this or [`components.RotationQuat`](https://rerun.io/docs/reference/types/components/rotation_quat) can be set to specify the grid's rotation, but not both.\nIf both this and [`components.RotationQuat`](https://rerun.io/docs/reference/types/components/rotation_quat) are set, this is ignored in favor of the quaternion.",
+                        flags: ArchetypeFieldFlags::empty(),
+                    },
+                    ArchetypeFieldReflection {
+                        name: "quaternion",
+                        display_name: "Quaternion",
+                        component_type: "rerun.components.RotationQuat".into(),
+                        docstring_md: "Rotation of the grid via quaternion.\n\nTogether with [`components.Translation3D`](https://rerun.io/docs/reference/types/components/translation3d), this defines the pose of the grid relative to the\nmap's parent coordinate frame.",
+                        flags: ArchetypeFieldFlags::empty(),
+                    },
+                    ArchetypeFieldReflection {
+                        name: "opacity",
+                        display_name: "Opacity",
+                        component_type: "rerun.components.Opacity".into(),
+                        docstring_md: "Opacity of the voxels after color or colormap application.\n\nDefaults to 1.0 (fully opaque).",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "value_range",
+                        display_name: "Value range",
+                        component_type: "rerun.components.ValueRange".into(),
+                        docstring_md: "Scalar value range for color-mapping.\n\nDefaults to `[0.0, 1.0]`.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "colormap",
+                        display_name: "Colormap",
+                        component_type: "rerun.components.Colormap".into(),
+                        docstring_md: "Colormap to use when `values` are present and explicit `colors` are not provided.\n\nDefaults to Turbo.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
             },
         ),
         (

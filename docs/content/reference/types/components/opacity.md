@@ -31,3 +31,4 @@ Float32
 * [`SegmentationImage`](../archetypes/segmentation_image.md)
 * [`VideoFrameReference`](../archetypes/video_frame_reference.md)
 * [`VideoStream`](../archetypes/video_stream.md)
+* [`VoxelGridMap`](../archetypes/voxel_grid_map.md?speculative-link)

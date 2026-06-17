@@ -21,6 +21,7 @@ mod tensor;
 mod text_document;
 mod transform3d;
 mod view_coordinates;
+mod voxel_grid_map;
 
 // Tests of other things
 

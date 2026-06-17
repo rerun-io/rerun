@@ -8,6 +8,7 @@ mod plane_clustering;
 mod point_cloud;
 mod rectangles;
 mod test_triangle;
+mod voxel_grid;
 mod world_grid;
 
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
@@ -22,6 +23,7 @@ pub use rectangles::{
     TextureAlpha, TextureFilterMag, TextureFilterMin, TexturedRect,
 };
 pub use test_triangle::TestTriangleDrawData;
+pub use voxel_grid::{VoxelGridDrawData, VoxelGridInstance, VoxelGridOptions};
 pub use world_grid::{WorldGridConfiguration, WorldGridDrawData, WorldGridRenderer};
 
 pub use self::depth_cloud::{DepthCloud, DepthCloudDrawData, DepthCloudRenderer, DepthClouds};
