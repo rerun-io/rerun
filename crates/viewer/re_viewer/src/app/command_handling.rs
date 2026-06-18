@@ -26,6 +26,18 @@ const MIN_ZOOM_FACTOR: f32 = 0.2;
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_ZOOM_FACTOR: f32 = 5.0;
 
+/// How [`App::close_recording`] should treat a recording that's still rendered as a preview.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CloseRecording {
+    /// A recording still rendered as a preview stays loaded and streaming, just no longer in the
+    /// recording list.
+    KeepPreview,
+
+    /// Fully remove the recording even if it's still rendered as a preview.
+    /// Used when the recording's server is going away, so leaving it loaded makes no sense.
+    Force,
+}
+
 impl App {
     pub(super) fn run_pending_system_commands(
         &mut self,
@@ -204,7 +216,43 @@ impl App {
             }
 
             SystemCommand::CloseRecordingOrTable(entry) => {
-                self.close_recording(store_hub, &entry);
+                // The active recording we're closing, if that's what this is. When set, we move off
+                // it after closing.
+                let active_being_closed = match &entry {
+                    RecordingOrTable::Recording { store_id }
+                        if self.state.active_recording_id() == Some(store_id) =>
+                    {
+                        Some(store_id.clone())
+                    }
+                    _ => None,
+                };
+
+                let new_navigation = active_being_closed.as_ref().and_then(|closing| {
+                    // Look back through history for the closest entry that's still an open destination.
+                    let back_target = self
+                        .state
+                        .history
+                        .find_back(|url| {
+                            self.is_back_destination_open(store_hub, url, Some(closing))
+                        })
+                        .cloned();
+
+                    back_target.or_else(|| {
+                        ViewerOpenUrl::from_route(
+                            store_hub,
+                            &Self::fallback_route_after_close(store_hub, closing),
+                        )
+                        .ok()
+                    })
+                });
+
+                self.close_recording(store_hub, &entry, CloseRecording::KeepPreview);
+
+                if let Some(new_navigation) = new_navigation {
+                    self.navigate_to(egui_ctx, &new_navigation);
+                } else if active_being_closed.is_some() {
+                    self.state.navigation.reset();
+                }
             }
 
             SystemCommand::CloseAllEntries => {
@@ -341,14 +389,46 @@ impl App {
                     .map(|db| db.store_id().clone())
                     .collect();
 
-                // Close the recordings before removing the server, to avoid a race
+                // Were we viewing one of the recordings we're about to close? Then we need to move
+                // off it once the server is gone.
+                let viewing_closed_recording = self
+                    .state
+                    .active_recording_id()
+                    .is_some_and(|active| recordings_to_close.contains(active));
+
+                // Close the recordings before removing the server, to avoid a race.
+                // `Force` because a recording rendered as a preview last frame would otherwise stay
+                // loaded and streaming even though its server is being removed.
                 for store_id in recordings_to_close {
-                    self.close_recording(store_hub, &store_id.into());
+                    self.close_recording(store_hub, &store_id.into(), CloseRecording::Force);
                 }
 
                 self.state
                     .redap_servers
                     .remove_server(&origin, &self.connection_registry);
+
+                let current_route = self.state.navigation.current();
+                let on_removed_server = match current_route {
+                    Route::RedapServer(route_origin)
+                    | Route::RedapEntry {
+                        origin: route_origin,
+                        ..
+                    } => route_origin == &origin,
+                    _ => false,
+                };
+
+                if on_removed_server || viewing_closed_recording {
+                    if let Some(url) = self
+                        .state
+                        .history
+                        .find_back(|url| self.is_back_destination_open(store_hub, url, None))
+                        .cloned()
+                    {
+                        self.navigate_to(egui_ctx, &url);
+                    } else {
+                        self.state.navigation.reset();
+                    }
+                }
             }
 
             SystemCommand::EditRedapServerModal(command) => {
@@ -1422,11 +1502,133 @@ impl App {
         false
     }
 
-    fn close_recording(&self, store_hub: &mut StoreHub, entry: &RecordingOrTable) {
-        // TODO(#9464): Find a better successor here.
+    /// Opens `url` through the normal navigation flow.
+    fn navigate_to(&self, egui_ctx: &egui::Context, url: &ViewerOpenUrl) {
+        url.clone().open(
+            egui_ctx,
+            &OpenUrlOptions {
+                follow: true,
+                recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
+                show_loader: true,
+            },
+            &self.command_sender,
+        );
+    }
 
+    /// Whether navigating back to `url` still leads to an open route.
+    ///
+    /// `closing` is the recording being closed, if any.
+    fn is_back_destination_open(
+        &self,
+        store_hub: &StoreHub,
+        url: &ViewerOpenUrl,
+        closing: Option<&StoreId>,
+    ) -> bool {
+        // A redap origin is reachable as long as its server is still registered.
+        let origin_reachable = |origin: &re_uri::Origin| {
+            origin == &*re_redap_browser::EXAMPLES_ORIGIN
+                || self.state.redap_servers.has_server(origin)
+        };
+
+        // Whether some still-open recording, other than the one we're closing, was loaded from
+        // `url`.
+        let recording_loaded_from = |url: &ViewerOpenUrl| {
+            store_hub.store_bundle().recordings().any(|db| {
+                closing.is_none_or(|closing| db.store_id() != closing)
+                    && store_hub.is_opened(db.store_id())
+                    && db.data_source.as_ref().is_some_and(|source| {
+                        ViewerOpenUrl::from_data_source(source).is_ok_and(|loaded| &loaded == url)
+                    })
+            })
+        };
+
+        match url {
+            // Points into the recording we're closing, so there's nothing left to step back to.
+            ViewerOpenUrl::IntraRecordingSelection(_) => false,
+
+            ViewerOpenUrl::WebViewerUrl { url_parameters, .. } => {
+                if url_parameters.len() == 1 {
+                    self.is_back_destination_open(store_hub, url_parameters.first(), closing)
+                } else {
+                    false
+                }
+            }
+
+            // Not a place to land on after closing a recording.
+            ViewerOpenUrl::Settings => false,
+
+            // Resolve to a recording loaded from that source: only step back while it's still open.
+            ViewerOpenUrl::HttpUrl(_) | ViewerOpenUrl::WebEventListener => {
+                recording_loaded_from(url)
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            ViewerOpenUrl::FilePath(_) => recording_loaded_from(url),
+
+            // Resolves to a recording: it must still be loaded, and not be the one we're closing.
+            // We don't re-stream a closed recording, that would land us on a blank, unloaded one.
+            ViewerOpenUrl::RedapDatasetSegment(uri) => {
+                let store_id = uri.store_id();
+                closing.is_none_or(|closing| &store_id != closing) && store_hub.is_opened(&store_id)
+            }
+
+            // Redap destinations are reachable while their server is still registered.
+            ViewerOpenUrl::RedapProxy(uri) => origin_reachable(&uri.origin),
+            ViewerOpenUrl::RedapCatalog(uri) => origin_reachable(&uri.origin),
+            ViewerOpenUrl::RedapEntry(uri) => origin_reachable(&uri.origin),
+            ViewerOpenUrl::RedapFolder(uri) => origin_reachable(&uri.origin),
+
+            // Tied to a specific store: it must exist, still be opened, and not be the one we're
+            // closing. Without an explicit store it falls back to the active recording, which is the
+            // one we're closing, so there's nowhere to step back to.
+            ViewerOpenUrl::ChunkStoreBrowser { recording_id, .. } => {
+                recording_id.as_ref().is_some_and(|id| {
+                    closing.is_none_or(|closing| id != closing) && store_hub.is_opened(id)
+                })
+            }
+        }
+    }
+
+    /// Where to navigate after closing the active recording `closing`, when there's no usable
+    /// history entry to step back to.
+    ///
+    /// - If viewing a recording in a dataset, go to said dataset.
+    /// - Otherwise, if in a redap server, go to said redap server.
+    /// - Otherwise go to the start page.
+    fn fallback_route_after_close(store_hub: &StoreHub, closing: &StoreId) -> Route {
+        let redap_uri = store_hub
+            .entity_db(closing)
+            .and_then(|db| db.data_source.as_ref())
+            .and_then(|source| source.redap_uri());
+
+        match redap_uri {
+            Some(re_uri::RedapUri::DatasetData(uri)) => Route::RedapEntry {
+                origin: uri.origin,
+                kind: re_viewer_context::RedapEntryKind::Entry(uri.dataset_id.into()),
+            },
+
+            Some(uri) if !matches!(uri, re_uri::RedapUri::Proxy(_)) => {
+                Route::RedapServer(uri.origin().clone())
+            }
+
+            _ => Route::welcome_page(),
+        }
+    }
+
+    fn close_recording(
+        &self,
+        store_hub: &mut StoreHub,
+        entry: &RecordingOrTable,
+        mode: CloseRecording,
+    ) {
         if let RecordingOrTable::Recording { store_id } = entry {
             store_hub.set_opened(store_id, false);
+
+            // A recording that's still rendered as a preview should stay loaded and streaming, just
+            // no longer in the recording list. Removing it would make the preview re-download it.
+            // `Force` overrides this and removes it regardless.
+            if mode != CloseRecording::Force && store_hub.was_preview(store_id) {
+                return;
+            }
         }
 
         let data_source = match entry {
