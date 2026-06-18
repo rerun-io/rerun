@@ -565,20 +565,11 @@ impl Renderer for PointCloudRenderer {
             .shader_modules
             .get_or_create(ctx, &shader_module_desc);
 
-        // WORKAROUND for https://github.com/gfx-rs/naga/issues/1743
-        let mut shader_module_desc_vertex = shader_module_desc.clone();
-        shader_module_desc_vertex.extra_workaround_replacements =
-            vec![("fwidth(".to_owned(), "f32(".to_owned())];
-        let shader_module_vertex = ctx
-            .gpu_resources
-            .shader_modules
-            .get_or_create(ctx, &shader_module_desc_vertex);
-
         let render_pipeline_desc_color = RenderPipelineDesc {
             label: "PointCloudRenderer::render_pipeline_color".into(),
             pipeline_layout,
             vertex_entrypoint: "vs_main".into(),
-            vertex_handle: shader_module_vertex,
+            vertex_handle: shader_module,
             fragment_entrypoint: "fs_main".into(),
             fragment_handle: shader_module,
             vertex_buffers: smallvec![],
