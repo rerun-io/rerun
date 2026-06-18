@@ -1,15 +1,9 @@
-use std::sync::Arc;
-
-use arrow::array::{ArrayRef, AsArray as _, FixedSizeBinaryArray, FixedSizeBinaryBuilder};
-use arrow::datatypes::DataType;
+use arrow::array::{ArrayRef, AsArray as _, FixedSizeBinaryArray};
 use re_tuid::Tuid;
 
 use crate::{DeserializationError, Loggable};
 
 // ---
-
-#[expect(clippy::cast_possible_wrap)]
-const BYTE_WIDTH: i32 = std::mem::size_of::<Tuid>() as i32;
 
 pub fn tuids_to_arrow(tuids: &[Tuid]) -> FixedSizeBinaryArray {
     #[expect(clippy::unwrap_used)] // Can't fail
@@ -22,7 +16,7 @@ pub fn tuids_to_arrow(tuids: &[Tuid]) -> FixedSizeBinaryArray {
 impl Loggable for Tuid {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        DataType::FixedSizeBinary(BYTE_WIDTH)
+        quiver::Column::<Self>::datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -44,15 +38,10 @@ impl Loggable for Tuid {
     where
         Self: 'a,
     {
-        let iter = iter.into_iter();
-
-        let mut builder = FixedSizeBinaryBuilder::with_capacity(iter.size_hint().0, BYTE_WIDTH);
-        for tuid in iter {
-            #[expect(clippy::unwrap_used)] // Can't fail because `BYTE_WIDTH` is correct.
-            builder.append_value(tuid.into().as_bytes()).unwrap();
-        }
-
-        Ok(Arc::new(builder.finish()))
+        let column = quiver::Column::<Self>::from_values(
+            iter.into_iter().map(|tuid| tuid.into().into_owned()),
+        );
+        Ok(column.into_arrow())
     }
 
     fn from_arrow(array: &dyn ::arrow::array::Array) -> crate::DeserializationResult<Vec<Self>> {
