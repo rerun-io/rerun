@@ -142,12 +142,14 @@ backwards_check = [
   "archetypes/image_advanced", # Uses Pillow to encode a PNG; Pillow encodes differently on different OSes, so the bytes in the RRD won't match the checked-in reference.
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
   "concepts/build_chunk", # Python-only experimental API; no reference RRD checked in
+  "concepts/build_chunk_from_record_batch", # Python-only experimental API; builds and prints chunks, generates no rrd
   "concepts/explicit_recording", # The file path differs locally and on CI
   "concepts/send_dataframe", # Python-only API; no reference RRD checked in
   "howto/convert_mcap_protobuf", # Processes video from MCAP, non-deterministic encoding
   "howto/convert_mcap_protobuf_send_column",
   "concepts/chunk_processing", # Python-only experimental API; output rrd may shift across versions
   "concepts/chunk_processing_intro", # Python-only experimental API; output rrd may shift across versions
+  "concepts/chunk_processing_query", # Python-only experimental API; queries in-process, generates no rrd
   "concepts/rrd_format", # Python-only experimental API; output rrd may shift across versions
   "howto/optimize_chunks", # Compacts a video-bearing MCAP; chunk layout may shift across optimizer versions
   # Catalog server examples don't generate rrds
@@ -189,11 +191,19 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"concepts/build_chunk_from_record_batch" = [ # Python-only experimental API
+  "cpp",
+  "rust",
+]
 "concepts/chunk_processing" = [ # `rerun.experimental` is Python-only
   "cpp",
   "rust",
 ]
 "concepts/chunk_processing_intro" = [ # `rerun.experimental` is Python-only
+  "cpp",
+  "rust",
+]
+"concepts/chunk_processing_query" = [ # `rerun.experimental` is Python-only
   "cpp",
   "rust",
 ]
@@ -622,6 +632,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "concepts/chunk_processing_intro" = [ # Python-only; nothing to compare across languages
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/chunk_processing_query" = [ # Python-only; nothing to compare across languages
   "cpp",
   "py",
   "rust",
