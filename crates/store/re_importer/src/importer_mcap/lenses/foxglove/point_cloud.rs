@@ -38,7 +38,9 @@ pub fn point_cloud(time_type: TimeType) -> Result<Lens, LensBuilderError> {
             // `extract_colors` returns a `List<UInt32>`. The `.[]` flatten
             // unwraps this extra list level so the component column contains
             // the colors directly.
-            Selector::parse(".")?.pipe(extract_colors).pipe(flatten),
+            Selector::parse(".")?
+                .pipe(extract_colors("point_stride"))
+                .pipe(flatten),
         )
         // The pose field is optional.
         .to_component(
