@@ -10,7 +10,7 @@ use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CreateDatasetEntryRequest, DataSource, QueryTasksOnCompletionRequest,
-    RegisterWithDatasetRequest, ext,
+    RegisterWithDatasetRequest,
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
@@ -225,7 +225,7 @@ pub async fn register_and_wait(
         .expect("record batch expected");
 
     // extract task ids from the response
-    let task_ids: Vec<TaskId> = ext::RegisterWithDatasetDataframe::COLUMN_RERUN_TASK_ID
+    let task_ids: Vec<TaskId> = cloud_ext::RegisterWithDatasetDataframe::COLUMN_RERUN_TASK_ID
         .extract(&resp)
         .expect("valid task id column")
         .into_iter()

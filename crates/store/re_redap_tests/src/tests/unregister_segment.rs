@@ -10,9 +10,10 @@ use arrow::datatypes::Schema;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use re_arrow_util::RecordBatchExt as _;
+use re_protos::cloud::v1alpha1::ext::ScanDatasetManifestDataframe;
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::ext::{
     LayerRegistrationStatus, QueryDatasetDataframe, QueryDatasetRequest,
-    ScanDatasetManifestDataframe, ScanSegmentTableDataframe,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{

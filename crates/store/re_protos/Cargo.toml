@@ -58,9 +58,9 @@ tonic = { workspace = true, default-features = false, features = ["codegen", "tr
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tonic = { workspace = true, default-features = false, features = ["codegen"] }
 
-
 [dev-dependencies]
 insta.workspace = true
+
 
 [lints]
 workspace = true
