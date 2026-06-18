@@ -3,17 +3,45 @@ use crate::{Origin, RedapUri};
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ProxyUri {
     pub origin: Origin,
+
+    /// Optional path prefix the proxy is mounted behind, e.g. `Some("foo/bar")`
+    /// for `rerun+http://host/foo/bar/proxy`. `None` for the common
+    /// `rerun+http://host/proxy`. Lets the message proxy be hosted behind a
+    /// reverse proxy at a sub-path; the prefix is preserved when building the
+    /// gRPC client base URL so requests go to `…/foo/bar/<service>/<method>`.
+    pub path: Option<String>,
 }
 
 impl std::fmt::Display for ProxyUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}/proxy", self.origin)
+        match &self.path {
+            Some(path) => write!(f, "{}/{path}/proxy", self.origin),
+            None => write!(f, "{}/proxy", self.origin),
+        }
     }
 }
 
 impl ProxyUri {
     pub fn new(origin: Origin) -> Self {
-        Self { origin }
+        Self { origin, path: None }
+    }
+
+    /// Set the path prefix the proxy is mounted behind (see [`Self::path`]).
+    #[inline]
+    pub fn with_path(mut self, path: Option<String>) -> Self {
+        self.path = path;
+        self
+    }
+
+    /// The `http(s)://host:port[/prefix]` base URL the gRPC client should target.
+    ///
+    /// Unlike [`Origin::as_url`] this includes the optional mount [`Self::path`],
+    /// so gRPC-web requests are issued to `…/<prefix>/<service>/<method>`.
+    pub fn base_url(&self) -> String {
+        match &self.path {
+            Some(path) => format!("{}/{path}", self.origin.as_url()),
+            None => self.origin.as_url(),
+        }
     }
 }
 

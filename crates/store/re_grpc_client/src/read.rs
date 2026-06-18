@@ -28,7 +28,9 @@ async fn stream_async(
     tx: &re_log_channel::LogSender,
 ) -> Result<(), StreamError> {
     let mut client = {
-        let url = uri.origin.as_url();
+        // `base_url()` (not `origin.as_url()`) so a proxy mounted behind a path
+        // prefix (`…/prefix/proxy`) keeps that prefix on its gRPC requests.
+        let url = uri.base_url();
 
         #[cfg(target_arch = "wasm32")]
         let tonic_client = {

@@ -82,18 +82,34 @@ impl std::str::FromStr for RedapUri {
 
         let (origin, http_url) = Origin::replace_and_parse(input, Some(default_localhost_port))?;
 
-        // :warning: We limit the amount of segments, which might need to be
-        // adjusted when adding additional resources.
-        let segments = http_url
+        let all_segments = http_url
             .path_segments()
             .ok_or_else(|| Error::UnexpectedBaseUrl(input.to_owned()))?
-            .take(2)
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
-        match segments.as_slice() {
-            ["proxy"] => Ok(Self::Proxy(ProxyUri::new(origin))),
+        // Proxy endpoint, optionally mounted behind a path prefix:
+        //   rerun+http://host/proxy
+        //   rerun+http://host/some/prefix/proxy   -> path = Some("some/prefix")
+        // The prefix lets the proxy be served behind a reverse proxy at a
+        // sub-path. We distinguish it from the REDAP resource endpoints
+        // (catalog/entry/folder/dataset) by their leading segment, so e.g. a
+        // folder literally named "proxy" is still parsed as a folder.
+        let is_redap_resource = all_segments
+            .first()
+            .is_some_and(|s| matches!(*s, "catalog" | "entry" | "folder" | "dataset"));
+        if !is_redap_resource {
+            if let [prefix @ .., "proxy"] = all_segments.as_slice() {
+                let path = (!prefix.is_empty()).then(|| prefix.join("/"));
+                return Ok(Self::Proxy(ProxyUri::new(origin).with_path(path)));
+            }
+        }
 
+        // :warning: We limit the amount of segments, which might need to be
+        // adjusted when adding additional resources.
+        let segments = all_segments.into_iter().take(2).collect::<Vec<_>>();
+
+        match segments.as_slice() {
             ["catalog"] | [] => Ok(Self::Catalog(CatalogUri::new(origin))),
 
             ["entry", entry_id] => {
@@ -404,6 +420,7 @@ mod tests {
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
             },
+            path: None,
         });
 
         assert_eq!(address.unwrap(), expected);
@@ -425,9 +442,40 @@ mod tests {
                 host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
                 port: 9876,
             },
+            path: None,
         });
 
         assert_eq!(address.unwrap(), expected);
+    }
+
+    #[test]
+    fn test_proxy_endpoint_with_path_prefix() {
+        // The proxy can be mounted behind a reverse proxy at a sub-path; the
+        // prefix segments before `/proxy` are preserved.
+        let url = "rerun+http://host:9876/foo/bar/proxy";
+        let parsed: RedapUri = url.parse().unwrap();
+
+        let expected = RedapUri::Proxy(ProxyUri {
+            origin: Origin {
+                scheme: Scheme::RerunHttp,
+                host: url::Host::Domain("host".to_owned()),
+                port: 9876,
+            },
+            path: Some("foo/bar".to_owned()),
+        });
+        assert_eq!(parsed, expected);
+
+        let RedapUri::Proxy(proxy) = parsed else {
+            panic!("expected proxy uri");
+        };
+        // The prefix is carried into the gRPC client base URL...
+        assert_eq!(proxy.base_url(), "http://host:9876/foo/bar");
+        // ...and round-trips through Display/FromStr.
+        assert_eq!(proxy.to_string(), "rerun+http://host:9876/foo/bar/proxy");
+
+        // A folder literally named "proxy" is still a folder, not a proxy.
+        let folder: RedapUri = "rerun+http://host/folder/proxy".parse().unwrap();
+        assert!(matches!(folder, RedapUri::Folder(_)));
     }
 
     #[test]
@@ -461,6 +509,7 @@ mod tests {
                         host: url::Host::Domain("localhost".to_owned()),
                         port: DEFAULT_PROXY_PORT,
                     },
+                    path: None,
                 }),
             ),
             (
@@ -471,6 +520,7 @@ mod tests {
                         host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
                         port: DEFAULT_PROXY_PORT,
                     },
+                    path: None,
                 }),
             ),
             (
